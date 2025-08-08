@@ -284,7 +284,7 @@
   align-items: center;
   gap: 6px;
   padding: 4px 10px;
-  background: linear-gradient(135deg, rgba(255, 153, 153, 0.05), rgba(255, 153, 204, 0.05));
+  background: rgba(255, 153, 204, 0.05);
   border: 1px solid rgba(255, 153, 204, 0.15);
   border-radius: 12px;
   font-size: 11px;
@@ -692,18 +692,18 @@
 /* New Attachments System */
 .attachments-container {
   position: absolute;
-  bottom: 70px;
+  bottom: 76px;
   right: 12px;
   display: flex;
-  gap: 8px;
-  padding: 8px;
+  gap: 6px;
+  padding: 6px;
   background: rgba(0, 0, 0, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
+  border-radius: 8px;
   backdrop-filter: blur(10px);
-  max-width: 400px;
+  max-width: 280px;
   flex-wrap: wrap;
-  animation: slideUp 0.2s ease;
+  animation: slideUp 0.15s ease;
   z-index: 100;
 }
 
@@ -723,11 +723,11 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
-  padding: 8px;
+  gap: 2px;
+  padding: 4px;
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  min-width: 60px;
+  border-radius: 6px;
+  min-width: 44px;
   transition: all 0.2s ease;
 }
 
@@ -744,40 +744,40 @@
 }
 
 .attachment-preview-img {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   object-fit: cover;
-  border-radius: 6px;
+  border-radius: 4px;
 }
 
 .attachment-preview-text,
 .attachment-preview-file {
-  width: 48px;
-  height: 48px;
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: rgba(255, 153, 204, 0.1);
-  border-radius: 6px;
+  border-radius: 4px;
   color: rgba(255, 153, 204, 0.7);
 }
 
 .attachment-label {
-  font-size: 9px;
+  font-size: 7px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: lowercase;
-  margin-top: 2px;
+  margin-top: 1px;
 }
 
 .attachment-remove {
   position: absolute;
-  top: -4px;
-  right: -4px;
+  top: -2px;
+  right: -2px;
   background: rgba(255, 100, 100, 0.8);
   border: none;
   color: white;
-  width: 18px;
-  height: 18px;
+  width: 12px;
+  height: 12px;
   border-radius: 50%;
   display: flex;
   align-items: center;

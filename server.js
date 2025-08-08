@@ -461,12 +461,11 @@ io.on('connection', (socket) => {
               });
               session.messages.push(currentMessage);
             }
-            // Start new assistant message with a stable ID
+            // Start new assistant message with a NEW stable ID each time
             currentMessage = { ...message };
-            if (!lastAssistantMessageId) {
-              lastAssistantMessageId = `${sessionId}-assistant-${Date.now()}`;
-              console.log(`🔷 Starting new assistant message with ID: ${lastAssistantMessageId}`);
-            }
+            // Always generate a new ID for each assistant message
+            lastAssistantMessageId = `${sessionId}-assistant-${Date.now()}-${messageId++}`;
+            console.log(`🔷 Starting new assistant message with ID: ${lastAssistantMessageId}`);
           } else {
             // Update existing assistant message content
             if (message.message?.content) {

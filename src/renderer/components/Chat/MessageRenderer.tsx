@@ -368,35 +368,31 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
 const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number }> = ({ message, index }) => {
   switch (message.type) {
     case 'system':
-      if (message.subtype === 'init') {
-        const directory = message.cwd || '/';
-        const folderName = directory.split(/[\\/]/).filter(Boolean).pop() || 'root';
-        
-        return (
-          <div className="message system-init">
-            <IconBolt size={14} stroke={1.5} className="init-icon" />
-            <span className="init-text">session started in</span>
-            <span className="init-folder">
-              <IconFolder size={12} stroke={1.5} className="folder-icon" />
-              <span className="folder-name">{folderName}</span>
-            </span>
-          </div>
-        );
-      }
+      // Hide all system messages including session started
       return null;
       
     case 'user':
       const userContent = message.message?.content || '';
-      const userText = typeof userContent === 'string' 
-        ? userContent 
-        : Array.isArray(userContent) && userContent[0]?.text
-          ? userContent[0].text
-          : '';
+      let displayText = '';
+      
+      if (typeof userContent === 'string') {
+        displayText = userContent;
+      } else if (Array.isArray(userContent) && userContent[0]?.text) {
+        const text = userContent[0].text;
+        // Check for pasted content patterns
+        if (text.startsWith('[Attached text]:')) {
+          displayText = '[pasted text]';
+        } else if (text.startsWith('[Attached image')) {
+          displayText = '[pasted image]';
+        } else {
+          displayText = text;
+        }
+      }
       
       return (
         <div className="message user">
           <div className="message-bubble">
-            {userText}
+            {displayText}
           </div>
         </div>
       );

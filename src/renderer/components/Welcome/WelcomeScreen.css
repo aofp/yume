@@ -7,6 +7,8 @@
   padding: 48px;
   background: #000000;
   animation: fadeIn 0.3s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 @keyframes fadeIn {
@@ -47,7 +49,7 @@
   height: 40px;
   border-radius: 8px;
   background: rgba(255, 153, 204, 0.1);
-  border: 1px solid rgba(255, 153, 204, 0.2);
+  border: none;
   color: #ff99cc;
   display: flex;
   align-items: center;
@@ -59,7 +61,6 @@
 
 .welcome-new-button:hover {
   background: rgba(255, 153, 204, 0.15);
-  border-color: rgba(255, 153, 204, 0.3);
 }
 
 .welcome-new-button:active {
@@ -78,7 +79,7 @@
   gap: 6px;
   padding: 8px 16px;
   background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   border-radius: 8px;
   color: rgba(255, 255, 255, 0.5);
   font-size: 12px;
@@ -90,7 +91,6 @@
 .action-button:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
   color: rgba(255, 255, 255, 0.7);
-  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .action-button:disabled {
@@ -128,7 +128,7 @@
   max-width: 400px;
   max-height: 60vh;
   background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: none;
   border-radius: 8px;
   animation: modalFadeIn 0.2s ease;
   display: flex;
@@ -151,7 +151,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: none;
 }
 
 .modal-title {
@@ -233,7 +233,7 @@
   padding: 6px;
   width: 100%;
   background: rgba(255, 153, 204, 0.05);
-  border: 1px solid rgba(255, 153, 204, 0.1);
+  border: none;
   border-radius: 4px;
   color: rgba(255, 153, 204, 0.5);
   font-size: 9px;
@@ -244,7 +244,6 @@
 
 .clear-all-button:hover {
   background: rgba(255, 153, 204, 0.08);
-  border-color: rgba(255, 153, 204, 0.2);
   color: rgba(255, 153, 204, 0.7);
 }
 
@@ -299,7 +298,7 @@
   gap: 16px;
   padding: 16px;
   background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: none;
   border-radius: 8px;
   transition: all 0.2s ease;
   cursor: default;
@@ -319,7 +318,6 @@
 
 .project-card:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 153, 204, 0.3);
   transform: translateY(-2px);
 }
 
