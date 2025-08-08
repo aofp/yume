@@ -319,7 +319,21 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               ? JSON.stringify(block.content, null, 2)
               : '';
           
-          // Filter out verbose outputs
+          // Check if this is a file operation result (Edit, MultiEdit, Write)
+          const prevBlock = content[idx - 1];
+          const isFileOperation = prevBlock?.type === 'tool_use' && 
+            (prevBlock.name === 'Edit' || prevBlock.name === 'MultiEdit' || prevBlock.name === 'Write');
+          
+          // Always show full content for file operations (diffs)
+          if (isFileOperation && resultContent) {
+            return (
+              <div key={idx} className="tool-result file-diff">
+                <pre className="diff-content">{resultContent}</pre>
+              </div>
+            );
+          }
+          
+          // Filter out verbose outputs for non-file operations
           if (resultContent.length > 1000) {
             return (
               <div key={idx} className="tool-result collapsed">

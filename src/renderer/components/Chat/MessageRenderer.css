@@ -433,6 +433,30 @@ ol {
   50% { opacity: 0.6; }
 }
 
+/* File Diff Styles */
+.tool-result.file-diff {
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 153, 153, 0.1);
+  border-radius: 8px;
+  padding: 8px;
+  margin: 8px 0;
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.diff-content {
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #a0a0a0;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  background: transparent;
+  border: none;
+  padding: 0;
+}
+
 /* Todo Write Styles - Minimal Dark */
 .tool-use.todo-write {
   flex-direction: column;
