@@ -213,13 +213,23 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   // Never update tool_use or tool_result messages - they should be immutable
                   if (existingMessage.type === 'tool_use' || existingMessage.type === 'tool_result') {
                     console.log(`Skipping update for ${existingMessage.type} message - preserving original`);
-                  } else if (message.type === 'assistant' && !message.message?.content && existingMessage.message?.content) {
-                    // For assistant messages, preserve content if new message is empty (thinking state)
+                  } else if (message.type === 'assistant') {
+                    // For assistant messages during streaming, handle array or string content
+                    const existingContent = existingMessage.message?.content || '';
+                    const newContent = message.message?.content || '';
+                    
+                    // Convert to string if needed for comparison
+                    const existingStr = typeof existingContent === 'string' ? existingContent : JSON.stringify(existingContent);
+                    const newStr = typeof newContent === 'string' ? newContent : JSON.stringify(newContent);
+                    
+                    // Just use the new content directly - Claude Code SDK sends full updates
+                    let finalContent = message.message?.content || existingMessage.message?.content;
+                    
                     existingMessages[existingIndex] = {
                       ...message,
                       message: {
                         ...message.message,
-                        content: existingMessage.message.content
+                        content: finalContent
                       }
                     };
                   } else {
@@ -262,12 +272,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               analytics.toolUses = existingMessages.filter(m => m.type === 'tool_use').length;
               
               // Update tokens if result message - accumulate, don't reset
-              if (message.type === 'result' && message.message?.stats) {
+              if (message.type === 'result' && message.usage) {
                 // Only add new tokens if this is a new result message
                 const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
                 if (isNewResult) {
-                  analytics.tokens.input += message.message.stats.input_tokens || 0;
-                  analytics.tokens.output += message.message.stats.output_tokens || 0;
+                  analytics.tokens.input += message.usage.input_tokens || 0;
+                  analytics.tokens.output += message.usage.output_tokens || 0;
                   analytics.tokens.total = analytics.tokens.input + analytics.tokens.output;
                 }
               }

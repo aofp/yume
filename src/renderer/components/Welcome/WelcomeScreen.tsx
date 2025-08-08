@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconFolderOpen, IconPlus, IconX } from '@tabler/icons-react';
+import { IconFolderOpen, IconPlus, IconX, IconTrash } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './WelcomeScreen.css';
 
@@ -132,10 +132,15 @@ export const WelcomeScreen: React.FC = () => {
             <div className="modal-header">
               <span className="modal-title">recent projects</span>
               <button 
-                className="modal-close"
-                onClick={() => setShowRecentModal(false)}
+                className="clear-all-icon"
+                onClick={() => {
+                  setRecentProjects([]);
+                  localStorage.removeItem('yurucode-recent-projects');
+                  setShowRecentModal(false);
+                }}
+                title="clear all"
               >
-                <IconX size={14} />
+                <IconTrash size={14} />
               </button>
             </div>
             
@@ -174,17 +179,6 @@ export const WelcomeScreen: React.FC = () => {
                       </button>
                     </div>
                   ))}
-                  
-                  <button 
-                    className="clear-all-button"
-                    onClick={() => {
-                      setRecentProjects([]);
-                      localStorage.removeItem('yurucode-recent-projects');
-                      setShowRecentModal(false);
-                    }}
-                  >
-                    clear all
-                  </button>
                 </>
               ) : (
                 <div className="no-recent">no recent projects</div>

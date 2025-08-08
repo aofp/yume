@@ -17,8 +17,10 @@ console.log('Registering IPC handlers...');
 
 ipcMain.on('window-close', () => {
   console.log('IPC: window-close received - CLOSING APP NOW');
+  if (mainWindow) {
+    mainWindow.close();
+  }
   app.quit();
-  process.exit(0);
 });
 
 ipcMain.on('window-minimize', () => {
@@ -80,6 +82,17 @@ ipcMain.handle('get-working-directory', () => {
 ipcMain.handle('get-server-port', () => {
   console.log('IPC: get-server-port invoked, returning:', serverPort);
   return serverPort;
+});
+
+ipcMain.handle('is-directory', async (event, path) => {
+  console.log('IPC: is-directory invoked for:', path);
+  try {
+    const stats = fs.statSync(path);
+    return stats.isDirectory();
+  } catch (err) {
+    console.error('Error checking if directory:', err);
+    return false;
+  }
 });
 
 console.log('IPC handlers registered!');

@@ -329,6 +329,26 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           const isFileOperation = prevBlock?.type === 'tool_use' && 
             (prevBlock.name === 'Edit' || prevBlock.name === 'MultiEdit' || prevBlock.name === 'Write');
           
+          // Check if this is a Read operation
+          const isReadOperation = prevBlock?.type === 'tool_use' && prevBlock.name === 'Read';
+          
+          // Hide system reminder messages
+          if (resultContent.includes('<system-reminder>') && resultContent.includes('</system-reminder>')) {
+            return null;
+          }
+          
+          // Limit Read operation output to 10 lines
+          if (isReadOperation && resultContent) {
+            const allLines = resultContent.split('\n');
+            const lines = allLines.slice(0, 10);
+            const truncated = lines.length < allLines.length;
+            return (
+              <div key={idx} className="tool-result read-output">
+                <pre className="read-content">{lines.join('\n')}{truncated ? `\n... (${allLines.length} lines total)` : ''}</pre>
+              </div>
+            );
+          }
+          
           // Always show full content for file operations (diffs)
           if (isFileOperation && resultContent) {
             return (
@@ -486,13 +506,14 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
               <>
                 {isEmpty ? (
                   <div className="thinking-indicator">
-                    <IconLoader2 size={14} className="streaming-loader" />
                     <span className="thinking-text">thinking...</span>
+                    <IconLoader2 size={14} className="streaming-loader" />
                   </div>
                 ) : (
                   <>
                     {renderContent(message.message?.content, message)}
                     <div className="thinking-indicator inline">
+                      <span className="thinking-text">thinking...</span>
                       <IconLoader2 size={14} className="streaming-loader" />
                     </div>
                   </>
@@ -522,6 +543,138 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
               </button>
             </div>
           )}
+        </div>
+      );
+      
+    case 'tool_use':
+      // Standalone tool use message
+      const toolName = message.message?.name || 'unknown tool';
+      const toolInput = message.message?.input || {};
+      const tool = TOOL_DISPLAYS[toolName];
+      const display = tool ? tool(toolInput) : {
+        icon: <IconTool size={14} stroke={1.5} />,
+        action: toolName.toLowerCase(),
+        detail: JSON.stringify(toolInput).substring(0, 100)
+      };
+      
+      // For Edit tool, show a proper diff
+      if (toolName === 'Edit' || toolName === 'MultiEdit') {
+        let filePath = toolInput.file_path || 'file';
+        // Convert to relative Unix path
+        filePath = filePath.replace(/^[A-Z]:\\.*\\(testproject|yurucode)\\/, '')
+                          .replace(/\\/g, '/');
+        
+        const oldString = toolInput.old_string || '';
+        const newString = toolInput.new_string || '';
+        
+        // Split into lines for diff display
+        const oldLines = oldString.split('\n');
+        const newLines = newString.split('\n');
+        
+        return (
+          <div className="message tool-message">
+            <div className="tool-use-edit">
+              <div className="edit-header">
+                <span className="edit-action">editing</span>
+                <span className="edit-file">{filePath}</span>
+              </div>
+              <div className="edit-diff">
+                {oldLines.length > 0 && oldLines[0] && (
+                  <div className="diff-section removed">
+                    {oldLines.map((line, idx) => (
+                      <div key={`old-${idx}`} className="diff-line removed">
+                        <span className="diff-marker">-</span>
+                        <span className="diff-text">{line}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {newLines.length > 0 && newLines[0] && (
+                  <div className="diff-section added">
+                    {newLines.map((line, idx) => (
+                      <div key={`new-${idx}`} className="diff-line added">
+                        <span className="diff-marker">+</span>
+                        <span className="diff-text">{line}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      return (
+        <div className="message tool-message">
+          <div className="tool-use standalone">
+            {display.icon && <span className="tool-icon">{display.icon}</span>}
+            <span className="tool-action">{display.action}</span>
+            {display.detail && <span className="tool-detail">{display.detail}</span>}
+          </div>
+        </div>
+      );
+      
+    case 'tool_result':
+      // Standalone tool result message
+      const resultContent = message.message?.content || message.message || '';
+      const contentStr = typeof resultContent === 'string' 
+        ? resultContent 
+        : JSON.stringify(resultContent, null, 2);
+      
+      // Check if this is an Edit result - they contain "has been updated" and show line numbers
+      const isEditResult = contentStr.includes('has been updated') && contentStr.includes('→');
+      
+      if (isEditResult) {
+        // Parse the Edit result to extract the diff
+        const lines = contentStr.split('\n');
+        const filePathMatch = contentStr.match(/The file (.+?) has been updated/);
+        let filePath = filePathMatch ? filePathMatch[1] : 'file';
+        
+        // Convert Windows path to relative Unix path
+        // Remove C:\Users\muuko\Desktop\testproject\ or similar
+        filePath = filePath.replace(/^[A-Z]:\\.*\\(testproject|yurucode)\\/, '')
+                          .replace(/\\/g, '/');  // Convert backslashes to forward slashes
+        
+        // Find the actual diff part (after "Here's the result of running")
+        const diffStartIdx = lines.findIndex(line => line.includes("Here's the result of running"));
+        const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
+        
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone file-edit">
+              <div className="diff-file-path">{filePath}</div>
+              <div className="diff-content">
+                {diffLines.map((line, idx) => {
+                  // Parse line numbers and content
+                  const lineMatch = line.match(/^\s*(\d+)→(.*)$/);
+                  if (lineMatch) {
+                    const [, lineNum, content] = lineMatch;
+                    // Check if content starts with + or - for coloring
+                    const isAdded = content.trim().startsWith('+');
+                    const isRemoved = content.trim().startsWith('-');
+                    const className = isAdded ? 'added' : isRemoved ? 'removed' : '';
+                    return (
+                      <div key={idx} className={`diff-line ${className}`}>
+                        <span className="line-number">{lineNum}</span>
+                        <span className="line-content">{content}</span>
+                      </div>
+                    );
+                  }
+                  return <div key={idx} className="diff-line">{line}</div>;
+                })}
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      // For other tool results, show as before
+      return (
+        <div className="message tool-result-message">
+          <div className="tool-result standalone">
+            <pre className="result-content">{contentStr}</pre>
+          </div>
         </div>
       );
       

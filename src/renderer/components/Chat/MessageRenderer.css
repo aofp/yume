@@ -247,7 +247,7 @@ ol {
 .thinking-indicator.inline {
   display: inline-flex;
   padding: 0;
-  margin-left: 8px;
+  margin-left: 0;
   vertical-align: middle;
 }
 
@@ -268,6 +268,178 @@ ol {
   margin: 4px 4px 4px 0;
   animation: toolSlide 0.3s ease;
   transition: all 0.2s ease;
+}
+
+/* Standalone tool messages */
+.tool-message, .tool-result-message {
+  padding: 8px 12px;
+  margin: 0;
+}
+
+.tool-use.standalone {
+  display: flex;
+  width: 100%;
+  background: rgba(255, 153, 204, 0.05);
+  border: none;
+  padding: 8px 12px;
+}
+
+.tool-result.standalone {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 12px;
+  margin-top: 4px;
+}
+
+.tool-result.standalone .result-content {
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.tool-result.standalone.file-diff .result-content {
+  background: rgba(0, 255, 0, 0.02);
+  border-left: 2px solid rgba(0, 255, 0, 0.3);
+  padding-left: 12px;
+}
+
+/* Edit result diff display - MINIMAL */
+.tool-result.file-edit {
+  display: block;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.diff-file-path {
+  display: block;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  margin-bottom: 8px;
+  line-height: 1.4;
+  font-weight: 500;
+}
+
+.diff-content {
+  display: block;
+  margin: 0;
+  padding: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  background: transparent;
+  overflow-x: auto;
+}
+
+.diff-line {
+  display: flex;
+  line-height: 16px;
+  background: transparent;
+}
+
+.diff-line .line-number {
+  display: inline-block;
+  min-width: 35px;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: right;
+  flex-shrink: 0;
+  font-size: 10px;
+  margin-right: 8px;
+}
+
+.diff-line .line-content {
+  flex: 1;
+  white-space: pre;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Simple pastel red/green for removed/added */
+.diff-line.added .line-content {
+  color: #98d8a5;
+}
+
+.diff-line.removed .line-content {
+  color: #ff9999;
+}
+
+/* Edit tool use diff display */
+.tool-use-edit {
+  display: block;
+  margin: 0;
+  padding: 0;
+}
+
+.edit-header {
+  display: block;
+  margin-bottom: 4px;
+}
+
+.edit-action {
+  color: #ff99cc;
+  font-weight: 500;
+  font-size: 11px;
+  margin-right: 8px;
+}
+
+.edit-file {
+  color: rgba(255, 255, 255, 0.9);
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  display: block;
+  margin-top: 4px;
+}
+
+.edit-diff {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  margin: 0;
+  padding: 0;
+}
+
+.diff-section {
+  margin: 0;
+  padding: 0;
+}
+
+.diff-section.removed {
+  margin-bottom: 4px;
+}
+
+.edit-diff .diff-line {
+  display: flex;
+  line-height: 1.4;
+  padding: 0;
+  margin: 0;
+}
+
+.diff-marker {
+  width: 16px;
+  flex-shrink: 0;
+  text-align: center;
+  font-weight: bold;
+}
+
+.diff-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.diff-line.removed .diff-marker,
+.diff-line.removed .diff-text {
+  color: #ff9999;
+}
+
+.diff-line.added .diff-marker,
+.diff-line.added .diff-text {
+  color: #98d8a5;
 }
 
 @keyframes fadeIn {
@@ -308,10 +480,10 @@ ol {
 }
 
 .tool-detail {
-  color: #606060;
+  color: rgba(255, 255, 255, 0.7);
   font-family: 'SF Mono', Monaco, monospace;
   font-size: 10px;
-  opacity: 0.8;
+  opacity: 1;
   max-width: 300px;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -352,6 +524,23 @@ ol {
   opacity: 0.6;
   font-size: 10px;
   padding: 2px 8px;
+}
+
+/* Read output styling */
+.tool-result.read-output {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 4px 0;
+}
+
+.read-content {
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: pre-wrap;
+  word-break: break-all;
 }
 
 .result-icon {

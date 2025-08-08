@@ -150,7 +150,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px 12px;
+  padding: 8px;
   border-bottom: none;
 }
 
@@ -158,6 +158,24 @@
   font-size: 12px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: lowercase;
+}
+
+.clear-all-icon {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.clear-all-icon:hover {
+  background: rgba(255, 153, 204, 0.1);
+  color: rgba(255, 153, 204, 0.6);
 }
 
 .modal-close {
@@ -258,24 +276,6 @@
   text-overflow: ellipsis;
 }
 
-.clear-all-button {
-  margin-top: 4px;
-  padding: 6px;
-  width: 100%;
-  background: rgba(255, 153, 204, 0.05);
-  border: none;
-  border-radius: 4px;
-  color: rgba(255, 153, 204, 0.5);
-  font-size: 9px;
-  text-transform: lowercase;
-  cursor: default;
-  transition: all 0.15s ease;
-}
-
-.clear-all-button:hover {
-  background: rgba(255, 153, 204, 0.08);
-  color: rgba(255, 153, 204, 0.7);
-}
 
 .no-recent {
   padding: 20px;

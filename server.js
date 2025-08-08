@@ -421,6 +421,9 @@ io.on('connection', (socket) => {
       // Stream messages back to client
       let claudeSdkSessionId = null;
       for await (const message of queryResult) {
+        // Debug: Log the raw message structure
+        console.log(`📦 Raw message type: ${message.type}, content type: ${typeof message.message?.content}, content: ${JSON.stringify(message.message?.content || message.content || message).substring(0, 200)}...`);
+        
         // Check if query was interrupted
         const queryState = activeQueries.get(sessionId);
         if (queryState?.interrupted) {
@@ -439,9 +442,32 @@ io.on('connection', (socket) => {
           console.log(`📌 Got Claude SDK session ID from ${message.type}.message: ${claudeSdkSessionId}`);
         }
         
-        // CRITICAL: Never send user messages from server - they're already handled by client
+        // Handle user messages that contain tool_results
         if (message.type === 'user') {
-          console.log('Skipping user message from Claude SDK - client handles these');
+          // Check if this user message contains tool_results
+          const content = message.message?.content || message.content || [];
+          if (Array.isArray(content)) {
+            for (const block of content) {
+              if (block.type === 'tool_result') {
+                // Send tool_result as a separate message
+                const toolResultMessage = {
+                  type: 'tool_result',
+                  message: {
+                    tool_use_id: block.tool_use_id,
+                    content: block.content,
+                    is_error: block.is_error
+                  },
+                  timestamp: Date.now(),
+                  streaming: false,
+                  id: `${sessionId}-toolresult-${Date.now()}-${messageId++}`
+                };
+                console.log(`📊 TOOL RESULT for ${block.tool_use_id}: ${block.content?.substring(0, 100)}...`);
+                socket.emit(`message:${sessionId}`, toolResultMessage);
+                session.messages.push(toolResultMessage);
+              }
+            }
+          }
+          console.log('Processed user message for tool_results');
           continue;
         }
         
@@ -470,40 +496,148 @@ io.on('connection', (socket) => {
         
         // Handle different message types for proper streaming
         if (message.type === 'assistant') {
-          // For assistant messages, accumulate content
-          if (!currentMessage || currentMessage.type !== 'assistant') {
-            // Send previous non-assistant message if exists
-            if (currentMessage && currentMessage.type !== 'assistant') {
+          // Parse content array to find tool_use blocks
+          const content = message.message?.content || message.content || [];
+          const hasToolUse = Array.isArray(content) && content.some(block => block.type === 'tool_use');
+          
+          // If content has tool_use blocks, send them as separate messages
+          if (hasToolUse && Array.isArray(content)) {
+            // First, finalize any existing assistant message
+            if (currentMessage && currentMessage.type === 'assistant') {
               socket.emit(`message:${sessionId}`, {
                 ...currentMessage,
                 streaming: false,
-                id: `${sessionId}-prev-${messageId++}`
+                id: lastAssistantMessageId
               });
               session.messages.push(currentMessage);
+              currentMessage = null;
             }
-            // Start new assistant message with a NEW stable ID each time
-            currentMessage = { ...message };
-            // Always generate a new ID for each assistant message
-            lastAssistantMessageId = `${sessionId}-assistant-${Date.now()}-${messageId++}`;
-            console.log(`🔷 Starting new assistant message with ID: ${lastAssistantMessageId}`);
+            
+            // Send each tool_use as a separate message
+            for (const block of content) {
+              if (block.type === 'tool_use') {
+                const toolMessage = {
+                  type: 'tool_use',
+                  message: {
+                    name: block.name,
+                    input: block.input,
+                    id: block.id
+                  },
+                  timestamp: Date.now(),
+                  streaming: false,
+                  id: `${sessionId}-tool-${Date.now()}-${messageId++}`
+                };
+                console.log(`🔧 TOOL USE: ${block.name} - sending as separate message`);
+                socket.emit(`message:${sessionId}`, toolMessage);
+                session.messages.push(toolMessage);
+              } else if (block.type === 'text' && block.text) {
+                // Start a new assistant message for text content
+                currentMessage = {
+                  type: 'assistant',
+                  message: { content: block.text },
+                  timestamp: Date.now()
+                };
+                lastAssistantMessageId = `${sessionId}-assistant-${Date.now()}-${messageId++}`;
+                socket.emit(`message:${sessionId}`, {
+                  ...currentMessage,
+                  streaming: true,
+                  id: lastAssistantMessageId
+                });
+              }
+            }
           } else {
-            // Update existing assistant message content
-            if (message.message?.content) {
-              console.log(`🔷 Updating assistant content (was: ${currentMessage.message?.content?.length || 0} chars, now: ${message.message.content.length} chars)`);
-              currentMessage.message.content = message.message.content;
+            // Regular assistant message handling
+            if (!currentMessage || currentMessage.type !== 'assistant') {
+              // Start new assistant message
+              currentMessage = { ...message };
+              lastAssistantMessageId = `${sessionId}-assistant-${Date.now()}-${messageId++}`;
+              console.log(`🔷 Starting new assistant message with ID: ${lastAssistantMessageId}`);
+            } else {
+              // Update existing assistant message content
+              if (message.message?.content || message.content) {
+                const newContent = message.message?.content || message.content;
+                currentMessage.message = currentMessage.message || {};
+                currentMessage.message.content = newContent;
+              }
             }
+            
+            // Emit with the same ID to update the existing message
+            socket.emit(`message:${sessionId}`, {
+              ...currentMessage,
+              streaming: true,
+              id: lastAssistantMessageId
+            });
           }
           
-          // Emit with the same ID to update the existing message
-          socket.emit(`message:${sessionId}`, {
-            ...currentMessage,
-            streaming: true,
-            id: lastAssistantMessageId
-          });
-          // Don't add to session.messages here - will be added when finalized
+        } else if (message.type === 'tool_use') {
+          // TOOL USE - Send immediately with full details
+          if (currentMessage) {
+            // Finalize any assistant message first
+            const finalId = currentMessage.type === 'assistant' && lastAssistantMessageId 
+              ? lastAssistantMessageId 
+              : `${sessionId}-final-${messageId++}`;
+            socket.emit(`message:${sessionId}`, {
+              ...currentMessage,
+              streaming: false,
+              id: finalId
+            });
+            session.messages.push(currentMessage);
+            currentMessage = null;
+          }
+          
+          // Send tool use with full content
+          const toolMessage = {
+            type: 'tool_use',
+            message: message.message || message,
+            timestamp: Date.now(),
+            streaming: false,
+            id: msgId
+          };
+          console.log(`🔧 TOOL USE: ${message.message?.name || 'unknown'} - sending to client`);
+          socket.emit(`message:${sessionId}`, toolMessage);
+          session.messages.push(toolMessage);
+          
+        } else if (message.type === 'tool_result') {
+          // TOOL RESULT - Send immediately with full output
+          const toolResultMessage = {
+            type: 'tool_result',
+            message: message.message || message,
+            timestamp: Date.now(),
+            streaming: false,
+            id: msgId
+          };
+          console.log(`📊 TOOL RESULT: ${JSON.stringify(toolResultMessage.message).substring(0, 100)}...`);
+          socket.emit(`message:${sessionId}`, toolResultMessage);
+          session.messages.push(toolResultMessage);
+          
+        } else if (message.type === 'result') {
+          // RESULT message - Forward with all usage data
+          if (currentMessage) {
+            // Finalize any assistant message first
+            const finalId = currentMessage.type === 'assistant' && lastAssistantMessageId 
+              ? lastAssistantMessageId 
+              : `${sessionId}-final-${messageId++}`;
+            socket.emit(`message:${sessionId}`, {
+              ...currentMessage,
+              streaming: false,
+              id: finalId
+            });
+            session.messages.push(currentMessage);
+            currentMessage = null;
+          }
+          
+          // Send result message with all data
+          const resultMessage = {
+            ...message,
+            streaming: false,
+            id: msgId
+          };
+          console.log(`📊 RESULT message with usage:`, message.usage);
+          socket.emit(`message:${sessionId}`, resultMessage);
+          session.messages.push(resultMessage);
           
         } else {
-          // For non-assistant messages (tool use, etc), emit immediately
+          // For other non-assistant messages, emit immediately
           if (currentMessage) {
             // Finalize any assistant message first with THE SAME ID
             const finalId = currentMessage.type === 'assistant' && lastAssistantMessageId 
@@ -518,7 +652,7 @@ io.on('connection', (socket) => {
             currentMessage = null;
           }
           
-          // Send the tool/other message
+          // Send the other message
           socket.emit(`message:${sessionId}`, {
             ...message,
             streaming: false,
@@ -573,18 +707,24 @@ io.on('connection', (socket) => {
       const wasInterrupted = activeQueries.get(sessionId)?.interrupted;
       activeQueries.delete(sessionId);
       
-      // ALWAYS send result message to stop streaming indicator
-      const resultMessage = {
-        type: 'result',
-        id: `${sessionId}-result-${Date.now()}`,
-        sessionId,
-        streaming: false,
-        interrupted: wasInterrupted || false,
-        timestamp: Date.now()
-      };
-      console.log(`📊 Sending result message for session ${sessionId}`);
-      socket.emit(`message:${sessionId}`, resultMessage);
-      session.messages.push(resultMessage);
+      // Only send a synthetic result message if we didn't get one from the SDK
+      const hasResultMessage = session.messages.some(m => m.type === 'result');
+      if (!hasResultMessage) {
+        // ALWAYS send result message to stop streaming indicator
+        const resultMessage = {
+          type: 'result',
+          id: `${sessionId}-result-${Date.now()}`,
+          sessionId,
+          streaming: false,
+          interrupted: wasInterrupted || false,
+          timestamp: Date.now()
+        };
+        console.log(`📊 Sending synthetic result message for session ${sessionId} (no SDK result)`);
+        socket.emit(`message:${sessionId}`, resultMessage);
+        session.messages.push(resultMessage);
+      } else {
+        console.log(`📊 Session ${sessionId} already has result message from SDK`);
+      }
       
       // Save final state to disk
       await sessionStorage.saveSession(sessionId, session);

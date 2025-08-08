@@ -18,7 +18,17 @@ export const WindowControls: React.FC = () => {
   };
 
   const handleClose = () => {
-    window.electronAPI?.window?.close();
+    console.log('Close button clicked');
+    console.log('electronAPI available:', !!window.electronAPI);
+    console.log('window.close available:', !!window.electronAPI?.window?.close);
+    
+    if (window.electronAPI?.window?.close) {
+      window.electronAPI.window.close();
+    } else {
+      console.error('electronAPI.window.close not available');
+      // Fallback: try to close the window directly
+      window.close();
+    }
   };
 
   return (

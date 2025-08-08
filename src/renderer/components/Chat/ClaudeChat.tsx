@@ -525,8 +525,10 @@ export const ClaudeChat: React.FC = () => {
               return acc;
             }
             
-            // Skip tool messages during streaming - they'll be in the assistant message
-            if ((message.type === 'tool_use' || message.type === 'tool_result') && isStreaming) {
+            // Always show tool messages - users need to see what's happening
+            // Don't skip them even during streaming
+            if (message.type === 'tool_use' || message.type === 'tool_result') {
+              acc.push(message);
               return acc;
             }
             

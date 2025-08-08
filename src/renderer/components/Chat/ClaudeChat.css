@@ -584,12 +584,12 @@
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-  background: rgba(255, 153, 204, 0.5);
+  background: rgba(128, 128, 128, 0.3);
   border-radius: 4px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 153, 204, 0.7);
+  background: rgba(128, 128, 128, 0.5);
 }
 
 /* Image attachments */

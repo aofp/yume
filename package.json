@@ -110,30 +110,42 @@
     "win": {
       "target": [
         {
-          "target": "portable",
+          "target": "nsis",
           "arch": ["x64"]
         },
         {
-          "target": "dir",
+          "target": "portable",
           "arch": ["x64"]
         }
       ],
-      "icon": "yurucode.png",
+      "icon": "assets/yurucode.ico",
       "executableName": "yurucode",
       "verifyUpdateCodeSignature": false,
       "signAndEditExecutable": false,
       "signDlls": false,
-      "artifactName": "${productName}-${version}.${ext}",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
       "requestedExecutionLevel": "asInvoker"
     },
     "portable": {
-      "artifactName": "${productName}-portable.${ext}",
+      "artifactName": "${productName}-portable-${version}.${ext}",
       "unicode": false,
       "useZip": false
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "allowElevation": true,
+      "installerIcon": "assets/yurucode.ico",
+      "uninstallerIcon": "assets/yurucode.ico",
+      "installerHeaderIcon": "assets/yurucode.ico",
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "yurucode",
+      "artifactName": "${productName}-setup-${version}.${ext}",
+      "perMachine": false,
+      "unicode": true,
+      "runAfterFinish": true,
+      "deleteAppDataOnUninstall": false
     },
     "linux": {
       "target": [
