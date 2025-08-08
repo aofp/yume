@@ -2,18 +2,19 @@
   "name": "yurucode",
   "version": "1.0.0",
   "description": "Minimal Claude Code SDK IDE",
-  "main": "dist-electron/main.js",
+  "main": "electron/main.js",
   "author": "Claude Code Studio Team",
   "scripts": {
     "dev": "vite",
     "server": "node server.js",
-    "server:wsl": "wsl bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY npm run server\"",
+    "server:wsl": "wsl --exec bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && /usr/bin/node server.js\"",
     "build": "vite build",
     "build:electron": "npm run build && electron-builder",
     "preview": "vite preview",
     "electron": "electron .",
     "prestart": "node scripts/kill-ports.js",
     "start": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && cross-env NODE_ENV=development electron .\"",
+    "start:win": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server\" \"npm run dev\" \"node scripts/delay-start.js && electron .\"",
     "electron:dev": "npm run prestart && concurrently -k \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && electron .\"",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
@@ -100,7 +101,7 @@
     "asar": false,
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "assets/icon.icns",
+      "icon": "yurucode.png",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
@@ -117,7 +118,7 @@
           "arch": ["x64"]
         }
       ],
-      "icon": "build/icon.ico",
+      "icon": "yurucode.png",
       "executableName": "yurucode",
       "verifyUpdateCodeSignature": false,
       "signAndEditExecutable": false,
@@ -139,7 +140,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "assets/icon.png",
+      "icon": "yurucode.png",
       "category": "Development"
     }
   }

@@ -130,13 +130,10 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: false,  // Required for our preload to work
+      webSecurity: false, // Allow access to file paths from drag-drop
       preload: path.join(__dirname, 'preload-simple.js')
     },
-    icon: isDev 
-      ? path.join(__dirname, '../assets/yurucode.ico')
-      : (require('fs').existsSync(path.join(process.resourcesPath, 'yurucode.ico'))
-        ? path.join(process.resourcesPath, 'yurucode.ico')
-        : path.join(app.getAppPath(), 'assets', 'yurucode.ico'))
+    icon: path.join(__dirname, '../yurucode.png')
   };
 
   // Platform-specific window settings

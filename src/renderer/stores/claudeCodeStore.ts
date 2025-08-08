@@ -9,6 +9,20 @@ import { claudeCodeClient } from '../services/claudeCodeClient';
 
 export type SDKMessage = any; // Type from Claude Code SDK
 
+export interface SessionAnalytics {
+  totalMessages: number;
+  userMessages: number;
+  assistantMessages: number;
+  toolUses: number;
+  tokens: {
+    input: number;
+    output: number;
+    total: number;
+  };
+  duration: number; // in milliseconds
+  lastActivity: Date;
+}
+
 export interface Session {
   id: string;
   name: string;
@@ -18,6 +32,9 @@ export interface Session {
   createdAt: Date;
   updatedAt: Date;
   claudeSessionId?: string; // Track the Claude SDK session ID
+  analytics?: SessionAnalytics; // Per-session analytics
+  draftInput?: string; // Store draft input text
+  draftAttachments?: any[]; // Store draft attachments
 }
 
 interface ClaudeCodeStore {
@@ -48,6 +65,7 @@ interface ClaudeCodeStore {
   deleteAllSessions: () => void;
   interruptSession: () => Promise<void>;
   clearContext: (sessionId: string) => void;
+  updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => void;
   
   // Session persistence
   loadSessionHistory: (sessionId: string) => Promise<void>;
@@ -100,7 +118,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         messages: [],
         workingDirectory,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        analytics: {
+          totalMessages: 0,
+          userMessages: 0,
+          assistantMessages: 0,
+          toolUses: 0,
+          tokens: { input: 0, output: 0, total: 0 },
+          duration: 0,
+          lastActivity: new Date()
+        }
       };
       
       // Add pending session to store immediately so tab appears
@@ -179,8 +206,25 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 const existingIndex = existingMessages.findIndex(m => m.id === message.id);
                 if (existingIndex >= 0) {
                   // Update existing message (for streaming updates)
+                  // IMPORTANT: Merge content to avoid erasing messages
                   console.log(`[CLIENT] Updating message ${message.id} at index ${existingIndex}, streaming: ${message.streaming}`);
-                  existingMessages[existingIndex] = message;
+                  const existingMessage = existingMessages[existingIndex];
+                  
+                  // Never update tool_use or tool_result messages - they should be immutable
+                  if (existingMessage.type === 'tool_use' || existingMessage.type === 'tool_result') {
+                    console.log(`Skipping update for ${existingMessage.type} message - preserving original`);
+                  } else if (message.type === 'assistant' && !message.message?.content && existingMessage.message?.content) {
+                    // For assistant messages, preserve content if new message is empty (thinking state)
+                    existingMessages[existingIndex] = {
+                      ...message,
+                      message: {
+                        ...message.message,
+                        content: existingMessage.message.content
+                      }
+                    };
+                  } else {
+                    existingMessages[existingIndex] = message;
+                  }
                 } else {
                   // Add new message only if it doesn't exist
                   console.log(`[CLIENT] Adding new message ${message.id} (type: ${message.type}, streaming: ${message.streaming})`);
@@ -200,7 +244,39 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 }
               }
               
-              return { ...s, messages: existingMessages, updatedAt: new Date() };
+              // Update analytics - preserve existing data
+              const analytics = s.analytics || {
+                totalMessages: 0,
+                userMessages: 0,
+                assistantMessages: 0,
+                toolUses: 0,
+                tokens: { input: 0, output: 0, total: 0 },
+                duration: 0,
+                lastActivity: new Date()
+              };
+              
+              // Update message counts
+              analytics.totalMessages = existingMessages.length;
+              analytics.userMessages = existingMessages.filter(m => m.type === 'user').length;
+              analytics.assistantMessages = existingMessages.filter(m => m.type === 'assistant').length;
+              analytics.toolUses = existingMessages.filter(m => m.type === 'tool_use').length;
+              
+              // Update tokens if result message - accumulate, don't reset
+              if (message.type === 'result' && message.message?.stats) {
+                // Only add new tokens if this is a new result message
+                const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
+                if (isNewResult) {
+                  analytics.tokens.input += message.message.stats.input_tokens || 0;
+                  analytics.tokens.output += message.message.stats.output_tokens || 0;
+                  analytics.tokens.total = analytics.tokens.input + analytics.tokens.output;
+                }
+              }
+              
+              // Update duration and last activity
+              analytics.duration = new Date().getTime() - s.createdAt.getTime();
+              analytics.lastActivity = new Date();
+              
+              return { ...s, messages: existingMessages, updatedAt: new Date(), analytics };
             });
             
             // Update streaming state based on message type
@@ -521,6 +597,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 ...s.messages.filter(m => m.type === 'system' && m.subtype === 'init').slice(0, 1)
               ],
               updatedAt: new Date()
+            }
+          : s
+      )
+    }));
+  },
+  
+  updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => {
+    set(state => ({
+      sessions: state.sessions.map(s => 
+        s.id === sessionId 
+          ? { 
+              ...s, 
+              draftInput: input,
+              draftAttachments: attachments
             }
           : s
       )

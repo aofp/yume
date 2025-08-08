@@ -1,52 +1,36 @@
 .model-selector {
   position: relative;
-  margin-right: auto;
-  margin-left: -3px;
-  top: 1px;
+  display: inline-block;
+  margin-bottom: 2px;
 }
 
 .model-selector-trigger {
-  display: flex;
-  align-items: center;
-  gap: 3px;
-  padding: 1px 6px;
-  background: rgba(255, 153, 204, 0.04);
-  border: none;
-  border-radius: 6px;
-  color: rgba(255, 153, 204, 0.5);
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
-  cursor: default;
+  text-transform: lowercase;
   transition: all 0.2s ease;
-  height: 16px;
+  cursor: default;
 }
 
 .model-selector-trigger:hover {
-  background: rgba(255, 153, 204, 0.08);
-  color: rgba(255, 153, 204, 0.7);
-}
-
-.model-selector-name {
-  color: rgba(255, 153, 204, 0.8);
-}
-
-.model-selector-chevron {
-  color: rgba(255, 153, 204, 0.6);
-  transition: transform 0.2s ease;
-}
-
-.model-selector-chevron.open {
-  transform: rotate(180deg);
+  background: rgba(255, 255, 255, 0.05);
+  color: #ff99cc;
+  border-color: rgba(255, 153, 204, 0.2);
 }
 
 .model-selector-dropdown {
   position: absolute;
   bottom: calc(100% + 4px);
-  left: -1px;
-  min-width: 160px;
+  left: 0;
+  min-width: 140px;
   background: #0a0a0a;
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
+  border-radius: 4px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   z-index: 1000;
@@ -57,35 +41,38 @@
   flex-direction: column;
   align-items: flex-start;
   width: 100%;
-  padding: 8px 10px;
+  padding: 6px 8px;
   background: transparent;
   border: none;
   text-align: left;
   cursor: default;
-  transition: background 0.15s ease, opacity 0.15s ease;
-  opacity: 0.7;
+  transition: background 0.15s ease;
 }
 
 .model-selector-option:hover {
   background: rgba(255, 153, 204, 0.08);
-  opacity: 1;
 }
 
 .model-selector-option.selected {
   background: rgba(255, 153, 204, 0.12);
-  opacity: 1;
 }
 
 .model-option-name {
-  color: rgba(255, 153, 204, 0.9);
+  color: rgba(255, 255, 255, 0.6);
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 10px;
   font-weight: 500;
   margin-bottom: 1px;
+  text-transform: lowercase;
+}
+
+.model-selector-option.selected .model-option-name {
+  color: #ff99cc;
 }
 
 .model-option-description {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.3);
   font-family: 'Fira Code', monospace;
   font-size: 8px;
+  text-transform: lowercase;
 }

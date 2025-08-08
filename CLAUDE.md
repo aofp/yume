@@ -80,7 +80,7 @@ npm run dist:linux     # Linux build
 ### Environment Variables
 
 ```bash
-ANTHROPIC_API_KEY=your_api_key  # Required for Claude Code SDK
+# No API key needed! Claude Code SDK uses your subscription
 CLAUDE_CODE_CWD=/path/to/work   # Optional working directory
 ```
 

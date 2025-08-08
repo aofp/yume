@@ -29,6 +29,7 @@
   flex: 1;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   height: 100%;
   padding: 0px;
   position: relative;
@@ -168,6 +169,132 @@
 
 .platform-darwin .titlebar-controls {
   display: none;
+}
+
+/* Stats display */
+.titlebar-stats {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-right: 12px;
+  -webkit-app-region: no-drag;
+}
+
+.stats-text {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Fira Code', monospace;
+}
+
+.stats-btn {
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: #606060;
+  font-size: 10px;
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.stats-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ff99cc;
+  border-color: rgba(255, 153, 204, 0.2);
+}
+
+/* Stats Modal */
+.stats-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  animation: fadeIn 0.2s ease;
+}
+
+.stats-modal {
+  background: #000000;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  width: 400px;
+  padding: 16px;
+  animation: scaleIn 0.2s ease;
+}
+
+@keyframes scaleIn {
+  from {
+    transform: scale(0.95);
+    opacity: 0;
+  }
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.stats-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.stats-header h3 {
+  margin: 0;
+  font-size: 12px;
+  color: #808080;
+  font-weight: normal;
+}
+
+.stats-close {
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  color: #606060;
+  font-size: 16px;
+  cursor: default;
+}
+
+.stats-close:hover {
+  color: #ff9999;
+}
+
+.stats-content {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+.stat-label {
+  font-size: 11px;
+  color: #606060;
+}
+
+.stat-value {
+  font-size: 12px;
+  color: #ff99cc;
+  font-weight: 500;
 }
 
 /* Windows specific styles - keep titlebar visible for frameless window */

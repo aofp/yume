@@ -102,7 +102,11 @@ export const SessionTabs: React.FC = () => {
             }}
           >
             <div className="tab-content">
-              <span className="tab-name">{session.name.replace('session ', '').substring(0, 3)}</span>
+              <span className="tab-name">{
+                // Generate a consistent 3-char ID from the session ID
+                session.id.split('-').pop()?.substring(0, 3) || 
+                Math.random().toString(36).substring(2, 5)
+              }</span>
               {(session as any).workingDirectory && (
                 <span className="tab-folder">
                   {getDisplayPath((session as any).workingDirectory)}

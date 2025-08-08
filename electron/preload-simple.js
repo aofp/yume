@@ -1,4 +1,5 @@
 const { ipcRenderer } = require('electron');
+const fs = require('fs');
 
 console.log('=== PRELOAD SCRIPT LOADED (Simple) ===');
 
@@ -12,6 +13,16 @@ window.electronAPI = {
   
   // Server operations
   getServerPort: () => ipcRenderer.invoke('get-server-port'),
+  
+  // File system operations
+  isDirectory: (path) => {
+    try {
+      return fs.statSync(path).isDirectory();
+    } catch (err) {
+      console.error('Error checking directory:', err);
+      return false;
+    }
+  },
   
   // Window operations
   window: {

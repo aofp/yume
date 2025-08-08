@@ -97,7 +97,7 @@ export const WelcomeScreen: React.FC = () => {
     <div className="welcome-screen">
       <div className="welcome-header">
         <span className="welcome-title">
-          <span className="yuru">yuru</span><span className="code">code</span>
+          <span className="yuru">y</span><span className="code">&gt;</span>
         </span>
         <button 
           className="welcome-new-button"
@@ -143,20 +143,36 @@ export const WelcomeScreen: React.FC = () => {
               {recentProjects.length > 0 ? (
                 <>
                   {recentProjects.slice(0, 10).map((project) => (
-                    <button
-                      key={project.path}
-                      className="recent-item"
-                      onClick={() => {
-                        openProject(project.path);
-                        setShowRecentModal(false);
-                      }}
-                    >
-                      <IconFolderOpen size={14} />
-                      <div className="recent-item-info">
-                        <div className="recent-item-name">{project.name}</div>
-                        <div className="recent-item-path">{project.path}</div>
-                      </div>
-                    </button>
+                    <div key={project.path} className="recent-item-container">
+                      <button
+                        className="recent-item"
+                        onClick={() => {
+                          openProject(project.path);
+                          setShowRecentModal(false);
+                        }}
+                      >
+                        <IconFolderOpen size={14} />
+                        <div className="recent-item-info">
+                          <div className="recent-item-name">{project.name}</div>
+                          <div className="recent-item-path">{project.path}</div>
+                        </div>
+                      </button>
+                      <button
+                        className="recent-item-remove"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const updated = recentProjects.filter(p => p.path !== project.path);
+                          setRecentProjects(updated);
+                          localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+                          if (updated.length === 0) {
+                            setShowRecentModal(false);
+                          }
+                        }}
+                        title="remove from recent"
+                      >
+                        <IconX size={12} />
+                      </button>
+                    </div>
                   ))}
                   
                   <button 

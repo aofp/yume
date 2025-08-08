@@ -25,9 +25,16 @@ body {
 
 .app-content {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   flex: 1;
   /* No margin-top needed - parent .app has padding-top */
+}
+
+.main-chat-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0; /* Prevent flex child from overflowing */
 }
 
 /* Remove all default focus outlines */

@@ -3,6 +3,7 @@ import { TitleBar } from './components/Layout/TitleBar';
 import { SessionTabs } from './components/SessionTabs/SessionTabs';
 import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
+// Sidebar removed for cleaner UI
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import './App.minimal.css';
 
@@ -10,6 +11,57 @@ export const App: React.FC = () => {
   const { currentSessionId, sessions, createSession } = useClaudeCodeStore();
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
+  
+  // Handle global folder drops
+  const handleGlobalDrop = async (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    console.log('Global drop event:', e.dataTransfer);
+    
+    // Try to detect folders using webkitGetAsEntry
+    const items = Array.from(e.dataTransfer.items);
+    for (const item of items) {
+      if (item.kind === 'file') {
+        const entry = (item as any).webkitGetAsEntry?.();
+        if (entry) {
+          console.log('Entry:', entry.name, 'isDirectory:', entry.isDirectory);
+          
+          if (entry.isDirectory) {
+            const file = item.getAsFile();
+            const path = (file as any)?.path;
+            if (path) {
+              console.log('Creating session for folder:', path);
+              const sessionName = path.split(/[/\\]/).pop() || 'new session';
+              await createSession(sessionName, path);
+              return;
+            }
+          }
+        }
+      }
+    }
+    
+    // Fallback: Check files array  
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      console.log('File:', file.name, 'Type:', file.type, 'Size:', file.size, 'Path:', (file as any).path);
+      
+      const path = (file as any).path;
+      if (path && window.electronAPI?.isDirectory) {
+        const isDir = window.electronAPI.isDirectory(path);
+        if (isDir) {
+          console.log('Creating session for folder:', path);
+          const sessionName = path.split(/[/\\]/).pop() || 'new session';
+          await createSession(sessionName, path);
+          return;
+        }
+      }
+    }
+  };
+  
+  const handleGlobalDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
   
   useEffect(() => {
     console.log('App useEffect running');
@@ -44,12 +96,18 @@ export const App: React.FC = () => {
   }, [createSession]);
 
   return (
-    <div className="app-minimal">
+    <div 
+      className="app-minimal"
+      onDrop={handleGlobalDrop}
+      onDragOver={handleGlobalDragOver}
+    >
       <WindowControls />
       <TitleBar onSettingsClick={() => {}} />
       <SessionTabs />
       <div className="app-content">
-        <ClaudeChat />
+        <div className="main-chat-area">
+          <ClaudeChat />
+        </div>
       </div>
     </div>
   );

@@ -1,4 +1,4 @@
-import React, { memo } from 'react';
+import React, { memo, useState } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { 
   IconBolt, 
@@ -11,7 +11,9 @@ import {
   IconCircleDot,
   IconCircle,
   IconChecklist,
-  IconLoader2
+  IconLoader2,
+  IconCopy,
+  IconArrowBackUp
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
@@ -231,15 +233,18 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
   }
   
   if (Array.isArray(content)) {
-    // During streaming, only show the last tool
+    // During streaming, only show the last tool that's actively being used
     let toolsToRender = content;
     if (message?.streaming) {
       const toolUses = content.filter(b => b?.type === 'tool_use');
-      if (toolUses.length > 0) {
-        // Only keep text blocks and the last tool use
+      const toolResults = content.filter(b => b?.type === 'tool_result');
+      
+      // Only filter if we have more tools than results (meaning one is still running)
+      if (toolUses.length > toolResults.length && toolUses.length > 0) {
+        // Only keep text blocks and the last tool use that doesn't have a result yet
         const lastTool = toolUses[toolUses.length - 1];
         toolsToRender = content.filter(b => 
-          b?.type === 'text' || b === lastTool
+          b?.type === 'text' || b === lastTool || b?.type === 'tool_result'
         );
       }
     }
@@ -379,7 +384,43 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
 };
 
 // Main message renderer component - memoized for performance
-const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number }> = ({ message, index }) => {
+const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isLast?: boolean }> = ({ message, index, isLast = false }) => {
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+  };
+  
+  const handleRestore = () => {
+    const store = useClaudeCodeStore.getState();
+    const currentSessionId = store.currentSessionId;
+    if (!currentSessionId) return;
+    
+    // Find the current session
+    const session = store.sessions.find(s => s.id === currentSessionId);
+    if (!session) return;
+    
+    // Keep messages up to and including this one
+    const messages = session.messages.slice(0, index + 1);
+    
+    // Update the session with truncated messages
+    useClaudeCodeStore.setState(state => ({
+      sessions: state.sessions.map(s => 
+        s.id === currentSessionId 
+          ? { ...s, messages, updatedAt: new Date() }
+          : s
+      )
+    }));
+  };
+  
+  const getMessageText = (content: any): string => {
+    if (typeof content === 'string') return content;
+    if (Array.isArray(content)) {
+      return content
+        .filter(block => block.type === 'text' && block.text)
+        .map(block => block.text)
+        .join('\n');
+    }
+    return '';
+  };
   switch (message.type) {
     case 'system':
       // Hide all system messages including session started
@@ -408,15 +449,79 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number }> =
           <div className="message-bubble">
             {displayText}
           </div>
+          <div className="message-actions">
+            {!isLast && (
+              <button 
+                onClick={handleRestore} 
+                className="action-btn"
+                title="restore to here"
+              >
+                <IconArrowBackUp size={12} stroke={1.5} />
+              </button>
+            )}
+            <button 
+              onClick={() => handleCopy(getMessageText(message.message?.content))} 
+              className="action-btn"
+              title="copy"
+            >
+              <IconCopy size={12} stroke={1.5} />
+            </button>
+          </div>
         </div>
       );
       
     case 'assistant':
+      const assistantContent = message.message?.content;
+      const isEmpty = !assistantContent || 
+        (typeof assistantContent === 'string' && !assistantContent.trim()) ||
+        (Array.isArray(assistantContent) && assistantContent.filter(b => b.type === 'text' && b.text).length === 0);
+      
+      // Always show buttons for non-streaming assistant messages
+      const showButtons = message.streaming !== true;
+      
       return (
         <div className="message assistant">
           <div className="message-content">
-            {renderContent(message.message?.content, message)}
+            {message.streaming ? (
+              <>
+                {isEmpty ? (
+                  <div className="thinking-indicator">
+                    <IconLoader2 size={14} className="streaming-loader" />
+                    <span className="thinking-text">thinking...</span>
+                  </div>
+                ) : (
+                  <>
+                    {renderContent(message.message?.content, message)}
+                    <div className="thinking-indicator inline">
+                      <IconLoader2 size={14} className="streaming-loader" />
+                    </div>
+                  </>
+                )}
+              </>
+            ) : (
+              renderContent(message.message?.content, message)
+            )}
           </div>
+          {showButtons && (
+            <div className="message-actions">
+              {!isLast && (
+                <button 
+                  onClick={handleRestore} 
+                  className="action-btn"
+                  title="restore to here"
+                >
+                  <IconArrowBackUp size={12} stroke={1.5} />
+                </button>
+              )}
+              <button 
+                onClick={() => handleCopy(getMessageText(message.message?.content))} 
+                className="action-btn"
+                title="copy"
+              >
+                <IconCopy size={12} stroke={1.5} />
+              </button>
+            </div>
+          )}
         </div>
       );
       

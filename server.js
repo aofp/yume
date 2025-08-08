@@ -25,6 +25,11 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 
+// Health check endpoint
+app.get('/health', (req, res) => {
+  res.json({ status: 'ok' });
+});
+
 // Import Claude Code SDK
 let claudeCodeModule;
 let sessions = new Map();
@@ -301,13 +306,25 @@ io.on('connection', (socket) => {
       console.log(`📝 Message for session ${sessionId}: ${content.substring(0, 50)}...`);
 
       // Add user message to session for persistence (but don't emit it)
-      const userMessage = {
-        id: `user-${Date.now()}-${Math.random()}`,
-        type: 'user',
-        message: { content },
-        timestamp: Date.now()
-      };
-      session.messages.push(userMessage);
+      // First check if this exact message was already added recently (within 2 seconds)
+      const recentDuplicate = session.messages.some(m => 
+        m.type === 'user' && 
+        m.message?.content === content &&
+        Math.abs((m.timestamp || 0) - Date.now()) < 2000
+      );
+      
+      if (!recentDuplicate) {
+        const userMessage = {
+          id: `user-${Date.now()}-${Math.random()}`,
+          type: 'user',
+          message: { content },
+          timestamp: Date.now()
+        };
+        session.messages.push(userMessage);
+        console.log(`📝 Added user message to session storage`);
+      } else {
+        console.log(`⚠️ Skipping duplicate user message`);
+      }
 
       const { query } = claudeCodeModule;
       
@@ -317,10 +334,10 @@ io.on('connection', (socket) => {
       // Keep the original Windows path for process.chdir
       const originalWorkingDir = workingDir;
       
-      // Convert Windows path to WSL path for Claude SDK if needed
+      // Only convert to WSL path if we're running in WSL
       let claudeWorkingDir = workingDir;
-      if (workingDir.match(/^[A-Z]:\\/)) {
-        // Convert C:\path\to\dir to /mnt/c/path/to/dir for Claude SDK
+      if (process.platform === 'linux' && workingDir.match(/^[A-Z]:\\/)) {
+        // Convert C:\path\to\dir to /mnt/c/path/to/dir for Claude SDK in WSL
         const driveLetter = workingDir[0].toLowerCase();
         const pathWithoutDrive = workingDir.substring(2).replace(/\\/g, '/');
         claudeWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
@@ -331,15 +348,18 @@ io.on('connection', (socket) => {
       // This avoids issues with node executable path resolution
       console.log(`📁 Will use directory: ${originalWorkingDir}`);
       
-      // Ensure node can be found - add Program Files nodejs to PATH
-      const nodeDir = 'C:\\Program Files\\nodejs';
+      // Use process.env as-is since we're running in WSL
       const sdkEnv = {
-        ...process.env,
-        PATH: `${nodeDir};${process.env.PATH || process.env.Path || ''}`
+        ...process.env
       };
       
       // Find the CLI path
-      const cliPath = path.join(__dirname, 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js');
+      console.log(`🔧 __dirname: ${__dirname}`);
+      console.log(`🔧 process.platform: ${process.platform}`);
+      console.log(`🔧 process.cwd(): ${process.cwd()}`);
+      
+      let cliPath = path.join(__dirname, 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js');
+      console.log(`🔧 Initial CLI path: ${cliPath}`);
       
       const queryOptions = {
         maxTurns: 10,
@@ -351,12 +371,12 @@ io.on('connection', (socket) => {
           'WebFetch', 'WebSearch',
           'TodoWrite'
         ],
-        apiKey: process.env.ANTHROPIC_API_KEY,
+        // DO NOT USE apiKey - Claude Code SDK uses your subscription authentication
         cwd: claudeWorkingDir,  // Use the WSL-converted path for Claude SDK
         env: sdkEnv,
         pathToClaudeCodeExecutable: cliPath,
         // Use correct executable based on platform
-        executable: process.platform === 'linux' ? 'node' : path.join(__dirname, "node.exe"),
+        executable: process.platform === 'linux' ? '/usr/bin/node' : process.execPath,
         executableArgs: []
       };
       
@@ -485,11 +505,14 @@ io.on('connection', (socket) => {
         } else {
           // For non-assistant messages (tool use, etc), emit immediately
           if (currentMessage) {
-            // Finalize any assistant message first
+            // Finalize any assistant message first with THE SAME ID
+            const finalId = currentMessage.type === 'assistant' && lastAssistantMessageId 
+              ? lastAssistantMessageId 
+              : `${sessionId}-final-${messageId++}`;
             socket.emit(`message:${sessionId}`, {
               ...currentMessage,
               streaming: false,
-              id: `${sessionId}-final-${messageId++}`
+              id: finalId
             });
             session.messages.push(currentMessage);
             currentMessage = null;
@@ -521,8 +544,11 @@ io.on('connection', (socket) => {
           streaming: false,
           id: finalId
         });
-        // Add the final message to session storage
-        session.messages.push(currentMessage);
+        // Add the final message to session storage only if not already added
+        const alreadyAdded = session.messages.some(m => m.id === finalId);
+        if (!alreadyAdded) {
+          session.messages.push({ ...currentMessage, id: finalId });
+        }
       }
       
       // Store the Claude SDK session ID if we got one
@@ -700,9 +726,9 @@ app.get('/health', (req, res) => {
 // Always use port 3001 for simplicity
 const PORT = process.env.PORT || 3001;
 
-httpServer.listen(PORT, () => {
-  console.log(`🚀 Claude Code Server running on http://localhost:${PORT}`);
-  console.log(`🔑 Make sure ANTHROPIC_API_KEY is set in environment`);
+httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Claude Code Server running on http://0.0.0.0:${PORT}`);
+  console.log(`🔑 Claude Code SDK will use your subscription authentication`);
   
   // Send port to parent process if running as child
   if (process.send) {

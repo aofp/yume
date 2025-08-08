@@ -1,5 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { IconChevronDown } from '@tabler/icons-react';
 import './ModelSelector.css';
 
 const models = [
@@ -48,11 +47,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         className="model-selector-trigger"
         onClick={() => setIsOpen(!isOpen)}
       >
-        <span className="model-selector-name">{selectedModel.name}</span>
-        <IconChevronDown 
-          size={12} 
-          className={`model-selector-chevron ${isOpen ? 'open' : ''}`}
-        />
+        {selectedModel.name}
       </button>
       
       {isOpen && (

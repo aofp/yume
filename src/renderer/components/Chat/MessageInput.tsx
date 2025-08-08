@@ -43,6 +43,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   React.useEffect(() => {
     adjustTextareaHeight();
   }, [value]);
+  
+  // Set initial height on mount
+  React.useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = '40px';
+    }
+  }, []);
 
   const handleStop = () => {
     setIsGenerating(false);

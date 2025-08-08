@@ -30,8 +30,8 @@
 
 .welcome-title {
   font-family: 'Fira Code', monospace;
-  font-size: 11px;
-  font-weight: 500;
+  font-size: 30px;
+  font-weight: 700;
   text-transform: lowercase;
   letter-spacing: 0.5px;
 }
@@ -54,7 +54,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 8px auto 0;
+  margin: 12px auto 0;
   transition: all 0.2s ease;
   cursor: default;
 }
@@ -185,6 +185,13 @@
   padding: 4px;
 }
 
+.recent-item-container {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-bottom: 2px;
+}
+
 .recent-item {
   display: flex;
   align-items: center;
@@ -192,7 +199,7 @@
   padding: 6px 8px;
   background: transparent;
   border: none;
-  width: 100%;
+  flex: 1;
   text-align: left;
   border-radius: 4px;
   transition: background 0.15s ease;
@@ -203,6 +210,29 @@
 .recent-item:hover {
   background: rgba(255, 255, 255, 0.03);
   color: rgba(255, 255, 255, 0.6);
+}
+
+.recent-item-remove {
+  display: none;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: transparent;
+  border: none;
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.recent-item-container:hover .recent-item-remove {
+  display: flex;
+}
+
+.recent-item-remove:hover {
+  background: rgba(255, 153, 153, 0.1);
+  color: #ff9999;
 }
 
 .recent-item-info {

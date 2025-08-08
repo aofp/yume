@@ -1,0 +1,122 @@
+/* Right Sidebar Styles */
+.right-sidebar {
+  position: relative;
+  width: 320px;
+  height: 100%;
+  background: #000000;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.right-sidebar.collapsed {
+  width: 36px;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  padding-left: 4px;
+}
+
+.right-sidebar.collapsed .sidebar-toggle {
+  right: 4px;
+}
+
+/* Toggle Button */
+.right-sidebar .sidebar-toggle {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.02);
+  border: none;
+  border-radius: 6px;
+  color: #606060;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: all 0.2s ease;
+  z-index: 100;
+}
+
+.sidebar-toggle:hover {
+  background: rgba(255, 153, 204, 0.05);
+  color: #ff99cc;
+}
+
+/* Header with tabs and toggle */
+.sidebar-header {
+  display: flex;
+  align-items: center;
+  padding: 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.5);
+  position: relative;
+}
+
+/* Tabs */
+.sidebar-tabs {
+  display: flex;
+  gap: 2px;
+  flex: 1;
+  padding-right: 36px;
+}
+
+.sidebar-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 6px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.02);
+  border: none;
+  border-radius: 6px;
+  color: #606060;
+  font-size: 11px;
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.sidebar-tab:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #808080;
+}
+
+.sidebar-tab.active {
+  background: rgba(255, 153, 204, 0.1);
+  color: #ff99cc;
+}
+
+.tab-label {
+  display: none;
+}
+
+@media (min-width: 1400px) {
+  .tab-label {
+    display: inline;
+  }
+}
+
+/* Content Area */
+.sidebar-content {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 12px;
+}
+
+/* Scrollbar */
+.sidebar-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+}
+
+.sidebar-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}

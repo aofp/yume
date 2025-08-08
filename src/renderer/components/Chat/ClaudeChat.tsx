@@ -20,7 +20,9 @@ import {
   IconX,
   IconAlertTriangle,
   IconFileText,
-  IconFile
+  IconFile,
+  IconLoader2,
+  IconChartBar
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -126,6 +128,7 @@ export const ClaudeChat: React.FC = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -142,7 +145,8 @@ export const ClaudeChat: React.FC = () => {
     clearContext,
     selectedModel,
     setSelectedModel,
-    loadPersistedSession
+    loadPersistedSession,
+    updateSessionDraft
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -158,11 +162,26 @@ export const ClaudeChat: React.FC = () => {
   }, [currentSession?.messages]);
 
   useEffect(() => {
-    // Focus input and clear state when session changes
+    // Load draft input and attachments when session changes
     inputRef.current?.focus();
-    setInput('');
-    setAttachments([]);
-  }, [currentSessionId]);
+    if (currentSession) {
+      setInput(currentSession.draftInput || '');
+      setAttachments(currentSession.draftAttachments || []);
+    } else {
+      setInput('');
+      setAttachments([]);
+    }
+  }, [currentSessionId, currentSession]);
+
+  // Save drafts when input or attachments change
+  useEffect(() => {
+    if (currentSessionId) {
+      const timeoutId = setTimeout(() => {
+        updateSessionDraft(currentSessionId, input, attachments);
+      }, 500); // Debounce saving
+      return () => clearTimeout(timeoutId);
+    }
+  }, [input, attachments, currentSessionId, updateSessionDraft]);
 
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || isStreaming) return;
@@ -209,6 +228,8 @@ export const ClaudeChat: React.FC = () => {
       
       setInput('');
       setAttachments([]);
+      // Clear drafts after sending
+      updateSessionDraft(currentSessionId, '', []);
       await sendMessage(messageContent);
     } catch (error) {
       console.error('Failed to send message:', error);
@@ -280,10 +301,53 @@ export const ClaudeChat: React.FC = () => {
 
   const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation();
     setIsDragging(false);
     
-    const files = Array.from(e.dataTransfer.files);
+    console.log('Chat drop event:', e.dataTransfer);
     
+    // Try to detect folders using webkitGetAsEntry
+    const items = Array.from(e.dataTransfer.items);
+    for (const item of items) {
+      if (item.kind === 'file') {
+        const entry = (item as any).webkitGetAsEntry?.();
+        if (entry) {
+          console.log('Entry:', entry.name, 'isDirectory:', entry.isDirectory, 'fullPath:', entry.fullPath);
+          
+          // If it's a directory, get the file to access its path
+          if (entry.isDirectory) {
+            const file = item.getAsFile();
+            const path = (file as any)?.path;
+            if (path) {
+              console.log('Creating session for folder:', path);
+              const sessionName = path.split(/[/\\]/).pop() || 'new session';
+              await createSession(sessionName, path);
+              return;
+            }
+          }
+        }
+      }
+    }
+    
+    // Fallback: Check files array
+    const files = Array.from(e.dataTransfer.files);
+    for (const file of files) {
+      console.log('File:', file.name, 'Type:', file.type, 'Size:', file.size, 'Path:', (file as any).path);
+      
+      const path = (file as any).path;
+      if (path && window.electronAPI?.isDirectory) {
+        // Use Electron's fs to check if it's a directory
+        const isDir = window.electronAPI.isDirectory(path);
+        if (isDir) {
+          console.log('Creating session for folder:', path);
+          const sessionName = path.split(/[/\\]/).pop() || 'new session';
+          await createSession(sessionName, path);
+          return;
+        }
+      }
+    }
+    
+    // Handle regular file drops for attachments
     for (const file of files) {
       if (attachments.length >= 10) break;
       
@@ -393,8 +457,9 @@ export const ClaudeChat: React.FC = () => {
       onContextMenu={handleContextMenu}
     >
       <div className="chat-messages">
-        {currentSession.messages
-          .reduce((acc, message, index, array) => {
+        {(() => {
+          const processedMessages = currentSession.messages
+            .reduce((acc, message, index, array) => {
             // Group messages by type and only show final versions
             
             // Always show user messages (but deduplicate)
@@ -405,40 +470,56 @@ export const ClaudeChat: React.FC = () => {
                 return acc;
               }
               
-              // Check if this exact user message already exists in accumulator
-              const exists = acc.some(m => 
+              // Check if this exact user message already exists by ID
+              const existsById = acc.some(m => 
                 m.type === 'user' && 
+                m.id && 
+                message.id &&
                 m.id === message.id
               );
               
-              if (!exists) {
-                // Also check if there's a very recent duplicate (within 1 second)
-                const recentDuplicate = acc.some(m => 
-                  m.type === 'user' && 
-                  m.message?.content === message.message?.content &&
-                  Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 1000
-                );
-                
-                if (!recentDuplicate) {
-                  acc.push(message);
-                }
+              if (existsById) {
+                return acc; // Skip if ID already exists
+              }
+              
+              // Also check for duplicate content within 2 seconds
+              const contentDuplicate = acc.some(m => 
+                m.type === 'user' && 
+                JSON.stringify(m.message?.content) === JSON.stringify(message.message?.content) &&
+                Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 2000
+              );
+              
+              if (!contentDuplicate) {
+                acc.push(message);
               }
               return acc;
             }
             
-            // For assistant messages, always show them
+            // For assistant messages, deduplicate properly
             if (message.type === 'assistant') {
-              // Check if we already have this message
-              const existingIndex = acc.findIndex(m => 
+              // First check by ID if both have IDs
+              if (message.id) {
+                const existingIndex = acc.findIndex(m => 
+                  m.type === 'assistant' && 
+                  m.id && 
+                  m.id === message.id
+                );
+                
+                if (existingIndex >= 0) {
+                  // Update existing message (for streaming updates)
+                  acc[existingIndex] = message;
+                  return acc;
+                }
+              }
+              
+              // Check for duplicate content within a short time window
+              const contentDuplicate = acc.some(m => 
                 m.type === 'assistant' && 
-                m.id === message.id
+                JSON.stringify(m.message?.content) === JSON.stringify(message.message?.content) &&
+                Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 2000
               );
               
-              if (existingIndex >= 0) {
-                // Update existing message
-                acc[existingIndex] = message;
-              } else {
-                // Add new message
+              if (!contentDuplicate) {
                 acc.push(message);
               }
               return acc;
@@ -468,10 +549,18 @@ export const ClaudeChat: React.FC = () => {
             }
             
             return acc;
-          }, [] as typeof currentSession.messages)
-          .map((message, idx) => (
-            <MessageRenderer key={`${message.id || message.type}-${idx}`} message={message} index={idx} />
-          ))}
+            }, [] as typeof currentSession.messages);
+          
+          const filteredMessages = processedMessages;
+          return filteredMessages.map((message, idx) => (
+            <MessageRenderer 
+              key={`${message.id || message.type}-${idx}`} 
+              message={message} 
+              index={idx}
+              isLast={idx === filteredMessages.length - 1}
+            />
+          ));
+        })()}
         <div ref={messagesEndRef} />
       </div>
       
@@ -570,6 +659,9 @@ export const ClaudeChat: React.FC = () => {
               
               return (
                 <>
+                  <button className="btn-stats" onClick={() => setShowStatsModal(true)}>
+                    stats
+                  </button>
                   <button className="btn-clear-context" onClick={() => {
                     // Clear messages but keep session
                     if (currentSessionId) {
@@ -609,6 +701,56 @@ export const ClaudeChat: React.FC = () => {
             <IconScissors size={14} stroke={1.5} />
             <span>copy</span>
           </button>
+        </div>
+      )}
+      
+      {showStatsModal && currentSession?.analytics && (
+        <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
+          <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="stats-header">
+              <h3>session analytics</h3>
+              <button className="stats-close" onClick={() => setShowStatsModal(false)}>
+                <IconX size={16} />
+              </button>
+            </div>
+            <div className="stats-content">
+              <div className="stats-grid">
+                <div className="stat-item">
+                  <IconChartBar size={16} />
+                  <div className="stat-label">total tokens</div>
+                  <div className="stat-value">{currentSession.analytics.tokens.total.toLocaleString()}</div>
+                </div>
+                <div className="stat-item">
+                  <IconChartBar size={16} />
+                  <div className="stat-label">messages</div>
+                  <div className="stat-value">{currentSession.analytics.totalMessages}</div>
+                </div>
+                <div className="stat-item">
+                  <IconChartBar size={16} />
+                  <div className="stat-label">tool uses</div>
+                  <div className="stat-value">{currentSession.analytics.toolUses}</div>
+                </div>
+                <div className="stat-item">
+                  <IconChartBar size={16} />
+                  <div className="stat-label">cost estimate</div>
+                  <div className="stat-value">${((currentSession.analytics.tokens.total / 1000) * 0.01).toFixed(2)}</div>
+                </div>
+              </div>
+              <div className="token-breakdown">
+                <div className="breakdown-label">token breakdown</div>
+                <div className="breakdown-bar">
+                  <div 
+                    className="input-bar" 
+                    style={{ width: `${(currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100}%` }}
+                  />
+                </div>
+                <div className="breakdown-legend">
+                  <span>input: {currentSession.analytics.tokens.input.toLocaleString()}</span>
+                  <span>output: {currentSession.analytics.tokens.output.toLocaleString()}</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
     </div>
