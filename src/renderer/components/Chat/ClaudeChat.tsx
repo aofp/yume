@@ -125,8 +125,10 @@ export const ClaudeChat: React.FC = () => {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
   
   const {
     sessions,
@@ -349,6 +351,33 @@ export const ClaudeChat: React.FC = () => {
     }
   };
 
+  // Handle right-click context menu
+  const handleContextMenu = (e: React.MouseEvent) => {
+    const selection = window.getSelection();
+    if (selection && selection.toString().trim()) {
+      e.preventDefault();
+      setContextMenu({ x: e.clientX, y: e.clientY });
+    }
+  };
+
+  const handleCopySelection = () => {
+    const selection = window.getSelection();
+    if (selection) {
+      const text = selection.toString();
+      navigator.clipboard.writeText(text);
+    }
+    setContextMenu(null);
+  };
+
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClick = () => setContextMenu(null);
+    if (contextMenu) {
+      document.addEventListener('click', handleClick);
+      return () => document.removeEventListener('click', handleClick);
+    }
+  }, [contextMenu]);
+
 
 
 
@@ -357,7 +386,12 @@ export const ClaudeChat: React.FC = () => {
   }
 
   return (
-    <div className="chat-container" key={currentSessionId}>
+    <div 
+      className="chat-container" 
+      key={currentSessionId}
+      ref={chatContainerRef}
+      onContextMenu={handleContextMenu}
+    >
       <div className="chat-messages">
         {currentSession.messages
           .reduce((acc, message, index, array) => {
@@ -556,6 +590,27 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       </div>
+      
+      {/* Context Menu */}
+      {contextMenu && (
+        <div 
+          className="context-menu"
+          style={{ 
+            position: 'fixed', 
+            left: contextMenu.x, 
+            top: contextMenu.y,
+            zIndex: 1000
+          }}
+        >
+          <button 
+            className="context-menu-item"
+            onClick={handleCopySelection}
+          >
+            <IconScissors size={14} stroke={1.5} />
+            <span>copy</span>
+          </button>
+        </div>
+      )}
     </div>
   );
 };

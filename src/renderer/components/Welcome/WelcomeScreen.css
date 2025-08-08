@@ -3,8 +3,9 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 100vh;
+  height: calc(100vh - 28px - 32px); /* Minus title bar and session tabs */
   padding: 48px;
+  background: #000000;
   animation: fadeIn 0.3s ease;
 }
 
@@ -21,42 +22,44 @@
 
 .welcome-header {
   text-align: center;
-  margin-bottom: 48px;
+  margin-bottom: 0;
   position: relative;
 }
 
-.welcome-header h1 {
-  font-size: 48px;
-  font-weight: 300;
-  letter-spacing: -2px;
-  margin: 0;
-  color: #fff;
+.welcome-title {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  font-weight: 500;
   text-transform: lowercase;
+  letter-spacing: 0.5px;
 }
 
-.welcome-header h1::first-letter {
+.welcome-title .yuru {
   color: #ff99cc;
 }
 
+.welcome-title .code {
+  color: rgba(255, 255, 255, 0.4);
+}
+
 .welcome-new-button {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #ff99cc, #ff9999);
-  border: none;
-  color: #000;
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  background: rgba(255, 153, 204, 0.1);
+  border: 1px solid rgba(255, 153, 204, 0.2);
+  color: #ff99cc;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 24px auto 0;
-  transition: all 0.3s ease;
+  margin: 8px auto 0;
+  transition: all 0.2s ease;
   cursor: default;
-  box-shadow: 0 4px 16px rgba(255, 153, 204, 0.3);
 }
 
 .welcome-new-button:hover {
-  transform: scale(1.1);
-  box-shadow: 0 6px 24px rgba(255, 153, 204, 0.5);
+  background: rgba(255, 153, 204, 0.15);
+  border-color: rgba(255, 153, 204, 0.3);
 }
 
 .welcome-new-button:active {
@@ -65,107 +68,210 @@
 
 .welcome-actions {
   display: flex;
-  gap: 16px;
-  margin-bottom: 48px;
+  gap: 12px;
+  margin-top: 12px;
 }
 
 .action-button {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 12px 24px;
-  background: rgba(255, 255, 255, 0.05);
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 14px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
   transition: all 0.2s ease;
   cursor: default;
   text-transform: lowercase;
 }
 
-.action-button:hover {
-  background: rgba(255, 255, 255, 0.08);
-  color: #fff;
-  border-color: rgba(255, 255, 255, 0.2);
+.action-button:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.7);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
-.action-button.primary {
-  background: rgba(255, 153, 153, 0.1);
-  border-color: rgba(255, 153, 153, 0.3);
-  color: #ff9999;
+.action-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+  pointer-events: none;
 }
 
-.action-button.primary:hover {
-  background: rgba(255, 153, 153, 0.15);
-  border-color: rgba(255, 153, 153, 0.5);
-}
-
-.folder-dropdown-container {
-  position: relative;
-}
-
-.dropdown-arrow {
-  transition: transform 0.2s ease;
-  margin-left: 4px;
-}
-
-.dropdown-arrow.open {
-  transform: rotate(180deg);
-}
-
-.folder-dropdown {
-  position: absolute;
-  top: calc(100% + 8px);
+/* Recent Modal */
+.recent-modal-overlay {
+  position: fixed;
+  top: 0;
   left: 0;
-  min-width: 200px;
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
-  padding: 8px;
-  z-index: 100;
-  animation: dropdownSlide 0.2s ease;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: fadeIn 0.15s ease;
 }
 
-@keyframes dropdownSlide {
+@keyframes fadeIn {
   from {
     opacity: 0;
-    transform: translateY(-8px);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
   }
 }
 
-.dropdown-header {
-  font-size: 11px;
-  text-transform: uppercase;
-  color: rgba(255, 255, 255, 0.3);
-  padding: 4px 8px;
-  margin-bottom: 4px;
+.recent-modal {
+  width: 90%;
+  max-width: 400px;
+  max-height: 60vh;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  animation: modalFadeIn 0.2s ease;
+  display: flex;
+  flex-direction: column;
 }
 
-.dropdown-item {
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-header {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 8px;
-  width: 100%;
-  padding: 8px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
-  text-align: left;
-  border-radius: 4px;
-  transition: all 0.2s ease;
-  cursor: default;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-title {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
   text-transform: lowercase;
 }
 
-.dropdown-item:hover {
+.modal-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  width: 20px;
+  height: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.modal-close:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #fff;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px;
+}
+
+.recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  background: transparent;
+  border: none;
+  width: 100%;
+  text-align: left;
+  border-radius: 4px;
+  transition: background 0.15s ease;
+  cursor: default;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.recent-item:hover {
+  background: rgba(255, 255, 255, 0.03);
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.recent-item-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.recent-item-name {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 1px;
+  text-transform: lowercase;
+}
+
+.recent-item-path {
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: 'Fira Code', monospace;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.clear-all-button {
+  margin-top: 4px;
+  padding: 6px;
+  width: 100%;
+  background: rgba(255, 153, 204, 0.05);
+  border: 1px solid rgba(255, 153, 204, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 153, 204, 0.5);
+  font-size: 9px;
+  text-transform: lowercase;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.clear-all-button:hover {
+  background: rgba(255, 153, 204, 0.08);
+  border-color: rgba(255, 153, 204, 0.2);
+  color: rgba(255, 153, 204, 0.7);
+}
+
+.no-recent {
+  padding: 20px;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  text-transform: lowercase;
+}
+
+/* Scrollbar styling for modal */
+.modal-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.modal-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.modal-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 153, 204, 0.2);
+  border-radius: 3px;
+}
+
+.modal-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 153, 204, 0.3);
 }
 
 .recent-projects {

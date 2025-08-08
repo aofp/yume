@@ -232,7 +232,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       });
       
       // Store cleanup function (could be used later)
-      (session as any).cleanup = cleanup;
+      (activeSession as any).cleanup = cleanup;
       
         return sessionId;
       } catch (error) {

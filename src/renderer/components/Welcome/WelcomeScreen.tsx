@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconFolder, IconFolderOpen, IconPlus, IconClock, IconChevronDown } from '@tabler/icons-react';
+import { IconFolderOpen, IconPlus, IconX } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './WelcomeScreen.css';
 
@@ -12,7 +12,7 @@ interface RecentProject {
 export const WelcomeScreen: React.FC = () => {
   const { createSession } = useClaudeCodeStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
-  const [showFolderDropdown, setShowFolderDropdown] = useState(false);
+  const [showRecentModal, setShowRecentModal] = useState(false);
 
   useEffect(() => {
     // Load recent projects from localStorage
@@ -30,6 +30,20 @@ export const WelcomeScreen: React.FC = () => {
     }
   }, []);
 
+  // Handle ESC key to close modal
+  useEffect(() => {
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && showRecentModal) {
+        setShowRecentModal(false);
+      }
+    };
+    
+    if (showRecentModal) {
+      document.addEventListener('keydown', handleEsc);
+      return () => document.removeEventListener('keydown', handleEsc);
+    }
+  }, [showRecentModal]);
+
   const handleSelectFolder = async () => {
     if (window.electronAPI?.selectFolder) {
       const folderPath = await window.electronAPI.selectFolder();
@@ -37,6 +51,29 @@ export const WelcomeScreen: React.FC = () => {
         openProject(folderPath);
       }
     }
+  };
+
+  const handleNewSession = async () => {
+    let directory = null;
+    
+    if (window.electronAPI?.folder?.select) {
+      try {
+        directory = await window.electronAPI.folder.select();
+        if (!directory) {
+          // User cancelled folder selection
+          return;
+        }
+      } catch (error) {
+        // Fall back to current directory
+        directory = await window.electronAPI?.folder?.getCurrent?.() || '/';
+      }
+    } else {
+      // Just use root directory as fallback
+      directory = '/';
+    }
+    
+    // Create session with selected directory
+    openProject(directory);
   };
 
   const openProject = (path: string) => {
@@ -56,113 +93,87 @@ export const WelcomeScreen: React.FC = () => {
     createSession(name, path);
   };
 
-  const formatDate = (date: Date) => {
-    const now = new Date();
-    const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
-    
-    if (days === 0) return 'today';
-    if (days === 1) return 'yesterday';
-    if (days < 7) return `${days} days ago`;
-    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-    return `${Math.floor(days / 30)} months ago`;
-  };
-
   return (
     <div className="welcome-screen">
       <div className="welcome-header">
-        <h1>yurucode</h1>
+        <span className="welcome-title">
+          <span className="yuru">yuru</span><span className="code">code</span>
+        </span>
         <button 
           className="welcome-new-button"
-          onClick={() => createSession('new session')}
+          onClick={handleNewSession}
           title="new session"
         >
-          <IconPlus size={28} />
+          <IconPlus size={20} />
         </button>
       </div>
 
       <div className="welcome-actions">
         <button 
-          className="action-button primary"
-          onClick={handleSelectFolder}
+          className="action-button"
+          onClick={() => setShowRecentModal(true)}
+          disabled={recentProjects.length === 0}
         >
-          <IconFolderOpen size={20} />
-          <span>open folder</span>
+          <span>recent: {Math.min(recentProjects.length, 10)}</span>
         </button>
-
-        <div className="folder-dropdown-container">
-          <button 
-            className="action-button"
-            onClick={() => setShowFolderDropdown(!showFolderDropdown)}
-          >
-            <IconFolder size={20} />
-            <span>quick open</span>
-            <IconChevronDown size={16} className={`dropdown-arrow ${showFolderDropdown ? 'open' : ''}`} />
-          </button>
-          
-          {showFolderDropdown && (
-            <div className="folder-dropdown">
-              <div className="dropdown-header">common folders</div>
-              <button 
-                className="dropdown-item"
-                onClick={() => {
-                  openProject(process.env.HOME || process.env.USERPROFILE || '~');
-                  setShowFolderDropdown(false);
-                }}
-              >
-                <IconFolder size={16} />
-                <span>home</span>
-              </button>
-              <button 
-                className="dropdown-item"
-                onClick={() => {
-                  openProject(process.env.HOME + '/Desktop' || process.env.USERPROFILE + '\\Desktop');
-                  setShowFolderDropdown(false);
-                }}
-              >
-                <IconFolder size={16} />
-                <span>desktop</span>
-              </button>
-              <button 
-                className="dropdown-item"
-                onClick={() => {
-                  openProject(process.env.HOME + '/Documents' || process.env.USERPROFILE + '\\Documents');
-                  setShowFolderDropdown(false);
-                }}
-              >
-                <IconFolder size={16} />
-                <span>documents</span>
-              </button>
-            </div>
-          )}
-        </div>
-
       </div>
 
-      {recentProjects.length > 0 && (
-        <div className="recent-projects">
-          <h2>recent projects</h2>
-          <div className="project-grid">
-            {recentProjects.map((project, index) => (
-              <button
-                key={project.path}
-                className="project-card"
-                onClick={() => openProject(project.path)}
-                style={{ animationDelay: `${index * 50}ms` }}
+      
+      {/* Recent Projects Modal */}
+      {showRecentModal && (
+        <div 
+          className="recent-modal-overlay"
+          onClick={() => setShowRecentModal(false)}
+        >
+          <div 
+            className="recent-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <span className="modal-title">recent projects</span>
+              <button 
+                className="modal-close"
+                onClick={() => setShowRecentModal(false)}
               >
-                <div className="project-icon">
-                  <IconFolder size={24} />
-                </div>
-                <div className="project-info">
-                  <div className="project-name">{project.name}</div>
-                  <div className="project-path">{project.path}</div>
-                  <div className="project-time">
-                    <IconClock size={12} />
-                    <span>{formatDate(project.lastOpened)}</span>
-                  </div>
-                </div>
+                <IconX size={14} />
               </button>
-            ))}
+            </div>
+            
+            <div className="modal-content">
+              {recentProjects.length > 0 ? (
+                <>
+                  {recentProjects.slice(0, 10).map((project) => (
+                    <button
+                      key={project.path}
+                      className="recent-item"
+                      onClick={() => {
+                        openProject(project.path);
+                        setShowRecentModal(false);
+                      }}
+                    >
+                      <IconFolderOpen size={14} />
+                      <div className="recent-item-info">
+                        <div className="recent-item-name">{project.name}</div>
+                        <div className="recent-item-path">{project.path}</div>
+                      </div>
+                    </button>
+                  ))}
+                  
+                  <button 
+                    className="clear-all-button"
+                    onClick={() => {
+                      setRecentProjects([]);
+                      localStorage.removeItem('yurucode-recent-projects');
+                      setShowRecentModal(false);
+                    }}
+                  >
+                    clear all
+                  </button>
+                </>
+              ) : (
+                <div className="no-recent">no recent projects</div>
+              )}
+            </div>
           </div>
         </div>
       )}
