@@ -1,0 +1,91 @@
+.model-selector {
+  position: relative;
+  margin-right: auto;
+  margin-left: -3px;
+  top: 1px;
+}
+
+.model-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 1px 6px;
+  background: rgba(255, 153, 204, 0.04);
+  border: none;
+  border-radius: 6px;
+  color: rgba(255, 153, 204, 0.5);
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  cursor: default;
+  transition: all 0.2s ease;
+  height: 16px;
+}
+
+.model-selector-trigger:hover {
+  background: rgba(255, 153, 204, 0.08);
+  color: rgba(255, 153, 204, 0.7);
+}
+
+.model-selector-name {
+  color: rgba(255, 153, 204, 0.8);
+}
+
+.model-selector-chevron {
+  color: rgba(255, 153, 204, 0.6);
+  transition: transform 0.2s ease;
+}
+
+.model-selector-chevron.open {
+  transform: rotate(180deg);
+}
+
+.model-selector-dropdown {
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: -1px;
+  min-width: 160px;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  z-index: 1000;
+}
+
+.model-selector-option {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  text-align: left;
+  cursor: default;
+  transition: background 0.15s ease, opacity 0.15s ease;
+  opacity: 0.7;
+}
+
+.model-selector-option:hover {
+  background: rgba(255, 153, 204, 0.08);
+  opacity: 1;
+}
+
+.model-selector-option.selected {
+  background: rgba(255, 153, 204, 0.12);
+  opacity: 1;
+}
+
+.model-option-name {
+  color: rgba(255, 153, 204, 0.9);
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  font-weight: 500;
+  margin-bottom: 1px;
+}
+
+.model-option-description {
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Fira Code', monospace;
+  font-size: 8px;
+}

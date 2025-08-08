@@ -1,0 +1,146 @@
+{
+  "name": "yurucode",
+  "version": "1.0.0",
+  "description": "Minimal Claude Code SDK IDE",
+  "main": "dist-electron/main.js",
+  "author": "Claude Code Studio Team",
+  "scripts": {
+    "dev": "vite",
+    "server": "node server.js",
+    "server:wsl": "wsl bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && ANTHROPIC_API_KEY=$ANTHROPIC_API_KEY npm run server\"",
+    "build": "vite build",
+    "build:electron": "npm run build && electron-builder",
+    "preview": "vite preview",
+    "electron": "electron .",
+    "prestart": "node scripts/kill-ports.js",
+    "start": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && cross-env NODE_ENV=development electron .\"",
+    "electron:dev": "npm run prestart && concurrently -k \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && electron .\"",
+    "pack": "npm run build && electron-builder --dir",
+    "dist": "npm run build && electron-builder",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:linux": "npm run build && electron-builder --linux"
+  },
+  "keywords": [
+    "claude",
+    "ai",
+    "sdk",
+    "electron",
+    "react"
+  ],
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^20.11.0",
+    "@types/react": "^18.2.48",
+    "@types/react-dom": "^18.2.18",
+    "@types/react-syntax-highlighter": "^15.5.13",
+    "@typescript-eslint/eslint-plugin": "^6.19.0",
+    "@typescript-eslint/parser": "^6.19.0",
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "cross-env": "^10.0.0",
+    "electron": "^28.1.3",
+    "electron-builder": "^24.9.1",
+    "eslint": "^8.56.0",
+    "rcedit": "^4.0.1",
+    "typescript": "^5.3.3",
+    "vite": "^5.0.11",
+    "wait-on": "^7.2.0"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-code": "^1.0.70",
+    "@anthropic-ai/sdk": "^0.58.0",
+    "@monaco-editor/react": "^4.6.0",
+    "@tabler/icons-react": "^3.34.1",
+    "clsx": "^2.1.0",
+    "cors": "^2.8.5",
+    "electron-store": "^8.1.0",
+    "express": "^5.1.0",
+    "framer-motion": "^10.18.0",
+    "lucide-react": "^0.309.0",
+    "portfinder": "^1.0.37",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-markdown": "^9.0.1",
+    "react-syntax-highlighter": "^15.5.0",
+    "socket.io": "^4.8.1",
+    "socket.io-client": "^4.8.1",
+    "zustand": "^4.4.7"
+  },
+  "build": {
+    "appId": "com.yurucode.app",
+    "productName": "yurucode",
+    "directories": {
+      "output": "release-final",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "dist-electron/**/*",
+      "electron/**/*",
+      "server.js",
+      "package.json",
+      "assets/**/*",
+      "node_modules/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "server.js",
+        "to": "server.js"
+      },
+      {
+        "from": "assets/yurucode.ico",
+        "to": "yurucode.ico"
+      },
+      {
+        "from": "assets/yurucode.png",
+        "to": "yurucode.png"
+      }
+    ],
+    "asar": false,
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "icon": "assets/icon.icns",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "entitlements": "build/entitlements.mac.plist",
+      "entitlementsInherit": "build/entitlements.mac.plist"
+    },
+    "win": {
+      "target": [
+        {
+          "target": "portable",
+          "arch": ["x64"]
+        },
+        {
+          "target": "dir",
+          "arch": ["x64"]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "executableName": "yurucode",
+      "verifyUpdateCodeSignature": false,
+      "signAndEditExecutable": false,
+      "signDlls": false,
+      "artifactName": "${productName}-${version}.${ext}",
+      "requestedExecutionLevel": "asInvoker"
+    },
+    "portable": {
+      "artifactName": "${productName}-portable.${ext}",
+      "unicode": false,
+      "useZip": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "assets/icon.png",
+      "category": "Development"
+    }
+  }
+}

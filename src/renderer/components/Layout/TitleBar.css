@@ -1,0 +1,173 @@
+.titlebar-wrapper {
+  height: 28px;
+  background: #000000;
+  display: flex !important;
+  align-items: center;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 10000;
+  user-select: none;
+  /* Force visibility */
+  visibility: visible !important;
+  opacity: 1 !important;
+  width: calc(100% - 138px)
+}
+
+.titlebar {
+  flex: 1;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  /* Make titlebar draggable */
+  -webkit-app-region: drag;
+}
+
+
+.titlebar-content {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  height: 100%;
+  padding: 0px;
+  position: relative;
+  z-index: 10;
+  /* Content area remains draggable */
+}
+
+.console-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 20px;
+  background: rgba(255, 153, 204, 0.05);
+  border: 1px solid rgba(255, 153, 204, 0.2);
+  color: rgba(255, 153, 204, 0.6);
+  border-radius: 4px;
+  cursor: default;
+  transition: all 0.2s ease;
+  margin-right: 12px;
+  -webkit-app-region: no-drag;
+  z-index: 10;
+  position: relative;
+}
+
+.console-button:hover {
+  background: rgba(255, 153, 204, 0.1);
+  color: rgba(255, 153, 204, 0.8);
+}
+
+/* Tab styles removed - tabs have their own row */
+
+.titlebar-text {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  padding: 0 6px;
+}
+
+.titlebar-title {
+  font-size: 11px;
+  font-weight: 500;
+  color: #ff99cc;
+  pointer-events: none;
+  padding: 0 8px;
+}
+
+/* macOS: right align the text */
+.platform-darwin .titlebar-text {
+  position: absolute;
+  right: 6px;
+}
+
+/* macOS: center the title */
+.platform-darwin .titlebar-title {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-left: 0;
+}
+
+.titlebar-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  /* Actions area should not be draggable */
+  -webkit-app-region: no-drag !important;
+}
+
+.titlebar-action {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  color: #a0a0a0;
+  transition: all 0.2s ease;
+}
+
+.titlebar-action:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #ffffff;
+}
+
+.titlebar-controls {
+  display: flex;
+  align-items: center;
+  height: 100%;
+  /* ABSOLUTELY NO DRAGGING ON CONTROLS */
+  -webkit-app-region: no-drag !important;
+  position: relative;
+  z-index: 9999;
+  pointer-events: auto !important;
+  /* Solid background to block drag */
+  background: #000000;
+  /* Isolate from parent drag */
+  isolation: isolate;
+}
+
+.titlebar-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 46px;
+  height: 100%;
+  color: rgba(255, 255, 255, 0.9);
+  transition: background 0.1s ease;
+  /* FORCE NO DRAG ON EACH BUTTON */
+  -webkit-app-region: no-drag !important;
+  pointer-events: auto !important;
+  cursor: default !important;
+  position: relative;
+  z-index: 10000;
+  background: transparent;
+  border: none;
+}
+
+.control-minimize:hover,
+.control-maximize:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+}
+
+.control-close:hover {
+  background: #e81123;
+  color: white;
+}
+
+/* macOS specific styles */
+.platform-darwin .titlebar {
+  padding-left: 80px;
+}
+
+.platform-darwin .titlebar-controls {
+  display: none;
+}
+
+/* Windows specific styles - keep titlebar visible for frameless window */

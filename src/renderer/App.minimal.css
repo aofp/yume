@@ -1,0 +1,61 @@
+/* Minimal black theme with pastel red/magenta accents */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* CSS variables removed - using direct values */
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  background: linear-gradient(to right, #121212 0%, #0a0a0a 40%, #050505 70%, #000000 100%);
+  color: #ffffff;
+  overflow: hidden;
+}
+
+.app-minimal {
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  background: linear-gradient(to right, #121212 0%, #0a0a0a 40%, #050505 70%, #000000 100%);
+  padding-top: 60px; /* Account for fixed titlebar (28px) + tabs (32px) */
+}
+
+.app-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  /* No margin-top needed - parent .app has padding-top */
+}
+
+/* Remove all default focus outlines */
+*:focus {
+  outline: none;
+}
+
+/* Ensure all ul elements have proper margin */
+ul {
+  margin-left: 20px;
+  padding-left: 20px;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #1a1a1a;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 153, 153, 0.1);
+}

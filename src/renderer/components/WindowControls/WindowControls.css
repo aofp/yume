@@ -1,0 +1,55 @@
+.window-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  display: flex;
+  height: 28px;
+  z-index: 9999;
+  -webkit-app-region: no-drag;
+  background: #000000;
+}
+
+.window-control {
+  width: 46px;
+  height: 28px;
+  border: none;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 0.2s;
+}
+
+.window-control:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+}
+
+.window-control.close:hover {
+  background-color: #e81123;
+  color: white;
+}
+
+.window-control:active {
+  background-color: rgba(255, 255, 255, 0.2);
+}
+
+/* Make room for window controls in the layout */
+.session-tabs {
+  /* No padding needed */
+}
+
+/* Draggable title bar area */
+.app-header {
+  -webkit-app-region: drag;
+  height: 28px;
+}
+
+/* Exclude interactive elements from drag */
+.app-header button,
+.app-header input,
+.app-header .tab-close,
+.session-tab {
+  -webkit-app-region: no-drag;
+}

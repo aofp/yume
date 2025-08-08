@@ -1,0 +1,322 @@
+.session-tabs {
+  background: #000000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  height: 32px; /* Fixed height - no wrapping */
+  display: flex;
+  align-items: center;
+  padding: 2px 0 0 0; /* 2px top, 0 right, 0 bottom, 0 left */
+  flex-shrink: 0;
+  position: fixed;
+  top: 28px; /* Position below titlebar */
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  /* Draggable area for Windows frameless window */
+  -webkit-app-region: drag;
+}
+
+.tabs-container {
+  display: flex;
+  align-items: center;
+  gap: 2px; /* Reduced from 6px */
+  flex-wrap: nowrap; /* Prevent wrapping - force horizontal scroll */
+  overflow-x: scroll; /* Always show scrollbar */
+  overflow-y: hidden;
+  flex: 1;
+  padding: 0 3px;
+  /* Make tabs not draggable */
+  -webkit-app-region: no-drag;
+}
+
+.tabs-container {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 153, 204, 0.3) transparent;
+}
+
+.tabs-container::-webkit-scrollbar {
+  height: 4px;
+  background: transparent;
+  margin-top: 3px;
+}
+
+.tabs-container::-webkit-scrollbar-track {
+  background: transparent;
+  margin-top: 3px;
+}
+
+.tabs-container::-webkit-scrollbar-thumb {
+  background: rgba(255, 153, 204, 0.5);
+  border-radius: 0;
+  height: 1px;
+  background-clip: content-box;
+  border-top: 3px solid transparent;
+}
+
+.tabs-container::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 153, 204, 0.7);
+  background-clip: content-box;
+  border-top: 3px solid transparent;
+}
+
+.session-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 4px 5px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  border-radius: 6px; /* Uniform radius */
+  cursor: default;
+  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  height: 26px;
+  white-space: nowrap;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative; /* Needed to contain ripple */
+  flex-shrink: 0; /* Prevent tabs from shrinking */
+  -webkit-app-region: no-drag;
+}
+
+/* Subtle ripple effect removed - no relative positioning */
+
+.session-tab::before {
+  content: '';
+  position: absolute;
+  top: var(--ripple-y, 50%);
+  left: var(--ripple-x, 50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 153, 204, 0.08);
+  transform: translate(-50%, -50%);
+  transition: width 0.6s, height 0.6s, opacity 0.6s;
+  opacity: 0;
+}
+
+.session-tab:active::before {
+  width: 50px;
+  height: 50px;
+  opacity: 1;
+}
+
+.session-tab:hover {
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.session-tab.active {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.tab-content {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  /* No overflow hidden - show everything */
+}
+
+.tab-name {
+  font-size: 8px;
+  font-weight: 400;
+  color: rgba(255, 255, 255, 0.5);
+  white-space: nowrap;
+  letter-spacing: 0.3px;
+  font-family: 'Fira Code', monospace;
+}
+
+.session-tab.active .tab-name {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.tab-folder {
+  font-size: 10px;
+  color: rgba(255, 153, 204, 0.7);
+  white-space: nowrap;
+  font-weight: 600;
+  font-family: 'Fira Code', monospace;
+}
+
+.tab-folder svg {
+  color: rgba(255, 230, 153, 0.7);
+}
+
+.streaming-icon {
+  color: rgba(255, 230, 153, 0.7);
+  animation: spin 1s linear infinite;
+}
+
+.tab-progress {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px;
+  margin-left: auto;
+  margin-right: 0;
+  flex-shrink: 0;
+}
+
+.tab-streaming-icon {
+  color: rgba(255, 230, 153, 0.7);
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+.tab-close {
+  background: transparent !important;
+  border: none;
+  color: rgba(255, 255, 255, 0.6); /* Brighter default color */
+  cursor: default !important;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 3px;
+  transition: color 0.2s ease;
+  opacity: 0.7;
+  width: 18px;
+  height: 18px;
+  -webkit-app-region: no-drag;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.session-tab:hover .tab-close {
+  opacity: 1;
+  color: rgba(255, 255, 255, 0.8); /* Even brighter on tab hover */
+}
+
+.tab-close:hover {
+  background: transparent !important; /* No background on hover */
+  color: rgba(255, 153, 204, 0.9); /* Just brighten the color */
+}
+
+.tab-new {
+  background: rgba(255, 255, 255, 0.03);
+  border: none;
+  color: rgba(255, 153, 204, 0.5);
+  cursor: default;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px; /* Uniform radius */
+  transition: background 0.2s ease;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative; /* Needed to contain ripple */
+}
+
+.tab-new::before {
+  content: '';
+  position: absolute;
+  top: var(--ripple-y, 50%);
+  left: var(--ripple-x, 50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 153, 204, 0.08);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s, height 0.4s, opacity 0.4s;
+  opacity: 0;
+}
+
+.tab-new:active::before {
+  width: 40px;
+  height: 40px;
+  opacity: 1;
+}
+
+.tab-new:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 153, 204, 0.7);
+}
+
+/* Context menu */
+.tab-context-menu {
+  position: fixed;
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 4px;
+  z-index: 1000;
+  min-width: 150px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.tab-context-menu button {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  cursor: default;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+  text-transform: lowercase;
+}
+
+.tab-context-menu button:hover {
+  background: rgba(255, 153, 204, 0.1);
+  color: rgba(255, 153, 204, 0.9);
+}
+
+.tab-context-menu .separator {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+  margin: 4px 8px;
+}
+
+/* Yurucode start area */
+.yurucode-start {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 0 8px;
+}
+
+.yuru-logo {
+  font-size: 11px;
+  font-weight: 300;
+  color: rgba(255, 153, 204, 0.6);
+  letter-spacing: 0.5px;
+  margin-right: 8px;
+  text-transform: lowercase;
+}
+
+.btn-open-folder,
+.btn-quick-start {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.08);
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  padding: 4px 8px;
+  border-radius: 6px;
+  font-size: 10px;
+  text-transform: lowercase;
+  cursor: default;
+  transition: all 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.btn-open-folder svg,
+.btn-quick-start svg {
+  color: rgba(255, 230, 153, 0.7);
+}
+
+.btn-open-folder:hover,
+.btn-quick-start:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
+}

@@ -1,0 +1,51 @@
+.file-panel {
+  padding: var(--space-3);
+}
+
+.file-search {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  background: var(--color-bg-tertiary);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-md);
+  margin-bottom: var(--space-3);
+  color: var(--color-text-tertiary);
+}
+
+.file-search input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--color-text-primary);
+  font-size: var(--text-sm);
+  outline: none;
+}
+
+.file-tree {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2);
+  border-radius: var(--radius-md);
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.file-item:hover {
+  background: var(--color-hover);
+  color: var(--color-text-primary);
+}
+
+.file-item.indented {
+  padding-left: var(--space-6);
+}
