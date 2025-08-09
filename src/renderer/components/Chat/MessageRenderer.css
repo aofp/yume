@@ -10,7 +10,7 @@
 .message-actions {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
   opacity: 0;
   transition: opacity 0.2s ease;
   margin-left: 2px;
@@ -42,13 +42,13 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  min-width: 20px;
-  height: 20px;
+  width: 16px;
+  height: 16px;
 }
 
 .action-btn:hover {
   background: rgba(255, 255, 255, 0.08);
-  color: rgba(255, 153, 204, 0.9);
+  color: var(--accent-color);
 }
 
 .message:hover .message-actions {
@@ -93,7 +93,7 @@
 }
 
 .folder-name {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-weight: 500;
 }
 
@@ -296,14 +296,14 @@ ol {
 }
 
 .markdown-content a {
-  color: #ff99cc;
+  color: var(--accent-color);
   text-decoration: none;
   border-bottom: 1px dotted transparent;
   transition: border-color 0.2s;
 }
 
 .markdown-content a:hover {
-  border-bottom-color: #ff99cc;
+  border-bottom-color: var(--accent-color);
 }
 
 /* Thinking indicator */
@@ -476,7 +476,7 @@ ol {
 }
 
 .edit-action {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-weight: 500;
   font-size: 11px;
   margin-right: 8px;
@@ -569,7 +569,7 @@ ol {
 }
 
 .tool-action {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-weight: 500;
 }
 
@@ -782,7 +782,7 @@ ol {
 /* Streaming Indicator */
 .streaming-loader {
   display: inline-block;
-  color: #ff99cc;
+  color: var(--accent-color);
   opacity: 1;
   animation: spin 1s linear infinite;
   margin-left: 6px;
@@ -958,7 +958,7 @@ ol {
 }
 
 .tool-use.todo-write .tool-action {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-size: 11px;
   font-weight: 500;
 }

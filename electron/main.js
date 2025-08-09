@@ -96,6 +96,37 @@ ipcMain.handle('is-directory', async (event, path) => {
   }
 });
 
+// Zoom handlers
+ipcMain.handle('zoom-in', async () => {
+  if (!mainWindow) return;
+  const currentZoom = mainWindow.webContents.getZoomLevel();
+  const newZoom = currentZoom + 0.5;
+  mainWindow.webContents.setZoomLevel(newZoom);
+  mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '${newZoom}')`);
+  return newZoom;
+});
+
+ipcMain.handle('zoom-out', async () => {
+  if (!mainWindow) return;
+  const currentZoom = mainWindow.webContents.getZoomLevel();
+  const newZoom = currentZoom - 0.5;
+  mainWindow.webContents.setZoomLevel(newZoom);
+  mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '${newZoom}')`);
+  return newZoom;
+});
+
+ipcMain.handle('zoom-reset', async () => {
+  if (!mainWindow) return;
+  mainWindow.webContents.setZoomLevel(0);
+  mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '0')`);
+  return 0;
+});
+
+ipcMain.handle('get-zoom-level', async () => {
+  if (!mainWindow) return 0;
+  return mainWindow.webContents.getZoomLevel();
+});
+
 console.log('IPC handlers registered!');
 
 // Handle command line arguments

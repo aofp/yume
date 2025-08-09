@@ -138,6 +138,8 @@ export const ClaudeChat: React.FC = () => {
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
   const [searchMatches, setSearchMatches] = useState<number[]>([]);
+  const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
+  const [historyIndex, setHistoryIndex] = useState(-1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -377,6 +379,15 @@ export const ClaudeChat: React.FC = () => {
         messageContent = JSON.stringify(contentBlocks);
       }
       
+      // Add to message history for this session (only text, not attachments)
+      if (input.trim() && currentSessionId) {
+        setMessageHistory(prev => ({
+          ...prev,
+          [currentSessionId]: [...(prev[currentSessionId] || []).filter(m => m !== input), input].slice(-50) // Keep last 50 messages
+        }));
+        setHistoryIndex(-1); // Reset history navigation
+      }
+      
       setInput('');
       setAttachments([]);
       // Clear drafts after sending
@@ -388,11 +399,67 @@ export const ClaudeChat: React.FC = () => {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    const textarea = e.currentTarget;
+    const cursorPos = textarea.selectionStart;
+    
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
+      // Delete everything before cursor (like terminal)
+      e.preventDefault();
+      const afterCursor = input.substring(cursorPos);
+      setInput(afterCursor);
+      // Set cursor to beginning after React re-renders
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.selectionStart = inputRef.current.selectionEnd = 0;
+        }
+      }, 0);
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
+      // Delete everything after cursor (like terminal)
+      e.preventDefault();
+      const beforeCursor = input.substring(0, cursorPos);
+      setInput(beforeCursor);
+    } else if (e.key === 'ArrowUp') {
+      // Only navigate history if cursor is at the beginning of the text
+      if (cursorPos === 0 && textarea.selectionEnd === 0 && currentSessionId) {
+        e.preventDefault();
+        
+        const sessionHistory = messageHistory[currentSessionId] || [];
+        
+        // Navigate up in history
+        if (historyIndex < sessionHistory.length - 1) {
+          const newIndex = historyIndex + 1;
+          setHistoryIndex(newIndex);
+          setInput(sessionHistory[sessionHistory.length - 1 - newIndex]);
+        }
+      }
+    } else if (e.key === 'ArrowDown') {
+      // Only navigate history if we're in history navigation mode
+      if (historyIndex >= 0 && currentSessionId) {
+        const lines = input.split('\n');
+        const currentLine = input.substring(0, cursorPos).split('\n').length - 1;
+        const isOnLastLine = currentLine === lines.length - 1;
+        
+        // Only navigate if cursor is on the last line
+        if (isOnLastLine) {
+          e.preventDefault();
+          
+          const sessionHistory = messageHistory[currentSessionId] || [];
+          
+          if (historyIndex > 0) {
+            const newIndex = historyIndex - 1;
+            setHistoryIndex(newIndex);
+            setInput(sessionHistory[sessionHistory.length - 1 - newIndex]);
+          } else if (historyIndex === 0) {
+            // Return to the original input
+            setHistoryIndex(-1);
+            setInput('');
+          }
+        }
+      }
     }
-    // Let all other key combinations work naturally (including Cmd+A)
   };
 
   // Handle paste event for images
@@ -1121,13 +1188,6 @@ export const ClaudeChat: React.FC = () => {
                   </div>
                   <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">clear context</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">/clear</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">clear context (command)</span>
                 </div>
                 <div className="shortcut-item">
                   <div className="shortcut-keys">

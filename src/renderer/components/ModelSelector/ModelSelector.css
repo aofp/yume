@@ -19,8 +19,8 @@
 
 .model-selector-trigger:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #ff99cc;
-  border-color: rgba(255, 153, 204, 0.2);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.2);
 }
 
 .model-selector-dropdown {
@@ -50,11 +50,11 @@
 }
 
 .model-selector-option:hover {
-  background: rgba(255, 153, 204, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
 }
 
 .model-selector-option.selected {
-  background: rgba(255, 153, 204, 0.12);
+  background: rgba(var(--accent-rgb), 0.12);
 }
 
 .model-option-name {
@@ -67,7 +67,7 @@
 }
 
 .model-selector-option.selected .model-option-name {
-  color: #ff99cc;
+  color: var(--accent-color);
 }
 
 .model-option-description {

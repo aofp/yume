@@ -1,8 +1,12 @@
 import React from 'react';
-import { IconX, IconMinus, IconSquare } from '@tabler/icons-react';
+import { IconX, IconMinus, IconSquare, IconSettings } from '@tabler/icons-react';
 import './WindowControls.css';
 
-export const WindowControls: React.FC = () => {
+interface WindowControlsProps {
+  onSettingsClick?: () => void;
+}
+
+export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick }) => {
   // Only show on Windows - check multiple methods
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
                    navigator.userAgent.toLowerCase().includes('windows');
@@ -33,6 +37,11 @@ export const WindowControls: React.FC = () => {
 
   return (
     <div className="window-controls">
+      {onSettingsClick && (
+        <button className="window-control settings" onClick={onSettingsClick}>
+          <IconSettings size={14} stroke={1.5} />
+        </button>
+      )}
       <button className="window-control minimize" onClick={handleMinimize}>
         <IconMinus size={14} stroke={1.5} />
       </button>

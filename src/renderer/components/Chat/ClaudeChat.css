@@ -24,7 +24,7 @@
 .empty-content h2 {
   font-size: 28px;
   font-weight: 200;
-  color: rgba(255, 153, 204, 0.6);
+  color: var(--accent-color);
   margin-bottom: 6px;
   letter-spacing: 0.05em;
   text-transform: lowercase;
@@ -51,7 +51,7 @@
   gap: 6px;
   background: rgba(255, 153, 204, 0.06);
   border: none;
-  color: rgba(255, 153, 204, 0.7);
+  color: var(--accent-color);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 12px;
@@ -105,7 +105,7 @@
 
 .btn-change-folder:hover {
   background: rgba(255, 153, 204, 0.08);
-  color: rgba(255, 153, 204, 0.7);
+  color: var(--accent-color);
 }
 
 /* Messages Area */
@@ -255,14 +255,14 @@
 }
 
 .message-text a {
-  color: #ff99cc;
+  color: var(--accent-color);
   text-decoration: none;
   border-bottom: 1px solid transparent;
   transition: border-color 0.2s;
 }
 
 .message-text a:hover {
-  border-bottom-color: #ff99cc;
+  border-bottom-color: var(--accent-color);
 }
 
 .message-text blockquote {
@@ -307,7 +307,7 @@
 }
 
 .tool-name {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-weight: 500;
 }
 
@@ -352,7 +352,7 @@
 /* Streaming indicator */
 .streaming-indicator {
   display: inline-block;
-  color: #ff99cc;
+  color: var(--accent-color);
   animation: breathing 1.5s ease-in-out infinite;
   margin-left: 4px;
   font-size: 16px;
@@ -417,7 +417,7 @@
 
 .spinning-loader {
   animation: spin 1s linear infinite;
-  color: rgba(255, 153, 204, 1);
+  color: var(--accent-color);
 }
 
 @keyframes spin {
@@ -478,8 +478,8 @@
 
 .chat-input:focus {
   background: #000000;
-  border-color: rgba(255, 153, 204, 0.4);
-  box-shadow: 0 0 0 1px rgba(255, 153, 204, 0.2);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  box-shadow: 0 0 0 1px rgba(var(--accent-rgb), 0.2);
   overflow-y: auto; /* Show scrollbar on focus if content overflows */
 }
 
@@ -558,7 +558,7 @@
 .btn-send:hover:not(:disabled) {
   background: rgba(255, 153, 204, 0.15);
   transform: scale(1.05);
-  color: rgba(255, 153, 204, 0.9);
+  color: var(--accent-color);
 }
 
 .btn-send:disabled {
@@ -654,7 +654,7 @@
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.7);
   border: none;
-  color: rgba(255, 153, 204, 0.6);
+  color: var(--accent-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -707,8 +707,8 @@
 
 .btn-clear-context:hover, .btn-stats:hover, .btn-help:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #ff99cc;
-  border-color: rgba(255, 153, 204, 0.2);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.2);
 }
 
 .btn-stats.disabled {
@@ -809,7 +809,7 @@
   justify-content: center;
   background: rgba(255, 153, 204, 0.1);
   border-radius: 4px;
-  color: rgba(255, 153, 204, 0.7);
+  color: var(--accent-color);
   overflow: hidden;
 }
 
@@ -891,7 +891,7 @@
 }
 
 .help-header h3 {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-size: 12px;
   font-weight: 500;
   margin: 0;
@@ -908,7 +908,7 @@
 }
 
 .help-close:hover {
-  color: #ff99cc;
+  color: var(--accent-color);
 }
 
 .help-content {
@@ -924,7 +924,7 @@
 }
 
 .help-section h4 {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-size: 11px;
   font-weight: 500;
   margin: 0 0 6px 0;
@@ -1022,7 +1022,7 @@
 }
 
 .stats-header h3 {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-size: 12px;
   font-weight: 500;
   margin: 0;
@@ -1039,7 +1039,7 @@
 }
 
 .stats-close:hover {
-  color: #ff99cc;
+  color: var(--accent-color);
 }
 
 .stats-content {
@@ -1055,7 +1055,7 @@
 }
 
 .stats-section h4 {
-  color: #ff99cc;
+  color: var(--accent-color);
   font-size: 11px;
   font-weight: 500;
   margin: 0 0 6px 0;
@@ -1077,7 +1077,7 @@
 }
 
 .stat-keys svg {
-  color: #ff99cc;
+  color: var(--accent-color);
   opacity: 0.8;
 }
 
@@ -1179,5 +1179,5 @@
 
 .context-menu-item:hover {
   background: rgba(255, 153, 204, 0.1);
-  color: #ff99cc;
+  color: var(--accent-color);
 }

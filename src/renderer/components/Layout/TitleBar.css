@@ -22,6 +22,32 @@
   align-items: center;
   /* Make titlebar draggable */
   -webkit-app-region: drag;
+  position: relative;
+}
+
+.titlebar-settings {
+  position: absolute;
+  right: 8px;
+  width: 24px;
+  height: 20px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+  z-index: 10001;
+  pointer-events: auto !important;
+}
+
+.titlebar-settings:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.2);
 }
 
 
@@ -199,8 +225,8 @@
 
 .stats-btn:hover {
   background: rgba(255, 255, 255, 0.05);
-  color: #ff99cc;
-  border-color: rgba(255, 153, 204, 0.2);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.2);
 }
 
 /* Stats Modal */

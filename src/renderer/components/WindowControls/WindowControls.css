@@ -26,6 +26,15 @@
   background-color: rgba(255, 255, 255, 0.1);
 }
 
+.window-control.settings {
+  width: 36px;
+}
+
+.window-control.settings:hover {
+  background-color: rgba(255, 255, 255, 0.1);
+  color: var(--accent-color);
+}
+
 .window-control.close:hover {
   background-color: #e81123;
   color: white;

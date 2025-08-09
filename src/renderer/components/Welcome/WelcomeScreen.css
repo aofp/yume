@@ -37,20 +37,22 @@
 }
 
 .welcome-title .yuru {
-  color: #ff99cc;
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: 700;
 }
 
 .welcome-title .code {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--accent-color);
+  font-weight: 700;
 }
 
 .welcome-new-button {
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: rgba(255, 153, 204, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   border: none;
-  color: #ff99cc;
+  color: var(--accent-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -60,7 +62,7 @@
 }
 
 .welcome-new-button:hover {
-  background: rgba(255, 153, 204, 0.15);
+  background: rgba(var(--accent-rgb), 0.15);
 }
 
 .welcome-new-button:active {
@@ -174,8 +176,8 @@
 }
 
 .clear-all-icon:hover {
-  background: rgba(255, 153, 204, 0.1);
-  color: rgba(255, 153, 204, 0.6);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
 }
 
 .modal-close {
@@ -295,12 +297,12 @@
 }
 
 .modal-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 153, 204, 0.2);
+  background: rgba(var(--accent-rgb), 0.2);
   border-radius: 3px;
 }
 
 .modal-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 153, 204, 0.3);
+  background: rgba(var(--accent-rgb), 0.3);
 }
 
 .recent-projects {
@@ -357,9 +359,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 153, 204, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   border-radius: 8px;
-  color: #ff99cc;
+  color: var(--accent-color);
 }
 
 .project-info {

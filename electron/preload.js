@@ -34,6 +34,14 @@ contextBridge.exposeInMainWorld('electronAPI', {
     },
   },
   
+  // Zoom operations
+  zoom: {
+    in: () => ipcRenderer.invoke('zoom-in'),
+    out: () => ipcRenderer.invoke('zoom-out'),
+    reset: () => ipcRenderer.invoke('zoom-reset'),
+    getLevel: () => ipcRenderer.invoke('get-zoom-level'),
+  },
+  
   // Listen to events from main process
   on: (channel, callback) => {
     const validChannels = ['folder-changed', 'new-session', 'initial-directory'];

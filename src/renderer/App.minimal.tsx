@@ -1,14 +1,16 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { TitleBar } from './components/Layout/TitleBar';
 import { SessionTabs } from './components/SessionTabs/SessionTabs';
 import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
+import { SettingsModal } from './components/Settings/SettingsModal';
 // Sidebar removed for cleaner UI
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
   const { currentSessionId, sessions, createSession } = useClaudeCodeStore();
+  const [showSettings, setShowSettings] = useState(false);
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
   
@@ -95,20 +97,47 @@ export const App: React.FC = () => {
     }
   }, [createSession]);
 
+  // Handle Ctrl+, for settings
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
+        setShowSettings(true);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
+  // Apply accent color from localStorage on mount
+  useEffect(() => {
+    const savedColor = localStorage.getItem('accentColor') || '#ff99cc';
+    document.documentElement.style.setProperty('--accent-color', savedColor);
+    
+    // Convert hex to RGB for rgba() usage
+    const hex = savedColor.replace('#', '');
+    const r = parseInt(hex.substr(0, 2), 16);
+    const g = parseInt(hex.substr(2, 2), 16);
+    const b = parseInt(hex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
+  }, []);
+
   return (
     <div 
       className="app-minimal"
       onDrop={handleGlobalDrop}
       onDragOver={handleGlobalDragOver}
     >
-      <WindowControls />
-      <TitleBar onSettingsClick={() => {}} />
+      <WindowControls onSettingsClick={() => setShowSettings(true)} />
+      <TitleBar onSettingsClick={() => setShowSettings(true)} />
       <SessionTabs />
       <div className="app-content">
         <div className="main-chat-area">
           <ClaudeChat />
         </div>
       </div>
+      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
     </div>
   );
 };

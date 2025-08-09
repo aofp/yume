@@ -1,5 +1,8 @@
 /* CSS Variables - Minimal Black Theme */
 :root {
+  /* Accent Color - can be changed via settings */
+  --accent-color: #ff99cc;
+  
   /* Base Colors */
   --color-bg-primary: #000000;
   --color-bg-secondary: #050505;

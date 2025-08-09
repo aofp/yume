@@ -30,7 +30,7 @@
 
 .tabs-container {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 153, 204, 0.3) transparent;
+  scrollbar-color: var(--accent-color) transparent;
 }
 
 .tabs-container::-webkit-scrollbar {
@@ -45,7 +45,7 @@
 }
 
 .tabs-container::-webkit-scrollbar-thumb {
-  background: rgba(255, 153, 204, 0.5);
+  background: var(--accent-color);
   border-radius: 0;
   height: 1px;
   background-clip: content-box;
@@ -53,7 +53,7 @@
 }
 
 .tabs-container::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 153, 204, 0.7);
+  background: var(--accent-color);
   background-clip: content-box;
   border-top: 3px solid transparent;
 }
@@ -63,7 +63,7 @@
   align-items: center;
   gap: 6px;
   padding: 5px 4px 5px 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: #000000;
   border: none;
   border-radius: 6px; /* Uniform radius */
   cursor: default;
@@ -88,7 +88,7 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(255, 153, 204, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   transform: translate(-50%, -50%);
   transition: width 0.6s, height 0.6s, opacity 0.6s;
   opacity: 0;
@@ -101,7 +101,7 @@
 }
 
 .session-tab:hover {
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .session-tab.active {
@@ -130,7 +130,7 @@
 
 .tab-folder {
   font-size: 10px;
-  color: rgba(255, 153, 204, 0.7);
+  color: var(--accent-color);
   white-space: nowrap;
   font-weight: 600;
   font-family: 'Fira Code', monospace;
@@ -191,13 +191,13 @@
 
 .tab-close:hover {
   background: transparent !important; /* No background on hover */
-  color: rgba(255, 153, 204, 0.9); /* Just brighten the color */
+  color: var(--accent-color); /* Just brighten the color */
 }
 
 .tab-new {
-  background: rgba(255, 153, 204, 0.15);
+  background: rgba(var(--accent-rgb), 0.15);
   border: none;
-  color: rgba(255, 153, 204, 0.8);
+  color: var(--accent-color);
   cursor: default;
   width: 26px;
   height: 26px;
@@ -220,7 +220,7 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(255, 153, 204, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   transform: translate(-50%, -50%);
   transition: width 0.4s, height 0.4s, opacity 0.4s;
   opacity: 0;
@@ -233,8 +233,8 @@
 }
 
 .tab-new:hover {
-  background: rgba(255, 153, 204, 0.25);
-  color: #ff99cc;
+  background: rgba(var(--accent-rgb), 0.25);
+  color: var(--accent-color);
 }
 
 /* Context menu */
@@ -265,8 +265,8 @@
 }
 
 .tab-context-menu button:hover {
-  background: rgba(255, 153, 204, 0.1);
-  color: rgba(255, 153, 204, 0.9);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
 }
 
 .tab-context-menu .separator {
@@ -286,7 +286,7 @@
 .yuru-logo {
   font-size: 11px;
   font-weight: 300;
-  color: rgba(255, 153, 204, 0.6);
+  color: var(--accent-color);
   letter-spacing: 0.5px;
   margin-right: 8px;
   text-transform: lowercase;
