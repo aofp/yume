@@ -2,8 +2,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import './ModelSelector.css';
 
 const models = [
-  { id: 'opus', name: 'opus', description: 'most capable model' },
-  { id: 'sonnet', name: 'sonnet', description: 'fast & capable' },
+  { id: 'claude-opus-4-1-20250805', name: 'opus 4.1', description: 'most capable model' },
+  { id: 'claude-sonnet-4-20250514', name: 'sonnet 4.0', description: 'fast & capable' },
 ];
 
 interface ModelSelectorProps {
@@ -12,7 +12,7 @@ interface ModelSelectorProps {
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({ 
-  value = 'opus', 
+  value = 'claude-opus-4-1-20250805', 
   onChange 
 }) => {
   const [isOpen, setIsOpen] = useState(false);

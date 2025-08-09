@@ -206,6 +206,28 @@ function createWindow() {
     if (input.key === 'F12') {
       mainWindow.webContents.toggleDevTools();
     }
+    
+    // Zoom controls
+    if ((input.control || input.meta) && input.key === '0') {
+      // Ctrl/Cmd+0 - Reset zoom to 100%
+      event.preventDefault();
+      mainWindow.webContents.setZoomLevel(0);
+    }
+    if ((input.control || input.meta) && (input.key === '=' || input.key === '+')) {
+      // Ctrl/Cmd++ - Zoom in
+      event.preventDefault();
+      mainWindow.webContents.getZoomLevel((level) => {
+        mainWindow.webContents.setZoomLevel(level + 0.5);
+      });
+    }
+    if ((input.control || input.meta) && input.key === '-') {
+      // Ctrl/Cmd+- - Zoom out
+      event.preventDefault();
+      mainWindow.webContents.getZoomLevel((level) => {
+        mainWindow.webContents.setZoomLevel(level - 0.5);
+      });
+    }
+    
     // Windows-specific shortcuts since there's no titlebar
     if (process.platform === 'win32') {
       if (input.control && input.key === 'q') {
@@ -318,6 +340,65 @@ function createMenu() {
     {
       label: 'Help',
       submenu: [
+        {
+          label: 'keyboard shortcuts',
+          click: () => {
+            const shortcuts = process.platform === 'darwin' ? 
+              'KEYBOARD SHORTCUTS\n\n' +
+              'General:\n' +
+              '  Cmd+N       new session\n' +
+              '  Cmd+O       open folder\n' +
+              '  Cmd+Q       quit\n\n' +
+              'Editing:\n' +
+              '  Cmd+Z       undo\n' +
+              '  Cmd+C       copy\n' +
+              '  Cmd+V       paste\n' +
+              '  Cmd+A       select all\n\n' +
+              'View:\n' +
+              '  Cmd+0       reset zoom (100%)\n' +
+              '  Cmd++       zoom in\n' +
+              '  Cmd+-       zoom out\n' +
+              '  Cmd+R       reload\n' +
+              '  F12         dev tools\n\n' +
+              'Chat:\n' +
+              '  Cmd+F       search messages\n' +
+              '  Cmd+L       clear context\n' +
+              '  Enter       send message\n' +
+              '  Shift+Enter new line'
+              :
+              'KEYBOARD SHORTCUTS\n\n' +
+              'General:\n' +
+              '  Ctrl+N      new session\n' +
+              '  Ctrl+O      open folder\n' +
+              '  Ctrl+Q      quit\n' +
+              '  Ctrl+M      minimize\n\n' +
+              'Editing:\n' +
+              '  Ctrl+Z      undo\n' +
+              '  Ctrl+C      copy\n' +
+              '  Ctrl+V      paste\n' +
+              '  Ctrl+A      select all\n\n' +
+              'View:\n' +
+              '  Ctrl+0      reset zoom (100%)\n' +
+              '  Ctrl++      zoom in\n' +
+              '  Ctrl+-      zoom out\n' +
+              '  Ctrl+R      reload\n' +
+              '  F12         dev tools\n\n' +
+              'Chat:\n' +
+              '  Ctrl+F      search messages\n' +
+              '  Ctrl+L      clear context\n' +
+              '  Enter       send message\n' +
+              '  Shift+Enter new line';
+              
+            dialog.showMessageBox(mainWindow, {
+              type: 'info',
+              title: 'keyboard shortcuts',
+              message: 'keyboard shortcuts',
+              detail: shortcuts,
+              buttons: ['OK']
+            });
+          }
+        },
+        { type: 'separator' },
         {
           label: 'about yurucode',
           click: () => {

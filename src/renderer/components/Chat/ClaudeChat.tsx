@@ -22,7 +22,8 @@ import {
   IconFileText,
   IconFile,
   IconLoader2,
-  IconChartBar
+  IconChartBar,
+  IconHelp
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -129,6 +130,7 @@ export const ClaudeChat: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
@@ -806,9 +808,18 @@ export const ClaudeChat: React.FC = () => {
               const percentage = Math.min(100, Math.round(tokens / 50000 * 100)); // 200k context = ~50k tokens
               const usageClass = percentage >= 90 ? 'high' : percentage >= 80 ? 'medium' : 'low';
               
+              const hasActivity = currentSession.messages.some(m => 
+                m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
+              );
+              
               return (
                 <>
-                  <button className="btn-stats" onClick={() => setShowStatsModal(true)}>
+                  <button 
+                    className={`btn-stats ${!hasActivity ? 'disabled' : ''}`} 
+                    onClick={() => hasActivity && setShowStatsModal(true)}
+                    disabled={!hasActivity}
+                    title={hasActivity ? "view session stats" : "no activity yet"}
+                  >
                     stats
                   </button>
                   <button className="btn-clear-context" onClick={() => {
@@ -825,6 +836,13 @@ export const ClaudeChat: React.FC = () => {
                   <span className={`context-usage ${usageClass}`}>
                     {percentage}% used
                   </span>
+                  <button 
+                    className="btn-help" 
+                    onClick={() => setShowHelpModal(true)}
+                    title="keyboard shortcuts"
+                  >
+                    ?
+                  </button>
                 </>
               );
             })()}
@@ -850,6 +868,77 @@ export const ClaudeChat: React.FC = () => {
             <IconScissors size={14} stroke={1.5} />
             <span>copy</span>
           </button>
+        </div>
+      )}
+      
+      {/* Help Modal */}
+      {showHelpModal && (
+        <div className="help-modal-overlay" onClick={() => setShowHelpModal(false)}>
+          <div className="help-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="help-header">
+              <h3>keyboard shortcuts</h3>
+              <button className="help-close" onClick={() => setShowHelpModal(false)}>
+                <IconX size={16} />
+              </button>
+            </div>
+            <div className="help-content">
+              <div className="help-section">
+                <h4>general</h4>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">ctrl+n</span>
+                  <span className="shortcut-desc">new session</span>
+                </div>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">ctrl+o</span>
+                  <span className="shortcut-desc">open folder</span>
+                </div>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">ctrl+q</span>
+                  <span className="shortcut-desc">quit app</span>
+                </div>
+              </div>
+              
+              <div className="help-section">
+                <h4>view</h4>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">ctrl+0</span>
+                  <span className="shortcut-desc">reset zoom (100%)</span>
+                </div>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">ctrl++</span>
+                  <span className="shortcut-desc">zoom in</span>
+                </div>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">ctrl+-</span>
+                  <span className="shortcut-desc">zoom out</span>
+                </div>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">f12</span>
+                  <span className="shortcut-desc">dev tools</span>
+                </div>
+              </div>
+              
+              <div className="help-section">
+                <h4>chat</h4>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">ctrl+f</span>
+                  <span className="shortcut-desc">search messages</span>
+                </div>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">ctrl+l</span>
+                  <span className="shortcut-desc">clear context</span>
+                </div>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">enter</span>
+                  <span className="shortcut-desc">send message</span>
+                </div>
+                <div className="shortcut-item">
+                  <span className="shortcut-keys">shift+enter</span>
+                  <span className="shortcut-desc">new line</span>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
       
@@ -882,7 +971,12 @@ export const ClaudeChat: React.FC = () => {
                 <div className="stat-item">
                   <IconChartBar size={16} />
                   <div className="stat-label">cost estimate</div>
-                  <div className="stat-value">${((currentSession.analytics.tokens.total / 1000) * 0.01).toFixed(2)}</div>
+                  <div className="stat-value">
+                    ${(
+                      (currentSession.analytics.tokens.input / 1000000) * 3.00 + 
+                      (currentSession.analytics.tokens.output / 1000000) * 15.00
+                    ).toFixed(3)}
+                  </div>
                 </div>
               </div>
               <div className="token-breakdown">

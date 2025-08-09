@@ -75,7 +75,7 @@ io.on('connection', (socket) => {
   // Send a message to Claude CLI directly
   socket.on('sendMessage', async (data, callback) => {
     try {
-      const { sessionId, content } = data;
+      const { sessionId, content, model } = data;
       const session = sessions.get(sessionId);
       
       if (!session) {
@@ -125,6 +125,12 @@ io.on('connection', (socket) => {
       
       // Build arguments - same as code_service.js
       const args = ['--print', '--output-format', 'stream-json', '--verbose'];
+      
+      // Add model selection if provided
+      if (model) {
+        args.push('--model', model);
+        console.log(`🤖 Using model: ${model}`);
+      }
       
       // Add session resume if we have one for follow-up messages
       if (session.claudeSessionId) {

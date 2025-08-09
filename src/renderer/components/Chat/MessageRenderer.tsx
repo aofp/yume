@@ -261,9 +261,8 @@ const CodeBlock = ({ children, className, ...props }: any) => {
     <div className="code-block-wrapper">
       <div className="code-block-header">
         <span className="code-language">{language || 'code'}</span>
-        <button onClick={handleCopy} className="code-copy-btn">
+        <button onClick={handleCopy} className="code-copy-btn" title={copied ? 'copied!' : 'copy'}>
           {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
-          {copied ? 'copied' : 'copy'}
         </button>
       </div>
       <SyntaxHighlighter
@@ -271,9 +270,11 @@ const CodeBlock = ({ children, className, ...props }: any) => {
         style={vscDarkPlus}
         customStyle={{
           margin: 0,
-          borderRadius: '0 0 8px 8px',
+          padding: '2px',
+          border: 'none',
+          borderRadius: '2px',
           fontSize: '12px',
-          backgroundColor: '#1a1a1a'
+          backgroundColor: '#000000'
         }}
         {...props}
       >
@@ -296,6 +297,22 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               return <code className={className} {...props}>{children}</code>;
             }
             return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+          },
+          // Prevent p tags from wrapping code blocks
+          p({ children, ...props }) {
+            // Check if the only child is a code block
+            if (
+              children &&
+              Array.isArray(children) &&
+              children.length === 1 &&
+              children[0] &&
+              typeof children[0] === 'object' &&
+              'type' in children[0] &&
+              children[0].type === CodeBlock
+            ) {
+              return <>{children}</>;
+            }
+            return <p {...props}>{children}</p>;
           }
         }}
       >
@@ -541,8 +558,16 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
     const session = store.sessions.find(s => s.id === currentSessionId);
     if (!session) return;
     
+    // Find the actual index of this message in the original messages array
+    const actualIndex = session.messages.findIndex(m => 
+      (m.id && message.id && m.id === message.id) ||
+      (m === message)
+    );
+    
+    if (actualIndex === -1) return;
+    
     // Keep messages up to and including this one
-    const messages = session.messages.slice(0, index + 1);
+    const messages = session.messages.slice(0, actualIndex + 1);
     
     // Update the session with truncated messages
     useClaudeCodeStore.setState(state => ({
@@ -589,10 +614,7 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       
       return (
         <div className="message user">
-          <div className="message-bubble">
-            {displayText}
-          </div>
-          <div className="message-actions">
+          <div className="message-actions user-actions">
             {!isLast && (
               <button 
                 onClick={handleRestore} 
@@ -609,6 +631,9 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
             >
               <IconCopy size={12} stroke={1.5} />
             </button>
+          </div>
+          <div className="message-bubble">
+            {displayText}
           </div>
         </div>
       );

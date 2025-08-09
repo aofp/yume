@@ -148,16 +148,16 @@ export class ClaudeCodeClient {
     });
   }
   
-  async sendMessage(sessionId: string, content: string): Promise<void> {
+  async sendMessage(sessionId: string, content: string, model?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
         reject(new Error('Not connected to server'));
         return;
       }
 
-      console.log(`📤 Sending message to session ${sessionId}`);
+      console.log(`📤 Sending message to session ${sessionId}${model ? ` with model ${model}` : ''}`);
 
-      this.socket.emit('sendMessage', { sessionId, content }, (response: any) => {
+      this.socket.emit('sendMessage', { sessionId, content, model }, (response: any) => {
         if (response.success) {
           resolve();
         } else {

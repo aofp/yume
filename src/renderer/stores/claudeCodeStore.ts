@@ -84,7 +84,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   sessions: [],
   currentSessionId: null,
   persistedSessionId: null,
-  selectedModel: 'opus',
+  selectedModel: 'claude-opus-4-1-20250805',
   isStreaming: false,
   streamingMessage: '',
   isLoadingHistory: false,
@@ -411,8 +411,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     }));
     
     try {
-      // Send message to Claude Code Server (REAL SDK)
-      await claudeCodeClient.sendMessage(currentSessionId, content);
+      // Send message to Claude Code Server (REAL SDK) with selected model
+      const { selectedModel } = get();
+      await claudeCodeClient.sendMessage(currentSessionId, content, selectedModel);
       
       // Messages are handled by the onMessage listener
       // The streaming state will be cleared when we receive the result message
