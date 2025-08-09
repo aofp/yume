@@ -194,8 +194,9 @@
 }
 
 .tab-close:hover {
-  background: transparent !important; /* No background on hover */
-  color: var(--accent-color); /* Just brighten the color */
+  background: transparent !important;
+  color: #ff99cc !important; /* Accent color on hover */
+  opacity: 1 !important;
 }
 
 .tab-new {

@@ -138,15 +138,7 @@
 }
 
 .message.user .message-content {
-  background: rgba(var(--accent-rgb), 0.1);
-  color: #ffffff;
-  padding: 10px 14px;
-  padding-left: 0;
-  border-radius: 12px 12px 4px 12px;
   max-width: 70%;
-  font-size: 13px;
-  line-height: 1.5;
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
 }
 
 .message.assistant {
@@ -155,11 +147,7 @@
 }
 
 .message.assistant .message-content {
-  color: #a0a0a0;
   max-width: 80%;
-  font-size: 13px;
-  line-height: 1.6;
-  padding-left: 0;
 }
 
 .message-text {

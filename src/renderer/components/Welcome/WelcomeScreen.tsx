@@ -102,7 +102,7 @@ export const WelcomeScreen: React.FC = () => {
         <button 
           className="welcome-new-button"
           onClick={handleNewSession}
-          title="new session"
+          title="new session (ctrl+t)"
         >
           <IconPlus size={20} />
         </button>
@@ -113,6 +113,7 @@ export const WelcomeScreen: React.FC = () => {
           className="action-button"
           onClick={() => setShowRecentModal(true)}
           disabled={recentProjects.length === 0}
+          title="recent projects (ctrl+r)"
         >
           <span>recent: {Math.min(recentProjects.length, 10)}</span>
         </button>

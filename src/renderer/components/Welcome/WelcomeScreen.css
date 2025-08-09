@@ -50,7 +50,7 @@
   width: 40px;
   height: 40px;
   border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), 0.15);
   border: none;
   color: var(--accent-color);
   display: flex;
@@ -62,7 +62,8 @@
 }
 
 .welcome-new-button:hover {
-  background: rgba(var(--accent-rgb), 0.15);
+  background: rgba(var(--accent-rgb), 0.25);
+  color: var(--accent-color);
 }
 
 .welcome-new-button:active {

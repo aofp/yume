@@ -2,6 +2,7 @@
 :root {
   /* Accent Color - can be changed via settings */
   --accent-color: #ff99cc;
+  --accent-rgb: 255, 153, 204;
   
   /* Base Colors */
   --color-bg-primary: #000000;
