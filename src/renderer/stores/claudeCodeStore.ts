@@ -35,6 +35,7 @@ export interface Session {
   analytics?: SessionAnalytics; // Per-session analytics
   draftInput?: string; // Store draft input text
   draftAttachments?: any[]; // Store draft attachments
+  streaming?: boolean; // Track if this session is currently streaming
 }
 
 interface ClaudeCodeStore {
@@ -46,8 +47,7 @@ interface ClaudeCodeStore {
   // Model
   selectedModel: string;
   
-  // Streaming
-  isStreaming: boolean;
+  // Streaming (deprecated - now per-session)
   streamingMessage: string;
   
   // Session management
@@ -85,7 +85,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   currentSessionId: null,
   persistedSessionId: null,
   selectedModel: 'claude-opus-4-1-20250805',
-  isStreaming: false,
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],
@@ -190,7 +189,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       const cleanup = claudeCodeClient.onMessage(sessionId, (message) => {
           // Handle streaming messages by updating existing message or adding new
           set(state => {
-            const sessions = state.sessions.map(s => {
+            let sessions = state.sessions.map(s => {
               if (s.id !== sessionId) return s;
               
               const existingMessages = [...s.messages];
@@ -325,11 +324,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             if (message.type === 'assistant') {
               // Update streaming state based on the message's streaming flag
               if (message.streaming === true) {
-                return { sessions, isStreaming: true };
+                sessions = sessions.map(s => 
+                  s.id === sessionId ? { ...s, streaming: true } : s
+                );
               } else if (message.streaming === false) {
                 // Assistant message explicitly marked as not streaming
                 console.log('Assistant message finished, clearing streaming state');
-                return { sessions, isStreaming: false };
+                sessions = sessions.map(s => 
+                  s.id === sessionId ? { ...s, streaming: false } : s
+                );
               }
               // If streaming is undefined, don't change the state
             } else if (message.type === 'result') {
@@ -340,11 +343,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 result: message.result,
                 sessionMessages: sessions.find(s => s.id === sessionId)?.messages.length || 0
               });
-              return { sessions, isStreaming: false };
+              sessions = sessions.map(s => 
+                s.id === sessionId ? { ...s, streaming: false } : s
+              );
+              return { sessions };
             } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error')) {
               // Clear streaming on interruption or error
               console.log('System message received, clearing streaming state');
-              return { sessions, isStreaming: false };
+              sessions = sessions.map(s => 
+                s.id === sessionId ? { ...s, streaming: false } : s
+              );
+              return { sessions };
             } else if (message.type === 'tool_use' || message.type === 'tool_result') {
               // Don't change streaming state for tool messages
               // The streaming state should be controlled by assistant messages
@@ -404,10 +413,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     set(state => ({
       sessions: state.sessions.map(s => 
         s.id === currentSessionId 
-          ? { ...s, messages: [...s.messages, userMessage] }
+          ? { ...s, messages: [...s.messages, userMessage], streaming: true }
           : s
-      ),
-      isStreaming: true
+      )
     }));
     
     try {
@@ -434,8 +442,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 }]
               }
             : s
-        ),
-        isStreaming: false
+        )
       }));
     }
   },
@@ -541,10 +548,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           });
           
           if (message.type === 'assistant' && message.streaming) {
-            return { sessions, isStreaming: true };
+            sessions = sessions.map(s => 
+              s.id === sessionId ? { ...s, streaming: true } : s
+            );
           } else if (message.type === 'result' || 
                      (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error'))) {
-            return { sessions, isStreaming: false };
+            sessions = sessions.map(s => 
+              s.id === sessionId ? { ...s, streaming: false } : s
+            );
           }
           
           return { sessions };
@@ -615,7 +626,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     set({
       sessions: [],
       currentSessionId: null,
-      isStreaming: false,
       streamingMessage: ''
     });
   },
@@ -625,11 +635,21 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     if (currentSessionId) {
       try {
         await claudeCodeClient.interrupt(currentSessionId);
-        set({ isStreaming: false, streamingMessage: '' });
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === currentSessionId ? { ...s, streaming: false } : s
+          ),
+          streamingMessage: ''
+        }));
       } catch (error) {
         console.error('Failed to interrupt session:', error);
         // Still stop streaming indicator even if interrupt fails
-        set({ isStreaming: false, streamingMessage: '' });
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === currentSessionId ? { ...s, streaming: false } : s
+          ),
+          streamingMessage: ''
+        }));
       }
     }
   },

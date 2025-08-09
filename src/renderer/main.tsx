@@ -54,8 +54,9 @@ document.addEventListener('keydown', (e) => {
   
   // Escape - Stop streaming response
   if (e.key === 'Escape') {
-    const { isStreaming, interruptSession } = useClaudeCodeStore.getState();
-    if (isStreaming) {
+    const { sessions, currentSessionId, interruptSession } = useClaudeCodeStore.getState();
+    const currentSession = sessions.find(s => s.id === currentSessionId);
+    if (currentSession?.streaming) {
       e.preventDefault();
       console.log('Keyboard shortcut: Interrupting stream');
       interruptSession();

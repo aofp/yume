@@ -57,7 +57,6 @@ export const ClaudeCodeChat: React.FC = () => {
   const {
     sessions,
     currentSessionId,
-    isStreaming,
     streamingMessage,
     createSession,
     setCurrentSession,
@@ -87,7 +86,8 @@ export const ClaudeCodeChat: React.FC = () => {
   }, [currentSession?.messages, streamingMessage]);
 
   const handleSend = async () => {
-    if (!input.trim() || isStreaming) return;
+    const currentSession = sessions.find(s => s.id === currentSessionId);
+    if (!input.trim() || currentSession?.streaming) return;
     
     try {
       // Ensure we have a current session
@@ -516,12 +516,12 @@ export const ClaudeCodeChat: React.FC = () => {
             }
           }}
           onKeyDown={handleKeyDown}
-          disabled={isStreaming}
+          disabled={currentSession?.streaming}
           rows={3}
         />
         
         <div className="input-actions">
-          {isStreaming ? (
+          {currentSession?.streaming ? (
             <button 
               className="btn-interrupt"
               onClick={interruptSession}

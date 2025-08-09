@@ -134,9 +134,11 @@ export const WelcomeScreen: React.FC = () => {
               <button 
                 className="clear-all-icon"
                 onClick={() => {
-                  setRecentProjects([]);
-                  localStorage.removeItem('yurucode-recent-projects');
-                  setShowRecentModal(false);
+                  if (confirm('clear all recent projects?')) {
+                    setRecentProjects([]);
+                    localStorage.removeItem('yurucode-recent-projects');
+                    setShowRecentModal(false);
+                  }
                 }}
                 title="clear all"
               >

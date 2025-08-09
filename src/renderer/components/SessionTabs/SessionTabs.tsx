@@ -10,8 +10,7 @@ export const SessionTabs: React.FC = () => {
     createSession, 
     deleteSession,
     deleteAllSessions,
-    resumeSession,
-    isStreaming
+    resumeSession
   } = useClaudeCodeStore();
 
   const [showNewMenu, setShowNewMenu] = useState(false);
@@ -114,7 +113,7 @@ export const SessionTabs: React.FC = () => {
               )}
             </div>
             {/* Show loading icon for pending sessions or streaming */}
-            {(session.status === 'pending' || (currentSessionId === session.id && isStreaming)) ? (
+            {(session.status === 'pending' || session.streaming) ? (
               <div className="tab-progress">
                 <IconLoader2 className="tab-streaming-icon" size={14} />
               </div>

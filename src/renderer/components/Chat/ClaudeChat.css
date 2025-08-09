@@ -417,7 +417,7 @@
 
 .spinning-loader {
   animation: spin 1s linear infinite;
-  color: rgba(255, 153, 204, 0.5);
+  color: rgba(255, 153, 204, 1);
 }
 
 @keyframes spin {

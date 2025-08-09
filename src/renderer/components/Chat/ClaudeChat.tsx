@@ -3,6 +3,7 @@ import {
   IconSend, 
   IconPlayerStop, 
   IconFolderOpen,
+  IconTrash,
   IconBook,
   IconPencil,
   IconScissors,
@@ -132,6 +133,7 @@ export const ClaudeChat: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showRecentModal, setShowRecentModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
@@ -144,7 +146,6 @@ export const ClaudeChat: React.FC = () => {
     sessions,
     currentSessionId,
     persistedSessionId,
-    isStreaming,
     createSession,
     sendMessage,
     resumeSession,
@@ -193,6 +194,16 @@ export const ClaudeChat: React.FC = () => {
         if (currentSessionId) {
           clearContext(currentSessionId);
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault();
+        setShowRecentModal(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
+        e.preventDefault();
+        // Duplicate current tab with same directory
+        if (currentSession?.workingDirectory) {
+          const projectName = currentSession.workingDirectory.split(/[/\\]/).pop() || 'project';
+          createSession(projectName, currentSession.workingDirectory);
+        }
       } else if (e.key === '?' && !isInputField) {
         // Toggle help when pressing ? (not in input fields)
         e.preventDefault();
@@ -200,6 +211,8 @@ export const ClaudeChat: React.FC = () => {
       } else if (e.key === 'Escape') {
         if (showHelpModal) {
           setShowHelpModal(false);
+        } else if (showRecentModal) {
+          setShowRecentModal(false);
         } else if (searchVisible) {
           setSearchVisible(false);
           setSearchQuery('');
@@ -211,7 +224,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, showHelpModal]);
+  }, [searchVisible, currentSessionId, clearContext, showHelpModal, showRecentModal]);
 
   // Handle IPC event from menu for showing help modal
   useEffect(() => {
@@ -307,7 +320,7 @@ export const ClaudeChat: React.FC = () => {
   }, [input, attachments, currentSessionId, updateSessionDraft]);
 
   const handleSend = async () => {
-    if ((!input.trim() && attachments.length === 0) || isStreaming) return;
+    if ((!input.trim() && attachments.length === 0) || currentSession?.streaming) return;
     
     // Check for slash commands and special inputs
     const trimmedInput = input.trim();
@@ -751,7 +764,7 @@ export const ClaudeChat: React.FC = () => {
           });
         })()}
         {/* Show thinking indicator immediately when streaming starts */}
-        {isStreaming && currentSession.messages.filter(m => m.type === 'assistant' && m.streaming).length === 0 && (
+        {currentSession?.streaming && currentSession.messages.filter(m => m.type === 'assistant' && m.streaming).length === 0 && (
           <div className="message assistant">
             <div className="message-content">
               <div className="thinking-indicator-bottom">
@@ -902,6 +915,91 @@ export const ClaudeChat: React.FC = () => {
         </div>
       )}
       
+      {/* Recent Projects Modal */}
+      {showRecentModal && (
+        <div 
+          className="recent-modal-overlay"
+          onClick={() => setShowRecentModal(false)}
+        >
+          <div 
+            className="recent-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <span className="modal-title">recent projects</span>
+              <button 
+                className="clear-all-icon"
+                onClick={() => {
+                  if (confirm('clear all recent projects?')) {
+                    localStorage.removeItem('yurucode-recent-projects');
+                    setShowRecentModal(false);
+                  }
+                }}
+                title="clear all"
+              >
+                <IconTrash size={14} />
+              </button>
+            </div>
+            
+            <div className="modal-content">
+              {(() => {
+                const stored = localStorage.getItem('yurucode-recent-projects');
+                if (!stored) {
+                  return <div className="no-recent">no recent projects</div>;
+                }
+                try {
+                  const projects = JSON.parse(stored).map((p: any) => ({
+                    ...p,
+                    lastOpened: new Date(p.lastOpened)
+                  }));
+                  
+                  if (projects.length === 0) {
+                    return <div className="no-recent">no recent projects</div>;
+                  }
+                  
+                  return projects.slice(0, 10).map((project: any) => (
+                    <div key={project.path} className="recent-item-container">
+                      <button
+                        className="recent-item"
+                        onClick={() => {
+                          createSession(project.name, project.path);
+                          setShowRecentModal(false);
+                        }}
+                      >
+                        <IconFolderOpen size={14} />
+                        <div className="recent-item-info">
+                          <div className="recent-item-name">{project.name}</div>
+                          <div className="recent-item-path">{project.path}</div>
+                        </div>
+                      </button>
+                      <button
+                        className="recent-item-remove"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          const updated = projects.filter((p: any) => p.path !== project.path);
+                          localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+                          if (updated.length === 0) {
+                            setShowRecentModal(false);
+                          }
+                          // Force re-render by closing and reopening
+                          setShowRecentModal(false);
+                          setTimeout(() => setShowRecentModal(true), 0);
+                        }}
+                        title="remove from recent"
+                      >
+                        <IconX size={12} />
+                      </button>
+                    </div>
+                  ));
+                } catch (e) {
+                  return <div className="no-recent">no recent projects</div>;
+                }
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Help Modal */}
       {showHelpModal && (
         <div className="help-modal-overlay" onClick={() => setShowHelpModal(false)}>
@@ -923,6 +1021,15 @@ export const ClaudeChat: React.FC = () => {
                   </div>
                   <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">new tab</span>
+                </div>
+                <div className="shortcut-item">
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">d</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
+                  <span className="shortcut-desc">duplicate tab</span>
                 </div>
                 <div className="shortcut-item">
                   <div className="shortcut-keys">
