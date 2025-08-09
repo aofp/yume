@@ -214,11 +214,25 @@ async function startServer() {
   serverPort = 3001;
   
   serverProcess.stdout?.on('data', (data) => {
-    console.log('[Server]:', data.toString());
+    const output = data.toString();
+    console.log('[Server]:', output);
+    // Send server logs to renderer for debugging
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.executeJavaScript(`
+        console.log('[Server]:', ${JSON.stringify(output)});
+      `).catch(() => {});
+    }
   });
   
   serverProcess.stderr?.on('data', (data) => {
-    console.error('[Server Error]:', data.toString());
+    const error = data.toString();
+    console.error('[Server Error]:', error);
+    // Send server errors to renderer for debugging
+    if (mainWindow && mainWindow.webContents) {
+      mainWindow.webContents.executeJavaScript(`
+        console.error('[Server Error]:', ${JSON.stringify(error)});
+      `).catch(() => {});
+    }
   });
   
   serverProcess.on('error', (err) => {

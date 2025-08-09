@@ -168,21 +168,30 @@ io.on('connection', (socket) => {
         // On Windows, run through WSL
         if (process.platform === 'win32') {
           console.log('🪟 Windows detected - running claude through WSL');
+          console.log('Working directory (Windows):', workingDirectory);
           console.log('Working directory (WSL format):', workingDir);
           
-          // Build the command for WSL - use default distro
-          // Run claude directly without specifying distro (uses default)
-          const wslArgs = ['--cd', workingDir, '--', 'claude', ...args];
+          // CRITICAL: For Windows packaged app, we need to use the simplest form
+          // Just run claude in WSL without any fancy flags
+          // The --cd flag doesn't work reliably in all WSL versions
+          const wslArgs = ['claude', ...args];
           
           console.log('WSL command:', 'wsl.exe', wslArgs.join(' '));
+          console.log('Full args array:', wslArgs);
           
+          // Use the Windows working directory for spawn, not the WSL path
           child = spawn('wsl.exe', wslArgs, {
-            // Don't set cwd for WSL - it will use the --cd flag
+            cwd: workingDirectory, // Use original Windows path
             env: process.env,
             stdio: ['pipe', 'pipe', 'pipe'],
             shell: false,
             windowsHide: true
           });
+          
+          // Immediately check if process started
+          if (!child || !child.pid) {
+            throw new Error('Failed to spawn WSL process');
+          }
         } else {
           child = spawn(claudePath, args, {
             cwd: workingDir,
