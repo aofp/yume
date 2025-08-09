@@ -438,6 +438,7 @@
   display: flex;
   gap: 8px;
   align-items: flex-end;
+  width: 100%;
 }
 
 .chat-input-container.dragging {
@@ -461,10 +462,11 @@
   background: #000000;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
-  padding: 8px 12px;
-  border-radius: 8px;
+  padding: 1px 5px;
+  border-radius: 4px;
   font-size: 12px;
-  line-height: 1.5;
+  line-height: 18px;
+  min-height: 54px; /* 3 lines * 18px line-height */
   resize: none;
   transition: all 0.2s ease;
   font-family: -apple-system, BlinkMacSystemFont, sans-serif;
@@ -487,22 +489,16 @@
   color: #606060;
 }
 
-/* Button container */
-.input-buttons {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
 
 /* Send/Stop buttons */
 .btn-send {
-  background: rgba(255, 153, 204, 0.08);
-  border: none;
-  color: rgba(255, 153, 204, 0.7);
+  background: rgba(255, 153, 204, 0.15) !important;
+  border: 1px solid rgba(255, 153, 204, 0.3) !important;
+  color: rgba(255, 153, 204, 0.9) !important;
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  display: flex;
+  display: flex !important;
   align-items: center;
   justify-content: center;
   cursor: default;

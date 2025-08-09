@@ -213,11 +213,13 @@ export class ClaudeCodeClient {
         return;
       }
       
-      this.socket.emit('clearSession', { sessionId }, (response: any) => {
-        if (response.success) {
+      console.log(`🧹 [CLIENT] Sending clearContext for session ${sessionId}`);
+      this.socket.emit('clearContext', { sessionId }, (response: any) => {
+        console.log(`🧹 [CLIENT] clearContext response:`, response);
+        if (response?.success) {
           resolve();
         } else {
-          reject(new Error(response.error));
+          reject(new Error(response?.error || 'Clear context failed'));
         }
       });
     });

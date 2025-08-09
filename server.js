@@ -836,6 +836,24 @@ io.on('connection', (socket) => {
     }
   });
 
+  // Handle clear context request
+  socket.on('clearContext', (data, callback) => {
+    const sessionId = data?.sessionId || data;
+    console.log(`🧹 Clear context requested for session ${sessionId}`);
+    
+    // Clear the Claude session ID so next message starts fresh
+    claudeSessionIds.delete(sessionId);
+    
+    // Clear message queue
+    messageQueues.delete(sessionId);
+    
+    console.log(`✨ Context cleared for session ${sessionId} - next message will start fresh`);
+    
+    if (callback) {
+      callback({ success: true });
+    }
+  });
+
   // Handle interrupt/stop request
   socket.on('interrupt', (data, callback) => {
     const sessionId = data?.sessionId || data;

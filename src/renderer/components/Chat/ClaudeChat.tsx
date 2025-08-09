@@ -176,9 +176,15 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.messages]);
 
-  // Handle Ctrl+F for search, Ctrl+L for clear, and Ctrl+? for help
+  // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || 
+                           target.tagName === 'TEXTAREA' || 
+                           target.contentEditable === 'true';
+      
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         setSearchVisible(true);
@@ -187,20 +193,25 @@ export const ClaudeChat: React.FC = () => {
         if (currentSessionId) {
           clearContext(currentSessionId);
         }
-      } else if ((e.ctrlKey || e.metaKey) && (e.key === '?' || (e.shiftKey && e.key === '/'))) {
+      } else if (e.key === '?' && !isInputField) {
+        // Toggle help when pressing ? (not in input fields)
         e.preventDefault();
-        setShowHelpModal(true);
-      } else if (e.key === 'Escape' && searchVisible) {
-        setSearchVisible(false);
-        setSearchQuery('');
-        setSearchMatches([]);
-        setSearchIndex(0);
+        setShowHelpModal(prev => !prev);
+      } else if (e.key === 'Escape') {
+        if (showHelpModal) {
+          setShowHelpModal(false);
+        } else if (searchVisible) {
+          setSearchVisible(false);
+          setSearchQuery('');
+          setSearchMatches([]);
+          setSearchIndex(0);
+        }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext]);
+  }, [searchVisible, currentSessionId, clearContext, showHelpModal]);
 
   // Handle IPC event from menu for showing help modal
   useEffect(() => {
@@ -364,12 +375,14 @@ export const ClaudeChat: React.FC = () => {
     // Handle text paste - only create attachment if it's substantial text (not just a few chars)
     if (text && text.length > 50 && !text.startsWith('http')) {
       e.preventDefault();
+      const lines = text.split('\n').length;
+      const bytes = new Blob([text]).size;
       const newAttachment: Attachment = {
         id: Math.random().toString(36).substr(2, 9),
         type: 'text',
         name: `text_${Date.now()}.txt`,
         content: text,
-        preview: text.substring(0, 100) + (text.length > 100 ? '...' : '')
+        preview: `${lines} lines, ${bytes.toLocaleString()} bytes`
       };
       setAttachments(prev => [...prev, newAttachment]);
       return;
@@ -484,13 +497,15 @@ export const ClaudeChat: React.FC = () => {
         const reader = new FileReader();
         reader.onload = (event) => {
           const text = event.target?.result as string;
+          const lines = text.split('\n').length;
+          const bytes = file.size;
           const newAttachment: Attachment = {
             id: Math.random().toString(36).substr(2, 9),
             type: 'text',
             name: file.name,
             size: file.size,
             content: text,
-            preview: text.substring(0, 100) + (text.length > 100 ? '...' : '')
+            preview: `${lines} lines, ${bytes.toLocaleString()} bytes`
           };
           setAttachments(prev => [...prev, newAttachment]);
         };
@@ -507,24 +522,22 @@ export const ClaudeChat: React.FC = () => {
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     setInput(e.target.value);
     
-    // Auto-resize logic
+    // Simple auto-resize without jumps
     const textarea = e.target;
-    const lineHeight = 18;
-    const minLines = 3;
-    const maxLines = 8;
-    const minHeight = lineHeight * minLines;
-    const maxHeight = lineHeight * maxLines;
+    const minHeight = 54; // 3 lines * 18px
+    const maxHeight = 144; // 8 lines * 18px
     
-    textarea.style.height = 'auto';
-    const scrollHeight = textarea.scrollHeight;
+    // Just use scrollHeight directly - it works fine when min-height is set in CSS
+    const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
     
-    if (scrollHeight <= maxHeight) {
-      textarea.style.height = Math.max(scrollHeight, minHeight) + 'px';
-      textarea.style.overflow = 'hidden';
-    } else {
-      textarea.style.height = maxHeight + 'px';
-      textarea.style.overflow = 'auto';
+    // Only update height if it actually changed
+    const currentHeight = parseInt(textarea.style.height) || minHeight;
+    if (newHeight !== currentHeight) {
+      textarea.style.height = newHeight + 'px';
     }
+    
+    // Show scrollbar only when content exceeds max height
+    textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
   };
 
   // Handle right-click context menu
@@ -564,7 +577,6 @@ export const ClaudeChat: React.FC = () => {
   return (
     <div 
       className="chat-container" 
-      key={currentSessionId}
       ref={chatContainerRef}
       onContextMenu={handleContextMenu}
     >
@@ -758,7 +770,7 @@ export const ClaudeChat: React.FC = () => {
                     <>
                       <div className="attachment-preview-text">
                         <div className="text-preview">
-                          {att.content.substring(0, 20)}{att.content.length > 20 ? '...' : ''}
+                          {att.preview}
                         </div>
                       </div>
                       <span className="attachment-label">text</span>
@@ -794,28 +806,8 @@ export const ClaudeChat: React.FC = () => {
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             disabled={false}
-            rows={3}
-            style={{ minHeight: '54px', maxHeight: '144px', overflow: 'hidden' }}
+            style={{ height: '54px' }}
           />
-          
-          <div className="input-buttons">
-            <button 
-              className={`btn-stop ${!isStreaming ? 'disabled' : ''}`}
-              onClick={interruptSession}
-              disabled={!isStreaming}
-              title={isStreaming ? "stop generation" : "no active task"}
-            >
-                <IconPlayerStop size={18} stroke={1.5} />
-            </button>
-            <button 
-              className="btn-send"
-              onClick={handleSend}
-              disabled={!input.trim() && attachments.length === 0}
-              title="send message"
-            >
-                <IconSend size={20} stroke={1.5} />
-            </button>
-          </div>
         </div>
         
         {/* Context info bar */}
@@ -1031,25 +1023,17 @@ export const ClaudeChat: React.FC = () => {
       )}
       
       {showStatsModal && currentSession?.analytics && (
-        <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
-          <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="stats-header">
+        <div className="help-modal-overlay" onClick={() => setShowStatsModal(false)}>
+          <div className="help-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="help-header">
               <h3>session analytics</h3>
-              <button className="stats-close" onClick={() => setShowStatsModal(false)}>
+              <button className="help-close" onClick={() => setShowStatsModal(false)}>
                 <IconX size={16} />
               </button>
             </div>
-            <div className="stats-content">
-              <div className="stats-section">
+            <div className="help-content">
+              <div className="help-section">
                 <h4>usage</h4>
-                <div className="stat-row">
-                  <div className="stat-keys">
-                    <IconChartBar size={14} />
-                    <span className="stat-name">total tokens</span>
-                  </div>
-                  <span className="stat-dots"></span>
-                  <span className="stat-desc">{currentSession.analytics.tokens.total.toLocaleString()}</span>
-                </div>
                 <div className="stat-row">
                   <div className="stat-keys">
                     <IconSend size={14} />
@@ -1066,9 +1050,17 @@ export const ClaudeChat: React.FC = () => {
                   <span className="stat-dots"></span>
                   <span className="stat-desc">{currentSession.analytics.toolUses}</span>
                 </div>
+                <div className="stat-row">
+                  <div className="stat-keys">
+                    <IconChartBar size={14} />
+                    <span className="stat-name">total tokens</span>
+                  </div>
+                  <span className="stat-dots"></span>
+                  <span className="stat-desc">{currentSession.analytics.tokens.total.toLocaleString()}</span>
+                </div>
               </div>
               
-              <div className="stats-section">
+              <div className="help-section">
                 <h4>cost</h4>
                 <div className="stat-row">
                   <div className="stat-keys">
@@ -1085,21 +1077,25 @@ export const ClaudeChat: React.FC = () => {
                 </div>
               </div>
               
-              <div className="stats-section">
+              <div className="help-section">
                 <h4>token breakdown</h4>
                 <div className="stat-row">
                   <div className="stat-keys">
                     <span className="stat-name">input</span>
                   </div>
                   <span className="stat-dots"></span>
-                  <span className="stat-desc">{currentSession.analytics.tokens.input.toLocaleString()}</span>
+                  <span className="stat-desc">
+                    {currentSession.analytics.tokens.input.toLocaleString()} ({Math.round((currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100)}%)
+                  </span>
                 </div>
                 <div className="stat-row">
                   <div className="stat-keys">
                     <span className="stat-name">output</span>
                   </div>
                   <span className="stat-dots"></span>
-                  <span className="stat-desc">{currentSession.analytics.tokens.output.toLocaleString()}</span>
+                  <span className="stat-desc">
+                    {currentSession.analytics.tokens.output.toLocaleString()} ({Math.round((currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100)}%)
+                  </span>
                 </div>
                 <div className="breakdown-bar">
                   <div 

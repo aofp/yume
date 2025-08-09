@@ -635,7 +635,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   },
   
   clearContext: (sessionId: string) => {
-    // Clear local messages
+    // Clear local messages and reset analytics
     set(state => ({
       sessions: state.sessions.map(s => 
         s.id === sessionId 
@@ -645,19 +645,21 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 // Keep only the initial system message
                 ...s.messages.filter(m => m.type === 'system' && m.subtype === 'init').slice(0, 1)
               ],
+              analytics: {
+                tokens: { input: 0, output: 0, total: 0 },
+                totalMessages: 0,
+                toolUses: 0
+              },
               updatedAt: new Date()
             }
           : s
       )
     }));
     
-    // Notify server to clear the Claude session
-    const client = get().claudeClient;
-    if (client) {
-      client.clearSession(sessionId).catch(error => {
-        console.error('Failed to clear server session:', error);
-      });
-    }
+    // Notify server to clear the Claude session - use the imported singleton
+    claudeCodeClient.clearSession(sessionId).catch(error => {
+      console.error('Failed to clear server session:', error);
+    });
   },
   
   updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => {

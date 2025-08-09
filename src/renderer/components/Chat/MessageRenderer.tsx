@@ -928,11 +928,41 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         // Show elapsed time for successful completion
         const elapsedMs = message.duration_ms || message.message?.duration_ms || message.duration || 0;
         const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+        const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
+        
+        // Count tool uses in the current conversation turn only
+        // Look back through messages to count tool_use messages since the last user message
+        const currentIndex = sessionMessages.findIndex(m => m === message);
+        let toolCount = 0;
+        if (currentIndex > 0) {
+          // Go backwards from result to find tool uses in this turn
+          for (let i = currentIndex - 1; i >= 0; i--) {
+            const msg = sessionMessages[i];
+            if (msg.type === 'user') {
+              // Stop at the user message that triggered this response
+              break;
+            }
+            if (msg.type === 'tool_use' || 
+                (msg.type === 'assistant' && msg.message?.content && Array.isArray(msg.message.content))) {
+              // Count tool_use messages or assistant messages with tool_use content blocks
+              if (msg.type === 'tool_use') {
+                toolCount++;
+              } else if (msg.message?.content) {
+                const content = msg.message.content;
+                if (Array.isArray(content)) {
+                  toolCount += content.filter(block => block.type === 'tool_use').length;
+                }
+              }
+            }
+          }
+        }
         
         return (
           <div className="message result-success">
             <div className="elapsed-time">
               {elapsedSeconds}s
+              {totalTokens > 0 && ` • ${totalTokens.toLocaleString()}t`}
+              {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
             </div>
           </div>
         );
