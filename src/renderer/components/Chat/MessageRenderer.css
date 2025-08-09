@@ -2,16 +2,16 @@
 
 .message {
   position: relative;
-  margin-bottom: 12px;
+  margin-bottom: 0;
   animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Message hover actions */
 .message-actions {
   display: flex;
-  flex-direction: column;
+  flex-direction: row;
   gap: 4px;
-  opacity: 0.4;
+  opacity: 0;
   transition: opacity 0.2s ease;
   margin-left: 8px;
   align-self: flex-end;
@@ -25,20 +25,22 @@
 
 .action-btn {
   padding: 4px;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(255, 255, 255, 0.03);
   border: none;
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.5);
   cursor: default;
   transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  min-width: 24px;
+  height: 24px;
 }
 
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 153, 204, 0.7);
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 153, 204, 0.9);
 }
 
 .message:hover .message-actions {
@@ -97,7 +99,7 @@
 
 /* User Messages */
 .message.user {
-  margin-bottom: 16px;
+  margin-bottom: 4px;
   display: flex;
   flex-direction: row;
   justify-content: flex-end;
@@ -117,7 +119,7 @@
 
 /* Assistant Messages */
 .message.assistant {
-  margin-bottom: 16px;
+  margin-bottom: 4px;
   display: flex;
   flex-direction: row;
   align-items: flex-end;
@@ -135,7 +137,7 @@
 }
 
 .markdown-content p {
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
 }
 
 .markdown-content p:last-child {
@@ -155,8 +157,8 @@
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 153, 153, 0.1);
   border-radius: 8px;
-  padding: 12px;
-  margin: 12px 0;
+  padding: 8px;
+  margin: 6px 0;
   overflow-x: auto;
 }
 
@@ -260,7 +262,7 @@ ol {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 5px 12px;
+  padding: 3px 10px;
   background: rgba(255, 255, 255, 0.02);
   border: none;
   border-radius: 16px;
@@ -272,7 +274,7 @@ ol {
 
 /* Standalone tool messages */
 .tool-message, .tool-result-message {
-  padding: 8px 12px;
+  padding: 2px 12px;
   margin: 0;
 }
 
@@ -281,15 +283,15 @@ ol {
   width: 100%;
   background: rgba(255, 153, 204, 0.05);
   border: none;
-  padding: 8px 12px;
+  padding: 4px 12px;
 }
 
 .tool-result.standalone {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
-  padding: 12px;
-  margin-top: 4px;
+  padding: 8px;
+  margin-top: 2px;
 }
 
 .tool-result.standalone .result-content {
@@ -323,7 +325,7 @@ ol {
   color: rgba(255, 255, 255, 0.9);
   font-family: 'Fira Code', monospace;
   font-size: 11px;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
   line-height: 1.4;
   font-weight: 500;
 }
@@ -409,7 +411,7 @@ ol {
 }
 
 .diff-section.removed {
-  margin-bottom: 4px;
+  margin-bottom: 2px;
 }
 
 .edit-diff .diff-line {
@@ -480,7 +482,7 @@ ol {
 }
 
 .tool-detail {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.95);
   font-family: 'SF Mono', Monaco, monospace;
   font-size: 10px;
   opacity: 1;
@@ -495,7 +497,7 @@ ol {
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 10px;
+  padding: 2px 8px;
   border-radius: 8px;
   font-size: 11px;
   margin: 4px 0;
@@ -528,10 +530,11 @@ ol {
 
 /* Read output styling */
 .tool-result.read-output {
+  display: block !important;
   background: transparent;
   border: none;
   padding: 0;
-  margin: 4px 0;
+  margin: 2px 0;
 }
 
 .read-content {
@@ -541,6 +544,34 @@ ol {
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* Search output styling */
+.tool-result.search-output {
+  display: block !important;
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 2px 0;
+}
+
+.search-content {
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.read-more, .search-more {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  color: rgba(255, 153, 153, 0.4);
+  font-family: 'Fira Code', monospace;
+  cursor: default;
+  opacity: 0.8;
 }
 
 .result-icon {
@@ -587,7 +618,7 @@ ol {
 }
 
 .result-summary {
-  margin-top: 8px;
+  margin-top: 4px;
   padding: 8px 12px;
   background: rgba(255, 153, 204, 0.05);
   border-radius: 8px;
@@ -604,7 +635,7 @@ ol {
   background: rgba(255, 153, 153, 0.05);
   border: none;
   border-radius: 8px;
-  margin: 8px 0;
+  margin: 4px 0;
 }
 
 .permission-icon {
@@ -702,8 +733,8 @@ ol {
   background: rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 153, 153, 0.1);
   border-radius: 8px;
-  padding: 8px;
-  margin: 8px 0;
+  padding: 6px;
+  margin: 2px 0;
   max-width: 100%;
   overflow-x: auto;
 }
@@ -727,16 +758,22 @@ ol {
   align-items: stretch;
   background: rgba(255, 255, 255, 0.02);
   border: none;
-  padding: 10px;
+  padding: 6px;
   border-radius: 8px;
+}
+
+.tool-use.todo-write.standalone {
+  width: 100%;
+  background: transparent;
+  padding: 4px 0;
 }
 
 .todo-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 8px;
-  padding-bottom: 6px;
+  margin-bottom: 4px;
+  padding-bottom: 4px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.05);
 }
 
@@ -748,6 +785,8 @@ ol {
   display: flex;
   flex-direction: column;
   gap: 2px;
+  margin-top: 4px;
+  padding-left: 20px;
 }
 
 .todo-item {
@@ -763,36 +802,44 @@ ol {
 
 .todo-icon {
   flex-shrink: 0;
-  opacity: 0.6;
 }
 
 .todo-icon.completed {
-  color: rgba(255, 230, 153, 0.8);
+  color: #98d8a5; /* Pastel green */
 }
 
 .todo-icon.progress {
-  color: rgba(255, 230, 153, 0.6);
+  color: #ffcc99; /* Pastel orange */
 }
 
 .todo-icon.pending {
-  color: rgba(255, 230, 153, 0.3);
+  color: #b3b3cc; /* Pastel grey-blue */
 }
 
 .todo-item.completed {
-  opacity: 0.5;
+  opacity: 0.8;
 }
 
 .todo-item.completed .todo-content {
   text-decoration: line-through;
-  opacity: 0.6;
+  color: #98d8a5; /* Pastel green */
+  opacity: 0.8;
 }
 
 .todo-item.in_progress {
-  background: rgba(255, 153, 204, 0.03);
+  background: rgba(255, 204, 153, 0.05);
+}
+
+.todo-item.in_progress .todo-content {
+  color: #ffcc99; /* Pastel orange */
 }
 
 .todo-item.pending {
-  opacity: 0.7;
+  opacity: 0.9;
+}
+
+.todo-item.pending .todo-content {
+  color: #b3b3cc; /* Pastel grey-blue */
 }
 
 .todo-content {
@@ -808,7 +855,7 @@ ol {
 }
 
 .tool-use.todo-write .tool-detail {
-  color: #606060;
+  color: rgba(255, 255, 255, 0.8);
   font-size: 10px;
-  opacity: 0.6;
+  opacity: 1;
 }

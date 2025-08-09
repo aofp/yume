@@ -129,6 +129,10 @@ export const ClaudeChat: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchVisible, setSearchVisible] = useState(false);
+  const [searchIndex, setSearchIndex] = useState(0);
+  const [searchMatches, setSearchMatches] = useState<number[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -158,11 +162,93 @@ export const ClaudeChat: React.FC = () => {
   // NO auto-selection - user must explicitly choose or create a session
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Only autoscroll if user is already at the bottom
+    if (chatContainerRef.current) {
+      const container = chatContainerRef.current;
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      
+      if (isAtBottom) {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }
+    }
   }, [currentSession?.messages]);
+
+  // Handle Ctrl+F for search and Ctrl+L for clear
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setSearchVisible(true);
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
+        e.preventDefault();
+        if (currentSessionId) {
+          clearContext(currentSessionId);
+        }
+      } else if (e.key === 'Escape' && searchVisible) {
+        setSearchVisible(false);
+        setSearchQuery('');
+        setSearchMatches([]);
+        setSearchIndex(0);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [searchVisible, currentSessionId, clearContext]);
+
+  // Search functionality
+  useEffect(() => {
+    if (!searchQuery || !currentSession) {
+      setSearchMatches([]);
+      setSearchIndex(0);
+      return;
+    }
+
+    const matches: number[] = [];
+    currentSession.messages.forEach((msg, idx) => {
+      let content = '';
+      if (msg.message?.content) {
+        if (typeof msg.message.content === 'string') {
+          content = msg.message.content;
+        } else if (Array.isArray(msg.message.content)) {
+          content = msg.message.content
+            .filter((b: any) => b.type === 'text' && b.text)
+            .map((b: any) => b.text)
+            .join(' ');
+        }
+      }
+      if (content.toLowerCase().includes(searchQuery.toLowerCase())) {
+        matches.push(idx);
+      }
+    });
+    setSearchMatches(matches);
+    setSearchIndex(0);
+
+    // Scroll to first match
+    if (matches.length > 0) {
+      const element = document.querySelector(`[data-message-index="${matches[0]}"]`);
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  }, [searchQuery, currentSession]);
+
+  const navigateSearch = (direction: 'next' | 'prev') => {
+    if (searchMatches.length === 0) return;
+    
+    let newIndex = searchIndex;
+    if (direction === 'next') {
+      newIndex = (searchIndex + 1) % searchMatches.length;
+    } else {
+      newIndex = searchIndex === 0 ? searchMatches.length - 1 : searchIndex - 1;
+    }
+    
+    setSearchIndex(newIndex);
+    const element = document.querySelector(`[data-message-index="${searchMatches[newIndex]}"]`);
+    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  };
 
   useEffect(() => {
     // Load draft input and attachments when session changes
+    // Only trigger on sessionId change, not on session updates (to avoid losing text during streaming)
     inputRef.current?.focus();
     if (currentSession) {
       setInput(currentSession.draftInput || '');
@@ -171,7 +257,7 @@ export const ClaudeChat: React.FC = () => {
       setInput('');
       setAttachments([]);
     }
-  }, [currentSessionId, currentSession]);
+  }, [currentSessionId]); // Removed currentSession to prevent resets during streaming
 
   // Save drafts when input or attachments change
   useEffect(() => {
@@ -456,6 +542,51 @@ export const ClaudeChat: React.FC = () => {
       ref={chatContainerRef}
       onContextMenu={handleContextMenu}
     >
+      {/* Search bar */}
+      {searchVisible && (
+        <div className="search-bar">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="search messages..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            autoFocus
+          />
+          <div className="search-controls">
+            {searchMatches.length > 0 && (
+              <span className="search-count">
+                {searchIndex + 1} / {searchMatches.length}
+              </span>
+            )}
+            <button 
+              className="search-btn" 
+              onClick={() => navigateSearch('prev')}
+              disabled={searchMatches.length === 0}
+            >
+              ↑
+            </button>
+            <button 
+              className="search-btn" 
+              onClick={() => navigateSearch('next')}
+              disabled={searchMatches.length === 0}
+            >
+              ↓
+            </button>
+            <button 
+              className="search-btn close" 
+              onClick={() => {
+                setSearchVisible(false);
+                setSearchQuery('');
+                setSearchMatches([]);
+                setSearchIndex(0);
+              }}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
       <div className="chat-messages">
         {(() => {
           const processedMessages = currentSession.messages
@@ -554,14 +685,22 @@ export const ClaudeChat: React.FC = () => {
             }, [] as typeof currentSession.messages);
           
           const filteredMessages = processedMessages;
-          return filteredMessages.map((message, idx) => (
-            <MessageRenderer 
-              key={`${message.id || message.type}-${idx}`} 
-              message={message} 
-              index={idx}
-              isLast={idx === filteredMessages.length - 1}
-            />
-          ));
+          return filteredMessages.map((message, idx) => {
+            const isHighlighted = searchMatches.includes(idx) && searchMatches[searchIndex] === idx;
+            return (
+              <div 
+                key={`${message.id || message.type}-${idx}`}
+                data-message-index={idx}
+                className={isHighlighted ? 'message-highlighted' : ''}
+              >
+                <MessageRenderer 
+                  message={message} 
+                  index={idx}
+                  isLast={idx === filteredMessages.length - 1}
+                />
+              </div>
+            );
+          });
         })()}
         <div ref={messagesEndRef} />
       </div>
@@ -586,7 +725,9 @@ export const ClaudeChat: React.FC = () => {
                   ) : att.type === 'text' ? (
                     <>
                       <div className="attachment-preview-text">
-                        <IconFileText size={20} stroke={1.5} />
+                        <div className="text-preview">
+                          {att.content.substring(0, 20)}{att.content.length > 20 ? '...' : ''}
+                        </div>
                       </div>
                       <span className="attachment-label">text</span>
                     </>
@@ -606,7 +747,7 @@ export const ClaudeChat: React.FC = () => {
                 >
                   <IconX size={12} stroke={2} />
                 </button>
-                <span className="image-name">{att.name.substring(0, 10)}...</span>
+                {att.type !== 'text' && <span className="image-name">{att.name.substring(0, 10)}...</span>}
               </div>
             ))}
           </div>

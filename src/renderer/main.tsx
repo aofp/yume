@@ -237,10 +237,20 @@ function showKeyboardShortcutsHelp() {
           <span style="flex: 1; border-bottom: 1px dotted rgba(255, 255, 255, 0.15); margin: 0 8px 2px 8px;"></span>
           <span>shift+enter</span>
         </div>
-        <div style="display: flex; align-items: center;">
+        <div style="display: flex; align-items: center; margin-bottom: 4px;">
           <span style="color: rgba(255, 255, 255, 0.6);">stop</span>
           <span style="flex: 1; border-bottom: 1px dotted rgba(255, 255, 255, 0.15); margin: 0 8px 2px 8px;"></span>
           <span>esc</span>
+        </div>
+        <div style="display: flex; align-items: center; margin-bottom: 4px;">
+          <span style="color: rgba(255, 255, 255, 0.6);">clear context</span>
+          <span style="flex: 1; border-bottom: 1px dotted rgba(255, 255, 255, 0.15); margin: 0 8px 2px 8px;"></span>
+          <span>ctrl+l</span>
+        </div>
+        <div style="display: flex; align-items: center;">
+          <span style="color: rgba(255, 255, 255, 0.6);">search</span>
+          <span style="flex: 1; border-bottom: 1px dotted rgba(255, 255, 255, 0.15); margin: 0 8px 2px 8px;"></span>
+          <span>ctrl+f</span>
         </div>
       </div>
       

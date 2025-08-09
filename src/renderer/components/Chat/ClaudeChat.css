@@ -25,7 +25,7 @@
   font-size: 28px;
   font-weight: 200;
   color: rgba(255, 153, 204, 0.6);
-  margin-bottom: 12px;
+  margin-bottom: 6px;
   letter-spacing: 0.05em;
   text-transform: lowercase;
   user-select: none;
@@ -33,7 +33,7 @@
 
 .empty-content p {
   color: rgba(255, 255, 255, 0.3);
-  margin-bottom: 24px;
+  margin-bottom: 12px;
   font-size: 12px;
   text-transform: lowercase;
   user-select: none;
@@ -117,7 +117,7 @@
 }
 
 .message {
-  margin-bottom: 16px;
+  margin-bottom: 0;
   animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -719,7 +719,7 @@
 /* New Attachments System */
 .attachments-container {
   position: absolute;
-  bottom: 76px;
+  bottom: 116px;
   right: 12px;
   display: flex;
   gap: 6px;
@@ -787,6 +787,17 @@
   background: rgba(255, 153, 204, 0.1);
   border-radius: 4px;
   color: rgba(255, 153, 204, 0.7);
+  overflow: hidden;
+}
+
+.text-preview {
+  font-size: 6px;
+  line-height: 1.2;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: center;
+  word-break: break-all;
+  padding: 2px;
+  max-width: 100%;
 }
 
 .attachment-label {

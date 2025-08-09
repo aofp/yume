@@ -25,7 +25,7 @@
 
 .model-selector-dropdown {
   position: absolute;
-  bottom: calc(100% + 4px);
+  bottom: calc(100% - 2px);
   left: 0;
   min-width: 140px;
   background: #0a0a0a;

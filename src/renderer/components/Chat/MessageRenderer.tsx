@@ -147,6 +147,23 @@ const TOOL_DISPLAYS: Record<string, (input: any) => { icon: string; action: stri
   })
 };
 
+// Helper function to detect and format MCP tools
+const getMCPToolDisplay = (toolName: string, input: any) => {
+  // MCP tools follow pattern: mcp__<server>__<tool>
+  if (toolName.startsWith('mcp__')) {
+    const parts = toolName.split('__');
+    const server = parts[1] || 'server';
+    const tool = parts[2] || 'tool';
+    
+    return {
+      icon: '',
+      action: `mcp: ${tool.replace(/_/g, ' ')}`,
+      detail: `${server} • ${JSON.stringify(input).substring(0, 50)}...`
+    };
+  }
+  return null;
+};
+
 // Helper functions
 const formatPath = (path?: string) => {
   if (!path) return '';
@@ -270,7 +287,8 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           };
           
           // Special rendering for TodoWrite
-          if (block.name === 'TodoWrite' && display.todos) {
+          if (block.name === 'TodoWrite' && block.input?.todos) {
+            const todos = block.input.todos || [];
             return (
               <div key={idx} className="tool-use todo-write">
                 <div className="todo-header">
@@ -279,7 +297,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                   <span className="tool-detail">{display.detail}</span>
                 </div>
                 <div className="todo-list">
-                  {display.todos.map((todo: any, todoIdx: number) => (
+                  {todos.map((todo: any, todoIdx: number) => (
                     <div key={todoIdx} className={`todo-item ${todo.status}`}>
                       {todo.status === 'completed' ? (
                         <IconCircleCheck size={14} stroke={1.5} className="todo-icon completed" />
@@ -332,19 +350,61 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           // Check if this is a Read operation
           const isReadOperation = prevBlock?.type === 'tool_use' && prevBlock.name === 'Read';
           
+          // Check if this is a search operation (Grep, Glob, LS, WebSearch)
+          const isSearchOperation = prevBlock?.type === 'tool_use' && 
+            (prevBlock.name === 'Grep' || prevBlock.name === 'Glob' || prevBlock.name === 'LS' || prevBlock.name === 'WebSearch');
+          
+          // Check if this is a TodoWrite operation
+          const isTodoWriteOperation = prevBlock?.type === 'tool_use' && prevBlock.name === 'TodoWrite';
+          
           // Hide system reminder messages
           if (resultContent.includes('<system-reminder>') && resultContent.includes('</system-reminder>')) {
             return null;
           }
           
-          // Limit Read operation output to 10 lines
+          // Hide TodoWrite success messages and system reminders about todos
+          if (isTodoWriteOperation && (
+            resultContent.includes('Todos have been modified successfully') ||
+            resultContent.includes('Ensure that you continue to use the todo list')
+          )) {
+            return null;
+          }
+          
+          // Limit Read operation output to 10 lines with expandable option
           if (isReadOperation && resultContent) {
-            const allLines = resultContent.split('\n');
-            const lines = allLines.slice(0, 10);
-            const truncated = lines.length < allLines.length;
+            // Strip out system-reminder tags from read operations
+            let cleanContent = resultContent;
+            const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
+            cleanContent = cleanContent.replace(reminderRegex, '').trim();
+            
+            const allLines = cleanContent.split('\n');
+            const visibleLines = allLines.slice(0, 10);
+            const hiddenCount = allLines.length - 10;
+            const hasMore = hiddenCount > 0;
+            
             return (
               <div key={idx} className="tool-result read-output">
-                <pre className="read-content">{lines.join('\n')}{truncated ? `\n... (${allLines.length} lines total)` : ''}</pre>
+                <pre className="read-content">{visibleLines.join('\n')}</pre>
+                {hasMore && (
+                  <div className="read-more">+ {hiddenCount} more lines</div>
+                )}
+              </div>
+            );
+          }
+          
+          // Limit search operation outputs to 10 lines
+          if (isSearchOperation && resultContent) {
+            const allLines = resultContent.split('\n');
+            const visibleLines = allLines.slice(0, 10);
+            const hiddenCount = allLines.length - 10;
+            const hasMore = hiddenCount > 0;
+            
+            return (
+              <div key={idx} className="tool-result search-output">
+                <pre className="search-content">{visibleLines.join('\n')}</pre>
+                {hasMore && (
+                  <div className="search-more">+ {hiddenCount} more lines</div>
+                )}
               </div>
             );
           }
@@ -405,6 +465,10 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
 
 // Main message renderer component - memoized for performance
 const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isLast?: boolean }> = ({ message, index, isLast = false }) => {
+  // Get the current session to access previous messages for context
+  const store = useClaudeCodeStore.getState();
+  const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
+  const sessionMessages = currentSession?.messages || [];
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -557,6 +621,36 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         detail: JSON.stringify(toolInput).substring(0, 100)
       };
       
+      // For TodoWrite tool, show the full todo list
+      if (toolName === 'TodoWrite' && toolInput.todos) {
+        const todos = toolInput.todos || [];
+        return (
+          <div className="message tool-message">
+            <div className="tool-use todo-write standalone">
+              <div className="todo-header">
+                <IconChecklist size={14} stroke={1.5} className="todo-header-icon" />
+                <span className="tool-action">updating todos</span>
+                <span className="tool-detail">{formatTodos(todos)}</span>
+              </div>
+              <div className="todo-list">
+                {todos.map((todo: any, todoIdx: number) => (
+                  <div key={todoIdx} className={`todo-item ${todo.status}`}>
+                    {todo.status === 'completed' ? (
+                      <IconCircleCheck size={14} stroke={1.5} className="todo-icon completed" />
+                    ) : todo.status === 'in_progress' ? (
+                      <IconCircleDot size={14} stroke={1.5} className="todo-icon progress" />
+                    ) : (
+                      <IconCircle size={14} stroke={1.5} className="todo-icon pending" />
+                    )}
+                    <span className="todo-content">{todo.content}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
       // For Edit tool, show a proper diff
       if (toolName === 'Edit' || toolName === 'MultiEdit') {
         let filePath = toolInput.file_path || 'file';
@@ -618,9 +712,13 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
     case 'tool_result':
       // Standalone tool result message
       const resultContent = message.message?.content || message.message || '';
-      const contentStr = typeof resultContent === 'string' 
+      let contentStr = typeof resultContent === 'string' 
         ? resultContent 
         : JSON.stringify(resultContent, null, 2);
+      
+      // Strip out system-reminder tags from all tool results
+      const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
+      contentStr = contentStr.replace(reminderRegex, '').trim();
       
       // Check if this is an Edit result - they contain "has been updated" and show line numbers
       const isEditResult = contentStr.includes('has been updated') && contentStr.includes('→');
@@ -669,6 +767,67 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         );
       }
       
+      // Check if this is a Read operation result by looking at the previous message
+      const prevMessage = index > 0 ? sessionMessages[index - 1] : null;
+      const isReadResult = prevMessage?.type === 'tool_use' && 
+        prevMessage?.message?.name === 'Read';
+      
+      // Check if this is a search operation result
+      const isSearchResult = prevMessage?.type === 'tool_use' && 
+        (prevMessage?.message?.name === 'Grep' || 
+         prevMessage?.message?.name === 'Glob' || 
+         prevMessage?.message?.name === 'LS' || 
+         prevMessage?.message?.name === 'WebSearch');
+      
+      // Check if this is a TodoWrite result and hide success messages
+      const isTodoWriteResult = prevMessage?.type === 'tool_use' && 
+        prevMessage?.message?.name === 'TodoWrite';
+      
+      if (isTodoWriteResult && (
+        contentStr.includes('Todos have been modified successfully') ||
+        contentStr.includes('Ensure that you continue to use the todo list')
+      )) {
+        return null;
+      }
+      
+      // Apply truncation for Read operations
+      if (isReadResult && contentStr) {
+        const allLines = contentStr.split('\n');
+        const visibleLines = allLines.slice(0, 10);
+        const hiddenCount = allLines.length - 10;
+        const hasMore = hiddenCount > 0;
+        
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone read-output">
+              <pre className="result-content">{visibleLines.join('\n')}</pre>
+              {hasMore && (
+                <div className="read-more">+ {hiddenCount} more lines</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+      
+      // Apply truncation for search operations
+      if (isSearchResult && contentStr) {
+        const allLines = contentStr.split('\n');
+        const visibleLines = allLines.slice(0, 10);
+        const hiddenCount = allLines.length - 10;
+        const hasMore = hiddenCount > 0;
+        
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone search-output">
+              <pre className="result-content">{visibleLines.join('\n')}</pre>
+              {hasMore && (
+                <div className="search-more">+ {hiddenCount} more lines</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+      
       // For other tool results, show as before
       return (
         <div className="message tool-result-message">
@@ -680,19 +839,8 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       
     case 'result':
       if (message.subtype === 'success') {
-        return (
-          <div className="message result-success">
-            <span className="result-stats">
-              {message.num_turns} turn{message.num_turns !== 1 ? 's' : ''} • 
-              {message.duration_ms}ms • 
-              ${message.total_cost_usd?.toFixed(4) || '0.0000'}
-              {message.usage && ` • ${message.usage.input_tokens + message.usage.output_tokens} tokens`}
-            </span>
-            {message.result && (
-              <div className="result-summary">{message.result}</div>
-            )}
-          </div>
-        );
+        // Don't display redundant result-success messages
+        return null;
       } else if (message.is_error) {
         return (
           <div className="message result-error">

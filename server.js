@@ -304,6 +304,29 @@ io.on('connection', (socket) => {
       }
 
       console.log(`📝 Message for session ${sessionId}: ${content.substring(0, 50)}...`);
+      
+      // Start processing the query asynchronously (non-blocking)
+      processQuery(socket, sessionId, content, session).catch(error => {
+        console.error(`Error processing query for session ${sessionId}:`, error);
+        socket.emit(`message:${sessionId}`, {
+          type: 'error',
+          message: { content: error.message },
+          timestamp: Date.now()
+        });
+      });
+      
+      // Immediately return success to unblock the client
+      callback({ success: true });
+      
+    } catch (error) {
+      console.error('Error in sendMessage handler:', error);
+      callback({ success: false, error: error.message });
+    }
+  });
+  
+  // Process query in a non-blocking way
+  async function processQuery(socket, sessionId, content, session) {
+    try {
 
       // Add user message to session for persistence (but don't emit it)
       // First check if this exact message was already added recently (within 2 seconds)
@@ -461,7 +484,14 @@ io.on('connection', (socket) => {
                   streaming: false,
                   id: `${sessionId}-toolresult-${Date.now()}-${messageId++}`
                 };
-                console.log(`📊 TOOL RESULT for ${block.tool_use_id}: ${block.content?.substring(0, 100)}...`);
+                const contentPreview = typeof block.content === 'string' 
+                  ? block.content.substring(0, 100) 
+                  : (Array.isArray(block.content) 
+                    ? block.content.map(item => 
+                        typeof item === 'string' ? item : JSON.stringify(item)
+                      ).join('').substring(0, 100)
+                    : JSON.stringify(block.content || '').substring(0, 100));
+                console.log(`📊 TOOL RESULT for ${block.tool_use_id}: ${contentPreview}...`);
                 socket.emit(`message:${sessionId}`, toolResultMessage);
                 session.messages.push(toolResultMessage);
               }
@@ -728,37 +758,33 @@ io.on('connection', (socket) => {
       
       // Save final state to disk
       await sessionStorage.saveSession(sessionId, session);
-
-      callback({ success: true });
       
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('Error in processQuery:', error);
       
-      // Clean up on error (sessionId might not be defined in all error cases)
-      if (typeof sessionId !== 'undefined') {
-        activeQueries.delete(sessionId);
-        
-        // Only send error messages if we have a sessionId
-        socket.emit(`message:${sessionId}`, {
-          type: 'system',
-          subtype: 'error',
-          message: error.message,
-          timestamp: Date.now()
-        });
-        
-        socket.emit(`message:${sessionId}`, {
-          type: 'result',
-          id: `${sessionId}-error-result-${Date.now()}`,
-          sessionId,
-          streaming: false,
-          error: true,
-          timestamp: Date.now()
-        });
-      }
+      // Clean up on error
+      activeQueries.delete(sessionId);
       
-      callback({ success: false, error: error.message });
+      // Send error messages
+      socket.emit(`message:${sessionId}`, {
+        type: 'system',
+        subtype: 'error',
+        message: error.message,
+        timestamp: Date.now()
+      });
+      
+      socket.emit(`message:${sessionId}`, {
+        type: 'result',
+        id: `${sessionId}-error-result-${Date.now()}`,
+        sessionId,
+        streaming: false,
+        error: true,
+        timestamp: Date.now()
+      });
+      
+      throw error; // Re-throw to be caught by the processQuery caller
     }
-  });
+  }
 
   // Update session working directory
   socket.on('setWorkingDirectory', async (data, callback) => {

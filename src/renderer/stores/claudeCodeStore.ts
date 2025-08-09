@@ -210,6 +210,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   console.log(`[CLIENT] Updating message ${message.id} at index ${existingIndex}, streaming: ${message.streaming}`);
                   const existingMessage = existingMessages[existingIndex];
                   
+                  // Special handling for result messages - ensure we don't lose final assistant messages
+                  if (message.type === 'result' && (message.subtype === 'error_max_turns' || message.is_error)) {
+                    console.log('[CLIENT] Processing error result - ensuring final assistant message is preserved');
+                    // Look for recent assistant messages that should be preserved
+                    const recentAssistantMessages = existingMessages.filter(m => 
+                      m.type === 'assistant' && 
+                      m.timestamp && 
+                      Date.now() - m.timestamp < 5000 // Within last 5 seconds
+                    );
+                    if (recentAssistantMessages.length > 0) {
+                      console.log(`[CLIENT] Found ${recentAssistantMessages.length} recent assistant messages to preserve`);
+                    }
+                  }
+                  
                   // Never update tool_use or tool_result messages - they should be immutable
                   if (existingMessage.type === 'tool_use' || existingMessage.type === 'tool_result') {
                     console.log(`Skipping update for ${existingMessage.type} message - preserving original`);
@@ -225,6 +239,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // Just use the new content directly - Claude Code SDK sends full updates
                     let finalContent = message.message?.content || existingMessage.message?.content;
                     
+                    console.log(`[CLIENT] Assistant message update - streaming: ${message.streaming}, content length: ${typeof finalContent === 'string' ? finalContent.length : JSON.stringify(finalContent).length}`);
+                    
                     existingMessages[existingIndex] = {
                       ...message,
                       message: {
@@ -238,6 +254,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 } else {
                   // Add new message only if it doesn't exist
                   console.log(`[CLIENT] Adding new message ${message.id} (type: ${message.type}, streaming: ${message.streaming})`);
+                  
+                  // Special handling for result messages with error_max_turns
+                  if (message.type === 'result' && message.subtype === 'error_max_turns') {
+                    console.log('[CLIENT] Adding error_max_turns result - verifying final assistant message exists');
+                    // Check if we have a recent assistant message, if not, there might be a timing issue
+                    const hasRecentAssistant = existingMessages.some(m => 
+                      m.type === 'assistant' && 
+                      m.timestamp && 
+                      Date.now() - m.timestamp < 10000 && // Within last 10 seconds
+                      !m.streaming // Non-streaming (finalized)
+                    );
+                    if (!hasRecentAssistant) {
+                      console.warn('[CLIENT] No recent finalized assistant message found before error_max_turns result');
+                    }
+                  }
+                  
                   existingMessages.push(message);
                 }
               } else {
@@ -302,7 +334,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // If streaming is undefined, don't change the state
             } else if (message.type === 'result') {
               // Always clear streaming when we get a result message
-              console.log('Received result message, clearing streaming state');
+              console.log('Received result message, clearing streaming state. Result details:', {
+                subtype: message.subtype,
+                is_error: message.is_error,
+                result: message.result,
+                sessionMessages: sessions.find(s => s.id === sessionId)?.messages.length || 0
+              });
               return { sessions, isStreaming: false };
             } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error')) {
               // Clear streaming on interruption or error
