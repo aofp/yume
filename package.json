@@ -5,16 +5,18 @@
   "main": "electron/main.js",
   "author": "Claude Code Studio Team",
   "scripts": {
+    "setup": "node setup-claude-auth.js",
     "dev": "vite",
     "server": "node server.js",
-    "server:wsl": "wsl --exec bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && /usr/bin/node server.js\"",
+    "server:cli": "node server-cli.js",
+    "server:wsl": "wsl --exec bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && /usr/bin/node server-claude-direct.js\"",
     "build": "vite build",
     "build:electron": "npm run build && electron-builder",
     "preview": "vite preview",
     "electron": "electron .",
     "prestart": "node scripts/kill-ports.js",
     "start": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && cross-env NODE_ENV=development electron .\"",
-    "start:win": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server\" \"npm run dev\" \"node scripts/delay-start.js && electron .\"",
+    "start:win": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server:wsl\" \"npm run dev\" \"node scripts/delay-start.js && electron .\"",
     "electron:dev": "npm run prestart && concurrently -k \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && electron .\"",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
@@ -55,10 +57,12 @@
     "@tabler/icons-react": "^3.34.1",
     "clsx": "^2.1.0",
     "cors": "^2.8.5",
+    "dotenv": "^17.2.1",
     "electron-store": "^8.1.0",
     "express": "^5.1.0",
     "framer-motion": "^10.18.0",
     "lucide-react": "^0.309.0",
+    "png-to-ico": "^2.1.8",
     "portfinder": "^1.0.37",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
@@ -71,31 +75,32 @@
   "build": {
     "appId": "com.yurucode.app",
     "productName": "yurucode",
+    "executableName": "yurucode",
     "directories": {
-      "output": "release-final",
+      "output": "release",
       "buildResources": "build"
     },
     "files": [
       "dist/**/*",
-      "dist-electron/**/*",
       "electron/**/*",
-      "server.js",
+      "server*.js",
       "package.json",
       "assets/**/*",
-      "node_modules/**/*"
+      "node_modules/**/*",
+      "!node_modules/**/test/**",
+      "!node_modules/**/tests/**",
+      "!node_modules/**/example/**",
+      "!node_modules/**/examples/**",
+      "!node_modules/**/*.md"
     ],
     "extraResources": [
       {
-        "from": "server.js",
-        "to": "server.js"
-      },
-      {
         "from": "assets/yurucode.ico",
-        "to": "yurucode.ico"
+        "to": "assets/yurucode.ico"
       },
       {
         "from": "assets/yurucode.png",
-        "to": "yurucode.png"
+        "to": "assets/yurucode.png"
       }
     ],
     "asar": false,
@@ -111,29 +116,24 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
-        },
-        {
-          "target": "portable",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "icon": "assets/yurucode.ico",
-      "executableName": "yurucode",
+      "legalTrademarks": "",
       "verifyUpdateCodeSignature": false,
       "signAndEditExecutable": false,
       "signDlls": false,
       "artifactName": "${productName}-${version}-${arch}.${ext}",
       "requestedExecutionLevel": "asInvoker"
     },
-    "portable": {
-      "artifactName": "${productName}-portable-${version}.${ext}",
-      "unicode": false,
-      "useZip": false
-    },
     "nsis": {
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
+      "artifactName": "yurucode-setup-${version}.exe",
+      "uninstallDisplayName": "yurucode",
       "allowElevation": true,
       "installerIcon": "assets/yurucode.ico",
       "uninstallerIcon": "assets/yurucode.ico",
@@ -141,7 +141,6 @@
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "yurucode",
-      "artifactName": "${productName}-setup-${version}.${ext}",
       "perMachine": false,
       "unicode": true,
       "runAfterFinish": true,

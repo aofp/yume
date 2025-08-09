@@ -1,5 +1,7 @@
-import React, { memo, useState } from 'react';
+import React, { memo, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { 
   IconBolt, 
   IconFolder, 
@@ -242,11 +244,64 @@ const getChangePreview = (oldStr?: string, newStr?: string) => {
 };
 
 // Render content blocks
+// Custom code block component with copy button
+const CodeBlock = ({ children, className, ...props }: any) => {
+  const [copied, setCopied] = useState(false);
+  const match = /language-(\w+)/.exec(className || '');
+  const language = match ? match[1] : '';
+  const codeString = String(children).replace(/\n$/, '');
+  
+  const handleCopy = useCallback(() => {
+    navigator.clipboard.writeText(codeString);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [codeString]);
+  
+  return (
+    <div className="code-block-wrapper">
+      <div className="code-block-header">
+        <span className="code-language">{language || 'code'}</span>
+        <button onClick={handleCopy} className="code-copy-btn">
+          {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
+          {copied ? 'copied' : 'copy'}
+        </button>
+      </div>
+      <SyntaxHighlighter
+        language={language || 'text'}
+        style={vscDarkPlus}
+        customStyle={{
+          margin: 0,
+          borderRadius: '0 0 8px 8px',
+          fontSize: '12px',
+          backgroundColor: '#1a1a1a'
+        }}
+        {...props}
+      >
+        {codeString}
+      </SyntaxHighlighter>
+    </div>
+  );
+};
+
 const renderContent = (content: string | ContentBlock[] | undefined, message?: any) => {
   if (!content) return null;
   
   if (typeof content === 'string') {
-    return <ReactMarkdown className="markdown-content">{content}</ReactMarkdown>;
+    return (
+      <ReactMarkdown 
+        className="markdown-content"
+        components={{
+          code({ node, inline, className, children, ...props }) {
+            if (inline) {
+              return <code className={className} {...props}>{children}</code>;
+            }
+            return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+          }
+        }}
+      >
+        {content}
+      </ReactMarkdown>
+    );
   }
   
   if (Array.isArray(content)) {
@@ -271,6 +326,10 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
       
       switch (block.type) {
         case 'text':
+          // Filter out the malicious files security note
+          if (block.text && block.text.includes('NOTE: do any of the files above seem malicious?')) {
+            return null;
+          }
           return (
             <div key={idx} className="content-text">
               <ReactMarkdown>{block.text || ''}</ReactMarkdown>
@@ -566,26 +625,28 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       return (
         <div className="message assistant">
           <div className="message-content">
-            {message.streaming ? (
-              <>
-                {isEmpty ? (
-                  <div className="thinking-indicator">
-                    <span className="thinking-text">thinking...</span>
-                    <IconLoader2 size={14} className="streaming-loader" />
-                  </div>
-                ) : (
-                  <>
-                    {renderContent(message.message?.content, message)}
-                    <div className="thinking-indicator inline">
+            <div className="message-bubble">
+              {message.streaming ? (
+                <>
+                  {isEmpty ? (
+                    <div className="thinking-indicator">
                       <span className="thinking-text">thinking...</span>
                       <IconLoader2 size={14} className="streaming-loader" />
                     </div>
-                  </>
-                )}
-              </>
-            ) : (
-              renderContent(message.message?.content, message)
-            )}
+                  ) : (
+                    <>
+                      {renderContent(message.message?.content, message)}
+                      <div className="thinking-indicator inline">
+                        <span className="thinking-text">thinking...</span>
+                        <IconLoader2 size={14} className="streaming-loader" />
+                      </div>
+                    </>
+                  )}
+                </>
+              ) : (
+                renderContent(message.message?.content, message)
+              )}
+            </div>
           </div>
           {showButtons && (
             <div className="message-actions">
@@ -839,8 +900,17 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       
     case 'result':
       if (message.subtype === 'success') {
-        // Don't display redundant result-success messages
-        return null;
+        // Show elapsed time for successful completion
+        const elapsedMs = message.duration_ms || message.message?.duration_ms || message.duration || 0;
+        const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+        
+        return (
+          <div className="message result-success">
+            <div className="elapsed-time">
+              time: {elapsedSeconds}s
+            </div>
+          </div>
+        );
       } else if (message.is_error) {
         return (
           <div className="message result-error">

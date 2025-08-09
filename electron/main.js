@@ -118,18 +118,55 @@ if (!currentWorkingDirectory) {
 
 // Additional handlers registered here for compatibility
 
+// Disable GPU caching to prevent Windows permission errors
+app.commandLine.appendSwitch('disable-gpu-shader-disk-cache');
+app.commandLine.appendSwitch('disable-gpu-program-cache');
+app.commandLine.appendSwitch('disable-gpu');
+app.commandLine.appendSwitch('no-sandbox');
+
 // Start the built-in Claude Code server
 async function startServer() {
   console.log('isDev:', isDev, 'isPackaged:', app.isPackaged, 'NODE_ENV:', process.env.NODE_ENV);
   
-  // In development mode, server is already running separately via npm script
-  // Just set the port and return
-  console.log('Development mode - server already running via npm script on port 3001');
-  serverPort = 3001;
-  return;
+  if (isDev) {
+    // In development mode, server is already running separately via npm script
+    console.log('Development mode - server already running via npm script on port 3001');
+    serverPort = 3001;
+    return;
+  }
   
-  // Production server code would go here if needed
-  // But since we're always running via npm start, we don't need it
+  // Production mode - need to start the server
+  console.log('Production mode - starting server...');
+  const serverPath = path.join(__dirname, '../server.js');
+  console.log('Server path:', serverPath);
+  
+  serverProcess = spawn('node', [serverPath], {
+    cwd: path.join(__dirname, '..'),
+    env: { ...process.env },
+    stdio: ['ignore', 'pipe', 'pipe']
+  });
+  
+  serverPort = 3001;
+  
+  serverProcess.stdout?.on('data', (data) => {
+    console.log('[Server]:', data.toString());
+  });
+  
+  serverProcess.stderr?.on('data', (data) => {
+    console.error('[Server Error]:', data.toString());
+  });
+  
+  serverProcess.on('error', (err) => {
+    console.error('Failed to start server:', err);
+  });
+  
+  serverProcess.on('exit', (code) => {
+    console.log(`Server exited with code ${code}`);
+    serverProcess = null;
+  });
+  
+  // Wait a bit for server to start
+  await new Promise(resolve => setTimeout(resolve, 2000));
 }
 
 function createWindow() {
@@ -146,7 +183,9 @@ function createWindow() {
       webSecurity: false, // Allow access to file paths from drag-drop
       preload: path.join(__dirname, 'preload-simple.js')
     },
-    icon: path.join(__dirname, '../yurucode.png')
+    icon: process.platform === 'win32' 
+      ? path.join(__dirname, '../assets/yurucode.ico')
+      : path.join(__dirname, '../assets/yurucode.png')
   };
 
   // Platform-specific window settings
@@ -329,14 +368,10 @@ if (process.defaultApp) {
 }
 
 // App lifecycle
-app.whenReady().then(() => {
-  startServer();
-  
-  // Wait a bit for server to start
-  setTimeout(() => {
-    createWindow();
-    createMenu();
-  }, 1000);
+app.whenReady().then(async () => {
+  await startServer();
+  createWindow();
+  createMenu();
 });
 
 // Allow multiple instances by removing single instance lock

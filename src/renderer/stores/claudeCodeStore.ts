@@ -634,6 +634,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   },
   
   clearContext: (sessionId: string) => {
+    // Clear local messages
     set(state => ({
       sessions: state.sessions.map(s => 
         s.id === sessionId 
@@ -648,6 +649,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           : s
       )
     }));
+    
+    // Notify server to clear the Claude session
+    const client = get().claudeClient;
+    if (client) {
+      client.clearSession(sessionId).catch(error => {
+        console.error('Failed to clear server session:', error);
+      });
+    }
   },
   
   updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => {

@@ -206,6 +206,23 @@ export class ClaudeCodeClient {
     });
   }
 
+  async clearSession(sessionId: string): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected'));
+        return;
+      }
+      
+      this.socket.emit('clearSession', { sessionId }, (response: any) => {
+        if (response.success) {
+          resolve();
+        } else {
+          reject(new Error(response.error));
+        }
+      });
+    });
+  }
+  
   async checkHealth(): Promise<boolean> {
     try {
       const response = await fetch('http://localhost:3001/health');

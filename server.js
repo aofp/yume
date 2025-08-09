@@ -3,6 +3,8 @@
  * Provides WebSocket connection for real-time streaming
  */
 
+require('dotenv').config(); // Load .env file for API key
+
 const express = require('express');
 const cors = require('cors');
 const { createServer } = require('http');
@@ -380,9 +382,16 @@ io.on('connection', (socket) => {
       console.log(`🔧 __dirname: ${__dirname}`);
       console.log(`🔧 process.platform: ${process.platform}`);
       console.log(`🔧 process.cwd(): ${process.cwd()}`);
+      console.log(`🔧 HOME: ${process.env.HOME}`);
       
-      let cliPath = path.join(__dirname, 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js');
-      console.log(`🔧 Initial CLI path: ${cliPath}`);
+      // Use the SDK's bundled CLI
+      const cliPath = path.join(__dirname, 'node_modules', '@anthropic-ai', 'claude-code', 'cli.js');
+      const executable = '/usr/bin/node';  // Use node directly in WSL
+      const executableArgs = [];
+      
+      console.log(`🔧 Using SDK CLI: ${cliPath}`);
+      console.log(`🔧 Platform: ${process.platform}`);
+      console.log(`🔧 Executable: ${executable}`);
       
       const queryOptions = {
         maxTurns: 10,
@@ -394,14 +403,29 @@ io.on('connection', (socket) => {
           'WebFetch', 'WebSearch',
           'TodoWrite'
         ],
-        // DO NOT USE apiKey - Claude Code SDK uses your subscription authentication
-        cwd: claudeWorkingDir,  // Use the WSL-converted path for Claude SDK
-        env: sdkEnv,
+        cwd: claudeWorkingDir,
+        env: {  
+          ...sdkEnv,
+          HOME: process.env.HOME || os.homedir(),
+          // Pass Claude Code environment variables
+          CLAUDE_CODE_MAX_OUTPUT_TOKENS: process.env.CLAUDE_CODE_MAX_OUTPUT_TOKENS || '8192',
+          CLAUDECODE: process.env.CLAUDECODE || '1',
+          CLAUDE_CODE_ENTRYPOINT: 'cli'
+        },
         pathToClaudeCodeExecutable: cliPath,
-        // Use correct executable based on platform
-        executable: process.platform === 'linux' ? '/usr/bin/node' : process.execPath,
-        executableArgs: []
+        executable: executable,
+        executableArgs: executableArgs
       };
+      
+      // The SDK package requires an API key even though Claude Code doesn't normally use one
+      // You need to set ANTHROPIC_API_KEY in your .env file
+      if (process.env.ANTHROPIC_API_KEY) {
+        queryOptions.apiKey = process.env.ANTHROPIC_API_KEY;
+        console.log(`🔑 Using API key from environment`);
+      } else {
+        console.log(`⚠️ No API key found - the SDK will fail`);
+        console.log(`📝 Set ANTHROPIC_API_KEY in .env file`);
+      }
       
       console.log(`🔧 Query options CWD: ${queryOptions.cwd}`);
       console.log(`🔧 CLI path: ${cliPath}`);
@@ -419,8 +443,13 @@ io.on('connection', (socket) => {
       let queryResult;
       try {
         console.log('🚀 Attempting to start Claude Code query...');
+        console.log('🔑 Checking for auth at:', path.join(process.env.HOME || os.homedir(), '.claude-code'));
         
-        // Try using the SDK
+        // Check authentication status from the response
+        console.log('🔑 SDK will attempt to authenticate...');
+        console.log('📝 Note: Authentication happens through the Claude Code SDK');
+        
+        // Try using the SDK (claude CLI handles authentication)
         queryResult = query({
           prompt: content,
           options: queryOptions
@@ -429,6 +458,9 @@ io.on('connection', (socket) => {
         console.log('✅ Claude Code query started successfully');
       } catch (queryError) {
         console.error('❌ Failed to start Claude Code query:', queryError);
+        if (queryError.message.includes('Invalid API key') || queryError.message.includes('login')) {
+          throw new Error('Claude Code authentication issue. The SDK requires a valid API key. Please set the ANTHROPIC_API_KEY environment variable or ensure Claude Code CLI is properly authenticated.');
+        }
         throw new Error(`Failed to spawn Claude Code process: ${queryError.message}`);
       }
 
@@ -894,7 +926,10 @@ const PORT = process.env.PORT || 3001;
 
 httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Claude Code Server running on http://0.0.0.0:${PORT}`);
-  console.log(`🔑 Claude Code SDK will use your subscription authentication`);
+  
+  // Check platform
+  console.log(`🔑 Claude Code SDK will use its own authentication`);
+  console.log(`📝 The server must run in WSL where claude is authenticated`);
   
   // Send port to parent process if running as child
   if (process.send) {

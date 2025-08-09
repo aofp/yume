@@ -671,13 +671,8 @@ export const ClaudeChat: React.FC = () => {
             
             // For result messages (completion)
             if (message.type === 'result') {
-              // Only keep the last result message
-              const resultIndex = acc.findIndex(m => m.type === 'result');
-              if (resultIndex >= 0) {
-                acc[resultIndex] = message;
-              } else {
-                acc.push(message);
-              }
+              // Keep all result messages to show timing for each query
+              acc.push(message);
               return acc;
             }
             
@@ -702,6 +697,17 @@ export const ClaudeChat: React.FC = () => {
             );
           });
         })()}
+        {/* Show thinking indicator immediately when streaming starts */}
+        {isStreaming && currentSession.messages.filter(m => m.type === 'assistant' && m.streaming).length === 0 && (
+          <div className="message assistant">
+            <div className="message-content">
+              <div className="thinking-indicator-bottom">
+                <IconLoader2 size={14} stroke={1.5} className="spinning-loader" />
+                <span>thinking...</span>
+              </div>
+            </div>
+          </div>
+        )}
         <div ref={messagesEndRef} />
       </div>
       
