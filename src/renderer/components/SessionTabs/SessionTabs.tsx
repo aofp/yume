@@ -87,6 +87,34 @@ export const SessionTabs: React.FC = () => {
       directory = '/';
     }
     
+    // Save to recent projects if it's not the root directory
+    if (directory && directory !== '/') {
+      const name = directory.split(/[/\\]/).pop() || directory;
+      const newProject = { path: directory, name, lastOpened: new Date() };
+      
+      // Get existing recent projects
+      const stored = localStorage.getItem('yurucode-recent-projects');
+      let recentProjects = [];
+      try {
+        if (stored) {
+          recentProjects = JSON.parse(stored);
+        }
+      } catch (err) {
+        console.error('Failed to parse recent projects:', err);
+      }
+      
+      // Update recent projects list
+      const updated = [
+        newProject,
+        ...recentProjects.filter((p: any) => p.path !== directory)
+      ].slice(0, 8);
+      
+      localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+      
+      // Update hasRecentProjects state
+      setHasRecentProjects(true);
+    }
+    
     // Always create a new session when clicking the new tab button
     // This ensures sessions are properly persisted to disk
     console.log('Creating new session with directory:', directory);
@@ -187,6 +215,32 @@ export const SessionTabs: React.FC = () => {
             const session = sessions.find(s => s.id === contextMenu.sessionId);
             const workingDir = (session as any)?.workingDirectory;
             if (workingDir) {
+              // Save to recent projects if it's not the root directory
+              if (workingDir !== '/') {
+                const name = workingDir.split(/[/\\]/).pop() || workingDir;
+                const newProject = { path: workingDir, name, lastOpened: new Date() };
+                
+                // Get existing recent projects
+                const stored = localStorage.getItem('yurucode-recent-projects');
+                let recentProjects = [];
+                try {
+                  if (stored) {
+                    recentProjects = JSON.parse(stored);
+                  }
+                } catch (err) {
+                  console.error('Failed to parse recent projects:', err);
+                }
+                
+                // Update recent projects list
+                const updated = [
+                  newProject,
+                  ...recentProjects.filter((p: any) => p.path !== workingDir)
+                ].slice(0, 8);
+                
+                localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+                setHasRecentProjects(true);
+              }
+              
               createSession(undefined, workingDir);
             }
             setContextMenu(null);

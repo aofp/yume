@@ -243,7 +243,7 @@
 
 /* Recent button - gray style */
 .tab-recent {
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.4);
   cursor: default;
@@ -281,7 +281,7 @@
 }
 
 .tab-recent:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.04);
   color: rgba(255, 255, 255, 0.6);
 }
 
