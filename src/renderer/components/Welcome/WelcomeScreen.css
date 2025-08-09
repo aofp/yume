@@ -263,10 +263,11 @@
 }
 
 .recent-item-name {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 1px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  margin-bottom: 2px;
   text-transform: lowercase;
+  font-weight: 500;
 }
 
 .recent-item-path {

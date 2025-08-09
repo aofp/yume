@@ -118,7 +118,7 @@
   background: rgba(var(--accent-rgb), 0.15);
   border: none;
   color: #ffffff;
-  padding: 6px 8px;
+  padding: 7px 9px;
   border-radius: 6px 6px 2px 6px;
   font-size: 13px;
   line-height: 1.5;
@@ -129,7 +129,7 @@
   background: rgba(128, 128, 128, 0.2);
   border: none;
   color: #ffffff;
-  padding: 6px 8px;
+  padding: 7px 9px;
   border-radius: 6px 6px 6px 2px;
   font-size: 13px;
   line-height: 1.5;
