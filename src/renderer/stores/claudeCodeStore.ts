@@ -528,7 +528,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // Set up message listener
       const cleanup = claudeCodeClient.onMessage(sessionId, (message) => {
         set(state => {
-          const sessions = state.sessions.map(s => {
+          let sessions = state.sessions.map(s => {
             if (s.id !== sessionId) return s;
             
             const existingMessages = [...s.messages];

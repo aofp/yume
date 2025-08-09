@@ -102,25 +102,42 @@ io.on('connection', (socket) => {
       }
       
       // Path to claude CLI - check common locations
-      const homedir = os.homedir();
-      const claudePaths = [
-        path.join(homedir, '.claude', 'local', 'claude'),
-        path.join(homedir, '.local', 'bin', 'claude'),
-        'claude'  // Try PATH as last resort
-      ];
-      
       let claudePath = null;
-      const fs = require('fs');
-      for (const cpath of claudePaths) {
-        if (fs.existsSync(cpath)) {
-          claudePath = cpath;
-          console.log(`🔧 Found claude at: ${cpath}`);
-          break;
-        }
-      }
       
-      if (!claudePath) {
-        throw new Error('Claude CLI not found. Please ensure claude is installed and in PATH');
+      // On Windows, we'll use WSL, so just check if WSL exists
+      if (process.platform === 'win32') {
+        // We'll use 'wsl claude' so no need to check paths
+        claudePath = 'claude'; // This will be run through WSL
+        console.log('🪟 Windows detected - will use WSL to run claude');
+      } else {
+        // Unix-like systems - check for claude in common locations
+        const homedir = os.homedir();
+        const claudePaths = [
+          path.join(homedir, '.claude', 'local', 'claude'),
+          path.join(homedir, '.local', 'bin', 'claude'),
+          'claude'  // Try PATH as last resort
+        ];
+        
+        const fs = require('fs');
+        for (const cpath of claudePaths) {
+          if (fs.existsSync(cpath)) {
+            claudePath = cpath;
+            console.log(`🔧 Found claude at: ${cpath}`);
+            break;
+          }
+        }
+        
+        if (!claudePath) {
+          // Send error message to client
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'error',
+            message: 'Claude CLI not found. Please ensure claude is installed. Check paths: ' + claudePaths.join(', '),
+            timestamp: Date.now()
+          });
+          callback({ success: false, error: 'Claude CLI not found' });
+          return;
+        }
       }
       
       // Build arguments - same as code_service.js
@@ -140,20 +157,64 @@ io.on('connection', (socket) => {
         console.log(`🆕 Starting new Claude session`);
       }
       
-      // Add the prompt
-      args.push(content);
+      // Don't add prompt to args - we'll send it via stdin
+      // args.push(content);
       
       console.log(`🚀 Running claude with args:`, args.join(' '));
       
-      // Spawn claude process
-      const child = spawn(claudePath, args, {
-        cwd: workingDir,
-        env: process.env,
-        stdio: ['pipe', 'pipe', 'pipe']
-      });
+      // Spawn claude process - use WSL on Windows
+      let child;
+      try {
+        // On Windows, run through WSL
+        if (process.platform === 'win32') {
+          console.log('🪟 Windows detected - running claude through WSL');
+          console.log('Working directory (WSL format):', workingDir);
+          
+          // Build the command for WSL - use default distro
+          // Run claude directly without specifying distro (uses default)
+          const wslArgs = ['--cd', workingDir, '--', 'claude', ...args];
+          
+          console.log('WSL command:', 'wsl.exe', wslArgs.join(' '));
+          
+          child = spawn('wsl.exe', wslArgs, {
+            // Don't set cwd for WSL - it will use the --cd flag
+            env: process.env,
+            stdio: ['pipe', 'pipe', 'pipe'],
+            shell: false,
+            windowsHide: true
+          });
+        } else {
+          child = spawn(claudePath, args, {
+            cwd: workingDir,
+            env: process.env,
+            stdio: ['pipe', 'pipe', 'pipe']
+          });
+        }
+      } catch (spawnError) {
+        console.error('Failed to spawn claude process:', spawnError);
+        socket.emit(`message:${sessionId}`, {
+          type: 'system',
+          subtype: 'error',
+          message: `Failed to start Claude: ${spawnError.message}. ${process.platform === 'win32' ? 'Make sure WSL is installed and Claude CLI is installed in WSL.' : `Path: ${claudePath}`}`,
+          timestamp: Date.now()
+        });
+        callback({ success: false, error: `Failed to spawn: ${spawnError.message}` });
+        return;
+      }
       
       // Store the process for this session so we can interrupt it
       activeProcesses.set(sessionId, child);
+      
+      // Send immediate feedback that process started
+      socket.emit(`message:${sessionId}`, {
+        type: 'system',
+        subtype: 'info',
+        message: `Starting Claude${process.platform === 'win32' ? ' via WSL' : ''}...`,
+        timestamp: Date.now()
+      });
+      
+      // Log process info
+      console.log(`Process spawned with PID: ${child.pid}`);
       
       // Process streaming output
       let lineBuffer = '';
@@ -287,7 +348,9 @@ io.on('connection', (socket) => {
       };
       
       child.stdout.on('data', (data) => {
-        lineBuffer += data.toString();
+        const str = data.toString();
+        console.log('STDOUT received:', str.length, 'bytes');
+        lineBuffer += str;
         
         // Process complete lines
         const lines = lineBuffer.split('\n');
@@ -309,8 +372,28 @@ io.on('connection', (socket) => {
         });
       });
       
-      // Close stdin immediately
-      child.stdin.end();
+      // Write the prompt to stdin with proper encoding and newline
+      if (content) {
+        // Ensure content ends with newline for proper stdin handling
+        const inputContent = content.endsWith('\n') ? content : content + '\n';
+        child.stdin.write(inputContent, 'utf8', (err) => {
+          if (err) {
+            console.error('Error writing to stdin:', err);
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'error',
+              message: `Failed to send prompt: ${err.message}`,
+              timestamp: Date.now()
+            });
+          } else {
+            console.log('✅ Prompt sent to Claude via stdin');
+          }
+          // Close stdin after writing
+          child.stdin.end();
+        });
+      } else {
+        child.stdin.end();
+      }
       
       child.on('close', (code) => {
         console.log(`Claude process exited with code ${code}`);
@@ -320,15 +403,39 @@ io.on('connection', (socket) => {
           processStreamLine(lineBuffer);
         }
         
+        // If process exited with error code and no result was sent
+        if (code !== 0 && code !== null) {
+          console.error(`Claude process failed with exit code ${code}`);
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'info',
+            message: `Process completed with code ${code}`,
+            timestamp: Date.now()
+          });
+        }
+        
         activeProcesses.delete(sessionId);
       });
       
       child.on('error', (error) => {
         console.error('Failed to spawn claude:', error);
+        let errorMessage = `Failed to run Claude: ${error.message}`;
+        
+        // Add helpful context based on error type
+        if (error.code === 'ENOENT') {
+          if (process.platform === 'win32') {
+            errorMessage = 'WSL not found. Please install Windows Subsystem for Linux and ensure Claude CLI is installed in WSL.';
+          } else {
+            errorMessage = 'Claude CLI not found. Please install Claude CLI and ensure it\'s in your PATH.';
+          }
+        } else if (error.code === 'EACCES') {
+          errorMessage = 'Permission denied. Check that Claude CLI has execute permissions.';
+        }
+        
         socket.emit(`message:${sessionId}`, {
           type: 'system',
           subtype: 'error',
-          message: `Failed to run claude: ${error.message}`,
+          message: errorMessage,
           timestamp: Date.now()
         });
         activeProcesses.delete(sessionId);

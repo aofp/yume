@@ -1,15 +1,31 @@
 const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
 const path = require('path');
 const { spawn } = require('child_process');
+const Store = require('electron-store');
+
 // More robust dev mode detection
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
+
+// Initialize electron-store for persistent settings
+const store = new Store({
+  defaults: {
+    windowBounds: {
+      width: 1200,
+      height: 800,
+      x: undefined,
+      y: undefined
+    },
+    windowMaximized: false,
+    zoomLevel: 0
+  }
+});
 
 // Server process management
 let serverProcess = null;
 let mainWindow = null;
 let currentWorkingDirectory = null;
 let serverPort = null;
-let savedZoomLevel = 0; // Store zoom level
+let savedZoomLevel = store.get('zoomLevel', 0); // Load saved zoom level
 
 // ============================================
 // REGISTER IPC HANDLERS IMMEDIATELY
@@ -107,6 +123,7 @@ ipcMain.handle('zoom-in', async () => {
   const newZoom = currentZoom + 0.5;
   console.log('Setting zoom from', currentZoom, 'to', newZoom);
   mainWindow.webContents.setZoomLevel(newZoom);
+  store.set('zoomLevel', newZoom); // Save to store
   mainWindow.webContents.executeJavaScript(`
     localStorage.setItem('zoomLevel', '${newZoom}');
     window.dispatchEvent(new CustomEvent('zoom-changed', { detail: ${newZoom} }));
@@ -119,6 +136,7 @@ ipcMain.handle('zoom-out', async () => {
   const currentZoom = mainWindow.webContents.getZoomLevel();
   const newZoom = currentZoom - 0.5;
   mainWindow.webContents.setZoomLevel(newZoom);
+  store.set('zoomLevel', newZoom); // Save to store
   mainWindow.webContents.executeJavaScript(`
     localStorage.setItem('zoomLevel', '${newZoom}');
     window.dispatchEvent(new CustomEvent('zoom-changed', { detail: ${newZoom} }));
@@ -129,6 +147,7 @@ ipcMain.handle('zoom-out', async () => {
 ipcMain.handle('zoom-reset', async () => {
   if (!mainWindow) return;
   mainWindow.webContents.setZoomLevel(0);
+  store.set('zoomLevel', 0); // Save to store
   mainWindow.webContents.executeJavaScript(`
     localStorage.setItem('zoomLevel', '0');
     window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));
@@ -183,7 +202,7 @@ async function startServer() {
   
   // Production mode - need to start the server
   console.log('Production mode - starting server...');
-  const serverPath = path.join(__dirname, '../server.js');
+  const serverPath = path.join(__dirname, '../server-claude-direct.js');
   console.log('Server path:', serverPath);
   
   serverProcess = spawn('node', [serverPath], {
@@ -216,9 +235,15 @@ async function startServer() {
 }
 
 function createWindow() {
+  // Get saved window bounds
+  const windowBounds = store.get('windowBounds');
+  const isMaximized = store.get('windowMaximized', false);
+  
   const windowConfig = {
-    width: 800,
-    height: 600,
+    width: windowBounds.width,
+    height: windowBounds.height,
+    x: windowBounds.x,
+    y: windowBounds.y,
     minWidth: 800,
     minHeight: 600,
     backgroundColor: '#000000',
@@ -246,6 +271,32 @@ function createWindow() {
   }
 
   mainWindow = new BrowserWindow(windowConfig);
+  
+  // Restore maximized state if it was maximized
+  if (isMaximized) {
+    mainWindow.maximize();
+  }
+  
+  // Save window state on resize and move
+  const saveWindowState = () => {
+    if (!mainWindow.isMaximized() && !mainWindow.isMinimized()) {
+      const bounds = mainWindow.getBounds();
+      store.set('windowBounds', bounds);
+    }
+    store.set('windowMaximized', mainWindow.isMaximized());
+  };
+  
+  // Debounce function to avoid too many saves
+  let saveTimeout;
+  const debouncedSaveState = () => {
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(saveWindowState, 500);
+  };
+  
+  mainWindow.on('resize', debouncedSaveState);
+  mainWindow.on('move', debouncedSaveState);
+  mainWindow.on('maximize', saveWindowState);
+  mainWindow.on('unmaximize', saveWindowState);
 
   // Register keyboard shortcuts
   mainWindow.webContents.on('before-input-event', (event, input) => {
@@ -316,18 +367,19 @@ function createWindow() {
   mainWindow.webContents.on('did-finish-load', async () => {
     mainWindow.webContents.send('initial-directory', currentWorkingDirectory);
     
-    // Restore zoom level from localStorage
+    // Restore zoom level from store
+    const savedZoom = store.get('zoomLevel', 0);
+    mainWindow.webContents.setZoomLevel(savedZoom);
+    console.log('Restored zoom level:', savedZoom);
+    
+    // Also sync to localStorage for consistency
     try {
-      const savedZoom = await mainWindow.webContents.executeJavaScript(`localStorage.getItem('zoomLevel')`);
-      if (savedZoom !== null) {
-        const zoomLevel = parseFloat(savedZoom);
-        if (!isNaN(zoomLevel)) {
-          mainWindow.webContents.setZoomLevel(zoomLevel);
-          console.log('Restored zoom level:', zoomLevel);
-        }
-      }
+      await mainWindow.webContents.executeJavaScript(`
+        localStorage.setItem('zoomLevel', '${savedZoom}');
+        window.dispatchEvent(new CustomEvent('zoom-changed', { detail: ${savedZoom} }));
+      `);
     } catch (err) {
-      console.error('Failed to restore zoom level:', err);
+      console.error('Failed to sync zoom to localStorage:', err);
     }
   });
 

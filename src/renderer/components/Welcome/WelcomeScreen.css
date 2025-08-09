@@ -229,8 +229,8 @@
 }
 
 .recent-item:hover {
-  background: rgba(255, 255, 255, 0.03);
-  color: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
 }
 
 .recent-item-remove {
