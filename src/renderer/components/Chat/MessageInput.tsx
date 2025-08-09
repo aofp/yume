@@ -35,8 +35,13 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   const adjustTextareaHeight = () => {
     const textarea = textareaRef.current;
     if (textarea) {
-      textarea.style.height = 'auto';
-      textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+      // Reset to 3 lines height when empty
+      if (!value.trim()) {
+        textarea.style.height = '72px'; // Approximately 3 lines
+      } else {
+        textarea.style.height = 'auto';
+        textarea.style.height = `${Math.min(textarea.scrollHeight, 200)}px`;
+      }
     }
   };
 
@@ -47,7 +52,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
   // Set initial height on mount
   React.useEffect(() => {
     if (textareaRef.current) {
-      textareaRef.current.style.height = '40px';
+      textareaRef.current.style.height = '72px'; // 3 lines initial height
     }
   }, []);
 
@@ -82,7 +87,7 @@ export const MessageInput: React.FC<MessageInputProps> = ({
           onChange={(e) => onChange(e.target.value)}
           onKeyDown={handleKeyDown}
           disabled={disabled || isGenerating}
-          rows={1}
+          rows={3}
         />
 
         <div className="message-input-submit">
