@@ -309,7 +309,7 @@ export const ClaudeChat: React.FC = () => {
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || isStreaming) return;
     
-    // Check for slash commands
+    // Check for slash commands and special inputs
     const trimmedInput = input.trim();
     if (trimmedInput === '/clear') {
       if (currentSessionId) {
@@ -317,6 +317,11 @@ export const ClaudeChat: React.FC = () => {
         setInput('');
         return;
       }
+    } else if (trimmedInput === '?') {
+      // Show help modal when user types just ?
+      setShowHelpModal(true);
+      setInput('');
+      return;
     }
     
     try {
@@ -840,14 +845,12 @@ export const ClaudeChat: React.FC = () => {
               
               return (
                 <>
-                  <button 
-                    className={`btn-stats ${!hasActivity ? 'disabled' : ''}`} 
-                    onClick={() => hasActivity && setShowStatsModal(true)}
-                    disabled={!hasActivity}
-                    title={hasActivity ? "view session stats" : "no activity yet"}
-                  >
-                    stats
-                  </button>
+                  <span className="context-tokens">
+                    {tokens.toLocaleString()} tokens
+                  </span>
+                  <span className={`context-usage ${usageClass}`}>
+                    {percentage}% used
+                  </span>
                   <button className="btn-clear-context" onClick={() => {
                     // Clear messages but keep session
                     if (currentSessionId) {
@@ -856,12 +859,14 @@ export const ClaudeChat: React.FC = () => {
                   }}>
                     clear
                   </button>
-                  <span className="context-tokens">
-                    {tokens.toLocaleString()} tokens
-                  </span>
-                  <span className={`context-usage ${usageClass}`}>
-                    {percentage}% used
-                  </span>
+                  <button 
+                    className={`btn-stats ${!hasActivity ? 'disabled' : ''}`} 
+                    onClick={() => hasActivity && setShowStatsModal(true)}
+                    disabled={!hasActivity}
+                    title={hasActivity ? "view session stats" : "no activity yet"}
+                  >
+                    stats
+                  </button>
                   <button 
                     className="btn-help" 
                     onClick={() => setShowHelpModal(true)}

@@ -682,7 +682,7 @@
 
 .context-info {
   display: flex;
-  gap: 8px;
+  gap: 4px;
   align-items: center;
   font-size: 11px;
   font-family: 'Fira Code', monospace;
@@ -719,6 +719,7 @@
 .context-tokens {
   color: rgba(255, 255, 255, 0.4);
   font-family: 'Fira Code', monospace;
+  margin-right: 4px;
 }
 
 .context-usage {
