@@ -4,6 +4,7 @@ console.log('=== PRELOAD SCRIPT LOADED (Simple) ===');
 
 // Also expose ipcRenderer directly since contextIsolation is false
 window.ipcRenderer = ipcRenderer;
+console.log('ipcRenderer exposed to window:', !!window.ipcRenderer);
 
 // Since contextIsolation is false, we can directly expose to window
 window.electronAPI = {

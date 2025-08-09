@@ -105,7 +105,7 @@
 }
 
 .session-tab.active {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--accent-rgb), 0.15);
 }
 
 .tab-content {
@@ -125,12 +125,12 @@
 }
 
 .session-tab.active .tab-name {
-  color: rgba(255, 255, 255, 0.7);
+  color: #ffffff;
 }
 
 .tab-folder {
   font-size: 10px;
-  color: var(--accent-color);
+  color: #ffffff;
   white-space: nowrap;
   font-weight: 600;
   font-family: 'Fira Code', monospace;
@@ -235,6 +235,50 @@
 .tab-new:hover {
   background: rgba(var(--accent-rgb), 0.25);
   color: var(--accent-color);
+}
+
+/* Recent button - gray style */
+.tab-recent {
+  background: rgba(255, 255, 255, 0.05);
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+  width: 26px;
+  height: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  overflow: hidden;
+  user-select: none;
+  -webkit-user-select: none;
+  position: relative;
+}
+
+.tab-recent::before {
+  content: '';
+  position: absolute;
+  top: var(--ripple-y, 50%);
+  left: var(--ripple-x, 50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  transform: translate(-50%, -50%);
+  transition: width 0.4s, height 0.4s, opacity 0.4s;
+  opacity: 0;
+}
+
+.tab-recent:active::before {
+  width: 40px;
+  height: 40px;
+  opacity: 1;
+}
+
+.tab-recent:hover {
+  background: rgba(255, 255, 255, 0.08);
+  color: rgba(255, 255, 255, 0.6);
 }
 
 /* Context menu */

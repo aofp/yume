@@ -206,6 +206,15 @@ export const ClaudeChat: React.FC = () => {
           const projectName = currentSession.workingDirectory.split(/[/\\]/).pop() || 'project';
           createSession(projectName, currentSession.workingDirectory);
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === '.') {
+        e.preventDefault();
+        // Show stats modal
+        const hasActivity = currentSession && currentSession.messages.some(m => 
+          m.type === 'user' || m.type === 'assistant' || m.type === 'result'
+        );
+        if (hasActivity) {
+          setShowStatsModal(true);
+        }
       } else if (e.key === '?' && !isInputField) {
         // Toggle help when pressing ? (not in input fields)
         e.preventDefault();
@@ -226,7 +235,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, showHelpModal, showRecentModal]);
+  }, [searchVisible, currentSessionId, clearContext, showHelpModal, showRecentModal, currentSession, setShowStatsModal]);
 
   // Handle IPC event from menu for showing help modal
   useEffect(() => {
@@ -931,19 +940,23 @@ export const ClaudeChat: React.FC = () => {
                   <span className={`context-usage ${usageClass}`}>
                     {percentage}% used
                   </span>
-                  <button className="btn-clear-context" onClick={() => {
-                    // Clear messages but keep session
-                    if (currentSessionId) {
-                      clearContext(currentSessionId);
-                    }
-                  }}>
+                  <button 
+                    className="btn-clear-context" 
+                    onClick={() => {
+                      // Clear messages but keep session
+                      if (currentSessionId) {
+                        clearContext(currentSessionId);
+                      }
+                    }}
+                    title="clear context (/clear)"
+                  >
                     clear
                   </button>
                   <button 
                     className={`btn-stats ${!hasActivity ? 'disabled' : ''}`} 
                     onClick={() => hasActivity && setShowStatsModal(true)}
                     disabled={!hasActivity}
-                    title={hasActivity ? "view session stats" : "no activity yet"}
+                    title={hasActivity ? "view session stats (ctrl+.)" : "no activity yet"}
                   >
                     stats
                   </button>

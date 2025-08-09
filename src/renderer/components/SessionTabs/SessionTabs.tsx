@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconPlus, IconFolder, IconLoader2, IconFolderOpen, IconBolt, IconTrash } from '@tabler/icons-react';
+import { IconX, IconPlus, IconFolder, IconLoader2, IconFolderOpen, IconBolt, IconTrash, IconChevronDown } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './SessionTabs.css';
 
@@ -15,6 +15,7 @@ export const SessionTabs: React.FC = () => {
 
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
+  const [showRecentModal, setShowRecentModal] = useState(false);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Close context menu on click outside
@@ -131,8 +132,22 @@ export const SessionTabs: React.FC = () => {
           </div>
         ))}
         
-        <button className="tab-new" onClick={handleOpenFolder} onMouseDown={handleRipple}>
+        <button 
+          className="tab-new" 
+          onClick={handleOpenFolder} 
+          onMouseDown={handleRipple}
+          title="new tab (ctrl+t)"
+        >
           <IconPlus size={16} stroke={1.5} />
+        </button>
+        
+        <button 
+          className="tab-recent" 
+          onClick={() => setShowRecentModal(true)}
+          onMouseDown={handleRipple}
+          title="recent projects (ctrl+r)"
+        >
+          <IconChevronDown size={16} stroke={1.5} />
         </button>
       </div>
       
@@ -186,6 +201,88 @@ export const SessionTabs: React.FC = () => {
             });
             setContextMenu(null);
           }}>close all to left</button>
+        </div>
+      )}
+      
+      {showRecentModal && (
+        <div 
+          className="recent-modal-overlay"
+          onClick={() => setShowRecentModal(false)}
+        >
+          <div 
+            className="recent-modal"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="modal-header">
+              <span className="modal-title">recent projects</span>
+              <button 
+                className="clear-all-icon"
+                onClick={() => {
+                  if (confirm('clear all recent projects?')) {
+                    localStorage.removeItem('yurucode-recent-projects');
+                    setShowRecentModal(false);
+                  }
+                }}
+                title="clear all"
+              >
+                <IconTrash size={14} />
+              </button>
+            </div>
+            
+            <div className="modal-content">
+              {(() => {
+                const stored = localStorage.getItem('yurucode-recent-projects');
+                if (!stored) {
+                  return <div className="no-recent">no recent projects</div>;
+                }
+                
+                try {
+                  const projects = JSON.parse(stored);
+                  if (!projects || projects.length === 0) {
+                    return <div className="no-recent">no recent projects</div>;
+                  }
+                  
+                  return projects.map((project: any, idx: number) => (
+                    <div key={idx} className="recent-item-container">
+                      <button
+                        className="recent-item"
+                        onClick={async () => {
+                          await createSession(undefined, project.path);
+                          setShowRecentModal(false);
+                        }}
+                      >
+                        <IconFolder size={14} />
+                        <div className="recent-item-info">
+                          <div className="recent-item-name">{project.name}</div>
+                          <div className="recent-item-path">{project.path}</div>
+                        </div>
+                      </button>
+                      <button
+                        className="recent-item-remove"
+                        onClick={() => {
+                          const updated = projects.filter((_: any, i: number) => i !== idx);
+                          if (updated.length > 0) {
+                            localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+                          } else {
+                            localStorage.removeItem('yurucode-recent-projects');
+                          }
+                          // Force re-render
+                          setShowRecentModal(false);
+                          setTimeout(() => setShowRecentModal(true), 0);
+                        }}
+                        title="remove"
+                      >
+                        <IconX size={12} />
+                      </button>
+                    </div>
+                  ));
+                } catch (err) {
+                  console.error('Failed to parse recent projects:', err);
+                  return <div className="no-recent">no recent projects</div>;
+                }
+              })()}
+            </div>
+          </div>
         </div>
       )}
     </div>
