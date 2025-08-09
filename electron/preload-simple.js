@@ -2,6 +2,9 @@ const { ipcRenderer } = require('electron');
 
 console.log('=== PRELOAD SCRIPT LOADED (Simple) ===');
 
+// Also expose ipcRenderer directly since contextIsolation is false
+window.ipcRenderer = ipcRenderer;
+
 // Since contextIsolation is false, we can directly expose to window
 window.electronAPI = {
   // Folder operations
@@ -34,6 +37,14 @@ window.electronAPI = {
       console.log('Preload: toggleDevTools called');
       ipcRenderer.send('toggle-dev-tools');
     },
+  },
+  
+  // Zoom operations
+  zoom: {
+    in: () => ipcRenderer.invoke('zoom-in'),
+    out: () => ipcRenderer.invoke('zoom-out'),
+    reset: () => ipcRenderer.invoke('zoom-reset'),
+    getLevel: () => ipcRenderer.invoke('get-zoom-level'),
   },
   
   // Listen to events from main process

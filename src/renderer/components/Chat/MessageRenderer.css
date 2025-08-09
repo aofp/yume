@@ -115,14 +115,14 @@
 }
 
 .message.user .message-bubble {
-  background: rgba(255, 153, 204, 0.15);
+  background: rgba(var(--accent-rgb), 0.15);
   border: none;
   color: #ffffff;
   padding: 6px 8px;
   border-radius: 6px 6px 2px 6px;
   font-size: 13px;
   line-height: 1.5;
-  box-shadow: 0 2px 8px rgba(255, 153, 204, 0.1);
+  box-shadow: 0 2px 8px rgba(var(--accent-rgb), 0.1);
 }
 
 .message.assistant .message-bubble {
@@ -559,7 +559,10 @@ ol {
 /* Hover effect removed for cleaner look */
 
 .tool-icon {
-  font-size: 14px;
+  display: inline-flex;
+  align-items: center;
+  margin-right: 6px;
+  color: rgba(255, 255, 255, 0.5);
   animation: iconBounce 0.5s ease;
 }
 

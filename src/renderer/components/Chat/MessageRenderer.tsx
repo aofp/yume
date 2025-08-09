@@ -15,7 +15,23 @@ import {
   IconChecklist,
   IconLoader2,
   IconCopy,
-  IconArrowBackUp
+  IconArrowBackUp,
+  IconFile,
+  IconFileText,
+  IconEdit,
+  IconEditCircle,
+  IconTerminal,
+  IconSearch,
+  IconWorld,
+  IconDownload,
+  IconFileSearch,
+  IconFolderOpen,
+  IconRobot,
+  IconLogout,
+  IconNotebook,
+  IconServer,
+  IconTerminal2,
+  IconPlayerStop
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
@@ -75,77 +91,87 @@ interface ContentBlock {
 }
 
 // Tool display configurations
-const TOOL_DISPLAYS: Record<string, (input: any) => { icon: string; action: string; detail: string; todos?: any[] }> = {
+const TOOL_DISPLAYS: Record<string, (input: any) => { icon: React.ReactNode; action: string; detail: string; todos?: any[] }> = {
   'Read': (i) => ({ 
-    icon: '', 
+    icon: <IconFileText size={14} stroke={1.5} />, 
     action: 'reading', 
     detail: formatPath(i?.file_path) 
   }),
   'Write': (i) => ({ 
-    icon: '', 
+    icon: <IconFile size={14} stroke={1.5} />, 
     action: 'writing', 
     detail: formatPath(i?.file_path) 
   }),
   'Edit': (i) => ({ 
-    icon: '', 
+    icon: <IconEdit size={14} stroke={1.5} />, 
     action: 'editing', 
     detail: formatPath(i?.file_path) + (i?.old_string ? ' • ' + getChangePreview(i.old_string, i.new_string) : '')
   }),
   'MultiEdit': (i) => ({ 
-    icon: '', 
+    icon: <IconEditCircle size={14} stroke={1.5} />, 
     action: 'multi-editing', 
     detail: `${formatPath(i?.file_path)} • ${i?.edits?.length || 0} changes`
   }),
   'Bash': (i) => ({ 
-    icon: '', 
+    icon: <IconTerminal size={14} stroke={1.5} />, 
     action: 'running', 
     detail: formatCommand(i?.command)
   }),
   'TodoWrite': (i) => ({ 
-    icon: '', 
+    icon: <IconChecklist size={14} stroke={1.5} />, 
     action: 'updating todos', 
     detail: formatTodos(i?.todos),
     todos: i?.todos
   }),
   'WebSearch': (i) => ({ 
-    icon: '', 
+    icon: <IconWorld size={14} stroke={1.5} />, 
     action: 'searching web', 
     detail: `"${i?.query || ''}"`
   }),
   'WebFetch': (i) => ({ 
-    icon: '', 
+    icon: <IconDownload size={14} stroke={1.5} />, 
     action: 'fetching', 
     detail: formatUrl(i?.url)
   }),
   'Grep': (i) => ({ 
-    icon: '', 
+    icon: <IconSearch size={14} stroke={1.5} />, 
     action: 'searching', 
     detail: `"${i?.pattern || ''}" in ${formatPath(i?.path || '.')}`
   }),
   'Glob': (i) => ({ 
-    icon: '', 
+    icon: <IconFileSearch size={14} stroke={1.5} />, 
     action: 'finding', 
     detail: i?.pattern || 'files'
   }),
   'LS': (i) => ({ 
-    icon: '', 
+    icon: <IconFolderOpen size={14} stroke={1.5} />, 
     action: 'listing', 
     detail: formatPath(i?.path)
   }),
   'Task': (i) => ({ 
-    icon: '', 
+    icon: <IconRobot size={14} stroke={1.5} />, 
     action: i?.description || 'running task', 
     detail: i?.subagent_type || 'agent'
   }),
   'ExitPlanMode': (i) => ({ 
-    icon: '', 
+    icon: <IconLogout size={14} stroke={1.5} />, 
     action: 'plan complete', 
     detail: 'ready to execute'
   }),
   'NotebookEdit': (i) => ({ 
-    icon: '', 
+    icon: <IconNotebook size={14} stroke={1.5} />, 
     action: 'editing notebook', 
     detail: formatPath(i?.notebook_path)
+  }),
+  'BashOutput': (i) => ({ 
+    icon: <IconTerminal2 size={14} stroke={1.5} />, 
+    action: 'reading output', 
+    detail: `bash ${i?.bash_id || 'session'}`
+  }),
+  'KillBash': (i) => ({ 
+    icon: <IconPlayerStop size={14} stroke={1.5} />, 
+    action: 'stopping', 
+    detail: `bash ${i?.shell_id || 'session'}`
   })
 };
 
@@ -158,7 +184,7 @@ const getMCPToolDisplay = (toolName: string, input: any) => {
     const tool = parts[2] || 'tool';
     
     return {
-      icon: '',
+      icon: <IconServer size={14} stroke={1.5} />,
       action: `mcp: ${tool.replace(/_/g, ' ')}`,
       detail: `${server} • ${JSON.stringify(input).substring(0, 50)}...`
     };

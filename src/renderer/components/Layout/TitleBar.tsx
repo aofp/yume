@@ -17,7 +17,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
         <div className="titlebar-content">
           <span className="titlebar-text">
             <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 'bold' }}>yuru</span>
-            <span style={{ color: 'var(--accent-color)', fontWeight: 'bold' }}>code</span>
+            <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 'bold' }}>code</span>
           </span>
         </div>
         <button className="titlebar-settings" onClick={onSettingsClick}>

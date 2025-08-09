@@ -98,11 +98,19 @@ ipcMain.handle('is-directory', async (event, path) => {
 
 // Zoom handlers
 ipcMain.handle('zoom-in', async () => {
-  if (!mainWindow) return;
+  console.log('IPC zoom-in called, mainWindow:', !!mainWindow);
+  if (!mainWindow) {
+    console.error('No mainWindow available');
+    return null;
+  }
   const currentZoom = mainWindow.webContents.getZoomLevel();
   const newZoom = currentZoom + 0.5;
+  console.log('Setting zoom from', currentZoom, 'to', newZoom);
   mainWindow.webContents.setZoomLevel(newZoom);
-  mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '${newZoom}')`);
+  mainWindow.webContents.executeJavaScript(`
+    localStorage.setItem('zoomLevel', '${newZoom}');
+    window.dispatchEvent(new CustomEvent('zoom-changed', { detail: ${newZoom} }));
+  `);
   return newZoom;
 });
 
@@ -111,14 +119,20 @@ ipcMain.handle('zoom-out', async () => {
   const currentZoom = mainWindow.webContents.getZoomLevel();
   const newZoom = currentZoom - 0.5;
   mainWindow.webContents.setZoomLevel(newZoom);
-  mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '${newZoom}')`);
+  mainWindow.webContents.executeJavaScript(`
+    localStorage.setItem('zoomLevel', '${newZoom}');
+    window.dispatchEvent(new CustomEvent('zoom-changed', { detail: ${newZoom} }));
+  `);
   return newZoom;
 });
 
 ipcMain.handle('zoom-reset', async () => {
   if (!mainWindow) return;
   mainWindow.webContents.setZoomLevel(0);
-  mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '0')`);
+  mainWindow.webContents.executeJavaScript(`
+    localStorage.setItem('zoomLevel', '0');
+    window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));
+  `);
   return 0;
 });
 
@@ -244,8 +258,11 @@ function createWindow() {
       // Ctrl/Cmd+0 - Reset zoom to 100%
       event.preventDefault();
       mainWindow.webContents.setZoomLevel(0);
-      // Save zoom level
-      mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '0')`);
+      // Save zoom level and notify renderer
+      mainWindow.webContents.executeJavaScript(`
+        localStorage.setItem('zoomLevel', '0');
+        window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));
+      `);
       return;
     }
     if ((input.control || input.meta) && (input.key === '=' || input.key === '+') && !input.shift) {
@@ -254,8 +271,11 @@ function createWindow() {
       const currentZoom = mainWindow.webContents.getZoomLevel();
       const newZoom = currentZoom + 0.5;
       mainWindow.webContents.setZoomLevel(newZoom);
-      // Save zoom level
-      mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '${newZoom}')`);
+      // Save zoom level and notify renderer
+      mainWindow.webContents.executeJavaScript(`
+        localStorage.setItem('zoomLevel', '${newZoom}');
+        window.dispatchEvent(new CustomEvent('zoom-changed', { detail: ${newZoom} }));
+      `);
       return;
     }
     if ((input.control || input.meta) && input.key === '-' && !input.shift) {
@@ -264,8 +284,11 @@ function createWindow() {
       const currentZoom = mainWindow.webContents.getZoomLevel();
       const newZoom = currentZoom - 0.5;
       mainWindow.webContents.setZoomLevel(newZoom);
-      // Save zoom level
-      mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '${newZoom}')`);
+      // Save zoom level and notify renderer
+      mainWindow.webContents.executeJavaScript(`
+        localStorage.setItem('zoomLevel', '${newZoom}');
+        window.dispatchEvent(new CustomEvent('zoom-changed', { detail: ${newZoom} }));
+      `);
       return;
     }
     

@@ -15,28 +15,28 @@
 }
 
 .settings-modal {
-  background: #000000;
+  background: #0a0a0a;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
-  width: 320px;
+  width: 90%;
+  max-width: 500px;
   max-height: 80vh;
   overflow-y: auto;
-  animation: slideUp 0.3s ease;
 }
 
 .settings-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
+  padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .settings-header h3 {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 500;
   margin: 0;
-  font-size: 14px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.9);
   text-transform: lowercase;
 }
 
@@ -44,12 +44,9 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.4);
-  padding: 4px;
   cursor: default;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: color 0.2s ease;
+  padding: 2px;
+  transition: all 0.2s ease;
 }
 
 .settings-close:hover {
@@ -57,11 +54,11 @@
 }
 
 .settings-content {
-  padding: 20px;
+  padding: 12px;
 }
 
 .settings-section {
-  margin-bottom: 24px;
+  margin-bottom: 12px;
 }
 
 .settings-section:last-child {
@@ -69,28 +66,28 @@
 }
 
 .settings-section h4 {
-  margin: 0 0 12px 0;
+  color: var(--accent-color);
   font-size: 11px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.4);
+  font-weight: 500;
+  margin: 0 0 6px 0;
   text-transform: lowercase;
-  letter-spacing: 0.5px;
 }
 
 /* Zoom Controls */
 .zoom-controls {
   display: flex;
   align-items: center;
-  gap: 8px;
+  justify-content: flex-start;
+  gap: 12px;
 }
 
 .zoom-btn {
-  width: 28px;
-  height: 28px;
-  background: rgba(255, 255, 255, 0.03);
+  width: 32px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  border-radius: 6px;
+  color: rgba(255, 255, 255, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -105,62 +102,65 @@
 }
 
 .zoom-level {
-  min-width: 60px;
+  min-width: 80px;
   text-align: center;
   font-family: 'Fira Code', monospace;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--accent-color);
 }
 
-/* Color Controls */
-.color-controls {
-  display: flex;
-  align-items: center;
-  gap: 12px;
+/* Color Swatches */
+.color-swatches {
+  display: grid;
+  grid-template-columns: repeat(16, 1fr);
+  grid-template-rows: repeat(2, 1fr);
+  gap: 3px;
 }
 
-.color-picker {
-  width: 40px;
-  height: 28px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+.color-swatch {
+  width: 22px;
+  height: 22px;
+  border: 2px solid transparent;
   border-radius: 4px;
   cursor: default;
-  padding: 2px;
+  transition: all 0.2s ease;
+  position: relative;
 }
 
-.color-picker::-webkit-color-swatch-wrapper {
-  padding: 0;
+.color-swatch:hover {
+  transform: scale(1.1);
+  border-color: rgba(255, 255, 255, 0.3);
 }
 
-.color-picker::-webkit-color-swatch {
-  border: none;
-  border-radius: 2px;
+.color-swatch.active {
+  border-color: rgba(255, 255, 255, 0.6);
+  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.8), 0 0 0 3px rgba(255, 255, 255, 0.3);
+}
+
+.color-swatch.active::after {
+  content: '✓';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  color: #000;
+  font-size: 12px;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
+}
+
+.color-info {
+  display: flex;
+  justify-content: center;
+  margin-top: 8px;
 }
 
 .color-value {
   font-family: 'Fira Code', monospace;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
-  flex: 1;
-}
-
-.color-reset {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.4);
-  padding: 4px 8px;
-  border-radius: 4px;
-  font-size: 11px;
-  cursor: default;
-  transition: all 0.2s ease;
-  text-transform: lowercase;
-}
-
-.color-reset:hover {
-  background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.2);
+  text-transform: lowercase;
 }
 
 @keyframes fadeIn {
@@ -168,17 +168,6 @@
     opacity: 0;
   }
   to {
-    opacity: 1;
-  }
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(20px);
-    opacity: 0;
-  }
-  to {
-    transform: translateY(0);
     opacity: 1;
   }
 }

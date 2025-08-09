@@ -6,6 +6,50 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+// Predefined color swatches - 32 colors organized in rainbow spectrum
+const COLOR_SWATCHES = [
+  '#ff99cc', // default pink/magenta (first)
+  // Reds
+  '#ff9999', // pastel red
+  '#ff8080', // coral
+  '#ffb3b3', // light salmon
+  '#ffcccc', // pale pink
+  // Oranges
+  '#ffb399', // light orange
+  '#ffcc99', // pastel orange
+  '#ffd4a3', // peach
+  '#ffe0b3', // apricot
+  // Yellows
+  '#ffff99', // pastel yellow
+  '#ffffb3', // light yellow
+  '#ffffcc', // cream
+  '#ffffe6', // ivory
+  // Yellow-Greens
+  '#e6ff99', // lime yellow
+  '#ccff99', // pastel lime
+  '#b3ff99', // light lime
+  // Greens
+  '#99ff99', // pastel green
+  '#99ffb3', // mint green
+  '#99ffcc', // pastel mint
+  '#b3ffb3', // light green
+  // Cyans
+  '#99ffe6', // aqua mint
+  '#99ffff', // pastel cyan
+  '#b3ffff', // light cyan
+  '#ccffff', // pale cyan
+  // Blues
+  '#99ddff', // sky blue
+  '#99ccff', // pastel sky
+  '#99b3ff', // light blue
+  '#9999ff', // pastel blue
+  // Purples
+  '#b3b3ff', // periwinkle
+  '#cc99ff', // pastel purple
+  '#e6b3ff', // lavender
+  '#ff99ff', // pastel magenta
+];
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [zoomLevel, setZoomLevel] = useState(0);
   const [accentColor, setAccentColor] = useState('#ff99cc');
@@ -13,13 +57,35 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   useEffect(() => {
     // Get current zoom level
     const getZoom = async () => {
+      // Try direct ipcRenderer first
+      if ((window as any).ipcRenderer) {
+        try {
+          const level = await (window as any).ipcRenderer.invoke('get-zoom-level');
+          setZoomLevel(level);
+          console.log('Got zoom level from direct ipcRenderer:', level);
+          return;
+        } catch (err) {
+          console.error('Direct ipcRenderer failed:', err);
+        }
+      }
+      
+      // Try electronAPI
       if (window.electronAPI?.zoom?.getLevel) {
-        const level = await window.electronAPI.zoom.getLevel();
-        setZoomLevel(level);
-      } else {
-        // Try to get from localStorage as fallback
-        const saved = localStorage.getItem('zoomLevel');
-        if (saved) setZoomLevel(parseFloat(saved));
+        try {
+          const level = await window.electronAPI.zoom.getLevel();
+          setZoomLevel(level);
+          console.log('Got zoom level from electronAPI:', level);
+          return;
+        } catch (err) {
+          console.error('Failed to get zoom level:', err);
+        }
+      }
+      
+      // Final fallback to localStorage
+      const saved = localStorage.getItem('zoomLevel');
+      if (saved) {
+        setZoomLevel(parseFloat(saved));
+        console.log('Got zoom level from localStorage:', saved);
       }
     };
     getZoom();
@@ -27,59 +93,129 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     // Get saved accent color
     const savedColor = localStorage.getItem('accentColor') || '#ff99cc';
     setAccentColor(savedColor);
+
+    // Listen for zoom changes from keyboard shortcuts
+    const handleZoomChange = (e: any) => {
+      setZoomLevel(e.detail);
+    };
+    window.addEventListener('zoom-changed', handleZoomChange);
+    return () => window.removeEventListener('zoom-changed', handleZoomChange);
   }, []);
 
   const handleZoomIn = async () => {
+    console.log('Zoom in clicked');
+    
+    // Try direct ipcRenderer first (most reliable)
+    if ((window as any).ipcRenderer) {
+      try {
+        const newZoom = await (window as any).ipcRenderer.invoke('zoom-in');
+        console.log('Zoom in via direct ipcRenderer, result:', newZoom);
+        if (newZoom !== null && newZoom !== undefined) {
+          setZoomLevel(newZoom);
+        }
+        return;
+      } catch (err) {
+        console.error('Direct ipcRenderer failed:', err);
+      }
+    }
+    
+    // Fallback to electronAPI
     if (window.electronAPI?.zoom?.in) {
-      const newZoom = await window.electronAPI.zoom.in();
-      setZoomLevel(newZoom);
+      try {
+        const newZoom = await window.electronAPI.zoom.in();
+        console.log('Zoom in via electronAPI, result:', newZoom);
+        if (newZoom !== null && newZoom !== undefined) {
+          setZoomLevel(newZoom);
+        }
+      } catch (err) {
+        console.error('Zoom in error:', err);
+      }
     } else {
-      // Fallback - just update localStorage
-      const newZoom = zoomLevel + 0.5;
-      setZoomLevel(newZoom);
-      localStorage.setItem('zoomLevel', newZoom.toString());
+      console.error('No zoom method available!');
     }
   };
 
   const handleZoomOut = async () => {
+    console.log('Zoom out clicked');
+    
+    // Try direct ipcRenderer first (most reliable)
+    if ((window as any).ipcRenderer) {
+      try {
+        const newZoom = await (window as any).ipcRenderer.invoke('zoom-out');
+        console.log('Zoom out via direct ipcRenderer, result:', newZoom);
+        if (newZoom !== null && newZoom !== undefined) {
+          setZoomLevel(newZoom);
+        }
+        return;
+      } catch (err) {
+        console.error('Direct ipcRenderer failed:', err);
+      }
+    }
+    
+    // Fallback to electronAPI
     if (window.electronAPI?.zoom?.out) {
-      const newZoom = await window.electronAPI.zoom.out();
-      setZoomLevel(newZoom);
+      try {
+        const newZoom = await window.electronAPI.zoom.out();
+        console.log('Zoom out via electronAPI, result:', newZoom);
+        if (newZoom !== null && newZoom !== undefined) {
+          setZoomLevel(newZoom);
+        }
+      } catch (err) {
+        console.error('Zoom out error:', err);
+      }
     } else {
-      // Fallback - just update localStorage
-      const newZoom = zoomLevel - 0.5;
-      setZoomLevel(newZoom);
-      localStorage.setItem('zoomLevel', newZoom.toString());
+      console.error('No zoom method available!');
     }
   };
 
   const handleZoomReset = async () => {
+    console.log('Zoom reset clicked');
+    
+    // Try direct ipcRenderer first (most reliable)
+    if ((window as any).ipcRenderer) {
+      try {
+        const newZoom = await (window as any).ipcRenderer.invoke('zoom-reset');
+        console.log('Zoom reset via direct ipcRenderer, result:', newZoom);
+        if (newZoom !== null && newZoom !== undefined) {
+          setZoomLevel(newZoom);
+        }
+        return;
+      } catch (err) {
+        console.error('Direct ipcRenderer failed:', err);
+      }
+    }
+    
+    // Fallback to electronAPI
     if (window.electronAPI?.zoom?.reset) {
-      const newZoom = await window.electronAPI.zoom.reset();
-      setZoomLevel(newZoom);
+      try {
+        const newZoom = await window.electronAPI.zoom.reset();
+        console.log('Zoom reset via electronAPI, result:', newZoom);
+        if (newZoom !== null && newZoom !== undefined) {
+          setZoomLevel(newZoom);
+        }
+      } catch (err) {
+        console.error('Zoom reset error:', err);
+      }
     } else {
-      // Fallback - just update localStorage
-      setZoomLevel(0);
-      localStorage.setItem('zoomLevel', '0');
+      console.error('No zoom method available!');
     }
   };
 
-  const handleColorChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const newColor = e.target.value;
-    setAccentColor(newColor);
+  const handleColorSelect = (color: string) => {
+    setAccentColor(color);
     
     // Apply the color immediately
-    document.documentElement.style.setProperty('--accent-color', newColor);
+    document.documentElement.style.setProperty('--accent-color', color);
     
     // Convert hex to RGB for rgba() usage
-    const hex = newColor.replace('#', '');
+    const hex = color.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
     
     // Save to localStorage
-    localStorage.setItem('accentColor', newColor);
+    localStorage.setItem('accentColor', color);
   };
 
   const getZoomPercentage = () => {
@@ -87,10 +223,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     return Math.round(100 * Math.pow(1.1, zoomLevel));
   };
 
-  // Handle Escape key
+  // Handle Escape key and Ctrl+,
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
+        onClose();
+      }
+      // Also close on Ctrl+, or Cmd+,
+      if ((e.ctrlKey || e.metaKey) && e.key === ',') {
+        e.preventDefault();
         onClose();
       }
     };
@@ -127,20 +268,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
           <div className="settings-section">
             <h4>accent color</h4>
-            <div className="color-controls">
-              <input
-                type="color"
-                className="color-picker"
-                value={accentColor}
-                onChange={handleColorChange}
-              />
+            <div className="color-swatches">
+              {COLOR_SWATCHES.map((color) => (
+                <button
+                  key={color}
+                  className={`color-swatch ${accentColor === color ? 'active' : ''}`}
+                  style={{ backgroundColor: color }}
+                  onClick={() => handleColorSelect(color)}
+                  title={color}
+                />
+              ))}
+            </div>
+            <div className="color-info">
               <span className="color-value">{accentColor}</span>
-              <button 
-                className="color-reset"
-                onClick={() => handleColorChange({ target: { value: '#ff99cc' } } as any)}
-              >
-                reset
-              </button>
             </div>
           </div>
         </div>
