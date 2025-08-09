@@ -13,7 +13,7 @@
   gap: 4px;
   opacity: 0;
   transition: opacity 0.2s ease;
-  margin-left: 8px;
+  margin-left: 2px;
   align-self: flex-end;
   justify-content: flex-end;
 }
@@ -21,7 +21,7 @@
 /* User message actions on the left */
 .message-actions.user-actions {
   margin-left: 0;
-  margin-right: 8px;
+  margin-right: 2px;
   order: -1;
 }
 
@@ -118,7 +118,7 @@
   background: rgba(255, 153, 204, 0.15);
   border: none;
   color: #ffffff;
-  padding: 8px;
+  padding: 6px 8px;
   border-radius: 6px 6px 2px 6px;
   font-size: 13px;
   line-height: 1.5;
@@ -129,7 +129,7 @@
   background: rgba(128, 128, 128, 0.2);
   border: none;
   color: #ffffff;
-  padding: 8px;
+  padding: 6px 8px;
   border-radius: 6px 6px 6px 2px;
   font-size: 13px;
   line-height: 1.5;
@@ -312,7 +312,7 @@ ol {
   align-items: center;
   gap: 6px;
   padding: 8px 12px;
-  color: #808080;
+  color: #d0d0d0;
   font-size: 12px;
   animation: fadeIn 0.3s ease;
 }
@@ -325,7 +325,8 @@ ol {
 }
 
 .thinking-text {
-  opacity: 0.8;
+  opacity: 1;
+  color: #d0d0d0;
 }
 
 /* Tool Use Display */

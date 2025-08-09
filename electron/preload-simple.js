@@ -38,13 +38,21 @@ window.electronAPI = {
   
   // Listen to events from main process
   on: (channel, callback) => {
-    const validChannels = ['folder-changed', 'new-session', 'initial-directory', 'server-port-changed'];
+    const validChannels = ['folder-changed', 'new-session', 'initial-directory', 'server-port-changed', 'show-help-modal'];
     if (validChannels.includes(channel)) {
       ipcRenderer.on(channel, (event, ...args) => callback(...args));
     }
   },
   
-  // Remove listeners
+  // Remove specific listener
+  off: (channel, callback) => {
+    const validChannels = ['folder-changed', 'new-session', 'initial-directory', 'server-port-changed', 'show-help-modal'];
+    if (validChannels.includes(channel)) {
+      ipcRenderer.removeListener(channel, callback);
+    }
+  },
+  
+  // Remove all listeners
   removeAllListeners: (channel) => {
     ipcRenderer.removeAllListeners(channel);
   }

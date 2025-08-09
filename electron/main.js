@@ -208,24 +208,25 @@ function createWindow() {
     }
     
     // Zoom controls
-    if ((input.control || input.meta) && input.key === '0') {
+    if ((input.control || input.meta) && input.key === '0' && !input.shift) {
       // Ctrl/Cmd+0 - Reset zoom to 100%
       event.preventDefault();
       mainWindow.webContents.setZoomLevel(0);
+      return;
     }
-    if ((input.control || input.meta) && (input.key === '=' || input.key === '+')) {
+    if ((input.control || input.meta) && (input.key === '=' || input.key === '+') && !input.shift) {
       // Ctrl/Cmd++ - Zoom in
       event.preventDefault();
-      mainWindow.webContents.getZoomLevel((level) => {
-        mainWindow.webContents.setZoomLevel(level + 0.5);
-      });
+      const currentZoom = mainWindow.webContents.getZoomLevel();
+      mainWindow.webContents.setZoomLevel(currentZoom + 0.5);
+      return;
     }
-    if ((input.control || input.meta) && input.key === '-') {
+    if ((input.control || input.meta) && input.key === '-' && !input.shift) {
       // Ctrl/Cmd+- - Zoom out
       event.preventDefault();
-      mainWindow.webContents.getZoomLevel((level) => {
-        mainWindow.webContents.setZoomLevel(level - 0.5);
-      });
+      const currentZoom = mainWindow.webContents.getZoomLevel();
+      mainWindow.webContents.setZoomLevel(currentZoom - 0.5);
+      return;
     }
     
     // Windows-specific shortcuts since there's no titlebar
@@ -329,12 +330,12 @@ function createMenu() {
     {
       label: 'View',
       submenu: [
-        { label: 'Reload', accelerator: 'CmdOrCtrl+R', role: 'reload' },
-        { label: 'Toggle Developer Tools', accelerator: 'F12', role: 'toggleDevTools' },
+        { label: 'Reload', role: 'reload' },
+        { label: 'Toggle Developer Tools', role: 'toggleDevTools' },
         { type: 'separator' },
-        { label: 'Actual Size', accelerator: 'CmdOrCtrl+0', role: 'resetZoom' },
-        { label: 'Zoom In', accelerator: 'CmdOrCtrl+Plus', role: 'zoomIn' },
-        { label: 'Zoom Out', accelerator: 'CmdOrCtrl+-', role: 'zoomOut' }
+        { label: 'Actual Size', role: 'resetZoom' },
+        { label: 'Zoom In', role: 'zoomIn' },
+        { label: 'Zoom Out', role: 'zoomOut' }
       ]
     },
     {
@@ -343,59 +344,8 @@ function createMenu() {
         {
           label: 'keyboard shortcuts',
           click: () => {
-            const shortcuts = process.platform === 'darwin' ? 
-              'KEYBOARD SHORTCUTS\n\n' +
-              'General:\n' +
-              '  Cmd+N       new session\n' +
-              '  Cmd+O       open folder\n' +
-              '  Cmd+Q       quit\n\n' +
-              'Editing:\n' +
-              '  Cmd+Z       undo\n' +
-              '  Cmd+C       copy\n' +
-              '  Cmd+V       paste\n' +
-              '  Cmd+A       select all\n\n' +
-              'View:\n' +
-              '  Cmd+0       reset zoom (100%)\n' +
-              '  Cmd++       zoom in\n' +
-              '  Cmd+-       zoom out\n' +
-              '  Cmd+R       reload\n' +
-              '  F12         dev tools\n\n' +
-              'Chat:\n' +
-              '  Cmd+F       search messages\n' +
-              '  Cmd+L       clear context\n' +
-              '  Enter       send message\n' +
-              '  Shift+Enter new line'
-              :
-              'KEYBOARD SHORTCUTS\n\n' +
-              'General:\n' +
-              '  Ctrl+N      new session\n' +
-              '  Ctrl+O      open folder\n' +
-              '  Ctrl+Q      quit\n' +
-              '  Ctrl+M      minimize\n\n' +
-              'Editing:\n' +
-              '  Ctrl+Z      undo\n' +
-              '  Ctrl+C      copy\n' +
-              '  Ctrl+V      paste\n' +
-              '  Ctrl+A      select all\n\n' +
-              'View:\n' +
-              '  Ctrl+0      reset zoom (100%)\n' +
-              '  Ctrl++      zoom in\n' +
-              '  Ctrl+-      zoom out\n' +
-              '  Ctrl+R      reload\n' +
-              '  F12         dev tools\n\n' +
-              'Chat:\n' +
-              '  Ctrl+F      search messages\n' +
-              '  Ctrl+L      clear context\n' +
-              '  Enter       send message\n' +
-              '  Shift+Enter new line';
-              
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'keyboard shortcuts',
-              message: 'keyboard shortcuts',
-              detail: shortcuts,
-              buttons: ['OK']
-            });
+            // Send event to renderer to show the help modal
+            mainWindow.webContents.send('show-help-modal');
           }
         },
         { type: 'separator' },

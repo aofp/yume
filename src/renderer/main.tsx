@@ -136,12 +136,7 @@ document.addEventListener('keydown', (e) => {
     }
   }
   
-  // F1 or ? or Cmd/Ctrl + ? - Show keyboard shortcuts help
-  if (e.key === 'F1' || e.key === '?' || ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === '?')) {
-    e.preventDefault();
-    console.log('Keyboard shortcut: Show help');
-    showKeyboardShortcutsHelp();
-  }
+  // Help shortcuts are now handled in ClaudeChat component
 });
 
 // Track if help is open

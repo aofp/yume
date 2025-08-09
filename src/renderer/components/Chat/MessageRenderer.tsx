@@ -932,7 +932,7 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         return (
           <div className="message result-success">
             <div className="elapsed-time">
-              time: {elapsedSeconds}s
+              {elapsedSeconds}s
             </div>
           </div>
         );

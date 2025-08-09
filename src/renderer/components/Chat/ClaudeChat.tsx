@@ -23,7 +23,8 @@ import {
   IconFile,
   IconLoader2,
   IconChartBar,
-  IconHelp
+  IconHelp,
+  IconCoin
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -175,7 +176,7 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.messages]);
 
-  // Handle Ctrl+F for search and Ctrl+L for clear
+  // Handle Ctrl+F for search, Ctrl+L for clear, and Ctrl+? for help
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
@@ -186,6 +187,9 @@ export const ClaudeChat: React.FC = () => {
         if (currentSessionId) {
           clearContext(currentSessionId);
         }
+      } else if ((e.ctrlKey || e.metaKey) && (e.key === '?' || (e.shiftKey && e.key === '/'))) {
+        e.preventDefault();
+        setShowHelpModal(true);
       } else if (e.key === 'Escape' && searchVisible) {
         setSearchVisible(false);
         setSearchQuery('');
@@ -197,6 +201,26 @@ export const ClaudeChat: React.FC = () => {
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [searchVisible, currentSessionId, clearContext]);
+
+  // Handle IPC event from menu for showing help modal
+  useEffect(() => {
+    const handleShowHelp = () => {
+      setShowHelpModal(true);
+    };
+
+    // Listen for IPC event from electron menu
+    if (window.electronAPI && window.electronAPI.on) {
+      window.electronAPI.on('show-help-modal', handleShowHelp);
+      return () => {
+        // Use off if available, otherwise use removeAllListeners
+        if (window.electronAPI.off) {
+          window.electronAPI.off('show-help-modal', handleShowHelp);
+        } else if (window.electronAPI.removeAllListeners) {
+          window.electronAPI.removeAllListeners('show-help-modal');
+        }
+      };
+    }
+  }, []);
 
   // Search functionality
   useEffect(() => {
@@ -885,15 +909,50 @@ export const ClaudeChat: React.FC = () => {
               <div className="help-section">
                 <h4>general</h4>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">ctrl+n</span>
-                  <span className="shortcut-desc">new session</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">t</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
+                  <span className="shortcut-desc">new tab</span>
                 </div>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">ctrl+o</span>
-                  <span className="shortcut-desc">open folder</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">r</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
+                  <span className="shortcut-desc">recent projects</span>
                 </div>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">ctrl+q</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">tab</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
+                  <span className="shortcut-desc">next tab</span>
+                </div>
+                <div className="shortcut-item">
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">shift</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">tab</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
+                  <span className="shortcut-desc">previous tab</span>
+                </div>
+                <div className="shortcut-item">
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">q</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">quit app</span>
                 </div>
               </div>
@@ -901,39 +960,68 @@ export const ClaudeChat: React.FC = () => {
               <div className="help-section">
                 <h4>view</h4>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">ctrl+0</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">0</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">reset zoom (100%)</span>
                 </div>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">ctrl++</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">+</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">zoom in</span>
                 </div>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">ctrl+-</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">-</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">zoom out</span>
-                </div>
-                <div className="shortcut-item">
-                  <span className="shortcut-keys">f12</span>
-                  <span className="shortcut-desc">dev tools</span>
                 </div>
               </div>
               
               <div className="help-section">
                 <h4>chat</h4>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">ctrl+f</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">f</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">search messages</span>
                 </div>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">ctrl+l</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">ctrl</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">l</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">clear context</span>
                 </div>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">enter</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">enter</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">send message</span>
                 </div>
                 <div className="shortcut-item">
-                  <span className="shortcut-keys">shift+enter</span>
+                  <div className="shortcut-keys">
+                    <span className="key-btn">shift</span>
+                    <span className="key-plus">+</span>
+                    <span className="key-btn">enter</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">new line</span>
                 </div>
               </div>
@@ -952,44 +1040,72 @@ export const ClaudeChat: React.FC = () => {
               </button>
             </div>
             <div className="stats-content">
-              <div className="stats-grid">
-                <div className="stat-item">
-                  <IconChartBar size={16} />
-                  <div className="stat-label">total tokens</div>
-                  <div className="stat-value">{currentSession.analytics.tokens.total.toLocaleString()}</div>
+              <div className="stats-section">
+                <h4>usage</h4>
+                <div className="stat-row">
+                  <div className="stat-keys">
+                    <IconChartBar size={14} />
+                    <span className="stat-name">total tokens</span>
+                  </div>
+                  <span className="stat-dots"></span>
+                  <span className="stat-desc">{currentSession.analytics.tokens.total.toLocaleString()}</span>
                 </div>
-                <div className="stat-item">
-                  <IconChartBar size={16} />
-                  <div className="stat-label">messages</div>
-                  <div className="stat-value">{currentSession.analytics.totalMessages}</div>
+                <div className="stat-row">
+                  <div className="stat-keys">
+                    <IconSend size={14} />
+                    <span className="stat-name">messages</span>
+                  </div>
+                  <span className="stat-dots"></span>
+                  <span className="stat-desc">{currentSession.analytics.totalMessages}</span>
                 </div>
-                <div className="stat-item">
-                  <IconChartBar size={16} />
-                  <div className="stat-label">tool uses</div>
-                  <div className="stat-value">{currentSession.analytics.toolUses}</div>
+                <div className="stat-row">
+                  <div className="stat-keys">
+                    <IconTool size={14} />
+                    <span className="stat-name">tool uses</span>
+                  </div>
+                  <span className="stat-dots"></span>
+                  <span className="stat-desc">{currentSession.analytics.toolUses}</span>
                 </div>
-                <div className="stat-item">
-                  <IconChartBar size={16} />
-                  <div className="stat-label">cost estimate</div>
-                  <div className="stat-value">
+              </div>
+              
+              <div className="stats-section">
+                <h4>cost</h4>
+                <div className="stat-row">
+                  <div className="stat-keys">
+                    <IconCoin size={14} />
+                    <span className="stat-name">estimate</span>
+                  </div>
+                  <span className="stat-dots"></span>
+                  <span className="stat-desc">
                     ${(
                       (currentSession.analytics.tokens.input / 1000000) * 3.00 + 
                       (currentSession.analytics.tokens.output / 1000000) * 15.00
                     ).toFixed(3)}
-                  </div>
+                  </span>
                 </div>
               </div>
-              <div className="token-breakdown">
-                <div className="breakdown-label">token breakdown</div>
+              
+              <div className="stats-section">
+                <h4>token breakdown</h4>
+                <div className="stat-row">
+                  <div className="stat-keys">
+                    <span className="stat-name">input</span>
+                  </div>
+                  <span className="stat-dots"></span>
+                  <span className="stat-desc">{currentSession.analytics.tokens.input.toLocaleString()}</span>
+                </div>
+                <div className="stat-row">
+                  <div className="stat-keys">
+                    <span className="stat-name">output</span>
+                  </div>
+                  <span className="stat-dots"></span>
+                  <span className="stat-desc">{currentSession.analytics.tokens.output.toLocaleString()}</span>
+                </div>
                 <div className="breakdown-bar">
                   <div 
                     className="input-bar" 
                     style={{ width: `${(currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100}%` }}
                   />
-                </div>
-                <div className="breakdown-legend">
-                  <span>input: {currentSession.analytics.tokens.input.toLocaleString()}</span>
-                  <span>output: {currentSession.analytics.tokens.output.toLocaleString()}</span>
                 </div>
               </div>
             </div>
