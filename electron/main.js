@@ -9,6 +9,7 @@ let serverProcess = null;
 let mainWindow = null;
 let currentWorkingDirectory = null;
 let serverPort = null;
+let savedZoomLevel = 0; // Store zoom level
 
 // ============================================
 // REGISTER IPC HANDLERS IMMEDIATELY
@@ -212,20 +213,28 @@ function createWindow() {
       // Ctrl/Cmd+0 - Reset zoom to 100%
       event.preventDefault();
       mainWindow.webContents.setZoomLevel(0);
+      // Save zoom level
+      mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '0')`);
       return;
     }
     if ((input.control || input.meta) && (input.key === '=' || input.key === '+') && !input.shift) {
       // Ctrl/Cmd++ - Zoom in
       event.preventDefault();
       const currentZoom = mainWindow.webContents.getZoomLevel();
-      mainWindow.webContents.setZoomLevel(currentZoom + 0.5);
+      const newZoom = currentZoom + 0.5;
+      mainWindow.webContents.setZoomLevel(newZoom);
+      // Save zoom level
+      mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '${newZoom}')`);
       return;
     }
     if ((input.control || input.meta) && input.key === '-' && !input.shift) {
       // Ctrl/Cmd+- - Zoom out
       event.preventDefault();
       const currentZoom = mainWindow.webContents.getZoomLevel();
-      mainWindow.webContents.setZoomLevel(currentZoom - 0.5);
+      const newZoom = currentZoom - 0.5;
+      mainWindow.webContents.setZoomLevel(newZoom);
+      // Save zoom level
+      mainWindow.webContents.executeJavaScript(`localStorage.setItem('zoomLevel', '${newZoom}')`);
       return;
     }
     
@@ -249,9 +258,23 @@ function createWindow() {
     mainWindow.loadFile(path.join(__dirname, '../dist/renderer/index.html'));
   }
   
-  // Send initial directory to renderer
-  mainWindow.webContents.on('did-finish-load', () => {
+  // Send initial directory to renderer and restore zoom level
+  mainWindow.webContents.on('did-finish-load', async () => {
     mainWindow.webContents.send('initial-directory', currentWorkingDirectory);
+    
+    // Restore zoom level from localStorage
+    try {
+      const savedZoom = await mainWindow.webContents.executeJavaScript(`localStorage.getItem('zoomLevel')`);
+      if (savedZoom !== null) {
+        const zoomLevel = parseFloat(savedZoom);
+        if (!isNaN(zoomLevel)) {
+          mainWindow.webContents.setZoomLevel(zoomLevel);
+          console.log('Restored zoom level:', zoomLevel);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to restore zoom level:', err);
+    }
   });
 
   mainWindow.on('closed', () => {

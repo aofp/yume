@@ -179,7 +179,7 @@
   border: none !important;
   border-radius: 2px;
   padding: 2px;
-  margin: 0;
+  margin: 0 0 2px 0;
   overflow-x: auto;
 }
 
@@ -327,6 +327,26 @@ ol {
 .thinking-text {
   opacity: 1;
   color: #d0d0d0;
+}
+
+.thinking-dots::after {
+  content: '...';
+  display: inline-block;
+  animation: dots 1.4s steps(4, end) infinite;
+  width: 1.5em;
+  text-align: left;
+}
+
+@keyframes dots {
+  0%, 20% {
+    content: '.';
+  }
+  40% {
+    content: '..';
+  }
+  60%, 100% {
+    content: '...';
+  }
 }
 
 /* Tool Use Display */
@@ -763,6 +783,7 @@ ol {
 .streaming-loader {
   display: inline-block;
   color: #ff99cc;
+  opacity: 1;
   animation: spin 1s linear infinite;
   margin-left: 6px;
   vertical-align: middle;

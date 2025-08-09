@@ -655,14 +655,14 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
                 <>
                   {isEmpty ? (
                     <div className="thinking-indicator">
-                      <span className="thinking-text">thinking...</span>
+                      <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
                       <IconLoader2 size={14} className="streaming-loader" />
                     </div>
                   ) : (
                     <>
                       {renderContent(message.message?.content, message)}
                       <div className="thinking-indicator inline">
-                        <span className="thinking-text">thinking...</span>
+                        <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
                         <IconLoader2 size={14} className="streaming-loader" />
                       </div>
                     </>

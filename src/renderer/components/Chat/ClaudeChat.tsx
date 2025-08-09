@@ -309,6 +309,16 @@ export const ClaudeChat: React.FC = () => {
   const handleSend = async () => {
     if ((!input.trim() && attachments.length === 0) || isStreaming) return;
     
+    // Check for slash commands
+    const trimmedInput = input.trim();
+    if (trimmedInput === '/clear') {
+      if (currentSessionId) {
+        clearContext(currentSessionId);
+        setInput('');
+        return;
+      }
+    }
+    
     try {
       // Don't create a new session here - sessions should only be created via the new tab button
       if (!currentSessionId) {
@@ -999,6 +1009,13 @@ export const ClaudeChat: React.FC = () => {
                   </div>
                   <span className="shortcut-dots"></span>
                   <span className="shortcut-desc">clear context</span>
+                </div>
+                <div className="shortcut-item">
+                  <div className="shortcut-keys">
+                    <span className="key-btn">/clear</span>
+                  </div>
+                  <span className="shortcut-dots"></span>
+                  <span className="shortcut-desc">clear context (command)</span>
                 </div>
                 <div className="shortcut-item">
                   <div className="shortcut-keys">
