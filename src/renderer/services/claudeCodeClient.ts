@@ -213,9 +213,9 @@ export class ClaudeCodeClient {
         return;
       }
       
-      console.log(`🧹 [CLIENT] Sending clearContext for session ${sessionId}`);
-      this.socket.emit('clearContext', { sessionId }, (response: any) => {
-        console.log(`🧹 [CLIENT] clearContext response:`, response);
+      console.log(`🧹 [CLIENT] Sending clearSession for session ${sessionId}`);
+      this.socket.emit('clearSession', { sessionId }, (response: any) => {
+        console.log(`🧹 [CLIENT] clearSession response:`, response);
         if (response?.success) {
           resolve();
         } else {
