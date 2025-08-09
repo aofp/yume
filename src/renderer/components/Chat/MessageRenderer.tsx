@@ -661,6 +661,7 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
                   ) : (
                     <>
                       {renderContent(message.message?.content, message)}
+                      {/* Always show thinking indicator when streaming, even with tool_use blocks */}
                       <div className="thinking-indicator inline">
                         <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
                         <IconLoader2 size={14} className="streaming-loader" />

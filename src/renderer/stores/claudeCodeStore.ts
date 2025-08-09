@@ -328,11 +328,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   s.id === sessionId ? { ...s, streaming: true } : s
                 );
               } else if (message.streaming === false) {
-                // Assistant message explicitly marked as not streaming
-                console.log('Assistant message finished, clearing streaming state');
-                sessions = sessions.map(s => 
-                  s.id === sessionId ? { ...s, streaming: false } : s
-                );
+                // Check if this assistant message contains tool_use blocks
+                let hasToolUse = false;
+                if (message.message?.content && Array.isArray(message.message.content)) {
+                  hasToolUse = message.message.content.some(block => block.type === 'tool_use');
+                }
+                
+                if (hasToolUse) {
+                  // Keep streaming active while waiting for tool results
+                  console.log('Assistant message has tool_use, keeping streaming state active');
+                } else {
+                  // Assistant message explicitly marked as not streaming and no tools
+                  console.log('Assistant message finished, clearing streaming state');
+                  sessions = sessions.map(s => 
+                    s.id === sessionId ? { ...s, streaming: false } : s
+                  );
+                }
               }
               // If streaming is undefined, don't change the state
             } else if (message.type === 'result') {
