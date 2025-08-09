@@ -2,24 +2,11 @@ import React, { useState, useEffect } from 'react';
 import { IconX, IconPlus, IconMinus, IconRefresh } from '@tabler/icons-react';
 import './SettingsModal.css';
 
-// Try to get electron modules
+// Access the electron API exposed by preload script
 declare global {
   interface Window {
-    require?: any;
+    electronAPI?: any;
   }
-}
-
-let electron: any = null;
-let webFrame: any = null;
-try {
-  // Since contextIsolation is false, we might be able to require electron
-  if (window.require) {
-    electron = window.require('electron');
-    webFrame = electron?.webFrame;
-    console.log('Electron webFrame available:', !!webFrame);
-  }
-} catch (e) {
-  console.log('Could not require electron:', e);
 }
 
 interface SettingsModalProps {
@@ -77,47 +64,25 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   useEffect(() => {
     // Get current zoom level
     const getZoom = async () => {
-      // Try webFrame first
-      if (webFrame) {
-        try {
-          const level = webFrame.getZoomLevel();
-          setZoomLevel(level);
-          console.log('Got zoom level from webFrame:', level);
-          return;
-        } catch (err) {
-          console.error('webFrame getZoomLevel failed:', err);
-        }
-      }
-      
-      // Try direct ipcRenderer
-      if ((window as any).ipcRenderer) {
-        try {
-          const level = await (window as any).ipcRenderer.invoke('get-zoom-level');
-          setZoomLevel(level);
-          console.log('Got zoom level from direct ipcRenderer:', level);
-          return;
-        } catch (err) {
-          console.error('Direct ipcRenderer failed:', err);
-        }
-      }
-      
-      // Try electronAPI
       if (window.electronAPI?.zoom?.getLevel) {
         try {
           const level = await window.electronAPI.zoom.getLevel();
           setZoomLevel(level);
           console.log('Got zoom level from electronAPI:', level);
-          return;
         } catch (err) {
           console.error('Failed to get zoom level:', err);
+          // Fallback to localStorage
+          const saved = localStorage.getItem('zoomLevel');
+          if (saved) {
+            setZoomLevel(parseFloat(saved));
+          }
         }
-      }
-      
-      // Final fallback to localStorage
-      const saved = localStorage.getItem('zoomLevel');
-      if (saved) {
-        setZoomLevel(parseFloat(saved));
-        console.log('Got zoom level from localStorage:', saved);
+      } else {
+        // Fallback to localStorage if electronAPI not available
+        const saved = localStorage.getItem('zoomLevel');
+        if (saved) {
+          setZoomLevel(parseFloat(saved));
+        }
       }
     };
     getZoom();
@@ -137,37 +102,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const handleZoomIn = async () => {
     console.log('Zoom in clicked');
     
-    // Try webFrame first - this should work!
-    if (webFrame) {
-      try {
-        const currentZoom = webFrame.getZoomLevel();
-        const newZoom = currentZoom + 0.5;
-        webFrame.setZoomLevel(newZoom);
-        setZoomLevel(newZoom);
-        localStorage.setItem('zoomLevel', newZoom.toString());
-        window.dispatchEvent(new CustomEvent('zoom-changed', { detail: newZoom }));
-        console.log('Zoomed in via webFrame to', newZoom);
-        return;
-      } catch (err) {
-        console.error('webFrame zoom failed:', err);
-      }
-    }
-    
-    // Try direct ipcRenderer
-    if ((window as any).ipcRenderer) {
-      try {
-        const newZoom = await (window as any).ipcRenderer.invoke('zoom-in');
-        console.log('Zoom in via direct ipcRenderer, result:', newZoom);
-        if (newZoom !== null && newZoom !== undefined) {
-          setZoomLevel(newZoom);
-        }
-        return;
-      } catch (err) {
-        console.error('Direct ipcRenderer failed:', err);
-      }
-    }
-    
-    // Fallback to electronAPI
     if (window.electronAPI?.zoom?.in) {
       try {
         const newZoom = await window.electronAPI.zoom.in();
@@ -179,44 +113,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         console.error('Zoom in error:', err);
       }
     } else {
-      console.error('No zoom method available! webFrame:', !!webFrame, 'ipcRenderer:', !!(window as any).ipcRenderer, 'electronAPI.zoom:', !!window.electronAPI?.zoom);
+      console.error('electronAPI.zoom not available');
     }
   };
 
   const handleZoomOut = async () => {
     console.log('Zoom out clicked');
     
-    // Try webFrame first - this should work!
-    if (webFrame) {
-      try {
-        const currentZoom = webFrame.getZoomLevel();
-        const newZoom = currentZoom - 0.5;
-        webFrame.setZoomLevel(newZoom);
-        setZoomLevel(newZoom);
-        localStorage.setItem('zoomLevel', newZoom.toString());
-        window.dispatchEvent(new CustomEvent('zoom-changed', { detail: newZoom }));
-        console.log('Zoomed out via webFrame to', newZoom);
-        return;
-      } catch (err) {
-        console.error('webFrame zoom failed:', err);
-      }
-    }
-    
-    // Try direct ipcRenderer
-    if ((window as any).ipcRenderer) {
-      try {
-        const newZoom = await (window as any).ipcRenderer.invoke('zoom-out');
-        console.log('Zoom out via direct ipcRenderer, result:', newZoom);
-        if (newZoom !== null && newZoom !== undefined) {
-          setZoomLevel(newZoom);
-        }
-        return;
-      } catch (err) {
-        console.error('Direct ipcRenderer failed:', err);
-      }
-    }
-    
-    // Fallback to electronAPI
     if (window.electronAPI?.zoom?.out) {
       try {
         const newZoom = await window.electronAPI.zoom.out();
@@ -228,42 +131,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         console.error('Zoom out error:', err);
       }
     } else {
-      console.error('No zoom method available!');
+      console.error('electronAPI.zoom not available');
     }
   };
 
   const handleZoomReset = async () => {
     console.log('Zoom reset clicked');
     
-    // Try webFrame first - this should work!
-    if (webFrame) {
-      try {
-        webFrame.setZoomLevel(0);
-        setZoomLevel(0);
-        localStorage.setItem('zoomLevel', '0');
-        window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));
-        console.log('Reset zoom via webFrame to 0');
-        return;
-      } catch (err) {
-        console.error('webFrame zoom failed:', err);
-      }
-    }
-    
-    // Try direct ipcRenderer
-    if ((window as any).ipcRenderer) {
-      try {
-        const newZoom = await (window as any).ipcRenderer.invoke('zoom-reset');
-        console.log('Zoom reset via direct ipcRenderer, result:', newZoom);
-        if (newZoom !== null && newZoom !== undefined) {
-          setZoomLevel(newZoom);
-        }
-        return;
-      } catch (err) {
-        console.error('Direct ipcRenderer failed:', err);
-      }
-    }
-    
-    // Fallback to electronAPI
     if (window.electronAPI?.zoom?.reset) {
       try {
         const newZoom = await window.electronAPI.zoom.reset();
@@ -275,7 +149,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         console.error('Zoom reset error:', err);
       }
     } else {
-      console.error('No zoom method available!');
+      console.error('electronAPI.zoom not available');
     }
   };
 

@@ -130,10 +130,14 @@
 
 .tab-folder {
   font-size: 10px;
-  color: #ffffff;
+  color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
   font-weight: 600;
   font-family: 'Fira Code', monospace;
+}
+
+.session-tab.active .tab-folder {
+  color: #ffffff;
 }
 
 .tab-folder svg {
@@ -197,7 +201,7 @@
 .tab-new {
   background: rgba(var(--accent-rgb), 0.15);
   border: none;
-  color: var(--accent-color);
+  color: #ffffff;
   cursor: default;
   width: 26px;
   height: 26px;

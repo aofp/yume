@@ -16,6 +16,7 @@ export const SessionTabs: React.FC = () => {
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
   const [showRecentModal, setShowRecentModal] = useState(false);
+  const [hasRecentProjects, setHasRecentProjects] = useState(false);
   const contextMenuRef = useRef<HTMLDivElement>(null);
 
   // Close context menu on click outside
@@ -31,6 +32,29 @@ export const SessionTabs: React.FC = () => {
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
   }, [contextMenu]);
+
+  // Check if there are recent projects
+  useEffect(() => {
+    const checkRecentProjects = () => {
+      const stored = localStorage.getItem('yurucode-recent-projects');
+      if (stored) {
+        try {
+          const projects = JSON.parse(stored);
+          setHasRecentProjects(projects && projects.length > 0);
+        } catch {
+          setHasRecentProjects(false);
+        }
+      } else {
+        setHasRecentProjects(false);
+      }
+    };
+    
+    checkRecentProjects();
+    // Check again when modal closes
+    if (!showRecentModal) {
+      checkRecentProjects();
+    }
+  }, [showRecentModal]);
 
   const handleOpenFolder = async () => {
     setShowNewMenu(false);
@@ -141,14 +165,16 @@ export const SessionTabs: React.FC = () => {
           <IconPlus size={16} stroke={1.5} />
         </button>
         
-        <button 
-          className="tab-recent" 
-          onClick={() => setShowRecentModal(true)}
-          onMouseDown={handleRipple}
-          title="recent projects (ctrl+r)"
-        >
-          <IconChevronDown size={16} stroke={1.5} />
-        </button>
+        {hasRecentProjects && (
+          <button 
+            className="tab-recent" 
+            onClick={() => setShowRecentModal(true)}
+            onMouseDown={handleRipple}
+            title="recent projects (ctrl+r)"
+          >
+            <IconChevronDown size={16} stroke={1.5} />
+          </button>
+        )}
       </div>
       
       {contextMenu && (
