@@ -187,6 +187,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         const existingMessages = result.messages || [];
         const claudeSessionId = result.claudeSessionId;
         
+        console.log(`🔍 [SESSION DEBUG] Session ${sessionId}: existingMessages count: ${existingMessages.length}`);
+        const existingResultsWithUsage = existingMessages.filter(m => m.type === 'result' && m.usage);
+        console.log(`🔍 [SESSION DEBUG] Session ${sessionId}: existing result messages with usage:`, existingResultsWithUsage.map(m => ({ id: m.id, usage: m.usage })));
+        
         // STEP 3: Update tab to active status with real session ID
         const activeSession: Session = {
           id: sessionId,
@@ -196,7 +200,26 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           workingDirectory: result.workingDirectory || workingDirectory,
           createdAt: pendingSession.createdAt,
           updatedAt: new Date(),
-          claudeSessionId
+          claudeSessionId,
+          // Initialize fresh analytics for new session (even if resuming)
+          analytics: {
+            totalMessages: 0,
+            userMessages: 0,
+            assistantMessages: 0,
+            toolUses: 0,
+            tokens: { 
+              input: 0, 
+              output: 0, 
+              total: 0,
+              byModel: {
+                opus: { input: 0, output: 0, total: 0 },
+                sonnet: { input: 0, output: 0, total: 0 }
+              }
+            },
+            cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+            duration: 0,
+            lastActivity: new Date()
+          }
         };
         
         // Replace pending session with active one
@@ -328,6 +351,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 lastActivity: new Date()
               };
               
+              console.log(`🔍 [ANALYTICS DEBUG] Session ${s.id}: Before processing, analytics tokens: ${analytics.tokens.total}`);
+              
               // Update message counts
               analytics.totalMessages = existingMessages.length;
               analytics.userMessages = existingMessages.filter(m => m.type === 'user').length;
@@ -342,10 +367,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 };
               }
               
-              // Update tokens if result message - accumulate, don't reset
+              // Update tokens if result message - Claude CLI sends cumulative values for this conversation
               if (message.type === 'result' && message.usage) {
-                // Only add new tokens if this is a new result message
+                // Only update tokens if this is a new result message (avoid duplicates)
                 const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
+                const existingResultMessages = s.messages.filter(m => m.type === 'result').map(m => ({ id: m.id, usage: m.usage }));
+                console.log(`🔍 [TOKEN DEBUG] Processing result message ${message.id}, isNewResult: ${isNewResult}, current analytics tokens: ${analytics.tokens.total}`);
+                console.log(`🔍 [TOKEN DEBUG] Existing result messages in session:`, existingResultMessages);
                 if (isNewResult) {
                   console.log('📊 Result message with usage:', message.usage);
                   if (message.cost) {
@@ -358,10 +386,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                                       (message.usage.cache_read_input_tokens || 0);
                   const outputTokens = message.usage.output_tokens || 0;
                   
-                  // Track ONLY this conversation's tokens (not cumulative)
+                  // Claude CLI sends cumulative tokens for the current conversation
+                  // Set these values directly (they are already totals, not deltas)
+                  console.log(`🔍 [TOKEN DEBUG] Before update: input=${analytics.tokens.input}, output=${analytics.tokens.output}, total=${analytics.tokens.total}`);
+                  console.log(`🔍 [TOKEN DEBUG] New values from Claude: input=${inputTokens}, output=${outputTokens}, total=${inputTokens + outputTokens}`);
                   analytics.tokens.input = inputTokens;
                   analytics.tokens.output = outputTokens;
                   analytics.tokens.total = inputTokens + outputTokens;
+                  console.log(`🔍 [TOKEN DEBUG] After update: input=${analytics.tokens.input}, output=${analytics.tokens.output}, total=${analytics.tokens.total}`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;
@@ -612,7 +644,26 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         messages,
         workingDirectory,
         createdAt: new Date(),
-        updatedAt: new Date()
+        updatedAt: new Date(),
+        // Initialize fresh analytics for resumed session
+        analytics: {
+          totalMessages: 0,
+          userMessages: 0,
+          assistantMessages: 0,
+          toolUses: 0,
+          tokens: { 
+            input: 0, 
+            output: 0, 
+            total: 0,
+            byModel: {
+              opus: { input: 0, output: 0, total: 0 },
+              sonnet: { input: 0, output: 0, total: 0 }
+            }
+          },
+          cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+          duration: 0,
+          lastActivity: new Date()
+        }
       };
       
       // Set up message listener
