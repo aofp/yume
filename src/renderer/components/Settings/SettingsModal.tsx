@@ -15,7 +15,8 @@ interface SettingsModalProps {
 
 // Predefined color swatches - 32 colors organized in rainbow spectrum
 const COLOR_SWATCHES = [
-  '#ff99cc', // default pink/magenta (first)
+  '#aaaaaa', // default grey (first)
+  '#ff99cc', // pink/magenta
   // Reds
   '#ff9999', // pastel red
   '#ff8080', // coral
@@ -30,7 +31,6 @@ const COLOR_SWATCHES = [
   '#ffff99', // pastel yellow
   '#ffffb3', // light yellow
   '#ffffcc', // cream
-  '#ffffe6', // ivory
   // Yellow-Greens
   '#e6ff99', // lime yellow
   '#ccff99', // pastel lime
@@ -59,7 +59,7 @@ const COLOR_SWATCHES = [
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [zoomLevel, setZoomLevel] = useState(0);
-  const [accentColor, setAccentColor] = useState('#ff99cc');
+  const [accentColor, setAccentColor] = useState('#aaaaaa');
 
   useEffect(() => {
     // Get current zoom level
@@ -88,7 +88,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     getZoom();
 
     // Get saved accent color
-    const savedColor = localStorage.getItem('accentColor') || '#ff99cc';
+    const savedColor = localStorage.getItem('accentColor') || '#aaaaaa';
     setAccentColor(savedColor);
 
     // Listen for zoom changes from keyboard shortcuts

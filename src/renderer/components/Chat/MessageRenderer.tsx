@@ -610,11 +610,12 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
     // Keep messages up to and including this one
     const messages = session.messages.slice(0, actualIndex + 1);
     
-    // Update the session with truncated messages
+    // Update the session with truncated messages and reset Claude session ID
+    // This forces Claude to start fresh without the conversation history after the restore point
     useClaudeCodeStore.setState(state => ({
       sessions: state.sessions.map(s => 
         s.id === currentSessionId 
-          ? { ...s, messages, updatedAt: new Date() }
+          ? { ...s, messages, claudeSessionId: null, updatedAt: new Date() }
           : s
       )
     }));
