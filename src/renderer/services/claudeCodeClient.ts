@@ -152,16 +152,26 @@ export class ClaudeCodeClient {
   async createSession(name: string, workingDirectory: string, options?: any): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
+        console.error('[Client] Cannot create session - not connected to server');
         reject(new Error('Not connected to server'));
         return;
       }
 
       const sessionId = options?.sessionId; // For resuming existing sessions
-      console.log('Creating/resuming session with:', { name, workingDirectory, sessionId, options });
+      console.log('[Client] Creating/resuming session:', { 
+        name, 
+        workingDirectory, 
+        sessionId, 
+        options,
+        socketId: this.socket?.id 
+      });
       
       this.socket.emit('createSession', { name, workingDirectory, sessionId, options }, (response: any) => {
+        console.log('[Client] Session creation response:', response);
         if (response.success) {
-          console.log(`✅ Session ready: ${response.sessionId} in ${response.workingDirectory || workingDirectory}`);
+          console.log(`[Client] ✅ Session ready: ${response.sessionId}`);
+          console.log(`[Client]   Working dir: ${response.workingDirectory || workingDirectory}`);
+          console.log(`[Client]   Messages: ${response.messages?.length || 0}`);
           // Return full response for session resumption
           resolve({
             sessionId: response.sessionId,
@@ -169,6 +179,7 @@ export class ClaudeCodeClient {
             workingDirectory: response.workingDirectory || workingDirectory
           });
         } else {
+          console.error('[Client] Session creation failed:', response.error);
           reject(new Error(response.error));
         }
       });
@@ -250,16 +261,25 @@ export class ClaudeCodeClient {
   async sendMessage(sessionId: string, content: string, model?: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {
+        console.error('[Client] Cannot send message - not connected to server');
         reject(new Error('Not connected to server'));
         return;
       }
 
-      console.log(`📤 Sending message to session ${sessionId}${model ? ` with model ${model}` : ''}`);
+      console.log('[Client] 📤 Sending message:', {
+        sessionId,
+        contentLength: content.length,
+        model,
+        socketId: this.socket?.id
+      });
 
       this.socket.emit('sendMessage', { sessionId, content, model }, (response: any) => {
+        console.log('[Client] Message send response:', response);
         if (response.success) {
+          console.log('[Client] ✅ Message sent successfully');
           resolve();
         } else {
+          console.error('[Client] Failed to send message:', response.error);
           reject(new Error(response.error));
         }
       });
@@ -267,23 +287,42 @@ export class ClaudeCodeClient {
   }
 
   onMessage(sessionId: string, handler: (message: any) => void): () => void {
-    if (!this.socket) return () => {};
+    if (!this.socket) {
+      console.warn('[Client] Cannot listen for messages - not connected');
+      return () => {};
+    }
 
     const channel = `message:${sessionId}`;
     
+    // Wrap handler with logging
+    const loggingHandler = (message: any) => {
+      console.log('[Client] 📨 Received message:', {
+        channel,
+        type: message.type,
+        streaming: message.streaming,
+        hasContent: !!message.message?.content,
+        id: message.id
+      });
+      handler(message);
+    };
+    
     // Store handler
-    this.messageHandlers.set(channel, handler);
+    this.messageHandlers.set(channel, loggingHandler);
     
     // Listen for messages
-    this.socket.on(channel, handler);
+    this.socket.on(channel, loggingHandler);
     
-    console.log(`👂 Listening for messages on ${channel}`);
+    console.log(`[Client] 👂 Listening for messages on ${channel}`);
     
     // Return cleanup function
     return () => {
       if (this.socket) {
-        this.socket.off(channel, handler);
-        this.messageHandlers.delete(channel);
+        const storedHandler = this.messageHandlers.get(channel);
+        if (storedHandler) {
+          this.socket.off(channel, storedHandler);
+          this.messageHandlers.delete(channel);
+          console.log(`[Client] 🔇 Stopped listening on ${channel}`);
+        }
       }
     };
   }

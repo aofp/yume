@@ -1,7 +1,8 @@
 const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, execSync } = require('child_process');
 const Store = require('electron-store');
+const fs = require('fs');
 
 // More robust dev mode detection
 const isDev = !app.isPackaged || process.env.NODE_ENV === 'development' || process.argv.includes('--dev');
@@ -26,6 +27,69 @@ let mainWindow = null;
 let currentWorkingDirectory = null;
 let serverPort = null;
 let savedZoomLevel = store.get('zoomLevel', 0); // Load saved zoom level
+let isShuttingDown = false; // Flag to prevent server restart during shutdown
+
+// PID file path for development mode server tracking
+const SERVER_PID_FILE = path.join(__dirname, '..', '.server.pid');
+
+// Function to kill server by PID file (for development mode)
+function killServerByPidFile() {
+  try {
+    if (!fs.existsSync(SERVER_PID_FILE)) {
+      console.log('No server PID file found');
+      return false;
+    }
+
+    const pidStr = fs.readFileSync(SERVER_PID_FILE, 'utf8').trim();
+    const pid = parseInt(pidStr, 10);
+    
+    if (!pid || isNaN(pid)) {
+      console.error('Invalid PID in server PID file:', pidStr);
+      return false;
+    }
+
+    console.log(`Attempting to kill server process with PID: ${pid}`);
+    
+    // Check if process exists before trying to kill it
+    try {
+      process.kill(pid, 0); // Signal 0 just checks if process exists
+      console.log(`Process ${pid} exists, sending SIGTERM...`);
+      process.kill(pid, 'SIGTERM');
+      
+      // Give the process time to cleanup gracefully
+      setTimeout(() => {
+        try {
+          process.kill(pid, 0); // Check if still alive
+          console.log(`Process ${pid} still alive, sending SIGKILL...`);
+          process.kill(pid, 'SIGKILL'); // Force kill
+        } catch (err) {
+          console.log(`Process ${pid} has terminated`);
+        }
+      }, 1500);
+      
+      return true;
+    } catch (err) {
+      if (err.code === 'ESRCH') {
+        console.log(`Process ${pid} was already terminated`);
+        return true;
+      }
+      throw err;
+    }
+  } catch (error) {
+    console.error('Error killing server by PID file:', error);
+    return false;
+  } finally {
+    // Clean up PID file
+    try {
+      if (fs.existsSync(SERVER_PID_FILE)) {
+        fs.unlinkSync(SERVER_PID_FILE);
+        console.log('Server PID file cleaned up');
+      }
+    } catch (err) {
+      console.error('Failed to cleanup PID file:', err);
+    }
+  }
+}
 
 // ============================================
 // REGISTER IPC HANDLERS IMMEDIATELY
@@ -33,11 +97,11 @@ let savedZoomLevel = store.get('zoomLevel', 0); // Load saved zoom level
 console.log('Registering IPC handlers...');
 
 ipcMain.on('window-close', () => {
-  console.log('IPC: window-close received - CLOSING APP NOW');
+  console.log('IPC: window-close received - closing window');
   if (mainWindow) {
     mainWindow.close();
+    // Let the window-all-closed event handle the app quit properly
   }
-  app.quit();
 });
 
 ipcMain.on('window-minimize', () => {
@@ -249,7 +313,8 @@ async function startServer() {
       ...process.env,
       ELECTRON_RUN_AS_NODE: '1' // Run as Node.js, not Electron
     },
-    stdio: ['ignore', 'pipe', 'pipe']
+    stdio: ['ignore', 'pipe', 'pipe'],
+    windowsHide: true // Hide console window on Windows
   });
   
   serverPort = 3001;
@@ -318,8 +383,8 @@ async function startServer() {
     console.log(`  Signal: ${signal}`);
     serverProcess = null;
     
-    // Try to restart if it crashed in production
-    if (!isDev && code !== 0 && code !== null) {
+    // Try to restart if it crashed in production, but not during shutdown
+    if (!isDev && code !== 0 && code !== null && !isShuttingDown) {
       console.log('Attempting to restart server in 2 seconds...');
       setTimeout(() => startServer(), 2000);
     }
@@ -489,9 +554,8 @@ function createWindow() {
   mainWindow.on('closed', () => {
     console.log('Window closed event');
     mainWindow = null;
-    if (process.platform === 'win32') {
-      app.quit();
-    }
+    // Don't call app.quit() here - let window-all-closed handle it properly
+    // This ensures consistent behavior across all platforms
   });
 }
 
@@ -644,13 +708,33 @@ const gotTheLock = true; // Always allow new instances
 // No longer preventing second instances - each gets its own port
 
 app.on('window-all-closed', () => {
-  if (serverProcess) {
-    serverProcess.kill();
-  }
+  console.log('All windows closed - shutting down app completely');
+  isShuttingDown = true; // Prevent server restart during shutdown
   
-  // On Windows and Linux, quit when all windows are closed
-  // On macOS, apps typically stay open even without windows
-  if (process.platform !== 'darwin') {
+  // Always quit when all windows are closed (including macOS)
+  // This ensures the server and all processes are properly terminated
+  
+  if (isDev) {
+    // In development mode, kill server by PID file
+    console.log('Development mode - killing server by PID file');
+    killServerByPidFile();
+    // Give the server a moment to clean up its processes
+    setTimeout(() => {
+      console.log('App quitting after server cleanup');
+      app.quit();
+    }, 2000);
+  } else if (serverProcess) {
+    // Production mode - kill the server process we spawned
+    console.log('Production mode - sending SIGTERM to server process for graceful shutdown');
+    serverProcess.kill('SIGTERM'); // Use SIGTERM for graceful shutdown
+    
+    // Give the server a moment to clean up its processes
+    setTimeout(() => {
+      console.log('App quitting after server cleanup');
+      app.quit();
+    }, 1000);
+  } else {
+    // No server process running, quit immediately
     app.quit();
   }
 });
@@ -661,13 +745,42 @@ app.on('activate', () => {
   }
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
+  console.log('App before quit - cleaning up processes');
+  isShuttingDown = true; // Prevent server restart during shutdown
+  
   // Send message to renderer to clear sessions
   if (mainWindow && mainWindow.webContents) {
     mainWindow.webContents.send('app-before-quit');
   }
   
-  if (serverProcess) {
-    serverProcess.kill();
+  if (isDev) {
+    // Development mode - kill server by PID file
+    console.log('Development mode - killing server by PID file in before-quit');
+    killServerByPidFile();
+  } else if (serverProcess && !serverProcess.killed) {
+    // Production mode - ensure server process is properly terminated
+    console.log('Production mode - terminating server process with SIGTERM for graceful cleanup');
+    serverProcess.kill('SIGTERM');
+    
+    // Prevent immediate quit to allow cleanup
+    event.preventDefault();
+    
+    // Force quit after 2 seconds if server doesn't exit gracefully
+    const forceQuitTimer = setTimeout(() => {
+      console.log('Forcing server process termination with SIGKILL');
+      if (serverProcess && !serverProcess.killed) {
+        serverProcess.kill('SIGKILL');
+      }
+      app.quit();
+    }, 2000);
+    
+    // Clean quit when server exits gracefully
+    serverProcess.once('exit', () => {
+      console.log('Server process exited gracefully');
+      clearTimeout(forceQuitTimer);
+      serverProcess = null;
+      app.quit();
+    });
   }
 });

@@ -315,6 +315,12 @@ export const ClaudeChat: React.FC = () => {
   useEffect(() => {
     // Load draft input and attachments when session changes
     // Only trigger on sessionId change, not on session updates (to avoid losing text during streaming)
+    console.log('[ClaudeChat] Session changed:', { 
+      sessionId: currentSessionId,
+      hasDraft: !!(currentSession?.draftInput),
+      workingDir: currentSession?.workingDirectory 
+    });
+    
     inputRef.current?.focus();
     if (currentSession) {
       setInput(currentSession.draftInput || '');
@@ -336,11 +342,19 @@ export const ClaudeChat: React.FC = () => {
   }, [input, attachments, currentSessionId, updateSessionDraft]);
 
   const handleSend = async () => {
+    console.log('[ClaudeChat] handleSend called', { 
+      input: input.slice(0, 50), 
+      attachments: attachments.length,
+      streaming: currentSession?.streaming,
+      sessionId: currentSessionId 
+    });
+    
     if ((!input.trim() && attachments.length === 0) || currentSession?.streaming) return;
     
     // Check for slash commands and special inputs
     const trimmedInput = input.trim();
     if (trimmedInput === '/clear') {
+      console.log('[ClaudeChat] Clearing context for session:', currentSessionId);
       if (currentSessionId) {
         clearContext(currentSessionId);
         setInput('');
@@ -356,7 +370,7 @@ export const ClaudeChat: React.FC = () => {
     try {
       // Don't create a new session here - sessions should only be created via the new tab button
       if (!currentSessionId) {
-        console.error('No active session - please create a new session first');
+        console.error('[ClaudeChat] No active session - please create a new session first');
         return;
       }
       
@@ -402,13 +416,19 @@ export const ClaudeChat: React.FC = () => {
         setHistoryIndex(-1); // Reset history navigation
       }
       
+      console.log('[ClaudeChat] Sending message:', { 
+        sessionId: currentSessionId,
+        messageLength: messageContent.length,
+        hasAttachments: attachments.length > 0
+      });
+      
       setInput('');
       setAttachments([]);
       // Clear drafts after sending
       updateSessionDraft(currentSessionId, '', []);
       await sendMessage(messageContent);
     } catch (error) {
-      console.error('Failed to send message:', error);
+      console.error('[ClaudeChat] Failed to send message:', error);
     }
   };
 
@@ -900,12 +920,22 @@ export const ClaudeChat: React.FC = () => {
               // Use the session's analytics tokens instead of recalculating from messages
               const tokens = currentSession.analytics?.tokens?.total || 0;
               
+              // Debug log to see actual token values
+              console.log('[TOKEN INDICATOR] Current tokens:', tokens, 'Analytics:', currentSession.analytics?.tokens);
+              
               // Opus 4.1 has 200k context window
               // Sonnet 4.0 has 200k context window 
               // Both models have the same 200k context window
               const contextWindowTokens = 200000;
               
-              const percentage = Math.min(100, Math.round(tokens / contextWindowTokens * 100));
+              // Calculate percentage but show warning if over 100%
+              const rawPercentage = Math.round(tokens / contextWindowTokens * 100);
+              const percentage = Math.min(100, rawPercentage);
+              
+              // Log warning if tokens exceed context window
+              if (rawPercentage > 100) {
+                console.warn(`[TOKEN WARNING] Tokens (${tokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
+              }
               const usageClass = percentage >= 90 ? 'high' : percentage >= 80 ? 'medium' : 'low';
               
               const hasActivity = currentSession.messages.some(m => 
@@ -914,12 +944,14 @@ export const ClaudeChat: React.FC = () => {
               
               return (
                 <>
-                  <span className="context-tokens">
-                    {tokens.toLocaleString()} tokens
-                  </span>
-                  <span className={`context-usage ${usageClass}`}>
+                  <button 
+                    className={`btn-stats ${!hasActivity ? 'disabled' : ''} ${usageClass}`} 
+                    onClick={() => hasActivity && setShowStatsModal(true)}
+                    disabled={!hasActivity}
+                    title={hasActivity ? `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)` : "no activity yet"}
+                  >
                     {percentage}% used
-                  </span>
+                  </button>
                   <button 
                     className="btn-clear-context" 
                     onClick={() => {
@@ -931,14 +963,6 @@ export const ClaudeChat: React.FC = () => {
                     title="clear context (ctrl+l)"
                   >
                     clear
-                  </button>
-                  <button 
-                    className={`btn-stats ${!hasActivity ? 'disabled' : ''}`} 
-                    onClick={() => hasActivity && setShowStatsModal(true)}
-                    disabled={!hasActivity}
-                    title={hasActivity ? "view session stats (ctrl+.)" : "no activity yet"}
-                  >
-                    stats
                   </button>
                   <button 
                     className="btn-help" 

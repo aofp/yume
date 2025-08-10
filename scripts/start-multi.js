@@ -46,7 +46,8 @@ async function startMultiInstance() {
     const viteProcess = spawn('npx', ['vite', '--port', vitePort.toString()], {
       env,
       stdio: 'inherit',
-      shell: true
+      shell: true,
+      detached: false  // Ensure child process dies with parent
     });
     
     // Wait a moment for Vite to start
@@ -56,7 +57,8 @@ async function startMultiInstance() {
     console.log('🤖 Starting Claude server...');
     const serverProcess = spawn('node', ['server-claude-multi.js'], {
       env,
-      stdio: 'inherit'
+      stdio: 'inherit',
+      detached: false  // Ensure child process dies with parent
     });
     
     // Wait for server to be ready
@@ -64,30 +66,104 @@ async function startMultiInstance() {
     
     // Start Electron
     console.log('⚡ Starting Electron...');
-    const electronProcess = spawn('electron', ['.'], {
+    const electronProcess = spawn('npx', ['electron', '.'], {
       env: {
         ...env,
         ELECTRON_VITE_PORT: vitePort.toString(),
         ELECTRON_SERVER_PORT: serverPort.toString()
       },
       stdio: 'inherit',
-      shell: true
+      shell: true,
+      detached: false  // Ensure child process dies with parent
     });
     
     console.log('✅ All processes started!');
     console.log(`📱 Access at: http://localhost:${vitePort}`);
     
     // Handle cleanup
-    const cleanup = () => {
-      console.log('\n🛑 Shutting down...');
-      viteProcess.kill();
-      serverProcess.kill();
-      electronProcess.kill();
-      process.exit(0);
+    const cleanup = (code = 0) => {
+      console.log('\n🛑 Shutting down all processes...');
+      
+      // Kill all child processes with process tree on Windows
+      if (process.platform === 'win32') {
+        // On Windows, use taskkill with /T flag to kill process trees
+        if (viteProcess && !viteProcess.killed) {
+          console.log(`   Killing Vite process tree (PID: ${viteProcess.pid})...`);
+          try {
+            require('child_process').execSync(`taskkill /PID ${viteProcess.pid} /T /F`, { stdio: 'ignore' });
+          } catch (e) {
+            viteProcess.kill('SIGTERM');
+          }
+        }
+        if (serverProcess && !serverProcess.killed) {
+          console.log(`   Killing server process tree (PID: ${serverProcess.pid})...`);
+          try {
+            require('child_process').execSync(`taskkill /PID ${serverProcess.pid} /T /F`, { stdio: 'ignore' });
+          } catch (e) {
+            serverProcess.kill('SIGTERM');
+          }
+        }
+        if (electronProcess && !electronProcess.killed) {
+          console.log(`   Killing Electron process tree (PID: ${electronProcess.pid})...`);
+          try {
+            require('child_process').execSync(`taskkill /PID ${electronProcess.pid} /T /F`, { stdio: 'ignore' });
+          } catch (e) {
+            electronProcess.kill('SIGTERM');
+          }
+        }
+      } else {
+        // On Unix-like systems, use regular kill
+        if (viteProcess && !viteProcess.killed) {
+          console.log('   Killing Vite...');
+          viteProcess.kill('SIGTERM');
+        }
+        if (serverProcess && !serverProcess.killed) {
+          console.log('   Killing server...');
+          serverProcess.kill('SIGTERM');
+        }
+        if (electronProcess && !electronProcess.killed) {
+          console.log('   Killing Electron...');
+          electronProcess.kill('SIGTERM');
+        }
+      }
+      
+      // Give processes time to clean up, then force exit
+      setTimeout(() => {
+        console.log('✅ All processes terminated');
+        
+        // On Windows, check for any remaining Node/Electron processes
+        if (process.platform === 'win32') {
+          console.log('\n🔍 Checking for remaining processes...');
+          require('child_process').exec('wmic process where "name=\'node.exe\' or name=\'electron.exe\'" get ProcessId,Name,CommandLine', (err, stdout) => {
+            if (!err && stdout && stdout.trim()) {
+              const lines = stdout.split('\n').filter(line => line.trim() && !line.includes('Name'));
+              if (lines.length > 0) {
+                console.log('⚠️ WARNING: Found remaining processes after cleanup:');
+                lines.forEach(line => console.log('   ', line.trim()));
+              } else {
+                console.log('✅ No Node or Electron processes remaining');
+              }
+            }
+            
+            console.log('\nExiting with code:', code || 0);
+            process.exit(code || 0);
+          });
+        } else {
+          console.log('Exiting...');
+          process.exit(code);
+        }
+      }, 1000);
     };
     
-    process.on('SIGINT', cleanup);
-    process.on('SIGTERM', cleanup);
+    // When Electron exits, kill everything
+    electronProcess.on('exit', (code) => {
+      console.log(`\n📱 Electron exited with code ${code}`);
+      cleanup(code);
+    });
+    
+    // Handle manual termination
+    process.on('SIGINT', () => cleanup(0));
+    process.on('SIGTERM', () => cleanup(0));
     
   } catch (error) {
     console.error('❌ Failed to start:', error);

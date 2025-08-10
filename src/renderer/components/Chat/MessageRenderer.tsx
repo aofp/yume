@@ -605,6 +605,19 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
   const store = useClaudeCodeStore.getState();
   const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
   const sessionMessages = currentSession?.messages || [];
+  
+  // Debug logging
+  React.useEffect(() => {
+    console.log('[MessageRenderer] Rendering message:', {
+      type: message.type,
+      id: message.id,
+      index,
+      isLast,
+      streaming: message.streaming,
+      hasContent: !!message.message?.content
+    });
+  }, [message, index, isLast]);
+  
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -641,11 +654,50 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
   };
   
   const getMessageText = (content: any): string => {
-    if (typeof content === 'string') return content;
+    if (typeof content === 'string') {
+      // Check if this is a JSON string (from attachments)
+      if (content.startsWith('[') && content.endsWith(']')) {
+        try {
+          const parsedContent = JSON.parse(content);
+          if (Array.isArray(parsedContent)) {
+            // Extract text from JSON-parsed content blocks, excluding attachment markers
+            return parsedContent
+              .filter(block => block.type === 'text' && block.text)
+              .map(block => {
+                const text = block.text;
+                // Skip attachment markers, return only regular text
+                if (text.startsWith('[Attached text]:') || 
+                    text.startsWith('[Attached image') ||
+                    text.includes('[Attached text]:') ||
+                    text.includes('[Attached image')) {
+                  return '';
+                }
+                return text;
+              })
+              .filter(text => text.trim())
+              .join('\n');
+          }
+        } catch (e) {
+          // If JSON parsing fails, return as regular string
+        }
+      }
+      return content;
+    }
     if (Array.isArray(content)) {
       return content
         .filter(block => block.type === 'text' && block.text)
-        .map(block => block.text)
+        .map(block => {
+          const text = block.text;
+          // Skip attachment markers, return only regular text
+          if (text.startsWith('[Attached text]:') || 
+              text.startsWith('[Attached image') ||
+              text.includes('[Attached text]:') ||
+              text.includes('[Attached image')) {
+            return '';
+          }
+          return text;
+        })
+        .filter(text => text.trim())
         .join('\n');
     }
     return '';
@@ -657,57 +709,146 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       
     case 'user':
       const userContent = message.message?.content || '';
-      let displayText = '';
+      let displayText: any = '';
       let pastedCount = 0;
+      let attachmentTypes: string[] = [];
       
       if (typeof userContent === 'string') {
-        displayText = userContent;
+        // Check if this is a JSON string (from attachments)
+        if (userContent.startsWith('[{') && userContent.endsWith('}]')) {
+          try {
+            const parsedContent = JSON.parse(userContent);
+            if (Array.isArray(parsedContent)) {
+              // Handle JSON-parsed content blocks
+              let userTexts: string[] = [];
+              
+              parsedContent.forEach((item) => {
+                if (item && typeof item === 'object') {
+                  if (item.type === 'text' && item.text) {
+                    const text = item.text;
+                    
+                    // Check if this is an attachment
+                    if (text.startsWith('[Attached text]:') || text.includes('[Attached text]:')) {
+                      pastedCount++;
+                      attachmentTypes.push('text');
+                    } else if (text.startsWith('[Attached image') || text.includes('[Attached image')) {
+                      pastedCount++;
+                      attachmentTypes.push('image');
+                    } else {
+                      // This is regular user text - collect all non-attachment texts
+                      userTexts.push(text);
+                    }
+                  } else if (item.type === 'image') {
+                    // Count image attachments
+                    pastedCount++;
+                    attachmentTypes.push('image');
+                  }
+                }
+              });
+              
+              // Join all regular user texts (usually just one at the end)
+              displayText = userTexts.join(' ').trim();
+            } else {
+              // Not an array, treat as regular string
+              displayText = userContent;
+            }
+          } catch (e) {
+            console.log('[MessageRenderer] Failed to parse JSON content, treating as string');
+            // If JSON parsing fails, treat as regular string
+            displayText = userContent;
+          }
+        } else {
+          // Regular string content
+          displayText = userContent;
+        }
       } else if (Array.isArray(userContent)) {
-        // Handle multiple attachments - extract the actual user message and count pastes
-        const textParts = [];
-        const attachments = [];
+        // Handle array content directly (shouldn't happen with proper JSON string storage)
+        let userTexts: string[] = [];
         
         userContent.forEach((item) => {
-          if (item?.text) {
-            const text = item.text;
-            // Check for pasted content patterns
-            if (text.startsWith('[Attached text]:') || text.includes('[Attached text]:')) {
-              // Check if it's a permission request message we should hide
-              if (text.includes('requested permissions to') || 
-                  text.includes("haven't granted it yet") ||
-                  text.includes('hide this too')) {
-                return;
+          if (item && typeof item === 'object') {
+            if (item.type === 'text' && item.text) {
+              const text = item.text;
+              
+              // Check if this is an attachment
+              if (text.startsWith('[Attached text]:') || text.includes('[Attached text]:')) {
+                pastedCount++;
+                attachmentTypes.push('text');
+              } else if (text.startsWith('[Attached image') || text.includes('[Attached image')) {
+                pastedCount++;
+                attachmentTypes.push('image');
+              } else {
+                // This is regular user text
+                userTexts.push(text);
               }
+            } else if (item.type === 'image') {
+              // Count image attachments
               pastedCount++;
-              attachments.push('text');
-            } else if (text.startsWith('[Attached image') || text.includes('[Attached image')) {
-              pastedCount++;
-              attachments.push('image');
-            } else {
-              // This is the actual user message - don't check for type as it might not be present
-              // Only add non-attached text
-              if (!text.startsWith('[Attached')) {
-                textParts.push(text);
-              }
+              attachmentTypes.push('image');
             }
           } else if (typeof item === 'string') {
-            // Direct string item
-            textParts.push(item);
+            // Direct string item - assume it's regular text
+            userTexts.push(item);
           }
         });
         
-        // Build display text - filter out empty strings
-        displayText = textParts.filter(t => t && t.trim()).join(' ').trim();
+        // Join all regular user texts
+        displayText = userTexts.join(' ').trim();
+      }
+      
+      // Add attachment indicator if present with cleaner formatting
+      if (pastedCount > 0) {
+        // Extract text content to count lines and bytes
+        let totalLines = 0;
+        let totalBytes = 0;
+        const imageCount = attachmentTypes.filter(t => t === 'image').length;
+        const textCount = attachmentTypes.filter(t => t === 'text').length;
         
-        // Add attachment indicators if present with better formatting
-        if (pastedCount > 0) {
-          const attachmentText = pastedCount === 1 
-            ? '[+ pasted content]' 
-            : `[+ ${pastedCount} pasted items]`;
-          displayText = displayText 
-            ? `${displayText} ${attachmentText}`
-            : attachmentText;
+        // Parse content again to get actual attachment data
+        if (typeof userContent === 'string' && userContent.startsWith('[{')) {
+          try {
+            const parsedContent = JSON.parse(userContent);
+            parsedContent.forEach((item) => {
+              if (item?.type === 'text' && item?.text) {
+                const text = item.text;
+                if (text.startsWith('[Attached text]:')) {
+                  const attachedText = text.substring('[Attached text]:'.length);
+                  totalLines += attachedText.split('\n').length;
+                  totalBytes += new Blob([attachedText]).size;
+                }
+              }
+            });
+          } catch (e) {
+            // Ignore parsing errors
+          }
         }
+        
+        let attachmentText = '';
+        if (textCount > 0 && totalLines > 0) {
+          // Format bytes nicely
+          const formatBytes = (bytes: number) => {
+            if (bytes < 1024) return `${bytes} bytes`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)}kb`;
+            return `${(bytes / (1024 * 1024)).toFixed(1)}mb`;
+          };
+          attachmentText = `${totalLines} lines, ${formatBytes(totalBytes)}`;
+        } else if (imageCount > 0) {
+          attachmentText = `${imageCount} image${imageCount > 1 ? 's' : ''}`;
+        } else {
+          attachmentText = `${pastedCount} attachment${pastedCount > 1 ? 's' : ''}`;
+        }
+        
+        const attachmentPreview = (
+          <div className="message-attachment-preview">
+            <span className="attachment-text">[attached: {attachmentText}]</span>
+          </div>
+        );
+        displayText = (
+          <>
+            {displayText && <div>{displayText}</div>}
+            {attachmentPreview}
+          </>
+        );
       }
       
       return (

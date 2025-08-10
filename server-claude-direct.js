@@ -40,6 +40,7 @@ const { Server } = require('socket.io');
 const { spawn } = require('child_process');
 const path = require('path');
 const os = require('os');
+const fs = require('fs');
 
 const app = express();
 const httpServer = createServer(app);
@@ -177,6 +178,8 @@ io.on('connection', (socket) => {
       }
       
       // Build arguments - same as code_service.js
+      // NOTE: --verbose is REQUIRED for stream-json output format
+      // This might be why Claude reports high token counts - it includes system prompts
       const args = ['--print', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
       
       // Add model selection if provided
@@ -189,8 +192,10 @@ io.on('connection', (socket) => {
       if (session.claudeSessionId) {
         args.push('--resume', session.claudeSessionId);
         console.log(`📌 Resuming Claude session: ${session.claudeSessionId}`);
+        console.log(`⚠️ RESUMING WILL INCLUDE ALL PREVIOUS TOKENS FROM THIS CLAUDE SESSION!`);
       } else {
         console.log(`🆕 Starting new Claude session`);
+        console.log(`✨ This should start with ~0 tokens (only system prompt)`);
       }
       
       // Don't add prompt to args - we'll send it via stdin
@@ -389,16 +394,34 @@ io.on('connection', (socket) => {
             console.log(`📦 Message type: result (${jsonData.result})`);
             console.log(`   ✅ Result: success=${jsonData.result === 'success'}, duration=${jsonData.duration}ms`);
             
-            // Log the entire result object to see all fields
-            console.log(`   📋 Full result data:`, JSON.stringify(jsonData, null, 2));
+            // CRITICAL TOKEN DEBUG - SHOW EXACTLY WHAT CLAUDE IS SENDING
+            console.log(`\n🚨🚨🚨 TOKEN DEBUG - CLAUDE CLI RESULT 🚨🚨🚨`);
+            console.log(`Session ID: ${session.claudeSessionId}`);
+            console.log(`Is this a NEW session? ${!session.claudeSessionId ? 'YES - FRESH START' : 'NO - RESUMING'}`);
             
             // Log usage/cost information if present
             if (jsonData.usage) {
-              console.log(`   💰 Usage:`, JSON.stringify(jsonData.usage, null, 2));
+              console.log(`\n📊 EXACT TOKEN USAGE FROM CLAUDE CLI:`);
+              console.log(`   input_tokens: ${jsonData.usage.input_tokens || 0}`);
+              console.log(`   output_tokens: ${jsonData.usage.output_tokens || 0}`);
+              console.log(`   cache_creation_input_tokens: ${jsonData.usage.cache_creation_input_tokens || 0}`);
+              console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0}`);
+              const totalInput = (jsonData.usage.input_tokens || 0) + 
+                                (jsonData.usage.cache_creation_input_tokens || 0) + 
+                                (jsonData.usage.cache_read_input_tokens || 0);
+              const totalOutput = jsonData.usage.output_tokens || 0;
+              console.log(`   TOTAL INPUT: ${totalInput}`);
+              console.log(`   TOTAL OUTPUT: ${totalOutput}`);
+              console.log(`   GRAND TOTAL: ${totalInput + totalOutput}`);
+            } else {
+              console.log(`   ⚠️ NO USAGE DATA IN RESULT`);
             }
+            
             if (jsonData.cost) {
-              console.log(`   💵 Cost:`, JSON.stringify(jsonData.cost, null, 2));
+              console.log(`\n💵 COST FROM CLAUDE:`);
+              console.log(`   Total: $${jsonData.total_cost_usd || 0}`);
             }
+            console.log(`🚨🚨🚨 END TOKEN DEBUG 🚨🚨🚨\n`);
             
             // If we have a last assistant message, send an update to mark it as done streaming
             const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
@@ -457,6 +480,12 @@ io.on('connection', (socket) => {
       if (content) {
         // Ensure content ends with newline for proper stdin handling
         const inputContent = content.endsWith('\n') ? content : content + '\n';
+        
+        console.log(`\n🔍 SENDING PROMPT TO CLAUDE:`);
+        console.log(`   Length: ${inputContent.length} characters`);
+        console.log(`   Content: "${inputContent.substring(0, 500)}${inputContent.length > 500 ? '...' : ''}"`);
+        console.log(`   Estimated tokens (rough): ~${Math.ceil(inputContent.length / 4)}`);
+        
         child.stdin.write(inputContent, 'utf8', (err) => {
           if (err) {
             console.error('Error writing to stdin:', err);
@@ -669,6 +698,29 @@ io.on('connection', (socket) => {
 
 const PORT = process.env.PORT || 3001;
 
+// PID file management for proper cleanup
+const PID_FILE = path.join(__dirname, '.server.pid');
+
+function writePidFile() {
+  try {
+    fs.writeFileSync(PID_FILE, process.pid.toString());
+    console.log(`📄 PID file written: ${PID_FILE} (PID: ${process.pid})`);
+  } catch (error) {
+    console.error('❌ Failed to write PID file:', error);
+  }
+}
+
+function cleanupPidFile() {
+  try {
+    if (fs.existsSync(PID_FILE)) {
+      fs.unlinkSync(PID_FILE);
+      console.log('🗑️ PID file cleaned up');
+    }
+  } catch (error) {
+    console.error('⚠️ Failed to cleanup PID file:', error);
+  }
+}
+
 // Add startup logging
 console.log('===== SERVER STARTUP LOGGING =====');
 console.log(`📅 Starting server at: ${new Date().toISOString()}`);
@@ -688,6 +740,9 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`📝 Running in ${process.platform === 'linux' ? 'WSL' : 'Windows'}`);
   console.log(`🔌 WebSocket ready for connections`);
   console.log('=========================================');
+  
+  // Write PID file for cleanup purposes
+  writePidFile();
   
   if (process.send) {
     console.log('📤 Sending ready signal to parent process');
@@ -740,6 +795,9 @@ async function cleanup() {
   }
   activeProcesses.clear();
   sessions.clear();
+  
+  // Clean up PID file
+  cleanupPidFile();
   
   console.log('✅ Cleanup complete');
   process.exit(0);

@@ -17,20 +17,32 @@ A minimal, elegant cross-platform UI for the Claude Code SDK. Built with Electro
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/claude-code-studio.git
-cd claude-code-studio
+git clone https://github.com/yourusername/yurucode.git
+cd yurucode
 
 # Install dependencies
 npm install
+```
 
-# Run in development mode
-npm run electron:dev
+## Running the App
 
-# Build for production
-npm run build
+### Development Mode (with console for debugging)
+```bash
+# Windows - Double-click or run:
+DEV.bat
+# OR
+START-CMD.bat
 
-# Package for distribution
+# Cross-platform:
+npm run start:multi
+```
+
+### Production Build
+```bash
+# Build for current platform
 npm run dist
+
+# The .exe will NOT show a console window
 ```
 
 ## Development

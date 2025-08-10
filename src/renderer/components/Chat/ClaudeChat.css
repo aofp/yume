@@ -723,6 +723,43 @@
   border-color: rgba(var(--accent-rgb), 0.2);
 }
 
+.btn-stats {
+  font-family: 'Fira Code', monospace;
+}
+
+/* Color coding for token usage levels - match clear button style by default */
+.btn-stats.low {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.btn-stats.low:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.btn-stats.medium {
+  color: rgba(255, 204, 0, 0.6);
+  border-color: rgba(255, 204, 0, 0.2);
+}
+
+.btn-stats.medium:hover {
+  background: rgba(255, 204, 0, 0.05);
+  color: rgba(255, 204, 0, 0.9);
+  border-color: rgba(255, 204, 0, 0.3);
+}
+
+.btn-stats.high {
+  color: rgba(255, 100, 100, 0.8);
+  border-color: rgba(255, 100, 100, 0.3);
+}
+
+.btn-stats.high:hover {
+  background: rgba(255, 100, 100, 0.05);
+  color: rgba(255, 100, 100, 1);
+  border-color: rgba(255, 100, 100, 0.4);
+}
+
 .btn-stats.disabled {
   opacity: 0.3;
   pointer-events: none;
@@ -754,8 +791,8 @@
 /* New Attachments System */
 .attachments-container {
   position: absolute;
-  bottom: 116px;
-  right: 12px;
+  bottom: 90px;
+  right: 4px;
   display: flex;
   gap: 2px;
   padding: 0;
@@ -775,20 +812,20 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 0;
+  gap: 4px;
+  padding: 3px 6px;
   background: transparent;
-  border-radius: 0;
-  transition: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  transition: border-color 0.2s;
+  margin-top: 40px;
+  user-select: none;
 }
 
-.attachment-item:hover {
-  background: transparent;
-}
 
 .attachment-text {
-  font-size: 14px;
-  color: #ff99cc;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.8);
   font-family: 'Fira Code', monospace;
   opacity: 1;
 }
@@ -796,23 +833,40 @@
 .attachment-remove {
   background: transparent;
   border: none;
-  color: #ff9999;
+  color: rgba(255, 255, 255, 0.6);
   padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: default;
   opacity: 1;
-  transition: none;
-  font-size: 14px;
-}
-
-.attachment-item:hover .attachment-remove {
-  opacity: 1;
+  transition: color 0.2s;
+  font-size: 10px;
 }
 
 .attachment-remove:hover {
-  color: #ff9999;
+  color: var(--accent-color);
+}
+
+/* Message attachment preview (in chat bubbles) */
+.message-attachment-preview {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  margin-top: 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Fira Code', monospace;
+}
+
+.message-attachment-preview .attachment-text {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  opacity: 1;
 }
 
 /* Help Modal (Keyboard Shortcuts) */

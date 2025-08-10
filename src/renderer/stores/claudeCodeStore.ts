@@ -78,6 +78,7 @@ interface ClaudeCodeStore {
   interruptSession: () => Promise<void>;
   clearContext: (sessionId: string) => void;
   updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => void;
+  restoreToMessage: (sessionId: string, messageIndex: number) => void;
   
   // Session persistence
   loadSessionHistory: (sessionId: string) => Promise<void>;
@@ -111,8 +112,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   },
   
   createSession: async (name?: string, directory?: string, existingSessionId?: string) => {
-    console.log('createSession called with:', { name, directory, existingSessionId });
-    console.trace('Stack trace for createSession');
+    console.log('[Store] createSession called:', { name, directory, existingSessionId });
+    console.trace('[Store] Stack trace for createSession');
     
     try {
       // Generate more entropic session ID with timestamp and random components
@@ -154,6 +155,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       };
       
       // Add pending session to store immediately so tab appears
+      console.log('[Store] Adding pending session:', tempSessionId);
       set(state => ({
         sessions: [...state.sessions, pendingSession],
         currentSessionId: tempSessionId
@@ -185,11 +187,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         
         const sessionId = result.sessionId || result;
         const existingMessages = result.messages || [];
-        const claudeSessionId = result.claudeSessionId;
+        // IMPORTANT: Don't store claudeSessionId for new tabs - each tab should start fresh
+        // Only store it when explicitly resuming an existing session
+        const claudeSessionId = existingSessionId ? result.claudeSessionId : undefined;
         
-        console.log(`🔍 [SESSION DEBUG] Session ${sessionId}: existingMessages count: ${existingMessages.length}`);
+        console.log(`[Store] Session ${sessionId}:`);
+        console.log(`  - Existing messages: ${existingMessages.length}`);
+        console.log(`  - Working directory: ${result.workingDirectory || workingDirectory}`);
+        console.log(`  - Claude session ID: ${claudeSessionId || 'none (new session)'}`);
         const existingResultsWithUsage = existingMessages.filter(m => m.type === 'result' && m.usage);
-        console.log(`🔍 [SESSION DEBUG] Session ${sessionId}: existing result messages with usage:`, existingResultsWithUsage.map(m => ({ id: m.id, usage: m.usage })));
+        console.log(`  - Result messages with usage: ${existingResultsWithUsage.length}`);
         
         // STEP 3: Update tab to active status with real session ID
         const activeSession: Session = {
@@ -223,6 +230,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         };
         
         // Replace pending session with active one
+        console.log('[Store] Replacing pending session with active:', { tempSessionId, sessionId });
         set(state => ({
           sessions: state.sessions.map(s => 
             s.id === tempSessionId ? activeSession : s
@@ -233,7 +241,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // Don't add initial system message here - Claude Code SDK sends it automatically
       
       // Set up message listener for REAL responses
+      console.log('[Store] Setting up message listener for session:', sessionId);
       const cleanup = claudeCodeClient.onMessage(sessionId, (message) => {
+          console.log('[Store] Processing message:', {
+            sessionId,
+            type: message.type,
+            id: message.id,
+            streaming: message.streaming
+          });
+          
           // Handle streaming messages by updating existing message or adding new
           set(state => {
             let sessions = state.sessions.map(s => {
@@ -243,7 +259,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               
               // CRITICAL: Never accept user messages from server - they should only come from sendMessage
               if (message.type === 'user') {
-                console.warn('Ignoring user message from server - user messages should only be created locally');
+                console.warn('[Store] Ignoring user message from server - user messages should only be created locally');
                 return s;
               }
               
@@ -253,12 +269,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 if (existingIndex >= 0) {
                   // Update existing message (for streaming updates)
                   // IMPORTANT: Merge content to avoid erasing messages
-                  console.log(`[CLIENT] Updating message ${message.id} at index ${existingIndex}, streaming: ${message.streaming}`);
+                  console.log(`[Store] Updating message ${message.id} at index ${existingIndex}, streaming: ${message.streaming}`);
                   const existingMessage = existingMessages[existingIndex];
                   
                   // Special handling for result messages - ensure we don't lose final assistant messages
                   if (message.type === 'result' && (message.subtype === 'error_max_turns' || message.is_error)) {
-                    console.log('[CLIENT] Processing error result - ensuring final assistant message is preserved');
+                    console.log('[Store] Processing error result - ensuring final assistant message is preserved');
                     // Look for recent assistant messages that should be preserved
                     const recentAssistantMessages = existingMessages.filter(m => 
                       m.type === 'assistant' && 
@@ -373,6 +389,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
                 const existingResultMessages = s.messages.filter(m => m.type === 'result').map(m => ({ id: m.id, usage: m.usage }));
                 console.log(`🔍 [TOKEN DEBUG] Processing result message ${message.id}, isNewResult: ${isNewResult}, current analytics tokens: ${analytics.tokens.total}`);
+                console.log(`🔍 [TOKEN DEBUG] Session ${s.id} claudeSessionId: ${s.claudeSessionId}`);
                 console.log(`🔍 [TOKEN DEBUG] Existing result messages in session:`, existingResultMessages);
                 if (isNewResult) {
                   console.log('📊 Result message with usage:', message.usage);
@@ -381,19 +398,35 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   }
                   
                   // Include all input token types
-                  const inputTokens = (message.usage.input_tokens || 0) + 
-                                      (message.usage.cache_creation_input_tokens || 0) + 
-                                      (message.usage.cache_read_input_tokens || 0);
+                  // IMPORTANT: Don't count cache tokens against context window!
+                  // Cache tokens allow Claude to work beyond 200k limit
+                  const regularInputTokens = message.usage.input_tokens || 0;
+                  const cacheCreationTokens = message.usage.cache_creation_input_tokens || 0;
+                  const cacheReadTokens = message.usage.cache_read_input_tokens || 0;
                   const outputTokens = message.usage.output_tokens || 0;
                   
-                  // Claude CLI sends cumulative tokens for the current conversation
-                  // Set these values directly (they are already totals, not deltas)
-                  console.log(`🔍 [TOKEN DEBUG] Before update: input=${analytics.tokens.input}, output=${analytics.tokens.output}, total=${analytics.tokens.total}`);
-                  console.log(`🔍 [TOKEN DEBUG] New values from Claude: input=${inputTokens}, output=${outputTokens}, total=${inputTokens + outputTokens}`);
+                  // Only count regular tokens for context window calculation
+                  const inputTokens = regularInputTokens; // Exclude cache tokens!
+                  const totalTokens = inputTokens + outputTokens;
+                  
+                  console.log(`🔍 [TOKEN DEBUG] Token breakdown:`);
+                  console.log(`   Regular input: ${regularInputTokens}`);
+                  console.log(`   Cache creation: ${cacheCreationTokens} (not counted)`);
+                  console.log(`   Cache read: ${cacheReadTokens} (not counted)`);
+                  console.log(`   Output: ${outputTokens}`);
+                  console.log(`   TOTAL for context: ${totalTokens} (cache excluded)`);
+                  
+                  // CRITICAL: Use assignment (=) not accumulation (+=)
+                  // Claude CLI sends cumulative values for the entire conversation
+                  const previousTotal = analytics.tokens.total;
                   analytics.tokens.input = inputTokens;
                   analytics.tokens.output = outputTokens;
-                  analytics.tokens.total = inputTokens + outputTokens;
-                  console.log(`🔍 [TOKEN DEBUG] After update: input=${analytics.tokens.input}, output=${analytics.tokens.output}, total=${analytics.tokens.total}`);
+                  analytics.tokens.total = totalTokens;
+                  
+                  console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
+                  console.log(`   Previous total: ${previousTotal}`);
+                  console.log(`   New total: ${totalTokens}`);
+                  console.log(`   Change: ${totalTokens - previousTotal}`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;
@@ -524,14 +557,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   
   sendMessage: async (content: string) => {
     const { currentSessionId } = get();
+    console.log('[Store] sendMessage called:', { 
+      sessionId: currentSessionId,
+      contentLength: content?.length,
+      contentType: typeof content
+    });
+    
     if (!currentSessionId) {
-      console.error('Cannot send message: No active session');
+      console.error('[Store] Cannot send message: No active session');
       return;
     }
     
     // Don't add empty messages
     if (!content || (typeof content === 'string' && !content.trim())) {
-      console.warn('Cannot send empty message');
+      console.warn('[Store] Cannot send empty message');
       return;
     }
     
@@ -543,6 +582,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       timestamp: Date.now()
     };
     
+    console.log('[Store] Adding user message to session:', userMessage.id);
     set(state => ({
       sessions: state.sessions.map(s => 
         s.id === currentSessionId 
@@ -554,12 +594,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     try {
       // Send message to Claude Code Server (REAL SDK) with selected model
       const { selectedModel } = get();
+      console.log('[Store] Sending to Claude with model:', selectedModel);
       await claudeCodeClient.sendMessage(currentSessionId, content, selectedModel);
       
       // Messages are handled by the onMessage listener
       // The streaming state will be cleared when we receive the result message
+      console.log('[Store] Message sent successfully, waiting for response...');
     } catch (error) {
-      console.error('Error sending message:', error);
+      console.error('[Store] Error sending message:', error);
       
       // Add error message to chat
       set(state => ({
@@ -816,16 +858,23 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   },
   
   clearContext: (sessionId: string) => {
+    console.log(`🧹 [Store] clearContext called for session ${sessionId}`);
     // Clear local messages and reset analytics
-    set(state => ({
-      sessions: state.sessions.map(s => 
-        s.id === sessionId 
-          ? { 
-              ...s, 
-              messages: [
-                // Keep only the initial system message
-                ...s.messages.filter(m => m.type === 'system' && m.subtype === 'init').slice(0, 1)
-              ],
+    set(state => {
+      const session = state.sessions.find(s => s.id === sessionId);
+      if (session) {
+        console.log(`🧹 [Store] Current analytics before clear:`, session.analytics);
+        console.log(`🧹 [Store] Current messages count: ${session.messages.length}`);
+        console.log(`🧹 [Store] Current claudeSessionId: ${session.claudeSessionId}`);
+      }
+      
+      return {
+        sessions: state.sessions.map(s => 
+          s.id === sessionId 
+            ? { 
+                ...s, 
+                messages: [], // Clear ALL messages - don't keep any
+                claudeSessionId: undefined, // Clear Claude session to start fresh
               analytics: {
                 totalMessages: 0,
                 userMessages: 0,
@@ -847,8 +896,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               updatedAt: new Date()
             }
           : s
-      )
-    }));
+        )
+      };
+    });
+    
+    // Log the result
+    set(state => {
+      const session = state.sessions.find(s => s.id === sessionId);
+      if (session) {
+        console.log(`🧹 [Store] After clear - analytics:`, session.analytics);
+        console.log(`🧹 [Store] After clear - messages count: ${session.messages.length}`);
+        console.log(`🧹 [Store] After clear - claudeSessionId: ${session.claudeSessionId}`);
+      }
+      return state;
+    });
     
     // Notify server to clear the Claude session - use the imported singleton
     claudeCodeClient.clearSession(sessionId).catch(error => {
@@ -877,6 +938,52 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       'claude-opus-4-1-20250805';
     set({ selectedModel: newModel });
     console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus 4.1' : 'Sonnet 4.0'}`);
+  },
+
+  restoreToMessage: (sessionId: string, messageIndex: number) => {
+    set(state => {
+      let sessions = [...state.sessions];
+      const sessionIdx = sessions.findIndex(s => s.id === sessionId);
+      if (sessionIdx !== -1) {
+        const session = sessions[sessionIdx];
+        // Keep only messages up to and including the specified index
+        const restoredMessages = session.messages.slice(0, messageIndex + 1);
+        
+        // Reset session to continue from this point
+        sessions[sessionIdx] = {
+          ...session,
+          messages: restoredMessages,
+          claudeSessionId: undefined, // Clear Claude session to start fresh
+          streaming: false,
+          updatedAt: new Date(),
+          // Reset analytics to reflect only the kept messages
+          analytics: {
+            ...session.analytics,
+            totalMessages: restoredMessages.length,
+            userMessages: restoredMessages.filter(m => m.role === 'user').length,
+            assistantMessages: restoredMessages.filter(m => m.role === 'assistant').length,
+            // Keep existing token counts as they reflect actual usage
+            tokens: session.analytics?.tokens || {
+              input: 0,
+              output: 0,
+              total: 0,
+              byModel: {
+                opus: { input: 0, output: 0, total: 0 },
+                sonnet: { input: 0, output: 0, total: 0 }
+              }
+            },
+            cost: session.analytics?.cost || { total: 0, byModel: { opus: 0, sonnet: 0 } },
+            lastActivity: new Date()
+          }
+        };
+        
+        // Notify server to clear the Claude session
+        claudeCodeClient.clearSession(sessionId);
+        
+        console.log(`Restored session ${sessionId} to message ${messageIndex}`);
+      }
+      return { sessions };
+    });
   },
   
   configureMcpServers: async (servers: any) => {

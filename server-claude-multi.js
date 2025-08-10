@@ -494,9 +494,9 @@ io.on('connection', (socket) => {
   });
   
   socket.on('disconnect', (reason) => {
-    console.log('👋 ===== CLIENT DISCONNECTED =====');
-    console.log('Client ID:', socket.id);
-    console.log('Reason:', reason);
+    console.log('[Server] 👋 ===== CLIENT DISCONNECTED =====');
+    console.log('[Server] Client ID:', socket.id);
+    console.log('[Server] Reason:', reason);
     console.log('==================================');
   });
 });
