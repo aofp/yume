@@ -157,6 +157,7 @@ export const ClaudeChat: React.FC = () => {
     clearContext,
     selectedModel,
     setSelectedModel,
+    toggleModel,
     loadPersistedSession,
     updateSessionDraft
   } = useClaudeCodeStore();
@@ -217,6 +218,10 @@ export const ClaudeChat: React.FC = () => {
         if (hasActivity) {
           setShowStatsModal(true);
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault();
+        // Toggle model between opus and sonnet
+        toggleModel();
       } else if (e.key === '?' && !isInputField) {
         // Toggle help when pressing ? (not in input fields)
         e.preventDefault();
@@ -945,6 +950,11 @@ export const ClaudeChat: React.FC = () => {
           <div className="context-info">
             {(() => {
               const tokens = currentSession.messages.reduce((acc, msg) => {
+                // Use actual token counts from usage if available
+                if (msg.usage) {
+                  return acc + (msg.usage.input_tokens || 0) + (msg.usage.output_tokens || 0);
+                }
+                // Fallback to estimation for messages without usage data
                 const content = msg.message?.content || '';
                 const chars = typeof content === 'string' ? content.length : JSON.stringify(content).length;
                 return acc + Math.ceil(chars / 4);
@@ -1135,85 +1145,112 @@ export const ClaudeChat: React.FC = () => {
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
       
       {showStatsModal && currentSession?.analytics && (
-        <div className="help-modal-overlay" onClick={() => setShowStatsModal(false)}>
-          <div className="help-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="help-header">
+        <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
+          <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="stats-header">
               <h3>session analytics</h3>
-              <button className="help-close" onClick={() => setShowStatsModal(false)}>
+              <button className="stats-close" onClick={() => setShowStatsModal(false)}>
                 <IconX size={16} />
               </button>
             </div>
-            <div className="help-content">
-              <div className="help-section">
-                <h4>usage</h4>
-                <div className="stat-row">
-                  <div className="stat-keys">
-                    <IconSend size={14} />
-                    <span className="stat-name">messages</span>
+            <div className="stats-content">
+              <div className="stats-column">
+                <div className="stats-section">
+                  <h4>usage & cost</h4>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconSend size={14} />
+                      <span className="stat-name">messages</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">{currentSession.analytics.totalMessages}</span>
                   </div>
-                  <span className="stat-dots"></span>
-                  <span className="stat-desc">{currentSession.analytics.totalMessages}</span>
-                </div>
-                <div className="stat-row">
-                  <div className="stat-keys">
-                    <IconTool size={14} />
-                    <span className="stat-name">tool uses</span>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconTool size={14} />
+                      <span className="stat-name">tool uses</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">{currentSession.analytics.toolUses}</span>
                   </div>
-                  <span className="stat-dots"></span>
-                  <span className="stat-desc">{currentSession.analytics.toolUses}</span>
-                </div>
-                <div className="stat-row">
-                  <div className="stat-keys">
-                    <IconChartBar size={14} />
-                    <span className="stat-name">total tokens</span>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconChartBar size={14} />
+                      <span className="stat-name">total tokens</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">{currentSession.analytics.tokens.total.toLocaleString()}</span>
                   </div>
-                  <span className="stat-dots"></span>
-                  <span className="stat-desc">{currentSession.analytics.tokens.total.toLocaleString()}</span>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconCoin size={14} />
+                      <span className="stat-name">cost</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      ${(() => {
+                        // Use actual cost from Claude if available
+                        if (currentSession.analytics.cost?.total) {
+                          // Format cost to 2 decimal places for display
+                          return currentSession.analytics.cost.total.toFixed(2);
+                        }
+                        
+                        // Otherwise calculate based on token usage
+                        const opusInput = currentSession.analytics.tokens.byModel?.opus?.input || 0;
+                        const opusOutput = currentSession.analytics.tokens.byModel?.opus?.output || 0;
+                        const sonnetInput = currentSession.analytics.tokens.byModel?.sonnet?.input || 0;
+                        const sonnetOutput = currentSession.analytics.tokens.byModel?.sonnet?.output || 0;
+                        
+                        const opusCost = (opusInput / 1000000) * 3.00 + (opusOutput / 1000000) * 15.00;
+                        const sonnetCost = (sonnetInput / 1000000) * 2.50 + (sonnetOutput / 1000000) * 12.50;
+                        
+                        return (opusCost + sonnetCost).toFixed(2);
+                      })()}
+                    </span>
+                  </div>
                 </div>
               </div>
               
-              <div className="help-section">
-                <h4>cost</h4>
-                <div className="stat-row">
-                  <div className="stat-keys">
-                    <IconCoin size={14} />
-                    <span className="stat-name">estimate</span>
+              <div className="stats-column">
+                <div className="stats-section">
+                  <h4>token breakdown</h4>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <span className="stat-name">input</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      {currentSession.analytics.tokens.input.toLocaleString()} ({Math.round((currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100)}%)
+                    </span>
                   </div>
-                  <span className="stat-dots"></span>
-                  <span className="stat-desc">
-                    ${(
-                      (currentSession.analytics.tokens.input / 1000000) * 3.00 + 
-                      (currentSession.analytics.tokens.output / 1000000) * 15.00
-                    ).toFixed(3)}
-                  </span>
-                </div>
-              </div>
-              
-              <div className="help-section">
-                <h4>token breakdown</h4>
-                <div className="stat-row">
-                  <div className="stat-keys">
-                    <span className="stat-name">input</span>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <span className="stat-name">output</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      {currentSession.analytics.tokens.output.toLocaleString()} ({Math.round((currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100)}%)
+                    </span>
                   </div>
-                  <span className="stat-dots"></span>
-                  <span className="stat-desc">
-                    {currentSession.analytics.tokens.input.toLocaleString()} ({Math.round((currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100)}%)
-                  </span>
-                </div>
-                <div className="stat-row">
-                  <div className="stat-keys">
-                    <span className="stat-name">output</span>
+                  <div className="breakdown-bar">
+                    <div 
+                      className="input-bar" 
+                      style={{ width: `${(currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100}%` }}
+                    />
                   </div>
-                  <span className="stat-dots"></span>
-                  <span className="stat-desc">
-                    {currentSession.analytics.tokens.output.toLocaleString()} ({Math.round((currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100)}%)
-                  </span>
-                </div>
-                <div className="breakdown-bar">
-                  <div 
-                    className="input-bar" 
-                    style={{ width: `${(currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100}%` }}
-                  />
+                  <div className="stat-row" style={{ marginTop: '4px' }}>
+                    <div className="stat-keys">
+                      <span className="stat-name">opus %</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      {(() => {
+                        const opusTokens = currentSession.analytics.tokens.byModel?.opus?.total || 0;
+                        const totalTokens = currentSession.analytics.tokens.total || 1;
+                        return `${Math.round((opusTokens / totalTokens) * 100)}%`;
+                      })()}
+                    </span>
+                  </div>
                 </div>
               </div>
             </div>

@@ -18,6 +18,17 @@ export interface SessionAnalytics {
     input: number;
     output: number;
     total: number;
+    byModel: {
+      opus: { input: number; output: number; total: number; };
+      sonnet: { input: number; output: number; total: number; };
+    };
+  };
+  cost?: {
+    total: number;
+    byModel: {
+      opus: number;
+      sonnet: number;
+    };
   };
   duration: number; // in milliseconds
   lastActivity: Date;
@@ -72,6 +83,9 @@ interface ClaudeCodeStore {
   loadSessionHistory: (sessionId: string) => Promise<void>;
   listAvailableSessions: () => Promise<void>;
   loadPersistedSession: (sessionId: string) => Promise<void>;
+  
+  // Model management
+  toggleModel: () => void;
   
   // MCP & Tools
   configureMcpServers: (servers: any) => Promise<void>;
@@ -292,7 +306,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 userMessages: 0,
                 assistantMessages: 0,
                 toolUses: 0,
-                tokens: { input: 0, output: 0, total: 0 },
+                tokens: { 
+                  input: 0, 
+                  output: 0, 
+                  total: 0,
+                  byModel: {
+                    opus: { input: 0, output: 0, total: 0 },
+                    sonnet: { input: 0, output: 0, total: 0 }
+                  }
+                },
                 duration: 0,
                 lastActivity: new Date()
               };
@@ -303,14 +325,55 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               analytics.assistantMessages = existingMessages.filter(m => m.type === 'assistant').length;
               analytics.toolUses = existingMessages.filter(m => m.type === 'tool_use').length;
               
+              // Initialize byModel if it doesn't exist (for backward compatibility)
+              if (!analytics.tokens.byModel) {
+                analytics.tokens.byModel = {
+                  opus: { input: 0, output: 0, total: 0 },
+                  sonnet: { input: 0, output: 0, total: 0 }
+                };
+              }
+              
               // Update tokens if result message - accumulate, don't reset
               if (message.type === 'result' && message.usage) {
                 // Only add new tokens if this is a new result message
                 const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
                 if (isNewResult) {
-                  analytics.tokens.input += message.usage.input_tokens || 0;
-                  analytics.tokens.output += message.usage.output_tokens || 0;
+                  console.log('📊 Result message with usage:', message.usage);
+                  if (message.cost) {
+                    console.log('💰 Result message with cost:', message.cost);
+                  }
+                  
+                  // Include all input token types
+                  const inputTokens = (message.usage.input_tokens || 0) + 
+                                      (message.usage.cache_creation_input_tokens || 0) + 
+                                      (message.usage.cache_read_input_tokens || 0);
+                  const outputTokens = message.usage.output_tokens || 0;
+                  
+                  // Update total tokens
+                  analytics.tokens.input += inputTokens;
+                  analytics.tokens.output += outputTokens;
                   analytics.tokens.total = analytics.tokens.input + analytics.tokens.output;
+                  
+                  // Determine which model was used (check message.model or use current selectedModel)
+                  const modelUsed = message.model || get().selectedModel;
+                  const isOpus = modelUsed.includes('opus');
+                  const modelKey = isOpus ? 'opus' : 'sonnet';
+                  
+                  // Update model-specific tokens
+                  analytics.tokens.byModel[modelKey].input += inputTokens;
+                  analytics.tokens.byModel[modelKey].output += outputTokens;
+                  analytics.tokens.byModel[modelKey].total = 
+                    analytics.tokens.byModel[modelKey].input + analytics.tokens.byModel[modelKey].output;
+                  
+                  // Store cost information if provided by Claude
+                  if (message.total_cost_usd !== undefined) {
+                    if (!analytics.cost) {
+                      analytics.cost = { total: 0, byModel: { opus: 0, sonnet: 0 } };
+                    }
+                    analytics.cost.total += message.total_cost_usd;
+                    analytics.cost.byModel[modelKey] += message.total_cost_usd;
+                    console.log('💵 Updated cost:', analytics.cost);
+                  }
                 }
               }
               
@@ -715,6 +778,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           : s
       )
     }));
+  },
+  
+  toggleModel: () => {
+    const currentModel = get().selectedModel;
+    const newModel = currentModel.includes('opus') ? 
+      'claude-sonnet-4-20250514' : 
+      'claude-opus-4-1-20250805';
+    set({ selectedModel: newModel });
+    console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus 4.1' : 'Sonnet 4.0'}`);
   },
   
   configureMcpServers: async (servers: any) => {

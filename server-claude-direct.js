@@ -141,7 +141,7 @@ io.on('connection', (socket) => {
       }
       
       // Build arguments - same as code_service.js
-      const args = ['--print', '--output-format', 'stream-json', '--verbose'];
+      const args = ['--print', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
       
       // Add model selection if provided
       if (model) {
@@ -349,12 +349,27 @@ io.on('connection', (socket) => {
             }
             
           } else if (jsonData.type === 'result') {
-            // Just send the result message
+            console.log(`📦 Message type: result (${jsonData.result})`);
+            console.log(`   ✅ Result: success=${jsonData.result === 'success'}, duration=${jsonData.duration}ms`);
+            
+            // Log the entire result object to see all fields
+            console.log(`   📋 Full result data:`, JSON.stringify(jsonData, null, 2));
+            
+            // Log usage/cost information if present
+            if (jsonData.usage) {
+              console.log(`   💰 Usage:`, JSON.stringify(jsonData.usage, null, 2));
+            }
+            if (jsonData.cost) {
+              console.log(`   💵 Cost:`, JSON.stringify(jsonData.cost, null, 2));
+            }
+            
+            // Just send the result message with model info
             socket.emit(`message:${sessionId}`, {
               type: 'result',
               ...jsonData,
               streaming: false,
-              id: `result-${sessionId}-${Date.now()}`
+              id: `result-${sessionId}-${Date.now()}`,
+              model: model // Include the model that was used
             });
           }
           

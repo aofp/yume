@@ -941,7 +941,6 @@
   align-items: center;
   justify-content: center;
   z-index: 1000;
-  backdrop-filter: blur(4px);
 }
 
 .stats-modal {
@@ -952,6 +951,7 @@
   max-width: 500px;
   max-height: 80vh;
   overflow-y: auto;
+  padding: 0;
 }
 
 .stats-header {
@@ -960,6 +960,7 @@
   align-items: center;
   padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0;
 }
 
 .stats-header h3 {
@@ -985,6 +986,15 @@
 
 .stats-content {
   padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  gap: 8px;
+  justify-content: center;
+}
+
+.stats-column {
+  display: flex;
+  flex-direction: column;
 }
 
 .stats-section {
@@ -1060,12 +1070,12 @@
   background: rgba(255, 255, 255, 0.05);
   border-radius: 4px;
   overflow: hidden;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .input-bar {
   height: 100%;
-  background: linear-gradient(90deg, #ff99cc, #ff9999);
+  background: rgba(var(--accent-rgb), 0.8);
   transition: width 0.3s ease;
 }
 

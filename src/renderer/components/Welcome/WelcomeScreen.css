@@ -211,8 +211,7 @@
 .recent-item-container {
   display: flex;
   align-items: center;
-  gap: 4px;
-  margin-bottom: 2px;
+  gap: 2px;
 }
 
 .recent-item {
@@ -236,7 +235,7 @@
 }
 
 .recent-item-remove {
-  display: none;
+  display: flex;
   align-items: center;
   justify-content: center;
   width: 20px;
@@ -246,11 +245,12 @@
   border-radius: 3px;
   color: rgba(255, 255, 255, 0.3);
   cursor: default;
+  opacity: 0;
   transition: all 0.15s ease;
 }
 
 .recent-item-container:hover .recent-item-remove {
-  display: flex;
+  opacity: 1;
 }
 
 .recent-item-remove:hover {
@@ -428,4 +428,12 @@
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+/* Model Selector - exact same positioning as chat */
+.model-selector-container {
+  position: fixed;
+  bottom: 2px;
+  left: 4px;
+  z-index: 100;
 }
