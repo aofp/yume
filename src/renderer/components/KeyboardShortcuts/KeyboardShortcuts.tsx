@@ -121,6 +121,24 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <div className="shortcut-keys">
                 <span className="key-btn">ctrl</span>
                 <span className="key-plus">+</span>
+                <span className="key-btn">r</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">recent projects</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">ctrl</span>
+                <span className="key-plus">+</span>
+                <span className="key-btn">,</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">settings</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">ctrl</span>
+                <span className="key-plus">+</span>
                 <span className="key-btn">0</span>
               </div>
               <span className="shortcut-dots"></span>
@@ -143,24 +161,6 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               </div>
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">zoom out</span>
-            </div>
-            <div className="shortcut-item">
-              <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
-                <span className="key-plus">+</span>
-                <span className="key-btn">r</span>
-              </div>
-              <span className="shortcut-dots"></span>
-              <span className="shortcut-desc">recent projects</span>
-            </div>
-            <div className="shortcut-item">
-              <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
-                <span className="key-plus">+</span>
-                <span className="key-btn">,</span>
-              </div>
-              <span className="shortcut-dots"></span>
-              <span className="shortcut-desc">settings</span>
             </div>
           </div>
           
