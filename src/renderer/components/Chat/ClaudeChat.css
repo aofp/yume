@@ -899,10 +899,10 @@
 }
 
 .help-content {
-  padding: 12px;
+  padding: 12px 12px 12px 16px;
   display: grid;
   grid-template-columns: repeat(2, minmax(200px, 1fr));
-  gap: 0;
+  gap: 8px;
   justify-content: center;
 }
 

@@ -212,7 +212,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               <button className="zoom-btn" onClick={handleZoomIn}>
                 <IconPlus size={14} />
               </button>
-              <button className="zoom-btn" onClick={handleZoomReset}>
+              <button 
+                className="zoom-btn" 
+                onClick={handleZoomReset}
+                disabled={zoomLevel === 0}
+                title={zoomLevel === 0 ? "already at 100%" : "reset zoom to 100%"}
+              >
                 <IconRefresh size={14} />
               </button>
             </div>

@@ -132,6 +132,7 @@ export const ClaudeChat: React.FC = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [inputContextMenu, setInputContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
@@ -663,14 +664,58 @@ export const ClaudeChat: React.FC = () => {
     setContextMenu(null);
   };
 
-  // Close context menu when clicking outside
+  // Handle input field context menu
+  const handleInputContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    setInputContextMenu({ x: e.clientX, y: e.clientY });
+  };
+
+  const handleInputCopy = () => {
+    if (inputRef.current) {
+      const start = inputRef.current.selectionStart;
+      const end = inputRef.current.selectionEnd;
+      const selectedText = input.substring(start, end);
+      if (selectedText) {
+        navigator.clipboard.writeText(selectedText);
+      }
+    }
+    setInputContextMenu(null);
+  };
+
+  const handleInputPaste = async () => {
+    try {
+      const text = await navigator.clipboard.readText();
+      if (inputRef.current) {
+        const start = inputRef.current.selectionStart;
+        const end = inputRef.current.selectionEnd;
+        const newValue = input.substring(0, start) + text + input.substring(end);
+        setInput(newValue);
+        // Set cursor position after paste
+        setTimeout(() => {
+          if (inputRef.current) {
+            const newPosition = start + text.length;
+            inputRef.current.selectionStart = inputRef.current.selectionEnd = newPosition;
+            inputRef.current.focus();
+          }
+        }, 0);
+      }
+    } catch (err) {
+      console.error('Failed to paste:', err);
+    }
+    setInputContextMenu(null);
+  };
+
+  // Close context menus when clicking outside
   useEffect(() => {
-    const handleClick = () => setContextMenu(null);
-    if (contextMenu) {
+    const handleClick = () => {
+      setContextMenu(null);
+      setInputContextMenu(null);
+    };
+    if (contextMenu || inputContextMenu) {
       document.addEventListener('click', handleClick);
       return () => document.removeEventListener('click', handleClick);
     }
-  }, [contextMenu]);
+  }, [contextMenu, inputContextMenu]);
 
 
 
@@ -910,6 +955,7 @@ export const ClaudeChat: React.FC = () => {
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            onContextMenu={handleInputContextMenu}
             disabled={false}
             style={{ height: '54px' }}
           />
@@ -964,7 +1010,7 @@ export const ClaudeChat: React.FC = () => {
                   <button 
                     className="btn-help" 
                     onClick={() => setShowHelpModal(true)}
-                    title="keyboard shortcuts"
+                    title="keyboard shortcuts (?)"
                   >
                     ?
                   </button>
@@ -981,7 +1027,7 @@ export const ClaudeChat: React.FC = () => {
           className="context-menu"
           style={{ 
             position: 'fixed', 
-            left: contextMenu.x, 
+            left: contextMenu.x > window.innerWidth - 200 ? contextMenu.x - 150 : contextMenu.x, 
             top: contextMenu.y,
             zIndex: 1000
           }}
@@ -992,6 +1038,32 @@ export const ClaudeChat: React.FC = () => {
           >
             <IconScissors size={14} stroke={1.5} />
             <span>copy</span>
+          </button>
+        </div>
+      )}
+      
+      {/* Input Context Menu */}
+      {inputContextMenu && (
+        <div 
+          className="context-menu"
+          style={{ 
+            position: 'fixed', 
+            left: inputContextMenu.x > window.innerWidth - 200 ? inputContextMenu.x - 150 : inputContextMenu.x, 
+            top: inputContextMenu.y,
+            zIndex: 1000
+          }}
+        >
+          <button 
+            className="context-menu-item"
+            onClick={handleInputCopy}
+          >
+            copy
+          </button>
+          <button 
+            className="context-menu-item"
+            onClick={handleInputPaste}
+          >
+            paste
           </button>
         </div>
       )}

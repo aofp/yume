@@ -66,3 +66,35 @@ ul {
 ::-webkit-scrollbar-thumb:hover {
   background: rgba(255, 153, 153, 0.1);
 }
+
+/* Global Context Menu - matching tab-context-menu style */
+.global-context-menu {
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 4px;
+  min-width: 150px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+}
+
+.global-context-menu .context-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 12px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 11px;
+  cursor: default;
+  border-radius: 4px;
+  transition: background 0.2s ease;
+  text-transform: lowercase;
+  text-align: left;
+}
+
+.global-context-menu .context-menu-item:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
+}

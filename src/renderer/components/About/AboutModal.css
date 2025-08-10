@@ -1,0 +1,133 @@
+/* About Modal - Matching settings modal style */
+
+.about-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.about-modal {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  overflow-y: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.about-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.about-header h3 {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.about-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+  padding: 2px;
+  transition: all 0.2s ease;
+}
+
+.about-close:hover {
+  color: var(--accent-color);
+}
+
+.about-content {
+  padding: 24px;
+  text-align: center;
+}
+
+.about-logo {
+  font-size: 24px;
+  font-weight: 200;
+  letter-spacing: 0.1em;
+  margin-bottom: 12px;
+}
+
+.about-yuru {
+  color: var(--accent-color);
+}
+
+.about-code {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.about-version {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: lowercase;
+  margin-bottom: 16px;
+  font-family: 'Fira Code', monospace;
+}
+
+.about-description {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: lowercase;
+  margin-bottom: 24px;
+  line-height: 1.5;
+}
+
+.about-credits {
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.about-author {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: lowercase;
+  margin-bottom: 4px;
+}
+
+.about-site {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: lowercase;
+}
+
+.about-site a {
+  color: var(--accent-color);
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+  transition: border-color 0.2s;
+}
+
+.about-site a:hover {
+  border-bottom-color: var(--accent-color);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}

@@ -317,7 +317,10 @@ export const SessionTabs: React.FC = () => {
         <div 
           ref={contextMenuRef}
           className="tab-context-menu" 
-          style={{ left: contextMenu.x, top: contextMenu.y }}
+          style={{ 
+            left: contextMenu.x > window.innerWidth - 200 ? contextMenu.x - 150 : contextMenu.x, 
+            top: contextMenu.y 
+          }}
         >
           <button onClick={() => {
             const session = sessions.find(s => s.id === contextMenu.sessionId);

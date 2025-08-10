@@ -140,8 +140,6 @@
 
 .session-tab.drag-over {
   background: rgba(var(--accent-rgb), 0.08);
-  box-shadow: inset 0 0 0 1px var(--accent-color);
-  transform: scale(1.02);
 }
 
 .tab-content {
@@ -278,9 +276,7 @@
 }
 
 .tab-new.drag-over-duplicate {
-  background: rgba(var(--accent-rgb), 0.08);
-  box-shadow: inset 0 0 0 1px var(--accent-color);
-  transform: scale(1.02);
+  background: rgba(var(--accent-rgb), 0.25);
 }
 
 /* Recent button - gray style */

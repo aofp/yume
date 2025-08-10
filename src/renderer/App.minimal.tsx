@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { TitleBar } from './components/Layout/TitleBar';
 import { SessionTabs } from './components/SessionTabs/SessionTabs';
 import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
 import { SettingsModal } from './components/Settings/SettingsModal';
+import { AboutModal } from './components/About/AboutModal';
 // Sidebar removed for cleaner UI
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import './App.minimal.css';
@@ -11,8 +12,37 @@ import './App.minimal.css';
 export const App: React.FC = () => {
   const { currentSessionId, sessions, createSession } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const contextMenuRef = useRef<HTMLDivElement>(null);
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
+  
+  // Handle global right-click for context menu
+  const handleGlobalContextMenu = (e: React.MouseEvent) => {
+    // Don't show if right-clicking on certain elements that have their own context menus
+    const target = e.target as HTMLElement;
+    if (target.closest('.session-tab') || target.closest('.tab-context-menu')) {
+      return;
+    }
+    
+    e.preventDefault();
+    setContextMenu({ x: e.clientX, y: e.clientY });
+  };
+  
+  // Close context menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
+        setContextMenu(null);
+      }
+    };
+
+    if (contextMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [contextMenu]);
   
   // Handle global folder drops
   const handleGlobalDrop = async (e: React.DragEvent) => {
@@ -128,6 +158,7 @@ export const App: React.FC = () => {
       className="app-minimal"
       onDrop={handleGlobalDrop}
       onDragOver={handleGlobalDragOver}
+      onContextMenu={handleGlobalContextMenu}
     >
       <WindowControls onSettingsClick={() => setShowSettings(true)} />
       <TitleBar onSettingsClick={() => setShowSettings(true)} />
@@ -137,7 +168,33 @@ export const App: React.FC = () => {
           <ClaudeChat />
         </div>
       </div>
+      
+      {/* Global Context Menu */}
+      {contextMenu && (
+        <div 
+          ref={contextMenuRef}
+          className="global-context-menu"
+          style={{ 
+            position: 'fixed',
+            left: contextMenu.x > window.innerWidth - 150 ? contextMenu.x - 100 : contextMenu.x,
+            top: contextMenu.y > window.innerHeight - 100 ? contextMenu.y - 50 : contextMenu.y,
+            zIndex: 10001
+          }}
+        >
+          <button 
+            className="context-menu-item"
+            onClick={() => {
+              setShowAbout(true);
+              setContextMenu(null);
+            }}
+          >
+            about
+          </button>
+        </div>
+      )}
+      
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />}
     </div>
   );
 };

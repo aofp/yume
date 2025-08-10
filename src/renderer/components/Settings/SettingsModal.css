@@ -101,10 +101,15 @@
   transition: all 0.2s ease;
 }
 
-.zoom-btn:hover {
+.zoom-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.zoom-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
 }
 
 .zoom-level {
@@ -143,7 +148,6 @@
 
 .color-swatch.active {
   border-color: rgba(255, 255, 255, 0.6);
-  box-shadow: 0 0 0 2px rgba(0, 0, 0, 0.8), 0 0 0 3px rgba(255, 255, 255, 0.3);
 }
 
 .color-swatch.active::after {
