@@ -362,11 +362,6 @@ export const SessionTabs: React.FC = () => {
           <div className="separator" />
           
           <button onClick={() => {
-            deleteAllSessions();
-            setContextMenu(null);
-          }}>close all</button>
-          
-          <button onClick={() => {
             const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
             if (targetSession) {
               // First switch to the target session
@@ -394,6 +389,11 @@ export const SessionTabs: React.FC = () => {
             });
             setContextMenu(null);
           }}>close all to left</button>
+          
+          <button onClick={() => {
+            deleteAllSessions();
+            setContextMenu(null);
+          }}>close all</button>
           
           <div className="separator" />
           

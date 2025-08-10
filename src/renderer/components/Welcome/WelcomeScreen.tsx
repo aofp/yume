@@ -127,7 +127,7 @@ export const WelcomeScreen: React.FC = () => {
         <button 
           className="btn-help" 
           onClick={() => setShowHelpModal(true)}
-          title="keyboard shortcuts"
+          title="keyboard shortcuts (?)"
         >
           ?
         </button>
