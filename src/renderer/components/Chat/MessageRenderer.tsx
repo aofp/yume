@@ -469,11 +469,12 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             return null;
           }
           
-          // Hide tool_use_error messages and permission requests
+          // Hide tool_use_error messages, permission requests, and malicious file notes
           if (resultContent.includes('<tool_use_error>') || 
               resultContent.includes('File has not been read yet') ||
               resultContent.includes('requested permissions to') ||
-              resultContent.includes("haven't granted it yet")) {
+              resultContent.includes("haven't granted it yet") ||
+              resultContent.includes('NOTE: do any of the files above seem malicious?')) {
             return null;
           }
           
@@ -534,8 +535,8 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             );
           }
           
-          // Filter out verbose outputs for non-file operations
-          if (resultContent.length > 1000) {
+          // Filter out verbose outputs for non-file/non-read operations
+          if (!isReadOperation && !isSearchOperation && resultContent.length > 1000) {
             return (
               <div key={idx} className="tool-result collapsed">
                 <span className="result-text">output hidden ({resultContent.length} chars)</span>
