@@ -372,7 +372,7 @@ export const SessionTabs: React.FC = () => {
               });
             }
             setContextMenu(null);
-          }}>close all but this</button>
+          }}>close others</button>
           
           <button onClick={() => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
