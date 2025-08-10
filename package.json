@@ -75,17 +75,18 @@
   "build": {
     "appId": "com.yurucode.app",
     "productName": "yurucode",
-    "executableName": "yurucode",
     "directories": {
       "output": "release",
       "buildResources": "build"
     },
+    "afterPack": "./scripts/afterPack.js",
     "files": [
       "dist/**/*",
       "electron/**/*",
       "server*.js",
       "package.json",
       "assets/**/*",
+      "build/**/*",
       "node_modules/**/*",
       "!node_modules/**/test/**",
       "!node_modules/**/tests/**",
@@ -95,12 +96,8 @@
     ],
     "extraResources": [
       {
-        "from": "assets/yurucode.ico",
-        "to": "assets/yurucode.ico"
-      },
-      {
-        "from": "assets/yurucode.png",
-        "to": "assets/yurucode.png"
+        "from": "build/icon.ico",
+        "to": "icon.ico"
       }
     ],
     "asar": false,
@@ -121,7 +118,7 @@
           ]
         }
       ],
-      "icon": "assets/yurucode.ico",
+      "icon": "build/icon.ico",
       "legalTrademarks": "",
       "verifyUpdateCodeSignature": false,
       "signAndEditExecutable": false,
@@ -135,9 +132,9 @@
       "artifactName": "yurucode-setup-${version}.exe",
       "uninstallDisplayName": "yurucode",
       "allowElevation": true,
-      "installerIcon": "assets/yurucode.ico",
-      "uninstallerIcon": "assets/yurucode.ico",
-      "installerHeaderIcon": "assets/yurucode.ico",
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "yurucode",

@@ -219,16 +219,35 @@ const formatPath = (path?: string) => {
       if (!unixPath) {
         unixPath = '.';
       }
+    } else if (unixPath.startsWith('/mnt/c/')) {
+      // Convert WSL paths to relative if they're in the project
+      const projectName = workingDir.split('/').pop() || '';
+      const projectIdx = unixPath.indexOf('/' + projectName + '/');
+      if (projectIdx !== -1) {
+        unixPath = unixPath.slice(projectIdx + projectName.length + 2);
+      }
     }
   }
   
-  // If still too long, show last parts
-  const parts = unixPath.split('/');
-  if (parts.length > 3) {
-    return '.../' + parts.slice(-2).join('/');
+  // Remove any remaining absolute path prefixes
+  if (unixPath.startsWith('/mnt/c/')) {
+    const parts = unixPath.split('/');
+    // Find project folder (yurucode or testproject)
+    const projectIdx = parts.findIndex(p => p === 'yurucode' || p === 'testproject');
+    if (projectIdx !== -1) {
+      unixPath = parts.slice(projectIdx + 1).join('/');
+    }
   }
   
-  return unixPath;
+  // If still absolute, try to make it relative
+  if (unixPath.startsWith('/')) {
+    const parts = unixPath.split('/');
+    if (parts.length > 3) {
+      return '.../' + parts.slice(-2).join('/');
+    }
+  }
+  
+  return unixPath || '.';
 };
 
 const formatCommand = (cmd?: string) => {
@@ -639,33 +658,56 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
     case 'user':
       const userContent = message.message?.content || '';
       let displayText = '';
+      let pastedCount = 0;
       
       if (typeof userContent === 'string') {
         displayText = userContent;
       } else if (Array.isArray(userContent)) {
-        // Handle multiple attachments
-        const parts = userContent.map((item, index) => {
+        // Handle multiple attachments - extract the actual user message and count pastes
+        const textParts = [];
+        const attachments = [];
+        
+        userContent.forEach((item) => {
           if (item?.text) {
             const text = item.text;
             // Check for pasted content patterns
-            if (text.startsWith('[Attached text]:')) {
+            if (text.startsWith('[Attached text]:') || text.includes('[Attached text]:')) {
               // Check if it's a permission request message we should hide
               if (text.includes('requested permissions to') || 
                   text.includes("haven't granted it yet") ||
                   text.includes('hide this too')) {
-                return null;
+                return;
               }
-              return `[pasted text #${index + 1}]`;
-            } else if (text.startsWith('[Attached image')) {
-              return `[pasted image #${index + 1}]`;
+              pastedCount++;
+              attachments.push('text');
+            } else if (text.startsWith('[Attached image') || text.includes('[Attached image')) {
+              pastedCount++;
+              attachments.push('image');
             } else {
-              return text;
+              // This is the actual user message - don't check for type as it might not be present
+              // Only add non-attached text
+              if (!text.startsWith('[Attached')) {
+                textParts.push(text);
+              }
             }
+          } else if (typeof item === 'string') {
+            // Direct string item
+            textParts.push(item);
           }
-          return '';
-        }).filter(Boolean);
+        });
         
-        displayText = parts.join(' ');
+        // Build display text - filter out empty strings
+        displayText = textParts.filter(t => t && t.trim()).join(' ').trim();
+        
+        // Add attachment indicators if present with better formatting
+        if (pastedCount > 0) {
+          const attachmentText = pastedCount === 1 
+            ? '[+ pasted content]' 
+            : `[+ ${pastedCount} pasted items]`;
+          displayText = displayText 
+            ? `${displayText} ${attachmentText}`
+            : attachmentText;
+        }
       }
       
       return (
@@ -717,7 +759,7 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
                   ) : (
                     <>
                       {renderContent(message.message?.content, message)}
-                      {/* Always show thinking indicator when streaming, even with tool_use blocks */}
+                      {/* Always show thinking indicator when streaming, regardless of content type */}
                       <div className="thinking-indicator inline">
                         <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
                         <IconLoader2 size={14} className="streaming-loader" />

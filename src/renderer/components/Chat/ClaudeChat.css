@@ -732,61 +732,54 @@
   bottom: 116px;
   right: 12px;
   display: flex;
-  gap: 4px;
-  padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.95);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  backdrop-filter: blur(10px);
-  max-width: 280px;
+  gap: 2px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  backdrop-filter: none;
+  max-width: 400px;
   flex-wrap: wrap;
-  animation: slideUp 0.15s ease;
+  animation: none;
   z-index: 100;
 }
 
-@keyframes slideUp {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
+/* removed animation */
 
 .attachment-item {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 2px 4px;
+  gap: 8px;
+  padding: 0;
   background: transparent;
-  border-radius: 4px;
-  transition: all 0.2s ease;
+  border-radius: 0;
+  transition: none;
 }
 
 .attachment-item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: transparent;
 }
 
 .attachment-text {
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 14px;
+  color: #ff99cc;
   font-family: 'Fira Code', monospace;
+  opacity: 1;
 }
 
 .attachment-remove {
   background: transparent;
   border: none;
-  color: rgba(255, 100, 100, 0.6);
-  padding: 0 2px;
+  color: #ff9999;
+  padding: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: default;
-  opacity: 0;
-  transition: all 0.2s ease;
+  opacity: 1;
+  transition: none;
+  font-size: 14px;
 }
 
 .attachment-item:hover .attachment-remove {
@@ -794,7 +787,7 @@
 }
 
 .attachment-remove:hover {
-  color: rgba(255, 100, 100, 1);
+  color: #ff9999;
 }
 
 /* Help Modal (Keyboard Shortcuts) */

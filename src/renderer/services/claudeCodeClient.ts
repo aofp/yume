@@ -12,37 +12,97 @@ export class ClaudeCodeClient {
   private serverPort: number | null = null;
 
   constructor() {
+    console.log('🚀 Initializing ClaudeCodeClient');
     this.discoverAndConnect();
   }
 
   private async discoverAndConnect() {
+    console.log('🔍 Starting server discovery...');
     // For now, always use port 3001
     this.serverPort = 3001;
-    this.connect();
+    
+    // Add retry logic for initial connection
+    this.connectWithRetry();
+  }
+  
+  private async connectWithRetry(retries = 10, delay = 1000) {
+    console.log(`🔄 Attempting to connect (${retries} retries left)...`);
+    
+    // First check if server is responding
+    try {
+      const response = await fetch(`http://localhost:${this.serverPort}/health`);
+      if (response.ok) {
+        console.log('✅ Server health check passed');
+        this.connect();
+        return;
+      }
+    } catch (err) {
+      console.log(`⚠️ Server not ready yet: ${err.message}`);
+    }
+    
+    if (retries > 0) {
+      console.log(`⏳ Waiting ${delay}ms before retry...`);
+      setTimeout(() => {
+        this.connectWithRetry(retries - 1, Math.min(delay * 1.5, 5000));
+      }, delay);
+    } else {
+      console.error('❌ Failed to connect to server after all retries');
+      // Try to connect anyway - Socket.IO will keep retrying
+      this.connect();
+    }
   }
 
   private connect() {
-    if (!this.serverPort) return;
+    if (!this.serverPort) {
+      console.error('❌ No server port configured');
+      return;
+    }
     
-    // Connect to the Claude Code server
-    this.socket = io(`http://localhost:${this.serverPort}`, {
+    const serverUrl = `http://localhost:${this.serverPort}`;
+    console.log(`🔌 Connecting to Claude Code server at ${serverUrl}`);
+    
+    // Connect to the Claude Code server with extended retry settings for production
+    this.socket = io(serverUrl, {
       reconnection: true,
-      reconnectionAttempts: 5,
+      reconnectionAttempts: 20, // More attempts for production
       reconnectionDelay: 1000,
+      reconnectionDelayMax: 5000,
+      timeout: 10000, // 10 second connection timeout
+      transports: ['websocket', 'polling'], // Try both transports
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ Connected to Claude Code server');
+      console.log('✅ Successfully connected to Claude Code server');
+      console.log('  Socket ID:', this.socket?.id);
+      console.log('  Transport:', (this.socket as any)?.io?.engine?.transport?.name);
       this.connected = true;
     });
 
-    this.socket.on('disconnect', () => {
+    this.socket.on('disconnect', (reason) => {
       console.log('❌ Disconnected from Claude Code server');
+      console.log('  Reason:', reason);
       this.connected = false;
     });
 
+    this.socket.on('connect_error', (error) => {
+      console.error('🔴 Socket connection error:', error.message);
+      console.error('  Type:', error.type);
+      if (error.message.includes('xhr poll error')) {
+        console.error('  This usually means the server is not running or not accessible');
+      }
+    });
+    
     this.socket.on('error', (error) => {
-      console.error('Socket error:', error);
+      console.error('🔴 Socket error:', error);
+    });
+    
+    // Log reconnection attempts
+    this.socket.io.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`🔄 Reconnection attempt #${attemptNumber}`);
+    });
+    
+    this.socket.io.on('reconnect_failed', () => {
+      console.error('❌ All reconnection attempts failed');
     });
   }
 

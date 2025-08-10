@@ -191,7 +191,13 @@ app.commandLine.appendSwitch('no-sandbox');
 
 // Start the built-in Claude Code server
 async function startServer() {
-  console.log('isDev:', isDev, 'isPackaged:', app.isPackaged, 'NODE_ENV:', process.env.NODE_ENV);
+  console.log('===== ELECTRON SERVER STARTUP =====');
+  console.log('isDev:', isDev);
+  console.log('app.isPackaged:', app.isPackaged);
+  console.log('NODE_ENV:', process.env.NODE_ENV);
+  console.log('__dirname:', __dirname);
+  console.log('process.cwd():', process.cwd());
+  console.log('====================================');
   
   if (isDev) {
     // In development mode, server is already running separately via npm script
@@ -201,51 +207,131 @@ async function startServer() {
   }
   
   // Production mode - need to start the server
-  console.log('Production mode - starting server...');
-  const serverPath = path.join(__dirname, '../server-claude-direct.js');
-  console.log('Server path:', serverPath);
+  console.log('PRODUCTION MODE - Starting embedded server...');
   
-  serverProcess = spawn('node', [serverPath], {
-    cwd: path.join(__dirname, '..'),
-    env: { ...process.env },
+  // Try multiple possible server locations
+  const fs = require('fs');
+  let serverPath = null;
+  const possiblePaths = [
+    path.join(__dirname, '../server-claude-direct.js'),
+    path.join(process.resourcesPath, 'app', 'server-claude-direct.js'),
+    path.join(process.resourcesPath, 'server-claude-direct.js'),
+    path.join(__dirname, '..', '..', 'server-claude-direct.js')
+  ];
+  
+  console.log('Searching for server in these locations:');
+  for (const testPath of possiblePaths) {
+    console.log(`  Checking: ${testPath}`);
+    if (fs.existsSync(testPath)) {
+      serverPath = testPath;
+      console.log(`  ✅ FOUND at: ${testPath}`);
+      break;
+    } else {
+      console.log(`  ❌ Not found`);
+    }
+  }
+  
+  if (!serverPath) {
+    console.error('❌ Could not find server-claude-direct.js in any expected location!');
+    console.error('This is a packaging issue. The server file is missing from the build.');
+    return;
+  }
+  
+  console.log(`Starting server from: ${serverPath}`);
+  
+  // Use explicit node executable path in production
+  const nodePath = process.execPath; // Use electron's node
+  console.log(`Using Node/Electron executable: ${nodePath}`);
+  
+  serverProcess = spawn(nodePath, [serverPath], {
+    cwd: path.dirname(serverPath),
+    env: { 
+      ...process.env,
+      ELECTRON_RUN_AS_NODE: '1' // Run as Node.js, not Electron
+    },
     stdio: ['ignore', 'pipe', 'pipe']
   });
   
   serverPort = 3001;
   
-  serverProcess.stdout?.on('data', (data) => {
-    const output = data.toString();
-    console.log('[Server]:', output);
-    // Send server logs to renderer for debugging
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.executeJavaScript(`
-        console.log('[Server]:', ${JSON.stringify(output)});
-      `).catch(() => {});
-    }
-  });
+  if (!serverProcess) {
+    console.error('❌ Failed to spawn server process!');
+    return;
+  }
   
-  serverProcess.stderr?.on('data', (data) => {
-    const error = data.toString();
-    console.error('[Server Error]:', error);
-    // Send server errors to renderer for debugging
-    if (mainWindow && mainWindow.webContents) {
-      mainWindow.webContents.executeJavaScript(`
-        console.error('[Server Error]:', ${JSON.stringify(error)});
-      `).catch(() => {});
-    }
+  console.log(`✅ Server process spawned with PID: ${serverProcess.pid}`);
+  
+  // Create a promise to track server startup
+  const serverReady = new Promise((resolve, reject) => {
+    let serverStarted = false;
+    const timeout = setTimeout(() => {
+      if (!serverStarted) {
+        console.error('❌ Server startup timeout after 10 seconds');
+        reject(new Error('Server startup timeout'));
+      }
+    }, 10000);
+    
+    serverProcess.stdout?.on('data', (data) => {
+      const output = data.toString();
+      console.log('[Server STDOUT]:', output.trim());
+      
+      // Check for server ready message
+      if (output.includes('Claude Direct Server running') || output.includes('SERVER SUCCESSFULLY STARTED')) {
+        console.log('✅ Server is ready!');
+        serverStarted = true;
+        clearTimeout(timeout);
+        resolve();
+      }
+      
+      // Send server logs to renderer for debugging
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.executeJavaScript(`
+          console.log('[Server]:', ${JSON.stringify(output)});
+        `).catch(() => {});
+      }
+    });
+    
+    serverProcess.stderr?.on('data', (data) => {
+      const error = data.toString();
+      console.error('[Server STDERR]:', error.trim());
+      // Send server errors to renderer for debugging
+      if (mainWindow && mainWindow.webContents) {
+        mainWindow.webContents.executeJavaScript(`
+          console.error('[Server Error]:', ${JSON.stringify(error)});
+        `).catch(() => {});
+      }
+    });
   });
   
   serverProcess.on('error', (err) => {
-    console.error('Failed to start server:', err);
+    console.error('❌ Server process error:', err);
+    console.error('Error code:', err.code);
+    console.error('Error message:', err.message);
+    if (err.code === 'ENOENT') {
+      console.error('Node executable not found!');
+    }
   });
   
-  serverProcess.on('exit', (code) => {
-    console.log(`Server exited with code ${code}`);
+  serverProcess.on('exit', (code, signal) => {
+    console.log(`🚨 Server process exited`);
+    console.log(`  Exit code: ${code}`);
+    console.log(`  Signal: ${signal}`);
     serverProcess = null;
+    
+    // Try to restart if it crashed in production
+    if (!isDev && code !== 0 && code !== null) {
+      console.log('Attempting to restart server in 2 seconds...');
+      setTimeout(() => startServer(), 2000);
+    }
   });
   
-  // Wait a bit for server to start
-  await new Promise(resolve => setTimeout(resolve, 2000));
+  // Wait for server to be ready
+  try {
+    await serverReady;
+    console.log('✅ Server startup complete!');
+  } catch (err) {
+    console.error('❌ Server failed to start:', err.message);
+  }
 }
 
 function createWindow() {
@@ -269,8 +355,8 @@ function createWindow() {
       preload: path.join(__dirname, 'preload-simple.js')
     },
     icon: process.platform === 'win32' 
-      ? path.join(__dirname, '../assets/yurucode.ico')
-      : path.join(__dirname, '../assets/yurucode.png')
+      ? path.join(__dirname, '../build/icon.ico')
+      : path.join(__dirname, '../build/icon.png')
   };
 
   // Platform-specific window settings

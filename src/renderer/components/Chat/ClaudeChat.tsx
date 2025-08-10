@@ -476,6 +476,13 @@ export const ClaudeChat: React.FC = () => {
     }
   };
 
+  // Format bytes helper
+  const formatBytes = (b: number) => {
+    if (b < 1024) return `${b} bytes`;
+    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)}kb`;
+    return `${(b / (1024 * 1024)).toFixed(1)}mb`;
+  };
+
   // Handle paste event for images
   const handlePaste = async (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
@@ -491,7 +498,7 @@ export const ClaudeChat: React.FC = () => {
         type: 'text',
         name: `text_${Date.now()}.txt`,
         content: text,
-        preview: `${lines} lines, ${bytes.toLocaleString()} bytes`
+        preview: `${lines} lines, ${formatBytes(bytes)}`
       };
       setAttachments(prev => [...prev, newAttachment]);
       return;
@@ -614,7 +621,7 @@ export const ClaudeChat: React.FC = () => {
             name: file.name,
             size: file.size,
             content: text,
-            preview: `${lines} lines, ${bytes.toLocaleString()} bytes`
+            preview: `${lines} lines, ${formatBytes(bytes)}`
           };
           setAttachments(prev => [...prev, newAttachment]);
         };
@@ -858,7 +865,7 @@ export const ClaudeChat: React.FC = () => {
             {attachments.map((att, index) => (
               <div key={att.id} className="attachment-item">
                 <span className="attachment-text">
-                  [paste #{index + 1}]
+                  {att.type === 'image' ? `image (${formatBytes(att.size || 0)})` : `text: ${att.preview}`}
                 </span>
                 <button 
                   className="attachment-remove" 
@@ -890,18 +897,15 @@ export const ClaudeChat: React.FC = () => {
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
           <div className="context-info">
             {(() => {
-              const tokens = currentSession.messages.reduce((acc, msg) => {
-                // Use actual token counts from usage if available
-                if (msg.usage) {
-                  return acc + (msg.usage.input_tokens || 0) + (msg.usage.output_tokens || 0);
-                }
-                // Fallback to estimation for messages without usage data
-                const content = msg.message?.content || '';
-                const chars = typeof content === 'string' ? content.length : JSON.stringify(content).length;
-                return acc + Math.ceil(chars / 4);
-              }, 0);
+              // Use the session's analytics tokens instead of recalculating from messages
+              const tokens = currentSession.analytics?.tokens?.total || 0;
               
-              const percentage = Math.min(100, Math.round(tokens / 50000 * 100)); // 200k context = ~50k tokens
+              // Opus 4.1 has 200k context window
+              // Sonnet 4.0 has 200k context window 
+              // Both models have the same 200k context window
+              const contextWindowTokens = 200000;
+              
+              const percentage = Math.min(100, Math.round(tokens / contextWindowTokens * 100));
               const usageClass = percentage >= 90 ? 'high' : percentage >= 80 ? 'medium' : 'low';
               
               const hasActivity = currentSession.messages.some(m => 

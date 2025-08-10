@@ -429,9 +429,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 s.id === sessionId ? { ...s, streaming: false } : s
               );
               return { sessions };
-            } else if (message.type === 'tool_use' || message.type === 'tool_result') {
-              // Don't change streaming state for tool messages
-              // The streaming state should be controlled by assistant messages
+            } else if (message.type === 'tool_use') {
+              // When we get a tool_use message, ensure streaming is active
+              // This handles cases where tools are running (especially Task/agent tools)
+              console.log('Tool use message received, ensuring streaming state is active');
+              sessions = sessions.map(s => 
+                s.id === sessionId ? { ...s, streaming: true } : s
+              );
+            } else if (message.type === 'tool_result') {
+              // Keep streaming active for tool results as more tools may follow
+              // The streaming state will be cleared by the result message
             }
             
             return { sessions };

@@ -3,6 +3,36 @@
  * NO SDK, NO API KEY - just direct claude CLI calls with streaming
  */
 
+// Production build fix: Handle module loading from different contexts
+const Module = require('module');
+const originalRequire = Module.prototype.require;
+
+Module.prototype.require = function(id) {
+  try {
+    return originalRequire.apply(this, arguments);
+  } catch (e) {
+    // If module not found and we're in production, try alternative paths
+    if (e.code === 'MODULE_NOT_FOUND' && process.env.ELECTRON_RUN_AS_NODE) {
+      console.log(`Module not found: ${id}, attempting alternative resolution...`);
+      // Try to load from the app's node_modules
+      const alternativePaths = [
+        path.join(__dirname, 'node_modules', id),
+        path.join(process.cwd(), 'node_modules', id),
+        path.join(__dirname, '..', 'node_modules', id)
+      ];
+      
+      for (const altPath of alternativePaths) {
+        try {
+          return originalRequire.call(this, altPath);
+        } catch (altError) {
+          // Continue to next path
+        }
+      }
+    }
+    throw e;
+  }
+};
+
 const express = require('express');
 const cors = require('cors');
 const { createServer } = require('http');
@@ -30,11 +60,17 @@ app.get('/health', (req, res) => {
 
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
+let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
 let sessionIdCounter = 0;
 
 // Socket.IO connection handler
 io.on('connection', (socket) => {
-  console.log('Client connected:', socket.id);
+  console.log('✨ ===== NEW CLIENT CONNECTION =====');
+  console.log('Client ID:', socket.id);
+  console.log('Client address:', socket.handshake.address);
+  console.log('Transport:', socket.conn.transport.name);
+  console.log('Time:', new Date().toISOString());
+  console.log('===================================');
 
   // Create session
   socket.on('createSession', async (data, callback) => {
@@ -313,10 +349,11 @@ io.on('connection', (socket) => {
               
               // Send text content as separate assistant message
               if (hasText && textContent) {
+                lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
                   message: { content: textContent },
-                  streaming: false,  // Don't stream, send complete messages
+                  streaming: true,  // Set streaming to true during active streaming
                   id: messageId,
                   timestamp: Date.now()
                 });
@@ -361,6 +398,18 @@ io.on('connection', (socket) => {
             }
             if (jsonData.cost) {
               console.log(`   💵 Cost:`, JSON.stringify(jsonData.cost, null, 2));
+            }
+            
+            // If we have a last assistant message, send an update to mark it as done streaming
+            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+            if (lastAssistantMessageId) {
+              socket.emit(`message:${sessionId}`, {
+                type: 'assistant',
+                id: lastAssistantMessageId,
+                streaming: false,
+                timestamp: Date.now()
+              });
+              lastAssistantMessageIds.delete(sessionId); // Reset
             }
             
             // Just send the result message with model info
@@ -435,6 +484,18 @@ io.on('connection', (socket) => {
           processStreamLine(lineBuffer);
         }
         
+        // If we have a last assistant message, mark it as done streaming
+        const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+        if (lastAssistantMessageId) {
+          socket.emit(`message:${sessionId}`, {
+            type: 'assistant',
+            id: lastAssistantMessageId,
+            streaming: false,
+            timestamp: Date.now()
+          });
+          lastAssistantMessageIds.delete(sessionId);
+        }
+        
         // If process exited with error code and no result was sent
         if (code !== 0 && code !== null) {
           console.error(`Claude process failed with exit code ${code}`);
@@ -493,6 +554,18 @@ io.on('connection', (socket) => {
       process.kill('SIGINT');  // Use SIGINT for graceful interrupt
       activeProcesses.delete(sessionId);
       
+      // If we have a last assistant message, mark it as done streaming
+      const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+      if (lastAssistantMessageId) {
+        socket.emit(`message:${sessionId}`, {
+          type: 'assistant',
+          id: lastAssistantMessageId,
+          streaming: false,
+          timestamp: Date.now()
+        });
+        lastAssistantMessageIds.delete(sessionId);
+      }
+      
       socket.emit(`message:${sessionId}`, {
         type: 'system',
         subtype: 'interrupted',
@@ -536,6 +609,7 @@ io.on('connection', (socket) => {
       // Clear the session data but keep the session alive
       session.messages = [];
       session.claudeSessionId = null;  // Reset Claude session ID so next message starts fresh
+      lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
       
       console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
       
@@ -568,6 +642,7 @@ io.on('connection', (socket) => {
   socket.on('deleteSession', async (data, callback) => {
     const { sessionId } = data;
     sessions.delete(sessionId);
+    lastAssistantMessageIds.delete(sessionId);  // Clean up tracking
     callback({ success: true });
   });
   
@@ -583,26 +658,80 @@ io.on('connection', (socket) => {
     }
   });
   
-  socket.on('disconnect', () => {
-    console.log('Client disconnected:', socket.id);
+  socket.on('disconnect', (reason) => {
+    console.log('👋 ===== CLIENT DISCONNECTED =====');
+    console.log('Client ID:', socket.id);
+    console.log('Reason:', reason);
+    console.log('Time:', new Date().toISOString());
+    console.log('==================================');
   });
 });
 
 const PORT = process.env.PORT || 3001;
 
+// Add startup logging
+console.log('===== SERVER STARTUP LOGGING =====');
+console.log(`📅 Starting server at: ${new Date().toISOString()}`);
+console.log(`📁 Current directory: ${process.cwd()}`);
+console.log(`🖥️ Platform: ${process.platform}`);
+console.log(`🔢 Node version: ${process.version}`);
+console.log(`📍 Script location: ${__filename}`);
+console.log(`🌐 Attempting to bind to port: ${PORT}`);
+console.log(`🏷️ Process argv:`, process.argv);
+console.log(`🔧 Environment NODE_ENV:`, process.env.NODE_ENV || 'not set');
+console.log('==================================');
+
 httpServer.listen(PORT, '0.0.0.0', () => {
+  console.log(`✅ ===== SERVER SUCCESSFULLY STARTED =====`);
   console.log(`🚀 Claude Direct Server running on http://0.0.0.0:${PORT}`);
   console.log(`🔑 Using claude CLI directly - NO SDK, NO API KEY`);
   console.log(`📝 Running in ${process.platform === 'linux' ? 'WSL' : 'Windows'}`);
+  console.log(`🔌 WebSocket ready for connections`);
+  console.log('=========================================');
   
   if (process.send) {
+    console.log('📤 Sending ready signal to parent process');
     process.send({ type: 'server-ready', port: PORT });
   }
 });
 
+// Add error handler for server startup
+httpServer.on('error', (error) => {
+  console.error('❌ ===== SERVER STARTUP ERROR =====');
+  console.error('Failed to start server:', error);
+  console.error('Error code:', error.code);
+  console.error('Error message:', error.message);
+  if (error.code === 'EADDRINUSE') {
+    console.error(`Port ${PORT} is already in use. Try killing the process using it:`);
+    console.error(`  Windows: netstat -ano | findstr :${PORT}`);
+    console.error(`  Then: taskkill /F /PID <pid>`);
+    console.error(`  Linux/Mac: lsof -i :${PORT}`);
+    console.error(`  Then: kill -9 <pid>`);
+  }
+  console.error('===================================');
+  process.exit(1);
+});
+
+// Add uncaught exception handler
+process.on('uncaughtException', (error) => {
+  console.error('💥 ===== UNCAUGHT EXCEPTION =====');
+  console.error('Error:', error);
+  console.error('Stack:', error.stack);
+  console.error('=================================');
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 ===== UNHANDLED REJECTION =====');
+  console.error('Reason:', reason);
+  console.error('Promise:', promise);
+  console.error('==================================');
+});
+
 // Cleanup on exit
 async function cleanup() {
-  console.log('🛑 Server shutting down...');
+  console.log('🛑 ===== SERVER SHUTTING DOWN =====');
+  console.log('Time:', new Date().toISOString());
   
   // Kill all active processes
   for (const [id, process] of activeProcesses) {
