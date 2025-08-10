@@ -138,7 +138,7 @@
 }
 
 .message.user .message-content {
-  max-width: 70%;
+  max-width: 85%;
 }
 
 .message.assistant {
@@ -147,7 +147,7 @@
 }
 
 .message.assistant .message-content {
-  max-width: 80%;
+  max-width: 85%;
 }
 
 .message-text {
@@ -588,12 +588,12 @@
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-  background: rgba(128, 128, 128, 0.3);
-  border-radius: 4px;
+  background: rgba(var(--accent-rgb), 0.5);
+  border-radius: 0;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(128, 128, 128, 0.5);
+  background: rgba(var(--accent-rgb), 0.7);
 }
 
 /* Image attachments */
@@ -732,11 +732,11 @@
   bottom: 116px;
   right: 12px;
   display: flex;
-  gap: 6px;
-  padding: 6px;
+  gap: 4px;
+  padding: 4px 8px;
   background: rgba(0, 0, 0, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 8px;
+  border-radius: 6px;
   backdrop-filter: blur(10px);
   max-width: 280px;
   flex-wrap: wrap;
@@ -758,82 +758,35 @@
 .attachment-item {
   position: relative;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 2px;
-  padding: 4px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 6px;
-  min-width: 44px;
+  gap: 4px;
+  padding: 2px 4px;
+  background: transparent;
+  border-radius: 4px;
   transition: all 0.2s ease;
 }
 
 .attachment-item:hover {
-  background: rgba(255, 255, 255, 0.08);
-  transform: translateY(-2px);
+  background: rgba(255, 255, 255, 0.05);
 }
 
-.attachment-content {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.attachment-preview-img {
-  width: 32px;
-  height: 32px;
-  object-fit: cover;
-  border-radius: 4px;
-}
-
-.attachment-preview-text,
-.attachment-preview-file {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(255, 153, 204, 0.1);
-  border-radius: 4px;
-  color: var(--accent-color);
-  overflow: hidden;
-}
-
-.text-preview {
-  font-size: 6px;
-  line-height: 1.2;
+.attachment-text {
+  font-size: 11px;
   color: rgba(255, 255, 255, 0.6);
-  text-align: center;
-  word-break: break-all;
-  padding: 2px;
-  max-width: 100%;
-}
-
-.attachment-label {
-  font-size: 7px;
-  color: rgba(255, 255, 255, 0.5);
-  text-transform: lowercase;
-  margin-top: 1px;
+  font-family: 'Fira Code', monospace;
 }
 
 .attachment-remove {
-  position: absolute;
-  top: -2px;
-  right: -2px;
-  background: rgba(255, 100, 100, 0.8);
+  background: transparent;
   border: none;
-  color: white;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
+  color: rgba(255, 100, 100, 0.6);
+  padding: 0 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: default;
   opacity: 0;
   transition: all 0.2s ease;
-  z-index: 10;
 }
 
 .attachment-item:hover .attachment-remove {
@@ -841,8 +794,7 @@
 }
 
 .attachment-remove:hover {
-  background: rgba(255, 100, 100, 1);
-  transform: scale(1.1);
+  color: rgba(255, 100, 100, 1);
 }
 
 /* Help Modal (Keyboard Shortcuts) */

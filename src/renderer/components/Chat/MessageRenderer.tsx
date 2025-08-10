@@ -283,6 +283,11 @@ const CodeBlock = ({ children, className, ...props }: any) => {
     setTimeout(() => setCopied(false), 2000);
   }, [codeString]);
   
+  // If code is short (under 256 chars), render as inline code
+  if (codeString.length < 256 && !codeString.includes('\n')) {
+    return <code className={className} {...props}>{codeString}</code>;
+  }
+  
   return (
     <div className="code-block-wrapper">
       <div className="code-block-header">
@@ -464,10 +469,19 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             return null;
           }
           
+          // Hide tool_use_error messages and permission requests
+          if (resultContent.includes('<tool_use_error>') || 
+              resultContent.includes('File has not been read yet') ||
+              resultContent.includes('requested permissions to') ||
+              resultContent.includes("haven't granted it yet")) {
+            return null;
+          }
+          
           // Hide TodoWrite success messages and system reminders about todos
           if (isTodoWriteOperation && (
             resultContent.includes('Todos have been modified successfully') ||
-            resultContent.includes('Ensure that you continue to use the todo list')
+            resultContent.includes('Ensure that you continue to use the todo list') ||
+            resultContent.includes('Please proceed with the current tasks if applicable')
           )) {
             return null;
           }
@@ -626,16 +640,30 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       
       if (typeof userContent === 'string') {
         displayText = userContent;
-      } else if (Array.isArray(userContent) && userContent[0]?.text) {
-        const text = userContent[0].text;
-        // Check for pasted content patterns
-        if (text.startsWith('[Attached text]:')) {
-          displayText = '[pasted text]';
-        } else if (text.startsWith('[Attached image')) {
-          displayText = '[pasted image]';
-        } else {
-          displayText = text;
-        }
+      } else if (Array.isArray(userContent)) {
+        // Handle multiple attachments
+        const parts = userContent.map((item, index) => {
+          if (item?.text) {
+            const text = item.text;
+            // Check for pasted content patterns
+            if (text.startsWith('[Attached text]:')) {
+              // Check if it's a permission request message we should hide
+              if (text.includes('requested permissions to') || 
+                  text.includes("haven't granted it yet") ||
+                  text.includes('hide this too')) {
+                return null;
+              }
+              return `[pasted text #${index + 1}]`;
+            } else if (text.startsWith('[Attached image')) {
+              return `[pasted image #${index + 1}]`;
+            } else {
+              return text;
+            }
+          }
+          return '';
+        }).filter(Boolean);
+        
+        displayText = parts.join(' ');
       }
       
       return (
@@ -898,7 +926,8 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       
       if (isTodoWriteResult && (
         contentStr.includes('Todos have been modified successfully') ||
-        contentStr.includes('Ensure that you continue to use the todo list')
+        contentStr.includes('Ensure that you continue to use the todo list') ||
+        contentStr.includes('Please proceed with the current tasks if applicable')
       )) {
         return null;
       }
@@ -1010,14 +1039,7 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       return null;
       
     case 'permission':
-      if (message.subtype === 'permission_request') {
-        return (
-          <div className="message permission-request">
-            <IconLock size={14} stroke={1.5} className="permission-icon" />
-            <span className="permission-text">permission requested for {message.tool}</span>
-          </div>
-        );
-      }
+      // Hide permission request messages
       return null;
       
     case 'tool_approval':

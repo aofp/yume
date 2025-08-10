@@ -908,40 +908,18 @@ export const ClaudeChat: React.FC = () => {
         {/* Attachment preview area */}
         {attachments.length > 0 && (
           <div className="attachments-container">
-            {attachments.map(att => (
+            {attachments.map((att, index) => (
               <div key={att.id} className="attachment-item">
-                <div className="attachment-content">
-                  {att.type === 'image' ? (
-                    <>
-                      <img src={att.content} alt={att.name} className="attachment-preview-img" />
-                      <span className="attachment-label">image</span>
-                    </>
-                  ) : att.type === 'text' ? (
-                    <>
-                      <div className="attachment-preview-text">
-                        <div className="text-preview">
-                          {att.preview}
-                        </div>
-                      </div>
-                      <span className="attachment-label">text</span>
-                    </>
-                  ) : (
-                    <>
-                      <div className="attachment-preview-file">
-                        <IconFile size={20} stroke={1.5} />
-                      </div>
-                      <span className="attachment-label">file</span>
-                    </>
-                  )}
-                </div>
+                <span className="attachment-text">
+                  [paste #{index + 1}]
+                </span>
                 <button 
                   className="attachment-remove" 
                   onClick={() => removeAttachment(att.id)}
                   title="remove"
                 >
-                  <IconX size={12} stroke={2} />
+                  <IconX size={10} stroke={2} />
                 </button>
-                {att.type !== 'text' && <span className="image-name">{att.name.substring(0, 10)}...</span>}
               </div>
             ))}
           </div>
