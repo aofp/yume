@@ -819,6 +819,7 @@
   max-width: 520px;
   max-height: 80vh;
   overflow-y: auto;
+  user-select: none;
 }
 
 .help-header {
@@ -877,6 +878,7 @@
   align-items: center;
   padding: 2px 0;
   font-size: 9px;
+  user-select: none;
 }
 
 .shortcut-keys {
@@ -884,6 +886,7 @@
   align-items: center;
   gap: 2px;
   flex-shrink: 0;
+  user-select: none;
 }
 
 .key-btn {
@@ -896,12 +899,14 @@
   font-size: 9px;
   font-weight: 500;
   border: none;
+  user-select: none;
 }
 
 .key-plus {
   color: rgba(255, 255, 255, 0.3);
   font-size: 9px;
   padding: 0 1px;
+  user-select: none;
 }
 
 .shortcut-dots {
@@ -912,6 +917,7 @@
   line-height: 1;
   align-self: flex-end;
   padding-bottom: 2px;
+  user-select: none;
 }
 
 .shortcut-dots::before {
@@ -927,6 +933,7 @@
   white-space: nowrap;
   flex-shrink: 0;
   padding-left: 2px;
+  user-select: none;
 }
 
 /* Stats Modal */

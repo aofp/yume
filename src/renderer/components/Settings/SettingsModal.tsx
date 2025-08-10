@@ -16,7 +16,6 @@ interface SettingsModalProps {
 // Predefined color swatches - 32 colors organized in rainbow spectrum
 const COLOR_SWATCHES = [
   '#aaaaaa', // default grey (first)
-  '#ff99cc', // pink/magenta
   // Reds
   '#ff9999', // pastel red
   '#ff8080', // coral
@@ -55,6 +54,7 @@ const COLOR_SWATCHES = [
   '#cc99ff', // pastel purple
   '#e6b3ff', // lavender
   '#ff99ff', // pastel magenta
+  '#ff99cc', // pink/magenta
 ];
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
