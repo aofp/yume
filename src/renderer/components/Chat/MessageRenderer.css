@@ -6,6 +6,56 @@
   animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
+/* System error messages */
+.message.system-error {
+  margin: 12px 0;
+}
+
+.message.system-error .message-content {
+  background: transparent;
+  border: 1px solid rgba(255, 153, 153, 0.2);
+  padding: 0;
+  max-width: 100%;
+}
+
+.error-message {
+  color: #ff9999;
+  padding: 8px 12px;
+  background: transparent;
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: 'Fira Code', monospace;
+}
+
+/* Interrupted message */
+.message.system-interrupted {
+  margin: 0;
+  padding: 0;
+  opacity: 0.8;
+}
+
+.message.system-interrupted .message-content {
+  background: transparent;
+  border: none;
+  padding: 0;
+  margin: 0;
+}
+
+.interrupted-message {
+  color: rgba(255, 255, 255, 0.7);
+  padding: 0;
+  margin: 0;
+  background: transparent;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-family: 'Fira Code', monospace;
+  text-transform: lowercase;
+}
+
 /* Message hover actions */
 .message-actions {
   display: flex;
@@ -669,6 +719,29 @@ ol {
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
   word-break: break-all;
+}
+
+/* Bash command output */
+.tool-result.bash-output {
+  display: block;
+  margin: 8px 0;
+  opacity: 1;
+}
+
+.bash-content {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 8px;
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.85);
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 400px;
+  overflow-y: auto;
+  margin: 0;
+  display: block;
 }
 
 /* Search output styling */

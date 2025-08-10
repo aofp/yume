@@ -834,13 +834,39 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   },
   
   interruptSession: async () => {
-    const { currentSessionId } = get();
-    if (currentSessionId) {
+    const { currentSessionId, sessions } = get();
+    const currentSession = sessions.find(s => s.id === currentSessionId);
+    
+    // Only interrupt if actually streaming
+    if (currentSessionId && currentSession?.streaming) {
+      // Immediately set streaming to false to prevent double calls
+      set(state => ({
+        sessions: state.sessions.map(s => 
+          s.id === currentSessionId ? { ...s, streaming: false } : s
+        )
+      }));
+      
       try {
         await claudeCodeClient.interrupt(currentSessionId);
+        
+        // Add interrupt message to chat
+        const interruptMessage = {
+          id: `interrupt-${Date.now()}`,
+          type: 'system',
+          subtype: 'interrupted',
+          message: 'task interrupted by user',
+          timestamp: Date.now()
+        };
+        
         set(state => ({
           sessions: state.sessions.map(s => 
-            s.id === currentSessionId ? { ...s, streaming: false } : s
+            s.id === currentSessionId 
+              ? { 
+                  ...s, 
+                  messages: [...s.messages, interruptMessage],
+                  claudeSessionId: undefined // Clear Claude session ID after interrupt
+                } 
+              : s
           ),
           streamingMessage: ''
         }));

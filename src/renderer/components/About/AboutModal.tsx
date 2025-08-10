@@ -1,7 +1,11 @@
 import React, { useEffect } from 'react';
 import { IconX } from '@tabler/icons-react';
 import './AboutModal.css';
-import versionInfo from '../../../../version.json';
+
+// Version info
+const versionInfo = {
+  version: '1.0.0'
+};
 
 interface AboutModalProps {
   isOpen: boolean;

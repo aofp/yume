@@ -214,8 +214,11 @@ io.on('connection', (socket) => {
           console.log(`📦 Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
           
           if (jsonData.session_id) {
-            session.claudeSessionId = jsonData.session_id;
-            console.log(`📌 Claude session ID: ${session.claudeSessionId}`);
+            // Only update session ID if we don't have one or if it's different
+            if (!session.claudeSessionId || session.claudeSessionId !== jsonData.session_id) {
+              console.log(`📌 Updating Claude session ID from ${session.claudeSessionId || 'null'} to ${jsonData.session_id}`);
+              session.claudeSessionId = jsonData.session_id;
+            }
           }
           
           // Handle different message types (simplified for brevity)
@@ -251,10 +254,63 @@ io.on('connection', (socket) => {
                     timestamp: Date.now(),
                     id: `tool-${sessionId}-${Date.now()}`
                   });
+                } else if (block.type === 'tool_result') {
+                  // Send tool result (like bash output) to client
+                  console.log('[Server] Tool result:', block.output ? 'has output' : 'no output');
+                  socket.emit(`message:${sessionId}`, {
+                    type: 'tool_result',
+                    message: {
+                      tool_use_id: block.tool_use_id,
+                      output: block.output || block.content,
+                      is_error: block.is_error
+                    },
+                    timestamp: Date.now(),
+                    id: `tool-result-${sessionId}-${Date.now()}`
+                  });
+                }
+              }
+            }
+          } else if (jsonData.type === 'user' && jsonData.message?.content) {
+            // Handle user messages that contain tool results
+            if (Array.isArray(jsonData.message.content)) {
+              for (const block of jsonData.message.content) {
+                if (block.type === 'tool_result') {
+                  console.log('[Server] Tool result from user message:', block.output ? `${block.output.substring(0, 100)}...` : 'no output');
+                  socket.emit(`message:${sessionId}`, {
+                    type: 'tool_result',
+                    message: {
+                      tool_use_id: block.tool_use_id,
+                      output: block.output || block.content,
+                      is_error: block.is_error
+                    },
+                    timestamp: Date.now(),
+                    id: `tool-result-${sessionId}-${Date.now()}`
+                  });
                 }
               }
             }
           } else if (jsonData.type === 'result') {
+            // Log full result message for debugging
+            console.log('[Server] Full result message:', JSON.stringify(jsonData, null, 2));
+            
+            // Check for error_during_execution
+            if (jsonData.subtype === 'error_during_execution' || jsonData.is_error) {
+              console.error('[Server] ❌ ERROR RESULT:', {
+                subtype: jsonData.subtype,
+                error: jsonData.error,
+                result: jsonData.result,
+                message: jsonData.message
+              });
+              
+              // Send error message to client
+              socket.emit(`message:${sessionId}`, {
+                type: 'system',
+                subtype: 'error',
+                message: jsonData.error || jsonData.result || 'Claude encountered an error',
+                timestamp: Date.now()
+              });
+            }
+            
             const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
             if (lastAssistantMessageId) {
               socket.emit(`message:${sessionId}`, {
@@ -395,6 +451,13 @@ io.on('connection', (socket) => {
       process.kill('SIGINT');
       activeProcesses.delete(sessionId);
       
+      // Clear the Claude session ID after interrupt since it can't be resumed
+      const session = sessions.get(sessionId);
+      if (session) {
+        console.log(`🔄 Clearing Claude session ID after interrupt for ${sessionId}`);
+        session.claudeSessionId = null; // Can't resume interrupted sessions
+      }
+      
       const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
       if (lastAssistantMessageId) {
         socket.emit(`message:${sessionId}`, {
@@ -406,12 +469,7 @@ io.on('connection', (socket) => {
         lastAssistantMessageIds.delete(sessionId);
       }
       
-      socket.emit(`message:${sessionId}`, {
-        type: 'system',
-        subtype: 'interrupted',
-        message: 'task interrupted by user',
-        timestamp: Date.now()
-      });
+      // Don't send interrupt message from server - client handles it
       
       socket.emit(`message:${sessionId}`, {
         type: 'result',

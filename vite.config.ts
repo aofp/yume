@@ -8,6 +8,16 @@ export default defineConfig({
   server: {
     port: 5173,
     strictPort: true,
+    watch: {
+      // Ignore build output and release directories
+      ignored: [
+        '**/release/**',
+        '**/dist/**',
+        '**/build/**',
+        '**/*.chromium.html',
+        '**/LICENSES.*'
+      ]
+    }
   },
   build: {
     outDir: 'dist/renderer',

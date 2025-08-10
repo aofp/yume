@@ -452,6 +452,38 @@
   gap: 8px;
   align-items: flex-end;
   width: 100%;
+  position: relative;
+}
+
+.stop-streaming-btn {
+  position: absolute;
+  right: 4px;
+  bottom: 4px;
+  background: #000;
+  border: 1px solid rgba(255, 153, 153, 0.3);
+  color: #ff9999;
+  padding: 6px;
+  border-radius: 4px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  animation: pulse 2s infinite;
+}
+
+.stop-streaming-btn:hover {
+  background: rgba(255, 153, 153, 0.1);
+  border-color: #ff9999;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.6;
+  }
 }
 
 .chat-input-container.dragging {

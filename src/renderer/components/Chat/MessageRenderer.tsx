@@ -476,6 +476,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           // Check if this is a Read operation
           const isReadOperation = prevBlock?.type === 'tool_use' && prevBlock.name === 'Read';
           
+          // Check if this is a Bash command
+          const isBashOperation = prevBlock?.type === 'tool_use' && prevBlock.name === 'Bash';
+          
           // Check if this is a search operation (Grep, Glob, LS, WebSearch)
           const isSearchOperation = prevBlock?.type === 'tool_use' && 
             (prevBlock.name === 'Grep' || prevBlock.name === 'Glob' || prevBlock.name === 'LS' || prevBlock.name === 'WebSearch');
@@ -504,6 +507,16 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             resultContent.includes('Please proceed with the current tasks if applicable')
           )) {
             return null;
+          }
+          
+          // Show Bash command output
+          if (isBashOperation && resultContent) {
+            // Show full bash output in a code block
+            return (
+              <div key={idx} className="tool-result bash-output">
+                <pre className="bash-content">{resultContent}</pre>
+              </div>
+            );
           }
           
           // Limit Read operation output to 10 lines with expandable option
@@ -704,7 +717,34 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
   };
   switch (message.type) {
     case 'system':
-      // Hide all system messages including session started
+      // Show error messages and interruption messages
+      if (message.subtype === 'error') {
+        return (
+          <div className="message system-error">
+            <div className="message-content">
+              <div className="error-message">
+                <IconAlertTriangle size={14} stroke={1.5} />
+                <span>{message.message || 'An error occurred'}</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      if (message.subtype === 'interrupted') {
+        return (
+          <div className="message system-interrupted">
+            <div className="message-content">
+              <div className="interrupted-message">
+                <IconPlayerStop size={12} stroke={1.5} />
+                <span>{message.message}</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      // Hide other system messages like session started
       return null;
       
     case 'user':

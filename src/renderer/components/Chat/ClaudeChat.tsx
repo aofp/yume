@@ -225,7 +225,12 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         setShowHelpModal(prev => !prev);
       } else if (e.key === 'Escape') {
-        if (showHelpModal) {
+        // First check if we're streaming and should stop
+        if (currentSession?.streaming) {
+          e.preventDefault();
+          console.log('[ClaudeChat] ESC pressed - interrupting stream');
+          interruptSession();
+        } else if (showHelpModal) {
           setShowHelpModal(false);
         } else if (showRecentModal) {
           setShowRecentModal(false);
@@ -240,7 +245,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, showHelpModal, showRecentModal, currentSession, setShowStatsModal]);
+  }, [searchVisible, currentSessionId, clearContext, showHelpModal, showRecentModal, currentSession, setShowStatsModal, interruptSession]);
 
   // Handle IPC event from menu for showing help modal
   useEffect(() => {
@@ -910,6 +915,15 @@ export const ClaudeChat: React.FC = () => {
             disabled={false}
             style={{ height: '54px' }}
           />
+          {currentSession?.streaming && (
+            <button 
+              className="stop-streaming-btn"
+              onClick={() => interruptSession()}
+              title="stop streaming (esc)"
+            >
+              <IconPlayerStop size={16} stroke={1.5} />
+            </button>
+          )}
         </div>
         
         {/* Context info bar */}
@@ -929,14 +943,16 @@ export const ClaudeChat: React.FC = () => {
               const contextWindowTokens = 200000;
               
               // Calculate percentage but show warning if over 100%
-              const rawPercentage = Math.round(tokens / contextWindowTokens * 100);
-              const percentage = Math.min(100, rawPercentage);
+              const rawPercentage = (tokens / contextWindowTokens * 100);
+              const percentageNum = Math.min(100, rawPercentage);
+              // Format: show decimal only if not a whole number
+              const percentage = percentageNum % 1 === 0 ? percentageNum.toFixed(0) : percentageNum.toFixed(1);
               
               // Log warning if tokens exceed context window
               if (rawPercentage > 100) {
                 console.warn(`[TOKEN WARNING] Tokens (${tokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
               }
-              const usageClass = percentage >= 90 ? 'high' : percentage >= 80 ? 'medium' : 'low';
+              const usageClass = percentageNum >= 90 ? 'high' : percentageNum >= 80 ? 'medium' : 'low';
               
               const hasActivity = currentSession.messages.some(m => 
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
