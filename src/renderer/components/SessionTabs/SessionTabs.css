@@ -37,6 +37,10 @@
   -webkit-app-region: no-drag;
 }
 
+.tabs-scrollable.has-overflow {
+  top: 0;
+}
+
 .tabs-actions {
   display: flex;
   align-items: center;

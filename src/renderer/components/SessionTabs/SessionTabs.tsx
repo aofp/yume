@@ -77,6 +77,36 @@ export const SessionTabs: React.FC = () => {
     return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
+  // Check for overflow and apply class
+  useEffect(() => {
+    const container = tabsContainerRef.current;
+    if (!container) return;
+
+    const checkOverflow = () => {
+      const hasOverflow = container.scrollWidth > container.clientWidth;
+      if (hasOverflow) {
+        container.classList.add('has-overflow');
+      } else {
+        container.classList.remove('has-overflow');
+      }
+    };
+
+    // Check on mount and when sessions change
+    checkOverflow();
+    
+    // Also check on window resize
+    window.addEventListener('resize', checkOverflow);
+    
+    // Create a ResizeObserver to watch for container size changes
+    const resizeObserver = new ResizeObserver(checkOverflow);
+    resizeObserver.observe(container);
+
+    return () => {
+      window.removeEventListener('resize', checkOverflow);
+      resizeObserver.disconnect();
+    };
+  }, [sessions]);
+
   const handleOpenFolder = async () => {
     setShowNewMenu(false);
     let directory = null;
