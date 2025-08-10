@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef, DragEvent } from 'react';
 import { IconX, IconPlus, IconFolder, IconLoader2, IconFolderOpen, IconBolt, IconTrash, IconChevronDown } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { AboutModal } from '../About/AboutModal';
 import './SessionTabs.css';
 
 export const SessionTabs: React.FC = () => {
@@ -17,6 +18,7 @@ export const SessionTabs: React.FC = () => {
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
   const [showRecentModal, setShowRecentModal] = useState(false);
+  const [showAbout, setShowAbout] = useState(false);
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
@@ -319,7 +321,7 @@ export const SessionTabs: React.FC = () => {
           className="tab-context-menu" 
           style={{ 
             left: contextMenu.x > window.innerWidth - 200 ? contextMenu.x - 150 : contextMenu.x, 
-            top: contextMenu.y 
+            top: contextMenu.y > window.innerHeight - 250 ? contextMenu.y - 200 : contextMenu.y 
           }}
         >
           <button onClick={() => {
@@ -392,6 +394,13 @@ export const SessionTabs: React.FC = () => {
             });
             setContextMenu(null);
           }}>close all to left</button>
+          
+          <div className="separator" />
+          
+          <button onClick={() => {
+            setShowAbout(true);
+            setContextMenu(null);
+          }}>about</button>
         </div>
       )}
       
@@ -476,6 +485,8 @@ export const SessionTabs: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />}
     </div>
   );
 };

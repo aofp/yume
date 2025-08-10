@@ -10,10 +10,10 @@ import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, restoreToMessage } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
@@ -27,7 +27,16 @@ export const App: React.FC = () => {
     }
     
     e.preventDefault();
-    setContextMenu({ x: e.clientX, y: e.clientY });
+    
+    // Check if target is a textarea or input to show copy/paste options
+    const isTextInput = target.tagName === 'TEXTAREA' || target.tagName === 'INPUT';
+    
+    // Check if target is a message bubble
+    const messageBubble = target.closest('.message.user, .message.assistant');
+    const isMessageBubble = !!messageBubble;
+    const messageElement = messageBubble as HTMLElement;
+    
+    setContextMenu({ x: e.clientX, y: e.clientY, isTextInput, target, isMessageBubble, messageElement });
   };
   
   // Close context menu when clicking outside
@@ -176,11 +185,103 @@ export const App: React.FC = () => {
           className="global-context-menu"
           style={{ 
             position: 'fixed',
-            left: contextMenu.x > window.innerWidth - 150 ? contextMenu.x - 100 : contextMenu.x,
-            top: contextMenu.y > window.innerHeight - 100 ? contextMenu.y - 50 : contextMenu.y,
+            left: contextMenu.x > window.innerWidth - 180 ? window.innerWidth - 180 : contextMenu.x,
+            top: (() => {
+              // Calculate menu height based on items
+              const hasTextInput = contextMenu.isTextInput;
+              const hasMessageBubble = contextMenu.isMessageBubble;
+              const itemCount = (hasTextInput ? 3 : 0) + (hasMessageBubble ? 2 : 0) + 1; // +1 for about
+              const menuHeight = itemCount * 32 + 20; // Approximate height
+              
+              if (contextMenu.y > window.innerHeight - menuHeight) {
+                return window.innerHeight - menuHeight - 10;
+              }
+              return contextMenu.y;
+            })(),
             zIndex: 10001
           }}
         >
+          {contextMenu.isTextInput && (
+            <>
+              <button 
+                className="context-menu-item"
+                onClick={() => {
+                  const textarea = contextMenu.target as HTMLTextAreaElement | HTMLInputElement;
+                  if (textarea && textarea.select) {
+                    textarea.focus();
+                    document.execCommand('copy');
+                  }
+                  setContextMenu(null);
+                }}
+              >
+                copy
+              </button>
+              <button 
+                className="context-menu-item"
+                onClick={async () => {
+                  const textarea = contextMenu.target as HTMLTextAreaElement | HTMLInputElement;
+                  if (textarea) {
+                    textarea.focus();
+                    document.execCommand('paste');
+                  }
+                  setContextMenu(null);
+                }}
+              >
+                paste
+              </button>
+              <button 
+                className="context-menu-item"
+                onClick={() => {
+                  const textarea = contextMenu.target as HTMLTextAreaElement | HTMLInputElement;
+                  if (textarea && textarea.select) {
+                    textarea.focus();
+                    textarea.select();
+                  }
+                  setContextMenu(null);
+                }}
+              >
+                select all
+              </button>
+            </>
+          )}
+          {contextMenu.isMessageBubble && (
+            <>
+              <button 
+                className="context-menu-item"
+                onClick={() => {
+                  // Copy message content
+                  if (contextMenu.messageElement) {
+                    const messageContent = contextMenu.messageElement.querySelector('.message-content');
+                    if (messageContent) {
+                      const text = (messageContent as HTMLElement).innerText;
+                      navigator.clipboard.writeText(text);
+                    }
+                  }
+                  setContextMenu(null);
+                }}
+              >
+                copy message
+              </button>
+              <button 
+                className="context-menu-item"
+                onClick={() => {
+                  // Restore to this message
+                  if (contextMenu.messageElement && currentSessionId) {
+                    const messageIndex = contextMenu.messageElement.getAttribute('data-message-index');
+                    if (messageIndex) {
+                      restoreToMessage(currentSessionId, parseInt(messageIndex));
+                    }
+                  }
+                  setContextMenu(null);
+                }}
+              >
+                restore to here
+              </button>
+            </>
+          )}
+          {(contextMenu.isTextInput || contextMenu.isMessageBubble) && (
+            <div className="context-menu-separator" />
+          )}
           <button 
             className="context-menu-item"
             onClick={() => {

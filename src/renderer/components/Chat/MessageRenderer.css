@@ -43,7 +43,7 @@
   align-items: center;
   justify-content: center;
   width: 16px;
-  height: 16px;
+  height: 15.5px;
 }
 
 .action-btn:hover {
@@ -378,7 +378,7 @@ ol {
 }
 
 .tool-result.standalone {
-  background: rgba(255, 255, 255, 0.02);
+  background: #000000;
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   padding: 8px;

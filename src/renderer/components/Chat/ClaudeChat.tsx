@@ -131,8 +131,6 @@ export const ClaudeChat: React.FC = () => {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number } | null>(null);
-  const [inputContextMenu, setInputContextMenu] = useState<{ x: number; y: number } | null>(null);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
@@ -651,76 +649,8 @@ export const ClaudeChat: React.FC = () => {
     textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
   };
 
-  // Handle right-click context menu
-  const handleContextMenu = (e: React.MouseEvent) => {
-    const selection = window.getSelection();
-    if (selection && selection.toString().trim()) {
-      e.preventDefault();
-      setContextMenu({ x: e.clientX, y: e.clientY });
-    }
-  };
 
-  const handleCopySelection = () => {
-    const selection = window.getSelection();
-    if (selection) {
-      const text = selection.toString();
-      navigator.clipboard.writeText(text);
-    }
-    setContextMenu(null);
-  };
 
-  // Handle input field context menu
-  const handleInputContextMenu = (e: React.MouseEvent) => {
-    e.preventDefault();
-    setInputContextMenu({ x: e.clientX, y: e.clientY });
-  };
-
-  const handleInputCopy = () => {
-    if (inputRef.current) {
-      const start = inputRef.current.selectionStart;
-      const end = inputRef.current.selectionEnd;
-      const selectedText = input.substring(start, end);
-      if (selectedText) {
-        navigator.clipboard.writeText(selectedText);
-      }
-    }
-    setInputContextMenu(null);
-  };
-
-  const handleInputPaste = async () => {
-    try {
-      const text = await navigator.clipboard.readText();
-      if (inputRef.current) {
-        const start = inputRef.current.selectionStart;
-        const end = inputRef.current.selectionEnd;
-        const newValue = input.substring(0, start) + text + input.substring(end);
-        setInput(newValue);
-        // Set cursor position after paste
-        setTimeout(() => {
-          if (inputRef.current) {
-            const newPosition = start + text.length;
-            inputRef.current.selectionStart = inputRef.current.selectionEnd = newPosition;
-            inputRef.current.focus();
-          }
-        }, 0);
-      }
-    } catch (err) {
-      console.error('Failed to paste:', err);
-    }
-    setInputContextMenu(null);
-  };
-
-  // Close context menus when clicking outside
-  useEffect(() => {
-    const handleClick = () => {
-      setContextMenu(null);
-      setInputContextMenu(null);
-    };
-    if (contextMenu || inputContextMenu) {
-      document.addEventListener('click', handleClick);
-      return () => document.removeEventListener('click', handleClick);
-    }
-  }, [contextMenu, inputContextMenu]);
 
 
 
@@ -733,7 +663,6 @@ export const ClaudeChat: React.FC = () => {
     <div 
       className="chat-container" 
       ref={chatContainerRef}
-      onContextMenu={handleContextMenu}
     >
       {/* Search bar */}
       {searchVisible && (
@@ -873,8 +802,21 @@ export const ClaudeChat: React.FC = () => {
             }, [] as typeof currentSession.messages);
           
           const filteredMessages = processedMessages;
+          
+          // Find the index of the last user or assistant message for restore button logic
+          let lastRestorableIndex = -1;
+          for (let i = filteredMessages.length - 1; i >= 0; i--) {
+            if (filteredMessages[i].type === 'user' || filteredMessages[i].type === 'assistant') {
+              lastRestorableIndex = i;
+              break;
+            }
+          }
+          
           return filteredMessages.map((message, idx) => {
             const isHighlighted = searchMatches.includes(idx) && searchMatches[searchIndex] === idx;
+            // Only mark as last if it's the last user/assistant message
+            const isLastRestorable = idx === lastRestorableIndex;
+            
             return (
               <div 
                 key={`${message.id || message.type}-${idx}`}
@@ -884,7 +826,7 @@ export const ClaudeChat: React.FC = () => {
                 <MessageRenderer 
                   message={message} 
                   index={idx}
-                  isLast={idx === filteredMessages.length - 1}
+                  isLast={isLastRestorable}
                 />
               </div>
             );
@@ -938,7 +880,6 @@ export const ClaudeChat: React.FC = () => {
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            onContextMenu={handleInputContextMenu}
             disabled={false}
             style={{ height: '54px' }}
           />
@@ -1009,52 +950,6 @@ export const ClaudeChat: React.FC = () => {
         </div>
       </div>
       
-      {/* Context Menu */}
-      {contextMenu && (
-        <div 
-          className="context-menu"
-          style={{ 
-            position: 'fixed', 
-            left: contextMenu.x > window.innerWidth - 200 ? contextMenu.x - 150 : contextMenu.x, 
-            top: contextMenu.y,
-            zIndex: 1000
-          }}
-        >
-          <button 
-            className="context-menu-item"
-            onClick={handleCopySelection}
-          >
-            <IconScissors size={14} stroke={1.5} />
-            <span>copy</span>
-          </button>
-        </div>
-      )}
-      
-      {/* Input Context Menu */}
-      {inputContextMenu && (
-        <div 
-          className="context-menu"
-          style={{ 
-            position: 'fixed', 
-            left: inputContextMenu.x > window.innerWidth - 200 ? inputContextMenu.x - 150 : inputContextMenu.x, 
-            top: inputContextMenu.y,
-            zIndex: 1000
-          }}
-        >
-          <button 
-            className="context-menu-item"
-            onClick={handleInputCopy}
-          >
-            copy
-          </button>
-          <button 
-            className="context-menu-item"
-            onClick={handleInputPaste}
-          >
-            paste
-          </button>
-        </div>
-      )}
       
       {/* Recent Projects Modal */}
       {showRecentModal && (
