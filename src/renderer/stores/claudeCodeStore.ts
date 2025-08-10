@@ -138,7 +138,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           userMessages: 0,
           assistantMessages: 0,
           toolUses: 0,
-          tokens: { input: 0, output: 0, total: 0 },
+          tokens: { 
+            input: 0, 
+            output: 0, 
+            total: 0,
+            byModel: {
+              opus: { input: 0, output: 0, total: 0 },
+              sonnet: { input: 0, output: 0, total: 0 }
+            }
+          },
+          cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
           duration: 0,
           lastActivity: new Date()
         }
@@ -349,29 +358,39 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                                       (message.usage.cache_read_input_tokens || 0);
                   const outputTokens = message.usage.output_tokens || 0;
                   
-                  // Update total tokens
-                  analytics.tokens.input += inputTokens;
-                  analytics.tokens.output += outputTokens;
-                  analytics.tokens.total = analytics.tokens.input + analytics.tokens.output;
+                  // Track ONLY this conversation's tokens (not cumulative)
+                  analytics.tokens.input = inputTokens;
+                  analytics.tokens.output = outputTokens;
+                  analytics.tokens.total = inputTokens + outputTokens;
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;
                   const isOpus = modelUsed.includes('opus');
                   const modelKey = isOpus ? 'opus' : 'sonnet';
                   
-                  // Update model-specific tokens
-                  analytics.tokens.byModel[modelKey].input += inputTokens;
-                  analytics.tokens.byModel[modelKey].output += outputTokens;
-                  analytics.tokens.byModel[modelKey].total = 
-                    analytics.tokens.byModel[modelKey].input + analytics.tokens.byModel[modelKey].output;
+                  // Update model-specific tokens for THIS conversation only
+                  // Reset the other model since only one model is used per conversation
+                  if (isOpus) {
+                    analytics.tokens.byModel.opus.input = inputTokens;
+                    analytics.tokens.byModel.opus.output = outputTokens;
+                    analytics.tokens.byModel.opus.total = inputTokens + outputTokens;
+                    analytics.tokens.byModel.sonnet = { input: 0, output: 0, total: 0 };
+                  } else {
+                    analytics.tokens.byModel.sonnet.input = inputTokens;
+                    analytics.tokens.byModel.sonnet.output = outputTokens;
+                    analytics.tokens.byModel.sonnet.total = inputTokens + outputTokens;
+                    analytics.tokens.byModel.opus = { input: 0, output: 0, total: 0 };
+                  }
                   
-                  // Store cost information if provided by Claude
+                  // Store cost information for THIS conversation only
                   if (message.total_cost_usd !== undefined) {
                     if (!analytics.cost) {
                       analytics.cost = { total: 0, byModel: { opus: 0, sonnet: 0 } };
                     }
-                    analytics.cost.total += message.total_cost_usd;
-                    analytics.cost.byModel[modelKey] += message.total_cost_usd;
+                    // Set cost for this conversation (not cumulative)
+                    analytics.cost.total = message.total_cost_usd;
+                    analytics.cost.byModel.opus = isOpus ? message.total_cost_usd : 0;
+                    analytics.cost.byModel.sonnet = !isOpus ? message.total_cost_usd : 0;
                     console.log('💵 Updated cost:', analytics.cost);
                   }
                 }
@@ -757,9 +776,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 ...s.messages.filter(m => m.type === 'system' && m.subtype === 'init').slice(0, 1)
               ],
               analytics: {
-                tokens: { input: 0, output: 0, total: 0 },
                 totalMessages: 0,
-                toolUses: 0
+                userMessages: 0,
+                assistantMessages: 0,
+                toolUses: 0,
+                tokens: { 
+                  input: 0, 
+                  output: 0, 
+                  total: 0,
+                  byModel: {
+                    opus: { input: 0, output: 0, total: 0 },
+                    sonnet: { input: 0, output: 0, total: 0 }
+                  }
+                },
+                cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+                duration: 0,
+                lastActivity: new Date()
               },
               updatedAt: new Date()
             }

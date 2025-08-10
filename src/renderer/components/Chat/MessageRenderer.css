@@ -324,6 +324,18 @@ ol {
   vertical-align: middle;
 }
 
+/* Thinking indicator outside bubble */
+.thinking-indicator-outside {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  margin-top: 8px;
+  color: #999;
+  font-size: 12px;
+  font-style: italic;
+}
+
 .thinking-text {
   opacity: 1;
   color: #d0d0d0;

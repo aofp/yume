@@ -839,13 +839,13 @@ export const ClaudeChat: React.FC = () => {
             );
           });
         })()}
-        {/* Show thinking indicator immediately when streaming starts */}
-        {currentSession?.streaming && currentSession.messages.filter(m => m.type === 'assistant' && m.streaming).length === 0 && (
+        {/* ALWAYS show thinking indicator when streaming */}
+        {currentSession?.streaming && (
           <div className="message assistant">
             <div className="message-content">
               <div className="thinking-indicator-bottom">
                 <IconLoader2 size={14} stroke={1.5} className="spinning-loader" />
-                <span>thinking...</span>
+                <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
               </div>
             </div>
           </div>

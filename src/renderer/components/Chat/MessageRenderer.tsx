@@ -749,27 +749,7 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         <div className="message assistant">
           <div className="message-content">
             <div className="message-bubble">
-              {message.streaming ? (
-                <>
-                  {isEmpty ? (
-                    <div className="thinking-indicator">
-                      <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
-                      <IconLoader2 size={14} className="streaming-loader" />
-                    </div>
-                  ) : (
-                    <>
-                      {renderContent(message.message?.content, message)}
-                      {/* Always show thinking indicator when streaming, regardless of content type */}
-                      <div className="thinking-indicator inline">
-                        <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
-                        <IconLoader2 size={14} className="streaming-loader" />
-                      </div>
-                    </>
-                  )}
-                </>
-              ) : (
-                renderContent(message.message?.content, message)
-              )}
+              {renderContent(message.message?.content, message)}
             </div>
           </div>
           {showButtons && (

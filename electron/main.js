@@ -458,7 +458,10 @@ function createWindow() {
 
   // Load the app
   if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+    // Check for dynamic Vite port from environment
+    const vitePort = process.env.ELECTRON_VITE_PORT || '5173';
+    mainWindow.loadURL(`http://localhost:${vitePort}`);
+    console.log(`Loading app from: http://localhost:${vitePort}`);
   } else {
     mainWindow.loadFile(path.join(__dirname, '../dist/renderer/index.html'));
   }

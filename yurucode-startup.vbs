@@ -42,14 +42,12 @@ If Err.Number <> 0 Then
 End If
 On Error GoTo 0
 
-' Kill any existing processes on ports
-objLogFile.WriteLine "Killing processes on ports 3001 and 5173..."
-objShell.Run "cmd /c npm run prestart", 1, True
-
-' Start yurucode with visible console window
-objLogFile.WriteLine "Starting yurucode..."
-' Use 1 to show console window, False to not wait for it to finish
-objShell.Run "cmd /c npm run start:win", 1, False
+' Always start in multi-instance mode (no dialog)
+objLogFile.WriteLine "Starting yurucode in multi-instance mode..."
+objLogFile.WriteLine "Each instance will find its own available ports automatically"
+' Don't kill ports for multi-instance - each finds its own
+' Use multi-instance server that finds its own port
+objShell.Run "cmd /c title yurucode && npm run start:multi", 1, False
 
 ' Wait a moment for servers to start
 WScript.Sleep 3000

@@ -46,6 +46,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       <button 
         className="model-selector-trigger"
         onClick={() => setIsOpen(!isOpen)}
+        title="select model (ctrl+o)"
       >
         {selectedModel.name}
       </button>

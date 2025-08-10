@@ -13,7 +13,7 @@ export const App: React.FC = () => {
   const { currentSessionId, sessions, createSession, restoreToMessage } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
-  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement } | null>(null);
+  const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
@@ -28,6 +28,11 @@ export const App: React.FC = () => {
     
     e.preventDefault();
     
+    // Check if there's selected text
+    const selection = window.getSelection();
+    const hasSelection = selection && selection.toString().trim().length > 0;
+    const selectedText = hasSelection ? selection.toString() : '';
+    
     // Check if target is a textarea or input to show copy/paste options
     const isTextInput = target.tagName === 'TEXTAREA' || target.tagName === 'INPUT';
     
@@ -36,7 +41,7 @@ export const App: React.FC = () => {
     const isMessageBubble = !!messageBubble;
     const messageElement = messageBubble as HTMLElement;
     
-    setContextMenu({ x: e.clientX, y: e.clientY, isTextInput, target, isMessageBubble, messageElement });
+    setContextMenu({ x: e.clientX, y: e.clientY, isTextInput, target, isMessageBubble, messageElement, hasSelection, selectedText });
   };
   
   // Close context menu when clicking outside
@@ -188,9 +193,10 @@ export const App: React.FC = () => {
             left: contextMenu.x > window.innerWidth - 180 ? window.innerWidth - 180 : contextMenu.x,
             top: (() => {
               // Calculate menu height based on items
+              const hasSelection = contextMenu.hasSelection;
               const hasTextInput = contextMenu.isTextInput;
               const hasMessageBubble = contextMenu.isMessageBubble;
-              const itemCount = (hasTextInput ? 3 : 0) + (hasMessageBubble ? 2 : 0) + 1; // +1 for about
+              const itemCount = (hasSelection ? 1 : 0) + (hasTextInput ? 3 : 0) + (hasMessageBubble ? 2 : 0) + 1; // +1 for about
               const menuHeight = itemCount * 32 + 20; // Approximate height
               
               if (contextMenu.y > window.innerHeight - menuHeight) {
@@ -201,6 +207,25 @@ export const App: React.FC = () => {
             zIndex: 10001
           }}
         >
+          {/* Show copy option if text is selected */}
+          {contextMenu.hasSelection && (
+            <>
+              <button 
+                className="context-menu-item"
+                onClick={() => {
+                  if (contextMenu.selectedText) {
+                    navigator.clipboard.writeText(contextMenu.selectedText);
+                  }
+                  setContextMenu(null);
+                }}
+              >
+                copy
+              </button>
+              {(contextMenu.isTextInput || contextMenu.isMessageBubble) && (
+                <div className="context-menu-separator" />
+              )}
+            </>
+          )}
           {contextMenu.isTextInput && (
             <>
               <button 
