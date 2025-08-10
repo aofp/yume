@@ -53,6 +53,12 @@
   -webkit-app-region: no-drag;
 }
 
+.tabs-actions.no-tabs {
+  margin-left: 2px;
+  position: relative;
+  left: -2px;
+}
+
 .tabs-scrollable {
   scrollbar-width: thin;
   scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;

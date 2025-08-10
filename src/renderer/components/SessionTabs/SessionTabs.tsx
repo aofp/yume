@@ -268,7 +268,7 @@ export const SessionTabs: React.FC = () => {
         ))}
         </div>
         
-        <div className="tabs-actions">
+        <div className={`tabs-actions ${sessions.length === 0 ? 'no-tabs' : ''}`}>
           <button 
             className={`tab-new ${dragOverNewTab ? 'drag-over-duplicate' : ''}`}
             onClick={handleOpenFolder} 
