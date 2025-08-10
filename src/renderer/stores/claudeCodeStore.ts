@@ -63,6 +63,7 @@ interface ClaudeCodeStore {
   pauseSession: (sessionId: string) => void;
   deleteSession: (sessionId: string) => void;
   deleteAllSessions: () => void;
+  reorderSessions: (fromIndex: number, toIndex: number) => void;
   interruptSession: () => Promise<void>;
   clearContext: (sessionId: string) => void;
   updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => void;
@@ -638,6 +639,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       sessions: [],
       currentSessionId: null,
       streamingMessage: ''
+    });
+  },
+  
+  reorderSessions: (fromIndex: number, toIndex: number) => {
+    set(state => {
+      const newSessions = [...state.sessions];
+      const [movedSession] = newSessions.splice(fromIndex, 1);
+      newSessions.splice(toIndex, 0, movedSession);
+      return { sessions: newSessions };
     });
   },
   

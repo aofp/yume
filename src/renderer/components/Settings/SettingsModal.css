@@ -22,6 +22,8 @@
   max-width: 500px;
   max-height: 80vh;
   overflow-y: auto;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .settings-header {
@@ -38,6 +40,8 @@
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .settings-close {
@@ -71,6 +75,8 @@
   font-weight: 500;
   margin: 0 0 6px 0;
   text-transform: lowercase;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Zoom Controls */
@@ -108,6 +114,8 @@
   font-size: 14px;
   font-weight: 500;
   color: var(--accent-color);
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Color Swatches */
@@ -161,6 +169,8 @@
   font-size: 11px;
   color: var(--accent-color);
   text-transform: lowercase;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 @keyframes fadeIn {

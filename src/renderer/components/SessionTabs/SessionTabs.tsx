@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, DragEvent } from 'react';
 import { IconX, IconPlus, IconFolder, IconLoader2, IconFolderOpen, IconBolt, IconTrash, IconChevronDown } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './SessionTabs.css';
@@ -10,14 +10,19 @@ export const SessionTabs: React.FC = () => {
     createSession, 
     deleteSession,
     deleteAllSessions,
-    resumeSession
+    resumeSession,
+    reorderSessions
   } = useClaudeCodeStore();
 
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
+  const [draggedTab, setDraggedTab] = useState<string | null>(null);
+  const [dragOverTab, setDragOverTab] = useState<string | null>(null);
+  const [dragOverNewTab, setDragOverNewTab] = useState(false);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const tabsContainerRef = useRef<HTMLDivElement>(null);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -55,6 +60,22 @@ export const SessionTabs: React.FC = () => {
       checkRecentProjects();
     }
   }, [showRecentModal]);
+
+  // Handle vertical scroll as horizontal scroll on tabs container
+  useEffect(() => {
+    const container = tabsContainerRef.current;
+    if (!container) return;
+
+    const handleWheel = (e: WheelEvent) => {
+      // Prevent default vertical scroll
+      e.preventDefault();
+      // Apply vertical scroll delta as horizontal scroll
+      container.scrollLeft += e.deltaY;
+    };
+
+    container.addEventListener('wheel', handleWheel, { passive: false });
+    return () => container.removeEventListener('wheel', handleWheel);
+  }, []);
 
   const handleOpenFolder = async () => {
     setShowNewMenu(false);
@@ -141,16 +162,48 @@ export const SessionTabs: React.FC = () => {
 
   return (
     <div className="session-tabs">
-      <div className="tabs-container">
-        {sessions.map((session) => (
+      <div className="tabs-wrapper">
+        <div className="tabs-scrollable" ref={tabsContainerRef}>
+          {sessions.map((session) => (
           <div
             key={session.id}
-            className={`session-tab ${currentSessionId === session.id ? 'active' : ''}`}
+            className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
             onClick={() => resumeSession(session.id)}
             onMouseDown={handleRipple}
             onContextMenu={(e) => {
               e.preventDefault();
               setContextMenu({ x: e.clientX, y: e.clientY, sessionId: session.id });
+            }}
+            draggable
+            onDragStart={(e: DragEvent<HTMLDivElement>) => {
+              setDraggedTab(session.id);
+              e.dataTransfer.effectAllowed = 'move';
+            }}
+            onDragEnd={() => {
+              setDraggedTab(null);
+              setDragOverTab(null);
+              setDragOverNewTab(false);
+            }}
+            onDragOver={(e: DragEvent<HTMLDivElement>) => {
+              e.preventDefault();
+              if (draggedTab && draggedTab !== session.id) {
+                setDragOverTab(session.id);
+              }
+            }}
+            onDragLeave={() => {
+              setDragOverTab(null);
+            }}
+            onDrop={(e: DragEvent<HTMLDivElement>) => {
+              e.preventDefault();
+              if (draggedTab && draggedTab !== session.id) {
+                const fromIndex = sessions.findIndex(s => s.id === draggedTab);
+                const toIndex = sessions.findIndex(s => s.id === session.id);
+                if (fromIndex !== -1 && toIndex !== -1) {
+                  reorderSessions(fromIndex, toIndex);
+                }
+              }
+              setDraggedTab(null);
+              setDragOverTab(null);
             }}
           >
             <div className="tab-content">
@@ -183,26 +236,51 @@ export const SessionTabs: React.FC = () => {
             )}
           </div>
         ))}
+        </div>
         
-        <button 
-          className="tab-new" 
-          onClick={handleOpenFolder} 
-          onMouseDown={handleRipple}
-          title="new tab (ctrl+t)"
-        >
-          <IconPlus size={16} stroke={1.5} />
-        </button>
-        
-        {hasRecentProjects && (
+        <div className="tabs-actions">
           <button 
-            className="tab-recent" 
-            onClick={() => setShowRecentModal(true)}
+            className={`tab-new ${dragOverNewTab ? 'drag-over-duplicate' : ''}`}
+            onClick={handleOpenFolder} 
             onMouseDown={handleRipple}
-            title="recent projects (ctrl+r)"
+            title={draggedTab ? "drop to duplicate" : "new tab (ctrl+t)"}
+            onDragOver={(e: DragEvent<HTMLButtonElement>) => {
+              if (draggedTab) {
+                e.preventDefault();
+                setDragOverNewTab(true);
+              }
+            }}
+            onDragLeave={() => {
+              setDragOverNewTab(false);
+            }}
+            onDrop={(e: DragEvent<HTMLButtonElement>) => {
+              e.preventDefault();
+              if (draggedTab) {
+                // Find the dragged session and duplicate it
+                const sessionToDuplicate = sessions.find(s => s.id === draggedTab);
+                if (sessionToDuplicate) {
+                  const workingDir = (sessionToDuplicate as any)?.workingDirectory;
+                  createSession(undefined, workingDir || '/');
+                }
+              }
+              setDraggedTab(null);
+              setDragOverNewTab(false);
+            }}
           >
-            <IconChevronDown size={16} stroke={1.5} />
+            <IconPlus size={16} stroke={1.5} />
           </button>
-        )}
+          
+          {hasRecentProjects && (
+            <button 
+              className="tab-recent" 
+              onClick={() => setShowRecentModal(true)}
+              onMouseDown={handleRipple}
+              title="recent projects (ctrl+r)"
+            >
+              <IconChevronDown size={16} stroke={1.5} />
+            </button>
+          )}
+        </div>
       </div>
       
       {contextMenu && (

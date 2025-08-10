@@ -96,7 +96,6 @@ npm run prestart
 - `Ctrl+0` - Reset zoom to 100%
 - `Ctrl++` - Zoom in
 - `Ctrl+-` - Zoom out
-- `/clear` - Clear context (in chat)
 - `?` - Show help (in chat or standalone)
 - `Escape` - Close modals/stop streaming
 

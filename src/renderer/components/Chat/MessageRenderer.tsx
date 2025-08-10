@@ -951,7 +951,11 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       );
       
     case 'result':
-      if (message.subtype === 'success') {
+      // Check if this is actually a success (even if subtype says error_during_execution)
+      const isSuccess = message.subtype === 'success' || 
+                       (message.subtype === 'error_during_execution' && message.success === true);
+      
+      if (isSuccess) {
         // Show elapsed time for successful completion
         const elapsedMs = message.duration_ms || message.message?.duration_ms || message.duration || 0;
         const elapsedSeconds = (elapsedMs / 1000).toFixed(1);

@@ -31,6 +31,7 @@ import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
+import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -948,7 +949,7 @@ export const ClaudeChat: React.FC = () => {
                         clearContext(currentSessionId);
                       }
                     }}
-                    title="clear context (/clear)"
+                    title="clear context (ctrl+l)"
                   >
                     clear
                   </button>
@@ -1081,148 +1082,7 @@ export const ClaudeChat: React.FC = () => {
       )}
 
       {/* Help Modal */}
-      {showHelpModal && (
-        <div className="help-modal-overlay" onClick={() => setShowHelpModal(false)}>
-          <div className="help-modal" onClick={(e) => e.stopPropagation()}>
-            <div className="help-header">
-              <h3>keyboard shortcuts</h3>
-              <button className="help-close" onClick={() => setShowHelpModal(false)}>
-                <IconX size={16} />
-              </button>
-            </div>
-            <div className="help-content">
-              <div className="help-section">
-                <h4>general</h4>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">t</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">new tab</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">d</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">duplicate tab</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">r</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">recent projects</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">tab</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">next tab</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">shift</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">tab</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">previous tab</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">q</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">quit app</span>
-                </div>
-              </div>
-              
-              <div className="help-section">
-                <h4>view</h4>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">0</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">reset zoom (100%)</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">+</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">zoom in</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">-</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">zoom out</span>
-                </div>
-              </div>
-              
-              <div className="help-section">
-                <h4>chat</h4>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">f</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">search messages</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">ctrl</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">l</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">clear context</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">enter</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">send message</span>
-                </div>
-                <div className="shortcut-item">
-                  <div className="shortcut-keys">
-                    <span className="key-btn">shift</span>
-                    <span className="key-plus">+</span>
-                    <span className="key-btn">enter</span>
-                  </div>
-                  <span className="shortcut-dots"></span>
-                  <span className="shortcut-desc">new line</span>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
+      {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
       
       {showStatsModal && currentSession?.analytics && (
         <div className="help-modal-overlay" onClick={() => setShowStatsModal(false)}>

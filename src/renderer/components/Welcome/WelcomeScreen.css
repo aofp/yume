@@ -136,6 +136,8 @@
   animation: modalFadeIn 0.2s ease;
   display: flex;
   flex-direction: column;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 @keyframes modalFadeIn {
@@ -252,8 +254,8 @@
 }
 
 .recent-item-remove:hover {
-  background: rgba(255, 153, 153, 0.1);
-  color: #ff9999;
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
 }
 
 .recent-item-info {
@@ -398,4 +400,32 @@
   gap: 4px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.3);
+}
+
+/* Help button container - positioned like in chat */
+.welcome-help-container {
+  position: fixed;
+  bottom: 4px;
+  right: 4px;
+  z-index: 100;
+}
+
+/* Import btn-help styles from ClaudeChat.css */
+.btn-help {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 10px;
+  font-family: 'Fira Code', monospace;
+  text-transform: lowercase;
+  transition: all 0.2s ease;
+  cursor: default;
+}
+
+.btn-help:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.2);
 }

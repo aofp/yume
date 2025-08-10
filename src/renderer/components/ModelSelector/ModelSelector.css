@@ -2,6 +2,8 @@
   position: relative;
   display: inline-block;
   margin-bottom: 2px;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .model-selector-trigger {
@@ -25,7 +27,7 @@
 
 .model-selector-dropdown {
   position: absolute;
-  bottom: calc(100% - 2px);
+  bottom: 100%;
   left: 0;
   min-width: 140px;
   background: #0a0a0a;
@@ -34,6 +36,8 @@
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
   z-index: 1000;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .model-selector-option {

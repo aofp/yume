@@ -168,20 +168,28 @@ io.on('connection', (socket) => {
         // On Windows, run through WSL
         if (process.platform === 'win32') {
           console.log('🪟 Windows detected - running claude through WSL');
-          console.log('Working directory (Windows):', workingDirectory);
+          console.log('Working directory:', session.workingDirectory);
           console.log('Working directory (WSL format):', workingDir);
           
-          // CRITICAL: For Windows packaged app, we need to use the simplest form
-          // Just run claude in WSL without any fancy flags
-          // The --cd flag doesn't work reliably in all WSL versions
-          const wslArgs = ['claude', ...args];
+          // CRITICAL: Find claude in WSL - could be in different locations
+          // First try to find claude using 'which' or check common locations
+          const findClaudeCommand = 'which claude || echo ~/.claude/local/claude';
+          const wslCommand = `bash -c "${findClaudeCommand} | head -1"`;
+          
+          // For now, try common locations in order
+          const claudeCommand = 'bash -c "if command -v claude &> /dev/null; then claude; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude; else echo claude_not_found; fi"';
+          
+          // Build the full WSL command
+          const wslArgs = ['-e', 'bash', '-c', 
+            `if command -v claude &> /dev/null; then claude ${args.join(' ')}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${args.join(' ')}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${args.join(' ')}; else echo "Claude CLI not found in WSL" >&2 && exit 127; fi`
+          ];
           
           console.log('WSL command:', 'wsl.exe', wslArgs.join(' '));
           console.log('Full args array:', wslArgs);
           
-          // Use the Windows working directory for spawn, not the WSL path
+          // Use the session's working directory for spawn
           child = spawn('wsl.exe', wslArgs, {
-            cwd: workingDirectory, // Use original Windows path
+            cwd: session.workingDirectory, // Use original Windows path
             env: process.env,
             stdio: ['pipe', 'pipe', 'pipe'],
             shell: false,

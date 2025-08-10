@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IconFolderOpen, IconPlus, IconX, IconTrash } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import './WelcomeScreen.css';
 
 interface RecentProject {
@@ -13,6 +14,7 @@ export const WelcomeScreen: React.FC = () => {
   const { createSession } = useClaudeCodeStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showRecentModal, setShowRecentModal] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
     // Load recent projects from localStorage
@@ -102,7 +104,7 @@ export const WelcomeScreen: React.FC = () => {
         <button 
           className="welcome-new-button"
           onClick={handleNewSession}
-          title="new session (ctrl+t)"
+          title="new tab (ctrl+t)"
         >
           <IconPlus size={20} />
         </button>
@@ -116,6 +118,17 @@ export const WelcomeScreen: React.FC = () => {
           title="recent projects (ctrl+r)"
         >
           <span>recent: {Math.min(recentProjects.length, 10)}</span>
+        </button>
+      </div>
+      
+      {/* Help button - same position as in chat */}
+      <div className="welcome-help-container">
+        <button 
+          className="btn-help" 
+          onClick={() => setShowHelpModal(true)}
+          title="keyboard shortcuts"
+        >
+          ?
         </button>
       </div>
 
@@ -190,6 +203,9 @@ export const WelcomeScreen: React.FC = () => {
           </div>
         </div>
       )}
+      
+      {/* Help Modal - using shared component */}
+      {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
     </div>
   );
 };
