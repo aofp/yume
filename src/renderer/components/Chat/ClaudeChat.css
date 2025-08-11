@@ -224,7 +224,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 8px;
-  scroll-behavior: smooth;
+  scroll-behavior: auto;
   min-height: 0; /* Critical for flex child scrolling */
 }
 
@@ -288,7 +288,7 @@
 .message-text pre {
   background: #000000;
   border: 1px solid rgba(255, 153, 153, 0.1);
-  border-radius: 6px;
+  border-radius: 0 !important;
   padding: 12px;
   margin: 8px 0;
   overflow-x: auto;

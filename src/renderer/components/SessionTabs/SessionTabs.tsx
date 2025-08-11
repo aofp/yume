@@ -194,10 +194,10 @@ export const SessionTabs: React.FC = () => {
     // Add a class to trigger the ripple animation
     target.classList.add('ripple-active');
     
-    // Remove the class after animation completes
+    // Remove the class after animation completes (increased duration)
     setTimeout(() => {
       target.classList.remove('ripple-active');
-    }, 400);
+    }, 1200);
   };
 
   return (
@@ -209,7 +209,10 @@ export const SessionTabs: React.FC = () => {
             key={session.id}
             className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
             onClick={() => resumeSession(session.id)}
-            onMouseDown={handleRipple}
+            onMouseDown={(e) => {
+              handleRipple(e);
+              e.currentTarget.classList.add('ripple-held');
+            }}
             onMouseUp={(e) => e.currentTarget.classList.remove('ripple-held')}
             onMouseLeave={(e) => e.currentTarget.classList.remove('ripple-held')}
             onContextMenu={(e) => {
@@ -286,24 +289,13 @@ export const SessionTabs: React.FC = () => {
             onClick={handleOpenFolder} 
             onMouseDown={(e) => {
               handleRipple(e);
-              // Add held class if mouse is held down
-              const target = e.currentTarget;
-              const timeout = setTimeout(() => {
-                target.classList.add('ripple-held');
-              }, 200);
-              target.setAttribute('data-timeout', timeout.toString());
+              e.currentTarget.classList.add('ripple-held');
             }}
             onMouseUp={(e) => {
-              const target = e.currentTarget;
-              const timeout = target.getAttribute('data-timeout');
-              if (timeout) clearTimeout(parseInt(timeout));
-              target.classList.remove('ripple-held');
+              e.currentTarget.classList.remove('ripple-held');
             }}
             onMouseLeave={(e) => {
-              const target = e.currentTarget;
-              const timeout = target.getAttribute('data-timeout');
-              if (timeout) clearTimeout(parseInt(timeout));
-              target.classList.remove('ripple-held');
+              e.currentTarget.classList.remove('ripple-held');
             }}
             title={draggedTab ? "drop to duplicate" : "new tab (ctrl+t)"}
             onDragOver={(e: DragEvent<HTMLButtonElement>) => {
@@ -336,7 +328,12 @@ export const SessionTabs: React.FC = () => {
             <button 
               className="tab-recent" 
               onClick={() => setShowRecentModal(true)}
-              onMouseDown={handleRipple}
+              onMouseDown={(e) => {
+                handleRipple(e);
+                e.currentTarget.classList.add('ripple-held');
+              }}
+              onMouseUp={(e) => e.currentTarget.classList.remove('ripple-held')}
+              onMouseLeave={(e) => e.currentTarget.classList.remove('ripple-held')}
               title="recent projects (ctrl+r)"
             >
               <IconChevronDown size={16} stroke={1.5} />

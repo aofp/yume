@@ -227,7 +227,7 @@
 .markdown-content pre {
   background: #000000;
   border: none !important;
-  border-radius: 2px;
+  border-radius: 0 !important;
   padding: 2px;
   margin: 0 0 2px 0;
   overflow-x: auto;
@@ -464,7 +464,7 @@ ol {
 }
 
 .tool-result.standalone .result-content {
-  margin: 0;
+  margin: 0 0 2px 0;
   padding: 0;
   font-family: 'Fira Code', monospace;
   font-size: 9px;
@@ -1058,7 +1058,7 @@ ol {
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 4px 6px;
+  padding: 0;
   border-radius: 4px;
   font-size: 11px;
   transition: all 0.2s ease;

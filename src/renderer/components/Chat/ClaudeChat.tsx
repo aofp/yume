@@ -152,6 +152,7 @@ export const ClaudeChat: React.FC = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const previousSessionIdRef = useRef<string | null>(null);
+  const isTabSwitchingRef = useRef(false);
   
   const {
     sessions,
@@ -199,26 +200,44 @@ export const ClaudeChat: React.FC = () => {
   useEffect(() => {
     if (currentSessionId) {
       if (currentSessionId !== previousSessionIdRef.current) {
-        // Tab switched
-        if (chatContainerRef.current) {
-          const savedPosition = scrollPositions[currentSessionId];
-          if (savedPosition !== undefined) {
-            // Restore saved position
-            chatContainerRef.current.scrollTop = savedPosition;
-          } else {
-            // New session, scroll to bottom
-            messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+        // Mark that we're switching tabs
+        isTabSwitchingRef.current = true;
+        
+        // Tab switched - restore position immediately without animation
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          if (chatContainerRef.current) {
+            const savedPosition = scrollPositions[currentSessionId];
+            if (savedPosition !== undefined) {
+              // Restore saved position instantly
+              chatContainerRef.current.scrollTop = savedPosition;
+            } else {
+              // New session, check if has messages
+              if (currentSession?.messages?.length > 0) {
+                // Has messages, scroll to bottom instantly
+                chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+              }
+              // No messages, stay at top
+            }
           }
-        }
+          
+          // Clear the tab switching flag after a short delay
+          setTimeout(() => {
+            isTabSwitchingRef.current = false;
+          }, 100);
+        });
       }
       // Always update the previous session ID ref
       previousSessionIdRef.current = currentSessionId;
     }
-  }, [currentSessionId, scrollPositions]);
+  }, [currentSessionId, scrollPositions, currentSession?.messages?.length]);
 
   // SIMPLE AUTO-SCROLL - always scroll to bottom when messages change
   useEffect(() => {
     if (!chatContainerRef.current || !currentSession) return;
+    
+    // Skip auto-scroll if we're switching tabs
+    if (isTabSwitchingRef.current) return;
     
     const container = chatContainerRef.current;
     // Check if near bottom (within 200px)
@@ -228,7 +247,9 @@ export const ClaudeChat: React.FC = () => {
     if (isNearBottom || currentSession?.streaming) {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        if (!isTabSwitchingRef.current) {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
+        }
       }, 10);
     }
   }, [currentSession?.messages, currentSession?.streaming]);
@@ -237,12 +258,17 @@ export const ClaudeChat: React.FC = () => {
   useEffect(() => {
     if (!currentSession) return;
     
+    // Skip if we're switching tabs
+    if (isTabSwitchingRef.current) return;
+    
     const lastMessage = currentSession.messages[currentSession.messages.length - 1];
     
     // If the last message is from the user, force scroll to bottom
     if (lastMessage?.type === 'user') {
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        if (!isTabSwitchingRef.current) {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
+        }
       }, 50);
     }
   }, [currentSession?.messages?.length]);
@@ -396,7 +422,7 @@ export const ClaudeChat: React.FC = () => {
     // Scroll to first match
     if (matches.length > 0) {
       const element = document.querySelector(`[data-message-index="${matches[0]}"]`);
-      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      element?.scrollIntoView({ behavior: 'instant', block: 'center' });
     }
   }, [searchQuery, currentSession]);
 
@@ -540,7 +566,7 @@ export const ClaudeChat: React.FC = () => {
       
       // Force scroll to bottom after sending message
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
       }, 50);
     } catch (error) {
       console.error('[ClaudeChat] Failed to send message:', error);

@@ -262,10 +262,10 @@ code {
 pre {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  line-height: var(--leading-relaxed);
+  line-height: normal;
   background: #000000;
   padding: 0;
-  border-radius: var(--radius-md);
+  border-radius: 0 !important;
   overflow-x: auto;
 }
 
