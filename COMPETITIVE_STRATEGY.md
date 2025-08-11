@@ -2,15 +2,29 @@
 
 ## market position: "the anti-cursor"
 
-where cursor is $192/year subscription bloat, yurucode is $0 + claude api
+where cursor is $192/year subscription bloat, yurucode is $10 one-time + claude api
 where windsurf promises "flow state" through features, we deliver it through absence
+
+## pricing model: freemium done right
+
+### trial version (free)
+- **1 session limit**: can only run one claude session at a time
+- **full features**: everything else identical to paid version
+- **no time limit**: use forever with single session restriction
+- **perfect for**: trying it out, simple scripts, learning claude
+
+### full version ($10 one-time)
+- **unlimited sessions**: run multiple claude sessions in tabs
+- **lifetime license**: pay once, use forever
+- **no subscriptions**: ever
+- **perfect for**: professionals, multi-project work, power users
 
 ## our moat: radical minimalism
 
-### 1. performance metrics to crush competitors
-- **startup time**: <100ms (cursor: 3-5s, windsurf: 2-3s)
-- **memory usage**: <50mb (cursor: 500mb+, vscode: 400mb+)
-- **oled battery savings**: 40% less power than dark gray themes
+### 1. realistic performance metrics
+- **startup time**: <1s (cursor: 3-5s, windsurf: 2-3s)
+- **memory usage**: ~200mb (cursor: 500mb+, vscode: 400mb+)
+- **oled battery savings**: 15-20% less power than dark gray themes
 - **zero telemetry**: no analytics, no tracking, no bullshit
 
 ### 2. features we deliberately DON'T have (and why that's good)
@@ -44,83 +58,107 @@ where windsurf promises "flow state" through features, we deliver it through abs
 - cares about battery life and pixel burn-in
 - typical: macbook pro user, works from cafes
 
-## growth strategy
+## growth strategy (realistic timeline)
 
-### phase 1: reddit dominance (months 1-3)
-target subreddits:
-- r/neovim - "gui for claude code that doesn't suck"
-- r/unixporn - screenshots of oled black beauty
-- r/programming - "i replaced cursor with 50mb electron app"
-- r/selfhosted - "run claude locally, no cloud bs"
+### phase 1: soft launch & feedback (months 1-3)
+- **goal**: 100 active users, iron out bugs
+- **channels**: 
+  - personal network & twitter
+  - r/claudeai for early adopters
+  - small discord/slack communities
+- **focus**: stability over features
 
-### phase 2: influencer capture (months 3-6)
-target creators:
-- primagen - appeal to performance obsession
-- fireship - "i tried every ai ide, this one is different"
-- theo (t3) - anti-subscription message resonates
+### phase 2: reddit organic growth (months 3-6)
+- **goal**: 1,000 users, first $1,000 in sales
+- **target subreddits** (comment, don't spam):
+  - r/neovim - "lightweight gui for claude code"
+  - r/programming - weekend show-off threads
+  - r/webdev - tool tuesday posts
+- **realistic message**: "built a simple claude gui, $10 if you want tabs"
 
-### phase 3: github stars arms race (months 6-12)
-- goal: 10k stars faster than claudia (took 2 months)
-- tactics: 
-  - "awesome" lists placement
-  - comparison tables showing memory/performance
-  - gif demos of instant startup
+### phase 3: sustainable growth (months 6-12)
+- **goal**: 5,000 users, $10,000 total revenue
+- **channels**:
+  - github organic (aim for 1k stars, not 10k)
+  - small youtube channels (not primagen)
+  - product hunt launch (once stable)
+- **focus**: word of mouth from happy users
 
-## competitive responses we expect
+## competitive responses (realistic)
 
 ### cursor/windsurf will:
-- add "minimal mode" (won't work, too bloated at core)
-- reduce prices (irrelevant, we're free)
-- add more features (makes them slower, helps us)
+- ignore us completely (we're too small to matter)
+- if we get traction: dismiss as "toy" or "hobby project"
+- continue adding features for enterprise customers
 
 ### claude.ai will:
-- improve web ui (can't access local files, permanent advantage)
-- release official desktop app (likely electron bloat)
+- keep improving web ui (our local file access remains advantage)
+- maybe release official desktop app (we'll need to differentiate more)
 
 ### new entrants will:
-- copy our aesthetic (we'll already own mindshare)
-- try "even more minimal" (nothing left to remove)
+- dozens of similar minimal clients will appear
+- most will be abandoned after 2 months
+- our consistency and $10 price point keeps us relevant
 
 ## metrics that matter
 
 ### vanity metrics (ignore):
-- total users (quality > quantity)
+- total downloads (meaningless without retention)
 - feature count (less is more)
 - funding raised ($0 is our flex)
 
-### real metrics (obsess):
-- startup time (must stay <100ms)
-- memory usage (must stay <50mb)
-- github stars (social proof)
-- reddit mentions (organic growth)
-- session length (flow state indicator)
+### real metrics (track):
+- **conversion rate**: free → paid (target: 5-10%)
+- **monthly active users**: better than total downloads
+- **support tickets**: must stay manageable (<10/week)
+- **refund rate**: must stay low (<2%)
+- **actual revenue**: the only number that matters
 
 ## positioning statements
 
 ### elevator pitch
-"cursor charges $192/year to wrap claude in bloat. we give you claude in 50mb for free."
+"cursor charges $192/year. we charge $10 once. both just wrap claude, but ours actually starts fast."
 
 ### twitter bio
-"the 50mb ai ide. oled black. zero subscriptions. just claude."
+"minimal claude gui. $10 for unlimited tabs. that's it."
 
 ### reddit comment
-"tried cursor (too heavy), windsurf (too complex), aider (no gui). built this instead: [link]"
+"built a simple electron wrapper for claude cli. free for single session, $10 if you want tabs. no subscription bs."
 
 ## competitive advantages summary
 
 | aspect | cursor | windsurf | aider | yurucode |
 |--------|--------|----------|-------|----------|
-| price | $192/yr | $180/yr | free | free |
-| memory | 500mb+ | 400mb+ | 20mb | 50mb |
-| startup | 3-5s | 2-3s | instant | <100ms |
+| price | $192/yr | $180/yr | free | free/$10 |
+| memory | 500mb+ | 400mb+ | 20mb | ~200mb |
+| startup | 3-5s | 2-3s | instant | <1s |
 | theme | dark gray | dark gray | terminal | true black |
 | local | no | no | yes | yes |
-| tabs | no | no | no | yes |
+| tabs | yes | yes | no | yes (paid) |
+| business model | subscription | subscription | donations | one-time |
 
-## the endgame
+## realistic endgame
 
-we don't need to beat cursor's $4m ARR. we need to own the "minimalist ai ide" category so completely that when someone googles it, they find us. 
+### success looks like:
+- **year 1**: 5,000 users, $10k revenue, sustainable side project
+- **year 2**: 20,000 users, $50k revenue, covers hosting + time
+- **year 3**: 50,000 users, $150k revenue, viable business
 
-when cursor adds their 500th feature and windsurf promises their 50th workflow improvement, we'll still be here: 50mb, black background, just claude.
+### what we're NOT trying to do:
+- beat cursor (impossible, they have vc money)
+- become a unicorn (we're a $10 app)
+- support enterprise (nightmare)
 
-that's how we win.
+### sustainable niche:
+we're the honda civic of ai ides. not fancy, not expensive, but reliable and gets the job done. there will always be developers who just want a simple, fast, one-time-purchase tool.
+
+### exit strategy:
+- **best case**: sustainable lifestyle business generating $100k+/year
+- **realistic case**: nice side income while working day job
+- **worst case**: learned electron, shipped product, moved on
+
+the goal isn't to win the ai ide wars. it's to build something useful, charge a fair price, and serve a specific audience well. 
+
+when cursor raises another $100m and windsurf adds ai-powered coffee ordering, we'll still be here: simple, fast, $10.
+
+that's enough.

@@ -664,6 +664,17 @@
   color: #606060;
 }
 
+/* Override selection color for chat input */
+.chat-input::selection {
+  background: rgba(var(--accent-rgb), 0.25) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.chat-input::-moz-selection {
+  background: rgba(var(--accent-rgb), 0.25) !important;
+  color: var(--color-text-primary) !important;
+}
+
 
 /* Send/Stop buttons */
 .btn-send {

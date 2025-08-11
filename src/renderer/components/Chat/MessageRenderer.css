@@ -1125,3 +1125,28 @@ ol {
   font-size: 10px;
   opacity: 1;
 }
+
+/* Override selection color for all message content */
+.message-content ::selection,
+.message-content *::selection,
+.markdown-content ::selection,
+.markdown-content *::selection,
+pre ::selection,
+pre *::selection,
+code ::selection,
+code *::selection {
+  background: rgba(var(--accent-rgb), 0.25) !important;
+  color: var(--color-text-primary) !important;
+}
+
+.message-content ::-moz-selection,
+.message-content *::-moz-selection,
+.markdown-content ::-moz-selection,
+.markdown-content *::-moz-selection,
+pre ::-moz-selection,
+pre *::-moz-selection,
+code ::-moz-selection,
+code *::-moz-selection {
+  background: rgba(var(--accent-rgb), 0.25) !important;
+  color: var(--color-text-primary) !important;
+}

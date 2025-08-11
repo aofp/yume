@@ -544,12 +544,44 @@ io.on('connection', (socket) => {
       child.stderr.on('data', (data) => {
         const error = data.toString();
         console.error('Claude stderr:', error);
-        socket.emit(`message:${sessionId}`, {
-          type: 'system',
-          subtype: 'error',
-          message: error,
-          timestamp: Date.now()
-        });
+        
+        // Handle "No conversation found" error specifically
+        if (error.includes('No conversation found with session ID')) {
+          // Clear the invalid session ID
+          const session = sessions.get(sessionId);
+          if (session) {
+            session.claudeSessionId = undefined;
+            console.log(`🔄 Cleared invalid Claude session ID for ${sessionId}`);
+          }
+          
+          // Clear streaming state
+          const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+          if (lastAssistantMessageId) {
+            socket.emit(`message:${sessionId}`, {
+              type: 'assistant',
+              id: lastAssistantMessageId,
+              streaming: false,
+              timestamp: Date.now()
+            });
+            lastAssistantMessageIds.delete(sessionId);
+          }
+          
+          // Don't show the technical error to user
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'info',
+            message: 'starting fresh conversation...',
+            timestamp: Date.now()
+          });
+        } else {
+          // Show other errors to user
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'error',
+            message: error,
+            timestamp: Date.now()
+          });
+        }
       });
       
       // Write the prompt to stdin with proper encoding and newline
@@ -616,10 +648,19 @@ io.on('connection', (socket) => {
         // If process exited with error code and no result was sent
         if (code !== 0 && code !== null) {
           console.error(`Claude process failed with exit code ${code}`);
+          
+          // Clear Claude session ID on error
+          const session = sessions.get(sessionId);
+          if (session && code === 1) {
+            session.claudeSessionId = undefined;
+            console.log(`🔄 Cleared Claude session ID for ${sessionId} due to error`);
+          }
+          
+          // Send error message to client
           socket.emit(`message:${sessionId}`, {
             type: 'system',
-            subtype: 'info',
-            message: `Process completed with code ${code}`,
+            subtype: 'error',
+            message: `Process failed. Starting fresh session for next message.`,
             timestamp: Date.now()
           });
         }
@@ -643,6 +684,25 @@ io.on('connection', (socket) => {
           }
         } else if (error.code === 'EACCES') {
           errorMessage = 'Permission denied. Check that Claude CLI has execute permissions.';
+        }
+        
+        // Clear streaming state and Claude session ID on error
+        const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+        if (lastAssistantMessageId) {
+          socket.emit(`message:${sessionId}`, {
+            type: 'assistant',
+            id: lastAssistantMessageId,
+            streaming: false,
+            timestamp: Date.now()
+          });
+          lastAssistantMessageIds.delete(sessionId);
+        }
+        
+        // Clear Claude session ID on spawn error
+        const session = sessions.get(sessionId);
+        if (session) {
+          session.claudeSessionId = undefined;
+          console.log(`🔄 Cleared Claude session ID for ${sessionId} due to spawn error`);
         }
         
         socket.emit(`message:${sessionId}`, {
@@ -696,6 +756,13 @@ io.on('connection', (socket) => {
           timestamp: Date.now()
         });
         lastAssistantMessageIds.delete(sessionId);
+      }
+      
+      // Clear the Claude session ID after interrupt
+      const session = sessions.get(sessionId);
+      if (session) {
+        session.claudeSessionId = undefined;
+        console.log(`🔄 Cleared Claude session ID for ${sessionId} after interrupt`);
       }
       
       socket.emit(`message:${sessionId}`, {
