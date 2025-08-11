@@ -25,7 +25,9 @@ import {
   IconLoader2,
   IconChartBar,
   IconHelp,
-  IconCoin
+  IconCoin,
+  IconChevronUp,
+  IconChevronDown
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -354,7 +356,8 @@ export const ClaudeChat: React.FC = () => {
       sessionId: currentSessionId 
     });
     
-    if ((!input.trim() && attachments.length === 0) || currentSession?.streaming) return;
+    // Allow sending messages during streaming (they'll be queued)
+    if (!input.trim() && attachments.length === 0) return;
     
     // Check for slash commands and special inputs
     const trimmedInput = input.trim();
@@ -718,14 +721,14 @@ export const ClaudeChat: React.FC = () => {
               onClick={() => navigateSearch('prev')}
               disabled={searchMatches.length === 0}
             >
-              ↑
+              <IconChevronUp size={14} />
             </button>
             <button 
               className="search-btn" 
               onClick={() => navigateSearch('next')}
               disabled={searchMatches.length === 0}
             >
-              ↓
+              <IconChevronDown size={14} />
             </button>
             <button 
               className="search-btn close" 
@@ -736,7 +739,7 @@ export const ClaudeChat: React.FC = () => {
                 setSearchIndex(0);
               }}
             >
-              ×
+              <IconX size={14} />
             </button>
           </div>
         </div>
@@ -859,6 +862,8 @@ export const ClaudeChat: React.FC = () => {
                   message={message} 
                   index={idx}
                   isLast={isLastRestorable}
+                  searchQuery={searchQuery}
+                  isCurrentMatch={searchMatches[searchIndex] === idx}
                 />
               </div>
             );
@@ -907,7 +912,7 @@ export const ClaudeChat: React.FC = () => {
           <textarea
             ref={inputRef}
             className="chat-input"
-            placeholder="code prompt..."
+            placeholder={currentSession?.streaming ? "append message..." : "code prompt..."}
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
@@ -1159,7 +1164,7 @@ export const ClaudeChat: React.FC = () => {
                     </div>
                     <span className="stat-dots"></span>
                     <span className="stat-desc">
-                      {currentSession.analytics.tokens.input.toLocaleString()} ({Math.round((currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100)}%)
+                      {currentSession.analytics.tokens.input.toLocaleString()} ({currentSession.analytics.tokens.total > 0 ? Math.round((currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100) : 0}%)
                     </span>
                   </div>
                   <div className="stat-row">
@@ -1168,13 +1173,13 @@ export const ClaudeChat: React.FC = () => {
                     </div>
                     <span className="stat-dots"></span>
                     <span className="stat-desc">
-                      {currentSession.analytics.tokens.output.toLocaleString()} ({Math.round((currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100)}%)
+                      {currentSession.analytics.tokens.output.toLocaleString()} ({currentSession.analytics.tokens.total > 0 ? Math.round((currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100) : 0}%)
                     </span>
                   </div>
                   <div className="breakdown-bar">
                     <div 
                       className="input-bar" 
-                      style={{ width: `${(currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100}%` }}
+                      style={{ width: `${currentSession.analytics.tokens.total > 0 ? (currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100 : 0}%` }}
                     />
                   </div>
                   <div className="stat-row" style={{ marginTop: '4px' }}>

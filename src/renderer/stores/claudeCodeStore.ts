@@ -384,18 +384,30 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               }
               
               // Update tokens if result message - Claude CLI sends cumulative values for this conversation
-              if (message.type === 'result' && message.usage) {
-                // Only update tokens if this is a new result message (avoid duplicates)
-                const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
-                const existingResultMessages = s.messages.filter(m => m.type === 'result').map(m => ({ id: m.id, usage: m.usage }));
-                console.log(`🔍 [TOKEN DEBUG] Processing result message ${message.id}, isNewResult: ${isNewResult}, current analytics tokens: ${analytics.tokens.total}`);
-                console.log(`🔍 [TOKEN DEBUG] Session ${s.id} claudeSessionId: ${s.claudeSessionId}`);
-                console.log(`🔍 [TOKEN DEBUG] Existing result messages in session:`, existingResultMessages);
-                if (isNewResult) {
-                  console.log('📊 Result message with usage:', message.usage);
-                  if (message.cost) {
-                    console.log('💰 Result message with cost:', message.cost);
-                  }
+              if (message.type === 'result') {
+                console.log('📊 [TOKEN DEBUG] Received result message:', {
+                  id: message.id,
+                  type: message.type,
+                  subtype: message.subtype,
+                  hasUsage: !!message.usage,
+                  usage: message.usage,
+                  hasCost: !!message.total_cost_usd,
+                  cost: message.total_cost_usd,
+                  fullMessage: message
+                });
+                
+                if (message.usage) {
+                  // Only update tokens if this is a new result message (avoid duplicates)
+                  const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
+                  const existingResultMessages = s.messages.filter(m => m.type === 'result').map(m => ({ id: m.id, usage: m.usage }));
+                  console.log(`🔍 [TOKEN DEBUG] Processing result message ${message.id}, isNewResult: ${isNewResult}, current analytics tokens: ${analytics.tokens.total}`);
+                  console.log(`🔍 [TOKEN DEBUG] Session ${s.id} claudeSessionId: ${s.claudeSessionId}`);
+                  console.log(`🔍 [TOKEN DEBUG] Existing result messages in session:`, existingResultMessages);
+                  if (isNewResult) {
+                    console.log('📊 Result message with usage:', message.usage);
+                    if (message.cost) {
+                      console.log('💰 Result message with cost:', message.cost);
+                    }
                   
                   // Include all input token types
                   // IMPORTANT: Don't count cache tokens against context window!
@@ -416,48 +428,118 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   console.log(`   Output: ${outputTokens}`);
                   console.log(`   TOTAL for context: ${totalTokens} (cache excluded)`);
                   
-                  // CRITICAL: Use assignment (=) not accumulation (+=)
-                  // Claude CLI sends cumulative values for the entire conversation
+                  // CRITICAL: Use accumulation (+=) not assignment (=)
+                  // Claude CLI sends per-message values, not cumulative
                   const previousTotal = analytics.tokens.total;
-                  analytics.tokens.input = inputTokens;
-                  analytics.tokens.output = outputTokens;
-                  analytics.tokens.total = totalTokens;
+                  analytics.tokens.input += inputTokens;
+                  analytics.tokens.output += outputTokens;
+                  analytics.tokens.total += totalTokens;
                   
                   console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
                   console.log(`   Previous total: ${previousTotal}`);
-                  console.log(`   New total: ${totalTokens}`);
-                  console.log(`   Change: ${totalTokens - previousTotal}`);
+                  console.log(`   New total: ${analytics.tokens.total}`);
+                  console.log(`   Change: ${totalTokens}`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;
                   const isOpus = modelUsed.includes('opus');
                   const modelKey = isOpus ? 'opus' : 'sonnet';
                   
-                  // Update model-specific tokens for THIS conversation only
-                  // Reset the other model since only one model is used per conversation
+                  // Update model-specific tokens (accumulate per message)
+                  // Both models can be used in the same conversation if user switches
                   if (isOpus) {
-                    analytics.tokens.byModel.opus.input = inputTokens;
-                    analytics.tokens.byModel.opus.output = outputTokens;
-                    analytics.tokens.byModel.opus.total = inputTokens + outputTokens;
-                    analytics.tokens.byModel.sonnet = { input: 0, output: 0, total: 0 };
+                    analytics.tokens.byModel.opus.input += inputTokens;
+                    analytics.tokens.byModel.opus.output += outputTokens;
+                    analytics.tokens.byModel.opus.total += inputTokens + outputTokens;
                   } else {
-                    analytics.tokens.byModel.sonnet.input = inputTokens;
-                    analytics.tokens.byModel.sonnet.output = outputTokens;
-                    analytics.tokens.byModel.sonnet.total = inputTokens + outputTokens;
-                    analytics.tokens.byModel.opus = { input: 0, output: 0, total: 0 };
+                    analytics.tokens.byModel.sonnet.input += inputTokens;
+                    analytics.tokens.byModel.sonnet.output += outputTokens;
+                    analytics.tokens.byModel.sonnet.total += inputTokens + outputTokens;
                   }
                   
-                  // Store cost information for THIS conversation only
+                  // Store cost information (accumulate per message)
                   if (message.total_cost_usd !== undefined) {
                     if (!analytics.cost) {
                       analytics.cost = { total: 0, byModel: { opus: 0, sonnet: 0 } };
                     }
-                    // Set cost for this conversation (not cumulative)
-                    analytics.cost.total = message.total_cost_usd;
-                    analytics.cost.byModel.opus = isOpus ? message.total_cost_usd : 0;
-                    analytics.cost.byModel.sonnet = !isOpus ? message.total_cost_usd : 0;
+                    // Accumulate cost for each message
+                    analytics.cost.total += message.total_cost_usd;
+                    if (isOpus) {
+                      analytics.cost.byModel.opus += message.total_cost_usd;
+                    } else {
+                      analytics.cost.byModel.sonnet += message.total_cost_usd;
+                    }
                     console.log('💵 Updated cost:', analytics.cost);
                   }
+                  }
+                } else {
+                  // No usage data in result message - estimate based on messages
+                  console.log('⚠️ [TOKEN DEBUG] No usage data in result message, estimating from messages');
+                  
+                  // Count tokens from all messages in this conversation
+                  let estimatedInput = 0;
+                  let estimatedOutput = 0;
+                  
+                  s.messages.forEach(msg => {
+                    if (msg.type === 'user' && msg.message?.content) {
+                      // Rough estimate: 1 token per 4 characters for input
+                      const content = typeof msg.message.content === 'string' 
+                        ? msg.message.content 
+                        : JSON.stringify(msg.message.content);
+                      estimatedInput += Math.ceil(content.length / 4);
+                    } else if (msg.type === 'assistant' && msg.message?.content) {
+                      // Count assistant message tokens
+                      const content = typeof msg.message.content === 'string'
+                        ? msg.message.content
+                        : JSON.stringify(msg.message.content);
+                      estimatedOutput += Math.ceil(content.length / 4);
+                    }
+                  });
+                  
+                  // Update analytics with estimates
+                  analytics.tokens.input = estimatedInput;
+                  analytics.tokens.output = estimatedOutput;
+                  analytics.tokens.total = estimatedInput + estimatedOutput;
+                  
+                  // Update model-specific tokens
+                  const modelUsed = message.model || get().selectedModel;
+                  const isOpus = modelUsed.includes('opus');
+                  
+                  if (isOpus) {
+                    analytics.tokens.byModel.opus = {
+                      input: estimatedInput,
+                      output: estimatedOutput,
+                      total: estimatedInput + estimatedOutput
+                    };
+                    analytics.tokens.byModel.sonnet = { input: 0, output: 0, total: 0 };
+                  } else {
+                    analytics.tokens.byModel.sonnet = {
+                      input: estimatedInput,
+                      output: estimatedOutput,
+                      total: estimatedInput + estimatedOutput
+                    };
+                    analytics.tokens.byModel.opus = { input: 0, output: 0, total: 0 };
+                  }
+                  
+                  // Estimate cost (rough pricing)
+                  const costPerMillionInput = isOpus ? 15 : 3;  // $15/$3 per million
+                  const costPerMillionOutput = isOpus ? 75 : 15; // $75/$15 per million
+                  const estimatedCost = (estimatedInput * costPerMillionInput / 1000000) + 
+                                       (estimatedOutput * costPerMillionOutput / 1000000);
+                  
+                  if (!analytics.cost) {
+                    analytics.cost = { total: 0, byModel: { opus: 0, sonnet: 0 } };
+                  }
+                  analytics.cost.total = estimatedCost;
+                  analytics.cost.byModel.opus = isOpus ? estimatedCost : 0;
+                  analytics.cost.byModel.sonnet = !isOpus ? estimatedCost : 0;
+                  
+                  console.log('📊 [TOKEN DEBUG] Estimated tokens:', {
+                    input: estimatedInput,
+                    output: estimatedOutput,
+                    total: estimatedInput + estimatedOutput,
+                    cost: estimatedCost
+                  });
                 }
               }
               

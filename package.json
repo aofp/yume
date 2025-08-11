@@ -9,7 +9,7 @@
     "dev": "vite",
     "server": "node server.js",
     "server:cli": "node server-cli.js",
-    "server:wsl": "wsl --exec bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && /usr/bin/node server-claude-direct.js\"",
+    "server:wsl": "wsl --exec bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && /usr/bin/node --expose-gc --max-old-space-size=2048 server-claude-direct.js\"",
     "server:multi": "node server-claude-multi.js",
     "build": "vite build",
     "build:electron": "npm run build && electron-builder",

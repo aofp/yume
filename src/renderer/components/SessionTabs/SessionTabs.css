@@ -109,7 +109,19 @@
   -webkit-app-region: no-drag;
 }
 
-/* Subtle ripple effect removed - no relative positioning */
+/* Ripple effect with animation */
+@keyframes ripple-expand {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.4;
+  }
+  100% {
+    width: 60px;
+    height: 60px;
+    opacity: 0;
+  }
+}
 
 .session-tab::before {
   content: '';
@@ -119,16 +131,31 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), 0.2);
   transform: translate(-50%, -50%);
-  transition: width 0.6s, height 0.6s, opacity 0.6s;
-  opacity: 0;
+  pointer-events: none;
 }
 
-.session-tab:active::before {
-  width: 50px;
-  height: 50px;
-  opacity: 1;
+.session-tab.ripple-active::before {
+  animation: ripple-expand 0.4s ease-out;
+}
+
+.session-tab.ripple-held::after {
+  content: 'held';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: rgba(var(--accent-rgb), 0.5);
+  text-transform: lowercase;
+  pointer-events: none;
+  animation: fade-in 0.2s ease-in;
+}
+
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .session-tab:hover {
@@ -264,16 +291,26 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), 0.2);
   transform: translate(-50%, -50%);
-  transition: width 0.4s, height 0.4s, opacity 0.4s;
-  opacity: 0;
+  pointer-events: none;
 }
 
-.tab-new:active::before {
-  width: 40px;
-  height: 40px;
-  opacity: 1;
+.tab-new.ripple-active::before {
+  animation: ripple-expand 0.4s ease-out;
+}
+
+.tab-new.ripple-held::after {
+  content: 'held';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: rgba(var(--accent-rgb), 0.5);
+  text-transform: lowercase;
+  pointer-events: none;
+  animation: fade-in 0.2s ease-in;
 }
 
 .tab-new:hover {
@@ -314,16 +351,26 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.2);
   transform: translate(-50%, -50%);
-  transition: width 0.4s, height 0.4s, opacity 0.4s;
-  opacity: 0;
+  pointer-events: none;
 }
 
-.tab-recent:active::before {
-  width: 40px;
-  height: 40px;
-  opacity: 1;
+.tab-recent.ripple-active::before {
+  animation: ripple-expand 0.4s ease-out;
+}
+
+.tab-recent.ripple-held::after {
+  content: 'held';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: lowercase;
+  pointer-events: none;
+  animation: fade-in 0.2s ease-in;
 }
 
 .tab-recent:hover {

@@ -2,7 +2,7 @@
 
 .message {
   position: relative;
-  margin-bottom: 0;
+  margin-bottom: 1px;
   animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -148,7 +148,7 @@
 }
 
 .init-path {
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: 'Fira Code', monospace;
   color: #606060;
   opacity: 0.5;
   font-size: 10px;
@@ -221,7 +221,7 @@
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 12px;
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: 'Fira Code', monospace;
 }
 
 .markdown-content pre {
@@ -261,7 +261,7 @@
 .code-language {
   color: #808080;
   font-size: 10px;
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: 'Fira Code', monospace;
   text-transform: lowercase;
   padding-left: 2px;
 }
@@ -289,10 +289,20 @@
   transform: scale(0.95);
 }
 
-.markdown-content h1,
-.markdown-content h2,
-.markdown-content h3 {
+.markdown-content h1 {
   color: #ff9999;
+  margin: 16px 0 8px 0;
+  font-weight: 500;
+}
+
+.markdown-content h2 {
+  color: var(--accent-color);
+  margin: 16px 0 8px 0;
+  font-weight: 500;
+}
+
+.markdown-content h3 {
+  color: #808080;
   margin: 16px 0 8px 0;
   font-weight: 500;
 }
@@ -451,7 +461,7 @@ ol {
 .tool-result.standalone .result-content {
   margin: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 11px;
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.8);
   white-space: pre-wrap;
   word-break: break-all;
@@ -474,14 +484,24 @@ ol {
   margin: 0;
 }
 
-.diff-file-path {
-  display: block;
-  color: rgba(255, 255, 255, 0.9);
-  font-family: 'Fira Code', monospace;
-  font-size: 11px;
+.diff-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
   margin-bottom: 4px;
+}
+
+.diff-icon {
+  color: rgba(255, 153, 153, 0.7);
+  flex-shrink: 0;
+}
+
+.diff-file-path {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
   line-height: 1.4;
-  font-weight: 500;
+  font-weight: 400;
 }
 
 .diff-content {
@@ -489,7 +509,7 @@ ol {
   margin: 0;
   padding: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 11px;
+  font-size: 9px;
   background: transparent;
   overflow-x: auto;
 }
@@ -506,7 +526,7 @@ ol {
   color: rgba(255, 255, 255, 0.3);
   text-align: right;
   flex-shrink: 0;
-  font-size: 10px;
+  font-size: 9px;
   margin-right: 8px;
 }
 
@@ -525,36 +545,53 @@ ol {
   color: #ff9999;
 }
 
+.diff-summary {
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 2px 0;
+  padding-left: 20px;
+}
+
 /* Edit tool use diff display */
 .tool-use-edit {
-  display: block;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
   margin: 0;
   padding: 0;
 }
 
+.tool-use-edit.standalone {
+  display: flex;
+  width: 100%;
+}
+
 .edit-header {
-  display: block;
-  margin-bottom: 4px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 0;
 }
 
 .edit-action {
   color: var(--accent-color);
   font-weight: 500;
-  font-size: 11px;
+  font-size: 9px;
   margin-right: 8px;
 }
 
 .edit-file {
   color: rgba(255, 255, 255, 0.9);
   font-family: 'Fira Code', monospace;
-  font-size: 11px;
+  font-size: 9px;
   display: block;
   margin-top: 4px;
 }
 
 .edit-diff {
   font-family: 'Fira Code', monospace;
-  font-size: 11px;
+  font-size: 9px;
   margin: 0;
   padding: 0;
 }
@@ -624,7 +661,7 @@ ol {
   display: inline-flex;
   align-items: center;
   margin-right: 6px;
-  color: rgba(128, 128, 128, 0.6);
+  color: var(--accent-color);
   animation: iconBounce 0.5s ease;
 }
 
@@ -640,7 +677,7 @@ ol {
 
 .tool-detail {
   color: #ffffff;
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: 'Fira Code', monospace;
   font-size: 10px;
   opacity: 1;
   max-width: 300px;
@@ -648,7 +685,7 @@ ol {
   text-overflow: ellipsis;
   white-space: nowrap;
   position: relative;
-  top: 2px;
+  top: 1px;
 }
 
 /* Tool Results */
@@ -673,7 +710,7 @@ ol {
 .elapsed-time {
   color: #808080;
   font-size: 10px;
-  font-family: 'SF Mono', Monaco, monospace;
+  font-family: 'Fira Code', monospace;
   padding: 0 !important;
   margin: 0 !important;
   border: none !important;
@@ -715,7 +752,7 @@ ol {
 .read-content {
   margin: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 11px;
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
   word-break: break-all;
@@ -734,7 +771,7 @@ ol {
   border-radius: 4px;
   padding: 8px;
   font-family: 'Fira Code', monospace;
-  font-size: 10px;
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.85);
   white-space: pre-wrap;
   word-break: break-all;
@@ -744,8 +781,19 @@ ol {
   display: block;
 }
 
+.bash-more {
+  display: block;
+  margin-top: 2px;
+  font-size: 9px;
+  color: rgba(128, 128, 128, 0.6);
+  font-family: 'Fira Code', monospace;
+  cursor: default;
+  opacity: 0.8;
+}
+
 /* Search output styling */
-.tool-result.search-output {
+.tool-result.search-output,
+.tool-result.generic-output {
   display: block !important;
   background: transparent;
   border: none;
@@ -756,20 +804,20 @@ ol {
 .search-content {
   margin: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 11px;
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
   word-break: break-all;
 }
 
-.read-more, .search-more {
+.read-more, .search-more, .result-more {
   display: block;
   margin-top: 2px;
   font-size: 9px;
-  color: rgba(128, 128, 128, 0.6);
+  color: rgba(255, 255, 255, 0.7);
   font-family: 'Fira Code', monospace;
   cursor: default;
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .result-icon {
@@ -777,8 +825,8 @@ ol {
 }
 
 .result-text {
-  font-family: 'SF Mono', Monaco, monospace;
-  font-size: 10px;
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
 }
 
 /* Result Messages */
@@ -929,18 +977,18 @@ ol {
 
 /* File Diff Styles */
 .tool-result.file-diff {
-  background: rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 153, 153, 0.1);
-  border-radius: 8px;
-  padding: 6px;
+  display: block !important;
+  background: transparent;
+  border: none;
+  padding: 0;
   margin: 2px 0;
   max-width: 100%;
   overflow-x: auto;
 }
 
 .diff-content {
-  font-family: 'SF Mono', Monaco, monospace;
-  font-size: 11px;
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
   line-height: 1.4;
   color: #a0a0a0;
   white-space: pre-wrap;
@@ -984,8 +1032,6 @@ ol {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  margin-top: 4px;
-  padding-left: 20px;
 }
 
 .todo-item {
@@ -1055,6 +1101,7 @@ ol {
 
 .tool-use.todo-write .tool-detail {
   color: rgba(255, 255, 255, 0.8);
+  font-family: 'Fira Code', monospace;
   font-size: 10px;
   opacity: 1;
 }

@@ -10,6 +10,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Only provide code fixes, never execute server commands
 - If the app isn't working, provide fixes but let the user restart
 
+**NEVER BUILD THE APP** - DO NOT run build commands unless explicitly asked:
+- `npm run build` - NEVER run this unless user explicitly asks
+- `npm run dist:*` - NEVER run distribution builds unless requested
+- Only fix code, don't test builds unless specifically requested
+
 ## Project Overview
 
 yurucode is a minimal Electron/React desktop application that provides a lightweight UI for the Claude CLI (not SDK). The app features an ultra-minimal black OLED theme with pastel red (#ff9999) and magenta (#ff99cc) accents. It directly spawns the Claude CLI binary and parses its stream-json output.

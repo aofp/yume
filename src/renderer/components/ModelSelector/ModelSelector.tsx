@@ -16,6 +16,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   onChange 
 }) => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isHighlighted, setIsHighlighted] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   
   const selectedModel = models.find(m => m.id === value) || models[0];
@@ -36,6 +37,19 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     };
   }, [isOpen]);
 
+  // Listen for Ctrl+O to highlight the selector
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        setIsHighlighted(true);
+        setTimeout(() => setIsHighlighted(false), 1000);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
+
   const handleModelSelect = (modelId: string) => {
     onChange?.(modelId);
     setIsOpen(false);
@@ -44,7 +58,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   return (
     <div className="model-selector" ref={dropdownRef}>
       <button 
-        className="model-selector-trigger"
+        className={`model-selector-trigger ${isHighlighted ? 'highlighted' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
         title="select model (ctrl+o)"
       >

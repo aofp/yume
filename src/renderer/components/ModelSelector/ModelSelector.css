@@ -19,7 +19,8 @@
   cursor: default;
 }
 
-.model-selector-trigger:hover {
+.model-selector-trigger:hover,
+.model-selector-trigger.highlighted {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 0.2);

@@ -3,15 +3,14 @@ import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { 
-  IconBolt, 
+  IconBolt,
   IconFolder, 
   IconAlertTriangle, 
   IconCheck, 
   IconX, 
   IconLock,
-  IconCircleCheck,
-  IconCircleDot,
-  IconCircle,
+  IconDots,
+  IconMinus,
   IconChecklist,
   IconLoader2,
   IconCopy,
@@ -31,7 +30,8 @@ import {
   IconNotebook,
   IconServer,
   IconTerminal2,
-  IconPlayerStop
+  IconPlayerStop,
+  IconScissors
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
@@ -93,89 +93,90 @@ interface ContentBlock {
 // Tool display configurations
 const TOOL_DISPLAYS: Record<string, (input: any) => { icon: React.ReactNode; action: string; detail: string; todos?: any[] }> = {
   'Read': (i) => ({ 
-    icon: <IconFileText size={14} stroke={1.5} />, 
+    icon: <IconFileText size={14} stroke={1.5} className="tool-icon" />, 
     action: 'reading', 
     detail: formatPath(i?.file_path) 
   }),
   'Write': (i) => ({ 
-    icon: <IconFile size={14} stroke={1.5} />, 
+    icon: <IconFile size={14} stroke={1.5} className="tool-icon" />, 
     action: 'writing', 
     detail: formatPath(i?.file_path) 
   }),
   'Edit': (i) => ({ 
-    icon: <IconEdit size={14} stroke={1.5} />, 
+    icon: <IconEdit size={14} stroke={1.5} className="tool-icon" />, 
     action: 'editing', 
-    detail: formatPath(i?.file_path) + (i?.old_string ? ' • ' + getChangePreview(i.old_string, i.new_string) : '')
+    detail: formatPath(i?.file_path)
   }),
   'MultiEdit': (i) => ({ 
-    icon: <IconEditCircle size={14} stroke={1.5} />, 
-    action: 'multi-editing', 
-    detail: `${formatPath(i?.file_path)} • ${i?.edits?.length || 0} changes`
+    icon: <IconEditCircle size={14} stroke={1.5} className="tool-icon" />, 
+    action: 'editing', 
+    detail: formatPath(i?.file_path)
   }),
   'Bash': (i) => ({ 
-    icon: <IconTerminal size={14} stroke={1.5} />, 
+    icon: <IconTerminal size={14} stroke={1.5} className="tool-icon" />, 
     action: 'running', 
     detail: formatCommand(i?.command)
   }),
   'TodoWrite': (i) => ({ 
-    icon: <IconChecklist size={14} stroke={1.5} />, 
+    icon: <IconChecklist size={14} stroke={1.5} className="tool-icon" />, 
     action: 'updating todos', 
     detail: formatTodos(i?.todos),
     todos: i?.todos
   }),
   'WebSearch': (i) => ({ 
-    icon: <IconWorld size={14} stroke={1.5} />, 
+    icon: <IconWorld size={14} stroke={1.5} className="tool-icon" />, 
     action: 'searching web', 
     detail: `"${i?.query || ''}"`
   }),
   'WebFetch': (i) => ({ 
-    icon: <IconDownload size={14} stroke={1.5} />, 
+    icon: <IconDownload size={14} stroke={1.5} className="tool-icon" />, 
     action: 'fetching', 
     detail: formatUrl(i?.url)
   }),
   'Grep': (i) => ({ 
-    icon: <IconSearch size={14} stroke={1.5} />, 
+    icon: <IconSearch size={14} stroke={1.5} className="tool-icon" />, 
     action: 'searching', 
     detail: `"${i?.pattern || ''}" in ${formatPath(i?.path || '.')}`
   }),
   'Glob': (i) => ({ 
-    icon: <IconFileSearch size={14} stroke={1.5} />, 
+    icon: <IconFileSearch size={14} stroke={1.5} className="tool-icon" />, 
     action: 'finding', 
     detail: i?.pattern || 'files'
   }),
   'LS': (i) => ({ 
-    icon: <IconFolderOpen size={14} stroke={1.5} />, 
+    icon: <IconFolderOpen size={14} stroke={1.5} className="tool-icon" />, 
     action: 'listing', 
     detail: formatPath(i?.path)
   }),
   'Task': (i) => ({ 
-    icon: <IconRobot size={14} stroke={1.5} />, 
+    icon: <IconRobot size={14} stroke={1.5} className="tool-icon" />, 
     action: i?.description || 'running task', 
     detail: i?.subagent_type || 'agent'
   }),
   'ExitPlanMode': (i) => ({ 
-    icon: <IconLogout size={14} stroke={1.5} />, 
+    icon: <IconLogout size={14} stroke={1.5} className="tool-icon" />, 
     action: 'plan complete', 
     detail: 'ready to execute'
   }),
   'NotebookEdit': (i) => ({ 
-    icon: <IconNotebook size={14} stroke={1.5} />, 
+    icon: <IconNotebook size={14} stroke={1.5} className="tool-icon" />, 
     action: 'editing notebook', 
     detail: formatPath(i?.notebook_path)
   }),
   'BashOutput': (i) => ({ 
-    icon: <IconTerminal2 size={14} stroke={1.5} />, 
+    icon: <IconTerminal2 size={14} stroke={1.5} className="tool-icon" />, 
     action: 'reading output', 
     detail: `bash ${i?.bash_id || 'session'}`
   }),
   'KillBash': (i) => ({ 
-    icon: <IconPlayerStop size={14} stroke={1.5} />, 
+    icon: <IconPlayerStop size={14} stroke={1.5} className="tool-icon" />, 
     action: 'stopping', 
     detail: `bash ${i?.shell_id || 'session'}`
   })
 };
 
 // Helper function to detect and format MCP tools
+// Note: formatToolInput is defined below with other helper functions
 const getMCPToolDisplay = (toolName: string, input: any) => {
   // MCP tools follow pattern: mcp__<server>__<tool>
   if (toolName.startsWith('mcp__')) {
@@ -183,10 +184,23 @@ const getMCPToolDisplay = (toolName: string, input: any) => {
     const server = parts[1] || 'server';
     const tool = parts[2] || 'tool';
     
+    // Use simplified formatting here since formatToolInput isn't defined yet
+    let detail = server;
+    if (input) {
+      if (typeof input === 'string') {
+        detail += ` • ${input.substring(0, 50)}`;
+      } else if (typeof input === 'object') {
+        const keys = Object.keys(input);
+        if (keys.length > 0) {
+          detail += ` • ${keys.slice(0, 2).join(', ')}`;
+        }
+      }
+    }
+    
     return {
-      icon: <IconServer size={14} stroke={1.5} />,
+      icon: <IconServer size={14} stroke={1.5} className="tool-icon" />,
       action: `mcp: ${tool.replace(/_/g, ' ')}`,
-      detail: `${server} • ${JSON.stringify(input).substring(0, 50)}...`
+      detail
     };
   }
   return null;
@@ -288,6 +302,38 @@ const getChangePreview = (oldStr?: string, newStr?: string) => {
   return `Replacing "${oldPreview}"`;
 };
 
+const formatToolInput = (input: any): string => {
+  if (!input) return '';
+  
+  // For simple values
+  if (typeof input === 'string') return input.length > 50 ? input.substring(0, 50) + '...' : input;
+  if (typeof input === 'number' || typeof input === 'boolean') return String(input);
+  
+  // For objects/arrays, extract meaningful info
+  if (typeof input === 'object') {
+    // Check for common patterns
+    if (input.file_path) return formatPath(input.file_path);
+    if (input.path) return formatPath(input.path);
+    if (input.command) return formatCommand(input.command);
+    if (input.url) return formatUrl(input.url);
+    if (input.query) return `"${input.query}"`;
+    if (input.pattern) return `"${input.pattern}"`;
+    if (input.prompt) return input.prompt.substring(0, 50) + '...';
+    
+    // For arrays, show count
+    if (Array.isArray(input)) return `${input.length} items`;
+    
+    // For other objects, show key count
+    const keys = Object.keys(input);
+    if (keys.length > 0) {
+      const preview = keys.slice(0, 2).map(k => `${k}: ${String(input[k]).substring(0, 20)}`).join(', ');
+      return preview + (keys.length > 2 ? '...' : '');
+    }
+  }
+  
+  return '';
+};
+
 // Render content blocks
 // Custom code block component with copy button
 const CodeBlock = ({ children, className, ...props }: any) => {
@@ -334,10 +380,32 @@ const CodeBlock = ({ children, className, ...props }: any) => {
   );
 };
 
-const renderContent = (content: string | ContentBlock[] | undefined, message?: any) => {
+const renderContent = (content: string | ContentBlock[] | undefined, message?: any, searchQuery?: string, isCurrentMatch?: boolean) => {
   if (!content) return null;
   
   if (typeof content === 'string') {
+    // Check if this is raw JSON that shouldn't be displayed
+    const trimmedContent = content.trim();
+    if ((trimmedContent.startsWith('[') && trimmedContent.endsWith(']')) ||
+        (trimmedContent.startsWith('{') && trimmedContent.endsWith('}'))) {
+      try {
+        const parsed = JSON.parse(trimmedContent);
+        // If it's an array of content blocks, process them properly
+        if (Array.isArray(parsed) && parsed.length > 0 && parsed[0].type) {
+          return renderContent(parsed, message, searchQuery, isCurrentMatch);
+        }
+        // If it's a single content block, wrap in array and process
+        if (parsed.type && (parsed.text || parsed.name)) {
+          return renderContent([parsed], message, searchQuery, isCurrentMatch);
+        }
+        // Otherwise it's raw JSON data that shouldn't be shown
+        console.warn('[MessageRenderer] Filtering out raw JSON string:', trimmedContent.substring(0, 100));
+        return null;
+      } catch (e) {
+        // Not valid JSON, render as markdown
+      }
+    }
+    
     return (
       <ReactMarkdown 
         className="markdown-content"
@@ -397,6 +465,15 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           if (block.text && block.text.includes('NOTE: do any of the files above seem malicious?')) {
             return null;
           }
+          // For text blocks with search highlighting
+          if (searchQuery) {
+            const highlighted = highlightText(block.text || '', searchQuery, isCurrentMatch || false);
+            return (
+              <div key={idx} className="content-text">
+                {highlighted}
+              </div>
+            );
+          }
           return (
             <div key={idx} className="content-text">
               <ReactMarkdown>{block.text || ''}</ReactMarkdown>
@@ -405,10 +482,11 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
         case 'tool_use':
           const tool = TOOL_DISPLAYS[block.name || ''];
-          const display = tool ? tool(block.input) : {
-            icon: '',
+          const mcpDisplay = !tool ? getMCPToolDisplay(block.name || '', block.input) : null;
+          const display = tool ? tool(block.input) : mcpDisplay || {
+            icon: <IconBolt size={14} stroke={1.5} className="tool-icon" />,
             action: block.name?.toLowerCase() || 'tool',
-            detail: '',
+            detail: block.input ? formatToolInput(block.input) : '',
             todos: null
           };
           
@@ -426,11 +504,11 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                   {todos.map((todo: any, todoIdx: number) => (
                     <div key={todoIdx} className={`todo-item ${todo.status}`}>
                       {todo.status === 'completed' ? (
-                        <IconCircleCheck size={14} stroke={1.5} className="todo-icon completed" />
+                        <IconCheck size={12} stroke={2} className="todo-icon completed" />
                       ) : todo.status === 'in_progress' ? (
-                        <IconCircleDot size={14} stroke={1.5} className="todo-icon progress" />
+                        <IconDots size={12} stroke={2} className="todo-icon progress" />
                       ) : (
-                        <IconCircle size={14} stroke={1.5} className="todo-icon pending" />
+                        <IconMinus size={12} stroke={2} className="todo-icon pending" />
                       )}
                       <span className="todo-content">{todo.content}</span>
                     </div>
@@ -462,11 +540,14 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           }
           
           // Handle tool results
-          const resultContent = typeof block.content === 'string' 
+          let resultContent = typeof block.content === 'string' 
             ? block.content 
             : typeof block.content === 'object' && block.content !== null
               ? JSON.stringify(block.content, null, 2)
               : '';
+          
+          // Trim trailing newlines from tool results
+          resultContent = resultContent.replace(/\n+$/, '');
           
           // Check if this is a file operation result (Edit, MultiEdit, Write)
           const prevBlock = content[idx - 1];
@@ -524,7 +605,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             // Strip out system-reminder tags from read operations
             let cleanContent = resultContent;
             const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
-            cleanContent = cleanContent.replace(reminderRegex, '').trim();
+            cleanContent = cleanContent.replace(reminderRegex, '');
+            // Trim trailing newlines
+            cleanContent = cleanContent.replace(/\n+$/, '');
             
             const allLines = cleanContent.split('\n');
             const visibleLines = allLines.slice(0, 10);
@@ -543,7 +626,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
           // Limit search operation outputs to 10 lines
           if (isSearchOperation && resultContent) {
-            const allLines = resultContent.split('\n');
+            // Trim trailing newlines
+            const trimmedContent = resultContent.replace(/\n+$/, '');
+            const allLines = trimmedContent.split('\n');
             const visibleLines = allLines.slice(0, 10);
             const hiddenCount = allLines.length - 10;
             const hasMore = hiddenCount > 0;
@@ -558,13 +643,82 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             );
           }
           
-          // Always show full content for file operations (diffs)
+          // Show formatted diff for file operations
           if (isFileOperation && resultContent) {
+            // Check if this is an Edit/MultiEdit result
+            const isEditResult = (resultContent.includes('has been updated') && resultContent.includes('→')) ||
+                                (resultContent.includes('Applied') && resultContent.includes('edits to'));
+            
+            if (isEditResult) {
+              // Parse the Edit result to extract the diff
+              const lines = resultContent.split('\n');
+              
+              // Extract file path from Edit or MultiEdit output
+              let filePathMatch = resultContent.match(/The file (.+?) has been updated/);
+              if (!filePathMatch) {
+                filePathMatch = resultContent.match(/Applied \d+ edits? to (.+?):/);
+              }
+              let filePath = filePathMatch ? filePathMatch[1] : 'file';
+              
+              // Convert to relative path
+              filePath = formatPath(filePath);
+              
+              // Find the actual diff part (after "Here's the result of running" or "Applied X edits")
+              let diffStartIdx = lines.findIndex(line => line.includes("Here's the result of running"));
+              if (diffStartIdx === -1) {
+                diffStartIdx = lines.findIndex(line => line.match(/^\d+\./));
+              }
+              const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
+              
+              return (
+                <div key={idx} className="tool-result file-diff">
+                  <div className="diff-header">
+                    <IconEdit size={12} stroke={1.5} className="diff-icon" />
+                    <span className="diff-file-path">{filePath}</span>
+                  </div>
+                  <div className="diff-content">
+                    {diffLines.map((line, lineIdx) => {
+                      // Parse line numbers and content
+                      const lineMatch = line.match(/^\s*(\d+)→(.*)$/);
+                      if (lineMatch) {
+                        const [, lineNum, content] = lineMatch;
+                        // Check if content starts with + or - for coloring
+                        const isAdded = content.trim().startsWith('+');
+                        const isRemoved = content.trim().startsWith('-');
+                        const className = isAdded ? 'added' : isRemoved ? 'removed' : '';
+                        return (
+                          <div key={lineIdx} className={`diff-line ${className}`}>
+                            <span className="line-number">{lineNum}</span>
+                            <span className="line-content">{content}</span>
+                          </div>
+                        );
+                      }
+                      // Skip empty lines and stray brackets
+                      if (line.trim() === '' || line.trim() === '}') {
+                        return null;
+                      }
+                      // For MultiEdit summaries
+                      if (line.match(/^\d+\. /)) {
+                        return <div key={lineIdx} className="diff-summary">{line}</div>;
+                      }
+                      return null;
+                    })}
+                  </div>
+                </div>
+              );
+            }
+            
+            // For Write operations, just show success message
             return (
-              <div key={idx} className="tool-result file-diff">
-                <pre className="diff-content">{resultContent}</pre>
+              <div key={idx} className="tool-result file-write">
+                <span className="result-text">file written successfully</span>
               </div>
             );
+          }
+          
+          // If we've handled file operations above, don't show them again
+          if (isFileOperation) {
+            return null;
           }
           
           // Filter out verbose outputs for non-file/non-read operations
@@ -594,9 +748,11 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
           // Show other tool results in a minimal way
           if (resultContent && resultContent.trim()) {
+            // Trim trailing newlines
+            const trimmedContent = resultContent.replace(/\n+$/, '').trim();
             return (
               <div key={idx} className="tool-result minimal">
-                <span className="result-text">{resultContent.substring(0, 100)}{resultContent.length > 100 ? '...' : ''}</span>
+                <span className="result-text">{trimmedContent.substring(0, 100)}{trimmedContent.length > 100 ? '...' : ''}</span>
               </div>
             );
           }
@@ -604,6 +760,8 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return null;
           
         default:
+          // Never show raw JSON or unknown block types
+          console.warn('[MessageRenderer] Unknown content block type:', block.type);
           return null;
       }
     });
@@ -612,8 +770,32 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
   return null;
 };
 
+// Helper function to highlight search matches
+const highlightText = (text: string, searchQuery: string, isCurrentMatch: boolean) => {
+  if (!searchQuery || !text) return text;
+  
+  const parts = text.split(new RegExp(`(${searchQuery.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')})`, 'gi'));
+  
+  return parts.map((part, i) => {
+    if (part.toLowerCase() === searchQuery.toLowerCase()) {
+      return (
+        <span key={i} className={`search-highlight ${isCurrentMatch ? 'current' : ''}`}>
+          {part}
+        </span>
+      );
+    }
+    return part;
+  });
+};
+
 // Main message renderer component - memoized for performance
-const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isLast?: boolean }> = ({ message, index, isLast = false }) => {
+const MessageRendererBase: React.FC<{ 
+  message: ClaudeMessage; 
+  index: number; 
+  isLast?: boolean;
+  searchQuery?: string;
+  isCurrentMatch?: boolean;
+}> = ({ message, index, isLast = false, searchQuery = '', isCurrentMatch = false }) => {
   // Get the current session to access previous messages for context
   const store = useClaudeCodeStore.getState();
   const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
@@ -771,11 +953,13 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
                     if (text.startsWith('[Attached text]:') || text.includes('[Attached text]:')) {
                       pastedCount++;
                       attachmentTypes.push('text');
+                      // Don't add to userTexts - we only show in attachment indicator
                     } else if (text.startsWith('[Attached image') || text.includes('[Attached image')) {
                       pastedCount++;
                       attachmentTypes.push('image');
+                      // Don't add to userTexts - we only show in attachment indicator
                     } else {
-                      // This is regular user text - collect all non-attachment texts
+                      // This is regular user text
                       userTexts.push(text);
                     }
                   } else if (item.type === 'image') {
@@ -912,7 +1096,20 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
             </button>
           </div>
           <div className="message-bubble">
-            {displayText}
+            {typeof displayText === 'string' && displayText.includes('\n') ? (
+              <pre style={{ 
+                whiteSpace: 'pre-wrap', 
+                wordBreak: 'break-word',
+                margin: 0,
+                fontFamily: 'monospace',
+                fontSize: '11px',
+                lineHeight: '1.4'
+              }}>{highlightText(displayText, searchQuery, isCurrentMatch)}</pre>
+            ) : typeof displayText === 'string' ? (
+              <span>{highlightText(displayText, searchQuery, isCurrentMatch)}</span>
+            ) : (
+              displayText
+            )}
           </div>
         </div>
       );
@@ -926,11 +1123,35 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       // Always show buttons for non-streaming assistant messages
       const showButtons = message.streaming !== true;
       
+      // Don't render if content is a raw JSON string or object that's not properly formatted
+      let contentToRender = message.message?.content;
+      if (typeof contentToRender === 'string') {
+        // Check if it's a JSON string that shouldn't be shown
+        if ((contentToRender.startsWith('{') && contentToRender.endsWith('}')) ||
+            (contentToRender.startsWith('[') && contentToRender.endsWith(']'))) {
+          try {
+            const parsed = JSON.parse(contentToRender);
+            // If it successfully parses as JSON and has type/text structure, convert to proper content blocks
+            if (Array.isArray(parsed) && parsed.some(item => item.type)) {
+              contentToRender = parsed;
+            } else if (parsed.type && parsed.text) {
+              contentToRender = [parsed];
+            } else {
+              // It's raw JSON data that shouldn't be shown
+              console.warn('[MessageRenderer] Filtering out raw JSON content');
+              contentToRender = null;
+            }
+          } catch (e) {
+            // Not JSON, treat as regular text
+          }
+        }
+      }
+      
       return (
         <div className="message assistant">
           <div className="message-content">
             <div className="message-bubble">
-              {renderContent(message.message?.content, message)}
+              {contentToRender && renderContent(contentToRender, message, searchQuery, isCurrentMatch)}
             </div>
           </div>
           {showButtons && (
@@ -961,10 +1182,11 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
       const toolName = message.message?.name || 'unknown tool';
       const toolInput = message.message?.input || {};
       const tool = TOOL_DISPLAYS[toolName];
-      const display = tool ? tool(toolInput) : {
-        icon: <IconTool size={14} stroke={1.5} />,
+      const mcpDisplay = !tool ? getMCPToolDisplay(toolName, toolInput) : null;
+      const display = tool ? tool(toolInput) : mcpDisplay || {
+        icon: <IconBolt size={14} stroke={1.5} />,
         action: toolName.toLowerCase(),
-        detail: JSON.stringify(toolInput).substring(0, 100)
+        detail: formatToolInput(toolInput)
       };
       
       // For TodoWrite tool, show the full todo list
@@ -982,11 +1204,11 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
                 {todos.map((todo: any, todoIdx: number) => (
                   <div key={todoIdx} className={`todo-item ${todo.status}`}>
                     {todo.status === 'completed' ? (
-                      <IconCircleCheck size={14} stroke={1.5} className="todo-icon completed" />
+                      <IconCheck size={12} stroke={2} className="todo-icon completed" />
                     ) : todo.status === 'in_progress' ? (
-                      <IconCircleDot size={14} stroke={1.5} className="todo-icon progress" />
+                      <IconDots size={12} stroke={2} className="todo-icon progress" />
                     ) : (
-                      <IconCircle size={14} stroke={1.5} className="todo-icon pending" />
+                      <IconMinus size={12} stroke={2} className="todo-icon pending" />
                     )}
                     <span className="todo-content">{todo.content}</span>
                   </div>
@@ -1013,33 +1235,32 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         
         return (
           <div className="message tool-message">
-            <div className="tool-use-edit">
-              <div className="edit-header">
-                <span className="edit-action">editing</span>
-                <span className="edit-file">{filePath}</span>
-              </div>
-              <div className="edit-diff">
-                {oldLines.length > 0 && oldLines[0] && (
-                  <div className="diff-section removed">
-                    {oldLines.map((line, idx) => (
-                      <div key={`old-${idx}`} className="diff-line removed">
-                        <span className="diff-marker">-</span>
-                        <span className="diff-text">{line}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-                {newLines.length > 0 && newLines[0] && (
-                  <div className="diff-section added">
-                    {newLines.map((line, idx) => (
-                      <div key={`new-${idx}`} className="diff-line added">
-                        <span className="diff-marker">+</span>
-                        <span className="diff-text">{line}</span>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
+            <div className="tool-use standalone">
+              <span className="tool-icon"><IconEdit size={14} stroke={1.5} /></span>
+              <span className="tool-action">editing</span>
+              <span className="tool-detail">{filePath}</span>
+            </div>
+            <div className="edit-diff">
+              {oldLines.length > 0 && oldLines[0] && (
+                <div className="diff-section removed">
+                  {oldLines.map((line, idx) => (
+                    <div key={`old-${idx}`} className="diff-line removed">
+                      <span className="diff-marker">-</span>
+                      <span className="diff-text">{line}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {newLines.length > 0 && newLines[0] && (
+                <div className="diff-section added">
+                  {newLines.map((line, idx) => (
+                    <div key={`new-${idx}`} className="diff-line added">
+                      <span className="diff-marker">+</span>
+                      <span className="diff-text">{line}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         );
@@ -1058,21 +1279,65 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
     case 'tool_result':
       // Standalone tool result message
       const resultContent = message.message?.content || message.message || '';
-      let contentStr = typeof resultContent === 'string' 
-        ? resultContent 
-        : JSON.stringify(resultContent, null, 2);
+      
+      // Extract plain text from JSON if it's a tool result with output
+      let contentStr = '';
+      if (typeof resultContent === 'string') {
+        // Check if it's JSON with tool_use_id and output
+        if (resultContent.includes('tool_use_id') && resultContent.includes('"output"')) {
+          try {
+            const parsed = JSON.parse(resultContent);
+            if (parsed.output) {
+              contentStr = parsed.output;
+            } else {
+              contentStr = resultContent;
+            }
+          } catch (e) {
+            contentStr = resultContent;
+          }
+        } else {
+          contentStr = resultContent;
+        }
+      } else if (typeof resultContent === 'object' && resultContent.output) {
+        contentStr = resultContent.output;
+      } else {
+        contentStr = typeof resultContent === 'string' ? resultContent : JSON.stringify(resultContent, null, 2);
+      }
+      
+      // Hide tool_use_error messages like "File has not been read yet"
+      if (contentStr.includes('<tool_use_error>') || 
+          contentStr.includes('File has not been read yet')) {
+        return null;
+      }
       
       // Strip out system-reminder tags from all tool results
       const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
-      contentStr = contentStr.replace(reminderRegex, '').trim();
+      contentStr = contentStr.replace(reminderRegex, '');
       
-      // Check if this is an Edit result - they contain "has been updated" and show line numbers
-      const isEditResult = contentStr.includes('has been updated') && contentStr.includes('→');
+      // Trim trailing newlines from tool results  
+      contentStr = contentStr.replace(/\n+$/, '');
+      
+      // Check if we should preserve formatting (for Read operations)
+      const prevMessage = index > 0 ? sessionMessages[index - 1] : null;
+      const isReadOperation = prevMessage?.type === 'tool_use' && prevMessage?.message?.name === 'Read';
+      
+      // Only trim if not a Read operation to preserve formatting
+      if (!isReadOperation) {
+        contentStr = contentStr.trim();
+      }
+      
+      // Check if this is an Edit result - they contain "has been updated" or "Applied" for MultiEdit
+      const isEditResult = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
+                          (contentStr.includes('Applied') && contentStr.includes('edits to'));
       
       if (isEditResult) {
         // Parse the Edit result to extract the diff
         const lines = contentStr.split('\n');
-        const filePathMatch = contentStr.match(/The file (.+?) has been updated/);
+        // Extract file path from Edit or MultiEdit output
+        let filePathMatch = contentStr.match(/The file (.+?) has been updated/);
+        if (!filePathMatch) {
+          filePathMatch = contentStr.match(/Applied \d+ edits? to (.+?):/);
+        }
         let filePath = filePathMatch ? filePathMatch[1] : 'file';
         
         // Convert Windows path to relative Unix path
@@ -1087,7 +1352,10 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         return (
           <div className="message tool-result-message">
             <div className="tool-result standalone file-edit">
-              <div className="diff-file-path">{filePath}</div>
+              <div className="diff-header">
+                <IconEdit size={12} stroke={1.5} className="diff-icon" />
+                <span className="diff-file-path">{filePath}</span>
+              </div>
               <div className="diff-content">
                 {diffLines.map((line, idx) => {
                   // Parse line numbers and content
@@ -1105,6 +1373,10 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
                       </div>
                     );
                   }
+                  // Skip empty lines and stray brackets
+                  if (line.trim() === '' || line.trim() === '}') {
+                    return null;
+                  }
                   return <div key={idx} className="diff-line">{line}</div>;
                 })}
               </div>
@@ -1113,10 +1385,8 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         );
       }
       
-      // Check if this is a Read operation result by looking at the previous message
-      const prevMessage = index > 0 ? sessionMessages[index - 1] : null;
-      const isReadResult = prevMessage?.type === 'tool_use' && 
-        prevMessage?.message?.name === 'Read';
+      // Check if this is a Read operation result (already have prevMessage from above)
+      const isReadResult = isReadOperation;
       
       // Check if this is a search operation result
       const isSearchResult = prevMessage?.type === 'tool_use' && 
@@ -1137,52 +1407,33 @@ const MessageRendererBase: React.FC<{ message: ClaudeMessage; index: number; isL
         return null;
       }
       
-      // Apply truncation for Read operations
-      if (isReadResult && contentStr) {
+      // Apply truncation for Read operations AND all tool results
+      if (contentStr) {
         const allLines = contentStr.split('\n');
-        const visibleLines = allLines.slice(0, 10);
-        const hiddenCount = allLines.length - 10;
+        const MAX_LINES = 10;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
         const hasMore = hiddenCount > 0;
+        
+        // Choose appropriate styling based on operation type
+        const className = isReadResult ? 'read-output' : 
+                         isSearchResult ? 'search-output' : 
+                         'generic-output';
         
         return (
           <div className="message tool-result-message">
-            <div className="tool-result standalone read-output">
+            <div className={`tool-result standalone ${className}`}>
               <pre className="result-content">{visibleLines.join('\n')}</pre>
               {hasMore && (
-                <div className="read-more">+ {hiddenCount} more lines</div>
+                <div className="result-more">+ {hiddenCount} more lines</div>
               )}
             </div>
           </div>
         );
       }
       
-      // Apply truncation for search operations
-      if (isSearchResult && contentStr) {
-        const allLines = contentStr.split('\n');
-        const visibleLines = allLines.slice(0, 10);
-        const hiddenCount = allLines.length - 10;
-        const hasMore = hiddenCount > 0;
-        
-        return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone search-output">
-              <pre className="result-content">{visibleLines.join('\n')}</pre>
-              {hasMore && (
-                <div className="search-more">+ {hiddenCount} more lines</div>
-              )}
-            </div>
-          </div>
-        );
-      }
-      
-      // For other tool results, show as before
-      return (
-        <div className="message tool-result-message">
-          <div className="tool-result standalone">
-            <pre className="result-content">{contentStr}</pre>
-          </div>
-        </div>
-      );
+      // If we get here and still have no content, return null
+      return null;
       
     case 'result':
       // Check if this is actually a success (even if subtype says error_during_execution)

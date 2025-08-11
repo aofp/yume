@@ -64,6 +64,12 @@ let activeProcesses = new Map();  // Map of sessionId -> process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
 let sessionIdCounter = 0;
 
+// Memory management
+const MAX_MESSAGE_HISTORY = 1000; // Limit message history per session
+const MAX_LINE_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB max buffer
+let lastGcTime = Date.now();
+const GC_INTERVAL = 5 * 60 * 1000; // Run GC every 5 minutes
+
 // Socket.IO connection handler
 io.on('connection', (socket) => {
   console.log('✨ ===== NEW CLIENT CONNECTION =====');
@@ -274,8 +280,9 @@ io.on('connection', (socket) => {
       // Log process info
       console.log(`Process spawned with PID: ${child.pid}`);
       
-      // Process streaming output
+      // Process streaming output with memory limits
       let lineBuffer = '';
+      let messageCount = 0;
       
       const processStreamLine = (line) => {
         if (!line.trim()) return;
@@ -363,13 +370,26 @@ io.on('connection', (socket) => {
                   timestamp: Date.now()
                 });
                 
-                // Save to session
+                // Save to session with memory management
                 session.messages.push({
                   type: 'assistant',
                   message: { content: textContent },
                   id: messageId,
                   timestamp: Date.now()
                 });
+                
+                // Trim message history if too large
+                if (session.messages.length > MAX_MESSAGE_HISTORY) {
+                  const trimCount = Math.floor(MAX_MESSAGE_HISTORY * 0.2); // Remove 20%
+                  session.messages.splice(0, trimCount);
+                  console.log(`🧹 Trimmed ${trimCount} old messages from session ${sessionId}`);
+                }
+                
+                messageCount++;
+              } else if (!hasText && jsonData.message?.content) {
+                // If there's no text but there are content blocks (e.g., only tool uses),
+                // don't send the raw JSON structure as assistant message
+                console.log('Assistant message with only tool uses, skipping text message');
               }
             }
             
@@ -454,6 +474,20 @@ io.on('connection', (socket) => {
       child.stdout.on('data', (data) => {
         const str = data.toString();
         console.log('STDOUT received:', str.length, 'bytes');
+        
+        // Prevent memory overflow from excessive buffering
+        if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {
+          console.error('⚠️ Line buffer overflow - clearing buffer');
+          lineBuffer = '';
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'warning',
+            message: 'Stream buffer overflow - some output may be lost',
+            timestamp: Date.now()
+          });
+          return;
+        }
+        
         lineBuffer += str;
         
         // Process complete lines
@@ -507,10 +541,22 @@ io.on('connection', (socket) => {
       
       child.on('close', (code) => {
         console.log(`Claude process exited with code ${code}`);
+        console.log(`Total messages processed: ${messageCount}`);
         
         // Process any remaining buffer
         if (lineBuffer.trim()) {
           processStreamLine(lineBuffer);
+        }
+        
+        // Clear line buffer to free memory
+        lineBuffer = '';
+        
+        // Run periodic garbage collection
+        const now = Date.now();
+        if (now - lastGcTime > GC_INTERVAL && global.gc) {
+          console.log('🧹 Running garbage collection');
+          global.gc();
+          lastGcTime = now;
         }
         
         // If we have a last assistant message, mark it as done streaming
@@ -541,6 +587,9 @@ io.on('connection', (socket) => {
       
       child.on('error', (error) => {
         console.error('Failed to spawn claude:', error);
+        
+        // Clean up on error
+        lineBuffer = '';
         let errorMessage = `Failed to run Claude: ${error.message}`;
         
         // Add helpful context based on error type
@@ -739,6 +788,7 @@ httpServer.listen(PORT, '0.0.0.0', () => {
   console.log(`🔑 Using claude CLI directly - NO SDK, NO API KEY`);
   console.log(`📝 Running in ${process.platform === 'linux' ? 'WSL' : 'Windows'}`);
   console.log(`🔌 WebSocket ready for connections`);
+  console.log(`🧹 GC enabled: ${global.gc ? 'YES' : 'NO (run with --expose-gc)'}`);
   console.log('=========================================');
   
   // Write PID file for cleanup purposes
@@ -773,6 +823,19 @@ process.on('uncaughtException', (error) => {
   console.error('Error:', error);
   console.error('Stack:', error.stack);
   console.error('=================================');
+  
+  // Try to clean up before exit
+  try {
+    for (const [id, process] of activeProcesses) {
+      process.kill('SIGTERM');
+    }
+    activeProcesses.clear();
+    sessions.clear();
+    lastAssistantMessageIds.clear();
+  } catch (cleanupError) {
+    console.error('Cleanup error:', cleanupError);
+  }
+  
   process.exit(1);
 });
 
@@ -781,6 +844,13 @@ process.on('unhandledRejection', (reason, promise) => {
   console.error('Reason:', reason);
   console.error('Promise:', promise);
   console.error('==================================');
+  
+  // Don't exit on unhandled rejection but log memory usage
+  const memUsage = process.memoryUsage();
+  console.log('Memory usage:');
+  console.log(`  RSS: ${Math.round(memUsage.rss / 1024 / 1024)}MB`);
+  console.log(`  Heap Used: ${Math.round(memUsage.heapUsed / 1024 / 1024)}MB`);
+  console.log(`  Heap Total: ${Math.round(memUsage.heapTotal / 1024 / 1024)}MB`);
 });
 
 // Cleanup on exit
@@ -795,6 +865,7 @@ async function cleanup() {
   }
   activeProcesses.clear();
   sessions.clear();
+  lastAssistantMessageIds.clear();
   
   // Clean up PID file
   cleanupPidFile();

@@ -301,7 +301,9 @@ export class ClaudeCodeClient {
         type: message.type,
         streaming: message.streaming,
         hasContent: !!message.message?.content,
-        id: message.id
+        id: message.id,
+        hasUsage: !!message.usage,
+        usage: message.usage
       });
       handler(message);
     };
