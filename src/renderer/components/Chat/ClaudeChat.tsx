@@ -142,9 +142,13 @@ export const ClaudeChat: React.FC = () => {
   const [searchMatches, setSearchMatches] = useState<number[]>([]);
   const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [thinkingStartTime, setThinkingStartTime] = useState<number | null>(null);
+  const [thinkingElapsed, setThinkingElapsed] = useState(0);
+  const [scrollPositions, setScrollPositions] = useState<{ [sessionId: string]: number }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const previousSessionIdRef = useRef<string | null>(null);
   
   const {
     sessions,
@@ -170,9 +174,46 @@ export const ClaudeChat: React.FC = () => {
 
   // NO auto-selection - user must explicitly choose or create a session
 
+  // Save scroll position when scrolling
   useEffect(() => {
-    // Only autoscroll if user is already at the bottom
-    if (chatContainerRef.current) {
+    const handleScroll = () => {
+      if (chatContainerRef.current && currentSessionId) {
+        setScrollPositions(prev => ({
+          ...prev,
+          [currentSessionId]: chatContainerRef.current!.scrollTop
+        }));
+      }
+    };
+
+    const container = chatContainerRef.current;
+    if (container) {
+      container.addEventListener('scroll', handleScroll);
+      return () => container.removeEventListener('scroll', handleScroll);
+    }
+  }, [currentSessionId]);
+
+  // Restore scroll position when switching tabs
+  useEffect(() => {
+    if (currentSessionId && currentSessionId !== previousSessionIdRef.current) {
+      // Tab switched
+      if (chatContainerRef.current) {
+        const savedPosition = scrollPositions[currentSessionId];
+        if (savedPosition !== undefined) {
+          // Restore saved position
+          chatContainerRef.current.scrollTop = savedPosition;
+        } else {
+          // New session, scroll to bottom
+          messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+        }
+      }
+      previousSessionIdRef.current = currentSessionId;
+    }
+  }, [currentSessionId, scrollPositions]);
+
+  // Auto-scroll only for new messages in current session (not on tab switch)
+  useEffect(() => {
+    // Only autoscroll if user is already at the bottom AND we're not switching tabs
+    if (chatContainerRef.current && currentSessionId === previousSessionIdRef.current) {
       const container = chatContainerRef.current;
       const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 10;
       
@@ -181,6 +222,31 @@ export const ClaudeChat: React.FC = () => {
       }
     }
   }, [currentSession?.messages]);
+
+  // Track thinking time
+  useEffect(() => {
+    if (currentSession?.streaming) {
+      // Start timing when streaming begins
+      if (!thinkingStartTime) {
+        setThinkingStartTime(Date.now());
+        setThinkingElapsed(0);
+      }
+    } else {
+      // Reset when streaming stops
+      setThinkingStartTime(null);
+      setThinkingElapsed(0);
+    }
+  }, [currentSession?.streaming, thinkingStartTime]);
+
+  // Update elapsed time every 100ms for smooth display
+  useEffect(() => {
+    if (currentSession?.streaming && thinkingStartTime) {
+      const interval = setInterval(() => {
+        setThinkingElapsed(Math.floor((Date.now() - thinkingStartTime) / 1000));
+      }, 100);
+      return () => clearInterval(interval);
+    }
+  }, [currentSession?.streaming, thinkingStartTime]);
 
   // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {
@@ -198,6 +264,12 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         if (currentSessionId) {
           clearContext(currentSessionId);
+          // Clear scroll position for this session
+          setScrollPositions(prev => {
+            const newPositions = { ...prev };
+            delete newPositions[currentSessionId];
+            return newPositions;
+          });
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
@@ -247,7 +319,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, showHelpModal, showRecentModal, currentSession, setShowStatsModal, interruptSession]);
+  }, [searchVisible, currentSessionId, clearContext, showHelpModal, showRecentModal, currentSession, setShowStatsModal, interruptSession, setScrollPositions]);
 
   // Handle IPC event from menu for showing help modal
   useEffect(() => {
@@ -366,6 +438,12 @@ export const ClaudeChat: React.FC = () => {
       if (currentSessionId) {
         clearContext(currentSessionId);
         setInput('');
+        // Clear scroll position for this session
+        setScrollPositions(prev => {
+          const newPositions = { ...prev };
+          delete newPositions[currentSessionId];
+          return newPositions;
+        });
         return;
       }
     } else if (trimmedInput === '?') {
@@ -875,7 +953,12 @@ export const ClaudeChat: React.FC = () => {
             <div className="message-content">
               <div className="thinking-indicator-bottom">
                 <IconLoader2 size={14} stroke={1.5} className="spinning-loader" />
-                <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
+                <span className="thinking-text-wrapper">
+                  <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
+                  {thinkingElapsed > 0 && (
+                    <span className="thinking-timer">{thinkingElapsed}s</span>
+                  )}
+                </span>
               </div>
             </div>
           </div>
@@ -979,6 +1062,12 @@ export const ClaudeChat: React.FC = () => {
                       // Clear messages but keep session
                       if (currentSessionId) {
                         clearContext(currentSessionId);
+                        // Clear scroll position for this session
+                        setScrollPositions(prev => {
+                          const newPositions = { ...prev };
+                          delete newPositions[currentSessionId];
+                          return newPositions;
+                        });
                       }
                     }}
                     title="clear context (ctrl+l)"

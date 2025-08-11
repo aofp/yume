@@ -1,4 +1,9 @@
 const { app, BrowserWindow, Menu, dialog, ipcMain } = require('electron');
+
+// Set app name immediately on import for macOS
+if (process.platform === 'darwin') {
+  app.name = 'yurucode';
+}
 const path = require('path');
 const { spawn, execSync } = require('child_process');
 const Store = require('electron-store');
@@ -561,129 +566,7 @@ function createWindow() {
   });
 }
 
-function createMenu() {
-  // On Windows with frameless window, hide the menu bar
-  if (process.platform === 'win32') {
-    Menu.setApplicationMenu(null);
-    return;
-  }
-
-  const template = [
-    {
-      label: 'File',
-      submenu: [
-        {
-          label: 'Open Folder...',
-          accelerator: 'CmdOrCtrl+O',
-          click: async () => {
-            const result = await dialog.showOpenDialog(mainWindow, {
-              properties: ['openDirectory']
-            });
-            
-            if (!result.canceled && result.filePaths.length > 0) {
-              currentWorkingDirectory = result.filePaths[0];
-              console.log('Selected folder:', currentWorkingDirectory);
-              
-              // Restart server with new working directory
-              if (serverProcess) {
-                serverProcess.kill();
-                setTimeout(() => startServer(), 500);
-              }
-              
-              // Send to renderer
-              mainWindow.webContents.send('folder-changed', currentWorkingDirectory);
-            }
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'New Session',
-          accelerator: 'CmdOrCtrl+N',
-          click: () => {
-            mainWindow.webContents.send('new-session');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'Quit',
-          accelerator: process.platform === 'darwin' ? 'Cmd+Q' : 'Ctrl+Q',
-          click: () => {
-            app.quit();
-          }
-        }
-      ]
-    },
-    {
-      label: 'Edit',
-      submenu: [
-        { label: 'Undo', accelerator: 'CmdOrCtrl+Z', role: 'undo' },
-        { label: 'Redo', accelerator: 'Shift+CmdOrCtrl+Z', role: 'redo' },
-        { type: 'separator' },
-        { label: 'Cut', accelerator: 'CmdOrCtrl+X', role: 'cut' },
-        { label: 'Copy', accelerator: 'CmdOrCtrl+C', role: 'copy' },
-        { label: 'Paste', accelerator: 'CmdOrCtrl+V', role: 'paste' },
-        { label: 'Select All', accelerator: 'CmdOrCtrl+A', role: 'selectAll' }
-      ]
-    },
-    {
-      label: 'View',
-      submenu: [
-        { label: 'Reload', role: 'reload' },
-        { label: 'Toggle Developer Tools', role: 'toggleDevTools' },
-        { type: 'separator' },
-        { label: 'Actual Size', role: 'resetZoom' },
-        { label: 'Zoom In', role: 'zoomIn' },
-        { label: 'Zoom Out', role: 'zoomOut' }
-      ]
-    },
-    {
-      label: 'Help',
-      submenu: [
-        {
-          label: 'keyboard shortcuts',
-          click: () => {
-            // Send event to renderer to show the help modal
-            mainWindow.webContents.send('show-help-modal');
-          }
-        },
-        { type: 'separator' },
-        {
-          label: 'about yurucode',
-          click: () => {
-            dialog.showMessageBox(mainWindow, {
-              type: 'info',
-              title: 'about yurucode',
-              message: 'yurucode',
-              detail: 'Minimal Claude Code SDK IDE\nVersion 1.0.0',
-              buttons: ['OK']
-            });
-          }
-        }
-      ]
-    }
-  ];
-
-  // macOS specific menu adjustments
-  if (process.platform === 'darwin') {
-    template.unshift({
-      label: app.getName(),
-      submenu: [
-        { label: 'about yurucode', role: 'about' },
-        { type: 'separator' },
-        { label: 'Services', role: 'services', submenu: [] },
-        { type: 'separator' },
-        { label: 'hide yurucode', accelerator: 'Command+H', role: 'hide' },
-        { label: 'Hide Others', accelerator: 'Command+Shift+H', role: 'hideothers' },
-        { label: 'Show All', role: 'unhide' },
-        { type: 'separator' },
-        { label: 'Quit', accelerator: 'Command+Q', click: () => app.quit() }
-      ]
-    });
-  }
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
-}
+// Function removed - we're not using menus anymore
 
 // Duplicate handlers removed - they are registered at the top of the file
 
@@ -695,6 +578,9 @@ if (process.defaultApp) {
 } else {
   app.setAsDefaultProtocolClient('burntcode');
 }
+
+// Set app name early for macOS
+app.setName('yurucode');
 
 // App lifecycle
 app.whenReady().then(async () => {
@@ -714,7 +600,64 @@ app.whenReady().then(async () => {
   
   await startServer();
   createWindow();
-  createMenu();
+  
+  // Create minimal menu for macOS to show proper app name
+  if (process.platform === 'darwin') {
+    const template = [
+      {
+        label: 'yurucode',
+        submenu: [
+          { role: 'about', label: 'About yurucode' },
+          { type: 'separator' },
+          { role: 'services' },
+          { type: 'separator' },
+          { role: 'hide', label: 'Hide yurucode' },
+          { role: 'hideOthers' },
+          { role: 'unhide' },
+          { type: 'separator' },
+          { role: 'quit', label: 'Quit yurucode' }
+        ]
+      },
+      {
+        label: 'Edit',
+        submenu: [
+          { role: 'undo' },
+          { role: 'redo' },
+          { type: 'separator' },
+          { role: 'cut' },
+          { role: 'copy' },
+          { role: 'paste' },
+          { role: 'selectAll' }
+        ]
+      },
+      {
+        label: 'View',
+        submenu: [
+          { role: 'reload' },
+          { role: 'forceReload' },
+          { role: 'toggleDevTools' },
+          { type: 'separator' },
+          { role: 'resetZoom' },
+          { role: 'zoomIn' },
+          { role: 'zoomOut' },
+          { type: 'separator' },
+          { role: 'togglefullscreen' }
+        ]
+      },
+      {
+        label: 'Window',
+        submenu: [
+          { role: 'minimize' },
+          { role: 'close' }
+        ]
+      }
+    ];
+    const menu = Menu.buildFromTemplate(template);
+    Menu.setApplicationMenu(menu);
+  } else {
+    // Remove menu completely on Windows/Linux
+    Menu.setApplicationMenu(null);
+  }
 });
 
 // Allow multiple instances by removing single instance lock

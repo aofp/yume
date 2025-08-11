@@ -597,9 +597,38 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
           // Limit search operation outputs to 10 lines
           if (isSearchOperation && resultContent) {
-            // Trim trailing newlines
-            const trimmedContent = resultContent.replace(/\n+$/, '');
-            const allLines = trimmedContent.split('\n');
+            // Process search results to convert absolute paths to relative
+            const processedContent = (() => {
+              // Get the current working directory
+              const store = useClaudeCodeStore.getState();
+              const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
+              const workingDir = currentSession?.workingDirectory;
+              
+              if (!workingDir) return resultContent;
+              
+              // Process each line to convert paths
+              const lines = resultContent.split('\n');
+              return lines.map(line => {
+                // Search results typically have format: /absolute/path/file.ext:linenum:content
+                // or: /absolute/path/file.ext-content
+                const colonIndex = line.indexOf(':');
+                const dashIndex = line.indexOf('-');
+                const separatorIndex = colonIndex > 0 && (dashIndex < 0 || colonIndex < dashIndex) ? colonIndex : dashIndex;
+                
+                if (separatorIndex > 0) {
+                  const pathPart = line.substring(0, separatorIndex);
+                  // Check if this looks like a path
+                  if (pathPart.startsWith('/') || pathPart.match(/^[A-Z]:/)) {
+                    const relativePath = formatPath(pathPart);
+                    return relativePath + line.substring(separatorIndex);
+                  }
+                }
+                return line;
+              }).join('\n');
+            })();
+            
+            // Don't trim search results to preserve formatting
+            const allLines = processedContent.split('\n');
             const visibleLines = allLines.slice(0, 10);
             const hiddenCount = allLines.length - 10;
             const hasMore = hiddenCount > 0;
@@ -684,9 +713,10 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           }
           
           // Show other tool results in a minimal way
-          if (resultContent && resultContent.trim()) {
-            // Trim trailing newlines
-            const trimmedContent = resultContent.replace(/\n+$/, '').trim();
+          if (resultContent && (isSearchOperation ? resultContent.replace(/\n+$/, '') : resultContent.trim())) {
+            // For search operations: only remove trailing newlines, preserve leading spaces
+            // For other operations: trim all whitespace
+            const trimmedContent = isSearchOperation ? resultContent.replace(/\n+$/, '') : resultContent.replace(/\n+$/, '').trim();
             return (
               <div key={idx} className="tool-result minimal">
                 <span className="result-text">{trimmedContent.substring(0, 100)}{trimmedContent.length > 100 ? '...' : ''}</span>
@@ -1324,12 +1354,17 @@ const MessageRendererBase: React.FC<{
       // Trim trailing newlines from tool results  
       contentStr = contentStr.replace(/\n+$/, '');
       
-      // Check if we should preserve formatting (for Read operations)
+      // Check if we should preserve formatting (for Read and Search operations)
       const prevMessage = index > 0 ? sessionMessages[index - 1] : null;
       const isReadOperation = prevMessage?.type === 'tool_use' && prevMessage?.message?.name === 'Read';
+      const isSearchOperation = prevMessage?.type === 'tool_use' && 
+        (prevMessage?.message?.name === 'Grep' || 
+         prevMessage?.message?.name === 'Glob' ||
+         prevMessage?.message?.name === 'LS' ||
+         prevMessage?.message?.name === 'WebSearch');
       
-      // Only trim if not a Read operation to preserve formatting
-      if (!isReadOperation) {
+      // Only trim if not a Read or Search operation to preserve formatting
+      if (!isReadOperation && !isSearchOperation) {
         contentStr = contentStr.trim();
       }
       
@@ -1384,7 +1419,38 @@ const MessageRendererBase: React.FC<{
       
       // Apply truncation for Read operations AND all tool results
       if (contentStr) {
-        const allLines = contentStr.split('\n');
+        // Process search results to convert absolute paths to relative
+        let processedContent = contentStr;
+        if (isSearchResult) {
+          // Get the current working directory
+          const store = useClaudeCodeStore.getState();
+          const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
+          const workingDir = currentSession?.workingDirectory;
+          
+          if (workingDir) {
+            // Process each line to convert paths
+            const lines = contentStr.split('\n');
+            processedContent = lines.map(line => {
+              // Search results typically have format: /absolute/path/file.ext:linenum:content
+              // or: /absolute/path/file.ext-content
+              const colonIndex = line.indexOf(':');
+              const dashIndex = line.indexOf('-');
+              const separatorIndex = colonIndex > 0 && (dashIndex < 0 || colonIndex < dashIndex) ? colonIndex : dashIndex;
+              
+              if (separatorIndex > 0) {
+                const pathPart = line.substring(0, separatorIndex);
+                // Check if this looks like a path
+                if (pathPart.startsWith('/') || pathPart.match(/^[A-Z]:/)) {
+                  const relativePath = formatPath(pathPart);
+                  return relativePath + line.substring(separatorIndex);
+                }
+              }
+              return line;
+            }).join('\n');
+          }
+        }
+        
+        const allLines = processedContent.split('\n');
         const MAX_LINES = 10;
         const visibleLines = allLines.slice(0, MAX_LINES);
         const hiddenCount = allLines.length - MAX_LINES;
@@ -1452,7 +1518,7 @@ const MessageRendererBase: React.FC<{
           <div className="message result-success">
             <div className="elapsed-time">
               {elapsedSeconds}s
-              {totalTokens > 0 && ` • ${totalTokens.toLocaleString()}t`}
+              {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
               {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
             </div>
           </div>

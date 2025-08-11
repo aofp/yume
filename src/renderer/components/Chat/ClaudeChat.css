@@ -512,9 +512,26 @@
   font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
 }
 
+.thinking-indicator-bottom .thinking-text-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .thinking-indicator-bottom .thinking-text {
   opacity: 1;
-  color: #d0d0d0;
+  color: var(--accent-color);
+  font-weight: bold;
+  display: inline-block;
+  min-width: 80px; /* Fixed width to prevent layout shift */
+}
+
+.thinking-indicator-bottom .thinking-timer {
+  color: var(--accent-color);
+  font-weight: bold;
+  font-size: 11px;
+  opacity: 0.8;
+  font-family: 'Fira Code', monospace;
 }
 
 .thinking-indicator-bottom .thinking-dots::after {
@@ -528,6 +545,7 @@
 .spinning-loader {
   animation: spin 1s linear infinite;
   color: var(--accent-color);
+  opacity: 1;
 }
 
 @keyframes spin {
@@ -955,11 +973,10 @@
   align-items: center;
   gap: 4px;
   padding: 3px 6px;
-  background: transparent;
+  background: rgba(0, 0, 0, 0.4);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2px;
   transition: border-color 0.2s;
-  margin-top: 40px;
   user-select: none;
 }
 
