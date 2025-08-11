@@ -313,7 +313,7 @@
 
 .markdown-content ul,
 .markdown-content ol {
-  margin: 8px 0 8px 20px;
+  margin: 0;
   padding-left: 32px;
   list-style-position: outside;
 }
@@ -334,7 +334,7 @@ ol {
 .markdown-content ul ol,
 .markdown-content ol ul,
 .markdown-content ol ol {
-  margin: 4px 0;
+  margin: 0;
   padding-left: 24px;
 }
 

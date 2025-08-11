@@ -184,8 +184,8 @@
 
 /* Context usage bar replacing the 3-letter name */
 .tab-context-bar {
-  width: 20px;
-  height: 4px;
+  width: 16px;
+  height: 2px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 0;
   position: relative;

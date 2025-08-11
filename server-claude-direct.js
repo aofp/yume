@@ -368,8 +368,17 @@ io.on('connection', (socket) => {
       // This might be why Claude reports high token counts - it includes system prompts
       const args = ['--print', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
       
-      // Add yurucode system prompt
-      const casualPrompt = "<yurucode>you are in yurucode ui. reply concisely in lowercase. code/variables keep proper case.</yurucode>";
+      // Add yurucode system prompt - MUST be lowercase and concise
+      const casualPrompt = `<yurucode>
+CRITICAL: you are in yurucode ui. ALWAYS:
+- use all lowercase (no capitals ever)
+- be extremely concise
+- never use formal language  
+- no greetings/pleasantries
+- straight to the point
+- code/variables keep proper case
+- one line answers preferred
+</yurucode>`;
       args.push('--append-system-prompt', casualPrompt);
       
       // Add model selection if provided
