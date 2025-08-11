@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings } from '@tabler/icons-react';
+import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette } from '@tabler/icons-react';
 import './SettingsModal.css';
 
 // Access the electron API exposed by preload script
@@ -13,53 +13,47 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
-// Predefined color swatches - 32 colors organized in rainbow spectrum
-const COLOR_SWATCHES = [
-  '#cccccc', // default grey (first)
-  // Reds
-  '#ff9999', // pastel red
-  '#ff8080', // coral
-  '#ffb3b3', // light salmon
-  '#ffcccc', // pale pink
-  // Oranges
-  '#ffb399', // light orange
-  '#ffcc99', // pastel orange
-  '#ffd4a3', // peach
-  '#ffe0b3', // apricot
-  // Yellows
-  '#ffff99', // pastel yellow
-  '#ffffb3', // light yellow
-  '#ffffcc', // cream
-  // Yellow-Greens
-  '#e6ff99', // lime yellow
-  '#ccff99', // pastel lime
-  '#b3ff99', // light lime
-  // Greens
-  '#99ff99', // pastel green
-  '#99ffb3', // mint green
-  '#99ffcc', // pastel mint
-  '#b3ffb3', // light green
-  // Cyans
-  '#99ffe6', // aqua mint
-  '#99ffff', // pastel cyan
-  '#b3ffff', // light cyan
-  '#ccffff', // pale cyan
-  // Blues
-  '#99ddff', // sky blue
-  '#99ccff', // pastel sky
-  '#99b3ff', // light blue
-  '#9999ff', // pastel blue
-  // Purples
-  '#b3b3ff', // periwinkle
-  '#cc99ff', // pastel purple
-  '#e6b3ff', // lavender
-  '#ff99ff', // pastel magenta
-  '#ff99cc', // pink/magenta
+// Color swatches organized in 4 rows
+const COLOR_ROWS = [
+  // Row 1: Only 2 colors - grey and white
+  [
+    '#cccccc', '#ffffff'
+  ],
+  
+  // Row 2: Full spectrum starting with blue - 21 unique colors
+  [
+    '#99bbff', '#99ccff', '#99ddff', '#99eeff', '#99ffff',
+    '#99ffee', '#99ffdd', '#99ffcc', '#99ffbb', '#99ff99',
+    '#bbff99', '#ddff99', '#ffff99', '#ffdd99', '#ffbb99',
+    '#ff9999', '#ff99bb', '#ff99dd', '#ff99ff', '#dd99ff',
+    '#bb99ff'
+  ],
+  
+  // Row 3: Slightly lighter version of row 2 - 21 unique colors  
+  [
+    '#b3ccff', '#b3d9ff', '#b3e6ff', '#b3f2ff', '#b3ffff',
+    '#b3fff2', '#b3ffe6', '#b3ffd9', '#b3ffcc', '#b3ffb3',
+    '#ccffb3', '#e6ffb3', '#ffffb3', '#ffe6b3', '#ffccb3',
+    '#ffb3b3', '#ffb3cc', '#ffb3e6', '#ffb3ff', '#e6b3ff',
+    '#ccb3ff'
+  ],
+  
+  // Row 4: Slightly greyer version of row 2 - 21 unique colors
+  [
+    '#b3c6d9', '#b3ccd9', '#b3d3d9', '#b3d9d9', '#b3d9d9',
+    '#b3d9d3', '#b3d9cc', '#b3d9c6', '#b3d9bf', '#b3d9b3',
+    '#c6d9b3', '#ccd9b3', '#d3d9b3', '#d9d9b3', '#d9ccb3',
+    '#d9b3b3', '#d9b3c6', '#d9b3cc', '#d9b3d3', '#d3b3d9',
+    '#c6b3d9'
+  ]
 ];
+
+const ALL_COLORS = COLOR_ROWS.flat();
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [zoomLevel, setZoomLevel] = useState(0);
   const [accentColor, setAccentColor] = useState('#cccccc');
+  const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
     // Get current zoom level
@@ -179,7 +173,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
-        onClose();
+        if (showColorPicker) {
+          setShowColorPicker(false);
+        } else {
+          onClose();
+        }
       }
       // Also close on Ctrl+, or Cmd+,
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
@@ -189,7 +187,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [onClose]);
+  }, [onClose, showColorPicker]);
+
+  // Handle click outside color picker dropdown
+  useEffect(() => {
+    if (showColorPicker) {
+      const handleClickOutside = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        if (!target.closest('.color-picker-container')) {
+          setShowColorPicker(false);
+        }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showColorPicker]);
+
 
   return (
     <div className="settings-modal-overlay" onClick={onClose}>
@@ -228,19 +241,47 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
           <div className="settings-section">
             <h4>accent color</h4>
-            <div className="color-swatches">
-              {COLOR_SWATCHES.map((color) => (
-                <button
-                  key={color}
-                  className={`color-swatch ${accentColor === color ? 'active' : ''}`}
-                  style={{ backgroundColor: color }}
-                  onClick={() => handleColorSelect(color)}
-                  title={color}
-                />
-              ))}
-            </div>
-            <div className="color-info">
-              <span className="color-value">{accentColor}</span>
+            <div className="color-picker-container">
+              <button 
+                className="color-preview"
+                onClick={() => setShowColorPicker(!showColorPicker)}
+                title="click to select color"
+              >
+                <span className="color-square" style={{ backgroundColor: accentColor }} />
+                <span className="color-value">{accentColor}</span>
+              </button>
+              
+              {showColorPicker && (
+                <div className="color-picker-dropdown">
+                  <div className="color-picker-header">
+                    <h4>
+                      <IconPalette size={14} stroke={1.5} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                      choose accent color
+                    </h4>
+                    <button className="color-picker-close" onClick={() => setShowColorPicker(false)}>
+                      <IconX size={14} />
+                    </button>
+                  </div>
+                  <div className="color-picker-content">
+                    {COLOR_ROWS.map((row, rowIndex) => (
+                      <div key={rowIndex} className={`color-row color-row-${rowIndex + 1}`}>
+                        {row.map((color) => (
+                          <button
+                            key={color}
+                            className={`color-swatch ${accentColor === color ? 'active' : ''}`}
+                            style={{ backgroundColor: color }}
+                            onClick={() => {
+                              handleColorSelect(color);
+                              setShowColorPicker(false);
+                            }}
+                            title={color}
+                          />
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>

@@ -510,14 +510,12 @@ io.on('connection', (socket) => {
             console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
           }
           
-          // Extract session ID if present (update it every time to ensure we have the latest)
-          if (jsonData.session_id) {
-            session.claudeSessionId = jsonData.session_id;
-            console.log(`📌 Claude session ID: ${session.claudeSessionId}`);
-          }
-          
           // Handle different message types
           if (jsonData.type === 'system' && jsonData.subtype === 'init') {
+            // For system init, this is a NEW session being created
+            // Don't update claudeSessionId here - wait for the result message
+            console.log(`📌 System init - NEW Claude session will be: ${jsonData.session_id}`);
+            
             // Send system init message
             socket.emit(`message:${sessionId}`, {
               type: 'system',
@@ -610,6 +608,12 @@ io.on('connection', (socket) => {
           } else if (jsonData.type === 'result') {
             console.log(`📦 Message type: result (${jsonData.result})`);
             console.log(`   ✅ Result: success=${jsonData.result === 'success'}, duration=${jsonData.duration}ms`);
+            
+            // NOW we can save the session ID from a successful conversation
+            if (jsonData.session_id && jsonData.result === 'success') {
+              session.claudeSessionId = jsonData.session_id;
+              console.log(`📌 Saved Claude session ID for resume: ${session.claudeSessionId}`);
+            }
             
             // Update session state
             sessionStates.set(sessionId, SessionState.IDLE);

@@ -104,7 +104,7 @@
 .zoom-btn:hover:not(:disabled) {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: var(--accent-color);
 }
 
 .zoom-btn:disabled {
@@ -123,31 +123,125 @@
   -webkit-user-select: none;
 }
 
-/* Color Swatches */
-.color-swatches {
-  display: grid;
-  grid-template-columns: repeat(16, 1fr);
-  grid-template-rows: repeat(2, 1fr);
-  gap: 3px;
-}
-
-.color-swatch {
-  width: 22px;
-  height: 22px;
-  border: 2px solid transparent;
-  border-radius: 4px;
-  cursor: default;
-  transition: all 0.2s ease;
+/* Color Picker Container */
+.color-picker-container {
   position: relative;
 }
 
+.color-preview {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 120px;
+  height: 32px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.color-preview:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-color);
+  border-color: var(--accent-color);
+}
+
+.color-preview .color-square {
+  width: 16px;
+  height: 16px;
+  border-radius: 3px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.color-preview .color-value {
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
+  text-transform: lowercase;
+  font-weight: 500;
+}
+
+/* Color Picker Dropdown */
+.color-picker-dropdown {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  width: 444px;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.9);
+  z-index: 1000;
+  animation: slideUp 0.2s ease;
+}
+
+.color-picker-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.color-picker-header h4 {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.color-picker-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+  padding: 2px;
+  transition: all 0.2s ease;
+}
+
+.color-picker-close:hover {
+  color: var(--accent-color);
+}
+
+.color-picker-content {
+  padding: 12px;
+}
+
+.color-row {
+  display: flex;
+  gap: 2px;
+  margin-bottom: 2px;
+}
+
+.color-row:last-child {
+  margin-bottom: 0;
+}
+
+/* Fixed size for all color swatches */
+.color-swatch {
+  width: 18px;
+  height: 18px;
+  border: 1px solid transparent;
+  border-radius: 3px;
+  cursor: default;
+  transition: all 0.15s ease;
+  position: relative;
+  flex-shrink: 0;
+}
+
 .color-swatch:hover {
-  transform: scale(1.1);
-  border-color: rgba(255, 255, 255, 0.3);
+  transform: scale(1.2);
+  border-color: rgba(255, 255, 255, 0.4);
+  z-index: 10;
 }
 
 .color-swatch.active {
-  border-color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.8);
 }
 
 .color-swatch.active::after {
@@ -157,24 +251,8 @@
   left: 50%;
   transform: translate(-50%, -50%);
   color: #000;
-  font-size: 12px;
+  font-size: 10px;
   font-weight: bold;
-  text-shadow: 0 0 2px rgba(255, 255, 255, 0.8);
-}
-
-.color-info {
-  display: flex;
-  justify-content: center;
-  margin-top: 8px;
-}
-
-.color-value {
-  font-family: 'Fira Code', monospace;
-  font-size: 11px;
-  color: var(--accent-color);
-  text-transform: lowercase;
-  user-select: text;
-  -webkit-user-select: text;
 }
 
 @keyframes fadeIn {
@@ -183,5 +261,16 @@
   }
   to {
     opacity: 1;
+  }
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
   }
 }

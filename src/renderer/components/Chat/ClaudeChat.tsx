@@ -461,6 +461,11 @@ export const ClaudeChat: React.FC = () => {
       if (currentSessionId) {
         clearContext(currentSessionId);
         setInput('');
+        // Reset textarea height when clearing context
+        if (inputRef.current) {
+          inputRef.current.style.height = '54px'; // Reset to 3 lines
+          inputRef.current.style.overflow = 'hidden';
+        }
         // Clear scroll position for this session
         setScrollPositions(prev => {
           const newPositions = { ...prev };
@@ -528,6 +533,11 @@ export const ClaudeChat: React.FC = () => {
       
       setInput('');
       setAttachments([]);
+      // Reset textarea height to minimum after sending
+      if (inputRef.current) {
+        inputRef.current.style.height = '54px'; // Reset to 3 lines
+        inputRef.current.style.overflow = 'hidden';
+      }
       // Clear drafts after sending
       updateSessionDraft(currentSessionId, '', []);
       await sendMessage(messageContent);

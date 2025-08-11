@@ -22,12 +22,41 @@ export default defineConfig({
   build: {
     outDir: 'dist/renderer',
     emptyOutDir: true,
-    sourcemap: true,
+    sourcemap: false, // Disable sourcemaps for production
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
+      },
+      mangle: true,
+      format: {
+        comments: false,
+      },
+    },
+    reportCompressedSize: false, // Faster builds
+    chunkSizeWarningLimit: 500,
     rollupOptions: {
       input: {
         main: path.resolve(__dirname, 'index.html'),
       },
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          markdown: ['react-markdown', 'react-syntax-highlighter'],
+          icons: ['@tabler/icons-react'],
+          socket: ['socket.io-client'],
+        },
+        compact: true,
+      },
+      treeshake: {
+        preset: 'recommended',
+        moduleSideEffects: false,
+      },
     },
+    cssCodeSplit: false, // Single CSS file
+    assetsInlineLimit: 4096, // Inline small assets
   },
   resolve: {
     alias: {

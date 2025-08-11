@@ -83,12 +83,37 @@
       "package.json",
       "assets/**/*",
       "build/**/*",
-      "node_modules/**/*",
-      "!node_modules/**/test/**",
-      "!node_modules/**/tests/**",
-      "!node_modules/**/example/**",
-      "!node_modules/**/examples/**",
-      "!node_modules/**/*.md"
+      "!**/*.map",
+      "!**/*.ts",
+      "!**/test/**",
+      "!**/tests/**",
+      "!**/docs/**",
+      "!**/.git/**",
+      "!**/.github/**",
+      "!**/*.md",
+      "!**/*.log"
+    ],
+    "includeSubNodeModules": false,
+    "nodeModulesCopyFilter": [
+      "!**/*.d.ts",
+      "!**/*.map",
+      "!**/test/**",
+      "!**/tests/**",
+      "!**/example/**",
+      "!**/examples/**",
+      "!**/.bin/**",
+      "!**/*.md",
+      "!**/LICENSE*",
+      "!**/CHANGELOG*",
+      "!**/README*",
+      "!**/.editorconfig",
+      "!**/.eslintrc*",
+      "!**/.babelrc*",
+      "!**/.gitignore",
+      "!**/.npmignore",
+      "!**/tsconfig.json",
+      "!**/webpack.config.js",
+      "!**/rollup.config.js"
     ],
     "extraResources": [
       {
@@ -96,7 +121,15 @@
         "to": "icon.ico"
       }
     ],
-    "asar": false,
+    "asar": true,
+    "asarUnpack": [
+      "node_modules/node-pty/**/*",
+      "server*.js"
+    ],
+    "compression": "maximum",
+    "npmRebuild": false,
+    "nodeGypRebuild": false,
+    "buildDependenciesFromSource": false,
     "mac": {
       "category": "public.app-category.developer-tools",
       "icon": "assets/icons/mac/icon.icns",

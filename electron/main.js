@@ -258,6 +258,19 @@ app.commandLine.appendSwitch('disable-gpu-program-cache');
 app.commandLine.appendSwitch('disable-gpu');
 app.commandLine.appendSwitch('no-sandbox');
 
+// Additional optimizations to reduce memory and disable unused features
+app.commandLine.appendSwitch('disable-background-timer-throttling');
+app.commandLine.appendSwitch('disable-renderer-backgrounding');
+app.commandLine.appendSwitch('disable-features=TranslateUI,BlinkGenPropertyTrees,AudioServiceOutOfProcess');
+app.commandLine.appendSwitch('disable-speech-api');
+app.commandLine.appendSwitch('disable-features=AudioServiceOutOfProcess,WebRTC,MediaStream');
+app.commandLine.appendSwitch('disable-web-security', 'false'); // Keep security enabled but optimize
+app.commandLine.appendSwitch('disable-plugins');
+app.commandLine.appendSwitch('disable-extensions');
+app.commandLine.appendSwitch('disable-dev-shm-usage');
+app.commandLine.appendSwitch('disable-software-rasterizer');
+app.commandLine.appendSwitch('js-flags', '--max-old-space-size=512'); // Limit V8 memory
+
 // Start the built-in Claude Code server
 async function startServer() {
   console.log('===== ELECTRON SERVER STARTUP =====');
