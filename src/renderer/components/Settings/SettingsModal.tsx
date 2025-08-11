@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconX, IconPlus, IconMinus, IconRefresh } from '@tabler/icons-react';
+import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings } from '@tabler/icons-react';
 import './SettingsModal.css';
 
 // Access the electron API exposed by preload script
@@ -195,7 +195,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     <div className="settings-modal-overlay" onClick={onClose}>
       <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
         <div className="settings-header">
-          <h3>settings</h3>
+          <h3>
+            <IconSettings size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+            settings
+          </h3>
           <button className="settings-close" onClick={onClose}>
             <IconX size={16} />
           </button>

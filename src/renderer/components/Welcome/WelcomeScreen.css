@@ -11,6 +11,13 @@
   -webkit-user-select: none;
 }
 
+.welcome-content {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 24px;
+}
+
 @keyframes fadeIn {
   from {
     opacity: 0;
@@ -23,14 +30,13 @@
 }
 
 .welcome-header {
-  text-align: center;
-  margin-bottom: 0;
-  position: relative;
+  display: flex;
+  align-items: center;
 }
 
 .welcome-title {
   font-family: 'Fira Code', monospace;
-  font-size: 30px;
+  font-size: 41px;
   font-weight: 700;
   text-transform: lowercase;
   letter-spacing: 0.5px;
@@ -47,8 +53,8 @@
 }
 
 .welcome-new-button {
-  width: 40px;
-  height: 40px;
+  width: 60px;
+  height: 60px;
   border-radius: 8px;
   background: rgba(var(--accent-rgb), 0.15);
   border: none;
@@ -56,9 +62,9 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 12px auto 0;
   transition: all 0.2s ease;
   cursor: default;
+  padding: 0;
 }
 
 .welcome-new-button:hover {
@@ -70,18 +76,16 @@
   transform: scale(0.95);
 }
 
-.welcome-actions {
-  display: flex;
-  gap: 12px;
-  margin-top: 12px;
-}
 
 .action-button {
+  width: 60px;
+  height: 60px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 6px;
-  padding: 8px 16px;
-  background: rgba(255, 255, 255, 0.03);
+  padding: 0;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
   border-radius: 8px;
   color: rgba(255, 255, 255, 0.5);
@@ -91,9 +95,13 @@
   text-transform: lowercase;
 }
 
+.action-button span {
+  font-weight: bold;
+}
+
 .action-button:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.7);
+  background: rgba(var(--accent-rgb), 0.25);
+  color: var(--accent-color);
 }
 
 .action-button:disabled {
@@ -127,15 +135,15 @@
 }
 
 .recent-modal {
-  width: 90%;
-  max-width: 400px;
-  max-height: 60vh;
-  background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 0;
   animation: modalFadeIn 0.2s ease;
-  display: flex;
-  flex-direction: column;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -155,14 +163,18 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 8px;
-  border-bottom: none;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 0;
 }
 
 .modal-title {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.7);
   text-transform: lowercase;
+  display: flex;
+  align-items: center;
 }
 
 .clear-all-icon {
@@ -205,7 +217,7 @@
 .modal-content {
   flex: 1;
   overflow-y: auto;
-  padding: 4px;
+  padding: 12px;
 }
 
 .recent-item-container {

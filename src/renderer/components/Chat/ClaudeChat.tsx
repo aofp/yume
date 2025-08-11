@@ -29,7 +29,8 @@ import {
   IconChevronDown,
   IconArrowUp,
   IconArrowDown,
-  IconBrain
+  IconBrain,
+  IconChartDots
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -1195,7 +1196,10 @@ export const ClaudeChat: React.FC = () => {
         <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
           <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
             <div className="stats-header">
-              <h3>session analytics</h3>
+              <h3>
+                <IconChartDots size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                session analytics
+              </h3>
               <button className="stats-close" onClick={() => setShowStatsModal(false)}>
                 <IconX size={16} />
               </button>
@@ -1287,7 +1291,7 @@ export const ClaudeChat: React.FC = () => {
                       style={{ width: `${currentSession.analytics.tokens.total > 0 ? (currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100 : 0}%` }}
                     />
                   </div>
-                  <div className="stat-row" style={{ marginTop: '4px' }}>
+                  <div className="stat-row" style={{ marginTop: '5px' }}>
                     <div className="stat-keys">
                       <IconBrain size={14} />
                       <span className="stat-name">opus %</span>

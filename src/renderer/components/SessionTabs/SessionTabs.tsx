@@ -109,6 +109,61 @@ export const SessionTabs: React.FC = () => {
     };
   }, [sessions]);
 
+  // Handle close tab event from Electron menu (Cmd+W on macOS)
+  useEffect(() => {
+    const handleCloseTab = () => {
+      // Don't close if the current tab is streaming
+      const currentSession = sessions.find(s => s.id === currentSessionId);
+      if (currentSession?.streaming) {
+        console.log('Cannot close tab while Claude is streaming');
+        return;
+      }
+      
+      // Close the current active tab
+      if (currentSessionId) {
+        deleteSession(currentSessionId);
+      }
+    };
+
+    // Listen for IPC event from electron menu
+    if (window.electronAPI && window.electronAPI.on) {
+      window.electronAPI.on('close-current-tab', handleCloseTab);
+      return () => {
+        // Use off if available, otherwise use removeAllListeners
+        if (window.electronAPI.off) {
+          window.electronAPI.off('close-current-tab', handleCloseTab);
+        } else if (window.electronAPI.removeAllListeners) {
+          window.electronAPI.removeAllListeners('close-current-tab');
+        }
+      };
+    }
+  }, [currentSessionId, deleteSession, sessions]);
+
+  // Also handle keyboard shortcut directly
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Handle Cmd+W (Mac) or Ctrl+W (Windows/Linux)
+      if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
+        e.preventDefault(); // Prevent default browser behavior
+        
+        // Don't close if the current tab is streaming
+        const currentSession = sessions.find(s => s.id === currentSessionId);
+        if (currentSession?.streaming) {
+          console.log('Cannot close tab while Claude is streaming');
+          return;
+        }
+        
+        // Close the current active tab
+        if (currentSessionId) {
+          deleteSession(currentSessionId);
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [currentSessionId, deleteSession, sessions]);
+
   const handleOpenFolder = async () => {
     setShowNewMenu(false);
     let directory = null;

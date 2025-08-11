@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import './ModelSelector.css';
 
 const models = [
@@ -15,27 +15,9 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   value = 'claude-opus-4-1-20250805', 
   onChange 
 }) => {
-  const [isOpen, setIsOpen] = useState(false);
   const [isHighlighted, setIsHighlighted] = useState(false);
-  const dropdownRef = useRef<HTMLDivElement>(null);
   
   const selectedModel = models.find(m => m.id === value) || models[0];
-
-  useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
-        setIsOpen(false);
-      }
-    };
-
-    if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-    }
-
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [isOpen]);
 
   // Listen for Ctrl+O to highlight the selector
   useEffect(() => {
@@ -50,35 +32,22 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleModelSelect = (modelId: string) => {
-    onChange?.(modelId);
-    setIsOpen(false);
+  const handleToggle = () => {
+    // Toggle between the two models
+    const currentIndex = models.findIndex(m => m.id === value);
+    const nextIndex = (currentIndex + 1) % models.length;
+    onChange?.(models[nextIndex].id);
   };
 
   return (
-    <div className="model-selector" ref={dropdownRef}>
+    <div className="model-selector">
       <button 
         className={`model-selector-trigger ${isHighlighted ? 'highlighted' : ''}`}
-        onClick={() => setIsOpen(!isOpen)}
-        title="select model (ctrl+o)"
+        onClick={handleToggle}
+        title="switch model (ctrl+o)"
       >
         {selectedModel.name}
       </button>
-      
-      {isOpen && (
-        <div className="model-selector-dropdown">
-          {models.map(model => (
-            <button
-              key={model.id}
-              className={`model-selector-option ${model.id === value ? 'selected' : ''}`}
-              onClick={() => handleModelSelect(model.id)}
-            >
-              <span className="model-option-name">{model.name}</span>
-              <span className="model-option-description">{model.description}</span>
-            </button>
-          ))}
-        </div>
-      )}
     </div>
   );
 };

@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconX } from '@tabler/icons-react';
+import { IconX, IconKeyboard } from '@tabler/icons-react';
 import './KeyboardShortcuts.css';
 
 interface KeyboardShortcutsProps {
@@ -15,7 +15,10 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
     <div className="help-modal-overlay" onClick={onClose}>
       <div className="help-modal" onClick={(e) => e.stopPropagation()}>
         <div className="help-header">
-          <h3>keyboard shortcuts</h3>
+          <h3>
+            <IconKeyboard size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+            keyboard shortcuts
+          </h3>
           <button className="help-close" onClick={onClose}>
             <IconX size={16} />
           </button>

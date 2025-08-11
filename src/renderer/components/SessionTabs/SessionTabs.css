@@ -137,7 +137,7 @@
 }
 
 .session-tab.ripple-active::before {
-  animation: ripple-expand 0.4s ease-out;
+  animation: ripple-expand 0.8s ease-out;
 }
 
 .session-tab.ripple-held::after {
@@ -312,7 +312,7 @@
 }
 
 .tab-new.ripple-active::before {
-  animation: ripple-expand 0.4s ease-out;
+  animation: ripple-expand 0.8s ease-out;
 }
 
 .tab-new.ripple-held::after {
@@ -372,7 +372,7 @@
 }
 
 .tab-recent.ripple-active::before {
-  animation: ripple-expand 0.4s ease-out;
+  animation: ripple-expand 0.8s ease-out;
 }
 
 .tab-recent.ripple-held::after {

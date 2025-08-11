@@ -648,7 +648,21 @@ app.whenReady().then(async () => {
         label: 'Window',
         submenu: [
           { role: 'minimize' },
-          { role: 'close' }
+          { 
+            label: 'Close Tab',
+            accelerator: 'CmdOrCtrl+W',
+            click: () => {
+              // Send close tab event to renderer
+              if (mainWindow && !mainWindow.isDestroyed()) {
+                mainWindow.webContents.send('close-current-tab');
+              }
+            }
+          },
+          { 
+            label: 'Close Window',
+            accelerator: 'CmdOrCtrl+Shift+W',
+            role: 'close'
+          }
         ]
       }
     ];

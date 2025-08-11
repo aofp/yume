@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconFolderOpen, IconPlus, IconX, IconTrash } from '@tabler/icons-react';
+import { IconFolderOpen, IconPlus, IconX, IconTrash, IconFolder } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
@@ -135,10 +135,13 @@ export const WelcomeScreen: React.FC = () => {
 
   return (
     <div className="welcome-screen">
-      <div className="welcome-header">
-        <span className="welcome-title">
-          <span className="yuru">y</span><span className="code">&gt;</span>
-        </span>
+      <div className="welcome-content">
+        <div className="welcome-header">
+          <span className="welcome-title">
+            <span className="yuru">y</span><span className="code">&gt;</span>
+          </span>
+        </div>
+        
         <button 
           className="welcome-new-button"
           onClick={handleNewSession}
@@ -146,16 +149,15 @@ export const WelcomeScreen: React.FC = () => {
         >
           <IconPlus size={20} />
         </button>
-      </div>
 
-      <div className="welcome-actions">
         <button 
           className="action-button"
           onClick={() => setShowRecentModal(true)}
           disabled={recentProjects.length === 0}
-          title="recent projects (ctrl+r)"
+          title={`recent projects (ctrl+r)`}
         >
-          <span>recent: {Math.min(recentProjects.length, 10)}</span>
+          <IconFolder size={16} stroke={1.5} />
+          <span>{recentProjects.length}</span>
         </button>
       </div>
       
@@ -182,7 +184,10 @@ export const WelcomeScreen: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <span className="modal-title">recent projects</span>
+              <span className="modal-title">
+                <IconFolder size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                recent projects
+              </span>
               <button 
                 className="clear-all-icon"
                 onClick={() => {

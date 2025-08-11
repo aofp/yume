@@ -1,7 +1,7 @@
 .model-selector {
   position: relative;
   display: inline-block;
-  margin-bottom: 2px;
+  margin-bottom: 1px;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -24,59 +24,4 @@
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 0.2);
-}
-
-.model-selector-dropdown {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  min-width: 140px;
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  overflow: hidden;
-  z-index: 1000;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.model-selector-option {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  width: 100%;
-  padding: 6px 8px;
-  background: transparent;
-  border: none;
-  text-align: left;
-  cursor: default;
-  transition: background 0.15s ease;
-}
-
-.model-selector-option:hover {
-  background: rgba(var(--accent-rgb), 0.08);
-}
-
-.model-selector-option.selected {
-  background: rgba(var(--accent-rgb), 0.12);
-}
-
-.model-option-name {
-  color: rgba(255, 255, 255, 0.6);
-  font-family: 'Fira Code', monospace;
-  font-size: 10px;
-  font-weight: 500;
-  margin-bottom: 1px;
-  text-transform: lowercase;
-}
-
-.model-selector-option.selected .model-option-name {
-  color: var(--accent-color);
-}
-
-.model-option-description {
-  color: rgba(255, 255, 255, 0.3);
-  font-family: 'Fira Code', monospace;
-  font-size: 8px;
-  text-transform: lowercase;
 }
