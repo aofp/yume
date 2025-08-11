@@ -215,10 +215,14 @@ export const ClaudeChat: React.FC = () => {
     // Only autoscroll if user is already at the bottom AND we're not switching tabs
     if (chatContainerRef.current && currentSessionId === previousSessionIdRef.current) {
       const container = chatContainerRef.current;
-      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 10;
+      // Check if scrolled to bottom (within 50px threshold)
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
       
       if (isAtBottom) {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        // Small delay to ensure DOM is updated
+        setTimeout(() => {
+          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        }, 10);
       }
     }
   }, [currentSession?.messages]);
@@ -513,6 +517,11 @@ export const ClaudeChat: React.FC = () => {
       // Clear drafts after sending
       updateSessionDraft(currentSessionId, '', []);
       await sendMessage(messageContent);
+      
+      // Scroll to bottom after sending message
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
     } catch (error) {
       console.error('[ClaudeChat] Failed to send message:', error);
     }
@@ -594,11 +603,11 @@ export const ClaudeChat: React.FC = () => {
     const items = e.clipboardData.items;
     const text = e.clipboardData.getData('text/plain');
     
-    // Handle text paste - only create attachment if it's substantial text (not just a few chars)
-    if (text && text.length > 50 && !text.startsWith('http')) {
+    // Handle text paste - only create attachment if it's substantial text (5+ lines AND 512+ bytes)
+    const lines = text.split('\n').length;
+    const bytes = new Blob([text]).size;
+    if (text && lines >= 5 && bytes > 512 && !text.startsWith('http')) {
       e.preventDefault();
-      const lines = text.split('\n').length;
-      const bytes = new Blob([text]).size;
       const newAttachment: Attachment = {
         id: Math.random().toString(36).substr(2, 9),
         type: 'text',
@@ -774,8 +783,7 @@ export const ClaudeChat: React.FC = () => {
 
   return (
     <div 
-      className="chat-container" 
-      ref={chatContainerRef}
+      className="chat-container"
     >
       {/* Search bar */}
       {searchVisible && (
@@ -822,7 +830,7 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       )}
-      <div className="chat-messages">
+      <div className="chat-messages" ref={chatContainerRef}>
         {(() => {
           const processedMessages = currentSession.messages
             .reduce((acc, message, index, array) => {

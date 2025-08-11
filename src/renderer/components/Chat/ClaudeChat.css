@@ -6,6 +6,7 @@
   height: calc(100vh - 28px - 32px); /* Minus title bar and session tabs */
   background: #000000;
   position: relative;
+  overflow: hidden; /* Prevent outer container from scrolling */
 }
 
 /* Search bar - fixed top right minimal UI */
@@ -219,10 +220,12 @@
 
 /* Messages Area */
 .chat-messages {
-  flex: 1;
+  flex: 1 1 0;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 8px;
   scroll-behavior: smooth;
+  min-height: 0; /* Critical for flex child scrolling */
 }
 
 .message {
@@ -283,7 +286,7 @@
 }
 
 .message-text pre {
-  background: #141414;
+  background: #000000;
   border: 1px solid rgba(255, 153, 153, 0.1);
   border-radius: 6px;
   padding: 12px;
@@ -385,7 +388,7 @@
   background: rgba(255, 153, 204, 0.05);
   border: none;
   border-radius: 12px;
-  font-size: 11px;
+  font-size: 9px;
   margin: 4px 4px 4px 0;
   animation: toolFade 0.3s ease;
   transition: all 0.2s ease;
@@ -411,7 +414,7 @@
 .tool-detail {
   color: #ffffff !important;
   font-family: 'Fira Code', monospace;
-  font-size: 10px;
+  font-size: 9px;
   opacity: 1;
 }
 
@@ -430,7 +433,7 @@
 .tool-success,
 .tool-todos {
   color: #ffb3d9;
-  font-size: 11px;
+  font-size: 9px;
   padding: 2px 0;
   animation: successPulse 0.4s ease;
 }
@@ -442,7 +445,7 @@
 
 .tool-error {
   color: #ff9999;
-  font-size: 11px;
+  font-size: 9px;
   padding: 2px 0;
 }
 
@@ -523,7 +526,7 @@
   color: var(--accent-color);
   font-weight: bold;
   display: inline-block;
-  min-width: 80px; /* Fixed width to prevent layout shift */
+  min-width: 60px; /* Fixed width to prevent layout shift */
 }
 
 .thinking-indicator-bottom .thinking-timer {
@@ -572,6 +575,7 @@
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   position: relative;
   transition: background 0.2s ease;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .input-row {
@@ -764,11 +768,11 @@
 
 /* Scrollbar styling */
 .chat-messages::-webkit-scrollbar {
-  width: 8px;
+  width: 10px;
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.05);
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
@@ -849,6 +853,7 @@
   align-items: center;
   padding: 0;
   background: #000000;
+  flex-shrink: 0; /* Prevent shrinking */
 }
 
 .context-info {

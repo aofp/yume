@@ -19,7 +19,7 @@
 }
 
 .error-message {
-  color: #ff99cc;  /* pastel magenta */
+  color: var(--color-magenta);
   padding: 8px 12px;
   background: transparent;
   font-size: 10px;
@@ -290,7 +290,7 @@
 }
 
 .markdown-content h1 {
-  color: #ff99cc;  /* pastel magenta */
+  color: var(--color-magenta);
   margin: 16px 0 8px 0;
   font-weight: 500;
 }
@@ -403,7 +403,7 @@ ol {
   color: var(--accent-color);
   font-weight: bold;
   display: inline-block;
-  min-width: 80px; /* Fixed width to prevent layout shift */
+  min-width: 60px; /* Fixed width to prevent layout shift */
 }
 
 .thinking-dots::after {
@@ -456,15 +456,16 @@ ol {
 }
 
 .tool-result.standalone {
-  background: #000000;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 6px;
-  padding: 8px;
-  margin-top: 2px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
+  margin-top: 0;
 }
 
 .tool-result.standalone .result-content {
   margin: 0;
+  padding: 0;
   font-family: 'Fira Code', monospace;
   font-size: 9px;
   color: rgba(255, 255, 255, 0.8);
@@ -475,9 +476,9 @@ ol {
 }
 
 .tool-result.standalone.file-diff .result-content {
-  background: rgba(0, 255, 0, 0.02);
-  border-left: 2px solid rgba(0, 255, 0, 0.3);
-  padding-left: 12px;
+  background: transparent;
+  border-left: none;
+  padding-left: 0;
 }
 
 /* Edit result diff display - MINIMAL */
@@ -541,13 +542,13 @@ ol {
   color: rgba(255, 255, 255, 0.7);
 }
 
-/* Simple pastel red/green for removed/added */
+/* Simple pastel colors for removed/added */
 .diff-line.added .line-content {
-  color: #99e6ff;  /* pastel cyan */
+  color: var(--color-cyan);
 }
 
 .diff-line.removed .line-content {
-  color: #ff99cc;  /* pastel magenta */
+  color: var(--color-magenta);
 }
 
 .diff-summary {
@@ -633,12 +634,23 @@ ol {
 
 .diff-line.removed .diff-marker,
 .diff-line.removed .diff-text {
-  color: #ff99cc;  /* pastel magenta */
+  color: var(--color-magenta) !important;
 }
 
 .diff-line.added .diff-marker,
 .diff-line.added .diff-text {
-  color: #99e6ff;  /* pastel cyan */
+  color: var(--color-cyan) !important;
+}
+
+/* Edit tool diff colors */
+.edit-diff .diff-line.removed .diff-marker,
+.edit-diff .diff-line.removed .diff-text {
+  color: var(--color-magenta) !important;
+}
+
+.edit-diff .diff-line.added .diff-marker,
+.edit-diff .diff-line.added .diff-text {
+  color: var(--color-cyan) !important;
 }
 
 @keyframes fadeIn {
@@ -679,6 +691,7 @@ ol {
 .tool-action {
   color: var(--accent-color);
   font-weight: 500;
+  font-size: 10px;
 }
 
 .tool-detail {
@@ -699,9 +712,9 @@ ol {
   align-items: center;
   gap: 6px;
   padding: 0;
-  border-radius: 8px;
-  font-size: 11px;
-  margin: 4px 0;
+  border-radius: 0;
+  font-size: 9px;
+  margin: 0;
   animation: resultFade 0.3s ease;
 }
 
@@ -724,17 +737,17 @@ ol {
 }
 
 .tool-result.success {
-  background: rgba(0, 255, 136, 0.05);
+  background: transparent;
   color: #00ff88;
 }
 
 .tool-result.error {
-  background: rgba(255, 153, 153, 0.05);
-  color: #ff99cc;  /* pastel magenta */
+  background: transparent;
+  color: var(--color-magenta);
 }
 
 .tool-result.collapsed {
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   color: #606060;
   font-style: italic;
 }
@@ -743,8 +756,8 @@ ol {
   background: transparent;
   color: #606060;
   opacity: 0.6;
-  font-size: 10px;
-  padding: 2px 8px;
+  font-size: 9px;
+  padding: 0;
 }
 
 /* Read output styling */
@@ -753,7 +766,7 @@ ol {
   background: transparent;
   border: none;
   padding: 0;
-  margin: 2px 0;
+  margin: 0;
 }
 
 .read-content {
@@ -768,15 +781,15 @@ ol {
 /* Bash command output */
 .tool-result.bash-output {
   display: block;
-  margin: 8px 0;
+  margin: 0;
   opacity: 1;
 }
 
 .bash-content {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  padding: 8px;
+  background: transparent;
+  border: none;
+  border-radius: 0;
+  padding: 0;
   font-family: 'Fira Code', monospace;
   font-size: 9px;
   color: rgba(255, 255, 255, 0.85);
@@ -805,7 +818,7 @@ ol {
   background: transparent;
   border: none;
   padding: 0;
-  margin: 2px 0;
+  margin: 0;
 }
 
 .search-content {
@@ -857,7 +870,7 @@ ol {
   background: rgba(255, 153, 153, 0.05);
   border: none;
   border-radius: 8px;
-  color: #ff99cc;  /* pastel magenta */
+  color: var(--color-magenta);
   font-size: 12px;
 }
 
@@ -897,7 +910,7 @@ ol {
 }
 
 .permission-text {
-  color: #ff99cc;  /* pastel magenta */
+  color: var(--color-magenta);
   font-size: 12px;
 }
 
@@ -988,7 +1001,7 @@ ol {
   background: transparent;
   border: none;
   padding: 0;
-  margin: 2px 0;
+  margin: 0;
   max-width: 100%;
   overflow-x: auto;
 }
@@ -1010,10 +1023,10 @@ ol {
 .tool-use.todo-write {
   flex-direction: column;
   align-items: stretch;
-  background: rgba(255, 255, 255, 0.02);
+  background: transparent;
   border: none;
-  padding: 6px;
-  border-radius: 8px;
+  padding: 0;
+  border-radius: 0;
 }
 
 .tool-use.todo-write.standalone {
@@ -1032,7 +1045,7 @@ ol {
 }
 
 .todo-header-icon {
-  color: rgba(128, 128, 128, 0.7);
+  color: var(--accent-color);
 }
 
 .todo-list {
@@ -1057,11 +1070,11 @@ ol {
 }
 
 .todo-icon.completed {
-  color: #a8f0b8; /* Brighter pastel green */
+  color: var(--color-cyan);
 }
 
 .todo-icon.progress {
-  color: #ffcc99; /* Pastel orange */
+  color: var(--color-magenta);
 }
 
 .todo-icon.pending {
@@ -1069,12 +1082,12 @@ ol {
 }
 
 .todo-item.completed {
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .todo-item.completed .todo-content {
   text-decoration: none;
-  color: #a8f0b8; /* Brighter pastel green */
+  color: var(--color-cyan);
   opacity: 1;
 }
 
@@ -1083,7 +1096,7 @@ ol {
 }
 
 .todo-item.in_progress .todo-content {
-  color: #ffcc99; /* Pastel orange */
+  color: var(--color-magenta);
 }
 
 .todo-item.pending {
@@ -1102,7 +1115,7 @@ ol {
 
 .tool-use.todo-write .tool-action {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: 10px;
   font-weight: 500;
 }
 

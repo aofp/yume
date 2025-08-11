@@ -1,18 +1,20 @@
 import React, { useEffect, useState, useRef } from 'react';
+// import { IconDiff } from '@tabler/icons-react';
 import { TitleBar } from './components/Layout/TitleBar';
 import { SessionTabs } from './components/SessionTabs/SessionTabs';
 import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
 import { SettingsModal } from './components/Settings/SettingsModal';
 import { AboutModal } from './components/About/AboutModal';
-// Sidebar removed for cleaner UI
+// import { FileChangesSidebar } from './components/FileChanges/FileChangesSidebar';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession, restoreToMessage } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   
@@ -141,13 +143,19 @@ export const App: React.FC = () => {
     }
   }, [createSession]);
 
-  // Handle Ctrl+, for settings
+  // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Ctrl+, for settings
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
         setShowSettings(true);
       }
+      // Ctrl+Shift+F for file changes sidebar - DISABLED
+      // if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
+      //   e.preventDefault();
+      //   setShowFileChanges(prev => !prev);
+      // }
     };
 
     window.addEventListener('keydown', handleKeyDown);
@@ -181,7 +189,20 @@ export const App: React.FC = () => {
         <div className="main-chat-area">
           <ClaudeChat />
         </div>
+        {/* File changes sidebar - DISABLED
+        {showFileChanges && (
+          <FileChangesSidebar 
+            isOpen={showFileChanges} 
+            onToggle={() => setShowFileChanges(!showFileChanges)} 
+          />
+        )} */}
       </div>
+      {/* Floating button - DISABLED
+      {!showFileChanges && (
+        <button className="floating-file-changes-toggle" onClick={() => setShowFileChanges(true)} title="show file changes">
+          <IconDiff size={16} stroke={1.5} />
+        </button>
+      )} */}
       
       {/* Global Context Menu */}
       {contextMenu && (
@@ -287,6 +308,7 @@ export const App: React.FC = () => {
               >
                 copy message
               </button>
+              {/* Restore functionality - DISABLED
               <button 
                 className="context-menu-item"
                 onClick={() => {
@@ -301,7 +323,7 @@ export const App: React.FC = () => {
                 }}
               >
                 restore to here
-              </button>
+              </button> */}
             </>
           )}
           {(contextMenu.isTextInput || contextMenu.isMessageBubble) && (

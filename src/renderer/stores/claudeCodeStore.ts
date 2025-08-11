@@ -9,6 +9,22 @@ import { claudeCodeClient } from '../services/claudeCodeClient';
 
 export type SDKMessage = any; // Type from Claude Code SDK
 
+export interface FileSnapshot {
+  path: string;
+  content: string;
+  operation: 'edit' | 'write' | 'create' | 'delete' | 'multiedit';
+  timestamp: number;
+  messageIndex: number;
+  oldContent?: string; // For diffs
+}
+
+export interface RestorePoint {
+  messageIndex: number;
+  timestamp: number;
+  fileSnapshots: FileSnapshot[];
+  description: string; // e.g., "edited 3 files", "created new file"
+}
+
 export interface SessionAnalytics {
   totalMessages: number;
   userMessages: number;
@@ -47,6 +63,8 @@ export interface Session {
   draftInput?: string; // Store draft input text
   draftAttachments?: any[]; // Store draft attachments
   streaming?: boolean; // Track if this session is currently streaming
+  restorePoints?: RestorePoint[]; // Track file changes at each message
+  modifiedFiles?: Set<string>; // Track all files touched in this session
 }
 
 interface ClaudeCodeStore {
@@ -93,6 +111,79 @@ interface ClaudeCodeStore {
   setPermissionMode: (mode: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan') => void;
   updateAllowedTools: (tools: string[]) => void;
 }
+
+// Helper function to track file changes from tool operations
+const trackFileChange = (session: Session, message: any, messageIndex: number): RestorePoint | null => {
+  if (!message || message.type !== 'assistant') return null;
+  
+  const content = message.message?.content;
+  if (!content || !Array.isArray(content)) return null;
+  
+  const fileSnapshots: FileSnapshot[] = [];
+  const modifiedFiles = new Set(session.modifiedFiles || []);
+  
+  // Look for tool_use blocks in the content
+  content.forEach((block: any) => {
+    if (block.type === 'tool_use') {
+      const toolName = block.name;
+      const input = block.input;
+      
+      if (!input) return;
+      
+      // Track file operations
+      switch (toolName) {
+        case 'Edit':
+        case 'MultiEdit':
+          if (input.file_path) {
+            const snapshot: FileSnapshot = {
+              path: input.file_path,
+              content: input.new_string || '',
+              oldContent: input.old_string || '',
+              operation: toolName === 'MultiEdit' ? 'multiedit' : 'edit',
+              timestamp: Date.now(),
+              messageIndex
+            };
+            fileSnapshots.push(snapshot);
+            modifiedFiles.add(input.file_path);
+          }
+          break;
+          
+        case 'Write':
+          if (input.file_path) {
+            const snapshot: FileSnapshot = {
+              path: input.file_path,
+              content: input.content || '',
+              operation: 'write',
+              timestamp: Date.now(),
+              messageIndex
+            };
+            fileSnapshots.push(snapshot);
+            modifiedFiles.add(input.file_path);
+          }
+          break;
+      }
+    }
+  });
+  
+  if (fileSnapshots.length > 0) {
+    // Create description
+    const fileCount = fileSnapshots.length;
+    const operations = fileSnapshots.map(s => s.operation);
+    const uniqueOps = [...new Set(operations)];
+    const description = uniqueOps.length === 1 
+      ? `${uniqueOps[0]} ${fileCount} file${fileCount !== 1 ? 's' : ''}`
+      : `modified ${fileCount} file${fileCount !== 1 ? 's' : ''}`;
+    
+    return {
+      messageIndex,
+      timestamp: Date.now(),
+      fileSnapshots,
+      description
+    };
+  }
+  
+  return null;
+};
 
 export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   persist(
@@ -547,7 +638,29 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               analytics.duration = new Date().getTime() - s.createdAt.getTime();
               analytics.lastActivity = new Date();
               
-              return { ...s, messages: existingMessages, updatedAt: new Date(), analytics };
+              // Track file changes for assistant messages with tool_use blocks
+              let restorePoints = [...(s.restorePoints || [])];
+              let modifiedFiles = new Set(s.modifiedFiles || []);
+              
+              if (message.type === 'assistant' && !message.streaming) {
+                const restorePoint = trackFileChange(s, message, existingMessages.length - 1);
+                if (restorePoint) {
+                  restorePoints.push(restorePoint);
+                  // Update modified files set
+                  restorePoint.fileSnapshots.forEach(snapshot => {
+                    modifiedFiles.add(snapshot.path);
+                  });
+                }
+              }
+              
+              return { 
+                ...s, 
+                messages: existingMessages, 
+                updatedAt: new Date(), 
+                analytics,
+                restorePoints,
+                modifiedFiles
+              };
             });
             
             // Update streaming state based on message type

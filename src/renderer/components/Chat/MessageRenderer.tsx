@@ -520,6 +520,26 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           // Trim trailing newlines from tool results
           resultContent = resultContent.replace(/\n+$/, '');
           
+          // Replace absolute paths with relative paths in result content
+          const store = useClaudeCodeStore.getState();
+          const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
+          const workingDir = currentSession?.workingDirectory;
+          
+          if (workingDir && resultContent) {
+            // Convert working directory to Unix format
+            const unixWorkingDir = workingDir.replace(/\\/g, '/');
+            // Escape special regex characters in the path
+            const escapedPath = unixWorkingDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            // Replace all occurrences of the absolute path with relative path
+            const pathRegex = new RegExp(escapedPath + '(/[^\\s]*)?', 'gi');
+            resultContent = resultContent.replace(pathRegex, (match, rest) => {
+              if (rest) {
+                return '.' + rest;
+              }
+              return '.';
+            });
+          }
+          
           // Check if this is a file operation result (Edit, MultiEdit, Write)
           const prevBlock = content[idx - 1];
           const isFileOperation = prevBlock?.type === 'tool_use' && 
@@ -670,8 +690,13 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               }
               const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
               
-              // Hide edit results completely
-              return null;
+              // Show edit results with diff formatting
+              return (
+                <div key={idx} className="tool-result file-edit">
+                  <div className="edit-header">{filePath}</div>
+                  <pre className="edit-diff">{diffLines.join('\n')}</pre>
+                </div>
+              );
             }
             
             // For Write operations, just show success message
@@ -1045,15 +1070,13 @@ const MessageRendererBase: React.FC<{
       return (
         <div className="message user">
           <div className="message-actions user-actions">
-            {!isLast && (
-              <button 
-                onClick={handleRestore} 
-                className="action-btn"
-                title="restore to here"
-              >
-                <IconArrowBackUp size={12} stroke={1.5} />
-              </button>
-            )}
+            <button 
+              onClick={handleRestore} 
+              className="action-btn"
+              title="restore to here"
+            >
+              <IconArrowBackUp size={12} stroke={1.5} />
+            </button>
             <button 
               onClick={() => handleCopy(getMessageText(message.message?.content))} 
               className="action-btn"
@@ -1139,15 +1162,13 @@ const MessageRendererBase: React.FC<{
               </div>
               {showButtons && (
                 <div className="message-actions">
-                  {!isLast && (
-                    <button 
-                      onClick={handleRestore} 
-                      className="action-btn"
-                      title="restore to here"
-                    >
-                      <IconArrowBackUp size={12} stroke={1.5} />
-                    </button>
-                  )}
+                  <button 
+                    onClick={handleRestore} 
+                    className="action-btn"
+                    title="restore to here"
+                  >
+                    <IconArrowBackUp size={12} stroke={1.5} />
+                  </button>
                   <button 
                     onClick={() => handleCopy(getMessageText(message.message?.content))} 
                     className="action-btn"
@@ -1339,6 +1360,26 @@ const MessageRendererBase: React.FC<{
         contentStr = resultContent.output;
       } else {
         contentStr = typeof resultContent === 'string' ? resultContent : JSON.stringify(resultContent, null, 2);
+      }
+      
+      // Replace absolute paths with relative paths in result content
+      const store = useClaudeCodeStore.getState();
+      const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
+      const workingDir = currentSession?.workingDirectory;
+      
+      if (workingDir && contentStr) {
+        // Convert working directory to Unix format
+        const unixWorkingDir = workingDir.replace(/\\/g, '/');
+        // Escape special regex characters in the path
+        const escapedPath = unixWorkingDir.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        // Replace all occurrences of the absolute path with relative path
+        const pathRegex = new RegExp(escapedPath + '(/[^\\s]*)?', 'gi');
+        contentStr = contentStr.replace(pathRegex, (match, rest) => {
+          if (rest) {
+            return '.' + rest;
+          }
+          return '.';
+        });
       }
       
       // Hide tool_use_error messages like "File has not been read yet"

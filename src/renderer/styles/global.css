@@ -4,6 +4,12 @@
   --accent-color: #ff99cc;
   --accent-rgb: 255, 153, 204;
   
+  /* Code diff and status colors */
+  --color-cyan: #99e6ff;  /* pastel cyan for additions/success */
+  --color-magenta: #ff99cc;  /* pastel magenta for removals/changes */
+  --color-cyan-rgb: 153, 230, 255;
+  --color-magenta-rgb: 255, 153, 204;
+  
   /* Base Colors */
   --color-bg-primary: #000000;
   --color-bg-secondary: #050505;
@@ -216,7 +222,7 @@ textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
-  background: var(--color-bg-tertiary);
+  background: #000000;
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
@@ -226,8 +232,6 @@ textarea {
 input:focus,
 textarea:focus {
   outline: none;
-  border-color: var(--color-accent-blue);
-  box-shadow: 0 0 0 3px var(--color-focus);
 }
 
 /* Link Styles */
@@ -245,8 +249,8 @@ a:hover {
 code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  background: var(--color-bg-tertiary);
-  padding: 2px 6px;
+  background: #000000;
+  padding: 0;
   border-radius: var(--radius-sm);
 }
 
@@ -254,8 +258,8 @@ pre {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: var(--leading-relaxed);
-  background: var(--color-bg-tertiary);
-  padding: var(--space-4);
+  background: #000000;
+  padding: 0;
   border-radius: var(--radius-md);
   overflow-x: auto;
 }
