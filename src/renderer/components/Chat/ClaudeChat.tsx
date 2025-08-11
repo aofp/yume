@@ -1006,7 +1006,7 @@ export const ClaudeChat: React.FC = () => {
             {attachments.map((att, index) => (
               <div key={att.id} className="attachment-item">
                 <span className="attachment-text">
-                  {att.type === 'image' ? `image (${formatBytes(att.size || 0)})` : `text: ${att.preview}`}
+                  {att.type === 'image' ? `image: ${formatBytes(att.size || 0)}` : `text: ${att.preview}`}
                 </span>
                 <button 
                   className="attachment-remove" 
