@@ -498,16 +498,39 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   usage: message.usage,
                   hasCost: !!message.total_cost_usd,
                   cost: message.total_cost_usd,
+                  claudeSessionId: s.claudeSessionId,
+                  isCompactResult: message.usage?.input_tokens === 0 && message.usage?.output_tokens === 0,
                   fullMessage: message
                 });
                 
                 if (message.usage) {
+                  // Check if this is a /compact result (all zeros)
+                  const isCompactResult = message.usage.input_tokens === 0 && 
+                                         message.usage.output_tokens === 0 && 
+                                         message.usage.cache_creation_input_tokens === 0 && 
+                                         message.usage.cache_read_input_tokens === 0;
+                  
+                  if (isCompactResult) {
+                    console.log('🗜️ [COMPACT DETECTED] /compact command completed - need to fetch new token count');
+                    console.log('🗜️ [COMPACT] Current analytics before compact:', analytics.tokens);
+                    console.log('🗜️ [COMPACT] Session claudeSessionId:', s.claudeSessionId);
+                    
+                    // After a compact, we need to query Claude for the new context size
+                    // For now, log that we detected it - the next message will have the updated counts
+                    console.log('🗜️ [COMPACT] Next message from Claude should have updated token counts');
+                    
+                    // Don't update tokens for compact result (all zeros)
+                    return { ...s, messages: existingMessages, analytics, updatedAt: new Date() };
+                  }
+                  
                   // Only update tokens if this is a new result message (avoid duplicates)
                   const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
                   const existingResultMessages = s.messages.filter(m => m.type === 'result').map(m => ({ id: m.id, usage: m.usage }));
                   console.log(`🔍 [TOKEN DEBUG] Processing result message ${message.id}, isNewResult: ${isNewResult}, current analytics tokens: ${analytics.tokens.total}`);
                   console.log(`🔍 [TOKEN DEBUG] Session ${s.id} claudeSessionId: ${s.claudeSessionId}`);
                   console.log(`🔍 [TOKEN DEBUG] Existing result messages in session:`, existingResultMessages);
+                  console.log(`🔍 [TOKEN DEBUG] Is compact result: ${isCompactResult}`);
+                  
                   if (isNewResult) {
                     console.log('📊 Result message with usage:', message.usage);
                     if (message.cost) {
@@ -533,17 +556,36 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   console.log(`   Output: ${outputTokens}`);
                   console.log(`   TOTAL for context: ${totalTokens} (cache excluded)`);
                   
-                  // CRITICAL: Use accumulation (+=) not assignment (=)
-                  // Claude CLI sends per-message values, not cumulative
-                  const previousTotal = analytics.tokens.total;
-                  analytics.tokens.input += inputTokens;
-                  analytics.tokens.output += outputTokens;
-                  analytics.tokens.total += totalTokens;
+                  // Check if previous message was a compact - if so, reset tokens
+                  const previousMessages = s.messages.filter(m => m.type === 'result' && m.usage);
+                  const lastResultMessage = previousMessages[previousMessages.length - 1];
+                  const wasCompact = lastResultMessage?.usage && 
+                                    lastResultMessage.usage.input_tokens === 0 && 
+                                    lastResultMessage.usage.output_tokens === 0;
+                  
+                  if (wasCompact) {
+                    console.log('🗜️ [COMPACT RECOVERY] Previous message was compact, resetting token count');
+                    console.log('🗜️ [COMPACT RECOVERY] Old total:', analytics.tokens.total);
+                    // Reset tokens after compact
+                    analytics.tokens.input = inputTokens;
+                    analytics.tokens.output = outputTokens;
+                    analytics.tokens.total = totalTokens;
+                    console.log('🗜️ [COMPACT RECOVERY] New total after compact:', analytics.tokens.total);
+                  } else {
+                    // CRITICAL: Use accumulation (+=) not assignment (=)
+                    // Claude CLI sends per-message values, not cumulative
+                    const previousTotal = analytics.tokens.total;
+                    analytics.tokens.input += inputTokens;
+                    analytics.tokens.output += outputTokens;
+                    analytics.tokens.total += totalTokens;
+                    console.log(`📊 [TOKEN UPDATE] Normal accumulation - Previous: ${previousTotal}, Added: ${totalTokens}, New: ${analytics.tokens.total}`);
+                  }
                   
                   console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
-                  console.log(`   Previous total: ${previousTotal}`);
-                  console.log(`   New total: ${analytics.tokens.total}`);
-                  console.log(`   Change: ${totalTokens}`);
+                  console.log(`   Input: ${analytics.tokens.input}`);
+                  console.log(`   Output: ${analytics.tokens.output}`);
+                  console.log(`   Total: ${analytics.tokens.total}`);
+                  console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}%`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;

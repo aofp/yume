@@ -40,7 +40,7 @@ const COLOR_ROWS = [
   
   // Row 4: Slightly greyer version of row 2 - 21 unique colors
   [
-    '#b3c6d9', '#b3ccd9', '#b3d3d9', '#b3d9d9', '#b3d9d9',
+    '#b3c6d9', '#b3ccd9', '#b3d3d9', '#b3d9d9', '#b3d9df',
     '#b3d9d3', '#b3d9cc', '#b3d9c6', '#b3d9bf', '#b3d9b3',
     '#c6d9b3', '#ccd9b3', '#d3d9b3', '#d9d9b3', '#d9ccb3',
     '#d9b3b3', '#d9b3c6', '#d9b3cc', '#d9b3d3', '#d3b3d9',

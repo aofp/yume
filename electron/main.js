@@ -597,6 +597,11 @@ app.setName('yurucode');
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Ensure app name is set for macOS
+  if (process.platform === 'darwin') {
+    app.setName('yurucode');
+  }
+  
   // Set dock icon for macOS
   if (process.platform === 'darwin' && app.dock) {
     // Use PNG for dock icon - it works reliably

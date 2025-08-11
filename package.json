@@ -5,6 +5,7 @@
   "main": "electron/main.js",
   "author": "Claude Code Studio Team",
   "scripts": {
+    "postinstall": "node scripts/fix-macos-name.js",
     "setup": "node setup-claude-auth.js",
     "dev": "vite",
     "server": "node server.js",
@@ -137,10 +138,7 @@
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
-      "extendInfo": {
-        "CFBundleName": "yurucode",
-        "CFBundleDisplayName": "yurucode"
-      }
+      "extendInfo": "build/Info.plist"
     },
     "win": {
       "target": [

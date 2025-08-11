@@ -633,6 +633,19 @@ CRITICAL: you are in yurucode ui. ALWAYS:
             console.log(`Session ID: ${session.claudeSessionId}`);
             console.log(`Is this a NEW session? ${!session.claudeSessionId ? 'YES - FRESH START' : 'NO - RESUMING'}`);
             
+            // Check if this is a compact result (all zeros)
+            const isCompactResult = jsonData.usage && 
+                                   jsonData.usage.input_tokens === 0 && 
+                                   jsonData.usage.output_tokens === 0 && 
+                                   jsonData.usage.cache_creation_input_tokens === 0 && 
+                                   jsonData.usage.cache_read_input_tokens === 0;
+            
+            if (isCompactResult) {
+              console.log(`\n🗜️🗜️🗜️ COMPACT DETECTED - ALL TOKENS ARE ZERO 🗜️🗜️🗜️`);
+              console.log(`This indicates a /compact command was executed`);
+              console.log(`The next user message should show reduced token counts`);
+            }
+            
             // Log usage/cost information if present
             if (jsonData.usage) {
               console.log(`\n📊 EXACT TOKEN USAGE FROM CLAUDE CLI:`);
@@ -647,6 +660,7 @@ CRITICAL: you are in yurucode ui. ALWAYS:
               console.log(`   TOTAL INPUT: ${totalInput}`);
               console.log(`   TOTAL OUTPUT: ${totalOutput}`);
               console.log(`   GRAND TOTAL: ${totalInput + totalOutput}`);
+              console.log(`   IS COMPACT: ${isCompactResult ? 'YES - CONTEXT COMPACTED' : 'NO'}`);
             } else {
               console.log(`   ⚠️ NO USAGE DATA IN RESULT`);
             }
