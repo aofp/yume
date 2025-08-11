@@ -1234,10 +1234,8 @@ const MessageRendererBase: React.FC<{
       
       // For Edit tool, show a proper diff
       if (toolName === 'Edit' || toolName === 'MultiEdit') {
-        let filePath = toolInput.file_path || 'file';
-        // Convert to relative Unix path
-        filePath = filePath.replace(/^[A-Z]:\\.*\\(testproject|yurucode)\\/, '')
-                          .replace(/\\/g, '/');
+        // Use formatPath to convert to relative path
+        const filePath = formatPath(toolInput.file_path || 'file');
         
         const oldString = toolInput.old_string || '';
         const newString = toolInput.new_string || '';

@@ -182,15 +182,28 @@
   /* No overflow hidden - show everything */
 }
 
-.tab-name {
-  font-size: 8px;
-  font-weight: 400;
-  color: rgba(255, 255, 255, 0.5);
-  white-space: nowrap;
-  letter-spacing: 0.3px;
-  font-family: 'Fira Code', monospace;
+/* Context usage bar replacing the 3-letter name */
+.tab-context-bar {
+  width: 20px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 0;
   position: relative;
-  top: 1px;
+  overflow: hidden;
+}
+
+.context-bar-fill {
+  position: absolute;
+  left: 0;
+  top: 0;
+  height: 100%;
+  border-radius: 0;
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.context-bar-text {
+  position: absolute;
+  display: none; /* Hide percentage text - ultra minimal */
 }
 
 .session-tab.active .tab-name {

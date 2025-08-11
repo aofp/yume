@@ -307,11 +307,34 @@ export const SessionTabs: React.FC = () => {
             }}
           >
             <div className="tab-content">
-              <span className="tab-name">{
-                // Generate a consistent 3-char ID from the session ID
-                session.id.split('-').pop()?.substring(0, 3) || 
-                Math.random().toString(36).substring(2, 5)
-              }</span>
+              <div className="tab-context-bar">
+                {(() => {
+                  const tokens = (session as any).analytics?.tokens?.total || 0;
+                  const contextMax = 200000; // 200k context window
+                  const percentage = Math.min((tokens / contextMax) * 100, 100);
+                  
+                  // Color gradient: grey until 70%, then yellow -> orange -> red
+                  const getColor = (pct: number) => {
+                    if (pct < 70) return 'rgba(150, 150, 150, 0.8)'; // Grey
+                    if (pct < 80) return 'rgba(255, 255, 100, 0.8)'; // Yellow
+                    if (pct < 90) return 'rgba(255, 200, 100, 0.8)'; // Orange
+                    return 'rgba(255, 100, 100, 0.8)'; // Red
+                  };
+                  
+                  return (
+                    <>
+                      <div 
+                        className="context-bar-fill" 
+                        style={{ 
+                          width: `${percentage}%`,
+                          background: getColor(percentage)
+                        }}
+                      />
+                      <div className="context-bar-text">{Math.round(percentage)}%</div>
+                    </>
+                  );
+                })()}
+              </div>
               {(session as any).workingDirectory && (
                 <span className="tab-folder">
                   {getDisplayPath((session as any).workingDirectory)}

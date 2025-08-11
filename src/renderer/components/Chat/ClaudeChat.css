@@ -923,7 +923,7 @@
   font-family: 'Fira Code', monospace;
 }
 
-/* Color coding for token usage levels - match clear button style by default */
+/* Color coding for token usage levels - grey until 70%, then yellow/orange/red */
 .btn-stats.low {
   color: rgba(255, 255, 255, 0.4);
 }
@@ -934,17 +934,31 @@
   border-color: rgba(var(--accent-rgb), 0.2);
 }
 
+/* Yellow at 70-80% */
 .btn-stats.medium {
-  color: rgba(255, 204, 0, 0.6);
-  border-color: rgba(255, 204, 0, 0.2);
+  color: rgba(255, 255, 100, 0.8);
+  border-color: rgba(255, 255, 100, 0.3);
 }
 
 .btn-stats.medium:hover {
-  background: rgba(255, 204, 0, 0.05);
-  color: rgba(255, 204, 0, 0.9);
-  border-color: rgba(255, 204, 0, 0.3);
+  background: rgba(255, 255, 100, 0.05);
+  color: rgba(255, 255, 100, 1);
+  border-color: rgba(255, 255, 100, 0.4);
 }
 
+/* Orange at 80-90% */
+.btn-stats.orange {
+  color: rgba(255, 200, 100, 0.8);
+  border-color: rgba(255, 200, 100, 0.3);
+}
+
+.btn-stats.orange:hover {
+  background: rgba(255, 200, 100, 0.05);
+  color: rgba(255, 200, 100, 1);
+  border-color: rgba(255, 200, 100, 0.4);
+}
+
+/* Red at 90%+ */
 .btn-stats.high {
   color: rgba(255, 100, 100, 0.8);
   border-color: rgba(255, 100, 100, 0.3);

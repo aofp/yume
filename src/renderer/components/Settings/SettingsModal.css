@@ -126,6 +126,8 @@
 /* Color Picker Container */
 .color-picker-container {
   position: relative;
+  display: flex;
+  justify-content: center;
 }
 
 .color-preview {

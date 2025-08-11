@@ -1074,7 +1074,10 @@ export const ClaudeChat: React.FC = () => {
               if (rawPercentage > 100) {
                 console.warn(`[TOKEN WARNING] Tokens (${tokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
               }
-              const usageClass = percentageNum >= 90 ? 'high' : percentageNum >= 80 ? 'medium' : 'low';
+              // Color classes: grey until 70%, then yellow/orange/red
+              const usageClass = percentageNum >= 90 ? 'high' : 
+                                percentageNum >= 80 ? 'orange' : 
+                                percentageNum >= 70 ? 'medium' : 'low';
               
               const hasActivity = currentSession.messages.some(m => 
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
