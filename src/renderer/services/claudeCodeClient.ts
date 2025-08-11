@@ -12,25 +12,21 @@ export class ClaudeCodeClient {
   private serverPort: number | null = null;
 
   constructor() {
-    console.log('🚀 Initializing ClaudeCodeClient');
     this.discoverAndConnect();
   }
 
   private async discoverAndConnect() {
-    console.log('🔍 Starting server discovery...');
     
     // Try to get port from Electron IPC first
     if (window.electronAPI && window.electronAPI.getServerPort) {
       try {
         const port = await window.electronAPI.getServerPort();
         if (port) {
-          console.log(`📌 Got server port from Electron: ${port}`);
           this.serverPort = port;
           this.connectWithRetry();
           return;
         }
       } catch (err) {
-        console.log('Could not get port from Electron:', err);
       }
     }
     
@@ -38,14 +34,12 @@ export class ClaudeCodeClient {
     const portsToCheck = [3001, 3002, 3003, 3004, 3005];
     for (const port of portsToCheck) {
       try {
-        console.log(`🔍 Checking port ${port}...`);
         const response = await fetch(`http://localhost:${port}/health`, { 
           signal: AbortSignal.timeout(1000) 
         });
         if (response.ok) {
           const data = await response.json();
           if (data.service === 'yurucode-claude') {
-            console.log(`✅ Found server on port ${port}`);
             this.serverPort = port;
             this.connectWithRetry();
             return;
@@ -57,7 +51,6 @@ export class ClaudeCodeClient {
     }
     
     // Default to 3001 if no server found
-    console.log('⚠️ No server found, defaulting to port 3001');
     this.serverPort = 3001;
     
     // Add retry logic for initial connection
@@ -65,27 +58,22 @@ export class ClaudeCodeClient {
   }
   
   private async connectWithRetry(retries = 10, delay = 1000) {
-    console.log(`🔄 Attempting to connect to port ${this.serverPort} (${retries} retries left)...`);
     
     // First check if server is responding
     try {
       const response = await fetch(`http://localhost:${this.serverPort}/health`);
       if (response.ok) {
-        console.log(`✅ Server health check passed on port ${this.serverPort}`);
         this.connect();
         return;
       }
     } catch (err) {
-      console.log(`⚠️ Server not ready on port ${this.serverPort}: ${err.message}`);
     }
     
     if (retries > 0) {
-      console.log(`⏳ Waiting ${delay}ms before retry...`);
       setTimeout(() => {
         this.connectWithRetry(retries - 1, Math.min(delay * 1.5, 5000));
       }, delay);
     } else {
-      console.error('❌ Failed to connect to server after all retries');
       // Try to connect anyway - Socket.IO will keep retrying
       this.connect();
     }
@@ -93,12 +81,10 @@ export class ClaudeCodeClient {
 
   private connect() {
     if (!this.serverPort) {
-      console.error('❌ No server port configured');
       return;
     }
     
     const serverUrl = `http://localhost:${this.serverPort}`;
-    console.log(`🔌 Connecting to Claude Code server at ${serverUrl}`);
     
     // Connect to the Claude Code server with extended retry settings for production
     this.socket = io(serverUrl, {

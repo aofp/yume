@@ -174,6 +174,10 @@ io.on('connection', (socket) => {
       // Build arguments
       const args = ['--print', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
       
+      // Add yurucode system prompt
+      const casualPrompt = "<yurucode>you are in yurucode ui. reply concisely in lowercase. code/variables keep proper case.</yurucode>";
+      args.push('--append-system-prompt', casualPrompt);
+      
       if (model) {
         args.push('--model', model);
         console.log(`🤖 Using model: ${model}`);

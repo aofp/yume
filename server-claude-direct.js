@@ -59,10 +59,21 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'yurucode-claude' });
 });
 
+// Session states for tracking
+const SessionState = {
+  IDLE: 'idle',
+  PROCESSING: 'processing',
+  STREAMING: 'streaming',
+  INTERRUPTED: 'interrupted',
+  ERROR: 'error'
+};
+
 // Session management with proper isolation
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
+let sessionStates = new Map();  // Map of sessionId -> state
+let sessionRetryCount = new Map();  // Map of sessionId -> retry count
 
 // macOS: Handle process cleanup on exit
 if (process.platform !== 'win32') {
@@ -124,10 +135,15 @@ io.on('connection', (socket) => {
         workingDirectory: workingDirectory,
         messages: [],
         createdAt: Date.now(),
-        claudeSessionId: null
+        claudeSessionId: null,
+        lastActivity: Date.now(),
+        messageCount: 0,
+        errorCount: 0
       };
       
       sessions.set(sessionId, sessionData);
+      sessionStates.set(sessionId, SessionState.IDLE);
+      sessionRetryCount.set(sessionId, 0);
       
       console.log(`✅ Session ready: ${sessionId}`);
       console.log(`📁 Working directory: ${workingDirectory}`);
@@ -154,8 +170,21 @@ io.on('connection', (socket) => {
       if (!session) {
         throw new Error(`Session ${sessionId} not found`);
       }
+      
+      // Check session state to prevent concurrent messages
+      const currentState = sessionStates.get(sessionId);
+      if (currentState === SessionState.PROCESSING || currentState === SessionState.STREAMING) {
+        console.warn(`⚠️ Session ${sessionId} is already processing (state: ${currentState})`);
+        callback({ success: false, error: 'Session is already processing a message' });
+        return;
+      }
+      
+      // Update session state
+      sessionStates.set(sessionId, SessionState.PROCESSING);
+      session.lastActivity = Date.now();
+      session.messageCount++;
 
-      console.log(`📝 Message for session ${sessionId}: ${content.substring(0, 50)}...`);
+      console.log(`📝 Message #${session.messageCount} for session ${sessionId}: ${content.substring(0, 50)}...`);
       
       // Add user message
       const userMessage = {
@@ -217,6 +246,10 @@ io.on('connection', (socket) => {
       // NOTE: --verbose is REQUIRED for stream-json output format
       // This might be why Claude reports high token counts - it includes system prompts
       const args = ['--print', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
+      
+      // Add yurucode system prompt
+      const casualPrompt = "<yurucode>you are in yurucode ui. reply concisely in lowercase. code/variables keep proper case.</yurucode>";
+      args.push('--append-system-prompt', casualPrompt);
       
       // Add model selection if provided
       if (model) {
@@ -404,6 +437,7 @@ io.on('connection', (socket) => {
               // Send text content as separate assistant message
               if (hasText && textContent) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
+                sessionStates.set(sessionId, SessionState.STREAMING); // Update state
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
                   message: { content: textContent },
@@ -455,6 +489,10 @@ io.on('connection', (socket) => {
           } else if (jsonData.type === 'result') {
             console.log(`📦 Message type: result (${jsonData.result})`);
             console.log(`   ✅ Result: success=${jsonData.result === 'success'}, duration=${jsonData.duration}ms`);
+            
+            // Update session state
+            sessionStates.set(sessionId, SessionState.IDLE);
+            sessionRetryCount.set(sessionId, 0); // Reset retry count on success
             
             // CRITICAL TOKEN DEBUG - SHOW EXACTLY WHAT CLAUDE IS SENDING
             console.log(`\n🚨🚨🚨 TOKEN DEBUG - CLAUDE CLI RESULT 🚨🚨🚨`);
@@ -551,6 +589,8 @@ io.on('connection', (socket) => {
           const session = sessions.get(sessionId);
           if (session) {
             session.claudeSessionId = undefined;
+            sessionRetryCount.set(sessionId, 0); // Reset retry count
+            sessionStates.set(sessionId, SessionState.IDLE); // Reset state
             console.log(`🔄 Cleared invalid Claude session ID for ${sessionId}`);
           }
           
@@ -617,6 +657,16 @@ io.on('connection', (socket) => {
         console.log(`Claude process exited with code ${code}`);
         console.log(`Total messages processed: ${messageCount}`);
         
+        // Update state based on exit code
+        const currentState = sessionStates.get(sessionId);
+        if (currentState !== SessionState.INTERRUPTED) {
+          if (code === 0 || code === null) {
+            sessionStates.set(sessionId, SessionState.IDLE);
+          } else {
+            sessionStates.set(sessionId, SessionState.ERROR);
+          }
+        }
+        
         // Process any remaining buffer
         if (lineBuffer.trim()) {
           processStreamLine(lineBuffer);
@@ -649,11 +699,20 @@ io.on('connection', (socket) => {
         if (code !== 0 && code !== null) {
           console.error(`Claude process failed with exit code ${code}`);
           
-          // Clear Claude session ID on error
+          // Handle retry logic
           const session = sessions.get(sessionId);
           if (session && code === 1) {
-            session.claudeSessionId = undefined;
-            console.log(`🔄 Cleared Claude session ID for ${sessionId} due to error`);
+            const retryCount = sessionRetryCount.get(sessionId) || 0;
+            if (retryCount >= 2) {
+              // Clear session after multiple failures
+              session.claudeSessionId = undefined;
+              console.log(`🔄 Cleared Claude session ID for ${sessionId} after ${retryCount} failures`);
+              sessionRetryCount.set(sessionId, 0);
+            } else {
+              // Increment retry count
+              sessionRetryCount.set(sessionId, retryCount + 1);
+              console.log(`⚠️ Session ${sessionId} failed, retry count: ${retryCount + 1}/2`);
+            }
           }
           
           // Send error message to client
@@ -726,6 +785,11 @@ io.on('connection', (socket) => {
   socket.on('interrupt', (data, callback) => {
     const sessionId = data?.sessionId || data;
     console.log(`⛔ Interrupt requested for session ${sessionId}`);
+    
+    // Update state
+    const currentState = sessionStates.get(sessionId);
+    console.log(`  Current state: ${currentState || 'unknown'}`);
+    sessionStates.set(sessionId, SessionState.INTERRUPTED);
     
     // Get the specific process for this session
     const childProcess = activeProcesses.get(sessionId);

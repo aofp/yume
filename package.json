@@ -55,18 +55,10 @@
     "wait-on": "^7.2.0"
   },
   "dependencies": {
-    "@anthropic-ai/claude-code": "^1.0.70",
-    "@anthropic-ai/sdk": "^0.58.0",
-    "@monaco-editor/react": "^4.6.0",
     "@tabler/icons-react": "^3.34.1",
-    "clsx": "^2.1.0",
     "cors": "^2.8.5",
-    "dotenv": "^17.2.1",
     "electron-store": "^8.1.0",
     "express": "^5.1.0",
-    "framer-motion": "^10.18.0",
-    "lucide-react": "^0.309.0",
-    "png-to-ico": "^2.1.8",
     "portfinder": "^1.0.37",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
