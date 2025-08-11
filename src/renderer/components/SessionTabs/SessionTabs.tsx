@@ -262,6 +262,11 @@ export const SessionTabs: React.FC = () => {
                   {getDisplayPath((session as any).workingDirectory)}
                 </span>
               )}
+              {(session as any).claudeTitle && (
+                <span className="tab-title">
+                  · {(session as any).claudeTitle}
+                </span>
+              )}
             </div>
             {/* Show loading icon for pending sessions or streaming */}
             {(session.status === 'pending' || session.streaming) ? (

@@ -6,6 +6,7 @@ import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
 import { SettingsModal } from './components/Settings/SettingsModal';
 import { AboutModal } from './components/About/AboutModal';
+import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
 // import { FileChangesSidebar } from './components/FileChanges/FileChangesSidebar';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import './App.minimal.css';
@@ -14,6 +15,7 @@ export const App: React.FC = () => {
   const { currentSessionId, sessions, createSession /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
+  const [showHelpModal, setShowHelpModal] = useState(false);
   // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -132,12 +134,14 @@ export const App: React.FC = () => {
     if (window.electronAPI?.on) {
       window.electronAPI.on('initial-directory', handleInitialDirectory);
       window.electronAPI.on('folder-changed', handleFolderChanged);
+      window.electronAPI.on('show-help-modal', () => setShowHelpModal(true));
       
       // Cleanup listeners
       return () => {
         if (window.electronAPI?.off) {
           window.electronAPI.off('initial-directory', handleInitialDirectory);
           window.electronAPI.off('folder-changed', handleFolderChanged);
+          window.electronAPI.off('show-help-modal', () => setShowHelpModal(true));
         }
       };
     }
@@ -151,6 +155,16 @@ export const App: React.FC = () => {
         e.preventDefault();
         setShowSettings(true);
       }
+      // ? for keyboard shortcuts (not in input fields)
+      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+        e.preventDefault();
+        setShowHelpModal(prev => !prev);
+      }
+      // Escape to close help modal
+      if (e.key === 'Escape' && showHelpModal) {
+        e.preventDefault();
+        setShowHelpModal(false);
+      }
       // Ctrl+Shift+F for file changes sidebar - DISABLED
       // if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
       //   e.preventDefault();
@@ -160,7 +174,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [showHelpModal]);
 
   // Apply accent color from localStorage on mount
   useEffect(() => {
@@ -182,7 +196,7 @@ export const App: React.FC = () => {
       onDragOver={handleGlobalDragOver}
       onContextMenu={handleGlobalContextMenu}
     >
-      <WindowControls onSettingsClick={() => setShowSettings(true)} />
+      <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} />
       <TitleBar onSettingsClick={() => setShowSettings(true)} />
       <SessionTabs />
       <div className="app-content">
@@ -343,6 +357,7 @@ export const App: React.FC = () => {
       
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />}
+      {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
     </div>
   );
 };

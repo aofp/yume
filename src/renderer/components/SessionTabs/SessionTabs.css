@@ -213,6 +213,21 @@
   color: rgba(255, 230, 153, 0.7);
 }
 
+.tab-title {
+  font-size: 9px;
+  color: var(--accent-color);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  font-weight: 400;
+  font-family: 'Fira Code', monospace;
+}
+
+.session-tab.active .tab-title {
+  color: var(--accent-color);
+}
+
 .streaming-icon {
   color: rgba(255, 230, 153, 0.7);
   animation: spin 1s linear infinite;

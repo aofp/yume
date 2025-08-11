@@ -121,6 +121,11 @@ export class ClaudeCodeClient {
       console.error('🔴 Socket error:', error);
     });
     
+    // Listen for title updates
+    this.socket.on(/^title:/, (data) => {
+      console.log('🏷️ Received title update:', data);
+    });
+    
     // Log reconnection attempts
     this.socket.io.on('reconnect_attempt', (attemptNumber) => {
       console.log(`🔄 Reconnection attempt #${attemptNumber}`);
@@ -366,6 +371,40 @@ export class ClaudeCodeClient {
       this.socket.disconnect();
       this.socket = null;
     }
+  }
+  
+  onTitle(sessionId: string, handler: (title: string) => void): () => void {
+    const eventName = `title:${sessionId}`;
+    console.log(`[Client] 🏷️ Setting up title listener for ${eventName}`);
+    
+    if (this.socket) {
+      this.socket.on(eventName, (data: any) => {
+        console.log(`[Client] 🏷️ Received title event:`, eventName, data);
+        if (data?.title) {
+          console.log(`[Client] 🏷️ Calling handler with title: "${data.title}"`);
+          handler(data.title);
+        } else {
+          console.log(`[Client] 🏷️ No title in data:`, data);
+        }
+      });
+      
+      // Debug: listen to all events
+      this.socket.onAny((eventName: string, ...args: any[]) => {
+        if (eventName.startsWith('title:')) {
+          console.log(`[Client] 🏷️ ANY title event received:`, eventName, args);
+        }
+      });
+      
+      // Return cleanup function
+      return () => {
+        if (this.socket) {
+          this.socket.off(eventName);
+          this.socket.offAny();
+        }
+      };
+    }
+    
+    return () => {};
   }
 }
 

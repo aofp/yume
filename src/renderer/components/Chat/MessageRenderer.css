@@ -1104,7 +1104,7 @@ ol {
 }
 
 .todo-item.pending .todo-content {
-  color: #d0d0e0; /* Brighter pastel grey-blue */
+  color: #cccccc;
 }
 
 .todo-content {

@@ -61,6 +61,97 @@ let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
 
+// Helper function to generate title with Sonnet
+async function generateTitle(sessionId, userMessage, socket) {
+  try {
+    console.log(`🏷️ Generating title for session ${sessionId}`);
+    console.log(`🏷️ Message preview: "${userMessage.substring(0, 100)}..."`);
+    
+    // Spawn a separate claude process just for title generation
+    const titleArgs = [
+      '--output-format', 'json',
+      '--model', 'claude-3-5-sonnet-20241022',
+      '--print'  // Non-interactive mode
+    ];
+    
+    const titlePrompt = `user message: "${userMessage.substring(0, 200)}"
+task: reply with ONLY 1-3 words describing what user wants. lowercase only. no punctuation. be extremely concise. examples: "echo command", "file search", "debug issue"`;
+    
+    console.log(`🏷️ Title prompt: "${titlePrompt}"`);
+    
+    const child = spawn('claude', titleArgs, {
+      cwd: process.cwd(),
+      env: { ...process.env },
+      stdio: ['pipe', 'pipe', 'pipe']
+    });
+    
+    let output = '';
+    let errorOutput = '';
+    
+    child.stdout.on('data', (data) => {
+      output += data.toString();
+      console.log(`🏷️ Title generation stdout: ${data.toString()}`);
+    });
+    
+    child.stderr.on('data', (data) => {
+      errorOutput += data.toString();
+      console.log(`🏷️ Title generation stderr: ${data.toString()}`);
+    });
+    
+    child.on('close', (code) => {
+      console.log(`🏷️ Title generation process closed with code ${code}`);
+      console.log(`🏷️ Full output: "${output}"`);
+      if (errorOutput) {
+        console.log(`🏷️ Error output: "${errorOutput}"`);
+      }
+      
+      try {
+        const lines = output.trim().split('\n');
+        const lastLine = lines[lines.length - 1];
+        console.log(`🏷️ Parsing last line: "${lastLine}"`);
+        const response = JSON.parse(lastLine);
+        
+        // Handle both 'completion' and 'result' fields
+        const titleText = response.completion || response.result;
+        
+        if (titleText) {
+          let title = titleText
+            .toLowerCase()
+            .replace(/[^\w\s]/g, '')
+            .trim()
+            .substring(0, 30);
+          
+          if (title && title.length > 2) {
+            console.log(`🏷️ Generated title: "${title}" - emitting to client`);
+            const eventName = `title:${sessionId}`;
+            console.log(`🏷️ Emitting event: ${eventName} with data:`, { title });
+            socket.emit(eventName, { title });
+          } else {
+            console.log(`🏷️ Title too short or empty: "${title}"`);
+          }
+        } else {
+          console.log(`🏷️ No title text in response:`, response);
+        }
+      } catch (e) {
+        console.error('🏷️ Failed to parse title response:', e);
+        console.error('🏷️ Raw output was:', output);
+      }
+    });
+    
+    child.on('error', (error) => {
+      console.error('🏷️ Failed to spawn title generation process:', error);
+    });
+    
+    // Send the prompt
+    console.log(`🏷️ Writing prompt to stdin`);
+    child.stdin.write(titlePrompt);
+    child.stdin.end();
+    
+  } catch (error) {
+    console.error('🏷️ Failed to generate title:', error);
+  }
+}
+
 // Memory management - EXACTLY LIKE WINDOWS
 const MAX_MESSAGE_HISTORY = 1000; // Limit message history per session
 const MAX_LINE_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB max buffer
@@ -125,7 +216,8 @@ io.on('connection', (socket) => {
         workingDirectory: workingDirectory,
         messages: [],
         createdAt: Date.now(),
-        claudeSessionId: null
+        claudeSessionId: null,
+        hasGeneratedTitle: false
       };
       
       sessions.set(sessionId, sessionData);
@@ -212,6 +304,35 @@ io.on('connection', (socket) => {
         console.log(`📝 Sending message to resumed session (${message.length} chars)`);
         claudeProcess.stdin.write(message + '\n');
         claudeProcess.stdin.end();
+      }
+      
+      // Generate title with Sonnet (fire and forget) - only for first message
+      console.log(`🏷️ Title check: hasGeneratedTitle=${session.hasGeneratedTitle}, messageLength=${message?.length}`);
+      if (!session.hasGeneratedTitle && message && message.length > 5) {
+        // Extract only text content (no attachments)
+        let textContent = message;
+        try {
+          // Check if content is JSON array (with attachments)
+          const parsed = JSON.parse(message);
+          if (Array.isArray(parsed)) {
+            // Find text blocks only
+            const textBlocks = parsed.filter(block => block.type === 'text');
+            textContent = textBlocks.map(block => block.text).join(' ');
+            console.log(`🏷️ Extracted text from JSON: "${textContent.substring(0, 50)}..."`);
+          }
+        } catch (e) {
+          // Not JSON, use as-is (plain text message)
+          console.log(`🏷️ Using plain text content: "${textContent.substring(0, 50)}..."`);
+        }
+        
+        // Only generate title if we have actual text content
+        if (textContent && textContent.trim().length > 5) {
+          console.log(`🏷️ Calling generateTitle for session ${sessionId}`);
+          generateTitle(sessionId, textContent, socket);
+          session.hasGeneratedTitle = true;
+        } else {
+          console.log(`🏷️ Skipping title generation - text too short: "${textContent}"`);
+        }
       }
 
       // Process streaming output - EXACTLY LIKE WINDOWS
@@ -503,6 +624,7 @@ io.on('connection', (socket) => {
     // Clear the session data but keep the session alive
     session.messages = [];
     session.claudeSessionId = null;  // Reset Claude session ID so next message starts fresh
+    session.hasGeneratedTitle = false;  // Reset title generation flag so next message gets a new title
     lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
     
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
@@ -514,6 +636,11 @@ io.on('connection', (socket) => {
       message: 'session cleared',
       timestamp: Date.now()
     });
+    
+    // Emit title reset
+    const eventName = `title:${sessionId}`;
+    console.log(`🏷️ Emitting title reset for cleared session: ${eventName}`);
+    socket.emit(eventName, { title: 'new session' });
   });
   
   socket.on('deleteSession', async (data, callback) => {

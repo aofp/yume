@@ -898,6 +898,27 @@
   border-color: rgba(var(--accent-rgb), 0.2);
 }
 
+.btn-help-icon {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  padding: 6px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  cursor: default;
+  height: 32px;
+  width: 32px;
+}
+
+.btn-help-icon:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.2);
+}
+
 .btn-stats {
   font-family: 'Fira Code', monospace;
 }

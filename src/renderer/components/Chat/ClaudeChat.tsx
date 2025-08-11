@@ -24,7 +24,6 @@ import {
   IconFile,
   IconLoader2,
   IconChartBar,
-  IconHelp,
   IconCoin,
   IconChevronUp,
   IconChevronDown,
@@ -36,7 +35,6 @@ import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
-import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -137,7 +135,6 @@ export const ClaudeChat: React.FC = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
-  const [showHelpModal, setShowHelpModal] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
@@ -247,8 +244,8 @@ export const ClaudeChat: React.FC = () => {
     if (isNearBottom || currentSession?.streaming) {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
-        if (!isTabSwitchingRef.current) {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
+        if (!isTabSwitchingRef.current && chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
       }, 10);
     }
@@ -266,8 +263,8 @@ export const ClaudeChat: React.FC = () => {
     // If the last message is from the user, force scroll to bottom
     if (lastMessage?.type === 'user') {
       setTimeout(() => {
-        if (!isTabSwitchingRef.current) {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
+        if (!isTabSwitchingRef.current && chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
       }, 50);
     }
@@ -344,18 +341,12 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Toggle model between opus and sonnet
         toggleModel();
-      } else if (e.key === '?' && !isInputField) {
-        // Toggle help when pressing ? (not in input fields)
-        e.preventDefault();
-        setShowHelpModal(prev => !prev);
       } else if (e.key === 'Escape') {
         // First check if we're streaming and should stop
         if (currentSession?.streaming) {
           e.preventDefault();
           console.log('[ClaudeChat] ESC pressed - interrupting stream');
           interruptSession();
-        } else if (showHelpModal) {
-          setShowHelpModal(false);
         } else if (showRecentModal) {
           setShowRecentModal(false);
         } else if (searchVisible) {
@@ -369,27 +360,8 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, showHelpModal, showRecentModal, currentSession, setShowStatsModal, interruptSession, setScrollPositions]);
+  }, [searchVisible, currentSessionId, clearContext, showRecentModal, currentSession, setShowStatsModal, interruptSession, setScrollPositions]);
 
-  // Handle IPC event from menu for showing help modal
-  useEffect(() => {
-    const handleShowHelp = () => {
-      setShowHelpModal(true);
-    };
-
-    // Listen for IPC event from electron menu
-    if (window.electronAPI && window.electronAPI.on) {
-      window.electronAPI.on('show-help-modal', handleShowHelp);
-      return () => {
-        // Use off if available, otherwise use removeAllListeners
-        if (window.electronAPI.off) {
-          window.electronAPI.off('show-help-modal', handleShowHelp);
-        } else if (window.electronAPI.removeAllListeners) {
-          window.electronAPI.removeAllListeners('show-help-modal');
-        }
-      };
-    }
-  }, []);
 
   // Search functionality
   useEffect(() => {
@@ -496,11 +468,6 @@ export const ClaudeChat: React.FC = () => {
         });
         return;
       }
-    } else if (trimmedInput === '?') {
-      // Show help modal when user types just ?
-      setShowHelpModal(true);
-      setInput('');
-      return;
     }
     
     try {
@@ -566,7 +533,9 @@ export const ClaudeChat: React.FC = () => {
       
       // Force scroll to bottom after sending message
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'instant', block: 'end' });
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
       }, 50);
     } catch (error) {
       console.error('[ClaudeChat] Failed to send message:', error);
@@ -1103,14 +1072,6 @@ export const ClaudeChat: React.FC = () => {
               return (
                 <>
                   <button 
-                    className={`btn-stats ${!hasActivity ? 'disabled' : ''} ${usageClass}`} 
-                    onClick={() => hasActivity && setShowStatsModal(true)}
-                    disabled={!hasActivity}
-                    title={hasActivity ? `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)` : "no activity yet"}
-                  >
-                    {percentage}% used
-                  </button>
-                  <button 
                     className="btn-clear-context" 
                     onClick={() => {
                       // Clear messages but keep session
@@ -1129,11 +1090,12 @@ export const ClaudeChat: React.FC = () => {
                     clear
                   </button>
                   <button 
-                    className="btn-help" 
-                    onClick={() => setShowHelpModal(true)}
-                    title="keyboard shortcuts (?)"
+                    className={`btn-stats ${!hasActivity ? 'disabled' : ''} ${usageClass}`} 
+                    onClick={() => hasActivity && setShowStatsModal(true)}
+                    disabled={!hasActivity}
+                    title={hasActivity ? `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)` : "no activity yet"}
                   >
-                    ?
+                    {percentage}% used
                   </button>
                 </>
               );
@@ -1228,8 +1190,6 @@ export const ClaudeChat: React.FC = () => {
         </div>
       )}
 
-      {/* Help Modal */}
-      {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
       
       {showStatsModal && currentSession?.analytics && (
         <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>

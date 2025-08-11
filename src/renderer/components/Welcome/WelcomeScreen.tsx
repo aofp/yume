@@ -33,19 +33,8 @@ export const WelcomeScreen: React.FC = () => {
     }
   }, []);
 
-  // Handle ESC key to close modal
-  useEffect(() => {
-    const handleEsc = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && showRecentModal) {
-        setShowRecentModal(false);
-      }
-    };
-    
-    if (showRecentModal) {
-      document.addEventListener('keydown', handleEsc);
-      return () => document.removeEventListener('keydown', handleEsc);
-    }
-  }, [showRecentModal]);
+  // Handle keyboard shortcuts (moved after function definitions)
+  // Will be set up after all functions are defined
 
   const handleSelectFolder = async () => {
     if (window.electronAPI?.selectFolder) {
@@ -95,6 +84,54 @@ export const WelcomeScreen: React.FC = () => {
     // Create new session with this folder
     createSession(name, path);
   };
+
+  // Set up keyboard shortcuts after function definitions
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't trigger shortcuts when typing in input fields
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' || 
+                           target.tagName === 'TEXTAREA' || 
+                           target.contentEditable === 'true';
+      
+      // Handle ESC to close modals
+      if (e.key === 'Escape') {
+        if (showRecentModal) {
+          setShowRecentModal(false);
+        }
+        if (showHelpModal) {
+          setShowHelpModal(false);
+        }
+        return;
+      }
+      
+      // Don't process other shortcuts if in input field
+      if (isInputField) return;
+      
+      // Handle ? for help
+      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+        e.preventDefault();
+        setShowHelpModal(true);
+      }
+      
+      // Handle Ctrl+R for recent projects
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault();
+        if (recentProjects.length > 0) {
+          setShowRecentModal(true);
+        }
+      }
+      
+      // Handle Ctrl+T for new tab
+      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+        e.preventDefault();
+        handleNewSession();
+      }
+    };
+    
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showRecentModal, showHelpModal, recentProjects.length, handleNewSession]);
 
   return (
     <div className="welcome-screen">

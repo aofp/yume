@@ -1,12 +1,13 @@
 import React from 'react';
-import { IconX, IconMinus, IconSquare, IconSettings } from '@tabler/icons-react';
+import { IconX, IconMinus, IconSquare, IconSettings, IconHelp } from '@tabler/icons-react';
 import './WindowControls.css';
 
 interface WindowControlsProps {
   onSettingsClick?: () => void;
+  onHelpClick?: () => void;
 }
 
-export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick }) => {
+export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick, onHelpClick }) => {
   // Only show on Windows - check multiple methods
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
                    navigator.userAgent.toLowerCase().includes('windows');
@@ -37,6 +38,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick 
 
   return (
     <div className="window-controls">
+      {onHelpClick && (
+        <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+          <IconHelp size={14} stroke={1.5} />
+        </button>
+      )}
       {onSettingsClick && (
         <button className="window-control settings" onClick={onSettingsClick}>
           <IconSettings size={14} stroke={1.5} />
