@@ -217,7 +217,7 @@
 .modal-content {
   flex: 1;
   overflow-y: auto;
-  padding: 12px;
+  padding: 2px;
 }
 
 .recent-item-container {
