@@ -59,9 +59,39 @@ app.get('/health', (req, res) => {
   res.json({ status: 'ok', service: 'yurucode-claude' });
 });
 
+// Session management with proper isolation
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
+
+// macOS: Handle process cleanup on exit
+if (process.platform !== 'win32') {
+  process.on('exit', () => {
+    // Clean up all active processes
+    for (const [sessionId, childProcess] of activeProcesses) {
+      try {
+        process.kill(-childProcess.pid, 'SIGTERM');
+      } catch (e) {
+        // Process might already be dead
+      }
+    }
+  });
+  
+  // Handle signals to clean up child processes
+  ['SIGINT', 'SIGTERM'].forEach(signal => {
+    process.on(signal, () => {
+      console.log(`\n🛑 Received ${signal}, cleaning up...`);
+      for (const [sessionId, childProcess] of activeProcesses) {
+        try {
+          process.kill(-childProcess.pid, 'SIGTERM');
+        } catch (e) {
+          // Process might already be dead
+        }
+      }
+      process.exit(0);
+    });
+  });
+}
 let sessionIdCounter = 0;
 
 // Memory management
@@ -248,11 +278,23 @@ io.on('connection', (socket) => {
             throw new Error('Failed to spawn WSL process');
           }
         } else {
+          // macOS/Unix-specific options for concurrent processes
           child = spawn(claudePath, args, {
             cwd: workingDir,
-            env: process.env,
-            stdio: ['pipe', 'pipe', 'pipe']
+            env: { ...process.env },
+            stdio: ['pipe', 'pipe', 'pipe'],
+            // Critical for macOS: detach process to run independently
+            detached: process.platform !== 'win32',
+            // Ensure each process gets its own process group
+            shell: false,
+            // Don't inherit parent's file descriptors beyond stdio
+            windowsHide: true
           });
+          
+          // On macOS/Unix, unref the child to allow parent to exit independently
+          if (process.platform !== 'win32') {
+            child.unref();
+          }
         }
       } catch (spawnError) {
         console.error('Failed to spawn claude process:', spawnError);
@@ -626,10 +668,22 @@ io.on('connection', (socket) => {
     console.log(`⛔ Interrupt requested for session ${sessionId}`);
     
     // Get the specific process for this session
-    const process = activeProcesses.get(sessionId);
-    if (process) {
-      console.log(`🛑 Killing claude process for session ${sessionId}`);
-      process.kill('SIGINT');  // Use SIGINT for graceful interrupt
+    const childProcess = activeProcesses.get(sessionId);
+    if (childProcess) {
+      console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${childProcess.pid})`);
+      
+      // macOS/Unix: Kill the process group to ensure all children are terminated
+      if (process.platform !== 'win32') {
+        try {
+          // Negative PID kills the entire process group
+          process.kill(-childProcess.pid, 'SIGINT');
+        } catch (e) {
+          // Fallback to regular kill if process group kill fails
+          childProcess.kill('SIGINT');
+        }
+      } else {
+        childProcess.kill('SIGINT');
+      }
       activeProcesses.delete(sessionId);
       
       // If we have a last assistant message, mark it as done streaming
@@ -680,7 +734,16 @@ io.on('connection', (socket) => {
       const activeProcess = activeProcesses.get(sessionId);
       if (activeProcess) {
         console.log(`🛑 Killing active process for session ${sessionId}`);
-        activeProcess.kill('SIGINT');
+        // macOS/Unix: Kill process group
+        if (process.platform !== 'win32') {
+          try {
+            process.kill(-activeProcess.pid, 'SIGINT');
+          } catch (e) {
+            activeProcess.kill('SIGINT');
+          }
+        } else {
+          activeProcess.kill('SIGINT');
+        }
         activeProcesses.delete(sessionId);
       }
       

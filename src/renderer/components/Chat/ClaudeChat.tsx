@@ -27,7 +27,10 @@ import {
   IconHelp,
   IconCoin,
   IconChevronUp,
-  IconChevronDown
+  IconChevronDown,
+  IconArrowUp,
+  IconArrowDown,
+  IconBrain
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -194,38 +197,67 @@ export const ClaudeChat: React.FC = () => {
 
   // Restore scroll position when switching tabs
   useEffect(() => {
-    if (currentSessionId && currentSessionId !== previousSessionIdRef.current) {
-      // Tab switched
-      if (chatContainerRef.current) {
-        const savedPosition = scrollPositions[currentSessionId];
-        if (savedPosition !== undefined) {
-          // Restore saved position
-          chatContainerRef.current.scrollTop = savedPosition;
-        } else {
-          // New session, scroll to bottom
-          messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+    if (currentSessionId) {
+      if (currentSessionId !== previousSessionIdRef.current) {
+        // Tab switched
+        if (chatContainerRef.current) {
+          const savedPosition = scrollPositions[currentSessionId];
+          if (savedPosition !== undefined) {
+            // Restore saved position
+            chatContainerRef.current.scrollTop = savedPosition;
+          } else {
+            // New session, scroll to bottom
+            messagesEndRef.current?.scrollIntoView({ behavior: 'instant' });
+          }
         }
       }
+      // Always update the previous session ID ref
       previousSessionIdRef.current = currentSessionId;
     }
   }, [currentSessionId, scrollPositions]);
 
-  // Auto-scroll only for new messages in current session (not on tab switch)
+  // Auto-scroll logic - unified for all message updates
   useEffect(() => {
-    // Only autoscroll if user is already at the bottom AND we're not switching tabs
-    if (chatContainerRef.current && currentSessionId === previousSessionIdRef.current) {
-      const container = chatContainerRef.current;
-      // Check if scrolled to bottom (within 50px threshold)
-      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 50;
-      
-      if (isAtBottom) {
-        // Small delay to ensure DOM is updated
-        setTimeout(() => {
-          messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-        }, 10);
-      }
+    if (!chatContainerRef.current || !currentSession) return;
+    
+    const container = chatContainerRef.current;
+    
+    // Check if we're switching tabs
+    const isTabSwitch = currentSessionId !== previousSessionIdRef.current;
+    
+    if (isTabSwitch) {
+      // Don't auto-scroll on tab switch, handled by the tab switch effect
+      return;
     }
-  }, [currentSession?.messages]);
+    
+    // Check if scrolled to bottom (within 150px threshold for better detection)
+    // Use Math.abs to handle floating point precision issues
+    const scrollBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight);
+    const isAtBottom = scrollBottom < 150;
+    
+    if (isAtBottom) {
+      // Auto-scroll to bottom when new messages arrive and user is at bottom
+      requestAnimationFrame(() => {
+        // Use smooth scroll for regular messages, instant for streaming
+        const behavior = currentSession?.streaming ? 'instant' : 'smooth';
+        messagesEndRef.current?.scrollIntoView({ behavior });
+      });
+    }
+  }, [currentSession?.messages?.length, currentSession?.streaming, currentSessionId, currentSession?.messages?.at(-1)?.message?.content]);
+  
+  // Force scroll to bottom when user sends a message
+  useEffect(() => {
+    if (!currentSession) return;
+    
+    const lastMessage = currentSession.messages[currentSession.messages.length - 1];
+    
+    // If the last message is from the user, force scroll to bottom
+    if (lastMessage?.type === 'user') {
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      }, 50);
+    }
+  }, [currentSession?.messages?.length]);
 
   // Track thinking time
   useEffect(() => {
@@ -518,10 +550,10 @@ export const ClaudeChat: React.FC = () => {
       updateSessionDraft(currentSessionId, '', []);
       await sendMessage(messageContent);
       
-      // Scroll to bottom after sending message
-      setTimeout(() => {
+      // Force scroll to bottom after sending message
+      requestAnimationFrame(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      }, 50);
+      });
     } catch (error) {
       console.error('[ClaudeChat] Failed to send message:', error);
     }
@@ -1257,6 +1289,7 @@ export const ClaudeChat: React.FC = () => {
                   <h4>token breakdown</h4>
                   <div className="stat-row">
                     <div className="stat-keys">
+                      <IconArrowUp size={14} />
                       <span className="stat-name">input</span>
                     </div>
                     <span className="stat-dots"></span>
@@ -1266,6 +1299,7 @@ export const ClaudeChat: React.FC = () => {
                   </div>
                   <div className="stat-row">
                     <div className="stat-keys">
+                      <IconArrowDown size={14} />
                       <span className="stat-name">output</span>
                     </div>
                     <span className="stat-dots"></span>
@@ -1281,6 +1315,7 @@ export const ClaudeChat: React.FC = () => {
                   </div>
                   <div className="stat-row" style={{ marginTop: '4px' }}>
                     <div className="stat-keys">
+                      <IconBrain size={14} />
                       <span className="stat-name">opus %</span>
                     </div>
                     <span className="stat-dots"></span>
