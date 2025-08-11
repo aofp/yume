@@ -198,8 +198,8 @@ body {
 }
 
 :focus-visible {
-  outline: 2px solid var(--color-accent-blue);
-  outline-offset: 2px;
+  outline: 1px solid var(--accent-color);
+  outline-offset: 0;
 }
 
 /* Button Base Styles */

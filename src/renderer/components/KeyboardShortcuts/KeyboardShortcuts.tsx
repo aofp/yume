@@ -7,6 +7,10 @@ interface KeyboardShortcutsProps {
 }
 
 export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose }) => {
+  // Detect if we're on macOS
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0 || 
+                navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
+  const modKey = isMac ? 'cmd' : 'ctrl';
   return (
     <div className="help-modal-overlay" onClick={onClose}>
       <div className="help-modal" onClick={(e) => e.stopPropagation()}>
@@ -21,7 +25,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             <h4>tabs</h4>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">t</span>
               </div>
@@ -30,7 +34,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">w</span>
               </div>
@@ -39,7 +43,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">d</span>
               </div>
@@ -88,7 +92,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">l</span>
               </div>
@@ -97,7 +101,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">f</span>
               </div>
@@ -106,7 +110,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">.</span>
               </div>
@@ -119,7 +123,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             <h4>view</h4>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">r</span>
               </div>
@@ -128,7 +132,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">,</span>
               </div>
@@ -137,7 +141,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">0</span>
               </div>
@@ -146,7 +150,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">+</span>
               </div>
@@ -155,7 +159,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">-</span>
               </div>
@@ -182,7 +186,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">o</span>
               </div>
@@ -191,7 +195,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">q</span>
               </div>
