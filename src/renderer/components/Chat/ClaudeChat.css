@@ -194,7 +194,7 @@
 
 .header-path {
   flex: 1;
-  color: #a0a0a0;
+  color: #cccccc;
   font-family: 'Fira Code', monospace;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -296,7 +296,7 @@
 
 .message-text pre code {
   background: none;
-  color: #a0a0a0;
+  color: #cccccc;
   padding: 0;
 }
 
@@ -369,7 +369,7 @@
   border-left: 3px solid #ff99cc;
   padding-left: 12px;
   margin: 8px 0;
-  color: #a0a0a0;
+  color: #cccccc;
   font-style: italic;
 }
 
@@ -772,7 +772,7 @@
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.05);
+  background: #000000;
 }
 
 .chat-messages::-webkit-scrollbar-thumb {

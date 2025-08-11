@@ -14,7 +14,6 @@ import {
   IconChecklist,
   IconLoader2,
   IconCopy,
-  IconArrowBackUp,
   IconFile,
   IconFileText,
   IconEdit,
@@ -809,36 +808,6 @@ const MessageRendererBase: React.FC<{
     navigator.clipboard.writeText(text);
   };
   
-  const handleRestore = () => {
-    const store = useClaudeCodeStore.getState();
-    const currentSessionId = store.currentSessionId;
-    if (!currentSessionId) return;
-    
-    // Find the current session
-    const session = store.sessions.find(s => s.id === currentSessionId);
-    if (!session) return;
-    
-    // Find the actual index of this message in the original messages array
-    const actualIndex = session.messages.findIndex(m => 
-      (m.id && message.id && m.id === message.id) ||
-      (m === message)
-    );
-    
-    if (actualIndex === -1) return;
-    
-    // Keep messages up to and including this one
-    const messages = session.messages.slice(0, actualIndex + 1);
-    
-    // Update the session with truncated messages and reset Claude session ID
-    // This forces Claude to start fresh without the conversation history after the restore point
-    useClaudeCodeStore.setState(state => ({
-      sessions: state.sessions.map(s => 
-        s.id === currentSessionId 
-          ? { ...s, messages, claudeSessionId: null, updatedAt: new Date() }
-          : s
-      )
-    }));
-  };
   
   const getMessageText = (content: any): string => {
     if (typeof content === 'string') {
@@ -1071,13 +1040,6 @@ const MessageRendererBase: React.FC<{
         <div className="message user">
           <div className="message-actions user-actions">
             <button 
-              onClick={handleRestore} 
-              className="action-btn"
-              title="restore to here"
-            >
-              <IconArrowBackUp size={12} stroke={1.5} />
-            </button>
-            <button 
               onClick={() => handleCopy(getMessageText(message.message?.content))} 
               className="action-btn"
               title="copy"
@@ -1162,13 +1124,6 @@ const MessageRendererBase: React.FC<{
               </div>
               {showButtons && (
                 <div className="message-actions">
-                  <button 
-                    onClick={handleRestore} 
-                    className="action-btn"
-                    title="restore to here"
-                  >
-                    <IconArrowBackUp size={12} stroke={1.5} />
-                  </button>
                   <button 
                     onClick={() => handleCopy(getMessageText(message.message?.content))} 
                     className="action-btn"

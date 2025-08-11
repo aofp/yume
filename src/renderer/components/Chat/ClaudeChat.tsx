@@ -216,34 +216,22 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSessionId, scrollPositions]);
 
-  // Auto-scroll logic - unified for all message updates
+  // SIMPLE AUTO-SCROLL - always scroll to bottom when messages change
   useEffect(() => {
     if (!chatContainerRef.current || !currentSession) return;
     
     const container = chatContainerRef.current;
+    // Check if near bottom (within 200px)
+    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
     
-    // Check if we're switching tabs
-    const isTabSwitch = currentSessionId !== previousSessionIdRef.current;
-    
-    if (isTabSwitch) {
-      // Don't auto-scroll on tab switch, handled by the tab switch effect
-      return;
+    // Scroll if near bottom OR if streaming
+    if (isNearBottom || currentSession?.streaming) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 10);
     }
-    
-    // Check if scrolled to bottom (within 150px threshold for better detection)
-    // Use Math.abs to handle floating point precision issues
-    const scrollBottom = Math.abs(container.scrollHeight - container.scrollTop - container.clientHeight);
-    const isAtBottom = scrollBottom < 150;
-    
-    if (isAtBottom) {
-      // Auto-scroll to bottom when new messages arrive and user is at bottom
-      requestAnimationFrame(() => {
-        // Use smooth scroll for regular messages, instant for streaming
-        const behavior = currentSession?.streaming ? 'instant' : 'smooth';
-        messagesEndRef.current?.scrollIntoView({ behavior });
-      });
-    }
-  }, [currentSession?.messages?.length, currentSession?.streaming, currentSessionId, currentSession?.messages?.at(-1)?.message?.content]);
+  }, [currentSession?.messages, currentSession?.streaming]);
   
   // Force scroll to bottom when user sends a message
   useEffect(() => {
@@ -254,7 +242,7 @@ export const ClaudeChat: React.FC = () => {
     // If the last message is from the user, force scroll to bottom
     if (lastMessage?.type === 'user') {
       setTimeout(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }, 50);
     }
   }, [currentSession?.messages?.length]);
@@ -551,9 +539,9 @@ export const ClaudeChat: React.FC = () => {
       await sendMessage(messageContent);
       
       // Force scroll to bottom after sending message
-      requestAnimationFrame(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-      });
+      setTimeout(() => {
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
+      }, 50);
     } catch (error) {
       console.error('[ClaudeChat] Failed to send message:', error);
     }
