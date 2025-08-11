@@ -31,11 +31,11 @@ const COLOR_ROWS = [
   
   // Row 3: Slightly lighter version of row 2 - 21 unique colors  
   [
-    '#b3ccff', '#b3d9ff', '#b3e6ff', '#b3f2ff', '#b3ffff',
-    '#b3fff2', '#b3ffe6', '#b3ffd9', '#b3ffcc', '#b3ffb3',
-    '#ccffb3', '#e6ffb3', '#ffffb3', '#ffe6b3', '#ffccb3',
-    '#ffb3b3', '#ffb3cc', '#ffb3e6', '#ffb3ff', '#e6b3ff',
-    '#ccb3ff'
+    '#bfd4ff', '#bfddff', '#bfe8ff', '#bff4ff', '#bfffff',
+    '#bffff4', '#bfffe8', '#bfffdd', '#bfffd4', '#bfffbf',
+    '#d4ffbf', '#e8ffbf', '#ffffbf', '#ffe8bf', '#ffd4bf',
+    '#ffbfbf', '#ffbfd4', '#ffbfe8', '#ffbfff', '#e8bfff',
+    '#d4bfff'
   ],
   
   // Row 4: Slightly greyer version of row 2 - 21 unique colors
@@ -194,7 +194,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     if (showColorPicker) {
       const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
-        if (!target.closest('.color-picker-container')) {
+        if (!target.closest('.color-picker-floating') && !target.closest('.color-preview')) {
           setShowColorPicker(false);
         }
       };
@@ -205,87 +205,92 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
 
   return (
-    <div className="settings-modal-overlay" onClick={onClose}>
-      <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="settings-header">
-          <h3>
-            <IconSettings size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-            settings
-          </h3>
-          <button className="settings-close" onClick={onClose}>
-            <IconX size={16} />
-          </button>
-        </div>
-        
-        <div className="settings-content">
-          <div className="settings-section">
-            <h4>zoom</h4>
-            <div className="zoom-controls">
-              <button className="zoom-btn" onClick={handleZoomOut}>
-                <IconMinus size={14} />
-              </button>
-              <span className="zoom-level">{getZoomPercentage()}%</span>
-              <button className="zoom-btn" onClick={handleZoomIn}>
-                <IconPlus size={14} />
-              </button>
-              <button 
-                className="zoom-btn" 
-                onClick={handleZoomReset}
-                disabled={zoomLevel === 0}
-                title={zoomLevel === 0 ? "already at 100%" : "reset zoom to 100%"}
-              >
-                <IconRefresh size={14} />
-              </button>
-            </div>
+    <>
+      <div className="settings-modal-overlay" onClick={onClose}>
+        <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
+          <div className="settings-header">
+            <h3>
+              <IconSettings size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+              settings
+            </h3>
+            <button className="settings-close" onClick={onClose}>
+              <IconX size={16} />
+            </button>
           </div>
+          
+          <div className="settings-content">
+            <div className="settings-section">
+              <h4>zoom</h4>
+              <div className="zoom-controls">
+                <button className="zoom-btn" onClick={handleZoomOut}>
+                  <IconMinus size={14} />
+                </button>
+                <span className="zoom-level">{getZoomPercentage()}%</span>
+                <button className="zoom-btn" onClick={handleZoomIn}>
+                  <IconPlus size={14} />
+                </button>
+                <button 
+                  className="zoom-btn" 
+                  onClick={handleZoomReset}
+                  disabled={zoomLevel === 0}
+                  title={zoomLevel === 0 ? "already at 100%" : "reset zoom to 100%"}
+                >
+                  <IconRefresh size={14} />
+                </button>
+              </div>
+            </div>
 
-          <div className="settings-section">
-            <h4>accent color</h4>
-            <div className="color-picker-container">
-              <button 
-                className="color-preview"
-                onClick={() => setShowColorPicker(!showColorPicker)}
-                title="click to select color"
-              >
-                <span className="color-square" style={{ backgroundColor: accentColor }} />
-                <span className="color-value">{accentColor}</span>
-              </button>
-              
-              {showColorPicker && (
-                <div className="color-picker-dropdown">
-                  <div className="color-picker-header">
-                    <h4>
-                      <IconPalette size={14} stroke={1.5} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                      choose accent color
-                    </h4>
-                    <button className="color-picker-close" onClick={() => setShowColorPicker(false)}>
-                      <IconX size={14} />
-                    </button>
-                  </div>
-                  <div className="color-picker-content">
-                    {COLOR_ROWS.map((row, rowIndex) => (
-                      <div key={rowIndex} className={`color-row color-row-${rowIndex + 1}`}>
-                        {row.map((color) => (
-                          <button
-                            key={color}
-                            className={`color-swatch ${accentColor === color ? 'active' : ''}`}
-                            style={{ backgroundColor: color }}
-                            onClick={() => {
-                              handleColorSelect(color);
-                              setShowColorPicker(false);
-                            }}
-                            title={color}
-                          />
-                        ))}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+            <div className="settings-section">
+              <h4>accent color</h4>
+              <div className="color-picker-container">
+                <button 
+                  className="color-preview"
+                  onClick={() => setShowColorPicker(!showColorPicker)}
+                  title="click to select color"
+                >
+                  <span className="color-square" style={{ backgroundColor: accentColor }} />
+                  <span className="color-value">{accentColor}</span>
+                </button>
+                
+              </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+      
+      {showColorPicker && (
+        <div className="color-picker-floating">
+          <div className="color-picker-dropdown">
+            <div className="color-picker-header">
+              <h4>
+                <IconPalette size={14} stroke={1.5} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                choose accent color
+              </h4>
+              <button className="color-picker-close" onClick={() => setShowColorPicker(false)}>
+                <IconX size={14} />
+              </button>
+            </div>
+            <div className="color-picker-content">
+              {COLOR_ROWS.map((row, rowIndex) => (
+                <div key={rowIndex} className={`color-row color-row-${rowIndex + 1}`}>
+                  {row.map((color) => (
+                    <button
+                      key={color}
+                      className={`color-swatch ${accentColor === color ? 'active' : ''}`}
+                      style={{ backgroundColor: color }}
+                      onClick={() => {
+                        handleColorSelect(color);
+                        setShowColorPicker(false);
+                      }}
+                      title={color}
+                    />
+                  ))}
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 };

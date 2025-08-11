@@ -19,7 +19,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   width: 90%;
-  max-width: 500px;
+  max-width: 242px;
   max-height: 80vh;
   overflow-y: auto;
   user-select: none;
@@ -163,18 +163,23 @@
   font-weight: 500;
 }
 
+/* Color Picker Floating Container */
+.color-picker-floating {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: 20000;
+  animation: fadeInScale 0.2s ease;
+}
+
 /* Color Picker Dropdown */
 .color-picker-dropdown {
-  position: absolute;
-  bottom: 0;
-  left: 0;
   background: #0a0a0a;
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   width: 444px;
-  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.9);
-  z-index: 1000;
-  animation: slideUp 0.2s ease;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);
 }
 
 .color-picker-header {
@@ -272,5 +277,27 @@
   to {
     opacity: 1;
     transform: translateY(0);
+  }
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+@keyframes fadeInScale {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(1);
   }
 }
