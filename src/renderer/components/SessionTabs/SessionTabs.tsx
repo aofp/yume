@@ -307,6 +307,11 @@ export const SessionTabs: React.FC = () => {
             }}
           >
             <div className="tab-content">
+              {(session as any).workingDirectory && (
+                <span className="tab-folder">
+                  {getDisplayPath((session as any).workingDirectory)}
+                </span>
+              )}
               <div className="tab-context-bar">
                 {(() => {
                   const tokens = (session as any).analytics?.tokens?.total || 0;
@@ -326,7 +331,7 @@ export const SessionTabs: React.FC = () => {
                       <div 
                         className="context-bar-fill" 
                         style={{ 
-                          width: `${percentage}%`,
+                          height: `${percentage}%`,
                           background: getColor(percentage)
                         }}
                       />
@@ -335,14 +340,9 @@ export const SessionTabs: React.FC = () => {
                   );
                 })()}
               </div>
-              {(session as any).workingDirectory && (
-                <span className="tab-folder">
-                  {getDisplayPath((session as any).workingDirectory)}
-                </span>
-              )}
               {(session as any).claudeTitle && (
                 <span className="tab-title">
-                  · {(session as any).claudeTitle}
+                  {(session as any).claudeTitle}
                 </span>
               )}
             </div>

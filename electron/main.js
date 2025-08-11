@@ -294,11 +294,16 @@ async function startServer() {
   // Try multiple possible server locations
   const fs = require('fs');
   let serverPath = null;
+  // Use the macOS server on Darwin
+  const serverFileName = process.platform === 'darwin' ? 'server-claude-macos.js' : 'server-claude-direct.js';
   const possiblePaths = [
-    path.join(__dirname, '../server-claude-direct.js'),
-    path.join(process.resourcesPath, 'app', 'server-claude-direct.js'),
-    path.join(process.resourcesPath, 'server-claude-direct.js'),
-    path.join(__dirname, '..', '..', 'server-claude-direct.js')
+    // In production without asar
+    path.join(process.resourcesPath, 'app', serverFileName),
+    path.join(__dirname, '..', serverFileName),
+    // Fallback paths for asar
+    path.join(process.resourcesPath, 'app.asar.unpacked', serverFileName),
+    path.join(process.resourcesPath, serverFileName),
+    path.join(__dirname, '..', '..', serverFileName)
   ];
   
   console.log('Searching for server in these locations:');

@@ -51,6 +51,7 @@
     "electron-builder": "^24.9.1",
     "eslint": "^8.56.0",
     "rcedit": "^4.0.1",
+    "terser": "^5.43.1",
     "typescript": "^5.3.3",
     "vite": "^7.1.1",
     "wait-on": "^7.2.0"
@@ -95,45 +96,20 @@
       "!**/*.log"
     ],
     "includeSubNodeModules": false,
-    "nodeModulesCopyFilter": [
-      "!**/*.d.ts",
-      "!**/*.map",
-      "!**/test/**",
-      "!**/tests/**",
-      "!**/example/**",
-      "!**/examples/**",
-      "!**/.bin/**",
-      "!**/*.md",
-      "!**/LICENSE*",
-      "!**/CHANGELOG*",
-      "!**/README*",
-      "!**/.editorconfig",
-      "!**/.eslintrc*",
-      "!**/.babelrc*",
-      "!**/.gitignore",
-      "!**/.npmignore",
-      "!**/tsconfig.json",
-      "!**/webpack.config.js",
-      "!**/rollup.config.js"
-    ],
     "extraResources": [
       {
         "from": "assets/yurucode.ico",
         "to": "icon.ico"
       }
     ],
-    "asar": true,
-    "asarUnpack": [
-      "node_modules/node-pty/**/*",
-      "server*.js"
-    ],
+    "asar": false,
     "compression": "maximum",
     "npmRebuild": false,
     "nodeGypRebuild": false,
     "buildDependenciesFromSource": false,
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "assets/icons/mac/icon.icns",
+      "icon": "assets/icons/mac/yurucode.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",

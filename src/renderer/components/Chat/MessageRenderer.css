@@ -173,6 +173,8 @@
   font-size: 13px;
   line-height: 1.5;
   max-width: 80%;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 .message.assistant .message-bubble {
@@ -186,6 +188,8 @@
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   max-width: 80%;
   display: inline-block;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Assistant Messages */
@@ -195,6 +199,12 @@
   flex-direction: row;
   align-items: flex-end;
   width: auto;
+}
+
+.message.assistant .message-content {
+  max-width: 100%;
+  width: auto;
+  padding-left: 0;
 }
 
 .message-content {

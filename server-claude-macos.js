@@ -3,32 +3,44 @@
  * IDENTICAL TO WINDOWS SERVER - NO SDK, NO API KEY - just direct claude CLI calls with streaming
  */
 
-const Module = require('module');
-const originalRequire = Module.prototype.require;
+// No need for module override when not using asar
 
-Module.prototype.require = function(id) {
+// Claude CLI path - try multiple locations
+const { execSync } = require('child_process');
+let CLAUDE_PATH = 'claude'; // Default to PATH lookup
+
+// Try to find Claude CLI in common locations
+const possibleClaudePaths = [
+  '/opt/homebrew/bin/claude',
+  '/usr/local/bin/claude',
+  '/usr/bin/claude',
+  process.env.CLAUDE_PATH, // Allow env override
+].filter(Boolean);
+
+for (const claudePath of possibleClaudePaths) {
   try {
-    return originalRequire.apply(this, arguments);
-  } catch (e) {
-    if (e.code === 'MODULE_NOT_FOUND' && process.env.ELECTRON_RUN_AS_NODE) {
-      console.log(`Module not found: ${id}, attempting alternative resolution...`);
-      const alternativePaths = [
-        path.join(__dirname, 'node_modules', id),
-        path.join(process.cwd(), 'node_modules', id),
-        path.join(__dirname, '..', 'node_modules', id)
-      ];
-      
-      for (const altPath of alternativePaths) {
-        try {
-          return originalRequire.call(this, altPath);
-        } catch (altError) {
-          // Continue to next path
-        }
-      }
+    if (require('fs').existsSync(claudePath)) {
+      CLAUDE_PATH = claudePath;
+      console.log(`✅ Found Claude CLI at: ${CLAUDE_PATH}`);
+      break;
     }
-    throw e;
+  } catch (e) {
+    // Continue searching
   }
-};
+}
+
+// If still not found, try 'which' command
+if (CLAUDE_PATH === 'claude') {
+  try {
+    const whichResult = execSync('which claude', { encoding: 'utf8' }).trim();
+    if (whichResult) {
+      CLAUDE_PATH = whichResult;
+      console.log(`✅ Found Claude CLI via which: ${CLAUDE_PATH}`);
+    }
+  } catch (e) {
+    console.warn(`⚠️ Claude CLI not found in PATH. Using 'claude' and hoping for the best.`);
+  }
+}
 
 const express = require('express');
 const cors = require('cors');
@@ -79,7 +91,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
     
-    const child = spawn('claude', titleArgs, {
+    const child = spawn(CLAUDE_PATH, titleArgs, {
       cwd: process.cwd(),
       env: { ...process.env },
       stdio: ['pipe', 'pipe', 'pipe']
@@ -166,18 +178,29 @@ app.get('/health', (req, res) => {
   });
 });
 
-// PID file management
-const pidFilePath = path.join(__dirname, 'server.pid');
+// PID file management - use temp directory for production
+const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 
+  ? path.join(os.tmpdir(), 'yurucode-server.pid')
+  : path.join(__dirname, 'server.pid');
 
 function writePidFile() {
-  fs.writeFileSync(pidFilePath, process.pid.toString());
-  console.log(`📝 Server PID ${process.pid} written to ${pidFilePath}`);
+  try {
+    fs.writeFileSync(pidFilePath, process.pid.toString());
+    console.log(`📝 Server PID ${process.pid} written to ${pidFilePath}`);
+  } catch (err) {
+    console.log(`⚠️ Could not write PID file (running from read-only location?):`, err.message);
+    // Don't fail if we can't write PID file in production
+  }
 }
 
 function removePidFile() {
-  if (fs.existsSync(pidFilePath)) {
-    fs.unlinkSync(pidFilePath);
-    console.log(`🗑️ Removed PID file`);
+  try {
+    if (fs.existsSync(pidFilePath)) {
+      fs.unlinkSync(pidFilePath);
+      console.log(`🗑️ Removed PID file`);
+    }
+  } catch (err) {
+    // Ignore errors when removing PID file
   }
 }
 
@@ -286,7 +309,7 @@ io.on('connection', (socket) => {
 
       // Spawn claude process
       console.log(`🚀 Spawning claude with args:`, args);
-      const claudeProcess = spawn('claude', args, {
+      const claudeProcess = spawn(CLAUDE_PATH, args, {
         cwd: processWorkingDir,
         env: { ...process.env },
         shell: false

@@ -5,6 +5,7 @@ import path from 'path';
 export default defineConfig({
   plugins: [react()],
   base: './',
+  publicDir: 'public',
   server: {
     port: 5173,
     strictPort: true,
@@ -23,18 +24,7 @@ export default defineConfig({
     outDir: 'dist/renderer',
     emptyOutDir: true,
     sourcemap: false, // Disable sourcemaps for production
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
-      },
-      mangle: true,
-      format: {
-        comments: false,
-      },
-    },
+    minify: false, // Disable minification to avoid breaking libraries
     reportCompressedSize: false, // Faster builds
     chunkSizeWarningLimit: 500,
     rollupOptions: {

@@ -178,14 +178,14 @@
 .tab-content {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   /* No overflow hidden - show everything */
 }
 
-/* Context usage bar replacing the 3-letter name */
+/* Context usage bar - vertical orientation */
 .tab-context-bar {
-  width: 16px;
-  height: 2px;
+  width: 2px;
+  height: 16px;
   background: rgba(255, 255, 255, 0.1);
   border-radius: 0;
   position: relative;
@@ -195,10 +195,10 @@
 .context-bar-fill {
   position: absolute;
   left: 0;
-  top: 0;
-  height: 100%;
+  bottom: 0;
+  width: 100%;
   border-radius: 0;
-  transition: width 0.3s ease, background 0.3s ease;
+  transition: height 0.3s ease, background 0.3s ease;
 }
 
 .context-bar-text {
