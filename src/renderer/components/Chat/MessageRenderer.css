@@ -593,6 +593,7 @@ ol {
   font-family: 'Fira Code', monospace;
   font-size: 9px;
   margin: 0;
+  margin-bottom: 2px;
   padding: 0;
 }
 
@@ -660,7 +661,7 @@ ol {
 .tool-icon {
   display: inline-flex;
   align-items: center;
-  margin-right: 6px;
+  margin-right: 0px;
   color: var(--accent-color);
   animation: iconBounce 0.5s ease;
 }
@@ -680,12 +681,11 @@ ol {
   font-family: 'Fira Code', monospace;
   font-size: 10px;
   opacity: 1;
-  max-width: 300px;
+  max-width: 600px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   position: relative;
-  top: 1px;
 }
 
 /* Tool Results */
@@ -1090,7 +1090,7 @@ ol {
 .todo-content {
   flex: 1;
   line-height: 1.4;
-  font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
 }
 
 .tool-use.todo-write .tool-action {

@@ -9,7 +9,7 @@
 /* CSS variables removed - using direct values */
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
   background: linear-gradient(to right, #121212 0%, #0a0a0a 40%, #050505 70%, #000000 100%);
   color: #ffffff;
   overflow: hidden;

@@ -1,7 +1,7 @@
 import React, { memo, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { vscDarkPlus } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import { vs2015 } from 'react-syntax-highlighter/dist/styles';
 import { 
   IconBolt,
   IconFolder, 
@@ -222,8 +222,10 @@ const formatPath = (path?: string) => {
     // Convert working directory to Unix format too
     const unixWorkingDir = workingDir.replace(/\\/g, '/');
     
-    // Make path relative to working directory
-    if (unixPath.startsWith(unixWorkingDir)) {
+    // Try multiple strategies to make path relative
+    
+    // 1. Direct match - path starts with working directory
+    if (unixPath.toLowerCase().startsWith(unixWorkingDir.toLowerCase())) {
       unixPath = unixPath.slice(unixWorkingDir.length);
       // Remove leading slash if present
       if (unixPath.startsWith('/')) {
@@ -233,10 +235,27 @@ const formatPath = (path?: string) => {
       if (!unixPath) {
         unixPath = '.';
       }
-    } else if (unixPath.startsWith('/mnt/c/')) {
-      // Convert WSL paths to relative if they're in the project
+    } 
+    // 2. Handle macOS/Unix absolute paths - check if path contains project name
+    else if (unixPath.startsWith('/')) {
       const projectName = workingDir.split('/').pop() || '';
-      const projectIdx = unixPath.indexOf('/' + projectName + '/');
+      const projectIdx = unixPath.toLowerCase().indexOf('/' + projectName.toLowerCase() + '/');
+      if (projectIdx !== -1) {
+        unixPath = unixPath.slice(projectIdx + projectName.length + 2);
+      }
+    }
+    // 3. Handle Windows absolute paths (C:\, D:\, etc)
+    else if (/^[A-Z]:/i.test(unixPath)) {
+      const projectName = workingDir.split('/').pop() || '';
+      const projectIdx = unixPath.toLowerCase().indexOf('/' + projectName.toLowerCase() + '/');
+      if (projectIdx !== -1) {
+        unixPath = unixPath.slice(projectIdx + projectName.length + 2);
+      }
+    }
+    // 4. Handle WSL paths
+    else if (unixPath.startsWith('/mnt/')) {
+      const projectName = workingDir.split('/').pop() || '';
+      const projectIdx = unixPath.toLowerCase().indexOf('/' + projectName.toLowerCase() + '/');
       if (projectIdx !== -1) {
         unixPath = unixPath.slice(projectIdx + projectName.length + 2);
       }
@@ -363,7 +382,7 @@ const CodeBlock = ({ children, className, ...props }: any) => {
       </div>
       <SyntaxHighlighter
         language={language || 'text'}
-        style={vscDarkPlus}
+        style={vs2015}
         customStyle={{
           margin: 0,
           padding: '2px',
@@ -481,57 +500,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           );
           
         case 'tool_use':
-          const tool = TOOL_DISPLAYS[block.name || ''];
-          const mcpDisplay = !tool ? getMCPToolDisplay(block.name || '', block.input) : null;
-          const display = tool ? tool(block.input) : mcpDisplay || {
-            icon: <IconBolt size={14} stroke={1.5} className="tool-icon" />,
-            action: block.name?.toLowerCase() || 'tool',
-            detail: block.input ? formatToolInput(block.input) : '',
-            todos: null
-          };
-          
-          // Special rendering for TodoWrite
-          if (block.name === 'TodoWrite' && block.input?.todos) {
-            const todos = block.input.todos || [];
-            return (
-              <div key={idx} className="tool-use todo-write">
-                <div className="todo-header">
-                  <IconChecklist size={14} stroke={1.5} className="todo-header-icon" />
-                  <span className="tool-action">{display.action}</span>
-                  <span className="tool-detail">{display.detail}</span>
-                </div>
-                <div className="todo-list">
-                  {todos.map((todo: any, todoIdx: number) => (
-                    <div key={todoIdx} className={`todo-item ${todo.status}`}>
-                      {todo.status === 'completed' ? (
-                        <IconCheck size={12} stroke={2} className="todo-icon completed" />
-                      ) : todo.status === 'in_progress' ? (
-                        <IconDots size={12} stroke={2} className="todo-icon progress" />
-                      ) : (
-                        <IconMinus size={12} stroke={2} className="todo-icon pending" />
-                      )}
-                      <span className="todo-content">{todo.content}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            );
-          }
-          
-          // Only show spinner on the last tool_use block if streaming
-          const toolUseBlocks = content.filter(b => b?.type === 'tool_use');
-          const isLastTool = toolUseBlocks[toolUseBlocks.length - 1] === block;
-          
-          return (
-            <div key={idx} className="tool-use">
-              {display.icon && <span className="tool-icon">{display.icon}</span>}
-              <span className="tool-action">{display.action}</span>
-              {display.detail && <span className="tool-detail">{display.detail}</span>}
-              {message?.streaming === true && message?.type === 'assistant' && isLastTool && (
-                <IconLoader2 size={12} className="streaming-loader" />
-              )}
-            </div>
-          );
+          // Tool uses are now rendered separately outside message bubbles
+          // Return null here to prevent them from appearing inside bubbles
+          return null;
           
         case 'tool_result':
           // Skip tool results during streaming - they clutter the UI
@@ -670,42 +641,8 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               }
               const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
               
-              return (
-                <div key={idx} className="tool-result file-diff">
-                  <div className="diff-header">
-                    <IconEdit size={12} stroke={1.5} className="diff-icon" />
-                    <span className="diff-file-path">{filePath}</span>
-                  </div>
-                  <div className="diff-content">
-                    {diffLines.map((line, lineIdx) => {
-                      // Parse line numbers and content
-                      const lineMatch = line.match(/^\s*(\d+)→(.*)$/);
-                      if (lineMatch) {
-                        const [, lineNum, content] = lineMatch;
-                        // Check if content starts with + or - for coloring
-                        const isAdded = content.trim().startsWith('+');
-                        const isRemoved = content.trim().startsWith('-');
-                        const className = isAdded ? 'added' : isRemoved ? 'removed' : '';
-                        return (
-                          <div key={lineIdx} className={`diff-line ${className}`}>
-                            <span className="line-number">{lineNum}</span>
-                            <span className="line-content">{content}</span>
-                          </div>
-                        );
-                      }
-                      // Skip empty lines and stray brackets
-                      if (line.trim() === '' || line.trim() === '}') {
-                        return null;
-                      }
-                      // For MultiEdit summaries
-                      if (line.match(/^\d+\. /)) {
-                        return <div key={lineIdx} className="diff-summary">{line}</div>;
-                      }
-                      return null;
-                    })}
-                  </div>
-                </div>
-              );
+              // Hide edit results completely
+              return null;
             }
             
             // For Write operations, just show success message
@@ -1147,34 +1084,104 @@ const MessageRendererBase: React.FC<{
         }
       }
       
+      // Separate text content from tool uses
+      let textContent = contentToRender;
+      let toolUses: ContentBlock[] = [];
+      
+      if (Array.isArray(contentToRender)) {
+        textContent = contentToRender.filter(b => b.type === 'text');
+        toolUses = contentToRender.filter(b => b.type === 'tool_use');
+      } else if (typeof contentToRender === 'string') {
+        // If it's a string, treat it as text content
+        textContent = contentToRender;
+        toolUses = [];
+      }
+      
       return (
-        <div className="message assistant">
-          <div className="message-content">
-            <div className="message-bubble">
-              {contentToRender && renderContent(contentToRender, message, searchQuery, isCurrentMatch)}
-            </div>
-          </div>
-          {showButtons && (
-            <div className="message-actions">
-              {!isLast && (
-                <button 
-                  onClick={handleRestore} 
-                  className="action-btn"
-                  title="restore to here"
-                >
-                  <IconArrowBackUp size={12} stroke={1.5} />
-                </button>
+        <>
+          {/* Render text content in message bubble if there is any */}
+          {textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim())) && (
+            <div className="message assistant">
+              <div className="message-content">
+                <div className="message-bubble">
+                  {renderContent(textContent, message, searchQuery, isCurrentMatch)}
+                </div>
+              </div>
+              {showButtons && (
+                <div className="message-actions">
+                  {!isLast && (
+                    <button 
+                      onClick={handleRestore} 
+                      className="action-btn"
+                      title="restore to here"
+                    >
+                      <IconArrowBackUp size={12} stroke={1.5} />
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => handleCopy(getMessageText(message.message?.content))} 
+                    className="action-btn"
+                    title="copy"
+                  >
+                    <IconCopy size={12} stroke={1.5} />
+                  </button>
+                </div>
               )}
-              <button 
-                onClick={() => handleCopy(getMessageText(message.message?.content))} 
-                className="action-btn"
-                title="copy"
-              >
-                <IconCopy size={12} stroke={1.5} />
-              </button>
             </div>
           )}
-        </div>
+          
+          {/* Render tool uses separately outside the message bubble */}
+          {toolUses && toolUses.map((toolBlock, idx) => {
+            const tool = TOOL_DISPLAYS[toolBlock.name || ''];
+            const mcpDisplay = !tool ? getMCPToolDisplay(toolBlock.name || '', toolBlock.input) : null;
+            const display = tool ? tool(toolBlock.input) : mcpDisplay || {
+              icon: <IconBolt size={14} stroke={1.5} className="tool-icon" />,
+              action: toolBlock.name?.toLowerCase() || 'tool',
+              detail: toolBlock.input ? formatToolInput(toolBlock.input) : '',
+              todos: null
+            };
+            
+            // Special rendering for TodoWrite
+            if (toolBlock.name === 'TodoWrite' && toolBlock.input?.todos) {
+              const todos = toolBlock.input.todos || [];
+              return (
+                <div key={`tool-${idx}`} className="tool-use todo-write standalone">
+                  <div className="todo-header">
+                    <IconChecklist size={14} stroke={1.5} className="todo-header-icon" />
+                    <span className="tool-action">{display.action}</span>
+                    <span className="tool-detail">{display.detail}</span>
+                  </div>
+                  <div className="todo-list">
+                    {todos.map((todo: any, todoIdx: number) => (
+                      <div key={todoIdx} className={`todo-item ${todo.status}`}>
+                        {todo.status === 'completed' ? (
+                          <IconCheck size={12} stroke={2} className="todo-icon completed" />
+                        ) : todo.status === 'in_progress' ? (
+                          <IconDots size={12} stroke={2} className="todo-icon progress" />
+                        ) : (
+                          <IconMinus size={12} stroke={2} className="todo-icon pending" />
+                        )}
+                        <span className="todo-content">{todo.content}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            }
+            
+            // Regular tool use rendering
+            return (
+              <div key={`tool-${idx}`} className="tool-use standalone">
+                {display.icon && <span className="tool-icon">{display.icon}</span>}
+                <span className="tool-action">{display.action}</span>
+                {display.detail && <span className="tool-detail">{display.detail}</span>}
+                {message?.streaming === true && idx === toolUses.length - 1 && (
+                  <IconLoader2 size={12} className="streaming-loader" />
+                )}
+              </div>
+            );
+          })}
+        </>
       );
       
     case 'tool_use':
@@ -1236,7 +1243,7 @@ const MessageRendererBase: React.FC<{
         return (
           <div className="message tool-message">
             <div className="tool-use standalone">
-              <span className="tool-icon"><IconEdit size={14} stroke={1.5} /></span>
+              <IconEdit size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing</span>
               <span className="tool-detail">{filePath}</span>
             </div>
@@ -1349,40 +1356,8 @@ const MessageRendererBase: React.FC<{
         const diffStartIdx = lines.findIndex(line => line.includes("Here's the result of running"));
         const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
         
-        return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone file-edit">
-              <div className="diff-header">
-                <IconEdit size={12} stroke={1.5} className="diff-icon" />
-                <span className="diff-file-path">{filePath}</span>
-              </div>
-              <div className="diff-content">
-                {diffLines.map((line, idx) => {
-                  // Parse line numbers and content
-                  const lineMatch = line.match(/^\s*(\d+)→(.*)$/);
-                  if (lineMatch) {
-                    const [, lineNum, content] = lineMatch;
-                    // Check if content starts with + or - for coloring
-                    const isAdded = content.trim().startsWith('+');
-                    const isRemoved = content.trim().startsWith('-');
-                    const className = isAdded ? 'added' : isRemoved ? 'removed' : '';
-                    return (
-                      <div key={idx} className={`diff-line ${className}`}>
-                        <span className="line-number">{lineNum}</span>
-                        <span className="line-content">{content}</span>
-                      </div>
-                    );
-                  }
-                  // Skip empty lines and stray brackets
-                  if (line.trim() === '' || line.trim() === '}') {
-                    return null;
-                  }
-                  return <div key={idx} className="diff-line">{line}</div>;
-                })}
-              </div>
-            </div>
-          </div>
-        );
+        // Hide edit results completely
+        return null;
       }
       
       // Check if this is a Read operation result (already have prevMessage from above)

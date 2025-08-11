@@ -98,6 +98,7 @@
   -webkit-user-select: none;
   position: relative;
   top: -4px;
+  margin-left: 6px;
 }
 
 .titlebar-text {
@@ -118,10 +119,17 @@
   padding: 0 8px;
 }
 
-/* macOS: right align the text */
-.platform-darwin .titlebar-text {
+/* macOS: right align the text (swapped with settings) */
+.platform-darwin .titlebar-logo {
   position: absolute;
-  right: 6px;
+  right: 8px;
+  left: auto;
+  top: 2px;
+}
+
+/* macOS: move settings button to the left of yurucode text */
+.platform-darwin .titlebar-settings {
+  right: 80px;
 }
 
 /* macOS: center the title */
@@ -202,8 +210,13 @@
 }
 
 /* macOS specific styles */
+.platform-darwin .titlebar-wrapper {
+  width: 100%;
+}
+
 .platform-darwin .titlebar {
   padding-left: 80px;
+  justify-content: flex-end;
 }
 
 .platform-darwin .titlebar-controls {

@@ -6,6 +6,16 @@ import './App.minimal.css';
 
 console.log('main.tsx loading...');
 
+// Add platform class to body for platform-specific styling
+const platform = navigator.platform.toLowerCase();
+if (platform.includes('mac')) {
+  document.body.classList.add('platform-darwin');
+} else if (platform.includes('win')) {
+  document.body.classList.add('platform-win32');
+} else if (platform.includes('linux')) {
+  document.body.classList.add('platform-linux');
+}
+
 // Clear all sessions on startup
 const store = useClaudeCodeStore.getState();
 store.deleteAllSessions();

@@ -656,6 +656,33 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       return;
     }
     
+    // Wait for session to be active if it's pending
+    let sessionToUse = currentSessionId;
+    const currentSession = get().sessions.find(s => s.id === currentSessionId);
+    if (currentSession?.status === 'pending') {
+      console.log('[Store] Session is pending, waiting for activation...');
+      // Wait up to 5 seconds for session to become active
+      let retries = 50;
+      while (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        // Check if currentSessionId has been updated (temp replaced with real)
+        const newSessionId = get().currentSessionId;
+        const session = get().sessions.find(s => s.id === newSessionId);
+        if (session?.status === 'active') {
+          console.log('[Store] Session is now active, proceeding with message');
+          sessionToUse = newSessionId;
+          break;
+        }
+        retries--;
+      }
+      const finalSession = get().sessions.find(s => s.id === get().currentSessionId);
+      if (finalSession?.status !== 'active') {
+        console.error('[Store] Session failed to activate after waiting');
+        return;
+      }
+      sessionToUse = get().currentSessionId;
+    }
+    
     // Add user message immediately with unique ID
     const userMessage = {
       id: `user-${Date.now()}-${Math.random()}`,
@@ -667,7 +694,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     console.log('[Store] Adding user message to session:', userMessage.id);
     set(state => ({
       sessions: state.sessions.map(s => 
-        s.id === currentSessionId 
+        s.id === sessionToUse 
           ? { ...s, messages: [...s.messages, userMessage], streaming: true }
           : s
       )
@@ -676,8 +703,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     try {
       // Send message to Claude Code Server (REAL SDK) with selected model
       const { selectedModel } = get();
-      console.log('[Store] Sending to Claude with model:', selectedModel);
-      await claudeCodeClient.sendMessage(currentSessionId, content, selectedModel);
+      console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse);
+      await claudeCodeClient.sendMessage(sessionToUse, content, selectedModel);
       
       // Messages are handled by the onMessage listener
       // The streaming state will be cleared when we receive the result message
@@ -688,7 +715,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // Add error message to chat
       set(state => ({
         sessions: state.sessions.map(s => 
-          s.id === currentSessionId 
+          s.id === sessionToUse 
             ? { 
                 ...s, 
                 messages: [...s.messages, {

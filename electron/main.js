@@ -420,8 +420,10 @@ function createWindow() {
       preload: path.join(__dirname, 'preload-simple.js')
     },
     icon: process.platform === 'win32' 
-      ? path.join(__dirname, '../build/icon.ico')
-      : path.join(__dirname, '../build/icon.png')
+      ? path.join(__dirname, '../assets/yurucode.ico')
+      : process.platform === 'darwin'
+      ? path.join(__dirname, '../yurucode.png')  // Use PNG for window icon on macOS
+      : path.join(__dirname, '../yurucode.png')
   };
 
   // Platform-specific window settings
@@ -696,6 +698,20 @@ if (process.defaultApp) {
 
 // App lifecycle
 app.whenReady().then(async () => {
+  // Set dock icon for macOS
+  if (process.platform === 'darwin' && app.dock) {
+    // Use PNG for dock icon - it works reliably
+    const pngPath = path.join(__dirname, '../yurucode.png');
+    if (fs.existsSync(pngPath)) {
+      try {
+        app.dock.setIcon(pngPath);
+        console.log('✅ Dock icon set successfully');
+      } catch (err) {
+        console.error('Failed to set dock icon:', err);
+      }
+    }
+  }
+  
   await startServer();
   createWindow();
   createMenu();

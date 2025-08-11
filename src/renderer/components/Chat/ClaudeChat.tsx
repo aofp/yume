@@ -174,7 +174,7 @@ export const ClaudeChat: React.FC = () => {
     // Only autoscroll if user is already at the bottom
     if (chatContainerRef.current) {
       const container = chatContainerRef.current;
-      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 100;
+      const isAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 10;
       
       if (isAtBottom) {
         messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });

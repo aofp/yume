@@ -10,6 +10,7 @@
     "server": "node server.js",
     "server:cli": "node server-cli.js",
     "server:wsl": "wsl --exec bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && /usr/bin/node --expose-gc --max-old-space-size=2048 server-claude-direct.js\"",
+    "server:macos": "node --expose-gc --max-old-space-size=2048 server-claude-macos.js",
     "server:multi": "node server-claude-multi.js",
     "build": "vite build",
     "build:electron": "npm run build && electron-builder",
@@ -19,7 +20,8 @@
     "start": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && cross-env NODE_ENV=development electron .\"",
     "start:win": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server:wsl\" \"npm run dev\" \"node scripts/delay-start.js && electron .\"",
     "start:multi": "node scripts/start-multi.js",
-    "electron:dev": "npm run prestart && concurrently -k \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && electron .\"",
+    "electron:dev": "npm run prestart && concurrently -k \"npm run server:macos\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && electron .\"",
+    "electron:dev:win": "npm run prestart && concurrently -k \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && electron .\"",
     "pack": "npm run build && electron-builder --dir",
     "dist": "npm run build && electron-builder",
     "dist:mac": "npm run build && electron-builder --mac",
@@ -49,7 +51,7 @@
     "eslint": "^8.56.0",
     "rcedit": "^4.0.1",
     "typescript": "^5.3.3",
-    "vite": "^5.0.11",
+    "vite": "^7.1.1",
     "wait-on": "^7.2.0"
   },
   "dependencies": {
@@ -69,7 +71,7 @@
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-markdown": "^9.0.1",
-    "react-syntax-highlighter": "^15.5.0",
+    "react-syntax-highlighter": "^5.8.0",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "zustand": "^4.4.7"
@@ -98,14 +100,14 @@
     ],
     "extraResources": [
       {
-        "from": "build/icon.ico",
+        "from": "assets/yurucode.ico",
         "to": "icon.ico"
       }
     ],
     "asar": false,
     "mac": {
       "category": "public.app-category.developer-tools",
-      "icon": "yurucode.png",
+      "icon": "assets/icons/mac/icon.icns",
       "hardenedRuntime": true,
       "gatekeeperAssess": false,
       "entitlements": "build/entitlements.mac.plist",
@@ -120,7 +122,7 @@
           ]
         }
       ],
-      "icon": "build/icon.ico",
+      "icon": "assets/yurucode.ico",
       "legalTrademarks": "",
       "verifyUpdateCodeSignature": false,
       "signAndEditExecutable": false,
@@ -134,9 +136,9 @@
       "artifactName": "yurucode-setup-${version}.exe",
       "uninstallDisplayName": "yurucode",
       "allowElevation": true,
-      "installerIcon": "build/icon.ico",
-      "uninstallerIcon": "build/icon.ico",
-      "installerHeaderIcon": "build/icon.ico",
+      "installerIcon": "assets/yurucode.ico",
+      "uninstallerIcon": "assets/yurucode.ico",
+      "installerHeaderIcon": "assets/yurucode.ico",
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "yurucode",
@@ -150,7 +152,7 @@
         "AppImage",
         "deb"
       ],
-      "icon": "yurucode.png",
+      "icon": "assets/icons/png/512x512.png",
       "category": "Development"
     }
   }
