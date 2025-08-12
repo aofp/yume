@@ -893,10 +893,21 @@
   cursor: default;
 }
 
-.btn-clear-context:hover, .btn-stats:hover, .btn-help:hover {
+.btn-clear-context:hover:not(:disabled), .btn-stats:hover, .btn-help:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+.btn-clear-context:disabled {
+  opacity: 0.3 !important;
+  cursor: default !important;
+}
+
+.btn-clear-context:disabled:hover {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.4);
+  border-color: rgba(255, 255, 255, 0.1);
 }
 
 .btn-help-icon {

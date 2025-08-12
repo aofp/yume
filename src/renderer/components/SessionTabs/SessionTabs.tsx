@@ -500,6 +500,15 @@ export const SessionTabs: React.FC = () => {
                   e.stopPropagation();
                   deleteSession(session.id);
                 }}
+                onMouseDown={(e) => {
+                  e.stopPropagation(); // Prevent tab drag when clicking close
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--accent-color)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = '';
+                }}
               >
                 <IconX size={14} stroke={1.5} />
               </button>

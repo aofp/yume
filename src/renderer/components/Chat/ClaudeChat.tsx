@@ -1089,7 +1089,7 @@ export const ClaudeChat: React.FC = () => {
                     className="btn-clear-context" 
                     onClick={() => {
                       // Clear messages but keep session
-                      if (currentSessionId) {
+                      if (currentSessionId && hasActivity) {
                         clearContext(currentSessionId);
                         // Clear scroll position for this session
                         setScrollPositions(prev => {
@@ -1099,7 +1099,12 @@ export const ClaudeChat: React.FC = () => {
                         });
                       }
                     }}
-                    title="clear context (ctrl+l)"
+                    disabled={!hasActivity}
+                    title={hasActivity ? "clear context (ctrl+l)" : "no messages to clear"}
+                    style={{
+                      opacity: hasActivity ? 1 : 0.3,
+                      cursor: 'default'
+                    }}
                   >
                     clear
                   </button>
