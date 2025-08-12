@@ -1,11 +1,17 @@
 import React, { useEffect, useState } from 'react';
+import { IconLoader2 } from '@tabler/icons-react';
 import './ConnectionStatus.css';
 
 export const ConnectionStatus: React.FC = () => {
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
-  const [details, setDetails] = useState('');
+  const [details, setDetails] = useState('Starting server...');
 
   useEffect(() => {
+    // Don't reset details if already set
+    if (!details) {
+      setDetails('Starting server...');
+    }
+    
     // Listen for console logs to determine connection status
     const originalLog = console.log;
     const originalError = console.error;
@@ -27,6 +33,9 @@ export const ConnectionStatus: React.FC = () => {
         if (match) {
           setDetails(`Connecting... (attempt ${match[1]}/10)`);
         }
+      } else if (message.includes('Health check passed')) {
+        setStatus('connecting');
+        setDetails('Server ready, connecting...');
       }
     };
 
@@ -36,10 +45,10 @@ export const ConnectionStatus: React.FC = () => {
       
       if (message.includes('Socket connection error')) {
         setStatus('disconnected');
-        setDetails('Connection failed - Check server');
+        setDetails('Connection failed');
       } else if (message.includes('No server port available')) {
         setStatus('disconnected');
-        setDetails('No server found');
+        setDetails('Server not available');
       }
     };
 
@@ -65,14 +74,15 @@ export const ConnectionStatus: React.FC = () => {
   }
 
   return (
-    <div className={`connection-status connection-status-${status}`}>
-      <div className="connection-status-dot"></div>
-      <span className="connection-status-text">{details || 'Checking connection...'}</span>
-      {status === 'disconnected' && (
-        <div className="connection-status-help">
-          Run: <code>node server-claude-direct.cjs</code>
-        </div>
-      )}
-    </div>
+    <>
+      {/* Loading overlay to prevent interactions */}
+      <div className="connection-overlay">
+        <IconLoader2 size={32} stroke={1.5} className="connection-spinner" />
+      </div>
+      <div className={`connection-status connection-status-${status}`}>
+        <div className="connection-status-dot"></div>
+        <span className="connection-status-text">{details || 'Checking connection...'}</span>
+      </div>
+    </>
   );
 };

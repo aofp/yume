@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { IconFolderOpen, IconPlus, IconX, IconTrash, IconFolder } from '@tabler/icons-react';
+import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
@@ -153,23 +153,25 @@ export const WelcomeScreen: React.FC = () => {
           </span>
         </div>
         
-        <button 
-          className="welcome-new-button"
-          onClick={handleNewSession}
-          title="new tab (ctrl+t)"
-        >
-          <IconPlus size={20} />
-        </button>
+        <div className="welcome-buttons">
+          <button 
+            className="welcome-new-button"
+            onClick={handleNewSession}
+            title="new tab (ctrl+t)"
+          >
+            <IconPlus size={20} />
+          </button>
 
-        <button 
-          className="action-button"
-          onClick={() => setShowRecentModal(true)}
-          disabled={recentProjects.length === 0}
-          title={`recent projects (ctrl+r)`}
-        >
-          <IconFolder size={16} stroke={1.5} />
-          <span>{recentProjects.length}</span>
-        </button>
+          <button 
+            className="action-button"
+            onClick={() => setShowRecentModal(true)}
+            disabled={recentProjects.length === 0}
+            title={`recent projects (ctrl+r)`}
+          >
+            <IconChevronDown size={16} stroke={1.5} />
+            <span>{recentProjects.length}</span>
+          </button>
+        </div>
       </div>
       
       {/* Help button - same position as in chat */}
@@ -196,7 +198,7 @@ export const WelcomeScreen: React.FC = () => {
           >
             <div className="modal-header">
               <span className="modal-title">
-                <IconFolder size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                <IconChevronDown size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                 recent projects
               </span>
               <button 

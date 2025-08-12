@@ -212,7 +212,7 @@
 
 .tab-folder {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--accent-color);
   white-space: nowrap;
   font-weight: 600;
   font-family: 'Fira Code', monospace;
@@ -221,7 +221,7 @@
 }
 
 .session-tab.active .tab-folder {
-  color: #ffffff;
+  color: var(--accent-color);
 }
 
 .tab-folder svg {
@@ -230,7 +230,7 @@
 
 .tab-title {
   font-size: 9px;
-  color: var(--accent-color);
+  color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -242,7 +242,7 @@
 }
 
 .session-tab.active .tab-title {
-  color: var(--accent-color);
+  color: #ffffff;
 }
 
 .tab-rename-input {
@@ -427,6 +427,17 @@
 .tab-recent:hover {
   background: rgba(var(--accent-rgb), 0.25);
   color: var(--accent-color);
+}
+
+.tab-recent.drag-over-save {
+  background: rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
+  animation: pulse 0.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.05); }
 }
 
 /* Context menu */

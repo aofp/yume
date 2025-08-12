@@ -342,16 +342,39 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       
       // Listen for title updates
       const titleCleanup = claudeCodeClient.onTitle(sessionId, (title: string) => {
+        // CRITICAL: Check if this session is still the current one
+        const currentState = get();
+        if (currentState.currentSessionId !== sessionId) {
+          console.warn('[Store] Ignoring title for inactive session:', {
+            titleForSession: sessionId,
+            currentSession: currentState.currentSessionId
+          });
+          return; // Don't process titles for inactive sessions
+        }
+        
         console.log('[Store] Received title for session:', sessionId, title);
         set(state => ({
           sessions: state.sessions.map(s => 
-            // Only update title if user hasn't manually renamed
-            s.id === sessionId && !s.userRenamed ? { ...s, claudeTitle: title } : s
+            // Only update title if user hasn't manually renamed and session is still current
+            s.id === sessionId && !s.userRenamed && state.currentSessionId === sessionId
+              ? { ...s, claudeTitle: title } 
+              : s
           )
         }));
       });
       
       const messageCleanup = claudeCodeClient.onMessage(sessionId, (message) => {
+          // CRITICAL: Check if this session is still the current one
+          const currentState = get();
+          if (currentState.currentSessionId !== sessionId) {
+            console.warn('[Store] Ignoring message for inactive session:', {
+              messageForSession: sessionId,
+              currentSession: currentState.currentSessionId,
+              messageType: message.type
+            });
+            return; // Don't process messages for inactive sessions
+          }
+          
           console.log('[Store] Processing message:', {
             sessionId,
             type: message.type,
@@ -361,6 +384,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           
           // Handle streaming messages by updating existing message or adding new
           set(state => {
+            // Double-check session is still current inside set() 
+            if (state.currentSessionId !== sessionId) {
+              console.warn('[Store] Session changed during message processing, ignoring');
+              return state;
+            }
+            
             let sessions = state.sessions.map(s => {
               if (s.id !== sessionId) return s;
               
@@ -813,6 +842,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   },
   
   setCurrentSession: (sessionId: string) => {
+    const { currentSessionId: oldSessionId } = get();
+    
+    // Don't do anything if we're already on this session
+    if (oldSessionId === sessionId) {
+      console.log('[Store] Already on session:', sessionId);
+      return;
+    }
+    
+    console.log('[Store] Switching session from', oldSessionId, 'to', sessionId);
+    
+    // Update the current session
     set({ currentSessionId: sessionId });
   },
   
@@ -998,6 +1038,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       
       // Listen for title updates
       const titleCleanup = claudeCodeClient.onTitle(sessionId, (title: string) => {
+        // CRITICAL: Check if this session is still the current one
+        const currentState = get();
+        if (currentState.currentSessionId !== sessionId) {
+          console.warn('[Store] Ignoring title for inactive resumed session:', {
+            titleForSession: sessionId,
+            currentSession: currentState.currentSessionId
+          });
+          return; // Don't process titles for inactive sessions
+        }
+        
         console.log('[Store] Received title for resumed session:', sessionId, title);
         set(state => ({
           sessions: state.sessions.map(s => 

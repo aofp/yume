@@ -118,18 +118,12 @@ pub fn run() {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     info!("Window close requested, cleaning up...");
                     
-                    // Don't prevent close, just do cleanup and exit
-                    // api.prevent_close(); // REMOVED - let window close normally
-                    
-                    // Quick cleanup and exit
+                    // Stop the server immediately
                     logged_server::stop_logged_server();
-                    info!("Server stopped, closing window...");
+                    info!("Server stopped, exiting application...");
                     
-                    // Force exit after brief delay
-                    std::thread::spawn(|| {
-                        std::thread::sleep(std::time::Duration::from_millis(100));
-                        std::process::exit(0);
-                    });
+                    // Force exit immediately - don't wait
+                    std::process::exit(0);
                 }
             });
             
@@ -200,11 +194,21 @@ pub fn run() {
         ])
         .on_window_event(|_app_handle, event| {
             // Additional handler for window events at app level
-            if let tauri::WindowEvent::Destroyed = event {
-                info!("Window destroyed, ensuring final cleanup...");
-                // This is a fallback - cleanup should already be done
-                // Exit immediately if window is destroyed
-                std::process::exit(0);
+            match event {
+                tauri::WindowEvent::Destroyed => {
+                    info!("Window destroyed, ensuring final cleanup...");
+                    // Final cleanup if not already done
+                    logged_server::stop_logged_server();
+                    // Exit immediately
+                    std::process::exit(0);
+                }
+                tauri::WindowEvent::CloseRequested { .. } => {
+                    info!("App-level close requested, stopping server...");
+                    // Stop server at app level too
+                    logged_server::stop_logged_server();
+                    std::process::exit(0);
+                }
+                _ => {}
             }
         })
         .run(tauri::generate_context!())

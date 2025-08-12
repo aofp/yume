@@ -119,20 +119,34 @@ pub async fn maximize_window(window: Window) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub async fn close_window(window: Window) -> Result<(), String> {
-    // Stop the server first
-    crate::logged_server::stop_logged_server();
+pub async fn close_window(_window: Window) -> Result<(), String> {
+    use tracing::info;
     
-    // Close the window
-    window.close().ok();
+    info!("Close window command received - shutting down application");
     
-    // Exit the application after a brief delay
+    // Spawn a thread to kill the server but don't wait for it
     std::thread::spawn(|| {
-        std::thread::sleep(std::time::Duration::from_millis(100));
-        std::process::exit(0);
+        // Kill all node processes immediately on Windows
+        #[cfg(target_os = "windows")]
+        {
+            use std::process::Command;
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            
+            // Force kill all node.exe processes
+            let _ = Command::new("taskkill")
+                .args(&["/F", "/IM", "node.exe"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .spawn();
+        }
+        
+        // Also try to stop the logged server
+        crate::logged_server::stop_logged_server();
     });
     
-    Ok(())
+    // Exit immediately - don't wait for anything
+    std::thread::sleep(std::time::Duration::from_millis(50)); // Just 50ms to let kill command start
+    std::process::exit(0);
 }
 
 #[tauri::command]

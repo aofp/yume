@@ -12,7 +12,6 @@ import {
   IconDots,
   IconMinus,
   IconChecklist,
-  IconLoader2,
   IconCopy,
   IconFile,
   IconFileText,
@@ -504,11 +503,6 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return null;
           
         case 'tool_result':
-          // Skip tool results during streaming - they clutter the UI
-          if (message?.streaming) {
-            return null;
-          }
-          
           // Handle tool results
           let resultContent = typeof block.content === 'string' 
             ? block.content 
@@ -556,6 +550,24 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
           // Check if this is a TodoWrite operation
           const isTodoWriteOperation = prevBlock?.type === 'tool_use' && prevBlock.name === 'TodoWrite';
+          
+          // Handle Bash command output
+          if (isBashOperation && resultContent) {
+            // For Bash commands, show the full output (or first 50 lines)
+            const lines = resultContent.split('\n');
+            const visibleLines = lines.slice(0, 50);
+            const hiddenCount = lines.length - 50;
+            const hasMore = hiddenCount > 0;
+            
+            return (
+              <div key={idx} className="tool-result bash-output">
+                <pre className="bash-content">{visibleLines.join('\n')}</pre>
+                {hasMore && (
+                  <div className="bash-more">+ {hiddenCount} more lines</div>
+                )}
+              </div>
+            );
+          }
           
           // Hide system reminder messages
           if (resultContent.includes('<system-reminder>') && resultContent.includes('</system-reminder>')) {
@@ -1151,25 +1163,27 @@ const MessageRendererBase: React.FC<{
             if (toolBlock.name === 'TodoWrite' && toolBlock.input?.todos) {
               const todos = toolBlock.input.todos || [];
               return (
-                <div key={`tool-${idx}`} className="tool-use todo-write standalone">
-                  <div className="todo-header">
-                    <IconChecklist size={14} stroke={1.5} className="todo-header-icon" />
-                    <span className="tool-action">{display.action}</span>
-                    <span className="tool-detail">{display.detail}</span>
-                  </div>
-                  <div className="todo-list">
-                    {todos.map((todo: any, todoIdx: number) => (
-                      <div key={todoIdx} className={`todo-item ${todo.status}`}>
-                        {todo.status === 'completed' ? (
-                          <IconCheck size={12} stroke={2} className="todo-icon completed" />
-                        ) : todo.status === 'in_progress' ? (
-                          <IconDots size={12} stroke={2} className="todo-icon progress" />
-                        ) : (
-                          <IconMinus size={12} stroke={2} className="todo-icon pending" />
-                        )}
-                        <span className="todo-content">{todo.content}</span>
-                      </div>
-                    ))}
+                <div key={`tool-${idx}`} className="message tool-message">
+                  <div className="tool-use todo-write standalone">
+                    <div className="todo-header">
+                      <IconChecklist size={14} stroke={1.5} className="todo-header-icon" />
+                      <span className="tool-action">{display.action}</span>
+                      <span className="tool-detail">{display.detail}</span>
+                    </div>
+                    <div className="todo-list">
+                      {todos.map((todo: any, todoIdx: number) => (
+                        <div key={todoIdx} className={`todo-item ${todo.status}`}>
+                          {todo.status === 'completed' ? (
+                            <IconCheck size={12} stroke={2} className="todo-icon completed" />
+                          ) : todo.status === 'in_progress' ? (
+                            <IconDots size={12} stroke={2} className="todo-icon progress" />
+                          ) : (
+                            <IconMinus size={12} stroke={2} className="todo-icon pending" />
+                          )}
+                          <span className="todo-content">{todo.content}</span>
+                        </div>
+                      ))}
+                    </div>
                   </div>
                 </div>
               );
@@ -1177,13 +1191,12 @@ const MessageRendererBase: React.FC<{
             
             // Regular tool use rendering
             return (
-              <div key={`tool-${idx}`} className="tool-use standalone">
-                {display.icon && <span className="tool-icon">{display.icon}</span>}
-                <span className="tool-action">{display.action}</span>
-                {display.detail && <span className="tool-detail">{display.detail}</span>}
-                {message?.streaming === true && idx === toolUses.length - 1 && (
-                  <IconLoader2 size={12} className="streaming-loader" />
-                )}
+              <div key={`tool-${idx}`} className="message tool-message">
+                <div className="tool-use standalone">
+                  {display.icon && <span className="tool-icon">{display.icon}</span>}
+                  <span className="tool-action">{display.action}</span>
+                  {display.detail && <span className="tool-detail">{display.detail}</span>}
+                </div>
               </div>
             );
           })}

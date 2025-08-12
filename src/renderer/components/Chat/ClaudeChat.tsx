@@ -143,8 +143,8 @@ export const ClaudeChat: React.FC = () => {
   const [searchMatches, setSearchMatches] = useState<number[]>([]);
   const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
   const [historyIndex, setHistoryIndex] = useState(-1);
-  const [thinkingStartTime, setThinkingStartTime] = useState<number | null>(null);
-  const [thinkingElapsed, setThinkingElapsed] = useState(0);
+  const [thinkingStartTimes, setThinkingStartTimes] = useState<{ [sessionId: string]: number }>({});
+  const [thinkingElapsed, setThinkingElapsed] = useState<{ [sessionId: string]: number }>({});
   const [scrollPositions, setScrollPositions] = useState<{ [sessionId: string]: number }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -271,30 +271,50 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.messages?.length]);
 
-  // Track thinking time
+  // Track thinking time per session
   useEffect(() => {
-    if (currentSession?.streaming) {
+    if (currentSession?.streaming && currentSessionId) {
       // Start timing when streaming begins
-      if (!thinkingStartTime) {
-        setThinkingStartTime(Date.now());
-        setThinkingElapsed(0);
+      if (!thinkingStartTimes[currentSessionId]) {
+        setThinkingStartTimes(prev => ({
+          ...prev,
+          [currentSessionId]: Date.now()
+        }));
+        setThinkingElapsed(prev => ({
+          ...prev,
+          [currentSessionId]: 0
+        }));
       }
-    } else {
-      // Reset when streaming stops
-      setThinkingStartTime(null);
-      setThinkingElapsed(0);
+    } else if (currentSessionId && !currentSession?.streaming) {
+      // Reset when streaming stops for this session
+      setThinkingStartTimes(prev => {
+        const newTimes = { ...prev };
+        delete newTimes[currentSessionId];
+        return newTimes;
+      });
+      setThinkingElapsed(prev => {
+        const newElapsed = { ...prev };
+        delete newElapsed[currentSessionId];
+        return newElapsed;
+      });
     }
-  }, [currentSession?.streaming, thinkingStartTime]);
+  }, [currentSession?.streaming, currentSessionId]);
 
   // Update elapsed time every 100ms for smooth display
   useEffect(() => {
-    if (currentSession?.streaming && thinkingStartTime) {
+    if (currentSession?.streaming && currentSessionId && thinkingStartTimes[currentSessionId]) {
       const interval = setInterval(() => {
-        setThinkingElapsed(Math.floor((Date.now() - thinkingStartTime) / 1000));
+        const startTime = thinkingStartTimes[currentSessionId];
+        if (startTime) {
+          setThinkingElapsed(prev => ({
+            ...prev,
+            [currentSessionId]: Math.floor((Date.now() - startTime) / 1000)
+          }));
+        }
       }, 100);
       return () => clearInterval(interval);
     }
-  }, [currentSession?.streaming, thinkingStartTime]);
+  }, [currentSession?.streaming, currentSessionId, thinkingStartTimes[currentSessionId]]);
 
   // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {
@@ -988,8 +1008,8 @@ export const ClaudeChat: React.FC = () => {
                 <IconLoader2 size={14} stroke={1.5} className="spinning-loader" />
                 <span className="thinking-text-wrapper">
                   <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
-                  {thinkingElapsed > 0 && (
-                    <span className="thinking-timer">{thinkingElapsed}s</span>
+                  {currentSessionId && thinkingElapsed[currentSessionId] > 0 && (
+                    <span className="thinking-timer">{thinkingElapsed[currentSessionId]}s</span>
                   )}
                 </span>
               </div>

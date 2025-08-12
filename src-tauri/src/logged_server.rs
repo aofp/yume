@@ -81,6 +81,7 @@ const socketServer = new io(httpServer, {
 const activeProcesses = new Map();
 const sessionDirs = new Map();
 const sessionTitles = new Map(); // Track if we've generated title for each session
+const lastAssistantMessageIds = new Map(); // Track last assistant message ID for streaming state
 
 // Helper function to generate title with Claude Sonnet
 async function generateTitle(sessionId, userMessage, socket) {
@@ -269,7 +270,7 @@ socketServer.on('connection', (socket) => {
         }
         
         // Build claude command args
-        const args = ['--output-format', 'stream-json', '--verbose'];
+        const args = ['--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
         if (model) {
             args.push('--model', model);
         }
@@ -334,11 +335,37 @@ socketServer.on('connection', (socket) => {
             
             // Handle stdout (streaming JSON responses)
             claude.stdout.on('data', (chunk) => {
+                log(`[${sessionId}] Claude stdout received: ${chunk.toString().substring(0, 200)}`);
                 const lines = chunk.toString().split('\n');
                 for (const line of lines) {
                     if (line.trim()) {
                         try {
                             const json = JSON.parse(line);
+                            
+                            // Track assistant messages for streaming state
+                            if (json.type === 'assistant' && json.message?.content) {
+                                const messageId = `assistant-${sessionId}-${Date.now()}-${Math.random()}`;
+                                lastAssistantMessageIds.set(sessionId, messageId);
+                                json.id = messageId;
+                                json.streaming = true;
+                            }
+                            
+                            // Clear streaming state when we get a result
+                            if (json.type === 'result') {
+                                const lastAssistantId = lastAssistantMessageIds.get(sessionId);
+                                if (lastAssistantId) {
+                                    // First, send update to mark assistant message as done streaming
+                                    socket.emit(`message:${sessionId}`, {
+                                        type: 'assistant',
+                                        id: lastAssistantId,
+                                        streaming: false,
+                                        timestamp: Date.now()
+                                    });
+                                    lastAssistantMessageIds.delete(sessionId);
+                                }
+                                json.streaming = false;
+                            }
+                            
                             // Emit on the session-specific channel the client expects
                             const channel = `message:${sessionId}`;
                             log(`[${sessionId}] Emitting on channel: ${channel}`);
@@ -374,6 +401,25 @@ socketServer.on('connection', (socket) => {
             claude.on('close', (code) => {
                 log(`[${sessionId}] Claude exited with code: ${code}`);
                 activeProcesses.delete(sessionId);
+                
+                // Clear any remaining streaming state
+                const lastAssistantId = lastAssistantMessageIds.get(sessionId);
+                if (lastAssistantId) {
+                    socket.emit(`message:${sessionId}`, {
+                        type: 'assistant',
+                        id: lastAssistantId,
+                        streaming: false,
+                        timestamp: Date.now()
+                    });
+                    lastAssistantMessageIds.delete(sessionId);
+                } else if (code !== 0) {
+                    // If no assistant message was created and exit code is non-zero, send error
+                    socket.emit(`message:${sessionId}`, {
+                        type: 'error',
+                        error: `Claude process exited with code ${code} without producing output`
+                    });
+                }
+                
                 // Send completion message
                 socket.emit(`message:${sessionId}`, {
                     type: 'complete',
@@ -407,6 +453,19 @@ socketServer.on('connection', (socket) => {
         if (activeProcesses.has(sessionId)) {
             activeProcesses.get(sessionId).kill('SIGINT');
             activeProcesses.delete(sessionId);
+            
+            // Clear streaming state
+            const lastAssistantId = lastAssistantMessageIds.get(sessionId);
+            if (lastAssistantId) {
+                socket.emit(`message:${sessionId}`, {
+                    type: 'assistant',
+                    id: lastAssistantId,
+                    streaming: false,
+                    timestamp: Date.now()
+                });
+                lastAssistantMessageIds.delete(sessionId);
+            }
+            
             socket.emit(`message:${sessionId}`, {
                 type: 'message',
                 role: 'system',
@@ -430,6 +489,9 @@ socketServer.on('connection', (socket) => {
             activeProcesses.get(sessionId).kill();
             activeProcesses.delete(sessionId);
         }
+        
+        // Clear streaming state
+        lastAssistantMessageIds.delete(sessionId);
         
         if (callback) {
             callback({ success: true });
@@ -494,19 +556,32 @@ pub fn stop_logged_server() {
     info!("Stopping logged server...");
     
     // Try to stop our specific server process first
-    if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
+    if let Ok(mut process_guard) = SERVER_PROCESS.try_lock() {
         if let Some(process_arc) = process_guard.take() {
-            if let Ok(process) = process_arc.lock() {
+            if let Ok(mut process) = process_arc.try_lock() {
                 let pid = process.id();
                 info!("Killing server process with PID: {:?}", pid);
                 
-                // Kill the process
+                // Kill the process using the Child's kill method
                 #[cfg(target_os = "windows")]
                 {
-                    // Quick kill using taskkill for the specific PID only
+                    use std::os::windows::process::CommandExt;
+                    const CREATE_NO_WINDOW: u32 = 0x08000000;
+                    
+                    // Kill the process directly first
+                    let _ = process.kill();
+                    
+                    // Force kill with taskkill - don't wait
                     let _ = Command::new("taskkill")
                         .args(&["/F", "/T", "/PID", &pid.to_string()])
-                        .spawn(); // Use spawn instead of output to avoid blocking
+                        .creation_flags(CREATE_NO_WINDOW)
+                        .spawn(); // Don't wait
+                    
+                    // Also kill all node.exe processes - don't wait
+                    let _ = Command::new("taskkill")
+                        .args(&["/F", "/IM", "node.exe"])
+                        .creation_flags(CREATE_NO_WINDOW)
+                        .spawn(); // Don't wait
                 }
                 
                 #[cfg(not(target_os = "windows"))]
@@ -519,13 +594,7 @@ pub fn stop_logged_server() {
         }
     }
     
-    // Quick cleanup of any node processes (non-blocking)
-    #[cfg(target_os = "windows")]
-    {
-        let _ = Command::new("taskkill")
-            .args(&["/F", "/IM", "node.exe"])
-            .spawn(); // Non-blocking
-    }
+    // Don't wait - let the OS clean up after we exit
 }
 
 pub fn start_logged_server() {

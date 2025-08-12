@@ -233,6 +233,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   padding: 8px;
+  padding-bottom: 80px; /* Ensure space for input */
   scroll-behavior: auto;
   min-height: 0; /* Critical for flex child scrolling */
 }
@@ -243,7 +244,7 @@
   overflow-y: auto;
   overflow-x: hidden;
   min-height: 0;
-  padding-bottom: 70px; /* Account for fixed input */
+  padding-bottom: 100px; /* Increased to fully clear the fixed input */
 }
 
 .message {

@@ -27,6 +27,7 @@ export const SessionTabs: React.FC = () => {
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
   const [dragOverNewTab, setDragOverNewTab] = useState(false);
+  const [dragOverRecent, setDragOverRecent] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -186,30 +187,8 @@ export const SessionTabs: React.FC = () => {
     }
   }, [currentSessionId, deleteSession, sessions]);
 
-  // Also handle keyboard shortcut directly
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      // Handle Cmd+W (Mac) or Ctrl+W (Windows/Linux)
-      if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
-        e.preventDefault(); // Prevent default browser behavior
-        
-        // Don't close if the current tab is streaming
-        const currentSession = sessions.find(s => s.id === currentSessionId);
-        if (currentSession?.streaming) {
-          console.log('Cannot close tab while Claude is streaming');
-          return;
-        }
-        
-        // Close the current active tab
-        if (currentSessionId) {
-          deleteSession(currentSessionId);
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [currentSessionId, deleteSession, sessions]);
+  // Note: Ctrl+W is handled via IPC from electron menu in the effect above
+  // We don't add a duplicate keyboard handler here to avoid closing tabs twice
 
   const handleOpenFolder = async () => {
     setShowNewMenu(false);
@@ -565,6 +544,7 @@ export const SessionTabs: React.FC = () => {
                 setIsDragging(false);
                 setDraggedTab(null);
                 setDragOverNewTab(false);
+                setDragOverRecent(false);
               }
             }}
             onMouseLeave={(e) => {
@@ -586,15 +566,67 @@ export const SessionTabs: React.FC = () => {
           
           {hasRecentProjects && (
             <button 
-              className="tab-recent" 
+              className={`tab-recent ${dragOverRecent ? 'drag-over-save' : ''}`}
               onClick={() => setShowRecentModal(true)}
               onMouseDown={(e) => {
                 handleRipple(e);
                 e.currentTarget.classList.add('ripple-held');
               }}
-              onMouseUp={(e) => e.currentTarget.classList.remove('ripple-held')}
-              onMouseLeave={(e) => e.currentTarget.classList.remove('ripple-held')}
-              title="recent projects (ctrl+r)"
+              onMouseUp={(e) => {
+                e.currentTarget.classList.remove('ripple-held');
+                
+                if (isDragging && draggedTab) {
+                  // Save the dragged tab to recent projects
+                  const sessionToSave = sessions.find(s => s.id === draggedTab);
+                  if (sessionToSave) {
+                    const workingDir = (sessionToSave as any)?.workingDirectory;
+                    if (workingDir && workingDir !== '/') {
+                      const name = workingDir.split(/[/\\]/).pop() || workingDir;
+                      const newProject = { path: workingDir, name, lastOpened: new Date() };
+                      
+                      // Get existing recent projects
+                      const stored = localStorage.getItem('yurucode-recent-projects');
+                      let recentProjects = [];
+                      try {
+                        if (stored) {
+                          recentProjects = JSON.parse(stored);
+                        }
+                      } catch (err) {
+                        console.error('Failed to parse recent projects:', err);
+                      }
+                      
+                      // Update recent projects list
+                      const updated = [
+                        newProject,
+                        ...recentProjects.filter((p: any) => p.path !== workingDir)
+                      ].slice(0, 8);
+                      
+                      localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+                      setHasRecentProjects(true);
+                      
+                      // Optionally create a new tab with this project
+                      createSession(undefined, workingDir);
+                    }
+                  }
+                  setIsDragging(false);
+                  setDraggedTab(null);
+                  setDragOverNewTab(false);
+                  setDragOverRecent(false);
+                }
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.classList.remove('ripple-held');
+                
+                if (isDragging) {
+                  setDragOverRecent(false);
+                }
+              }}
+              onMouseEnter={() => {
+                if (isDragging && draggedTab) {
+                  setDragOverRecent(true);
+                }
+              }}
+              title={draggedTab ? "drop to save as recent" : "recent projects (ctrl+r)"}
             >
               <IconChevronDown size={16} stroke={1.5} />
             </button>

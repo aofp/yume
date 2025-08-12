@@ -13,7 +13,7 @@
 
 .welcome-content {
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
   align-items: center;
   gap: 8px;
 }
@@ -50,6 +50,12 @@
 .welcome-title .code {
   color: var(--accent-color);
   font-weight: 700;
+}
+
+.welcome-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
 }
 
 .welcome-new-button {
