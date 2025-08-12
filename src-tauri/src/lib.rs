@@ -39,12 +39,17 @@ pub fn run() {
             
             // Spawn the Node.js server process in a simple way
             std::thread::spawn(|| {
-                let server_path = "../server-claude-macos.js";
-                info!("Starting Node.js server from: {}", server_path);
+                let server_path = "server-claude-macos.js";
+                let working_dir = std::env::current_dir()
+                    .ok()
+                    .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                    .unwrap_or_else(|| std::path::PathBuf::from("."));
+                
+                info!("Starting Node.js server from: {:?}", working_dir.join(&server_path));
                 
                 match std::process::Command::new("node")
                     .arg(server_path)
-                    .current_dir("..")
+                    .current_dir(&working_dir)
                     .spawn() {
                     Ok(mut child) => {
                         info!("Node.js server started with PID: {:?}", child.id());
