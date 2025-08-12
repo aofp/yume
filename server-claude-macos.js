@@ -6,7 +6,17 @@
 // No need for module override when not using asar
 
 // Claude CLI path - try multiple locations
-const { execSync } = require('child_process');
+import { execSync, spawn } from 'child_process';
+import { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } from 'fs';
+import { dirname, join } from 'path';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import { fileURLToPath } from 'url';
+import { homedir, platform } from 'os';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 
 // Try to find Claude CLI in common locations
@@ -19,7 +29,7 @@ const possibleClaudePaths = [
 
 for (const claudePath of possibleClaudePaths) {
   try {
-    if (require('fs').existsSync(claudePath)) {
+    if (existsSync(claudePath)) {
       CLAUDE_PATH = claudePath;
       console.log(`✅ Found Claude CLI at: ${CLAUDE_PATH}`);
       break;
@@ -42,14 +52,8 @@ if (CLAUDE_PATH === 'claude') {
   }
 }
 
-const express = require('express');
-const cors = require('cors');
-const { createServer } = require('http');
-const { Server } = require('socket.io');
-const { spawn } = require('child_process');
-const path = require('path');
-const os = require('os');
-const fs = require('fs');
+import express from 'express';
+import cors from 'cors';
 
 const app = express();
 const httpServer = createServer(app);
@@ -180,12 +184,12 @@ app.get('/health', (req, res) => {
 
 // PID file management - use temp directory for production
 const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 
-  ? path.join(os.tmpdir(), 'yurucode-server.pid')
-  : path.join(__dirname, 'server.pid');
+  ? join(homedir(), '.yurucode-server.pid')
+  : join(__dirname, 'server.pid');
 
 function writePidFile() {
   try {
-    fs.writeFileSync(pidFilePath, process.pid.toString());
+    writeFileSync(pidFilePath, process.pid.toString());
     console.log(`📝 Server PID ${process.pid} written to ${pidFilePath}`);
   } catch (err) {
     console.log(`⚠️ Could not write PID file (running from read-only location?):`, err.message);
@@ -695,7 +699,7 @@ httpServer.listen(PORT, () => {
   writePidFile();
   console.log(`🚀 macOS Claude CLI server running on port ${PORT}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
-  console.log(`🖥️ Platform: ${os.platform()}`);
-  console.log(`🏠 Home directory: ${os.homedir()}`);
+  console.log(`🖥️ Platform: ${platform()}`);
+  console.log(`🏠 Home directory: ${homedir()}`);
   console.log(`✅ Server configured EXACTLY like Windows server`);
 });

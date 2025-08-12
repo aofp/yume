@@ -149,7 +149,7 @@ export const App: React.FC = () => {
 
   // Handle keyboard shortcuts
   useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
+    const handleKeyDown = async (e: KeyboardEvent) => {
       // Ctrl+, for settings
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
@@ -165,6 +165,27 @@ export const App: React.FC = () => {
         e.preventDefault();
         setShowHelpModal(false);
       }
+      
+      // Zoom controls
+      if (e.ctrlKey || e.metaKey) {
+        if (e.key === '=' || e.key === '+') {
+          e.preventDefault();
+          if (window.electronAPI?.zoom?.in) {
+            await window.electronAPI.zoom.in();
+          }
+        } else if (e.key === '-' || e.key === '_') {
+          e.preventDefault();
+          if (window.electronAPI?.zoom?.out) {
+            await window.electronAPI.zoom.out();
+          }
+        } else if (e.key === '0') {
+          e.preventDefault();
+          if (window.electronAPI?.zoom?.reset) {
+            await window.electronAPI.zoom.reset();
+          }
+        }
+      }
+      
       // Ctrl+Shift+F for file changes sidebar - DISABLED
       // if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'F') {
       //   e.preventDefault();
@@ -176,9 +197,9 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showHelpModal]);
 
-  // Apply accent color from localStorage on mount
+  // Apply accent color and zoom level from localStorage on mount
   useEffect(() => {
-    const savedColor = localStorage.getItem('accentColor') || '#ff99cc';
+    const savedColor = localStorage.getItem('accentColor') || '#cccccc';
     document.documentElement.style.setProperty('--accent-color', savedColor);
     
     // Convert hex to RGB for rgba() usage
@@ -187,6 +208,10 @@ export const App: React.FC = () => {
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
+    
+    // Apply saved zoom level
+    const savedZoomPercent = localStorage.getItem('zoomPercent') || '100';
+    document.body.style.zoom = `${parseInt(savedZoomPercent) / 100}`;
   }, []);
 
   return (

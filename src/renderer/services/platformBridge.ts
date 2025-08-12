@@ -46,36 +46,78 @@ class PlatformBridge {
     }
   };
 
-  // Zoom controls
+  // Zoom controls using CSS transform
   zoom = {
     in: async (): Promise<number> => {
-      const currentLevel = await this.zoom.getLevel();
-      const newLevel = Math.min(currentLevel + 0.1, 3);
-      await this.zoom.setLevel(newLevel);
-      return newLevel;
+      // Get current zoom percentage from localStorage (100 = 100%)
+      let currentZoom = parseInt(localStorage.getItem('zoomPercent') || '100');
+      
+      // If no saved value, get from current body zoom
+      if (!localStorage.getItem('zoomPercent')) {
+        const bodyZoom = parseFloat(getComputedStyle(document.body).zoom || '1');
+        currentZoom = Math.round(bodyZoom * 100);
+      }
+      
+      const newZoom = Math.min(currentZoom + 10, 200);
+      
+      // Apply CSS zoom (1.0 = 100%, 1.1 = 110%, etc)
+      document.body.style.zoom = `${newZoom / 100}`;
+      
+      // Save to localStorage
+      localStorage.setItem('zoomPercent', newZoom.toString());
+      
+      // Calculate zoom level for display (-5 to +10, where 0 = 100%)
+      const zoomLevel = (newZoom - 100) / 10;
+      window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
+      return zoomLevel;
     },
     out: async (): Promise<number> => {
-      const currentLevel = await this.zoom.getLevel();
-      const newLevel = Math.max(currentLevel - 0.1, 0.5);
-      await this.zoom.setLevel(newLevel);
-      return newLevel;
+      // Get current zoom percentage from localStorage
+      let currentZoom = parseInt(localStorage.getItem('zoomPercent') || '100');
+      
+      // If no saved value, get from current body zoom
+      if (!localStorage.getItem('zoomPercent')) {
+        const bodyZoom = parseFloat(getComputedStyle(document.body).zoom || '1');
+        currentZoom = Math.round(bodyZoom * 100);
+      }
+      
+      const newZoom = Math.max(currentZoom - 10, 50);
+      
+      // Apply CSS zoom
+      document.body.style.zoom = `${newZoom / 100}`;
+      
+      // Save to localStorage
+      localStorage.setItem('zoomPercent', newZoom.toString());
+      
+      // Calculate zoom level for display
+      const zoomLevel = (newZoom - 100) / 10;
+      window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
+      return zoomLevel;
     },
     reset: async (): Promise<number> => {
-      await this.zoom.setLevel(1);
-      return 1;
+      // Reset zoom to 100%
+      document.body.style.zoom = '1';
+      
+      // Save to localStorage
+      localStorage.setItem('zoomPercent', '100');
+      
+      window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));
+      return 0;
     },
     getLevel: async (): Promise<number> => {
-      if (isTauri()) {
-        const level = await platformAPI.settings.load('zoomLevel');
-        return level || 1;
-      }
-      return 1;
+      const currentZoom = parseInt(localStorage.getItem('zoomPercent') || '100');
+      return (currentZoom - 100) / 10;
     },
     setLevel: async (level: number): Promise<void> => {
-      if (isTauri()) {
-        await platformAPI.window.setZoomLevel(level);
-        await platformAPI.settings.save('zoomLevel', level);
-      }
+      const zoomPercent = 100 + (level * 10);
+      
+      // Apply CSS zoom
+      document.body.style.zoom = `${zoomPercent / 100}`;
+      
+      // Save to localStorage
+      localStorage.setItem('zoomPercent', zoomPercent.toString());
+      
+      window.dispatchEvent(new CustomEvent('zoom-changed', { detail: level }));
     }
   };
 

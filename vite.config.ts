@@ -21,7 +21,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist/renderer',
+    outDir: 'dist',
     emptyOutDir: true,
     sourcemap: false, // Disable sourcemaps for production
     minify: false, // Disable minification to avoid breaking libraries
