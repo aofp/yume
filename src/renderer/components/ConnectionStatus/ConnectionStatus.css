@@ -76,7 +76,7 @@
   backdrop-filter: blur(1px);
   z-index: 9998; /* Just below the connection status message */
   pointer-events: all; /* Block all clicks */
-  cursor: not-allowed;
+  cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;

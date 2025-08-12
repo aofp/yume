@@ -46,6 +46,56 @@ body {
   overflow: hidden;
 }
 
+/* Drag and drop overlay */
+.drag-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(10px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  pointer-events: none;
+}
+
+.drag-overlay-content {
+  text-align: center;
+  animation: pulse 1s ease-in-out infinite;
+}
+
+.drag-icon {
+  font-size: 64px;
+  margin-bottom: 16px;
+}
+
+.drag-text {
+  font-size: 18px;
+  color: #ff9999;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.05);
+    opacity: 1;
+  }
+}
+
+/* Dragging state for the app */
+.app-minimal.dragging {
+  border: 2px dashed #ff9999;
+  border-radius: 8px;
+}
+
 /* Remove all default focus outlines */
 *:focus {
   outline: none;

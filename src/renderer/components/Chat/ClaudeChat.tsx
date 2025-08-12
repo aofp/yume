@@ -146,9 +146,11 @@ export const ClaudeChat: React.FC = () => {
   const [thinkingStartTimes, setThinkingStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [thinkingElapsed, setThinkingElapsed] = useState<{ [sessionId: string]: number }>({});
   const [scrollPositions, setScrollPositions] = useState<{ [sessionId: string]: number }>({});
+  const [inputContainerHeight, setInputContainerHeight] = useState(120);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
+  const inputContainerRef = useRef<HTMLDivElement>(null);
   const previousSessionIdRef = useRef<string | null>(null);
   const isTabSwitchingRef = useRef(false);
   
@@ -816,6 +818,20 @@ export const ClaudeChat: React.FC = () => {
     textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
   };
 
+  // Update input container height when it changes
+  useEffect(() => {
+    if (!inputContainerRef.current) return;
+    
+    const observer = new ResizeObserver(() => {
+      const height = inputContainerRef.current?.offsetHeight || 120;
+      setInputContainerHeight(height);
+    });
+    
+    observer.observe(inputContainerRef.current);
+    
+    return () => observer.disconnect();
+  }, []);
+
 
 
 
@@ -875,7 +891,11 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       )}
-      <div className="chat-messages" ref={chatContainerRef}>
+      <div 
+        className="chat-messages" 
+        ref={chatContainerRef}
+        style={{ paddingBottom: `${inputContainerHeight + 20}px` }}
+      >
         {(() => {
           const processedMessages = currentSession.messages
             .reduce((acc, message, index, array) => {
@@ -1021,6 +1041,7 @@ export const ClaudeChat: React.FC = () => {
       
       <div 
         className={`chat-input-container ${isDragging ? 'dragging' : ''}`}
+        ref={inputContainerRef}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}

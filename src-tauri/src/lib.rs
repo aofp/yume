@@ -40,10 +40,7 @@ pub fn run() {
             
             logged_server::start_logged_server();
             
-            info!("Check these log files:");
-            info!("  %TEMP%\\yurucode-rust.log");
-            info!("  %TEMP%\\yurucode-server.log");
-            info!("  %TEMP%\\yurucode-server-RUNNING.txt");
+            info!("Server started on port {}", port);
 
             // Initialize app state
             let app_state = AppState::new(claude_manager, port);
@@ -55,11 +52,25 @@ pub fn run() {
             // Set up window event handlers
             let window = app.get_webview_window("main").unwrap();
             
-            // Always open DevTools in debug/development builds
+            // Check if YURUCODE_SHOW_CONSOLE is set (from logged_server)
+            // DevTools methods are only available in debug builds
             #[cfg(debug_assertions)]
             {
-                window.open_devtools();
-                info!("DevTools opened (debug build)");
+                if logged_server::YURUCODE_SHOW_CONSOLE {
+                    window.open_devtools();
+                    info!("DevTools FORCED OPEN (YURUCODE_SHOW_CONSOLE=true)");
+                } else {
+                    window.open_devtools();
+                    info!("DevTools opened (debug build)");
+                }
+            }
+            
+            #[cfg(not(debug_assertions))]
+            {
+                if logged_server::YURUCODE_SHOW_CONSOLE {
+                    info!("DevTools would be forced open but not available in release build");
+                    info!("To enable DevTools in release, rebuild in debug mode");
+                }
             }
             
             // Enable F12 listener for DevTools
@@ -71,6 +82,10 @@ pub fn run() {
                     // which checks for debug/release builds internally
                 });
             }
+            
+            // Note: Tauri v2 file drops are handled via webview events
+            // The frontend will handle drag-and-drop directly using web APIs
+            // and can call Tauri commands if needed to process dropped folders
             
             // Apply custom window styles for macOS
             #[cfg(target_os = "macos")]
@@ -113,9 +128,8 @@ pub fn run() {
             }
 
             // Handle window close event - simplified for Windows
-            let window_for_close = window.clone();
             window.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { api, .. } = event {
+                if let tauri::WindowEvent::CloseRequested { .. } = event {
                     info!("Window close requested, cleaning up...");
                     
                     // Stop the server immediately
@@ -191,6 +205,9 @@ pub fn run() {
             commands::load_settings,
             commands::get_recent_projects,
             commands::add_recent_project,
+            commands::check_is_directory,
+            commands::toggle_console_visibility,
+            commands::open_external,
         ])
         .on_window_event(|_app_handle, event| {
             // Additional handler for window events at app level

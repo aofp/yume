@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use tauri::{State, Window};
+use std::path::Path;
 
 use crate::state::AppState;
 
@@ -198,4 +199,55 @@ pub struct SessionInfo {
     pub model: String,
     pub message_count: usize,
     pub token_count: usize,
+}
+
+#[tauri::command]
+pub fn check_is_directory(path: String) -> Result<bool, String> {
+    let path = Path::new(&path);
+    Ok(path.is_dir())
+}
+
+#[tauri::command]
+pub fn toggle_console_visibility() -> Result<String, String> {
+    // Toggle the environment variable
+    let current = std::env::var("YURUCODE_SHOW_CONSOLE").unwrap_or_default();
+    let new_value = if current == "1" { "0" } else { "1" };
+    std::env::set_var("YURUCODE_SHOW_CONSOLE", &new_value);
+    
+    // Return status message
+    if new_value == "1" {
+        Ok("Console will be visible on next server restart".to_string())
+    } else {
+        Ok("Console will be hidden on next server restart".to_string())
+    }
+}
+
+#[tauri::command]
+pub fn open_external(url: String) -> Result<(), String> {
+    // Open URL in default browser
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("cmd")
+            .args(&["/C", "start", "", &url])
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    
+    #[cfg(target_os = "macos")]
+    {
+        std::process::Command::new("open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        std::process::Command::new("xdg-open")
+            .arg(&url)
+            .spawn()
+            .map_err(|e| format!("Failed to open URL: {}", e))?;
+    }
+    
+    Ok(())
 }

@@ -4,7 +4,9 @@ import './AboutModal.css';
 
 // Version info
 const versionInfo = {
-  version: '1.0.0'
+  version: '1.0.0',
+  author: 'yuru',
+  website: 'yuru.be'
 };
 
 interface AboutModalProps {
@@ -52,17 +54,53 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             version {versionInfo.version}
           </div>
           
-          <div className="about-description">
-            {versionInfo.description}
-          </div>
-          
           <div className="about-credits">
             <div className="about-author">
-              by {versionInfo.author}
+              by <a 
+                href="https://yuru.be" 
+                onClick={async (e) => {
+                  e.preventDefault();
+                  // Open in default browser
+                  if (window.__TAURI__) {
+                    const { invoke } = await import('@tauri-apps/api/core');
+                    // Use our custom command to open URL in default browser
+                    await invoke('open_external', { url: 'https://yuru.be' }).catch(() => {
+                      // Fallback to window.open if command fails
+                      window.open('https://yuru.be', '_blank');
+                    });
+                  } else if (window.electronAPI?.openExternal) {
+                    window.electronAPI.openExternal('https://yuru.be');
+                  } else {
+                    window.open('https://yuru.be', '_blank');
+                  }
+                }}
+                style={{ color: '#ff9999', textDecoration: 'none', cursor: 'default' }}
+              >
+                yuru
+              </a>
             </div>
             <div className="about-site">
-              site: <a href={`https://${versionInfo.website}`} target="_blank" rel="noopener noreferrer">
-                {versionInfo.website}
+              site: <a 
+                href="https://yuru.be" 
+                onClick={async (e) => {
+                  e.preventDefault();
+                  // Open in default browser
+                  if (window.__TAURI__) {
+                    const { invoke } = await import('@tauri-apps/api/core');
+                    // Use our custom command to open URL in default browser
+                    await invoke('open_external', { url: 'https://yuru.be' }).catch(() => {
+                      // Fallback to window.open if command fails
+                      window.open('https://yuru.be', '_blank');
+                    });
+                  } else if (window.electronAPI?.openExternal) {
+                    window.electronAPI.openExternal('https://yuru.be');
+                  } else {
+                    window.open('https://yuru.be', '_blank');
+                  }
+                }}
+                style={{ color: '#ff99cc', textDecoration: 'none', cursor: 'default' }}
+              >
+                yuru.be
               </a>
             </div>
           </div>

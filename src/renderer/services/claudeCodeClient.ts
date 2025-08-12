@@ -27,24 +27,45 @@ export class ClaudeCodeClient {
   }
   
   private async checkServerAndConnect() {
-    // Check if Node.js server is running
+    // Check if Node.js server is running - retry multiple times
     console.log('[ClaudeCodeClient] Checking server health at localhost:3001...');
-    try {
-      const response = await fetch('http://localhost:3001/health', {
-        signal: AbortSignal.timeout(1000)
-      });
-      if (response.ok) {
-        console.log('[ClaudeCodeClient] Server health check OK');
-        this.serverPort = 3001;
-        this.connect();
-      } else {
-        console.error('[ClaudeCodeClient] Server health check failed:', response.status);
-        console.log('📡 Node.js server not running. Start it with: node server-claude-macos.js');
+    
+    let retries = 10; // Try 10 times
+    const retryDelay = 1000; // 1 second between retries
+    
+    const tryConnect = async () => {
+      try {
+        const response = await fetch('http://localhost:3001/health', {
+          signal: AbortSignal.timeout(2000)
+        });
+        if (response.ok) {
+          console.log('[ClaudeCodeClient] Server health check OK');
+          this.serverPort = 3001;
+          this.connect();
+          return true;
+        } else {
+          console.error('[ClaudeCodeClient] Server health check failed:', response.status);
+          return false;
+        }
+      } catch (err) {
+        console.log('[ClaudeCodeClient] Server not ready yet, retrying...', retries, 'attempts left');
+        return false;
       }
-    } catch (err) {
-      console.error('[ClaudeCodeClient] Server health check error:', err);
-      console.log('📡 Node.js server not available. WebSocket connection disabled.');
+    };
+    
+    // Keep trying until success or max retries
+    while (retries > 0) {
+      if (await tryConnect()) {
+        return; // Success!
+      }
+      retries--;
+      if (retries > 0) {
+        await new Promise(resolve => setTimeout(resolve, retryDelay));
+      }
     }
+    
+    console.error('[ClaudeCodeClient] Server health check failed after all retries');
+    console.log('📡 Node.js server not available. Please check the server console.');
   }
 
   private async discoverAndConnect() {

@@ -21,6 +21,7 @@ export const App: React.FC = () => {
   // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
+  const [isDragging, setIsDragging] = useState(false);
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
   
@@ -68,8 +69,35 @@ export const App: React.FC = () => {
   const handleGlobalDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
+    setIsDragging(false);
     
-    console.log('Global drop event:', e.dataTransfer);
+    // In Tauri, we need to handle drops differently
+    if (window.__TAURI__) {
+      // Tauri file drops need special handling
+      const files = Array.from(e.dataTransfer.files);
+      for (const file of files) {
+        // In Tauri, we can get the full path from the File object
+        const path = (file as any).path || file.name;
+        if (path) {
+          // Check if it's a directory using Tauri command
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            const isDir = await invoke<boolean>('check_is_directory', { path });
+            if (isDir) {
+              console.log('Creating session for folder:', path);
+              const sessionName = path.split(/[/\\]/).pop() || 'new session';
+              await createSession(sessionName, path);
+              return;
+            }
+          } catch (err) {
+            console.error('Error checking directory:', err);
+          }
+        }
+      }
+      return;
+    }
+    
+    console.log('Global drop event (non-Tauri):', e.dataTransfer);
     
     // Try to detect folders using webkitGetAsEntry
     const items = Array.from(e.dataTransfer.items);
@@ -113,12 +141,25 @@ export const App: React.FC = () => {
   
   const handleGlobalDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    if (!isDragging) {
+      setIsDragging(true);
+    }
+  };
+  
+  const handleGlobalDragLeave = (e: React.DragEvent) => {
+    // Only set dragging to false if leaving the window entirely
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
   };
   
   useEffect(() => {
     console.log('App useEffect running');
     // Set page title
     document.title = 'yurucode';
+    
+    // For Tauri, we rely on the web's native drag-and-drop API
+    // No special Tauri event listeners needed
     
     // Listen for initial directory from command line (only once)
     const handleInitialDirectory = async (directory: string) => {
@@ -164,6 +205,23 @@ export const App: React.FC = () => {
               console.log('DevTools toggled');
             }).catch(err => {
               console.error('Failed to toggle devtools:', err);
+            });
+          });
+        }
+      }
+      
+      // Ctrl+Shift+C to toggle console visibility (debug builds only)
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'C') {
+        e.preventDefault();
+        console.log('Toggle console visibility requested');
+        
+        if (window.__TAURI__) {
+          import('@tauri-apps/api/core').then(({ invoke }) => {
+            invoke('toggle_console_visibility').then((message: string) => {
+              console.log('Console visibility toggled:', message);
+              // Could show a toast notification here
+            }).catch(err => {
+              console.error('Failed to toggle console:', err);
             });
           });
         }
@@ -281,15 +339,24 @@ export const App: React.FC = () => {
 
   return (
     <div 
-      className="app-minimal"
+      className={`app-minimal ${isDragging ? 'dragging' : ''}`}
       onDrop={handleGlobalDrop}
       onDragOver={handleGlobalDragOver}
+      onDragLeave={handleGlobalDragLeave}
       onContextMenu={handleGlobalContextMenu}
     >
       <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} />
       <TitleBar onSettingsClick={() => setShowSettings(true)} />
       <SessionTabs />
       <ConnectionStatus />
+      {isDragging && (
+        <div className="drag-overlay">
+          <div className="drag-overlay-content">
+            <div className="drag-icon">📁</div>
+            <div className="drag-text">drop folder to create new session</div>
+          </div>
+        </div>
+      )}
       <div className="app-content">
         <div className="main-chat-area">
           <ClaudeChat />

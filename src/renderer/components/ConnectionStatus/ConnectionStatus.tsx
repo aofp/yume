@@ -4,13 +4,10 @@ import './ConnectionStatus.css';
 
 export const ConnectionStatus: React.FC = () => {
   const [status, setStatus] = useState<'connecting' | 'connected' | 'disconnected'>('connecting');
-  const [details, setDetails] = useState('Starting server...');
+  const [details, setDetails] = useState('');
 
   useEffect(() => {
-    // Don't reset details if already set
-    if (!details) {
-      setDetails('Starting server...');
-    }
+    // Don't set any initial details - just show the spinner
     
     // Listen for console logs to determine connection status
     const originalLog = console.log;
@@ -79,10 +76,7 @@ export const ConnectionStatus: React.FC = () => {
       <div className="connection-overlay">
         <IconLoader2 size={32} stroke={1.5} className="connection-spinner" />
       </div>
-      <div className={`connection-status connection-status-${status}`}>
-        <div className="connection-status-dot"></div>
-        <span className="connection-status-text">{details || 'Checking connection...'}</span>
-      </div>
+      {/* Remove the status text box entirely - just show the spinner */}
     </>
   );
 };
