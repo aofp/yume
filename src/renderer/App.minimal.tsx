@@ -215,7 +215,7 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showHelpModal]);
 
-  // Apply accent color and zoom level from localStorage on mount
+  // Apply accent color, zoom level, and window state from localStorage on mount
   useEffect(() => {
     const savedColor = localStorage.getItem('accentColor') || '#cccccc';
     document.documentElement.style.setProperty('--accent-color', savedColor);
@@ -230,6 +230,53 @@ export const App: React.FC = () => {
     // Apply saved zoom level
     const savedZoomPercent = localStorage.getItem('zoomPercent') || '100';
     document.body.style.zoom = `${parseInt(savedZoomPercent) / 100}`;
+    
+    // Restore window size and position if in Tauri
+    if ((window as any).__TAURI__) {
+      const restoreWindowState = async () => {
+        try {
+          const { getCurrent } = await import('@tauri-apps/api/window');
+          const appWindow = getCurrent();
+          
+          // Restore size
+          const savedWidth = localStorage.getItem('windowWidth');
+          const savedHeight = localStorage.getItem('windowHeight');
+          if (savedWidth && savedHeight) {
+            await appWindow.setSize({
+              type: 'Physical',
+              width: parseInt(savedWidth),
+              height: parseInt(savedHeight)
+            });
+          }
+          
+          // Restore position
+          const savedX = localStorage.getItem('windowX');
+          const savedY = localStorage.getItem('windowY');
+          if (savedX && savedY) {
+            await appWindow.setPosition({
+              type: 'Physical',
+              x: parseInt(savedX),
+              y: parseInt(savedY)
+            });
+          }
+          
+          // Listen for window events to save state
+          appWindow.onResized(({ payload: size }) => {
+            localStorage.setItem('windowWidth', size.width.toString());
+            localStorage.setItem('windowHeight', size.height.toString());
+          });
+          
+          appWindow.onMoved(({ payload: position }) => {
+            localStorage.setItem('windowX', position.x.toString());
+            localStorage.setItem('windowY', position.y.toString());
+          });
+        } catch (err) {
+          console.error('Failed to restore window state:', err);
+        }
+      };
+      
+      restoreWindowState();
+    }
   }, []);
 
   return (
