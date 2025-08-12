@@ -39,6 +39,13 @@ body {
   overflow: hidden;
 }
 
+/* Windows-specific fix for zoom issues */
+.platform-win32 .main-chat-area {
+  position: relative;
+  height: calc(100vh - 60px); /* Account for title and tabs */
+  overflow: hidden;
+}
+
 /* Remove all default focus outlines */
 *:focus {
   outline: none;

@@ -1221,21 +1221,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       try {
         await claudeCodeClient.interrupt(currentSessionId);
         
-        // Add interrupt message to chat
-        const interruptMessage = {
-          id: `interrupt-${Date.now()}`,
-          type: 'system',
-          subtype: 'interrupted',
-          message: 'task interrupted by user',
-          timestamp: Date.now()
-        };
-        
+        // Don't add interrupt message here - server already sends it
         set(state => ({
           sessions: state.sessions.map(s => 
             s.id === currentSessionId 
               ? { 
                   ...s, 
-                  messages: [...s.messages, interruptMessage],
                   claudeSessionId: undefined // Clear Claude session ID after interrupt
                 } 
               : s

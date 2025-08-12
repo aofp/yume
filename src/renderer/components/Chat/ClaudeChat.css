@@ -9,6 +9,15 @@
   overflow: hidden; /* Prevent outer container from scrolling */
 }
 
+/* Windows-specific fix for zoom issues */
+.platform-win32 .chat-container {
+  height: calc(100vh - 60px);
+  max-height: calc(100vh - 60px);
+  display: flex;
+  flex-direction: column;
+  position: relative;
+}
+
 /* Search bar - fixed top right minimal UI */
 .search-bar {
   position: fixed;
@@ -226,6 +235,15 @@
   padding: 8px;
   scroll-behavior: auto;
   min-height: 0; /* Critical for flex child scrolling */
+}
+
+/* Windows-specific fix for messages area */
+.platform-win32 .chat-messages {
+  flex: 1;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  padding-bottom: 70px; /* Account for fixed input */
 }
 
 .message {
@@ -576,6 +594,21 @@
   position: relative;
   transition: background 0.2s ease;
   flex-shrink: 0; /* Prevent shrinking */
+}
+
+/* Windows-specific fix to keep input visible when zoomed */
+.platform-win32 .chat-input-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  flex-shrink: 0;
+  min-height: 60px;
+  max-height: 200px;
+  z-index: 100;
+  background: #000000;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  padding: 3px 4px 2px 4px;
 }
 
 .input-row {
