@@ -229,22 +229,27 @@
 
 /* Messages Area */
 .chat-messages {
-  flex: 1 1 0;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0; /* Will be overridden by JS with actual input height */
   overflow-y: auto;
   overflow-x: hidden;
   padding: 8px;
   /* padding-bottom is now set dynamically via inline style */
   scroll-behavior: auto;
-  min-height: 0; /* Critical for flex child scrolling */
 }
 
 /* Windows-specific fix for messages area */
 .platform-win32 .chat-messages {
-  flex: 1;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0; /* Will be overridden by JS */
   overflow-y: auto;
   overflow-x: hidden;
-  min-height: 0;
-  /* padding-bottom is now set dynamically via inline style */
 }
 
 .message {
@@ -589,27 +594,30 @@
 
 /* Input Area */
 .chat-input-container {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   padding: 3px 4px 2px 4px;
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
-  position: relative;
   transition: background 0.2s ease;
-  flex-shrink: 0; /* Prevent shrinking */
+  z-index: 1000; /* Above messages */
 }
 
 /* Windows-specific fix to keep input visible when zoomed */
 .platform-win32 .chat-input-container {
-  position: sticky;
+  position: fixed;
   bottom: 0;
   left: 0;
   right: 0;
-  flex-shrink: 0;
   min-height: 60px;
-  max-height: 200px;
-  z-index: 100;
+  max-height: 40vh; /* Limit to 40% of viewport height */
+  z-index: 1000;
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   padding: 3px 4px 2px 4px;
+  overflow-y: auto; /* Allow scrolling if content gets too tall */
 }
 
 .input-row {

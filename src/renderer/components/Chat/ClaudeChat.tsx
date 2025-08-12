@@ -894,7 +894,10 @@ export const ClaudeChat: React.FC = () => {
       <div 
         className="chat-messages" 
         ref={chatContainerRef}
-        style={{ paddingBottom: `${inputContainerHeight + 20}px` }}
+        style={{ 
+          bottom: `${inputContainerHeight}px`,
+          paddingBottom: '20px'
+        }}
       >
         {(() => {
           const processedMessages = currentSession.messages

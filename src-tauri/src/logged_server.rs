@@ -101,7 +101,8 @@ socketServer.on('connection', (socket) => {
             workingDirectory: workingDirectory,
             model: model,
             messages: [],
-            claudeSessionId: null
+            claudeSessionId: null,
+            hasGeneratedTitle: false
         });
         
         log(`[${sessionId}] Session created - workingDir: ${workingDirectory}, model: ${model || 'default'}`);
@@ -226,6 +227,25 @@ socketServer.on('connection', (socket) => {
         
         activeProcesses.set(sessionId, claude);
         
+        // Generate title on first message
+        if (!session.hasGeneratedTitle && userMessage && userMessage.length > 5) {
+            session.hasGeneratedTitle = true;
+            
+            // Generate a simple title from the first message
+            setTimeout(() => {
+                let title = userMessage
+                    .toLowerCase()
+                    .replace(/[^\w\s]/g, '')
+                    .trim()
+                    .substring(0, 30);
+                    
+                if (title && title.length > 2) {
+                    log(`[${sessionId}] Generated title: "${title}"`);
+                    socket.emit(`title:${sessionId}`, { title });
+                }
+            }, 1000);
+        }
+        
         // Send user message with proper encoding
         const inputContent = userMessage.endsWith('\\n') ? userMessage : userMessage + '\\n';
         claude.stdin.write(inputContent, 'utf8', (err) => {
@@ -348,7 +368,7 @@ socketServer.on('connection', (socket) => {
                                 socket.emit(`message:${sessionId}`, {
                                     type: 'assistant',
                                     message: { content: block.text },
-                                    streaming: false,
+                                    streaming: true, // Keep streaming true - will be cleared by result message
                                     id: messageId,
                                     timestamp: Date.now()
                                 });
@@ -488,6 +508,19 @@ socketServer.on('connection', (socket) => {
         }
         lastAssistantMessageIds.delete(sessionId);
         if (callback) callback({ success: true });
+    });
+    
+    socket.on('setWorkingDirectory', (data, callback) => {
+        const { sessionId, directory } = data;
+        const session = sessions.get(sessionId);
+        if (session) {
+            session.workingDirectory = directory;
+            log(`[${sessionId}] Updated working directory: ${directory}`);
+            if (callback) callback({ success: true });
+        } else {
+            log(`[${sessionId}] Session not found for setWorkingDirectory`);
+            if (callback) callback({ success: false, error: 'Session not found' });
+        }
     });
     
     socket.on('disconnect', () => {
