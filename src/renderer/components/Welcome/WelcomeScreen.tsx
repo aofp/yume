@@ -37,10 +37,16 @@ export const WelcomeScreen: React.FC = () => {
   // Will be set up after all functions are defined
 
   const handleSelectFolder = async () => {
-    if (window.electronAPI?.selectFolder) {
-      const folderPath = await window.electronAPI.selectFolder();
-      if (folderPath) {
-        openProject(folderPath);
+    // Import the Tauri API dynamically
+    if (window.__TAURI__) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const folderPath = await invoke<string | null>('select_folder');
+        if (folderPath) {
+          openProject(folderPath);
+        }
+      } catch (error) {
+        console.error('Failed to select folder:', error);
       }
     }
   };
@@ -48,20 +54,24 @@ export const WelcomeScreen: React.FC = () => {
   const handleNewSession = async () => {
     let directory = null;
     
-    if (window.electronAPI?.folder?.select) {
+    // Check if we're in Tauri environment
+    if (window.__TAURI__) {
       try {
-        directory = await window.electronAPI.folder.select();
+        const { invoke } = await import('@tauri-apps/api/core');
+        directory = await invoke<string | null>('select_folder');
         if (!directory) {
           // User cancelled folder selection
           return;
         }
       } catch (error) {
-        // Fall back to current directory
-        directory = await window.electronAPI?.folder?.getCurrent?.() || '/';
+        console.error('Folder selection failed:', error);
+        // Don't fall back, just return
+        return;
       }
     } else {
-      // Just use root directory as fallback
-      directory = '/';
+      // No folder selection available
+      console.error('No folder selection method available - not in Tauri environment');
+      return;
     }
     
     // Create session with selected directory

@@ -43,6 +43,8 @@ bytes = "1.8"
 async-trait = "0.1"
 which = "6.0"
 regex = "1.11"
+rfd = "0.14"
+native-dialog = "0.7"
 # sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "sqlite"] }  # Commented out for now
 # notify = "6.1"  # Commented out for now
 

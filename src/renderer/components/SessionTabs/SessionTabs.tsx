@@ -228,16 +228,15 @@ export const SessionTabs: React.FC = () => {
         }
       } catch (error) {
         console.error('Folder selection failed:', error);
-        // Fall back to current directory
-        directory = await window.electronAPI?.folder?.getCurrent?.() || '/';
-        console.log('Using fallback directory:', directory);
+        // Don't fall back to /, just return
+        return;
       }
     } 
     
     if (!directory) {
-      // Just use root directory as fallback
-      console.log('No folder selection method available, using /Users');
-      directory = '/Users';
+      // No folder selection method available, don't create a session
+      console.log('No folder selection method available');
+      return;
     }
     
     // Save to recent projects if it's not the root directory

@@ -5,19 +5,19 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 ## ⚠️ CRITICAL RULES FOR CLAUDE
 
 **NEVER START OR RESTART SERVERS** - The user manages all server processes. DO NOT run:
-- `npm run start`, `npm run dev`, `npm run electron:dev` or any start commands
+- `npm run start`, `npm run dev`, `npm run tauri:dev` or any start commands
 - Server restart commands or process management commands
 - Only provide code fixes, never execute server commands
 - If the app isn't working, provide fixes but let the user restart
 
 **NEVER BUILD THE APP** - DO NOT run build commands unless explicitly asked:
 - `npm run build` - NEVER run this unless user explicitly asks
-- `npm run dist:*` - NEVER run distribution builds unless requested
+- `npm run tauri:build` - NEVER run distribution builds unless requested
 - Only fix code, don't test builds unless specifically requested
 
 ## Project Overview
 
-yurucode is a minimal Electron/React desktop application that provides a lightweight UI for the Claude CLI (not SDK). The app features an ultra-minimal black OLED theme with pastel red (#ff9999) and magenta (#ff99cc) accents. It directly spawns the Claude CLI binary and parses its stream-json output.
+yurucode is a cross-platform desktop application providing a minimal UI for the Claude CLI. Built with Tauri v2 (Rust + React), it features an ultra-minimal black OLED theme with pastel red (#ff9999) and magenta (#ff99cc) accents. The app spawns the Claude CLI binary directly and parses its stream-json output.
 
 ## Development Commands
 
@@ -25,62 +25,44 @@ yurucode is a minimal Electron/React desktop application that provides a lightwe
 # Install dependencies
 npm install
 
-# Development modes
-npm run start:win     # Windows with WSL (single instance)
-npm run start:multi   # Multi-instance mode with dynamic port allocation
-npm run electron:dev  # Cross-platform development
+# Development (user manages these)
+npm run dev           # Vite dev server (port 5173)
+npm run tauri:dev     # Tauri development mode
+npm run server:macos  # Node.js server for Claude CLI
 
-# Individual services
-npm run server:wsl    # WSL server running Claude CLI directly (port 3001)
-npm run server:multi  # Multi-instance server with dynamic ports
-npm run dev           # Vite dev server for React app (port 5173)
-npm run electron      # Electron app only
-
-# Build commands
-npm run build         # Build React app for production
-npm run dist:win      # Build Windows installer (.exe)
-npm run dist:mac      # Build macOS app (.dmg)
-npm run dist:linux    # Build Linux package
-
-# Utilities
-npm run prestart      # Kill stuck ports (3001, 5173)
-build-win.bat         # Windows build script with icon fix
-fix-icon.bat          # Fix exe icon after build
+# Build commands (only when explicitly requested)
+npm run build         # Build React app
+npm run tauri:build   # Build for current platform
 ```
 
 ## Critical Architecture
 
 ### Three-Process Architecture
 
-1. **Node.js Server** (`server-claude-direct.js` or `server-claude-multi.js`)
-   - Spawns Claude CLI binary directly (no SDK, no API key)
+1. **Tauri Main Process** (`src-tauri/`)
+   - Window lifecycle management
+   - Native system integration
+   - WebSocket support via Rust
+
+2. **Node.js Server** (`server-claude-macos.js`)
+   - Spawns Claude CLI binary directly (no SDK/API key)
    - Parses `--output-format stream-json` output
    - WebSocket communication via Socket.IO
    - Session resumption with `--resume` flag
-   - Process interruption support (SIGINT)
-   - Multi-instance: Dynamic port allocation using `portfinder`
 
-2. **Electron Main Process** (`electron/main.js`)
-   - Window lifecycle management
-   - Zoom persistence in electron-store
-   - IPC for folder selection and system operations
-   - Dynamic port discovery for multi-instance
-   - Server spawning in production builds
-
-3. **React Renderer** (`src/renderer/`)
+3. **React Frontend** (`src/renderer/`)
    - Socket.IO client with retry logic
-   - Zustand store for per-session state
-   - Token analytics tracking per conversation (not cumulative)
+   - Zustand store for state management
    - Multi-tab session management
+   - Token analytics per conversation
 
 ### Key Implementation Details
 
 - **Message Flow**: User input → Socket.IO → Server spawns `claude` → Parse stream-json → Stream back
-- **Session Management**: Each tab has unique session with own `claudeSessionId`
-- **Token Tracking**: Analytics track per-conversation tokens (using `=` not `+=`)
-- **Streaming State**: Per-session `streaming` flag, thinking indicator shows when `streaming === true`
-- **Clear Context**: Resets `claudeSessionId` and analytics to start fresh
-- **Multi-Instance**: Each instance finds available ports automatically
+- **Session Management**: Each tab has unique `claudeSessionId`
+- **Token Tracking**: Analytics track per-conversation tokens (use `=` not `+=`)
+- **Streaming State**: Per-session `streaming` flag in Zustand store
+- **Clear Context**: Resets `claudeSessionId` and analytics
 
 ### UI Design Philosophy
 
@@ -89,23 +71,19 @@ fix-icon.bat          # Fix exe icon after build
 - Black background (#000000) for OLED
 - Pastel accents: red (#ff9999), magenta (#ff99cc)
 - Tabler icons (no emojis in UI)
-- Sans-serif for thinking indicator
-- Animated dots for thinking state
-- Right-click context menu with copy for selected text
+- Right-click context menu with copy functionality
 
 ### Important Files & Patterns
 
-- `server-claude-direct.js` - Main server, tracks `lastAssistantMessageIds` for streaming
-- `server-claude-multi.js` - Multi-instance server with port discovery
+- `server-claude-macos.js` - Server tracking `lastAssistantMessageIds` for streaming
 - `src/renderer/stores/claudeCodeStore.ts` - Use `let sessions` not `const sessions` in setState
-- `src/renderer/services/claudeCodeClient.ts` - Port discovery logic, health checks
-- `src/renderer/components/Chat/MessageRenderer.tsx` - No thinking indicator inside bubbles
-- `scripts/start-multi.js` - Dynamic port allocation for Vite and server
+- `src/renderer/services/claudeCodeClient.ts` - Socket.IO connection management
+- `src/renderer/components/Chat/MessageRenderer.tsx` - Message rendering logic
+- `src-tauri/tauri.conf.json` - Tauri configuration
 
 ### Keyboard Shortcuts
 
 - `Ctrl+T` - New tab/session
-- `Ctrl+D` - Duplicate tab (same directory)
 - `Ctrl+W` - Close tab
 - `Ctrl+Tab` / `Ctrl+Shift+Tab` - Navigate tabs
 - `Ctrl+L` - Clear context
@@ -113,24 +91,24 @@ fix-icon.bat          # Fix exe icon after build
 - `Ctrl+R` - Recent projects modal
 - `Ctrl+F` - Search in messages
 - `Ctrl+0/+/-` - Zoom controls
+- `F12` - DevTools
 - `?` - Show help
 - `Escape` - Close modals/stop streaming
 
 ### Common Issues & Solutions
 
-1. **Token accumulation**: Ensure using `=` not `+=` in analytics, restart app after store changes
-2. **Thinking indicator stuck**: Check `message.streaming` flag is properly cleared on result
-3. **Multi-instance ports**: Each instance needs unique ports, use `npm run start:multi`
-4. **Icon not showing**: Run `fix-icon.bat` after build, clear Windows icon cache
-5. **WSL paths**: Server auto-converts Windows paths to `/mnt/c/...`
-6. **Hot reload**: Zustand store changes need full restart, components hot-reload
+1. **Token accumulation**: Use `=` not `+=` in analytics, restart app after store changes
+2. **Thinking indicator stuck**: Check `message.streaming` flag properly cleared
+3. **Zustand store changes**: Require full app restart
+4. **Hot reload**: Components hot-reload, server uses nodemon, store needs restart
+5. **macOS paths**: Server handles path conversion for Claude CLI
 
 ### Testing Changes
 
 When modifying:
 1. React components hot-reload automatically (HMR)
-2. Server changes hot-reload with nodemon
+2. Server changes reload with nodemon
 3. Zustand store changes require app restart
-4. Electron main process needs manual restart
+4. Tauri main process needs manual restart
 5. Check browser console for Socket.IO errors
 6. Check terminal for Claude spawn errors

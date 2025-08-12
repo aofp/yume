@@ -40,10 +40,27 @@ pub fn run() {
             // Spawn the Node.js server process in a simple way
             std::thread::spawn(|| {
                 let server_path = "server-claude-macos.js";
-                let working_dir = std::env::current_dir()
-                    .ok()
-                    .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-                    .unwrap_or_else(|| std::path::PathBuf::from("."));
+                // Get the app's resource directory (where the app bundle is located)
+                let working_dir = if let Ok(exe_path) = std::env::current_exe() {
+                    // Go up from MacOS/app to the bundle root, then to the project directory
+                    exe_path
+                        .parent() // MacOS
+                        .and_then(|p| p.parent()) // Contents
+                        .and_then(|p| p.parent()) // yurucode.app
+                        .and_then(|p| p.parent()) // bundle/macos
+                        .and_then(|p| p.parent()) // bundle
+                        .and_then(|p| p.parent()) // release
+                        .and_then(|p| p.parent()) // target
+                        .and_then(|p| p.parent()) // src-tauri
+                        .and_then(|p| p.parent()) // yurucode (project root)
+                        .map(|p| p.to_path_buf())
+                        .unwrap_or_else(|| {
+                            // Fallback to a hardcoded path for production
+                            std::path::PathBuf::from("/Users/yuru/yurucode")
+                        })
+                } else {
+                    std::path::PathBuf::from("/Users/yuru/yurucode")
+                };
                 
                 info!("Starting Node.js server from: {:?}", working_dir.join(&server_path));
                 
@@ -82,6 +99,13 @@ pub fn run() {
 
             // Set up window event handlers
             let window = app.get_webview_window("main").unwrap();
+            
+            // Always open DevTools in debug/development builds
+            #[cfg(debug_assertions)]
+            {
+                window.open_devtools();
+                info!("DevTools opened (debug build)");
+            }
             
             // Apply custom window styles for macOS
             #[cfg(target_os = "macos")]
@@ -164,11 +188,11 @@ pub fn run() {
                 }
             });
             
-            // Don't auto-open devtools, wait for F12
-            // F12 handling is done in the frontend JavaScript
+            // DevTools - will open via keyboard shortcut F12
 
-            // Inject custom styles for OLED theme
+            // Inject custom styles and debugging info for OLED theme
             window.eval(r#"
+                console.log('Tauri window.eval executed!');
                 const style = document.createElement('style');
                 style.textContent = `
                     body {
@@ -196,6 +220,17 @@ pub fn run() {
                     }
                 `;
                 document.head.appendChild(style);
+                
+                // Add debug message to check if JavaScript is running
+                if (!document.getElementById('root')) {
+                    document.body.innerHTML = '<div style="color: white; padding: 20px;">Debug: Root element not found. Window loaded but React not mounting.</div>';
+                } else if (document.getElementById('root').children.length === 0) {
+                    setTimeout(() => {
+                        if (document.getElementById('root').children.length === 0) {
+                            document.getElementById('root').innerHTML = '<div style="color: white; padding: 20px;">Debug: React app not loading. Check console for errors.</div>';
+                        }
+                    }, 2000);
+                }
             "#).ok();
 
             Ok(())

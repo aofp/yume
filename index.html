@@ -3,9 +3,16 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://localhost:* ws://localhost:*; connect-src 'self' http://localhost:* ws://localhost:*; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com;">
+    <!-- CSP temporarily disabled for debugging -->
+    <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://localhost:* ws://localhost:*; connect-src 'self' http://localhost:* ws://localhost:*; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com;"> -->
     <title>yurucode</title>
     <script src="/polyfills.js"></script>
+    <script>
+      // Ensure require_core is available before modules load
+      window.require_core = function() {
+        return { Object: Object };
+      };
+    </script>
     <link rel="icon" type="image/png" href="/yurucode.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -13,6 +20,14 @@
   </head>
   <body>
     <div id="root"></div>
+    <div id="debug" style="position: fixed; top: 0; left: 0; right: 0; background: rgba(255,0,0,0.8); color: white; padding: 10px; display: none; z-index: 9999;"></div>
+    <script>
+      window.onerror = function(msg, url, line) {
+        document.getElementById('debug').style.display = 'block';
+        document.getElementById('debug').innerHTML += 'Error: ' + msg + ' at ' + url + ':' + line + '<br>';
+        return false;
+      };
+    </script>
     <script type="module" src="/src/renderer/main.tsx"></script>
   </body>
 </html>

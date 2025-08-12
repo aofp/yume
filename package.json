@@ -8,7 +8,7 @@
     "dev": "vite",
     "server:macos": "node --expose-gc --max-old-space-size=2048 server-claude-macos.js",
     "server:multi": "node server-claude-multi.js",
-    "build": "vite build",
+    "build": "vite build && node -e \"const fs=require('fs'); const file='dist/assets/markdown-CK_bGesl.js'; if(fs.existsSync(file)) { const content=fs.readFileSync(file,'utf8'); fs.writeFileSync(file, content.replace(/require_core\\(\\)\\.Object\\.assign/g, 'Object.assign')); console.log('Patched markdown bundle'); }\"",
     "preview": "vite preview",
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@tabler/icons-react": "^3.34.1",
+    "@tauri-apps/plugin-dialog": "^2.3.2",
     "cors": "^2.8.5",
     "express": "^5.1.0",
     "portfinder": "^1.0.37",

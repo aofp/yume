@@ -28,4 +28,17 @@
   }
   
   console.log('Polyfills loaded. Object.assign available:', typeof Object.assign === 'function');
+  
+  // Workaround for require_core error in bundled modules
+  window.require_core = function() {
+    return { Object: Object };
+  };
+  
+  // Also provide global require if needed
+  if (typeof require === 'undefined') {
+    window.require = function() { 
+      console.warn('require() polyfill called');
+      return {}; 
+    };
+  }
 })();

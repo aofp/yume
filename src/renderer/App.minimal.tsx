@@ -150,21 +150,29 @@ export const App: React.FC = () => {
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
-      // F12 for DevTools (development mode only)
+      // F12 for DevTools
       if (e.key === 'F12') {
         e.preventDefault();
-        // Check if we're in Tauri and in development mode
-        if ((window as any).__TAURI__ && import.meta.env.DEV) {
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            // Try to toggle devtools via Tauri command
-            await invoke('toggle_devtools').catch(() => {
-              // If command doesn't exist, try the window API
-              console.log('DevTools toggle not available');
+        console.log('F12 pressed - attempting to open DevTools');
+        
+        // In Tauri, try to invoke the toggle_devtools command
+        if (window.__TAURI__) {
+          Promise.all([
+            import('@tauri-apps/api/core'),
+            import('@tauri-apps/api/window')
+          ]).then(([{ invoke }, { getCurrent }]) => {
+            const currentWindow = getCurrent();
+            console.log('Invoking toggle_devtools');
+            invoke('toggle_devtools', { window: currentWindow }).catch(err => {
+              console.error('Failed to toggle devtools:', err);
+              // Try without window parameter as fallback
+              invoke('toggle_devtools').catch(err2 => {
+                console.error('Failed to toggle devtools (fallback):', err2);
+              });
             });
-          } catch (err) {
-            console.log('F12 pressed but DevTools not available:', err);
-          }
+          });
+        } else {
+          alert('To open DevTools in production:\n\nMac: Press Cmd+Option+I\nOr: Right-click and select "Inspect Element"');
         }
       }
       

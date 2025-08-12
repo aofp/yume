@@ -1,5 +1,5 @@
 use serde::{Deserialize, Serialize};
-use tauri::{State, Window, Manager};
+use tauri::{State, Window};
 
 use crate::state::AppState;
 
@@ -10,38 +10,40 @@ pub struct FolderSelection {
 
 #[tauri::command]
 pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
-    // Only allow in debug mode
-    #[cfg(debug_assertions)]
-    {
+    println!("DevTools toggle requested");
+    
+    // Open DevTools if they're closed, close if they're open
+    if window.is_devtools_open() {
+        window.close_devtools();
+        println!("DevTools closed");
+    } else {
         window.open_devtools();
+        println!("DevTools opened");
     }
+    
     Ok(())
 }
 
 #[tauri::command]
-pub async fn select_folder(window: Window) -> Result<Option<String>, String> {
+pub async fn select_folder() -> Result<Option<String>, String> {
     println!("select_folder command called");
     
-    use tauri_plugin_dialog::DialogExt;
+    // Use rfd which works better on macOS
+    use rfd::AsyncFileDialog;
     
-    // Create a one-shot channel for the result
-    let (tx, rx) = tokio::sync::oneshot::channel();
-    
-    // Open folder picker dialog
-    window.dialog()
-        .file()
+    let folder = AsyncFileDialog::new()
         .set_title("Select a folder")
-        .pick_folder(move |folder_path| {
-            let result = folder_path.map(|p| p.to_string());
-            println!("Folder selected: {:?}", result);
-            let _ = tx.send(result);
-        });
+        .pick_folder()
+        .await;
     
-    // Wait for the result
-    match rx.await {
-        Ok(result) => Ok(result),
-        Err(_) => {
-            println!("Folder selection cancelled or failed");
+    match folder {
+        Some(path) => {
+            let path_str = path.path().to_string_lossy().to_string();
+            println!("Folder selected: {}", path_str);
+            Ok(Some(path_str))
+        }
+        None => {
+            println!("Folder selection cancelled");
             Ok(None)
         }
     }

@@ -36,13 +36,14 @@ class TauriAPIBridge implements TauriAPI {
   folder = {
     select: async (): Promise<string | null> => {
       try {
-        console.log('Tauri folder.select() called - invoking select_folder command');
+        console.log('Tauri folder.select() called - using invoke command');
+        console.log('About to invoke select_folder command...');
         const result = await invoke<string | null>('select_folder');
-        console.log('Tauri folder.select() result:', result);
+        console.log('Select folder invoke returned:', result);
         return result;
       } catch (error) {
-        console.error('Error selecting folder:', error);
-        return null;
+        console.error('Error invoking select_folder:', error);
+        throw error; // Re-throw to see the actual error
       }
     }
   };

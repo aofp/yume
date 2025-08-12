@@ -6,6 +6,14 @@ export default defineConfig({
   plugins: [react()],
   base: './',
   publicDir: 'public',
+  optimizeDeps: {
+    include: ['react-markdown', 'react-syntax-highlighter'],
+    esbuildOptions: {
+      define: {
+        global: 'globalThis',
+      },
+    },
+  },
   server: {
     port: 5173,
     strictPort: true,
