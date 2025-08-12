@@ -324,10 +324,9 @@ export const ClaudeChat: React.FC = () => {
         setShowRecentModal(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         e.preventDefault();
-        // Duplicate current tab with same directory
+        // Create new session in same directory (fresh start, same working dir)
         if (currentSession?.workingDirectory) {
-          const projectName = currentSession.workingDirectory.split(/[/\\]/).pop() || 'project';
-          createSession(projectName, currentSession.workingDirectory);
+          createSession(undefined, currentSession.workingDirectory);
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === '.') {
         e.preventDefault();

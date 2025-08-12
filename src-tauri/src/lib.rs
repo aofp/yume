@@ -7,9 +7,10 @@ mod claude;
 mod commands;
 mod state;
 mod websocket;
+mod logged_server;
 
 use std::sync::Arc;
-use tauri::Manager;
+use tauri::{Manager, Listener};
 use tracing::{info, error};
 
 use claude::ClaudeManager;
@@ -33,84 +34,16 @@ pub fn run() {
             // Initialize Claude manager
             let claude_manager = Arc::new(ClaudeManager::new());
 
-            // Start the Node.js server
+            // Start the LOGGED server with full debugging
             let port = 3001;
-            info!("Starting Node.js server on port: {}", port);
+            info!("Starting LOGGED Node.js server on port: {}", port);
             
-            // Spawn the Node.js server process in a simple way
-            std::thread::spawn(|| {
-                // Use different server for Windows vs macOS
-                let server_path = if cfg!(target_os = "windows") {
-                    "server-claude-direct.cjs"
-                } else {
-                    "server-claude-macos.js"
-                };
-                
-                // Get the app's resource directory (where the app bundle is located)
-                let working_dir = if let Ok(exe_path) = std::env::current_exe() {
-                    // For Windows, go up from target\debug to project root
-                    if cfg!(target_os = "windows") {
-                        exe_path
-                            .parent() // debug
-                            .and_then(|p| p.parent()) // target
-                            .and_then(|p| p.parent()) // src-tauri
-                            .and_then(|p| p.parent()) // yurucode (project root)
-                            .map(|p| p.to_path_buf())
-                            .unwrap_or_else(|| {
-                                std::path::PathBuf::from("C:\\Users\\muuko\\Desktop\\yurucode")
-                            })
-                    } else {
-                        // macOS path logic
-                        exe_path
-                            .parent() // MacOS
-                            .and_then(|p| p.parent()) // Contents
-                            .and_then(|p| p.parent()) // yurucode.app
-                            .and_then(|p| p.parent()) // bundle/macos
-                            .and_then(|p| p.parent()) // bundle
-                            .and_then(|p| p.parent()) // release
-                            .and_then(|p| p.parent()) // target
-                            .and_then(|p| p.parent()) // src-tauri
-                            .and_then(|p| p.parent()) // yurucode (project root)
-                            .map(|p| p.to_path_buf())
-                            .unwrap_or_else(|| {
-                                std::path::PathBuf::from("/Users/yuru/yurucode")
-                            })
-                    }
-                } else {
-                    if cfg!(target_os = "windows") {
-                        std::path::PathBuf::from("C:\\Users\\muuko\\Desktop\\yurucode")
-                    } else {
-                        std::path::PathBuf::from("/Users/yuru/yurucode")
-                    }
-                };
-                
-                info!("Starting Node.js server from: {:?}", working_dir.join(&server_path));
-                
-                match std::process::Command::new("node")
-                    .arg(server_path)
-                    .current_dir(&working_dir)
-                    .spawn() {
-                    Ok(mut child) => {
-                        info!("Node.js server started with PID: {:?}", child.id());
-                        
-                        // Store the child process ID for cleanup
-                        if let Ok(_) = std::fs::write(".server.pid", child.id().to_string()) {
-                            info!("Saved server PID to file");
-                        }
-                        
-                        // Keep the server running
-                        let _ = child.wait();
-                    },
-                    Err(e) => {
-                        error!("Failed to start Node.js server: {}", e);
-                    }
-                }
-            });
+            logged_server::start_logged_server();
             
-            // Give the server a moment to start
-            std::thread::sleep(std::time::Duration::from_millis(2000));
-            
-            info!("Node.js server should be running on port: {}", port);
+            info!("Check these log files:");
+            info!("  %TEMP%\\yurucode-rust.log");
+            info!("  %TEMP%\\yurucode-server.log");
+            info!("  %TEMP%\\yurucode-server-RUNNING.txt");
 
             // Initialize app state
             let app_state = AppState::new(claude_manager, port);
@@ -127,6 +60,16 @@ pub fn run() {
             {
                 window.open_devtools();
                 info!("DevTools opened (debug build)");
+            }
+            
+            // Enable F12 listener for DevTools
+            {
+                let _window_clone = window.clone();
+                window.listen("open-devtools", move |_| {
+                    info!("DevTools request via F12");
+                    // DevTools toggling is handled via the toggle_devtools command
+                    // which checks for debug/release builds internally
+                });
             }
             
             // Apply custom window styles for macOS
@@ -169,44 +112,24 @@ pub fn run() {
                 }
             }
 
-            // Handle window close event
+            // Handle window close event - simplified for Windows
+            let window_for_close = window.clone();
             window.on_window_event(move |event| {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
-                    // Prevent default close to cleanup first
-                    api.prevent_close();
+                    info!("Window close requested, cleaning up...");
                     
-                    // Kill the Node.js server if it's running
-                    if let Ok(pid_str) = std::fs::read_to_string(".server.pid") {
-                        if let Ok(pid) = pid_str.trim().parse::<u32>() {
-                            // Cross-platform process killing
-                            #[cfg(target_os = "macos")]
-                            {
-                                let _ = std::process::Command::new("kill")
-                                    .arg("-TERM")
-                                    .arg(pid.to_string())
-                                    .output();
-                            }
-                            #[cfg(target_os = "windows")]
-                            {
-                                let _ = std::process::Command::new("taskkill")
-                                    .args(&["/F", "/PID", &pid.to_string()])
-                                    .output();
-                            }
-                            #[cfg(target_os = "linux")]
-                            {
-                                let _ = std::process::Command::new("kill")
-                                    .arg("-TERM")
-                                    .arg(pid.to_string())
-                                    .output();
-                            }
-                            
-                            // Clean up the PID file
-                            let _ = std::fs::remove_file(".server.pid");
-                        }
-                    }
+                    // Don't prevent close, just do cleanup and exit
+                    // api.prevent_close(); // REMOVED - let window close normally
                     
-                    // Cleanup and then close
-                    std::process::exit(0);
+                    // Quick cleanup and exit
+                    logged_server::stop_logged_server();
+                    info!("Server stopped, closing window...");
+                    
+                    // Force exit after brief delay
+                    std::thread::spawn(|| {
+                        std::thread::sleep(std::time::Duration::from_millis(100));
+                        std::process::exit(0);
+                    });
                 }
             });
             
@@ -275,8 +198,21 @@ pub fn run() {
             commands::get_recent_projects,
             commands::add_recent_project,
         ])
+        .on_window_event(|_app_handle, event| {
+            // Additional handler for window events at app level
+            if let tauri::WindowEvent::Destroyed = event {
+                info!("Window destroyed, ensuring final cleanup...");
+                // This is a fallback - cleanup should already be done
+                // Exit immediately if window is destroyed
+                std::process::exit(0);
+            }
+        })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
+    
+    // If we get here (app quit normally), ensure cleanup
+    info!("App exiting normally, cleaning up...");
+    logged_server::stop_logged_server();
 }
 
 #[cfg(target_os = "macos")]
@@ -306,6 +242,75 @@ mod macos {
         
         unsafe fn setStyleMask_(&self, mask: NSWindowStyleMask) {
             msg_send![*self, setStyleMask:mask]
+        }
+    }
+}
+
+// Fallback server start function
+fn start_server_fallback(app_handle: tauri::AppHandle) {
+    use std::process::Command;
+    
+    info!("Attempting fallback server start...");
+    
+    // Use the correct server for production vs development
+    let server_filename = if cfg!(debug_assertions) {
+        "server-claude-direct.cjs"
+    } else {
+        // In production, use the simple server that works
+        "server-simple.cjs"
+    };
+    
+    let (server_path, working_dir) = if cfg!(debug_assertions) {
+        // Development - use project root
+        let project_root = std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .unwrap_or_else(|| std::path::PathBuf::from("."));
+        
+        (project_root.join(server_filename), project_root)
+    } else {
+        // Production - resources are extracted to a temp directory
+        if let Ok(resource_dir) = app_handle.path().resource_dir() {
+            (resource_dir.join(server_filename), resource_dir)
+        } else {
+            error!("Failed to get resource directory");
+            return;
+        }
+    };
+    
+    info!("Fallback server path: {:?}", server_path);
+    
+    // Find node
+    let node_cmd = if cfg!(target_os = "windows") {
+        which::which("node.exe")
+            .or_else(|_| which::which("node"))
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|_| "node".to_string())
+    } else {
+        "node".to_string()
+    };
+    
+    let mut cmd = Command::new(&node_cmd);
+    cmd.arg(server_path.to_str().unwrap())
+       .current_dir(working_dir);
+    
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+    
+    match cmd.spawn() {
+        Ok(mut child) => {
+            info!("Fallback server started with PID: {}", child.id());
+            let _ = child.wait();
+        }
+        Err(e) => {
+            error!("Fallback server failed: {}", e);
         }
     }
 }

@@ -13,6 +13,10 @@ export class ClaudeCodeClient {
   private serverPort: number | null = null;
 
   constructor() {
+    console.log('[ClaudeCodeClient] Initializing...');
+    console.log('[ClaudeCodeClient] Is Tauri:', isTauri());
+    console.log('[ClaudeCodeClient] Window location:', window.location.href);
+    
     // Only auto-connect if not in Tauri, or if server is available
     if (!isTauri()) {
       this.discoverAndConnect();
@@ -24,25 +28,31 @@ export class ClaudeCodeClient {
   
   private async checkServerAndConnect() {
     // Check if Node.js server is running
+    console.log('[ClaudeCodeClient] Checking server health at localhost:3001...');
     try {
       const response = await fetch('http://localhost:3001/health', {
         signal: AbortSignal.timeout(1000)
       });
       if (response.ok) {
+        console.log('[ClaudeCodeClient] Server health check OK');
         this.serverPort = 3001;
         this.connect();
       } else {
+        console.error('[ClaudeCodeClient] Server health check failed:', response.status);
         console.log('📡 Node.js server not running. Start it with: node server-claude-macos.js');
       }
     } catch (err) {
+      console.error('[ClaudeCodeClient] Server health check error:', err);
       console.log('📡 Node.js server not available. WebSocket connection disabled.');
     }
   }
 
   private async discoverAndConnect() {
+    console.log('[ClaudeCodeClient] Starting server discovery...');
     
     // For Tauri, we know the server is on port 3001
     if (isTauri()) {
+      console.log('[ClaudeCodeClient] Tauri mode - using port 3001');
       this.serverPort = 3001;
       this.connectWithRetry();
       return;
@@ -76,22 +86,28 @@ export class ClaudeCodeClient {
   }
   
   private async connectWithRetry(retries = 10, delay = 1000) {
+    console.log(`[ClaudeCodeClient] Connection attempt (${10 - retries + 1}/10) to port ${this.serverPort}`);
     
     // First check if server is responding
     try {
       const response = await fetch(`http://localhost:${this.serverPort}/health`);
       if (response.ok) {
+        console.log('[ClaudeCodeClient] Health check passed, connecting...');
         this.connect();
         return;
       }
+      console.warn('[ClaudeCodeClient] Health check failed:', response.status);
     } catch (err) {
+      console.warn('[ClaudeCodeClient] Health check error:', err);
     }
     
     if (retries > 0) {
+      console.log(`[ClaudeCodeClient] Retrying in ${delay}ms...`);
       setTimeout(() => {
         this.connectWithRetry(retries - 1, Math.min(delay * 1.5, 5000));
       }, delay);
     } else {
+      console.warn('[ClaudeCodeClient] Max retries reached, attempting direct connection');
       // Try to connect anyway - Socket.IO will keep retrying
       this.connect();
     }
@@ -99,10 +115,12 @@ export class ClaudeCodeClient {
 
   private connect() {
     if (!this.serverPort) {
+      console.error('[ClaudeCodeClient] No server port available');
       return;
     }
     
     const serverUrl = `http://localhost:${this.serverPort}`;
+    console.log(`[ClaudeCodeClient] Connecting to ${serverUrl}`);
     
     // Connect to the Claude Code server with limited retry settings
     this.socket = io(serverUrl, {
@@ -137,11 +155,6 @@ export class ClaudeCodeClient {
     
     this.socket.on('error', (error) => {
       console.error('🔴 Socket error:', error);
-    });
-    
-    // Listen for title updates
-    this.socket.on(/^title:/, (data) => {
-      console.log('🏷️ Received title update:', data);
     });
     
     // Log reconnection attempts

@@ -13,6 +13,7 @@ export const SessionTabs: React.FC = () => {
     deleteAllSessions,
     resumeSession,
     reorderSessions,
+    renameSession,
     clearContext
   } = useClaudeCodeStore();
 
@@ -21,6 +22,8 @@ export const SessionTabs: React.FC = () => {
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
+  const [renamingTab, setRenamingTab] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
   const [dragOverNewTab, setDragOverNewTab] = useState(false);
@@ -420,12 +423,8 @@ export const SessionTabs: React.FC = () => {
                     // Check if we're over the new tab button
                     const newTabButton = document.querySelector('.tab-new');
                     if (newTabButton && newTabButton.contains(upEvent.target as Node)) {
-                      console.log('Duplicating tab');
-                      const sessionToDuplicate = sessions.find(s => s.id === session.id);
-                      if (sessionToDuplicate) {
-                        const workingDir = (sessionToDuplicate as any)?.workingDirectory;
-                        createSession(undefined, workingDir || '/');
-                      }
+                      // Don't create session here - it's handled by the button's onMouseUp
+                      console.log('Dropped on new tab button - handled by button');
                     } else if (currentDragOver) {
                       // Perform the reorder
                       const fromIndex = sessions.findIndex(s => s.id === session.id);
@@ -483,10 +482,37 @@ export const SessionTabs: React.FC = () => {
                   );
                 })()}
               </div>
-              {(session as any).claudeTitle && (
-                <span className="tab-title">
-                  {(session as any).claudeTitle}
-                </span>
+              {renamingTab === session.id ? (
+                <input
+                  type="text"
+                  className="tab-rename-input"
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      if (renameValue.trim()) {
+                        renameSession(session.id, renameValue);
+                      }
+                      setRenamingTab(null);
+                    } else if (e.key === 'Escape') {
+                      setRenamingTab(null);
+                    }
+                  }}
+                  onBlur={() => {
+                    if (renameValue.trim()) {
+                      renameSession(session.id, renameValue);
+                    }
+                    setRenamingTab(null);
+                  }}
+                  autoFocus
+                  onClick={(e) => e.stopPropagation()}
+                />
+              ) : (
+                (session as any).claudeTitle && (
+                  <span className="tab-title">
+                    {(session as any).claudeTitle}
+                  </span>
+                )
               )}
             </div>
             {/* Show loading icon for pending sessions or streaming */}
@@ -528,22 +554,7 @@ export const SessionTabs: React.FC = () => {
             }}
             onMouseUp={(e) => {
               e.currentTarget.classList.remove('ripple-held');
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.classList.remove('ripple-held');
-            }}
-            title={draggedTab ? "drop to duplicate" : "new tab (ctrl+t)"}
-            onMouseEnter={() => {
-              if (isDragging && draggedTab) {
-                setDragOverNewTab(true);
-              }
-            }}
-            onMouseLeave={() => {
-              if (isDragging) {
-                setDragOverNewTab(false);
-              }
-            }}
-            onMouseUp={() => {
+              
               if (isDragging && draggedTab) {
                 // Find the dragged session and duplicate it
                 const sessionToDuplicate = sessions.find(s => s.id === draggedTab);
@@ -554,6 +565,19 @@ export const SessionTabs: React.FC = () => {
                 setIsDragging(false);
                 setDraggedTab(null);
                 setDragOverNewTab(false);
+              }
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.classList.remove('ripple-held');
+              
+              if (isDragging) {
+                setDragOverNewTab(false);
+              }
+            }}
+            title={draggedTab ? "drop to duplicate" : "new tab (ctrl+t)"}
+            onMouseEnter={() => {
+              if (isDragging && draggedTab) {
+                setDragOverNewTab(true);
               }
             }}
           >
@@ -621,6 +645,15 @@ export const SessionTabs: React.FC = () => {
             }
             setContextMenu(null);
           }}>new session in same dir</button>
+          
+          <button onClick={() => {
+            const session = sessions.find(s => s.id === contextMenu.sessionId);
+            if (session) {
+              setRenameValue((session as any).claudeTitle || 'new session');
+              setRenamingTab(contextMenu.sessionId);
+              setContextMenu(null);
+            }
+          }}>rename tab</button>
           
           <div className="separator" />
           

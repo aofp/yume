@@ -117,7 +117,7 @@
   font-weight: bold;
   color: #ff99cc;
   pointer-events: none;
-  padding: 0 8px;
+  padding: 0 4px 0 8px;
 }
 
 /* macOS: right align the text (swapped with settings) */

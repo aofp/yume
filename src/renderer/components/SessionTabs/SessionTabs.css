@@ -104,6 +104,8 @@
   overflow: hidden;
   position: relative; /* Needed to contain ripple */
   flex-shrink: 0; /* Prevent tabs from shrinking */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Ripple effect with animation */
@@ -176,6 +178,8 @@
   align-items: center;
   gap: 4px;
   /* No overflow hidden - show everything */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Context usage bar - vertical orientation */
@@ -212,6 +216,8 @@
   white-space: nowrap;
   font-weight: 600;
   font-family: 'Fira Code', monospace;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .session-tab.active .tab-folder {
@@ -231,10 +237,31 @@
   flex: 1;
   font-weight: 400;
   font-family: 'Fira Code', monospace;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .session-tab.active .tab-title {
   color: var(--accent-color);
+}
+
+.tab-rename-input {
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  border-radius: 2px;
+  color: var(--text-secondary);
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  padding: 2px 4px;
+  margin-left: 4px;
+  width: 120px;
+  outline: none;
+  cursor: text;
+}
+
+.tab-rename-input:focus {
+  color: var(--accent-color);
+  border-color: var(--accent-magenta);
 }
 
 .streaming-icon {

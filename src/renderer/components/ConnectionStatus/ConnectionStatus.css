@@ -1,0 +1,66 @@
+.connection-status {
+  position: fixed;
+  top: 35px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  border: 1px solid #333;
+  border-radius: 4px;
+  padding: 8px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  z-index: 9999;
+  font-size: 12px;
+  color: #999;
+  cursor: default;
+}
+
+.connection-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.connection-status-connecting .connection-status-dot {
+  background: #ff9999;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.connection-status-connected .connection-status-dot {
+  background: #99ff99;
+}
+
+.connection-status-disconnected .connection-status-dot {
+  background: #666;
+}
+
+.connection-status-text {
+  white-space: nowrap;
+}
+
+.connection-status-help {
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid #333;
+  font-size: 11px;
+  color: #666;
+}
+
+.connection-status-help code {
+  background: #1a1a1a;
+  padding: 2px 4px;
+  border-radius: 2px;
+  color: #ff9999;
+  font-family: 'SF Mono', 'Monaco', 'Cascadia Code', monospace;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}

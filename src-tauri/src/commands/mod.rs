@@ -10,15 +10,24 @@ pub struct FolderSelection {
 
 #[tauri::command]
 pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
-    println!("DevTools toggle requested");
+    println!("DevTools toggle requested via F12");
     
-    // Open DevTools if they're closed, close if they're open
-    if window.is_devtools_open() {
-        window.close_devtools();
-        println!("DevTools closed");
-    } else {
-        window.open_devtools();
-        println!("DevTools opened");
+    // DevTools methods are only available in debug builds
+    #[cfg(debug_assertions)]
+    {
+        if window.is_devtools_open() {
+            window.close_devtools();
+            println!("DevTools closed");
+        } else {
+            window.open_devtools();
+            println!("DevTools opened");
+        }
+    }
+    
+    #[cfg(not(debug_assertions))]
+    {
+        let _ = window; // Suppress unused warning
+        println!("DevTools not available in release builds");
     }
     
     Ok(())
@@ -111,7 +120,19 @@ pub async fn maximize_window(window: Window) -> Result<(), String> {
 
 #[tauri::command]
 pub async fn close_window(window: Window) -> Result<(), String> {
-    window.close().map_err(|e| e.to_string())
+    // Stop the server first
+    crate::logged_server::stop_logged_server();
+    
+    // Close the window
+    window.close().ok();
+    
+    // Exit the application after a brief delay
+    std::thread::spawn(|| {
+        std::thread::sleep(std::time::Duration::from_millis(100));
+        std::process::exit(0);
+    });
+    
+    Ok(())
 }
 
 #[tauri::command]

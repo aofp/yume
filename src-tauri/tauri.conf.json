@@ -4,7 +4,7 @@
   "version": "1.0.0",
   "identifier": "com.yurucode.app",
   "build": {
-    "frontendDist": "../dist",
+    "frontendDist": "../dist/renderer",
     "devUrl": "http://localhost:5173",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
@@ -26,7 +26,8 @@
         "center": true,
         "skipTaskbar": false,
         "acceptFirstMouse": true,
-        "hiddenTitle": false
+        "hiddenTitle": false,
+        "devtools": true
       }
     ],
     "security": {
@@ -42,6 +43,9 @@
       "icons/128x128@2x.png",
       "icons/icon.icns",
       "icons/icon.ico"
+    ],
+    "resources": [
+      "resources/"
     ]
   }
 }

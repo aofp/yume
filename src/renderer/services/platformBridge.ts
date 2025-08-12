@@ -49,6 +49,7 @@ class PlatformBridge {
   // Zoom controls using CSS transform
   zoom = {
     in: async (): Promise<number> => {
+      console.log('[PlatformBridge] zoom.in() called');
       // Get current zoom percentage from localStorage (100 = 100%)
       let currentZoom = parseInt(localStorage.getItem('zoomPercent') || '100');
       
@@ -59,6 +60,7 @@ class PlatformBridge {
       }
       
       const newZoom = Math.min(currentZoom + 10, 200);
+      console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
       
       // Apply CSS zoom (1.0 = 100%, 1.1 = 110%, etc)
       document.body.style.zoom = `${newZoom / 100}`;
@@ -69,9 +71,11 @@ class PlatformBridge {
       // Calculate zoom level for display (-5 to +10, where 0 = 100%)
       const zoomLevel = (newZoom - 100) / 10;
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
+      console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
       return zoomLevel;
     },
     out: async (): Promise<number> => {
+      console.log('[PlatformBridge] zoom.out() called');
       // Get current zoom percentage from localStorage
       let currentZoom = parseInt(localStorage.getItem('zoomPercent') || '100');
       
@@ -82,6 +86,7 @@ class PlatformBridge {
       }
       
       const newZoom = Math.max(currentZoom - 10, 50);
+      console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
       
       // Apply CSS zoom
       document.body.style.zoom = `${newZoom / 100}`;
@@ -92,9 +97,11 @@ class PlatformBridge {
       // Calculate zoom level for display
       const zoomLevel = (newZoom - 100) / 10;
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
+      console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
       return zoomLevel;
     },
     reset: async (): Promise<number> => {
+      console.log('[PlatformBridge] zoom.reset() called');
       // Reset zoom to 100%
       document.body.style.zoom = '1';
       
@@ -102,6 +109,7 @@ class PlatformBridge {
       localStorage.setItem('zoomPercent', '100');
       
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));
+      console.log('[PlatformBridge] Zoom reset to 100%');
       return 0;
     },
     getLevel: async (): Promise<number> => {
@@ -196,3 +204,4 @@ if (document.readyState === 'loading') {
 }
 
 export default bridge;
+export { bridge as platformBridge };

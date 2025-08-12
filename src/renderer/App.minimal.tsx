@@ -7,8 +7,10 @@ import { WindowControls } from './components/WindowControls/WindowControls';
 import { SettingsModal } from './components/Settings/SettingsModal';
 import { AboutModal } from './components/About/AboutModal';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
+import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 // import { FileChangesSidebar } from './components/FileChanges/FileChangesSidebar';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
+import { platformBridge } from './services/platformBridge';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
@@ -155,24 +157,15 @@ export const App: React.FC = () => {
         e.preventDefault();
         console.log('F12 pressed - attempting to open DevTools');
         
-        // In Tauri, try to invoke the toggle_devtools command
+        // In Tauri, invoke the toggle_devtools command
         if (window.__TAURI__) {
-          Promise.all([
-            import('@tauri-apps/api/core'),
-            import('@tauri-apps/api/window')
-          ]).then(([{ invoke }, tauriWindow]) => {
-            const currentWindow = tauriWindow.getCurrentWindow();
-            console.log('Invoking toggle_devtools');
-            invoke('toggle_devtools', { window: currentWindow }).catch(err => {
+          import('@tauri-apps/api/core').then(({ invoke }) => {
+            invoke('toggle_devtools').then(() => {
+              console.log('DevTools toggled');
+            }).catch(err => {
               console.error('Failed to toggle devtools:', err);
-              // Try without window parameter as fallback
-              invoke('toggle_devtools').catch(err2 => {
-                console.error('Failed to toggle devtools (fallback):', err2);
-              });
             });
           });
-        } else {
-          alert('To open DevTools in production:\n\nMac: Press Cmd+Option+I\nOr: Right-click and select "Inspect Element"');
         }
       }
       
@@ -194,21 +187,20 @@ export const App: React.FC = () => {
       
       // Zoom controls
       if (e.ctrlKey || e.metaKey) {
+        // Debug log
+        console.log('Zoom key detected:', e.key, 'ctrlKey:', e.ctrlKey, 'metaKey:', e.metaKey);
         if (e.key === '=' || e.key === '+') {
           e.preventDefault();
-          if (window.electronAPI?.zoom?.in) {
-            await window.electronAPI.zoom.in();
-          }
+          console.log('Zooming in...');
+          await platformBridge.zoom.in();
         } else if (e.key === '-' || e.key === '_') {
           e.preventDefault();
-          if (window.electronAPI?.zoom?.out) {
-            await window.electronAPI.zoom.out();
-          }
+          console.log('Zooming out...');
+          await platformBridge.zoom.out();
         } else if (e.key === '0') {
           e.preventDefault();
-          if (window.electronAPI?.zoom?.reset) {
-            await window.electronAPI.zoom.reset();
-          }
+          console.log('Resetting zoom...');
+          await platformBridge.zoom.reset();
         }
       }
       
@@ -297,6 +289,7 @@ export const App: React.FC = () => {
       <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} />
       <TitleBar onSettingsClick={() => setShowSettings(true)} />
       <SessionTabs />
+      <ConnectionStatus />
       <div className="app-content">
         <div className="main-chat-area">
           <ClaudeChat />
