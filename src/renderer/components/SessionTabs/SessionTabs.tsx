@@ -23,8 +23,11 @@ export const SessionTabs: React.FC = () => {
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
   const [dragOverNewTab, setDragOverNewTab] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
+  const tabRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
 
   // Close context menu on click outside
   useEffect(() => {
@@ -300,54 +303,149 @@ export const SessionTabs: React.FC = () => {
   };
 
   return (
-    <div className="session-tabs" data-tauri-drag-region>
+    <div className="session-tabs">
       <div className="tabs-wrapper">
         <div className="tabs-scrollable" ref={tabsContainerRef}>
           {sessions.map((session) => (
           <div
             key={session.id}
+            data-session-id={session.id}
             className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
-            onClick={() => resumeSession(session.id)}
-            onMouseDown={(e) => {
-              handleRipple(e);
-              e.currentTarget.classList.add('ripple-held');
+            onClick={() => {
+              if (!isDragging) {
+                resumeSession(session.id);
+              }
             }}
-            onMouseUp={(e) => e.currentTarget.classList.remove('ripple-held')}
-            onMouseLeave={(e) => e.currentTarget.classList.remove('ripple-held')}
             onContextMenu={(e) => {
               e.preventDefault();
               setContextMenu({ x: e.clientX, y: e.clientY, sessionId: session.id });
             }}
-            draggable
-            onDragStart={(e: DragEvent<HTMLDivElement>) => {
-              setDraggedTab(session.id);
-              e.dataTransfer.effectAllowed = 'move';
-            }}
-            onDragEnd={() => {
-              setDraggedTab(null);
-              setDragOverTab(null);
-              setDragOverNewTab(false);
-            }}
-            onDragOver={(e: DragEvent<HTMLDivElement>) => {
-              e.preventDefault();
-              if (draggedTab && draggedTab !== session.id) {
-                setDragOverTab(session.id);
+            onMouseDown={(e) => {
+              if (e.button === 0) { // Left click only
+                const startX = e.clientX;
+                const startY = e.clientY;
+                let moved = false;
+                let currentDragOver: string | null = null;
+                
+                // Create drag preview - clone the actual tab
+                const createDragPreview = () => {
+                  const tabElement = document.querySelector(`[data-session-id="${session.id}"]`) as HTMLElement;
+                  if (!tabElement) return null;
+                  
+                  const preview = tabElement.cloneNode(true) as HTMLElement;
+                  preview.style.cssText = `
+                    position: fixed;
+                    pointer-events: none;
+                    z-index: 10000;
+                    opacity: 0.8;
+                    transform: rotate(2deg);
+                    transition: none;
+                  `;
+                  
+                  // Copy computed styles from original
+                  const computedStyle = window.getComputedStyle(tabElement);
+                  preview.style.width = computedStyle.width;
+                  preview.style.height = computedStyle.height;
+                  preview.style.background = computedStyle.background;
+                  preview.style.border = computedStyle.border;
+                  preview.style.borderRadius = computedStyle.borderRadius;
+                  preview.style.padding = computedStyle.padding;
+                  preview.style.display = 'flex';
+                  preview.style.alignItems = 'center';
+                  preview.style.gap = '6px';
+                  preview.style.fontFamily = computedStyle.fontFamily;
+                  preview.style.fontSize = computedStyle.fontSize;
+                  
+                  // Remove close button from preview
+                  const closeBtn = preview.querySelector('.tab-close');
+                  if (closeBtn) closeBtn.remove();
+                  
+                  document.body.appendChild(preview);
+                  return preview;
+                };
+                
+                let dragPreview: HTMLElement | null = null;
+                
+                const handleMouseMove = (moveEvent: MouseEvent) => {
+                  const dx = Math.abs(moveEvent.clientX - startX);
+                  const dy = Math.abs(moveEvent.clientY - startY);
+                  
+                  if (!moved && (dx > 5 || dy > 5)) {
+                    // Start dragging after 5px movement
+                    moved = true;
+                    setIsDragging(true);
+                    setDraggedTab(session.id);
+                    dragPreview = createDragPreview();
+                    console.log('Started dragging:', session.id);
+                  }
+                  
+                  if (moved) {
+                    // Update drag preview position
+                    if (dragPreview) {
+                      dragPreview.style.left = `${moveEvent.clientX + 10}px`;
+                      dragPreview.style.top = `${moveEvent.clientY - 10}px`;
+                    }
+                    
+                    // Find which tab we're over
+                    const elements = document.elementsFromPoint(moveEvent.clientX, moveEvent.clientY);
+                    const tabElement = elements.find(el => el.classList.contains('session-tab')) as HTMLElement;
+                    
+                    if (tabElement) {
+                      const targetSessionId = tabElement.getAttribute('data-session-id');
+                      if (targetSessionId && targetSessionId !== session.id) {
+                        console.log('Over tab:', targetSessionId);
+                        currentDragOver = targetSessionId;
+                        setDragOverTab(targetSessionId);
+                      }
+                    } else {
+                      currentDragOver = null;
+                      setDragOverTab(null);
+                    }
+                  }
+                };
+                
+                const handleMouseUp = (upEvent: MouseEvent) => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                  
+                  // Remove drag preview
+                  if (dragPreview && document.body.contains(dragPreview)) {
+                    document.body.removeChild(dragPreview);
+                  }
+                  
+                  console.log('Mouse up, moved:', moved, 'currentDragOver:', currentDragOver);
+                  
+                  if (moved) {
+                    // Check if we're over the new tab button
+                    const newTabButton = document.querySelector('.tab-new');
+                    if (newTabButton && newTabButton.contains(upEvent.target as Node)) {
+                      console.log('Duplicating tab');
+                      const sessionToDuplicate = sessions.find(s => s.id === session.id);
+                      if (sessionToDuplicate) {
+                        const workingDir = (sessionToDuplicate as any)?.workingDirectory;
+                        createSession(undefined, workingDir || '/');
+                      }
+                    } else if (currentDragOver) {
+                      // Perform the reorder
+                      const fromIndex = sessions.findIndex(s => s.id === session.id);
+                      const toIndex = sessions.findIndex(s => s.id === currentDragOver);
+                      if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {
+                        console.log('Reordering from', fromIndex, 'to', toIndex);
+                        reorderSessions(fromIndex, toIndex);
+                      }
+                    }
+                  }
+                  
+                  // Reset drag state
+                  setIsDragging(false);
+                  setDraggedTab(null);
+                  setDragOverTab(null);
+                  setDragOverNewTab(false);
+                };
+                
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
               }
-            }}
-            onDragLeave={() => {
-              setDragOverTab(null);
-            }}
-            onDrop={(e: DragEvent<HTMLDivElement>) => {
-              e.preventDefault();
-              if (draggedTab && draggedTab !== session.id) {
-                const fromIndex = sessions.findIndex(s => s.id === draggedTab);
-                const toIndex = sessions.findIndex(s => s.id === session.id);
-                if (fromIndex !== -1 && toIndex !== -1) {
-                  reorderSessions(fromIndex, toIndex);
-                }
-              }
-              setDraggedTab(null);
-              setDragOverTab(null);
             }}
           >
             <div className="tab-content">
@@ -425,27 +523,28 @@ export const SessionTabs: React.FC = () => {
               e.currentTarget.classList.remove('ripple-held');
             }}
             title={draggedTab ? "drop to duplicate" : "new tab (ctrl+t)"}
-            onDragOver={(e: DragEvent<HTMLButtonElement>) => {
-              if (draggedTab) {
-                e.preventDefault();
+            onMouseEnter={() => {
+              if (isDragging && draggedTab) {
                 setDragOverNewTab(true);
               }
             }}
-            onDragLeave={() => {
-              setDragOverNewTab(false);
+            onMouseLeave={() => {
+              if (isDragging) {
+                setDragOverNewTab(false);
+              }
             }}
-            onDrop={(e: DragEvent<HTMLButtonElement>) => {
-              e.preventDefault();
-              if (draggedTab) {
+            onMouseUp={() => {
+              if (isDragging && draggedTab) {
                 // Find the dragged session and duplicate it
                 const sessionToDuplicate = sessions.find(s => s.id === draggedTab);
                 if (sessionToDuplicate) {
                   const workingDir = (sessionToDuplicate as any)?.workingDirectory;
                   createSession(undefined, workingDir || '/');
                 }
+                setIsDragging(false);
+                setDraggedTab(null);
+                setDragOverNewTab(false);
               }
-              setDraggedTab(null);
-              setDragOverNewTab(false);
             }}
           >
             <IconPlus size={16} stroke={1.5} />

@@ -11,8 +11,8 @@
   left: 0;
   right: 0;
   z-index: 9999;
-  /* Make entire tabs bar draggable */
-  -webkit-app-region: drag;
+  /* Remove app-region to allow HTML5 drag and drop */
+  -webkit-app-region: no-drag;
 }
 
 .tabs-wrapper {
@@ -102,11 +102,8 @@
   height: 26px;
   white-space: nowrap;
   overflow: hidden;
-  user-select: none;
-  -webkit-user-select: none;
   position: relative; /* Needed to contain ripple */
   flex-shrink: 0; /* Prevent tabs from shrinking */
-  -webkit-app-region: no-drag;
 }
 
 /* Ripple effect with animation */
@@ -168,7 +165,6 @@
 
 .session-tab.dragging {
   opacity: 0.5;
-  cursor: grabbing !important;
 }
 
 .session-tab.drag-over {
@@ -269,15 +265,15 @@
 .tab-close {
   background: transparent !important;
   border: none;
-  color: rgba(255, 255, 255, 0.6); /* Brighter default color */
+  color: rgba(255, 255, 255, 0.4); /* Dimmer default color */
   cursor: default !important;
   padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 3px;
-  transition: color 0.2s ease;
-  opacity: 0.7;
+  transition: color 0.2s ease, opacity 0.2s ease;
+  opacity: 1;
   width: 18px;
   height: 18px;
   -webkit-app-region: no-drag;
