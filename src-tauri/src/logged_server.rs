@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 // SIMPLE FLAG TO CONTROL CONSOLE VISIBILITY AND DEVTOOLS
-pub const YURUCODE_SHOW_CONSOLE: bool = true;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
+pub const YURUCODE_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
 
 // Global handle to the server process
 static SERVER_PROCESS: Mutex<Option<Arc<Mutex<Child>>>> = Mutex::new(None);
