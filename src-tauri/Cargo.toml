@@ -51,3 +51,21 @@ native-dialog = "0.7"
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.25"
 objc = "0.2"
+
+# Optimization profiles for smaller builds
+[profile.release]
+opt-level = "z"          # Optimize for size
+lto = true               # Enable Link Time Optimization
+codegen-units = 1        # Single codegen unit for better optimization
+strip = true             # Strip symbols from binary
+panic = "abort"          # Smaller panic handler
+
+[profile.dev]
+opt-level = 0            # No optimization for faster builds
+debug = 0                # Disable debug info to reduce size (set to 2 if you need debugging)
+strip = "debuginfo"      # Strip debug info only
+
+# Further reduce build size
+[profile.release.package."*"]
+opt-level = "z"
+strip = true

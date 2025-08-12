@@ -16,24 +16,48 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   // Always show controls for frameless window
   // if (!isWindows) return null;
 
-  const handleMinimize = () => {
-    window.electronAPI?.window?.minimize();
+  const handleMinimize = async () => {
+    try {
+      if ((window as any).__TAURI__) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('minimize_window');
+      } else {
+        console.error('Tauri API not available for minimize');
+      }
+    } catch (error) {
+      console.error('Failed to minimize window:', error);
+    }
   };
 
-  const handleMaximize = () => {
-    window.electronAPI?.window?.maximize();
+  const handleMaximize = async () => {
+    try {
+      if ((window as any).__TAURI__) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        await invoke('maximize_window');
+      } else {
+        console.error('Tauri API not available for maximize');
+      }
+    } catch (error) {
+      console.error('Failed to maximize window:', error);
+    }
   };
 
-  const handleClose = () => {
+  const handleClose = async () => {
     console.log('Close button clicked');
-    console.log('electronAPI available:', !!window.electronAPI);
-    console.log('window.close available:', !!window.electronAPI?.window?.close);
     
-    if (window.electronAPI?.window?.close) {
-      window.electronAPI.window.close();
-    } else {
-      console.error('electronAPI.window.close not available');
-      // Fallback: try to close the window directly
+    // Use Tauri API to close window
+    try {
+      if ((window as any).__TAURI__) {
+        const { invoke } = await import('@tauri-apps/api/core');
+        console.log('Invoking close_window command...');
+        await invoke('close_window');
+      } else {
+        console.error('Tauri API not available');
+        // Fallback: try to close the window directly
+        window.close();
+      }
+    } catch (error) {
+      console.error('Failed to close window:', error);
       window.close();
     }
   };
