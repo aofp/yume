@@ -3,6 +3,7 @@ import { IconFolderOpen, IconPlus, IconX, IconTrash, IconFolder } from '@tabler/
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
+import { tauriApi } from '../../services/tauriApi';
 import './WelcomeScreen.css';
 
 interface RecentProject {

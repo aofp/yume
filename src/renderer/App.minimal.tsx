@@ -160,8 +160,8 @@ export const App: React.FC = () => {
           Promise.all([
             import('@tauri-apps/api/core'),
             import('@tauri-apps/api/window')
-          ]).then(([{ invoke }, { getCurrent }]) => {
-            const currentWindow = getCurrent();
+          ]).then(([{ invoke }, tauriWindow]) => {
+            const currentWindow = tauriWindow.getCurrentWindow();
             console.log('Invoking toggle_devtools');
             invoke('toggle_devtools', { window: currentWindow }).catch(err => {
               console.error('Failed to toggle devtools:', err);
@@ -243,8 +243,8 @@ export const App: React.FC = () => {
     if ((window as any).__TAURI__) {
       const restoreWindowState = async () => {
         try {
-          const { getCurrent } = await import('@tauri-apps/api/window');
-          const appWindow = getCurrent();
+          const tauriWindow = await import('@tauri-apps/api/window');
+          const appWindow = tauriWindow.getCurrentWindow();
           
           // Restore size
           const savedWidth = localStorage.getItem('windowWidth');

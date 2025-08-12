@@ -39,27 +39,49 @@ pub fn run() {
             
             // Spawn the Node.js server process in a simple way
             std::thread::spawn(|| {
-                let server_path = "server-claude-macos.js";
+                // Use different server for Windows vs macOS
+                let server_path = if cfg!(target_os = "windows") {
+                    "server-claude-direct.cjs"
+                } else {
+                    "server-claude-macos.js"
+                };
+                
                 // Get the app's resource directory (where the app bundle is located)
                 let working_dir = if let Ok(exe_path) = std::env::current_exe() {
-                    // Go up from MacOS/app to the bundle root, then to the project directory
-                    exe_path
-                        .parent() // MacOS
-                        .and_then(|p| p.parent()) // Contents
-                        .and_then(|p| p.parent()) // yurucode.app
-                        .and_then(|p| p.parent()) // bundle/macos
-                        .and_then(|p| p.parent()) // bundle
-                        .and_then(|p| p.parent()) // release
-                        .and_then(|p| p.parent()) // target
-                        .and_then(|p| p.parent()) // src-tauri
-                        .and_then(|p| p.parent()) // yurucode (project root)
-                        .map(|p| p.to_path_buf())
-                        .unwrap_or_else(|| {
-                            // Fallback to a hardcoded path for production
-                            std::path::PathBuf::from("/Users/yuru/yurucode")
-                        })
+                    // For Windows, go up from target\debug to project root
+                    if cfg!(target_os = "windows") {
+                        exe_path
+                            .parent() // debug
+                            .and_then(|p| p.parent()) // target
+                            .and_then(|p| p.parent()) // src-tauri
+                            .and_then(|p| p.parent()) // yurucode (project root)
+                            .map(|p| p.to_path_buf())
+                            .unwrap_or_else(|| {
+                                std::path::PathBuf::from("C:\\Users\\muuko\\Desktop\\yurucode")
+                            })
+                    } else {
+                        // macOS path logic
+                        exe_path
+                            .parent() // MacOS
+                            .and_then(|p| p.parent()) // Contents
+                            .and_then(|p| p.parent()) // yurucode.app
+                            .and_then(|p| p.parent()) // bundle/macos
+                            .and_then(|p| p.parent()) // bundle
+                            .and_then(|p| p.parent()) // release
+                            .and_then(|p| p.parent()) // target
+                            .and_then(|p| p.parent()) // src-tauri
+                            .and_then(|p| p.parent()) // yurucode (project root)
+                            .map(|p| p.to_path_buf())
+                            .unwrap_or_else(|| {
+                                std::path::PathBuf::from("/Users/yuru/yurucode")
+                            })
+                    }
                 } else {
-                    std::path::PathBuf::from("/Users/yuru/yurucode")
+                    if cfg!(target_os = "windows") {
+                        std::path::PathBuf::from("C:\\Users\\muuko\\Desktop\\yurucode")
+                    } else {
+                        std::path::PathBuf::from("/Users/yuru/yurucode")
+                    }
                 };
                 
                 info!("Starting Node.js server from: {:?}", working_dir.join(&server_path));

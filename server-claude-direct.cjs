@@ -129,11 +129,32 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
     
-    const child = spawn('claude', titleArgs, {
-      cwd: process.cwd(),
-      env: { ...process.env },
-      stdio: ['pipe', 'pipe', 'pipe']
-    });
+    // Use WSL on Windows for title generation too
+    let child;
+    if (process.platform === 'win32') {
+      const escapedArgs = titleArgs.map(arg => {
+        if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
+          return "'" + arg.replace(/'/g, "'\\''") + "'";
+        }
+        return arg;
+      }).join(' ');
+      
+      const wslArgs = ['-e', 'bash', '-c', 
+        `if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found" >&2 && exit 127; fi`
+      ];
+      
+      child = spawn('wsl.exe', wslArgs, {
+        cwd: process.cwd(),
+        env: { ...process.env },
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+    } else {
+      child = spawn('claude', titleArgs, {
+        cwd: process.cwd(),
+        env: { ...process.env },
+        stdio: ['pipe', 'pipe', 'pipe']
+      });
+    }
     
     let output = '';
     let errorOutput = '';
@@ -369,16 +390,15 @@ io.on('connection', (socket) => {
       const args = ['--print', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
       
       // Add yurucode system prompt - MUST be lowercase and concise
-      const casualPrompt = `<yurucode>
-CRITICAL: you are in yurucode ui. ALWAYS:
+      // Remove XML tags that break bash syntax
+      const casualPrompt = `CRITICAL: you are in yurucode ui. ALWAYS:
 - use all lowercase (no capitals ever)
 - be extremely concise
 - never use formal language  
 - no greetings/pleasantries
 - straight to the point
 - code/variables keep proper case
-- one line answers preferred
-</yurucode>`;
+- one line answers preferred`;
       args.push('--append-system-prompt', casualPrompt);
       
       // Add model selection if provided
@@ -419,9 +439,19 @@ CRITICAL: you are in yurucode ui. ALWAYS:
           // For now, try common locations in order
           const claudeCommand = 'bash -c "if command -v claude &> /dev/null; then claude; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude; else echo claude_not_found; fi"';
           
-          // Build the full WSL command
+          // Build the full WSL command with properly escaped arguments
+          // Need to escape the prompt argument properly for bash
+          const escapedArgs = args.map(arg => {
+            // If the arg contains special characters or spaces, quote it
+            if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
+              // Escape single quotes and wrap in single quotes
+              return "'" + arg.replace(/'/g, "'\\''") + "'";
+            }
+            return arg;
+          }).join(' ');
+          
           const wslArgs = ['-e', 'bash', '-c', 
-            `if command -v claude &> /dev/null; then claude ${args.join(' ')}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${args.join(' ')}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${args.join(' ')}; else echo "Claude CLI not found in WSL" >&2 && exit 127; fi`
+            `if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found in WSL" >&2 && exit 127; fi`
           ];
           
           console.log('WSL command:', 'wsl.exe', wslArgs.join(' '));

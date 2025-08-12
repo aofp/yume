@@ -1,19 +1,15 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
-import path from 'path';
+import { fileURLToPath } from 'url';
+import { dirname, resolve } from 'path';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 export default defineConfig({
   plugins: [react()],
   base: './',
   publicDir: 'public',
-  optimizeDeps: {
-    include: ['react-markdown', 'react-syntax-highlighter'],
-    esbuildOptions: {
-      define: {
-        global: 'globalThis',
-      },
-    },
-  },
   server: {
     port: 5173,
     strictPort: true,
@@ -29,7 +25,7 @@ export default defineConfig({
     }
   },
   build: {
-    outDir: 'dist',
+    outDir: 'dist/renderer',
     emptyOutDir: true,
     sourcemap: false, // Disable sourcemaps for production
     minify: false, // Disable minification to avoid breaking libraries
@@ -37,7 +33,7 @@ export default defineConfig({
     chunkSizeWarningLimit: 500,
     rollupOptions: {
       input: {
-        main: path.resolve(__dirname, 'index.html'),
+        main: resolve(__dirname, 'index.html'),
       },
       output: {
         manualChunks: {
@@ -58,8 +54,8 @@ export default defineConfig({
   },
   resolve: {
     alias: {
-      '@': path.resolve(__dirname, './src/renderer'),
-      '@shared': path.resolve(__dirname, './src/shared'),
+      '@': resolve(__dirname, './src/renderer'),
+      '@shared': resolve(__dirname, './src/shared'),
     },
   },
 });
