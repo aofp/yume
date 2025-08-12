@@ -9,6 +9,72 @@
   background: #000000;
 }
 
+/* macOS traffic light controls */
+.mac-controls {
+  position: fixed;
+  top: 8px;
+  left: 8px;
+  right: auto;
+  display: flex;
+  gap: 8px;
+  background: transparent;
+  height: auto;
+  -webkit-app-region: no-drag;
+  z-index: 10002;
+}
+
+.mac-control {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: none;
+  cursor: default;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.2s;
+  -webkit-app-region: no-drag;
+  padding: 0;
+}
+
+.mac-control-icon {
+  display: none;
+  font-size: 10px;
+  font-weight: bold;
+  color: rgba(0, 0, 0, 0.6);
+  line-height: 1;
+  position: relative;
+  top: -1px; /* Move icons up 1px */
+}
+
+.mac-controls:hover .mac-control-icon {
+  display: block;
+}
+
+.mac-control.close {
+  background: #ff5f56;
+}
+
+.mac-control.close:hover {
+  background: #ff8a82; /* Lighter on hover */
+}
+
+.mac-control.minimize {
+  background: #ffbd2e;
+}
+
+.mac-control.minimize:hover {
+  background: #ffd666; /* Lighter on hover */
+}
+
+.mac-control.maximize {
+  background: #27c93f;
+}
+
+.mac-control.maximize:hover {
+  background: #5ee370; /* Lighter on hover */
+}
+
 .window-control {
   width: 46px;
   height: 28px;

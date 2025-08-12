@@ -8,11 +8,13 @@ interface WindowControlsProps {
 }
 
 export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick, onHelpClick }) => {
-  // Only show on Windows - check multiple methods
+  // Show on all platforms when using frameless window
+  const isMac = navigator.platform.toLowerCase().includes('mac');
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
                    navigator.userAgent.toLowerCase().includes('windows');
   
-  if (!isWindows) return null;
+  // Always show controls for frameless window
+  // if (!isWindows) return null;
 
   const handleMinimize = () => {
     window.electronAPI?.window?.minimize();
@@ -36,6 +38,24 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
     }
   };
 
+  // macOS style traffic lights
+  if (isMac) {
+    return (
+      <div className="window-controls mac-controls">
+        <button className="mac-control close" onClick={handleClose}>
+          <span className="mac-control-icon">×</span>
+        </button>
+        <button className="mac-control minimize" onClick={handleMinimize}>
+          <span className="mac-control-icon">−</span>
+        </button>
+        <button className="mac-control maximize" onClick={handleMaximize}>
+          <span className="mac-control-icon">+</span>
+        </button>
+      </div>
+    );
+  }
+
+  // Windows style controls
   return (
     <div className="window-controls">
       {onHelpClick && (

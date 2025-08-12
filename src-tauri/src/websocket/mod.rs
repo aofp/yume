@@ -1,0 +1,199 @@
+use anyhow::Result;
+use futures_util::{SinkExt, StreamExt};
+use serde::{Deserialize, Serialize};
+use std::net::SocketAddr;
+use std::sync::Arc;
+use tokio::net::{TcpListener, TcpStream};
+use tokio::sync::mpsc;
+use tokio_tungstenite::{accept_async, tungstenite::Message};
+use tracing::{error, info};
+
+use crate::claude::{ClaudeManager, ClaudeMessage};
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "event")]
+pub enum SocketMessage {
+    #[serde(rename = "claude:message")]
+    ClaudeMessage {
+        session_id: String,
+        message: String,
+        working_dir: String,
+        model: String,
+    },
+    #[serde(rename = "claude:interrupt")]
+    ClaudeInterrupt { session_id: String },
+    #[serde(rename = "claude:clear")]
+    ClaudeClear { session_id: String },
+    #[serde(rename = "claude:result")]
+    ClaudeResult { data: ClaudeMessage },
+    #[serde(rename = "claude:error")]
+    ClaudeError { error: String },
+    #[serde(rename = "connected")]
+    Connected { port: u16 },
+    #[serde(rename = "health")]
+    Health,
+    #[serde(rename = "healthResponse")]
+    HealthResponse { status: String },
+}
+
+pub struct WebSocketServer {
+    port: u16,
+    claude_manager: Arc<ClaudeManager>,
+}
+
+impl WebSocketServer {
+    pub fn new(port: u16, claude_manager: Arc<ClaudeManager>) -> Self {
+        Self {
+            port,
+            claude_manager,
+        }
+    }
+
+    pub async fn start(&self) -> Result<()> {
+        let addr = format!("127.0.0.1:{}", self.port);
+        let listener = TcpListener::bind(&addr).await?;
+        info!("WebSocket server listening on: {}", addr);
+
+        while let Ok((stream, addr)) = listener.accept().await {
+            let claude_manager = self.claude_manager.clone();
+            tokio::spawn(async move {
+                if let Err(e) = handle_connection(stream, addr, claude_manager).await {
+                    error!("Error handling connection: {:?}", e);
+                }
+            });
+        }
+
+        Ok(())
+    }
+
+    pub fn find_available_port() -> u16 {
+        for port in 3001..=3005 {
+            if std::net::TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok() {
+                return port;
+            }
+        }
+        3001
+    }
+}
+
+async fn handle_connection(
+    stream: TcpStream,
+    addr: SocketAddr,
+    claude_manager: Arc<ClaudeManager>,
+) -> Result<()> {
+    info!("New WebSocket connection from: {}", addr);
+    let ws_stream = accept_async(stream).await?;
+    let (mut ws_sender, mut ws_receiver) = ws_stream.split();
+
+    let (tx, mut rx) = mpsc::unbounded_channel::<SocketMessage>();
+
+    tokio::spawn(async move {
+        while let Some(msg) = rx.recv().await {
+            if let Ok(json) = serde_json::to_string(&msg) {
+                let _ = ws_sender.send(Message::Text(json)).await;
+            }
+        }
+    });
+
+    let _ = tx.send(SocketMessage::Connected {
+        port: addr.port(),
+    });
+
+    while let Some(Ok(msg)) = ws_receiver.next().await {
+        match msg {
+            Message::Text(text) => {
+                if let Ok(socket_msg) = serde_json::from_str::<SocketMessage>(&text) {
+                    handle_socket_message(socket_msg, &claude_manager, &tx).await;
+                }
+            }
+            Message::Close(_) => {
+                info!("WebSocket connection closed");
+                break;
+            }
+            _ => {}
+        }
+    }
+
+    Ok(())
+}
+
+async fn handle_socket_message(
+    msg: SocketMessage,
+    claude_manager: &Arc<ClaudeManager>,
+    tx: &mpsc::UnboundedSender<SocketMessage>,
+) {
+    match msg {
+        SocketMessage::ClaudeMessage {
+            session_id,
+            message,
+            working_dir,
+            model,
+        } => {
+            let working_dir = std::path::PathBuf::from(convert_wsl_path(&working_dir));
+            
+            let session_id = if session_id.is_empty() {
+                match claude_manager.create_session(working_dir.clone(), model.clone()).await {
+                    Ok(id) => id,
+                    Err(e) => {
+                        let _ = tx.send(SocketMessage::ClaudeError {
+                            error: e.to_string(),
+                        });
+                        return;
+                    }
+                }
+            } else {
+                session_id
+            };
+
+            let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<ClaudeMessage>();
+            
+            let tx_clone = tx.clone();
+            tokio::spawn(async move {
+                while let Some(claude_msg) = msg_rx.recv().await {
+                    let _ = tx_clone.send(SocketMessage::ClaudeResult { data: claude_msg });
+                }
+            });
+
+            if let Err(e) = claude_manager
+                .send_message(&session_id, message, msg_tx)
+                .await
+            {
+                let _ = tx.send(SocketMessage::ClaudeError {
+                    error: e.to_string(),
+                });
+            }
+        }
+        SocketMessage::ClaudeInterrupt { session_id } => {
+            if let Err(e) = claude_manager.interrupt_session(&session_id).await {
+                let _ = tx.send(SocketMessage::ClaudeError {
+                    error: e.to_string(),
+                });
+            }
+        }
+        SocketMessage::ClaudeClear { session_id } => {
+            if let Err(e) = claude_manager.clear_session(&session_id).await {
+                let _ = tx.send(SocketMessage::ClaudeError {
+                    error: e.to_string(),
+                });
+            }
+        }
+        SocketMessage::Health => {
+            let _ = tx.send(SocketMessage::HealthResponse {
+                status: "ok".to_string(),
+            });
+        }
+        _ => {}
+    }
+}
+
+fn convert_wsl_path(path: &str) -> String {
+    if path.starts_with("/mnt/") && path.len() > 6 {
+        let parts: Vec<&str> = path[5..].split('/').collect();
+        if !parts.is_empty() && parts[0].len() == 1 {
+            let drive = parts[0].to_uppercase();
+            let rest = parts[1..].join("\\");
+            return format!("{}:\\{}", drive, rest);
+        }
+    }
+    path.to_string()
+}

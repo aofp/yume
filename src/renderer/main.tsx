@@ -5,6 +5,9 @@ import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import './styles/global.css';
 import './App.minimal.css';
 
+// Initialize platform bridge for Tauri/Electron compatibility
+import './services/platformBridge';
+
 console.log('main.tsx loading...');
 
 // Add platform class to body for platform-specific styling
@@ -53,6 +56,19 @@ if (window.electronAPI && window.electronAPI.ipcRenderer) {
 
 // Add keyboard shortcuts
 document.addEventListener('keydown', (e) => {
+  // F12 - Toggle DevTools (works regardless of input field)
+  if (e.key === 'F12') {
+    e.preventDefault();
+    // Try to toggle devtools if available
+    if ((window as any).__TAURI__) {
+      import('@tauri-apps/api/window').then(({ appWindow }) => {
+        // There's no direct toggle method, but we can try to emit an event
+        console.log('F12 pressed - DevTools should be open automatically in dev mode');
+      });
+    }
+    return;
+  }
+  
   // Don't intercept keyboard shortcuts when typing in input fields
   const target = e.target as HTMLElement;
   const isInputField = target.tagName === 'INPUT' || 

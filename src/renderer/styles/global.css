@@ -1,8 +1,8 @@
 /* CSS Variables - Minimal Black Theme */
 :root {
   /* Accent Color - can be changed via settings */
-  --accent-color: #ff99cc;
-  --accent-rgb: 255, 153, 204;
+  --accent-color: #cccccc;
+  --accent-rgb: 204, 204, 204;
   
   /* Code diff and status colors */
   --color-cyan: #99e6ff;  /* pastel cyan for additions/success */
@@ -108,6 +108,10 @@
   box-sizing: border-box;
 }
 
+html {
+  background: transparent;
+}
+
 html,
 body,
 #root {
@@ -121,9 +125,11 @@ body {
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   color: var(--color-text-primary);
-  background: var(--color-bg-primary);
+  background: #000000;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  border-radius: 4px;
+  overflow: hidden;
 }
 
 /* App Layout */

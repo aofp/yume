@@ -40,6 +40,46 @@ export const SessionTabs: React.FC = () => {
     }
   }, [contextMenu]);
 
+  // Setup window dragging for tabs area
+  useEffect(() => {
+    const setupDrag = async () => {
+      if ((window as any).__TAURI__) {
+        const windowApi = await import('@tauri-apps/api/window');
+        
+        // Try to get appWindow from various possible exports
+        let appWindow;
+        if (windowApi.getCurrent) {
+          appWindow = windowApi.getCurrent();
+        } else if (windowApi.appWindow) {
+          appWindow = windowApi.appWindow;
+        } else if ((windowApi as any).default?.getCurrent) {
+          appWindow = (windowApi as any).default.getCurrent();
+        } else if ((windowApi as any).default?.appWindow) {
+          appWindow = (windowApi as any).default.appWindow;
+        }
+        
+        if (appWindow) {
+          const tabsArea = document.querySelector('.session-tabs') as HTMLElement;
+          if (tabsArea) {
+            tabsArea.addEventListener('mousedown', async (e) => {
+              // Don't drag if clicking on interactive elements
+              const target = e.target as HTMLElement;
+              if (target.closest('.session-tab') || 
+                  target.closest('button') || 
+                  target.closest('input') ||
+                  target.closest('.tabs-actions')) {
+                return;
+              }
+              await appWindow.startDragging();
+            });
+          }
+        }
+      }
+    };
+    
+    setupDrag();
+  }, []);
+
   // Check if there are recent projects
   useEffect(() => {
     const checkRecentProjects = () => {
@@ -169,12 +209,15 @@ export const SessionTabs: React.FC = () => {
     let directory = null;
     
     // Debug log
+    console.log('handleOpenFolder called');
+    console.log('window.__TAURI__:', !!(window as any).__TAURI__);
     console.log('electronAPI available?', !!window.electronAPI);
     console.log('electronAPI.folder?', !!window.electronAPI?.folder);
     console.log('electronAPI.folder.select?', !!window.electronAPI?.folder?.select);
     
+    // Try using the platform bridge
     if (window.electronAPI?.folder?.select) {
-      console.log('Calling folder.select()...');
+      console.log('Calling folder.select() via electronAPI...');
       try {
         directory = await window.electronAPI.folder.select();
         console.log('Folder select returned:', directory);
@@ -184,15 +227,17 @@ export const SessionTabs: React.FC = () => {
           return;
         }
       } catch (error) {
-        console.log('Folder selection failed:', error);
+        console.error('Folder selection failed:', error);
         // Fall back to current directory
         directory = await window.electronAPI?.folder?.getCurrent?.() || '/';
         console.log('Using fallback directory:', directory);
       }
-    } else {
+    } 
+    
+    if (!directory) {
       // Just use root directory as fallback
-      console.log('electronAPI not available, using root directory');
-      directory = '/';
+      console.log('No folder selection method available, using /Users');
+      directory = '/Users';
     }
     
     // Save to recent projects if it's not the root directory
@@ -256,7 +301,7 @@ export const SessionTabs: React.FC = () => {
   };
 
   return (
-    <div className="session-tabs">
+    <div className="session-tabs" data-tauri-drag-region>
       <div className="tabs-wrapper">
         <div className="tabs-scrollable" ref={tabsContainerRef}>
           {sessions.map((session) => (

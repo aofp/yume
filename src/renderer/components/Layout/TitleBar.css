@@ -20,8 +20,9 @@
   height: 100%;
   display: flex;
   align-items: center;
-  /* Make titlebar draggable */
+  /* Make titlebar draggable - works for both Electron and Tauri */
   -webkit-app-region: drag;
+  app-region: drag;
   position: relative;
 }
 

@@ -170,6 +170,7 @@
   color: #ffffff;
   padding: 7px 9px;
   border-radius: 6px 6px 2px 6px;
+  min-width: 200px;
   font-size: 13px;
   line-height: 1.5;
   max-width: 80%;
@@ -183,6 +184,7 @@
   color: #ffffff;
   padding: 7px 9px;
   border-radius: 6px 6px 6px 2px;
+  min-width: 200px;
   font-size: 13px;
   line-height: 1.5;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);

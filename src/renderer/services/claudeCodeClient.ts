@@ -4,6 +4,7 @@
  */
 
 import { io, Socket } from 'socket.io-client';
+import platformAPI, { isTauri } from './tauriApi';
 
 export class ClaudeCodeClient {
   private socket: Socket | null = null;
@@ -12,22 +13,39 @@ export class ClaudeCodeClient {
   private serverPort: number | null = null;
 
   constructor() {
-    this.discoverAndConnect();
+    // Only auto-connect if not in Tauri, or if server is available
+    if (!isTauri()) {
+      this.discoverAndConnect();
+    } else {
+      // In Tauri, check if server is available first
+      this.checkServerAndConnect();
+    }
+  }
+  
+  private async checkServerAndConnect() {
+    // Check if Node.js server is running
+    try {
+      const response = await fetch('http://localhost:3001/health', {
+        signal: AbortSignal.timeout(1000)
+      });
+      if (response.ok) {
+        this.serverPort = 3001;
+        this.connect();
+      } else {
+        console.log('📡 Node.js server not running. Start it with: node server-claude-macos.js');
+      }
+    } catch (err) {
+      console.log('📡 Node.js server not available. WebSocket connection disabled.');
+    }
   }
 
   private async discoverAndConnect() {
     
-    // Try to get port from Electron IPC first
-    if (window.electronAPI && window.electronAPI.getServerPort) {
-      try {
-        const port = await window.electronAPI.getServerPort();
-        if (port) {
-          this.serverPort = port;
-          this.connectWithRetry();
-          return;
-        }
-      } catch (err) {
-      }
+    // For Tauri, we know the server is on port 3001
+    if (isTauri()) {
+      this.serverPort = 3001;
+      this.connectWithRetry();
+      return;
     }
     
     // Fallback: Try to discover running servers by checking multiple ports
@@ -86,13 +104,13 @@ export class ClaudeCodeClient {
     
     const serverUrl = `http://localhost:${this.serverPort}`;
     
-    // Connect to the Claude Code server with extended retry settings for production
+    // Connect to the Claude Code server with limited retry settings
     this.socket = io(serverUrl, {
       reconnection: true,
-      reconnectionAttempts: 20, // More attempts for production
-      reconnectionDelay: 1000,
-      reconnectionDelayMax: 5000,
-      timeout: 10000, // 10 second connection timeout
+      reconnectionAttempts: 3, // Limited attempts to avoid spamming
+      reconnectionDelay: 2000,
+      reconnectionDelayMax: 10000,
+      timeout: 5000, // 5 second connection timeout
       transports: ['websocket', 'polling'], // Try both transports
     });
 

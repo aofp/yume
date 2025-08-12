@@ -2,42 +2,32 @@
   "name": "yurucode",
   "version": "1.0.0",
   "description": "Minimal Claude Code SDK IDE",
-  "main": "electron/main.js",
+  "type": "module",
   "author": "Claude Code Studio Team",
   "scripts": {
-    "postinstall": "node scripts/fix-macos-name.js",
-    "setup": "node setup-claude-auth.js",
     "dev": "vite",
-    "server": "node server.js",
-    "server:cli": "node server-cli.js",
-    "server:wsl": "wsl --exec bash -c \"cd /mnt/c/Users/muuko/Desktop/yurucode && /usr/bin/node --expose-gc --max-old-space-size=2048 server-claude-direct.js\"",
     "server:macos": "node --expose-gc --max-old-space-size=2048 server-claude-macos.js",
     "server:multi": "node server-claude-multi.js",
     "build": "vite build",
-    "build:electron": "npm run build && electron-builder",
     "preview": "vite preview",
-    "electron": "electron .",
-    "prestart": "node scripts/kill-ports.js",
-    "start": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && cross-env NODE_ENV=development electron .\"",
-    "start:win": "concurrently -k -p \"[{index}]\" -n \"SERVER,VITE,ELECTRON\" -c \"bgBlue.bold,bgGreen.bold,bgMagenta.bold\" \"npm run server:wsl\" \"npm run dev\" \"node scripts/delay-start.js && electron .\"",
-    "start:multi": "node scripts/start-multi.js",
-    "electron:dev": "npm run prestart && concurrently -k \"npm run server:macos\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && electron .\"",
-    "electron:dev:win": "npm run prestart && concurrently -k \"npm run server:wsl\" \"npm run dev\" \"wait-on http://localhost:5173 && wait-on http://localhost:3001/health && electron .\"",
-    "pack": "npm run build && electron-builder --dir",
-    "dist": "npm run build && electron-builder",
-    "dist:mac": "npm run build && electron-builder --mac",
-    "dist:win": "npm run build && electron-builder --win",
-    "dist:linux": "npm run build && electron-builder --linux"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build",
+    "tauri:build:mac": "tauri build --target universal-apple-darwin",
+    "tauri:build:win": "tauri build --target x86_64-pc-windows-msvc",
+    "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu"
   },
   "keywords": [
     "claude",
     "ai",
     "sdk",
-    "electron",
+    "tauri",
     "react"
   ],
   "license": "MIT",
   "devDependencies": {
+    "@tauri-apps/api": "^2.0.1",
+    "@tauri-apps/cli": "^2.0.0-rc.18",
     "@types/node": "^20.11.0",
     "@types/react": "^18.2.48",
     "@types/react-dom": "^18.2.18",
@@ -45,21 +35,14 @@
     "@typescript-eslint/eslint-plugin": "^6.19.0",
     "@typescript-eslint/parser": "^6.19.0",
     "@vitejs/plugin-react": "^4.2.1",
-    "concurrently": "^8.2.2",
-    "cross-env": "^10.0.0",
-    "electron": "^28.1.3",
-    "electron-builder": "^24.9.1",
     "eslint": "^8.56.0",
-    "rcedit": "^4.0.1",
     "terser": "^5.43.1",
     "typescript": "^5.3.3",
-    "vite": "^7.1.1",
-    "wait-on": "^7.2.0"
+    "vite": "^7.1.1"
   },
   "dependencies": {
     "@tabler/icons-react": "^3.34.1",
     "cors": "^2.8.5",
-    "electron-store": "^8.1.0",
     "express": "^5.1.0",
     "portfinder": "^1.0.37",
     "react": "^18.2.0",
@@ -69,94 +52,5 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "zustand": "^4.4.7"
-  },
-  "build": {
-    "appId": "com.yurucode.app",
-    "productName": "yurucode",
-    "directories": {
-      "output": "release",
-      "buildResources": "build"
-    },
-    "afterPack": "./scripts/afterPack.js",
-    "files": [
-      "dist/**/*",
-      "electron/**/*",
-      "server*.js",
-      "package.json",
-      "assets/**/*",
-      "build/**/*",
-      "!**/*.map",
-      "!**/*.ts",
-      "!**/test/**",
-      "!**/tests/**",
-      "!**/docs/**",
-      "!**/.git/**",
-      "!**/.github/**",
-      "!**/*.md",
-      "!**/*.log"
-    ],
-    "includeSubNodeModules": false,
-    "extraResources": [
-      {
-        "from": "assets/yurucode.ico",
-        "to": "icon.ico"
-      }
-    ],
-    "asar": false,
-    "compression": "maximum",
-    "npmRebuild": false,
-    "nodeGypRebuild": false,
-    "buildDependenciesFromSource": false,
-    "mac": {
-      "category": "public.app-category.developer-tools",
-      "icon": "assets/icons/mac/yurucode.icns",
-      "hardenedRuntime": true,
-      "gatekeeperAssess": false,
-      "entitlements": "build/entitlements.mac.plist",
-      "entitlementsInherit": "build/entitlements.mac.plist",
-      "extendInfo": "build/Info.plist"
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "icon": "assets/yurucode.ico",
-      "legalTrademarks": "",
-      "verifyUpdateCodeSignature": false,
-      "signAndEditExecutable": false,
-      "signDlls": false,
-      "artifactName": "${productName}-${version}-${arch}.${ext}",
-      "requestedExecutionLevel": "asInvoker"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "artifactName": "yurucode-setup-${version}.exe",
-      "uninstallDisplayName": "yurucode",
-      "allowElevation": true,
-      "installerIcon": "assets/yurucode.ico",
-      "uninstallerIcon": "assets/yurucode.ico",
-      "installerHeaderIcon": "assets/yurucode.ico",
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true,
-      "shortcutName": "yurucode",
-      "perMachine": false,
-      "unicode": true,
-      "runAfterFinish": true,
-      "deleteAppDataOnUninstall": false
-    },
-    "linux": {
-      "target": [
-        "AppImage",
-        "deb"
-      ],
-      "icon": "assets/icons/png/512x512.png",
-      "category": "Development"
-    }
   }
 }
