@@ -32,3 +32,8 @@
 .platform-win32 .model-selector-trigger {
   top: 0px;
 }
+
+/* Windows-specific positioning on welcome screen */
+.platform-win32 .welcome-screen .model-selector-trigger {
+  top: 1px;
+}
