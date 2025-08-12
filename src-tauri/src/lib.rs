@@ -10,11 +10,10 @@ mod websocket;
 
 use std::sync::Arc;
 use tauri::Manager;
-use tracing::info;
+use tracing::{info, error};
 
 use claude::ClaudeManager;
 use state::AppState;
-use websocket::WebSocketServer;
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -34,12 +33,39 @@ pub fn run() {
             // Initialize Claude manager
             let claude_manager = Arc::new(ClaudeManager::new());
 
-            // Use port 3001 (where Node.js server is running)
+            // Start the Node.js server
             let port = 3001;
-            info!("Using Node.js server on port: {}", port);
-
-            // Don't start Rust WebSocket server - use Node.js server instead
-            // The Node.js server handles Socket.IO protocol correctly
+            info!("Starting Node.js server on port: {}", port);
+            
+            // Spawn the Node.js server process in a simple way
+            std::thread::spawn(|| {
+                let server_path = "server-claude-macos.js";
+                info!("Starting Node.js server from: {}", server_path);
+                
+                match std::process::Command::new("node")
+                    .arg(server_path)
+                    .spawn() {
+                    Ok(mut child) => {
+                        info!("Node.js server started with PID: {:?}", child.id());
+                        
+                        // Store the child process ID for cleanup
+                        if let Ok(pid) = std::fs::write(".server.pid", child.id().to_string()) {
+                            info!("Saved server PID to file");
+                        }
+                        
+                        // Keep the server running
+                        let _ = child.wait();
+                    },
+                    Err(e) => {
+                        error!("Failed to start Node.js server: {}", e);
+                    }
+                }
+            });
+            
+            // Give the server a moment to start
+            std::thread::sleep(std::time::Duration::from_millis(2000));
+            
+            info!("Node.js server should be running on port: {}", port);
 
             // Initialize app state
             let app_state = AppState::new(claude_manager, port);
@@ -96,6 +122,36 @@ pub fn run() {
                 if let tauri::WindowEvent::CloseRequested { api, .. } = event {
                     // Prevent default close to cleanup first
                     api.prevent_close();
+                    
+                    // Kill the Node.js server if it's running
+                    if let Ok(pid_str) = std::fs::read_to_string(".server.pid") {
+                        if let Ok(pid) = pid_str.trim().parse::<u32>() {
+                            // Cross-platform process killing
+                            #[cfg(target_os = "macos")]
+                            {
+                                let _ = std::process::Command::new("kill")
+                                    .arg("-TERM")
+                                    .arg(pid.to_string())
+                                    .output();
+                            }
+                            #[cfg(target_os = "windows")]
+                            {
+                                let _ = std::process::Command::new("taskkill")
+                                    .args(&["/F", "/PID", &pid.to_string()])
+                                    .output();
+                            }
+                            #[cfg(target_os = "linux")]
+                            {
+                                let _ = std::process::Command::new("kill")
+                                    .arg("-TERM")
+                                    .arg(pid.to_string())
+                                    .output();
+                            }
+                            
+                            // Clean up the PID file
+                            let _ = std::fs::remove_file(".server.pid");
+                        }
+                    }
                     
                     // Cleanup and then close
                     std::process::exit(0);
