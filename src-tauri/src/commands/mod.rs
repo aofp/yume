@@ -1,12 +1,21 @@
 use serde::{Deserialize, Serialize};
-use tauri::{State, Window};
-use tauri_plugin_dialog::DialogExt;
+use tauri::{State, Window, Manager};
 
 use crate::state::AppState;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FolderSelection {
     pub path: String,
+}
+
+#[tauri::command]
+pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
+    // Only allow in debug mode
+    #[cfg(debug_assertions)]
+    {
+        window.open_devtools();
+    }
+    Ok(())
 }
 
 #[tauri::command]

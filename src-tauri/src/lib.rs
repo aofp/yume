@@ -39,17 +39,18 @@ pub fn run() {
             
             // Spawn the Node.js server process in a simple way
             std::thread::spawn(|| {
-                let server_path = "server-claude-macos.js";
+                let server_path = "../server-claude-macos.js";
                 info!("Starting Node.js server from: {}", server_path);
                 
                 match std::process::Command::new("node")
                     .arg(server_path)
+                    .current_dir("..")
                     .spawn() {
                     Ok(mut child) => {
                         info!("Node.js server started with PID: {:?}", child.id());
                         
                         // Store the child process ID for cleanup
-                        if let Ok(pid) = std::fs::write(".server.pid", child.id().to_string()) {
+                        if let Ok(_) = std::fs::write(".server.pid", child.id().to_string()) {
                             info!("Saved server PID to file");
                         }
                         
@@ -158,11 +159,8 @@ pub fn run() {
                 }
             });
             
-            // Open devtools in development mode
-            #[cfg(debug_assertions)]
-            {
-                window.open_devtools();
-            }
+            // Don't auto-open devtools, wait for F12
+            // F12 handling is done in the frontend JavaScript
 
             // Inject custom styles for OLED theme
             window.eval(r#"
@@ -198,6 +196,7 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            commands::toggle_devtools,
             commands::select_folder,
             commands::get_server_port,
             commands::send_message,

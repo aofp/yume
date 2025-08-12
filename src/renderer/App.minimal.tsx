@@ -150,6 +150,24 @@ export const App: React.FC = () => {
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = async (e: KeyboardEvent) => {
+      // F12 for DevTools (development mode only)
+      if (e.key === 'F12') {
+        e.preventDefault();
+        // Check if we're in Tauri and in development mode
+        if ((window as any).__TAURI__ && import.meta.env.DEV) {
+          try {
+            const { invoke } = await import('@tauri-apps/api/core');
+            // Try to toggle devtools via Tauri command
+            await invoke('toggle_devtools').catch(() => {
+              // If command doesn't exist, try the window API
+              console.log('DevTools toggle not available');
+            });
+          } catch (err) {
+            console.log('F12 pressed but DevTools not available:', err);
+          }
+        }
+      }
+      
       // Ctrl+, for settings
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
