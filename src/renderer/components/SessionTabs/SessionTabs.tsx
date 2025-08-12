@@ -12,7 +12,8 @@ export const SessionTabs: React.FC = () => {
     deleteSession,
     deleteAllSessions,
     resumeSession,
-    reorderSessions
+    reorderSessions,
+    clearContext
   } = useClaudeCodeStore();
 
   const [showNewMenu, setShowNewMenu] = useState(false);
@@ -620,6 +621,66 @@ export const SessionTabs: React.FC = () => {
             }
             setContextMenu(null);
           }}>new session in same dir</button>
+          
+          <div className="separator" />
+          
+          {(() => {
+            const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
+            const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
+            const hasMessages = targetSession && targetSession.messages.some(m => 
+              m.type === 'user' || m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
+            );
+            const isAtStart = sessionIndex === 0;
+            const isAtEnd = sessionIndex === sessions.length - 1;
+            
+            return (
+              <>
+                <button 
+                  onClick={() => {
+                    if (!isAtStart) {
+                      reorderSessions(sessionIndex, 0);
+                      setContextMenu(null);
+                    }
+                  }}
+                  disabled={isAtStart}
+                  style={{
+                    opacity: isAtStart ? 0.3 : 1,
+                    cursor: 'default'
+                  }}
+                >move to start</button>
+                
+                <button 
+                  onClick={() => {
+                    if (!isAtEnd) {
+                      reorderSessions(sessionIndex, sessions.length - 1);
+                      setContextMenu(null);
+                    }
+                  }}
+                  disabled={isAtEnd}
+                  style={{
+                    opacity: isAtEnd ? 0.3 : 1,
+                    cursor: 'default'
+                  }}
+                >move to end</button>
+                
+                <div className="separator" />
+                
+                <button 
+                  onClick={() => {
+                    if (hasMessages) {
+                      clearContext(contextMenu.sessionId);
+                      setContextMenu(null);
+                    }
+                  }}
+                  disabled={!hasMessages}
+                  style={{
+                    opacity: hasMessages ? 1 : 0.3,
+                    cursor: 'default'
+                  }}
+                >clear session</button>
+              </>
+            );
+          })()}
           
           <div className="separator" />
           
