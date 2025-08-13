@@ -70,11 +70,7 @@
   margin-bottom: 12px;
 }
 
-.about-yuru {
-  color: var(--accent-color);
-}
-
-.about-code {
+.about-yuru, .about-code {
   color: rgba(255, 255, 255, 0.6);
 }
 

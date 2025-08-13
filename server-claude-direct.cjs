@@ -136,6 +136,8 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     // Use WSL on Windows for title generation too
     let child;
     if (process.platform === 'win32') {
+      // For Windows/WSL, we need to echo the prompt through the pipe
+      const escapedPrompt = titlePrompt.replace(/"/g, '\\"').replace(/\n/g, '\\n');
       const escapedArgs = titleArgs.map(arg => {
         if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
           return "'" + arg.replace(/'/g, "'\\''") + "'";
@@ -144,13 +146,13 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       }).join(' ');
       
       const wslArgs = ['-e', 'bash', '-c', 
-        `if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found" >&2 && exit 127; fi`
+        `echo "${escapedPrompt}" | (if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found" >&2 && exit 127; fi)`
       ];
       
       child = spawn('wsl.exe', wslArgs, {
         cwd: process.cwd(),
         env: { ...process.env },
-        stdio: ['pipe', 'pipe', 'pipe']
+        stdio: ['inherit', 'pipe', 'pipe']  // inherit stdin since we're using echo
       });
     } else {
       child = spawn('claude', titleArgs, {
@@ -217,10 +219,12 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       console.error('🏷️ Failed to spawn title generation process:', error);
     });
     
-    // Send the prompt
-    console.log(`🏷️ Writing prompt to stdin`);
-    child.stdin.write(titlePrompt);
-    child.stdin.end();
+    // Send the prompt (only for non-Windows, Windows uses echo in the command)
+    if (process.platform !== 'win32') {
+      console.log(`🏷️ Writing prompt to stdin`);
+      child.stdin.write(titlePrompt);
+      child.stdin.end();
+    }
     
   } catch (error) {
     console.error('🏷️ Failed to generate title:', error);

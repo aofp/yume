@@ -53,6 +53,15 @@ pub fn run() {
             // Set up window event handlers
             let window = app.get_webview_window("main").unwrap();
             
+            // Restore window state
+            {
+                let window_clone = window.clone();
+                let app_handle = app.handle().clone();
+                tauri::async_runtime::spawn(async move {
+                    restore_window_state(&window_clone, &app_handle).await;
+                });
+            }
+            
             // Check if YURUCODE_SHOW_CONSOLE is set (from logged_server)
             // DevTools methods are only available in debug builds
             #[cfg(debug_assertions)]
@@ -129,18 +138,42 @@ pub fn run() {
             }
 
             // Handle window close event - simplified for Windows
-            window.on_window_event(move |event| {
-                if let tauri::WindowEvent::CloseRequested { .. } = event {
-                    info!("Window close requested, cleaning up...");
-                    
-                    // Stop the server immediately
-                    logged_server::stop_logged_server();
-                    info!("Server stopped, exiting application...");
-                    
-                    // Force exit immediately - don't wait
-                    std::process::exit(0);
-                }
-            });
+            {
+                let window_clone = window.clone();
+                let app_handle = app.handle().clone();
+                window.on_window_event(move |event| {
+                    match event {
+                        tauri::WindowEvent::CloseRequested { .. } => {
+                            info!("Window close requested, saving state and cleaning up...");
+                            
+                            // Save window state before closing
+                            let window_for_save = window_clone.clone();
+                            let app_for_save = app_handle.clone();
+                            tauri::async_runtime::block_on(async move {
+                                save_window_state(&window_for_save, &app_for_save).await;
+                            });
+                            
+                            // Stop the server immediately
+                            logged_server::stop_logged_server();
+                            info!("Server stopped, exiting application...");
+                            
+                            // Force exit immediately - don't wait
+                            std::process::exit(0);
+                        }
+                        tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
+                            // Save window state on resize/move with debouncing
+                            let window_for_save = window_clone.clone();
+                            let app_for_save = app_handle.clone();
+                            tauri::async_runtime::spawn(async move {
+                                // Simple debounce - wait 500ms before saving
+                                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                                save_window_state(&window_for_save, &app_for_save).await;
+                            });
+                        }
+                        _ => {}
+                    }
+                });
+            }
             
             // DevTools - will open via keyboard shortcut F12
 
@@ -266,6 +299,52 @@ mod macos {
         
         unsafe fn setStyleMask_(&self, mask: NSWindowStyleMask) {
             msg_send![*self, setStyleMask:mask]
+        }
+    }
+}
+
+// Window state persistence functions
+async fn save_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHandle) {
+    use tauri_plugin_store::StoreExt;
+    
+    if let Ok(size) = window.outer_size() {
+        if let Ok(position) = window.outer_position() {
+            let store = app.store("window-state.json").expect("Failed to get store");
+            
+            // Save window dimensions and position
+            let _ = store.set("width", serde_json::json!(size.width));
+            let _ = store.set("height", serde_json::json!(size.height));
+            let _ = store.set("x", serde_json::json!(position.x));
+            let _ = store.set("y", serde_json::json!(position.y));
+            let _ = store.save();
+            
+            info!("Saved window state: {}x{} at ({}, {})", size.width, size.height, position.x, position.y);
+        }
+    }
+}
+
+async fn restore_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHandle) {
+    use tauri_plugin_store::StoreExt;
+    
+    let store = app.store("window-state.json").expect("Failed to get store");
+    
+    // Try to restore window size
+    if let Some(width) = store.get("width") {
+        if let Some(height) = store.get("height") {
+            if let (Some(w), Some(h)) = (width.as_u64(), height.as_u64()) {
+                let _ = window.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
+                info!("Restored window size: {}x{}", w, h);
+            }
+        }
+    }
+    
+    // Try to restore window position
+    if let Some(x) = store.get("x") {
+        if let Some(y) = store.get("y") {
+            if let (Some(x_pos), Some(y_pos)) = (x.as_i64(), y.as_i64()) {
+                let _ = window.set_position(tauri::PhysicalPosition::new(x_pos as i32, y_pos as i32));
+                info!("Restored window position: ({}, {})", x_pos, y_pos);
+            }
         }
     }
 }
