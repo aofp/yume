@@ -1,7 +1,7 @@
 {
   "name": "yurucode",
-  "version": "0.8.0",
-  "description": "Minimal Claude Code SDK IDE",
+  "version": "0.1.0",
+  "description": "Minimal Claude Code UI",
   "type": "module",
   "author": "yuruko",
   "scripts": {
