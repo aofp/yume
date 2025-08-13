@@ -54,17 +54,8 @@ export const SessionTabs: React.FC = () => {
       if ((window as any).__TAURI__) {
         const windowApi = await import('@tauri-apps/api/window');
         
-        // Try to get appWindow from various possible exports
-        let appWindow;
-        if (windowApi.getCurrent) {
-          appWindow = windowApi.getCurrent();
-        } else if (windowApi.appWindow) {
-          appWindow = windowApi.appWindow;
-        } else if ((windowApi as any).default?.getCurrent) {
-          appWindow = (windowApi as any).default.getCurrent();
-        } else if ((windowApi as any).default?.appWindow) {
-          appWindow = (windowApi as any).default.appWindow;
-        }
+        // Get the current window instance
+        const appWindow = windowApi.getCurrent();
         
         if (appWindow) {
           const tabsArea = document.querySelector('.session-tabs') as HTMLElement;

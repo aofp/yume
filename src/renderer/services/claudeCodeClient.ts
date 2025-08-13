@@ -11,6 +11,11 @@ export class ClaudeCodeClient {
   private connected = false;
   private messageHandlers = new Map<string, (message: any) => void>();
   private serverPort: number | null = null;
+  public connectionStatus: 'connecting' | 'connected' | 'disconnected' | 'error' = 'connecting';
+  public connectionError: string | null = null;
+  public connectionAttempts = 0;
+  public debugLog: string[] = [];
+  private connectionStartTime = Date.now();
 
   constructor() {
     console.log('[ClaudeCodeClient] Initializing...');

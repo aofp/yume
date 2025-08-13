@@ -9,6 +9,7 @@ import { AboutModal } from './components/About/AboutModal';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
 import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 // import { FileChangesSidebar } from './components/FileChanges/FileChangesSidebar';
+import { ServerLogs } from './components/ServerLogs/ServerLogs';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { platformBridge } from './services/platformBridge';
 import './App.minimal.css';
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showServerLogs, setShowServerLogs] = useState(false);
   // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -232,15 +234,28 @@ export const App: React.FC = () => {
         e.preventDefault();
         setShowSettings(true);
       }
+      
+      // Ctrl+Shift+L for server logs
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'L') {
+        e.preventDefault();
+        setShowServerLogs(prev => !prev);
+      }
+      
       // ? for keyboard shortcuts (not in input fields)
       if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
         e.preventDefault();
         setShowHelpModal(prev => !prev);
       }
-      // Escape to close help modal
-      if (e.key === 'Escape' && showHelpModal) {
-        e.preventDefault();
-        setShowHelpModal(false);
+      // Escape to close help modal or server logs
+      if (e.key === 'Escape') {
+        if (showHelpModal) {
+          e.preventDefault();
+          setShowHelpModal(false);
+        }
+        if (showServerLogs) {
+          e.preventDefault();
+          setShowServerLogs(false);
+        }
       }
       
       // Zoom controls
@@ -271,7 +286,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showHelpModal]);
+  }, [showHelpModal, showServerLogs]);
 
   // Apply accent color, zoom level, and window state from localStorage on mount
   useEffect(() => {
@@ -516,6 +531,7 @@ export const App: React.FC = () => {
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
       {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
+      <ServerLogs isOpen={showServerLogs} onClose={() => setShowServerLogs(false)} />
     </div>
   );
 };

@@ -1,13 +1,71 @@
 use std::process::{Command, Child, Stdio};
-use std::fs;
 use std::sync::{Arc, Mutex};
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::path::PathBuf;
 use tracing::info;
 
 // SIMPLE FLAG TO CONTROL CONSOLE VISIBILITY AND DEVTOOLS
-pub const YURUCODE_SHOW_CONSOLE: bool = true;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
+pub const YURUCODE_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
 
 // Global handle to the server process
 static SERVER_PROCESS: Mutex<Option<Arc<Mutex<Child>>>> = Mutex::new(None);
+
+// Get log file path
+pub fn get_log_path() -> PathBuf {
+    let log_dir = if cfg!(target_os = "macos") {
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("/tmp"))
+            .join("Library")
+            .join("Logs")
+            .join("yurucode")
+    } else if cfg!(target_os = "windows") {
+        dirs::data_local_dir()
+            .unwrap_or_else(|| PathBuf::from("C:\\temp"))
+            .join("yurucode")
+            .join("logs")
+    } else {
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("/tmp"))
+            .join(".yurucode")
+            .join("logs")
+    };
+    
+    // Create log directory if it doesn't exist
+    let _ = fs::create_dir_all(&log_dir);
+    log_dir.join("server.log")
+}
+
+// Write to log file
+fn write_log(message: &str) {
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .append(true)
+        .open(get_log_path())
+    {
+        let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        let _ = writeln!(file, "[{}] {}", timestamp, message);
+    }
+}
+
+// Clear log file (called at server start)
+fn clear_log() {
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(get_log_path())
+    {
+        let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
+        let _ = writeln!(file, "=== yurucode server log started at {} ===", timestamp);
+    }
+}
+
+// Get server logs
+pub fn get_server_logs() -> String {
+    fs::read_to_string(get_log_path())
+        .unwrap_or_else(|e| format!("Failed to read logs: {}", e))
+}
 
 // EMBEDDED SERVER - REQUIRES SOCKET.IO TO BE BUNDLED
 const EMBEDDED_SERVER: &str = r#"
@@ -616,33 +674,45 @@ pub fn stop_logged_server() {
 }
 
 pub fn start_logged_server() {
-    info!("Starting embedded server");
+    info!("Starting server for macOS");
     
-    // Create temp directory for server
-    let server_dir = std::env::temp_dir().join("yurucode-server");
-    let _ = fs::create_dir_all(&server_dir);
-    
-    // Write embedded server to temp
-    let server_path = server_dir.join("server.js");
-    if let Err(e) = fs::write(&server_path, EMBEDDED_SERVER) {
-        info!("Failed to write server: {}", e);
+    // On macOS, use the bundled server file directly
+    #[cfg(target_os = "macos")]
+    {
+        start_macos_server();
         return;
     }
     
-    // Determine where to find node_modules
-    let node_path = if cfg!(debug_assertions) {
-        // In development, find project root dynamically
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("node_modules"))
-    } else {
-        // In production, look for bundled node_modules
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("resources").join("node_modules"))
-    };
+    // Original embedded server logic for other platforms
+    #[cfg(not(target_os = "macos"))]
+    {
+        info!("Starting embedded server");
+        
+        // Create temp directory for server
+        let server_dir = std::env::temp_dir().join("yurucode-server");
+        let _ = fs::create_dir_all(&server_dir);
+        
+        // Write embedded server to temp
+        let server_path = server_dir.join("server.js");
+        if let Err(e) = fs::write(&server_path, EMBEDDED_SERVER) {
+            info!("Failed to write server: {}", e);
+            return;
+        }
+        
+        // Determine where to find node_modules
+        let node_path = if cfg!(debug_assertions) {
+            // In development, find project root dynamically
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
+                .map(|p| p.join("node_modules"))
+        } else {
+            // In production, look for bundled node_modules
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                .map(|p| p.join("resources").join("node_modules"))
+        };
     
     // Try to start server with Node.js
     let node_paths = vec!["node", "node.exe"];
@@ -699,5 +769,247 @@ pub fn start_logged_server() {
         }
     }
     
-    info!("❌ Failed to start server");
+        info!("❌ Failed to start server");
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn start_macos_server() {
+    info!("Starting macOS server");
+    clear_log(); // Clear logs from previous run
+    write_log("=== Starting macOS server ===");
+    
+    // Get the executable path for debugging
+    let exe_path = std::env::current_exe().unwrap_or_default();
+    info!("Executable path: {:?}", exe_path);
+    write_log(&format!("Executable path: {:?}", exe_path));
+    
+    // Find the server file
+    let server_path = if cfg!(debug_assertions) {
+        // In development, use project root
+        info!("Development mode - looking for server in project root");
+        write_log("Development mode - looking for server in project root");
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
+            .map(|p| p.join("server-claude-macos.js"))
+    } else {
+        // In production, try both .js and .cjs versions
+        info!("Production mode - looking for server in .app bundle");
+        write_log("Production mode - looking for server in .app bundle");
+        
+        let result = std::env::current_exe()
+            .ok()
+            .and_then(|p| {
+                write_log(&format!("Exe: {:?}", p));
+                let macos_dir = p.parent()?;
+                write_log(&format!("MacOS dir: {:?}", macos_dir));
+                let contents_dir = macos_dir.parent()?;
+                write_log(&format!("Contents dir: {:?}", contents_dir));
+                let resources_dir = contents_dir.join("Resources").join("resources");
+                write_log(&format!("Resources dir: {:?}", resources_dir));
+                
+                // Try .js first (original working file)
+                let server_js = resources_dir.join("server-claude-macos.js");
+                if server_js.exists() {
+                    write_log(&format!("Found server.js at: {:?}", server_js));
+                    return Some(server_js);
+                }
+                
+                // Fall back to .cjs
+                let server_cjs = resources_dir.join("server-claude-macos.cjs");
+                write_log(&format!("Looking for server.cjs at: {:?}", server_cjs));
+                Some(server_cjs)
+            });
+        
+        if result.is_none() {
+            write_log("Failed to construct production server path");
+        }
+        
+        result
+    };
+    
+    if let Some(server_file) = server_path {
+        if !server_file.exists() {
+            info!("Server file not found at: {:?}", server_file);
+            return;
+        }
+        
+        info!("Using server file: {:?}", server_file);
+        
+        // Get node_modules path
+        let node_modules = if cfg!(debug_assertions) {
+            // In development
+            server_file.parent().map(|p| p.join("node_modules"))
+        } else {
+            // In production, node_modules are in the same resources directory
+            server_file.parent().map(|p| p.join("node_modules"))
+        };
+        
+        // Also check if node_modules exists
+        if let Some(ref modules) = node_modules {
+            if !modules.exists() {
+                write_log(&format!("Warning: node_modules not found at: {:?}", modules));
+            } else {
+                write_log(&format!("node_modules found at: {:?}", modules));
+            }
+        }
+        
+        write_log("Attempting to spawn Node.js server...");
+        let mut cmd = Command::new("node");
+        cmd.arg(&server_file);
+        
+        if let Some(ref modules) = node_modules {
+            write_log(&format!("Setting NODE_PATH to: {:?}", modules));
+            cmd.env("NODE_PATH", modules);
+        }
+        
+        // Always capture output for logging
+        cmd.stdout(Stdio::piped())
+           .stderr(Stdio::piped());
+        
+        // Set working directory to resources folder for relative requires
+        if let Some(working_dir) = server_file.parent() {
+            cmd.current_dir(working_dir);
+            write_log(&format!("Working directory: {:?}", working_dir));
+        }
+        
+        write_log(&format!("Spawn command: node {:?}", &server_file));
+        match cmd.spawn() {
+            Ok(mut child) => {
+                write_log(&format!("✅ macOS server spawned with PID: {}", child.id()));
+                info!("✅ macOS server spawned with PID: {}", child.id());
+                
+                // Spawn threads to log stdout and stderr
+                if let Some(stdout) = child.stdout.take() {
+                    std::thread::spawn(move || {
+                        use std::io::{BufRead, BufReader};
+                        let reader = BufReader::new(stdout);
+                        for line in reader.lines() {
+                            if let Ok(line) = line {
+                                write_log(&format!("[SERVER OUT] {}", line));
+                                info!("[SERVER OUT] {}", line);
+                            }
+                        }
+                    });
+                }
+                
+                if let Some(stderr) = child.stderr.take() {
+                    std::thread::spawn(move || {
+                        use std::io::{BufRead, BufReader};
+                        let reader = BufReader::new(stderr);
+                        for line in reader.lines() {
+                            if let Ok(line) = line {
+                                write_log(&format!("[SERVER ERR] {}", line));
+                                info!("[SERVER ERR] {}", line);
+                            }
+                        }
+                    });
+                }
+                
+                let child_arc = Arc::new(Mutex::new(child));
+                if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
+                    *process_guard = Some(child_arc);
+                }
+                
+                info!("✅ macOS server process tracking set up");
+            }
+            Err(e) => {
+                write_log(&format!("❌ Failed to start macOS server: {}", e));
+                write_log(&format!("Error kind: {:?}", e.kind()));
+                write_log(&format!("Current dir: {:?}", std::env::current_dir()));
+                info!("❌ Failed to start macOS server: {}", e);
+                
+                // Try to check if node exists
+                write_log("Checking for Node.js installation...");
+                match Command::new("which").arg("node").output() {
+                    Ok(output) => {
+                        let node_path = String::from_utf8_lossy(&output.stdout);
+                        if node_path.trim().is_empty() {
+                            write_log("Node.js not found in PATH!");
+                        } else {
+                            write_log(&format!("Node location: {}", node_path));
+                        }
+                    }
+                    Err(e) => {
+                        write_log(&format!("Could not run 'which node': {}", e));
+                    }
+                }
+                
+                // Try common node locations on macOS
+                let common_paths = vec![
+                    "/usr/local/bin/node",
+                    "/opt/homebrew/bin/node",
+                    "/usr/bin/node",
+                ];
+                
+                for path in common_paths {
+                    if std::path::Path::new(path).exists() {
+                        write_log(&format!("Found node at: {}", path));
+                        // Try to spawn with absolute path
+                        write_log(&format!("Retrying with absolute path: {}", path));
+                        let mut retry_cmd = Command::new(path);
+                        retry_cmd.arg(&server_file);
+                        
+                        if let Some(ref modules) = node_modules {
+                            retry_cmd.env("NODE_PATH", modules);
+                        }
+                        
+                        if let Some(working_dir) = server_file.parent() {
+                            retry_cmd.current_dir(working_dir);
+                        }
+                        
+                        retry_cmd.stdout(Stdio::piped())
+                                 .stderr(Stdio::piped());
+                        
+                        match retry_cmd.spawn() {
+                            Ok(mut child) => {
+                                write_log(&format!("✅ Retry successful with {}, PID: {}", path, child.id()));
+                                
+                                // Handle stdout
+                                if let Some(stdout) = child.stdout.take() {
+                                    std::thread::spawn(move || {
+                                        use std::io::{BufRead, BufReader};
+                                        let reader = BufReader::new(stdout);
+                                        for line in reader.lines() {
+                                            if let Ok(line) = line {
+                                                write_log(&format!("[SERVER OUT] {}", line));
+                                            }
+                                        }
+                                    });
+                                }
+                                
+                                // Handle stderr
+                                if let Some(stderr) = child.stderr.take() {
+                                    std::thread::spawn(move || {
+                                        use std::io::{BufRead, BufReader};
+                                        let reader = BufReader::new(stderr);
+                                        for line in reader.lines() {
+                                            if let Ok(line) = line {
+                                                write_log(&format!("[SERVER ERR] {}", line));
+                                            }
+                                        }
+                                    });
+                                }
+                                
+                                // Store process handle
+                                let child_arc = Arc::new(Mutex::new(child));
+                                if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
+                                    *process_guard = Some(child_arc);
+                                }
+                                
+                                return;
+                            }
+                            Err(e) => {
+                                write_log(&format!("Retry with {} failed: {}", path, e));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    } else {
+        write_log("ERROR: Could not determine server path");
+        info!("Could not determine server path");
+    }
 }

@@ -26,8 +26,7 @@
         "center": true,
         "skipTaskbar": false,
         "acceptFirstMouse": true,
-        "hiddenTitle": false,
-        "devtools": true
+        "hiddenTitle": false
       }
     ],
     "security": {
@@ -45,7 +44,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "resources/"
+      "resources/**/*"
     ]
   }
 }

@@ -200,6 +200,8 @@ pub fn run() {
             commands::set_zoom_level,
             commands::minimize_window,
             commands::maximize_window,
+            commands::get_server_logs,
+            commands::get_server_log_path,
             commands::close_window,
             commands::show_context_menu,
             commands::save_settings,

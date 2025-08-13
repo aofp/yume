@@ -1,0 +1,112 @@
+.server-logs-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.server-logs-modal {
+  background: #0a0a0a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 900px;
+  height: 80%;
+  max-height: 600px;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.server-logs-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid #333;
+  background: #050505;
+}
+
+.server-logs-header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: #ff9999;
+  font-weight: normal;
+  text-transform: lowercase;
+}
+
+.server-logs-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.server-logs-actions button {
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: default;
+  padding: 4px;
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.server-logs-actions button:hover:not(:disabled) {
+  color: #ff9999;
+  background: rgba(255, 153, 153, 0.1);
+}
+
+.server-logs-actions button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.server-logs-path {
+  padding: 8px 16px;
+  font-size: 11px;
+  color: #666;
+  border-bottom: 1px solid #222;
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.server-logs-content {
+  flex: 1;
+  overflow: auto;
+  padding: 16px;
+  background: #000;
+}
+
+.server-logs-content pre {
+  margin: 0;
+  font-family: 'SF Mono', Monaco, monospace;
+  font-size: 11px;
+  line-height: 1.4;
+  color: #999;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+/* Scrollbar styling */
+.server-logs-content::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+.server-logs-content::-webkit-scrollbar-track {
+  background: #111;
+}
+
+.server-logs-content::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 4px;
+}
+
+.server-logs-content::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}

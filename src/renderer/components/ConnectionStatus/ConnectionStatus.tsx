@@ -74,7 +74,7 @@ export const ConnectionStatus: React.FC = () => {
     <>
       {/* Loading overlay to prevent interactions */}
       <div className="connection-overlay">
-        <IconLoader2 size={32} stroke={1.5} className="connection-spinner" />
+        <IconLoader2 size={64} stroke={1.5} className="connection-spinner" />
       </div>
       {/* Remove the status text box entirely - just show the spinner */}
     </>

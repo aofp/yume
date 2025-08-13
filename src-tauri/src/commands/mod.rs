@@ -3,6 +3,7 @@ use tauri::{State, Window};
 use std::path::Path;
 
 use crate::state::AppState;
+use crate::logged_server;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FolderSelection {
@@ -250,4 +251,14 @@ pub fn open_external(url: String) -> Result<(), String> {
     }
     
     Ok(())
+}
+
+#[tauri::command]
+pub fn get_server_logs() -> Result<String, String> {
+    Ok(logged_server::get_server_logs())
+}
+
+#[tauri::command]
+pub fn get_server_log_path() -> Result<String, String> {
+    Ok(logged_server::get_log_path().to_string_lossy().to_string())
 }
