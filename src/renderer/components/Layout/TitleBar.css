@@ -105,24 +105,15 @@
 .titlebar-text {
   font-family: 'Fira Code', monospace;
   font-size: 10px;
-  font-weight: 400;
+  font-weight: bold;
   letter-spacing: 0.5px;
   padding: 0;
   user-select: none;
   -webkit-user-select: none;
-}
-
-/* Individual letter hover effects */
-.titlebar-letter {
   color: rgba(255, 255, 255, 0.4);
-  font-weight: bold;
-  transition: color 0.4s ease;
-  display: inline-block;
 }
 
-.titlebar-letter:hover {
-  color: var(--accent-color);
-}
+/* Removed per-character hover effect */
 
 .titlebar-title {
   font-size: 11px;

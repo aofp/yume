@@ -87,15 +87,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
             }}
           >
             <span className="titlebar-text" onContextMenu={(e) => e.preventDefault()}>
-              <span className="titlebar-letter">y</span>
-              <span className="titlebar-letter">u</span>
-              <span className="titlebar-letter">r</span>
-              <span className="titlebar-letter">u</span>
-              <span className="titlebar-letter">&gt;</span>
-              <span className="titlebar-letter">c</span>
-              <span className="titlebar-letter">o</span>
-              <span className="titlebar-letter">d</span>
-              <span className="titlebar-letter">e</span>
+              yuru&gt;code
             </span>
           </div>
         </div>

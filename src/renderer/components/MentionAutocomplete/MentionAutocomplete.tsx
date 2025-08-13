@@ -243,23 +243,45 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           setSelectedIndex(prev => prev === 0 ? items.length - 1 : prev - 1);
           break;
         case 'ArrowLeft':
-          e.preventDefault();
+          e.preventDefault(); // Always prevent cursor movement when autocomplete is open
+          
           // Go back to parent folder or default view
           if (currentPath && currentPath.includes('/')) {
             // Navigate to parent folder
             const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
+            setCurrentPath(parentPath);
+            
             if (inputRef.current) {
               const text = inputRef.current.value;
               const start = cursorPosition - trigger.length;
-              const newValue = text.substring(0, start) + '@' + (parentPath ? parentPath + '/' : '') + text.substring(cursorPosition);
+              const newTrigger = '@' + parentPath + '/';
+              const newValue = text.substring(0, start) + newTrigger + text.substring(cursorPosition);
               inputRef.current.value = newValue;
-              const newCursorPos = start + 1 + (parentPath ? parentPath.length + 1 : 0);
+              const newCursorPos = start + newTrigger.length;
               inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
               const changeEvent = new Event('input', { bubbles: true });
               inputRef.current.dispatchEvent(changeEvent);
             }
-          } else if (currentPath || currentView === 'recent' || currentView === 'modified') {
+          } else if (currentPath && !currentPath.includes('/')) {
+            // We're in a top-level folder, go back to root
+            setCurrentPath('');
+            setCurrentView('default');
+            
+            if (inputRef.current) {
+              const text = inputRef.current.value;
+              const start = cursorPosition - trigger.length;
+              const newValue = text.substring(0, start) + '@' + text.substring(cursorPosition);
+              inputRef.current.value = newValue;
+              const newCursorPos = start + 1;
+              inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+              const changeEvent = new Event('input', { bubbles: true });
+              inputRef.current.dispatchEvent(changeEvent);
+            }
+          } else if (currentView === 'recent' || currentView === 'modified') {
             // Go back to default @ view (root directory)
+            setCurrentPath('');
+            setCurrentView('default');
+            
             if (inputRef.current) {
               const text = inputRef.current.value;
               const start = cursorPosition - trigger.length;
@@ -271,15 +293,19 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               inputRef.current.dispatchEvent(changeEvent);
             }
           }
-          // If we're already at root (currentPath is empty and view is default), don't do anything
+          // If we're already at root, do nothing (but still prevent cursor movement)
           break;
         case 'ArrowRight':
           const selectedItem = items[selectedIndex];
           if (selectedItem) {
             e.preventDefault();
             
-            // Handle @r and @c specially
-            if (selectedItem.type === 'recent') {
+            // If it's a file, autocomplete it
+            if (selectedItem.type === 'file') {
+              handleSelect(selectedItem);
+            }
+            // Handle @r specially
+            else if (selectedItem.type === 'recent') {
               // Load recent files and update input to show @r
               setLoading(true);
               try {
@@ -346,7 +372,17 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               if (inputRef.current) {
                 const text = inputRef.current.value;
                 const start = cursorPosition - trigger.length;
-                const folderPath = (selectedItem.description || selectedItem.name).replace(/\\/g, '/');
+                
+                // Determine the folder path based on current context
+                let folderPath: string;
+                if (currentPath) {
+                  // We're already in a subfolder, just append the folder name
+                  folderPath = `${currentPath}/${selectedItem.name}`;
+                } else {
+                  // We're at root, use just the folder name
+                  folderPath = selectedItem.name;
+                }
+                
                 const newValue = text.substring(0, start) + '@' + folderPath + '/' + text.substring(cursorPosition);
                 
                 // Update input and trigger

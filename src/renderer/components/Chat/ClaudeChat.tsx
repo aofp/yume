@@ -419,7 +419,8 @@ export const ClaudeChat: React.FC = () => {
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
-        setShowRecentModal(true);
+        // Toggle recent modal instead of just opening it
+        setShowRecentModal(prev => !prev);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         e.preventDefault();
         // Create new session in same directory (fresh start, same working dir)
@@ -571,6 +572,16 @@ export const ClaudeChat: React.FC = () => {
         });
         return;
       }
+    } else if (trimmedInput === '/model' || trimmedInput.startsWith('/model ')) {
+      console.log('[ClaudeChat] Toggling model');
+      toggleModel();
+      setInput('');
+      // Reset textarea height
+      if (inputRef.current) {
+        inputRef.current.style.height = '54px';
+        inputRef.current.style.overflow = 'hidden';
+      }
+      return;
     }
     
     try {
