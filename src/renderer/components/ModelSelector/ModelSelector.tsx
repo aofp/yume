@@ -16,7 +16,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   onChange 
 }) => {
   const [isHighlighted, setIsHighlighted] = useState(false);
-  const [highlightEndTime, setHighlightEndTime] = useState(0);
   const timeoutRef = React.useRef<NodeJS.Timeout | null>(null);
   
   const selectedModel = models.find(m => m.id === value) || models[0];
@@ -25,23 +24,17 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
-        const now = Date.now();
-        const endTime = Math.max(now + 1000, highlightEndTime);
-        
         // Clear any existing timeout
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
         }
         
         setIsHighlighted(true);
-        setHighlightEndTime(endTime);
         
-        // Set new timeout for the remaining time
-        const remainingTime = endTime - now;
+        // Set timeout for exactly 1 second
         timeoutRef.current = setTimeout(() => {
           setIsHighlighted(false);
-          setHighlightEndTime(0);
-        }, remainingTime);
+        }, 1000);
       }
     };
 
@@ -52,7 +45,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         clearTimeout(timeoutRef.current);
       }
     };
-  }, [highlightEndTime]);
+  }, []);
 
   const handleToggle = () => {
     // Toggle between the two models

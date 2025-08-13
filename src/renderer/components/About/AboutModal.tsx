@@ -5,7 +5,7 @@ import './AboutModal.css';
 // Version info - manually update this when version changes
 // Or use a build script to inject it
 const versionInfo = {
-  version: '0.8.0',
+  version: '0.1.0',
   author: 'yurufrog',
   website: 'yuru.be',
   isDemo: false // Set to true for demo version
