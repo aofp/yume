@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef, DragEvent } from 'react';
-import { IconX, IconPlus, IconFolder, IconLoader2, IconFolderOpen, IconBolt, IconTrash, IconChevronDown } from '@tabler/icons-react';
+import { IconX, IconPlus, IconFolder, IconLoader2, IconFolderOpen, IconBolt, IconTrash, IconChevronDown, IconClock } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { AboutModal } from '../About/AboutModal';
 import './SessionTabs.css';
@@ -814,7 +814,10 @@ export const SessionTabs: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <span className="modal-title">recent projects</span>
+              <div className="modal-title-row">
+                <IconChevronDown size={16} className="modal-icon" />
+                <span className="modal-title">recent projects</span>
+              </div>
               <button 
                 className="clear-all-icon"
                 onClick={() => {

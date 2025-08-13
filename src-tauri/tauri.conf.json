@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "yuru code",
-  "version": "1.0.0",
+  "version": "0.8.0",
   "identifier": "be.yuru.yurucode",
   "build": {
     "frontendDist": "../dist/renderer",

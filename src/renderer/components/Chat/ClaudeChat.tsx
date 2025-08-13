@@ -30,7 +30,8 @@ import {
   IconArrowUp,
   IconArrowDown,
   IconBrain,
-  IconChartDots
+  IconChartDots,
+  IconClock
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -1247,7 +1248,10 @@ export const ClaudeChat: React.FC = () => {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
-              <span className="modal-title">recent projects</span>
+              <div className="modal-title-row">
+                <IconChevronDown size={16} className="modal-icon" />
+                <span className="modal-title">recent projects</span>
+              </div>
               <button 
                 className="clear-all-icon"
                 onClick={() => {

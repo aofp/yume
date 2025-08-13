@@ -674,6 +674,12 @@ pub fn stop_logged_server() {
 pub fn start_logged_server() {
     info!("Starting server for macOS");
     
+    // Stop any existing server first to avoid port conflicts
+    stop_logged_server();
+    
+    // Wait a bit for the port to be released
+    std::thread::sleep(std::time::Duration::from_millis(500));
+    
     // On macOS, use the bundled server file directly
     #[cfg(target_os = "macos")]
     {

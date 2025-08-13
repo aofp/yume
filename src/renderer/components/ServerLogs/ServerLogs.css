@@ -8,7 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 100000; /* Higher than connection overlay */
   backdrop-filter: blur(4px);
 }
 
@@ -37,7 +37,7 @@
 .server-logs-header h3 {
   margin: 0;
   font-size: 14px;
-  color: #ff9999;
+  color: var(--accent-color);
   font-weight: normal;
   text-transform: lowercase;
 }
@@ -58,7 +58,7 @@
 }
 
 .server-logs-actions button:hover:not(:disabled) {
-  color: #ff9999;
+  color: var(--accent-color);
   background: rgba(255, 153, 153, 0.1);
 }
 

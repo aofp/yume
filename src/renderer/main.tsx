@@ -10,6 +10,9 @@ import './services/platformBridge';
 
 console.log('main.tsx loading...');
 
+// Variables for sleep/wake detection
+let lastActiveTime = Date.now();
+
 // Add platform class to body for platform-specific styling
 const platform = navigator.platform.toLowerCase();
 if (platform.includes('mac')) {
@@ -54,6 +57,27 @@ if (window.electronAPI && window.electronAPI.ipcRenderer) {
   });
 }
 
+// Detect system wake from sleep and recover
+// Only reload if the system was actually asleep for a long time
+document.addEventListener('visibilitychange', () => {
+  const now = Date.now();
+  
+  if (document.hidden) {
+    // Page is being hidden, record the time
+    lastActiveTime = now;
+  } else {
+    // Page is becoming visible, check if we slept
+    const timeDiff = now - lastActiveTime;
+    
+    // Only reload if hidden for more than 5 minutes (likely computer sleep)
+    if (timeDiff > 300000) {
+      console.log(`⚠️ Page visible after ${Math.round(timeDiff/1000)}s gap, reloading to recover from sleep`);
+      window.location.reload();
+    }
+  }
+});
+
+
 // Add keyboard shortcuts
 document.addEventListener('keydown', (e) => {
   // F12 - Toggle DevTools (works regardless of input field)
@@ -65,6 +89,32 @@ document.addEventListener('keydown', (e) => {
         // There's no direct toggle method, but we can try to emit an event
         console.log('F12 pressed - DevTools should be open automatically in dev mode');
       });
+    }
+    return;
+  }
+  
+  // Ctrl + Tab - Next tab (works regardless of input field)
+  if (e.ctrlKey && e.key === 'Tab' && !e.shiftKey) {
+    e.preventDefault();
+    console.log('Keyboard shortcut: Next tab');
+    const { sessions, currentSessionId, setCurrentSession } = useClaudeCodeStore.getState();
+    if (sessions.length > 1) {
+      const currentIndex = sessions.findIndex(s => s.id === currentSessionId);
+      const nextIndex = (currentIndex + 1) % sessions.length;
+      setCurrentSession(sessions[nextIndex].id);
+    }
+    return;
+  }
+  
+  // Ctrl + Shift + Tab - Previous tab (works regardless of input field)
+  if (e.ctrlKey && e.shiftKey && e.key === 'Tab') {
+    e.preventDefault();
+    console.log('Keyboard shortcut: Previous tab');
+    const { sessions, currentSessionId, setCurrentSession } = useClaudeCodeStore.getState();
+    if (sessions.length > 1) {
+      const currentIndex = sessions.findIndex(s => s.id === currentSessionId);
+      const prevIndex = currentIndex === 0 ? sessions.length - 1 : currentIndex - 1;
+      setCurrentSession(sessions[prevIndex].id);
     }
     return;
   }
@@ -99,11 +149,12 @@ document.addEventListener('keydown', (e) => {
     if (window.electronAPI?.folder?.select) {
       window.electronAPI.folder.select().then((folder: string) => {
         if (folder) {
-          createSession(undefined, folder);
+          const folderName = folder.split(/[/\\]/).pop() || 'new session';
+          createSession(folderName, folder);
         }
       });
     } else {
-      createSession(undefined, '/');
+      createSession('new session', '/Users/yuru/yurucode');
     }
   }
   
@@ -129,29 +180,6 @@ document.addEventListener('keydown', (e) => {
     }
   }
   
-  // Ctrl + Tab - Next tab
-  if (e.ctrlKey && e.key === 'Tab' && !e.shiftKey) {
-    e.preventDefault();
-    console.log('Keyboard shortcut: Next tab');
-    const { sessions, currentSessionId, setCurrentSession } = useClaudeCodeStore.getState();
-    if (sessions.length > 1) {
-      const currentIndex = sessions.findIndex(s => s.id === currentSessionId);
-      const nextIndex = (currentIndex + 1) % sessions.length;
-      setCurrentSession(sessions[nextIndex].id);
-    }
-  }
-  
-  // Ctrl + Shift + Tab - Previous tab
-  if (e.ctrlKey && e.shiftKey && e.key === 'Tab') {
-    e.preventDefault();
-    console.log('Keyboard shortcut: Previous tab');
-    const { sessions, currentSessionId, setCurrentSession } = useClaudeCodeStore.getState();
-    if (sessions.length > 1) {
-      const currentIndex = sessions.findIndex(s => s.id === currentSessionId);
-      const prevIndex = currentIndex === 0 ? sessions.length - 1 : currentIndex - 1;
-      setCurrentSession(sessions[prevIndex].id);
-    }
-  }
   
   // Cmd/Ctrl + 1-9 - Switch to specific tab
   if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {

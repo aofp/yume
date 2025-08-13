@@ -72,19 +72,29 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.4); /* Slight opacity to dim the app */
-  backdrop-filter: blur(1px);
-  z-index: 9998; /* Just below the connection status message */
+  background: rgba(0, 0, 0, 0.95); /* Almost fully opaque black background */
+  backdrop-filter: blur(4px);
+  z-index: 99999; /* Highest z-index to cover everything */
   pointer-events: all; /* Block all clicks */
   cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
+  -webkit-app-region: drag; /* Allow dragging the window */
+}
+
+/* Container for overlay content */
+.connection-overlay-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  -webkit-app-region: no-drag; /* Prevent dragging on the spinner itself */
 }
 
 /* Spinning loader icon */
 .connection-spinner {
-  color: var(--accent-color);
+  color: var(--accent-color); /* Use the accent color variable */
   animation: spin 1s linear infinite;
 }
 

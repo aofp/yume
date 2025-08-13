@@ -150,8 +150,10 @@
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
-  max-height: 80vh;
-  overflow-y: auto;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
   padding: 0;
   animation: modalFadeIn 0.2s ease;
   user-select: none;
@@ -176,6 +178,22 @@
   padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   margin-bottom: 0;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: #0a0a0a;
+  z-index: 1;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-icon {
+  color: var(--accent-color);
+  opacity: 0.8;
 }
 
 .modal-title {
@@ -227,7 +245,9 @@
 .modal-content {
   flex: 1;
   overflow-y: auto;
+  overflow-x: hidden;
   padding: 2px;
+  max-height: calc(70vh - 45px); /* Account for header height */
 }
 
 .recent-item-container {
@@ -316,20 +336,27 @@
 
 /* Scrollbar styling for modal */
 .modal-content::-webkit-scrollbar {
-  width: 6px;
+  width: 8px;
+  height: 8px;
 }
 
 .modal-content::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
 }
 
 .modal-content::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.2);
-  border-radius: 3px;
+  background: rgba(255, 153, 153, 0.3);
+  border-radius: 4px;
+  border: 1px solid transparent;
 }
 
 .modal-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.3);
+  background: rgba(255, 153, 153, 0.5);
+}
+
+.modal-content::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 .recent-projects {

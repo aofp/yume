@@ -30,9 +30,6 @@ export const ConnectionStatus: React.FC = () => {
         if (match) {
           setDetails(`Connecting... (attempt ${match[1]}/10)`);
         }
-      } else if (message.includes('Health check passed')) {
-        setStatus('connecting');
-        setDetails('Server ready, connecting...');
       }
     };
 
@@ -74,9 +71,10 @@ export const ConnectionStatus: React.FC = () => {
     <>
       {/* Loading overlay to prevent interactions */}
       <div className="connection-overlay">
-        <IconLoader2 size={64} stroke={1.5} className="connection-spinner" />
+        <div className="connection-overlay-content">
+          <IconLoader2 size={48} stroke={1.5} className="connection-spinner" />
+        </div>
       </div>
-      {/* Remove the status text box entirely - just show the spinner */}
     </>
   );
 };

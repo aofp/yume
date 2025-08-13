@@ -710,7 +710,7 @@ io.on('connection', (socket) => {
   });
 });
 
-// Start server
+// Start server with error handling
 httpServer.listen(PORT, () => {
   writePidFile();
   console.log(`🚀 macOS Claude CLI server running on port ${PORT}`);
@@ -718,4 +718,29 @@ httpServer.listen(PORT, () => {
   console.log(`🖥️ Platform: ${platform()}`);
   console.log(`🏠 Home directory: ${homedir()}`);
   console.log(`✅ Server configured EXACTLY like Windows server`);
+});
+
+// Handle port already in use error
+httpServer.on('error', (error) => {
+  if (error.code === 'EADDRINUSE') {
+    console.error(`❌ Port ${PORT} is already in use`);
+    console.log('Attempting to kill existing process and retry...');
+    
+    // Try to kill any existing Node.js servers on this port
+    const { exec } = require('child_process');
+    exec(`lsof -ti :${PORT} | xargs kill -9`, (err) => {
+      if (!err) {
+        console.log('Killed existing process, retrying in 1 second...');
+        setTimeout(() => {
+          httpServer.listen(PORT);
+        }, 1000);
+      } else {
+        console.error('Failed to kill existing process. Please restart the app.');
+        process.exit(1);
+      }
+    });
+  } else {
+    console.error('Server error:', error);
+    process.exit(1);
+  }
 });

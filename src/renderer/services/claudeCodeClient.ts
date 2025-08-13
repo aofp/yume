@@ -148,13 +148,13 @@ export class ClaudeCodeClient {
     const serverUrl = `http://localhost:${this.serverPort}`;
     console.log(`[ClaudeCodeClient] Connecting to ${serverUrl}`);
     
-    // Connect to the Claude Code server with limited retry settings
+    // Connect to the Claude Code server with balanced retry settings
     this.socket = io(serverUrl, {
       reconnection: true,
-      reconnectionAttempts: 3, // Limited attempts to avoid spamming
+      reconnectionAttempts: 10, // Try 10 times before giving up
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
-      timeout: 5000, // 5 second connection timeout
+      timeout: 20000, // 20 second connection timeout
       transports: ['websocket', 'polling'], // Try both transports
     });
 
