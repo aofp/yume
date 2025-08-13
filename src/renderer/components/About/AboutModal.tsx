@@ -1,10 +1,11 @@
 import React, { useEffect } from 'react';
 import { IconX } from '@tabler/icons-react';
+import packageJson from '../../../package.json';
 import './AboutModal.css';
 
-// Version info
+// Version info - dynamically get version from package.json
 const versionInfo = {
-  version: '1.0.0',
+  version: packageJson.version,
   author: 'yurufrog',
   website: 'yuru.be',
   isDemo: false // Set to true for demo version

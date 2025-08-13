@@ -3,7 +3,7 @@
   "version": "0.8.0",
   "description": "Minimal Claude Code SDK IDE",
   "type": "module",
-  "author": "Claude Code Studio Team",
+  "author": "yuruko",
   "scripts": {
     "dev": "vite",
     "server:macos": "node --expose-gc --max-old-space-size=2048 server-claude-macos.js",
