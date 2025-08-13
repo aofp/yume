@@ -233,11 +233,11 @@
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0; /* Will be overridden by JS with actual input height */
+  bottom: 84px;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 8px;
-  /* padding-bottom is now set dynamically via inline style */
+  padding: 4px;
+  padding-bottom: 0;
   scroll-behavior: auto;
 }
 
@@ -247,7 +247,8 @@
   top: 0;
   left: 0;
   right: 0;
-  bottom: 0; /* Will be overridden by JS */
+  bottom: 84px;
+  padding-bottom: 0;
   overflow-y: auto;
   overflow-x: hidden;
 }
