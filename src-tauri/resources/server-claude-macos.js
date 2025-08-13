@@ -95,9 +95,16 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
     
+    // Ensure Node.js is in PATH for Claude CLI
+    const enhancedEnv = { ...process.env };
+    const nodeBinDir = '/opt/homebrew/bin';
+    if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
+      enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+    }
+    
     const child = spawn(CLAUDE_PATH, titleArgs, {
       cwd: process.cwd(),
-      env: { ...process.env },
+      env: enhancedEnv,
       stdio: ['pipe', 'pipe', 'pipe']
     });
     
@@ -311,11 +318,20 @@ io.on('connection', (socket) => {
         console.log('🔄 Using --resume flag with session:', session.claudeSessionId);
       }
 
-      // Spawn claude process
+      // Spawn claude process with proper PATH for Node.js
       console.log(`🚀 Spawning claude with args:`, args);
+      
+      // Ensure Node.js is in PATH for Claude CLI (which uses #!/usr/bin/env node)
+      const enhancedEnv = { ...process.env };
+      const nodeBinDir = '/opt/homebrew/bin';
+      if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
+        enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+        console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
+      }
+      
       const claudeProcess = spawn(CLAUDE_PATH, args, {
         cwd: processWorkingDir,
-        env: { ...process.env },
+        env: enhancedEnv,
         shell: false
       });
 
