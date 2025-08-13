@@ -376,6 +376,24 @@ socketServer.on('connection', (socket) => {
                             timestamp: Date.now()
                         });
                         lastAssistantMessageIds.delete(sessionId);
+                    } else if (json.type === 'user' && json.message?.content) {
+                        // Handle user message with tool results
+                        for (const block of json.message.content) {
+                            if (block.type === 'tool_result') {
+                                log(`[${sessionId}] 📊 TOOL RESULT FOUND for tool ${block.tool_use_id}`);
+                                // Send tool result as separate message
+                                socket.emit(`message:${sessionId}`, {
+                                    type: 'tool_result',
+                                    message: {
+                                        content: block.content,
+                                        tool_use_id: block.tool_use_id,
+                                        is_error: block.is_error
+                                    },
+                                    timestamp: Date.now(),
+                                    id: `tool-result-${sessionId}-${Date.now()}`
+                                });
+                            }
+                        }
                     } else if (json.type === 'assistant' && json.message?.content) {
                         // Handle full assistant message (non-streaming format)
                         const messageId = `assistant-${sessionId}-${Date.now()}`;

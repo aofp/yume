@@ -1,10 +1,14 @@
 .welcome-screen {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: calc(100vh - 28px - 32px); /* Minus title bar and session tabs */
-  padding: 48px;
+  padding: 0;
   background: #000000;
   animation: fadeIn 0.3s ease;
   user-select: none;

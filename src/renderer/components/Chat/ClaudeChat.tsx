@@ -1142,6 +1142,10 @@ export const ClaudeChat: React.FC = () => {
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            onContextMenu={(e) => {
+              // Allow default context menu for right-click paste
+              e.stopPropagation();
+            }}
             disabled={false}
             style={{ height: '54px' }}
           />
