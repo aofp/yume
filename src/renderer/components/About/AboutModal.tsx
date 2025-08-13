@@ -5,7 +5,7 @@ import './AboutModal.css';
 // Version info
 const versionInfo = {
   version: '1.0.0',
-  author: 'yuru',
+  author: 'yurufrog',
   website: 'yuru.be'
 };
 
@@ -74,9 +74,9 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                     window.open('https://yuru.be', '_blank');
                   }
                 }}
-                style={{ color: '#ff9999', textDecoration: 'none', cursor: 'default' }}
+                style={{ textDecoration: 'none', cursor: 'pointer' }}
               >
-                yuru
+                yurufrog
               </a>
             </div>
             <div className="about-site">
@@ -98,7 +98,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                     window.open('https://yuru.be', '_blank');
                   }
                 }}
-                style={{ color: '#ff99cc', textDecoration: 'none', cursor: 'default' }}
+                style={{ textDecoration: 'none', cursor: 'pointer' }}
               >
                 yuru.be
               </a>

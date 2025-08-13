@@ -913,14 +913,22 @@ body.platform-win32 .tool-detail {
 /* Result Messages */
 .message.result-success {
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
   padding: 12px 0;
   color: #ffb3d9;
   font-size: 11px;
   border-top: 1px solid rgba(255, 153, 204, 0.1);
   margin-top: 12px;
   animation: resultSlide 0.4s ease;
+}
+
+.result-text-content {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 12px;
+  font-family: 'Fira Code', monospace;
+  margin-bottom: 4px;
 }
 
 .message.result-error {

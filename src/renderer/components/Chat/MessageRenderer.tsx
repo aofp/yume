@@ -1548,6 +1548,7 @@ const MessageRendererBase: React.FC<{
         // Look back through messages to count tool_use messages since the last user message
         const currentIndex = sessionMessages.findIndex(m => m === message);
         let toolCount = 0;
+        let hasAssistantMessage = false;
         if (currentIndex > 0) {
           // Go backwards from result to find tool uses in this turn
           for (let i = currentIndex - 1; i >= 0; i--) {
@@ -1556,23 +1557,36 @@ const MessageRendererBase: React.FC<{
               // Stop at the user message that triggered this response
               break;
             }
-            if (msg.type === 'tool_use' || 
-                (msg.type === 'assistant' && msg.message?.content && Array.isArray(msg.message.content))) {
-              // Count tool_use messages or assistant messages with tool_use content blocks
-              if (msg.type === 'tool_use') {
-                toolCount++;
-              } else if (msg.message?.content) {
-                const content = msg.message.content;
-                if (Array.isArray(content)) {
-                  toolCount += content.filter(block => block.type === 'tool_use').length;
+            // Check if there's an assistant message with text content
+            if (msg.type === 'assistant' && msg.message?.content) {
+              const content = msg.message.content;
+              if (typeof content === 'string' && content.trim()) {
+                hasAssistantMessage = true;
+              } else if (Array.isArray(content)) {
+                const hasText = content.some(block => block.type === 'text' && block.text?.trim());
+                if (hasText) {
+                  hasAssistantMessage = true;
                 }
+                toolCount += content.filter(block => block.type === 'tool_use').length;
               }
+            }
+            if (msg.type === 'tool_use') {
+              toolCount++;
             }
           }
         }
         
+        // Only show result text if there's no assistant message with text content
+        const resultText = message.result || '';
+        const showResultText = resultText && !hasAssistantMessage;
+        
         return (
           <div className="message result-success">
+            {showResultText && (
+              <div className="result-text-content">
+                {resultText}
+              </div>
+            )}
             <div className="elapsed-time">
               {elapsedSeconds}s
               {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
