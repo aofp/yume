@@ -123,14 +123,14 @@
 }
 
 .about-site a {
-  color: var(--accent-color);
+  color: rgba(255, 255, 255, 0.5);
   text-decoration: none;
-  border-bottom: 1px solid transparent;
-  transition: border-color 0.2s;
+  transition: all 0.2s ease;
 }
 
 .about-site a:hover {
-  border-bottom-color: var(--accent-color);
+  color: var(--accent-color);
+  text-decoration: underline;
 }
 
 @keyframes fadeIn {

@@ -460,3 +460,8 @@
   left: 4px;
   z-index: 100;
 }
+
+/* macOS-specific adjustment for welcome screen */
+.platform-darwin .model-selector-container {
+  bottom: 3px; /* 1px lower on macOS */
+}

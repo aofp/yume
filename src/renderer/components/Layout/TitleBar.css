@@ -112,6 +112,18 @@
   -webkit-user-select: none;
 }
 
+/* Individual letter hover effects */
+.titlebar-letter {
+  color: rgba(255, 255, 255, 0.4);
+  font-weight: bold;
+  transition: color 0.4s ease;
+  display: inline-block;
+}
+
+.titlebar-letter:hover {
+  color: var(--accent-color);
+}
+
 .titlebar-title {
   font-size: 11px;
   font-weight: bold;

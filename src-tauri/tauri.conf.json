@@ -1,6 +1,6 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "yurucode",
+  "productName": "yuru code",
   "version": "1.0.0",
   "identifier": "be.yuru.yurucode",
   "build": {
@@ -14,7 +14,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "yuru code",
+        "title": "yuru>code",
         "width": 516,
         "height": 509,
         "minWidth": 516,

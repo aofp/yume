@@ -61,10 +61,24 @@ fn clear_log() {
     }
 }
 
-// Get server logs
+// Get server logs (limited to last 800 lines)
 pub fn get_server_logs() -> String {
-    fs::read_to_string(get_log_path())
-        .unwrap_or_else(|e| format!("Failed to read logs: {}", e))
+    match fs::read_to_string(get_log_path()) {
+        Ok(contents) => {
+            let lines: Vec<&str> = contents.lines().collect();
+            const MAX_LINES: usize = 800;
+            
+            if lines.len() > MAX_LINES {
+                let start_index = lines.len() - MAX_LINES;
+                let mut result = format!("... (showing last {} lines)\n", MAX_LINES);
+                result.push_str(&lines[start_index..].join("\n"));
+                result
+            } else {
+                contents
+            }
+        }
+        Err(e) => format!("Failed to read logs: {}", e)
+    }
 }
 
 // EMBEDDED SERVER - REQUIRES SOCKET.IO TO BE BUNDLED

@@ -363,6 +363,7 @@ export const SessionTabs: React.FC = () => {
                     // Find which tab we're over
                     const elements = document.elementsFromPoint(moveEvent.clientX, moveEvent.clientY);
                     const tabElement = elements.find(el => el.classList.contains('session-tab')) as HTMLElement;
+                    const newTabButton = elements.find(el => el.classList.contains('tab-new'));
                     
                     if (tabElement) {
                       const targetSessionId = tabElement.getAttribute('data-session-id');
@@ -371,9 +372,21 @@ export const SessionTabs: React.FC = () => {
                         currentDragOver = targetSessionId;
                         setDragOverTab(targetSessionId);
                       }
-                    } else {
-                      currentDragOver = null;
+                    } else if (newTabButton) {
+                      // Over the new tab button - mark for moving to end
+                      currentDragOver = 'move-to-end';
                       setDragOverTab(null);
+                      setDragOverNewTab(true);
+                    } else {
+                      // Check if we're past the new tab button (to the right of it)
+                      const newTabRect = document.querySelector('.tab-new')?.getBoundingClientRect();
+                      if (newTabRect && moveEvent.clientX > newTabRect.right) {
+                        currentDragOver = 'move-to-end';
+                        setDragOverTab(null);
+                      } else {
+                        currentDragOver = null;
+                        setDragOverTab(null);
+                      }
                     }
                   }
                 };
@@ -395,8 +408,16 @@ export const SessionTabs: React.FC = () => {
                     if (newTabButton && newTabButton.contains(upEvent.target as Node)) {
                       // Don't create session here - it's handled by the button's onMouseUp
                       console.log('Dropped on new tab button - handled by button');
+                    } else if (currentDragOver === 'move-to-end') {
+                      // Move the tab to the end of the list
+                      const fromIndex = sessions.findIndex(s => s.id === session.id);
+                      const toIndex = sessions.length - 1;
+                      if (fromIndex !== -1 && fromIndex !== toIndex) {
+                        console.log('Moving tab to end from', fromIndex, 'to', toIndex);
+                        reorderSessions(fromIndex, toIndex);
+                      }
                     } else if (currentDragOver) {
-                      // Perform the reorder
+                      // Perform the reorder between tabs
                       const fromIndex = sessions.findIndex(s => s.id === session.id);
                       const toIndex = sessions.findIndex(s => s.id === currentDragOver);
                       if (fromIndex !== -1 && toIndex !== -1 && fromIndex !== toIndex) {

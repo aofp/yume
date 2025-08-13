@@ -85,11 +85,17 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
               e.preventDefault();
               setShowAboutModal(true);
             }}
-            title="right-click for about"
           >
-            <span className="titlebar-text">
-              <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 'bold' }}>yuru</span>
-              <span style={{ color: 'rgba(255, 255, 255, 0.4)', fontWeight: 'bold' }}>code</span>
+            <span className="titlebar-text" onContextMenu={(e) => e.preventDefault()}>
+              <span className="titlebar-letter">y</span>
+              <span className="titlebar-letter">u</span>
+              <span className="titlebar-letter">r</span>
+              <span className="titlebar-letter">u</span>
+              <span className="titlebar-letter">&gt;</span>
+              <span className="titlebar-letter">c</span>
+              <span className="titlebar-letter">o</span>
+              <span className="titlebar-letter">d</span>
+              <span className="titlebar-letter">e</span>
             </span>
           </div>
         </div>

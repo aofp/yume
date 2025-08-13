@@ -6,7 +6,8 @@ import './AboutModal.css';
 const versionInfo = {
   version: '1.0.0',
   author: 'yurufrog',
-  website: 'yuru.be'
+  website: 'yuru.be',
+  isDemo: false // Set to true for demo version
 };
 
 interface AboutModalProps {
@@ -45,39 +46,33 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
         
         <div className="about-content">
-          <div className="about-logo">
+          <div className="about-logo" style={{ fontFamily: "'Fira Code', monospace" }}>
             <span className="about-yuru">yuru</span>
+            <span style={{ color: 'var(--accent-color)' }}>&gt;</span>
             <span className="about-code">code</span>
           </div>
           
           <div className="about-version">
-            version {versionInfo.version}
+            version {versionInfo.version} <span style={{ color: 'var(--accent-color)' }}>[{versionInfo.isDemo ? 'demo' : 'full'}]</span>
           </div>
+          
+          {versionInfo.isDemo && (
+            <div className="about-license">
+              <button 
+                className="about-buy-license"
+                onClick={() => {
+                  console.log('Buy license clicked - placeholder');
+                  // TODO: Implement license purchase flow
+                }}
+              >
+                buy license
+              </button>
+            </div>
+          )}
           
           <div className="about-credits">
             <div className="about-author">
-              by <a 
-                href="https://yuru.be" 
-                onClick={async (e) => {
-                  e.preventDefault();
-                  // Open in default browser
-                  if (window.__TAURI__) {
-                    const { invoke } = await import('@tauri-apps/api/core');
-                    // Use our custom command to open URL in default browser
-                    await invoke('open_external', { url: 'https://yuru.be' }).catch(() => {
-                      // Fallback to window.open if command fails
-                      window.open('https://yuru.be', '_blank');
-                    });
-                  } else if (window.electronAPI?.openExternal) {
-                    window.electronAPI.openExternal('https://yuru.be');
-                  } else {
-                    window.open('https://yuru.be', '_blank');
-                  }
-                }}
-                style={{ textDecoration: 'none', cursor: 'pointer' }}
-              >
-                yurufrog
-              </a>
+              by <span>yurufrog</span>
             </div>
             <div className="about-site">
               site: <a 
