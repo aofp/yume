@@ -37,8 +37,12 @@
   -webkit-app-region: no-drag;
 }
 
-.tabs-scrollable.has-overflow {
-  top: 0;
+/* Windows-specific: Adjust positioning when scrollbar is present */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  .tabs-scrollable.has-overflow {
+    padding-bottom: 3px;
+    top: 0px;
+  }
 }
 
 .tabs-actions {
@@ -60,33 +64,30 @@
 }
 
 .tabs-scrollable {
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;
+  /* Firefox scrollbar properties removed for cleaner look */
 }
 
 .tabs-scrollable::-webkit-scrollbar {
-  height: 4px;
+  height: 1px !important;
   background: transparent;
-  margin-top: 3px;
 }
 
 .tabs-scrollable::-webkit-scrollbar-track {
   background: transparent;
-  margin-top: 3px;
+  height: 1px !important;
 }
 
 .tabs-scrollable::-webkit-scrollbar-thumb {
   background: rgba(var(--accent-rgb), 0.3);
   border-radius: 0;
-  height: 1px;
-  background-clip: content-box;
-  border-top: 3px solid transparent;
+  height: 1px !important;
+  min-height: 1px !important;
+  max-height: 1px !important;
 }
 
 .tabs-scrollable::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--accent-rgb), 0.5);
-  background-clip: content-box;
-  border-top: 3px solid transparent;
+  height: 1px !important;
 }
 
 .session-tab {

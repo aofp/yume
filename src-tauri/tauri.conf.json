@@ -14,11 +14,11 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "yurucode",
-        "width": 800,
-        "height": 600,
-        "minWidth": 500,
-        "minHeight": 500,
+        "title": "yuru code",
+        "width": 516,
+        "height": 509,
+        "minWidth": 516,
+        "minHeight": 509,
         "resizable": true,
         "fullscreen": false,
         "decorations": false,

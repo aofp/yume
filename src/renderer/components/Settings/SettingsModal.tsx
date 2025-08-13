@@ -17,7 +17,7 @@ interface SettingsModalProps {
 const COLOR_ROWS = [
   // Row 1: Only 2 colors - grey and white
   [
-    '#cccccc', '#ffffff'
+    '#dddddd', '#ffffff'
   ],
   
   // Row 2: Full spectrum starting with blue - 21 unique colors
@@ -52,7 +52,7 @@ const ALL_COLORS = COLOR_ROWS.flat();
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [zoomLevel, setZoomLevel] = useState(0);
-  const [accentColor, setAccentColor] = useState('#cccccc');
+  const [accentColor, setAccentColor] = useState('#dddddd');
   const [showColorPicker, setShowColorPicker] = useState(false);
 
   useEffect(() => {
@@ -82,7 +82,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     getZoom();
 
     // Get saved accent color
-    const savedColor = localStorage.getItem('accentColor') || '#cccccc';
+    const savedColor = localStorage.getItem('accentColor') || '#dddddd';
     setAccentColor(savedColor);
 
     // Listen for zoom changes from keyboard shortcuts

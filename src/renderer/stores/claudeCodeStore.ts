@@ -379,8 +379,21 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             sessionId,
             type: message.type,
             id: message.id,
-            streaming: message.streaming
+            streaming: message.streaming,
+            name: message.message?.name,
+            hasContent: !!message.message?.content,
+            hasInput: !!message.message?.input
           });
+          
+          // CRITICAL LOG FOR TOOL MESSAGES
+          if (message.type === 'tool_use' || message.type === 'tool_result') {
+            console.log('🔧🔧🔧 TOOL MESSAGE RECEIVED:', {
+              type: message.type,
+              name: message.message?.name,
+              id: message.id,
+              fullMessage: message
+            });
+          }
           
           // Handle streaming messages by updating existing message or adding new
           set(state => {

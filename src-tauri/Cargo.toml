@@ -27,6 +27,7 @@ tauri-plugin-fs = "2.0.0-rc"
 tauri-plugin-dialog = "2.0.0-rc"
 tauri-plugin-shell = "2.0.0-rc"
 tauri-plugin-store = "2.0.0-rc"
+tauri-plugin-clipboard-manager = "2.0.0-rc"
 tokio = { version = "1.40", features = ["full"] }
 tokio-tungstenite = "0.24"
 futures-util = "0.3"

@@ -105,11 +105,11 @@ export const SessionTabs: React.FC = () => {
     };
     
     checkRecentProjects();
-    // Check again when modal closes
+    // Check again when modal closes or sessions change
     if (!showRecentModal) {
       checkRecentProjects();
     }
-  }, [showRecentModal]);
+  }, [showRecentModal, sessions.length]);
 
   // Handle vertical scroll as horizontal scroll on tabs container
   useEffect(() => {

@@ -168,30 +168,32 @@
   background: rgba(var(--accent-rgb), 0.15);
   border: none;
   color: #ffffff;
-  padding: 7px 9px;
-  border-radius: 6px 6px 2px 6px;
-  min-width: 80px;
-  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 12px 12px 4px 12px;
+  min-width: 60px;
+  font-size: 12px;
   line-height: 1.5;
   max-width: 100%;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  display: inline-block;
 }
 
 .message.assistant .message-bubble {
-  background: rgba(128, 128, 128, 0.2);
+  background: rgba(128, 128, 128, 0.15);
   border: none;
   color: #ffffff;
-  padding: 7px 9px;
-  border-radius: 6px 6px 6px 2px;
-  min-width: 80px;
-  font-size: 13px;
+  padding: 8px 12px;
+  border-radius: 12px 12px 12px 4px;
+  min-width: 60px;
+  font-size: 12px;
   line-height: 1.5;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-  max-width: 100%;
+  box-shadow: none;
+  width: auto;
   display: inline-block;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  max-width: 100%;
 }
 
 /* Assistant Messages */
@@ -204,15 +206,24 @@
 }
 
 .message.assistant .message-content {
-  max-width: 100%;
+  max-width: 80%;
   width: auto;
   padding-left: 0;
+  display: inline-block;
+}
+
+.message.user .message-content {
+  max-width: 70%;
+  width: auto;
+  padding-left: 0;
+  display: inline-block;
 }
 
 .message-content {
   max-width: 100%;
   width: auto;
   padding-left: 0;
+  display: inline-block;
 }
 
 /* Markdown Content */

@@ -44,6 +44,10 @@ const fs = require('fs');
 
 const app = express();
 const httpServer = createServer(app);
+
+// DEV MODE - Always log everything for debugging
+console.log('🔧 SERVER STARTING - VERBOSE LOGGING ENABLED');
+
 const io = new Server(httpServer, {
   cors: {
     origin: "*",
@@ -231,6 +235,35 @@ io.on('connection', (socket) => {
   console.log('Transport:', socket.conn.transport.name);
   console.log('Time:', new Date().toISOString());
   console.log('===================================');
+  
+  // Wrap socket.emit to log ALL emissions
+  const originalEmit = socket.emit.bind(socket);
+  socket.emit = function(event, ...args) {
+    // Log everything we emit
+    if (event.startsWith('message:')) {
+      const msgData = args[0];
+      console.log('📤 EMITTING MESSAGE:', {
+        event,
+        type: msgData?.type,
+        id: msgData?.id,
+        name: msgData?.message?.name,
+        streaming: msgData?.streaming,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Extra logging for tool messages
+      if (msgData?.type === 'tool_use' || msgData?.type === 'tool_result') {
+        console.log('🔧🔧🔧 EMITTING TOOL MESSAGE:', {
+          type: msgData.type,
+          name: msgData.message?.name,
+          hasInput: !!msgData.message?.input,
+          hasContent: !!msgData.message?.content,
+          fullMessage: msgData
+        });
+      }
+    }
+    return originalEmit(event, ...args);
+  };
 
   // Create session
   socket.on('createSession', async (data, callback) => {

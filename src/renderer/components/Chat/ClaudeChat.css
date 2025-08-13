@@ -3,19 +3,18 @@
 .chat-container {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 28px - 32px); /* Minus title bar and session tabs */
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   background: #000000;
-  position: relative;
   overflow: hidden; /* Prevent outer container from scrolling */
 }
 
 /* Windows-specific fix for zoom issues */
 .platform-win32 .chat-container {
-  height: calc(100vh - 60px);
-  max-height: calc(100vh - 60px);
-  display: flex;
-  flex-direction: column;
-  position: relative;
+  height: 100%;
 }
 
 /* Search bar - fixed top right minimal UI */
@@ -229,32 +228,17 @@
 
 /* Messages Area */
 .chat-messages {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 84px;
+  flex: 1 1 0;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 4px;
-  padding-bottom: 0;
   scroll-behavior: auto;
-}
-
-/* Windows-specific fix for messages area */
-.platform-win32 .chat-messages {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 84px;
-  padding-bottom: 0;
-  overflow-y: auto;
-  overflow-x: hidden;
+  min-height: 0;
+  margin-top: 60px;
 }
 
 .message {
-  margin-bottom: 0;
+  margin-bottom: 8px;
   animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -275,7 +259,7 @@
 }
 
 .message.user .message-content {
-  max-width: 85%;
+  max-width: 70%;
 }
 
 .message.assistant {
@@ -284,7 +268,7 @@
 }
 
 .message.assistant .message-content {
-  max-width: 85%;
+  max-width: 80%;
 }
 
 .message-text {
@@ -595,26 +579,20 @@
 
 /* Input Area */
 .chat-input-container {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
+  flex: 0 0 auto;
   padding: 3px 4px 2px 4px;
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   transition: background 0.2s ease;
-  z-index: 1000; /* Above messages */
+  min-height: 60px;
+  max-height: 40vh;
+  overflow-y: auto;
 }
 
 /* Windows-specific fix to keep input visible when zoomed */
 .platform-win32 .chat-input-container {
-  position: fixed;
-  bottom: 0;
-  left: 0;
-  right: 0;
   min-height: 60px;
   max-height: 40vh; /* Limit to 40% of viewport height */
-  z-index: 1000;
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   padding: 3px 4px 2px 4px;

@@ -168,8 +168,8 @@ export const WelcomeScreen: React.FC = () => {
             disabled={recentProjects.length === 0}
             title={`recent projects (ctrl+r)`}
           >
-            <IconChevronDown size={16} stroke={1.5} />
             <span>{recentProjects.length}</span>
+            <IconChevronDown size={16} stroke={1.5} />
           </button>
         </div>
       </div>

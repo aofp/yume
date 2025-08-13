@@ -831,6 +831,17 @@ const MessageRendererBase: React.FC<{
       streaming: message.streaming,
       hasContent: !!message.message?.content
     });
+    
+    // Extra debug for tool messages
+    if (message.type === 'tool_use' || message.type === 'tool_result') {
+      console.log('[MessageRenderer] 🔧 TOOL MESSAGE DEBUG:', {
+        type: message.type,
+        toolName: message.message?.name,
+        hasInput: !!message.message?.input,
+        hasContent: !!message.message?.content,
+        fullMessage: message
+      });
+    }
   }, [message, index, isLast]);
   
   const handleCopy = (text: string) => {

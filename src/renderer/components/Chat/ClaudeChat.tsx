@@ -147,6 +147,8 @@ export const ClaudeChat: React.FC = () => {
   const [thinkingElapsed, setThinkingElapsed] = useState<{ [sessionId: string]: number }>({});
   const [scrollPositions, setScrollPositions] = useState<{ [sessionId: string]: number }>({});
   const [inputContainerHeight, setInputContainerHeight] = useState(120);
+  const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
+  const [zoomLevel, setZoomLevel] = useState(1);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -159,6 +161,7 @@ export const ClaudeChat: React.FC = () => {
     currentSessionId,
     persistedSessionId,
     createSession,
+    deleteSession,
     sendMessage,
     resumeSession,
     interruptSession,
@@ -177,6 +180,62 @@ export const ClaudeChat: React.FC = () => {
   // User must manually create sessions with the + button
 
   // NO auto-selection - user must explicitly choose or create a session
+  
+  // Track viewport and input container changes for zoom
+  useEffect(() => {
+    const handleResize = () => {
+      setViewportHeight(window.innerHeight);
+      
+      // Get the current zoom level from body style
+      const bodyZoom = document.body.style.zoom;
+      const currentZoom = bodyZoom ? parseFloat(bodyZoom) : 1;
+      setZoomLevel(currentZoom);
+      
+      if (inputContainerRef.current) {
+        // Get actual rendered height
+        const rect = inputContainerRef.current.getBoundingClientRect();
+        setInputContainerHeight(rect.height);
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    handleResize(); // Initial measurement
+    
+    // Watch for zoom changes via MutationObserver
+    const observer = new MutationObserver((mutations) => {
+      mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+          const bodyZoom = document.body.style.zoom;
+          const currentZoom = bodyZoom ? parseFloat(bodyZoom) : 1;
+          setZoomLevel(currentZoom);
+          handleResize();
+        }
+      });
+    });
+    
+    observer.observe(document.body, {
+      attributes: true,
+      attributeFilter: ['style']
+    });
+    
+    // Use ResizeObserver for input container
+    const resizeObserver = new ResizeObserver(() => {
+      if (inputContainerRef.current) {
+        const height = inputContainerRef.current.getBoundingClientRect().height;
+        setInputContainerHeight(height);
+      }
+    });
+    
+    if (inputContainerRef.current) {
+      resizeObserver.observe(inputContainerRef.current);
+    }
+    
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      observer.disconnect();
+      resizeObserver.disconnect();
+    };
+  }, []);
 
   // Save scroll position when scrolling
   useEffect(() => {
@@ -321,13 +380,23 @@ export const ClaudeChat: React.FC = () => {
   // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't trigger shortcuts when typing in input fields
+      // Don't trigger shortcuts when typing in input fields (except for Ctrl+W and Ctrl+T)
       const target = e.target as HTMLElement;
       const isInputField = target.tagName === 'INPUT' || 
                            target.tagName === 'TEXTAREA' || 
                            target.contentEditable === 'true';
       
-      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      // Ctrl+W to close tab (works even in input fields)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+        e.preventDefault();
+        if (currentSessionId && sessions.length > 0) {
+          deleteSession(currentSessionId);
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+        // Ctrl+T for new tab (works even in input fields)
+        e.preventDefault();
+        createSession();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         setSearchVisible(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
@@ -382,7 +451,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, showRecentModal, currentSession, setShowStatsModal, interruptSession, setScrollPositions]);
+  }, [searchVisible, currentSessionId, clearContext, showRecentModal, currentSession, setShowStatsModal, interruptSession, setScrollPositions, deleteSession, createSession, sessions.length]);
 
 
   // Search functionality
@@ -803,16 +872,16 @@ export const ClaudeChat: React.FC = () => {
     // Simple auto-resize without jumps
     const textarea = e.target;
     const minHeight = 54; // 3 lines * 18px
-    const maxHeight = 144; // 8 lines * 18px
+    const maxHeight = 90; // 5 lines * 18px
     
-    // Just use scrollHeight directly - it works fine when min-height is set in CSS
+    // Reset height to auto to force recalculation when content is deleted
+    textarea.style.height = 'auto';
+    
+    // Calculate new height based on scrollHeight
     const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
     
-    // Only update height if it actually changed
-    const currentHeight = parseInt(textarea.style.height) || minHeight;
-    if (newHeight !== currentHeight) {
-      textarea.style.height = newHeight + 'px';
-    }
+    // Set the calculated height
+    textarea.style.height = newHeight + 'px';
     
     // Show scrollbar only when content exceeds max height
     textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
@@ -894,10 +963,6 @@ export const ClaudeChat: React.FC = () => {
       <div 
         className="chat-messages" 
         ref={chatContainerRef}
-        style={{ 
-          bottom: `${inputContainerHeight}px`,
-          paddingBottom: '20px'
-        }}
       >
         {(() => {
           const processedMessages = currentSession.messages

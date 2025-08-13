@@ -19,8 +19,10 @@ body {
   display: flex;
   flex-direction: column;
   height: 100vh;
+  max-height: 100vh;
   background: #000000;
   padding-top: 60px; /* Account for fixed titlebar (28px) + tabs (32px) */
+  overflow: hidden;
 }
 
 .app-content {
@@ -41,8 +43,8 @@ body {
 
 /* Windows-specific fix for zoom issues */
 .platform-win32 .main-chat-area {
-  position: relative;
-  height: calc(100vh - 60px); /* Account for title and tabs */
+  flex: 1;
+  min-height: 0;
   overflow: hidden;
 }
 

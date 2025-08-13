@@ -4,7 +4,7 @@ use std::sync::{Arc, Mutex};
 use tracing::info;
 
 // SIMPLE FLAG TO CONTROL CONSOLE VISIBILITY AND DEVTOOLS
-pub const YURUCODE_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
+pub const YURUCODE_SHOW_CONSOLE: bool = true;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
 
 // Global handle to the server process
 static SERVER_PROCESS: Mutex<Option<Arc<Mutex<Child>>>> = Mutex::new(None);
@@ -341,14 +341,33 @@ socketServer.on('connection', (socket) => {
                             streaming: true,
                             timestamp: Date.now()
                         });
-                    } else if (json.type === 'content_block_delta' && json.delta?.text) {
+                    } else if (json.type === 'content_block_start' && json.content_block?.type === 'tool_use') {
+                        // Tool use starting in streaming format
+                        log(`[${sessionId}] 🔧 STREAMING TOOL USE START: ${json.content_block.name}`);
                         socket.emit(`message:${sessionId}`, {
-                            type: 'assistant',
-                            id: assistantMessageId,
-                            text: json.delta.text,
-                            streaming: true,
-                            timestamp: Date.now()
+                            type: 'tool_use',
+                            message: {
+                                name: json.content_block.name,
+                                input: {},  // Will be filled by deltas
+                                id: json.content_block.id
+                            },
+                            timestamp: Date.now(),
+                            id: `tool-${sessionId}-${Date.now()}-${json.index}`
                         });
+                    } else if (json.type === 'content_block_delta') {
+                        if (json.delta?.text) {
+                            // Text delta
+                            socket.emit(`message:${sessionId}`, {
+                                type: 'assistant',
+                                id: assistantMessageId,
+                                text: json.delta.text,
+                                streaming: true,
+                                timestamp: Date.now()
+                            });
+                        } else if (json.delta?.partial_json) {
+                            // Tool input delta - we could accumulate these but for now just log
+                            log(`[${sessionId}] Tool input delta: ${json.delta.partial_json}`);
+                        }
                     } else if (json.type === 'message_stop') {
                         socket.emit(`message:${sessionId}`, {
                             type: 'assistant',
@@ -362,17 +381,39 @@ socketServer.on('connection', (socket) => {
                         const messageId = `assistant-${sessionId}-${Date.now()}`;
                         lastAssistantMessageIds.set(sessionId, messageId);
                         
-                        // Extract text content
+                        // Extract text content AND tool uses
+                        let textContent = '';
+                        const toolUses = [];
+                        
                         for (const block of json.message.content) {
                             if (block.type === 'text') {
+                                textContent += block.text;
+                            } else if (block.type === 'tool_use') {
+                                log(`[${sessionId}] 🔧 TOOL USE FOUND: ${block.name}`);
+                                toolUses.push(block);
+                                // Send tool use as separate message
                                 socket.emit(`message:${sessionId}`, {
-                                    type: 'assistant',
-                                    message: { content: block.text },
-                                    streaming: true, // Keep streaming true - will be cleared by result message
-                                    id: messageId,
-                                    timestamp: Date.now()
+                                    type: 'tool_use',
+                                    message: {
+                                        name: block.name,
+                                        input: block.input,
+                                        id: block.id
+                                    },
+                                    timestamp: Date.now(),
+                                    id: `tool-${sessionId}-${Date.now()}`
                                 });
                             }
+                        }
+                        
+                        // Send text content if any
+                        if (textContent) {
+                            socket.emit(`message:${sessionId}`, {
+                                type: 'assistant',
+                                message: { content: textContent },
+                                streaming: true, // Keep streaming true - will be cleared by result message
+                                id: messageId,
+                                timestamp: Date.now()
+                            });
                         }
                     } else if (json.type === 'result') {
                         log(`[${sessionId}] Result received: ${json.result}`);
