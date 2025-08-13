@@ -128,7 +128,7 @@ yurucode is a **minimalist tauri-based claude code interface** targeting develop
 - export to csv
 - no tracking/telemetry
 
-### phase 2: differentiation features (nice to have)
+### phase 2: professional features
 
 #### 4. view switcher system
 **navigation model:**
@@ -143,142 +143,87 @@ yurucode is a **minimalist tauri-based claude code interface** targeting develop
 - smooth transitions
 - minimal visual noise
 
-#### 5. simplified agents
-**our approach (vs claudia's complex system):**
-- prompt templates only
-- no sandboxing needed
-- quick access dropdown
-- user-defined shortcuts
-- import/export templates
+#### 5. intelligent autocomplete (@mentions)
+**context-aware suggestions:**
+- **@filename** - fuzzy file search in project
+- **@folder** - include entire directories
+- **@recent** - recently edited files
+- **@changed** - git modified files
+- **@symbol** - function/class names
+- **@doc** - documentation files
+- **@test** - test files
+- **@config** - config files
 
-#### 6. command palette
-**sublime-text style:**
-- ctrl+shift+p activation
-- fuzzy search everything
-- recent commands
-- custom commands
-- keyboard-only navigation
+**implementation:**
+- trigger on @ character
+- fuzzy matching algorithm
+- preview on hover
+- tab to complete
+- multi-select with checkboxes
+- smart ranking by relevance
 
-### phase 3: unique selling points
+#### 6. smart file context
+**automatic inclusion:**
+- detect imports/dependencies
+- include related test files
+- add relevant configs
+- smart truncation for large files
+- visual indicator of included files
+- one-click exclude
 
-#### 7. focus modes
-**distraction elimination:**
+#### 7. simplified agents
+**practical templates:**
+- code review template
+- bug fix template
+- refactor template
+- documentation template
+- test writing template
+- no complex sandboxing
+- quick access via slash commands
 
-**zen mode:**
-- hide all ui except chat
-- no animations
-- no token counters
-- pure conversation
+### phase 3: polish features
 
-**speed mode:**
-- vim keybindings
-- minimal ui
-- command mode
-- quick actions
-
-**presentation mode:**
-- larger fonts
-- hide sensitive info
-- clean screenshots
-- demo-ready
-
-#### 8. local llm integration
-**privacy-first option:**
-- ollama support
-- automatic fallback
-- model switcher
-- offline capability
-- cost savings
-
-#### 9. workspace system
-**professional organization:**
-```
-workspaces/
-├── personal/
-├── work/
-└── opensource/
-```
-
-**features:**
-- separate settings per workspace
-- different models per workspace
-- isolated history
-- quick switching
-
-#### 10. smart context management
-**intelligent memory:**
-- auto-include relevant files
-- context size optimizer
-- smart truncation
-- priority system
-- visual context meter
-
-### phase 4: advanced features (selective adoption)
-
-#### 11. checkpoint system (simplified from claudia)
-**our minimal version:**
-- one-click checkpoints
+#### 8. checkpoint system (simplified)
+**basic version:**
+- one-click save state
 - simple restore
-- diff viewer (basic)
 - no complex timeline
-- keyboard shortcuts
+- keyboard shortcut (ctrl+s)
 
-#### 12. snippet library
-**code reuse:**
-- save useful responses
-- categorize snippets
-- quick insert
-- share via gist
-- version control friendly
+#### 9. slash commands
+**quick actions:**
+- /clear - clear context
+- /model - switch model
+- /copy - copy last response
+- /export - export session
+- /stats - show token usage
 
-#### 13. collaboration features
-**team-friendly:**
-- share sessions (read-only)
-- export conversations
-- team templates
-- shared prompt library
-- no real-time collab (complexity)
-
-#### 14. automation hooks
-**developer productivity:**
-- pre/post message hooks
-- custom scripts
-- api endpoints
-- webhook support
-- no complex workflows
-
-#### 15. performance profiler
-**optimization focus:**
-- response time tracking
-- token efficiency metrics
-- cost per feature
-- performance tips
-- comparison mode
+#### 10. git integration
+**context awareness:**
+- show current branch
+- include changed files
+- diff viewer
+- commit message helper
+- ignore patterns respect
 
 ## implementation priorities
 
-### immediate (mvp for $21 justification)
+### immediate (mvp for $10 justification)
 1. **project management** - essential for pro use
 2. **session persistence** - table stakes
-3. **basic analytics** - justify cost savings
-4. **view switcher** - professional feel
+3. **@mention autocomplete** - killer feature
+4. **basic analytics** - justify cost savings
 
 ### short-term (differentiation)
-5. **focus modes** - unique selling point
-6. **command palette** - power user appeal
-7. **simple agents** - competitive parity
-8. **workspace system** - pro feature
+5. **smart file context** - productivity boost
+6. **view switcher** - professional feel
+7. **slash commands** - power user appeal
+8. **simple agents** - templates for common tasks
 
-### medium-term (moat building)
-9. **local llm** - privacy advantage
-10. **checkpoint system** - selective adoption
-11. **smart context** - efficiency gain
-12. **snippet library** - productivity boost
-
-### long-term (careful consideration)
-13. **collaboration** - team market
-14. **automation** - advanced users
-15. **profiler** - optimization focus
+### medium-term (polish)
+9. **git integration** - developer necessity
+10. **checkpoint system** - safety net
+11. **export/import** - data portability
 
 ## feature complexity analysis
 

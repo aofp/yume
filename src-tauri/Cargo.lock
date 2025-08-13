@@ -6426,6 +6426,7 @@ dependencies = [
  "tracing",
  "tracing-subscriber",
  "uuid",
+ "walkdir",
  "which 6.0.3",
 ]
 

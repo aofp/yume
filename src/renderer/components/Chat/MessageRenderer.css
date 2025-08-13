@@ -310,7 +310,7 @@
 }
 
 .code-copy-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   color: #ffffff;
 }
 
@@ -1218,4 +1218,22 @@ code ::-moz-selection,
 code *::-moz-selection {
   background: rgba(var(--accent-rgb), 0.25) !important;
   color: var(--color-text-primary) !important;
+}
+
+/* Tool result scrollbar styling */
+.result-content::-webkit-scrollbar {
+  width: 5px;
+}
+
+.result-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.result-content::-webkit-scrollbar-thumb {
+  background: rgba(var(--accent-rgb), 0.3);
+  border-radius: 0;
+}
+
+.result-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--accent-rgb), 0.5);
 }

@@ -163,6 +163,6 @@ ul {
 
 .global-context-menu .context-menu-separator {
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   margin: 2px;
 }

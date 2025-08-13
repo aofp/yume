@@ -1,0 +1,135 @@
+.command-autocomplete {
+  position: fixed;
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  z-index: 10000;
+  left: 4px;
+  right: 80px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+}
+
+.command-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.command-group {
+  margin-bottom: 8px;
+}
+
+.command-group:last-child {
+  margin-bottom: 0;
+}
+
+.command-category {
+  padding: 4px 10px;
+  color: #555;
+  font-size: 9px;
+  text-transform: lowercase;
+  letter-spacing: 0.5px;
+}
+
+.command-item {
+  display: flex;
+  align-items: center;
+  padding: 5px 10px;
+  cursor: default;
+  transition: background-color 0.1s ease;
+}
+
+.command-item:hover {
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.command-item.selected {
+  background: color-mix(in srgb, var(--accent-color) 15%, transparent);
+}
+
+.command-item.selected .command-name {
+  color: var(--accent-color);
+  font-weight: 500;
+}
+
+.command-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  margin-right: 6px;
+  color: #666;
+}
+
+.command-item.selected .command-icon {
+  color: var(--accent-color);
+}
+
+.command-item.selected .command-description {
+  color: var(--accent-color);
+  opacity: 0.8;
+}
+
+.command-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.command-name {
+  color: #fff;
+  font-weight: 500;
+  font-size: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.command-description {
+  color: #666;
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 1px;
+}
+
+.command-footer {
+  display: flex;
+  gap: 10px;
+  padding: 5px 10px;
+  border-top: 1px solid #222;
+  background: #000;
+  font-size: 9px;
+  justify-content: flex-start;
+  align-items: center;
+}
+
+.command-hint {
+  color: #555;
+  white-space: nowrap;
+}
+
+/* Scrollbar styling */
+.command-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.command-list::-webkit-scrollbar-track {
+  background: #0a0a0a;
+}
+
+.command-list::-webkit-scrollbar-thumb {
+  background: #333;
+  border-radius: 3px;
+}
+
+.command-list::-webkit-scrollbar-thumb:hover {
+  background: #444;
+}

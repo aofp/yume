@@ -36,7 +36,7 @@
   
   /* Interactive States */
   --color-hover: rgba(255, 255, 255, 0.05);
-  --color-active: rgba(255, 255, 255, 0.1);
+  --color-active: rgba(255, 255, 255, 0.15);
   --color-focus: rgba(59, 130, 246, 0.5);
   --color-selection: rgba(var(--accent-rgb), 0.2);
   

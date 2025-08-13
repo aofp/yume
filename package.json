@@ -8,7 +8,7 @@
     "dev": "vite",
     "server:macos": "node --expose-gc --max-old-space-size=2048 server-claude-macos.js",
     "server:wsl": "node server-claude-direct.cjs",
-    "build": "vite build && node scripts/patch-vendor.cjs",
+    "build": "node scripts/inject-version.cjs && vite build && node scripts/patch-vendor.cjs",
     "preview": "vite preview",
     "prestart": "node scripts/kill-ports.js",
     "tauri": "tauri",

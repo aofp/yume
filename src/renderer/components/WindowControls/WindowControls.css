@@ -89,7 +89,7 @@
 }
 
 .window-control:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.15);
 }
 
 .window-control.settings {
@@ -97,7 +97,7 @@
 }
 
 .window-control.settings:hover {
-  background-color: rgba(255, 255, 255, 0.1);
+  background-color: rgba(255, 255, 255, 0.15);
   color: var(--accent-color);
 }
 

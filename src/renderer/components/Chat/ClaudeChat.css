@@ -903,7 +903,7 @@
 
 .btn-clear-context, .btn-stats, .btn-help {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.4);
   padding: 3px 8px;
   border-radius: 4px;
@@ -928,12 +928,12 @@
 .btn-clear-context:disabled:hover {
   background: transparent;
   color: rgba(255, 255, 255, 0.4);
-  border-color: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.15);
 }
 
 .btn-help-icon {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.4);
   padding: 6px;
   border-radius: 4px;
@@ -1058,7 +1058,7 @@
   gap: 4px;
   padding: 3px 6px;
   background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 2px;
   transition: border-color 0.2s;
   user-select: none;
@@ -1098,7 +1098,7 @@
   padding: 4px 8px;
   margin-top: 8px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
@@ -1127,7 +1127,7 @@
 
 .help-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 90%;
   max-width: 520px;
@@ -1141,7 +1141,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .help-header h3 {
@@ -1266,7 +1266,7 @@
 
 .stats-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -1280,7 +1280,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   margin-bottom: 0;
 }
 

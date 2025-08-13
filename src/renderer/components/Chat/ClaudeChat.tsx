@@ -37,6 +37,8 @@ import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
+import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete';
+import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -150,6 +152,10 @@ export const ClaudeChat: React.FC = () => {
   const [inputContainerHeight, setInputContainerHeight] = useState(120);
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [mentionTrigger, setMentionTrigger] = useState<string | null>(null);
+  const [mentionCursorPos, setMentionCursorPos] = useState(0);
+  const [commandTrigger, setCommandTrigger] = useState<string | null>(null);
+  const [commandCursorPos, setCommandCursorPos] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -648,6 +654,18 @@ export const ClaudeChat: React.FC = () => {
     const textarea = e.currentTarget;
     const cursorPos = textarea.selectionStart;
     
+    // If mention or command autocomplete is open, let it handle arrow keys and tab
+    if ((mentionTrigger || commandTrigger) && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Tab')) {
+      return; // Let the autocomplete component handle these
+    }
+    
+    if (e.key === 'Escape' && (mentionTrigger || commandTrigger)) {
+      e.preventDefault();
+      setMentionTrigger(null);
+      setCommandTrigger(null);
+      return;
+    }
+    
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSend();
@@ -866,9 +884,118 @@ export const ClaudeChat: React.FC = () => {
     setAttachments(prev => prev.filter(att => att.id !== id));
   };
 
-  // Auto-resize textarea
+  // Handle mention selection
+  const handleMentionSelect = (replacement: string, start: number, end: number) => {
+    const newValue = input.substring(0, start) + replacement + input.substring(end);
+    setInput(newValue);
+    setMentionTrigger(null);
+    
+    // Focus back on the input and set cursor after the replacement
+    if (inputRef.current) {
+      inputRef.current.focus();
+      const newCursorPos = start + replacement.length;
+      setTimeout(() => {
+        if (inputRef.current) {
+          inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+        }
+      }, 0);
+    }
+  };
+
+  // Handle command selection
+  const handleCommandSelect = (replacement: string, start: number, end: number) => {
+    // Check if this is a command we handle locally
+    const command = replacement.trim();
+    
+    if (command === '/clear') {
+      // Handle clear command locally
+      setInput('');
+      setCommandTrigger(null);
+      if (currentSessionId) {
+        clearContext(currentSessionId);
+        // Clear scroll position for this session
+        setScrollPositions(prev => {
+          const newPositions = { ...prev };
+          delete newPositions[currentSessionId];
+          return newPositions;
+        });
+      }
+    } else if (command === '/model') {
+      // Handle model command locally - toggle between opus and sonnet
+      setInput('');
+      setCommandTrigger(null);
+      toggleModel();
+    } else {
+      // For other commands like /compact, just insert into input
+      const newValue = input.substring(0, start) + replacement + input.substring(end);
+      setInput(newValue);
+      setCommandTrigger(null);
+      
+      // Focus back on the input and set cursor after the replacement
+      if (inputRef.current) {
+        inputRef.current.focus();
+        const newCursorPos = start + replacement.length;
+        setTimeout(() => {
+          if (inputRef.current) {
+            inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+          }
+        }, 0);
+      }
+    }
+  };
+
+  // Auto-resize textarea and detect @mentions
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setInput(e.target.value);
+    const newValue = e.target.value;
+    const cursorPosition = e.target.selectionStart;
+    setInput(newValue);
+    
+    // Check for @mention and /command triggers
+    const beforeCursor = newValue.substring(0, cursorPosition);
+    const lastAtIndex = beforeCursor.lastIndexOf('@');
+    const lastSlashIndex = beforeCursor.lastIndexOf('/');
+    
+    // Determine which trigger is more recent
+    if (lastAtIndex >= 0 && lastAtIndex > lastSlashIndex) {
+      // Check if @ is at the start or preceded by whitespace
+      const charBefore = lastAtIndex > 0 ? beforeCursor[lastAtIndex - 1] : ' ';
+      if (charBefore === ' ' || charBefore === '\n' || lastAtIndex === 0) {
+        // Get the text after @ until cursor
+        const mentionText = beforeCursor.substring(lastAtIndex);
+        
+        // Check if there's no space in the mention text (still typing the mention)
+        if (!mentionText.includes(' ') && !mentionText.includes('\n')) {
+          setMentionTrigger(mentionText);
+          setMentionCursorPos(cursorPosition);
+          setCommandTrigger(null);
+        } else {
+          setMentionTrigger(null);
+        }
+      } else {
+        setMentionTrigger(null);
+      }
+    } else if (lastSlashIndex >= 0 && lastSlashIndex > lastAtIndex) {
+      // Check if / is at the start or preceded by whitespace/newline
+      const charBefore = lastSlashIndex > 0 ? beforeCursor[lastSlashIndex - 1] : ' ';
+      if (charBefore === ' ' || charBefore === '\n' || lastSlashIndex === 0) {
+        // Get the text after / until cursor
+        const commandText = beforeCursor.substring(lastSlashIndex);
+        
+        // Check if there's no space in the command text (still typing the command)
+        if (!commandText.includes(' ') && !commandText.includes('\n')) {
+          setCommandTrigger(commandText);
+          setCommandCursorPos(cursorPosition);
+          setMentionTrigger(null);
+        } else {
+          setCommandTrigger(null);
+        }
+      } else {
+        setCommandTrigger(null);
+      }
+    } else {
+      setMentionTrigger(null);
+      setCommandTrigger(null);
+    }
     
     // Simple auto-resize without jumps
     const textarea = e.target;
@@ -1236,6 +1363,28 @@ export const ClaudeChat: React.FC = () => {
         </div>
       </div>
       
+      {/* Mention Autocomplete */}
+      {mentionTrigger && (
+        <MentionAutocomplete
+          trigger={mentionTrigger}
+          cursorPosition={mentionCursorPos}
+          inputRef={inputRef}
+          onSelect={handleMentionSelect}
+          onClose={() => setMentionTrigger(null)}
+          workingDirectory={currentSession?.workingDirectory}
+        />
+      )}
+      
+      {/* Command Autocomplete */}
+      {commandTrigger && (
+        <CommandAutocomplete
+          trigger={commandTrigger}
+          cursorPosition={commandCursorPos}
+          inputRef={inputRef}
+          onSelect={handleCommandSelect}
+          onClose={() => setCommandTrigger(null)}
+        />
+      )}
       
       {/* Recent Projects Modal */}
       {showRecentModal && (

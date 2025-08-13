@@ -146,7 +146,7 @@
 
 .recent-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -176,7 +176,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   margin-bottom: 0;
   flex-shrink: 0;
   position: sticky;
@@ -463,7 +463,7 @@
 /* Import btn-help styles from ClaudeChat.css */
 .btn-help {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.4);
   padding: 3px 8px;
   border-radius: 4px;

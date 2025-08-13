@@ -16,7 +16,7 @@
 
 .settings-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 90%;
   max-width: 238px;
@@ -31,7 +31,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .settings-header h3 {
@@ -91,7 +91,7 @@
   width: 32px;
   height: 32px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
   color: rgba(255, 255, 255, 0.6);
   display: flex;
@@ -138,7 +138,7 @@
   width: 88px;
   height: 32px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 6px;
   cursor: default;
   transition: all 0.2s ease;
@@ -178,7 +178,7 @@
 /* Color Picker Dropdown */
 .color-picker-dropdown {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 444px;
   box-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);
@@ -189,7 +189,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
 }
 
 .color-picker-header h4 {

@@ -244,6 +244,10 @@ pub fn run() {
             commands::check_is_directory,
             commands::toggle_console_visibility,
             commands::open_external,
+            commands::search_files,
+            commands::get_recent_files,
+            commands::get_git_status,
+            commands::get_folder_contents,
         ])
         .on_window_event(|_app_handle, event| {
             // Additional handler for window events at app level

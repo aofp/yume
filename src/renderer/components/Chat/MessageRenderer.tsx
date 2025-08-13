@@ -29,7 +29,8 @@ import {
   IconServer,
   IconTerminal2,
   IconPlayerStop,
-  IconScissors
+  IconScissors,
+  IconCopy
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
@@ -202,6 +203,22 @@ const getMCPToolDisplay = (toolName: string, input: any) => {
     };
   }
   return null;
+};
+
+// Custom syntax highlighter style
+const customVs2015 = {
+  ...vs2015,
+  'hljs': {
+    ...vs2015.hljs,
+    background: '#0a0a0a',
+  }
+};
+
+// Helper function to copy code to clipboard
+const handleCopyCode = (code: string) => {
+  navigator.clipboard.writeText(code).catch(err => {
+    console.error('Failed to copy code:', err);
+  });
 };
 
 // Helper functions
@@ -1577,20 +1594,118 @@ const MessageRendererBase: React.FC<{
         }
         
         // Only show result text if there's no assistant message with text content
-        const resultText = message.result || '';
+        let resultText = message.result || '';
+        
+        // Parse JSON content blocks if present
+        if (resultText && typeof resultText === 'string' && resultText.startsWith('[')) {
+          try {
+            const parsed = JSON.parse(resultText);
+            if (Array.isArray(parsed)) {
+              // Extract text from content blocks
+              const textContent = parsed
+                .filter(block => block.type === 'text')
+                .map(block => block.text)
+                .join('\n')
+                .trim();
+              if (textContent) {
+                resultText = textContent;
+              }
+            }
+          } catch (e) {
+            // Not JSON or parsing failed, use as-is
+          }
+        }
+        
         const showResultText = resultText && !hasAssistantMessage;
         
         return (
           <div className="message result-success">
             {showResultText && (
-              <div className="result-text-content">
-                {resultText}
+              <div className="assistant-bubble">
+                <div className="message-content">
+                  <ReactMarkdown
+                    className="markdown-content"
+                    components={{
+                      code: ({node, inline, className, children, ...props}) => {
+                        const match = /language-(\w+)/.exec(className || '');
+                        return !inline && match ? (
+                          <div className="code-block-wrapper">
+                            <div className="code-header">
+                              <span className="code-language">{match[1]}</span>
+                              <button
+                                className="copy-button"
+                                onClick={() => handleCopyCode(String(children).replace(/\n$/, ''))}
+                                title="copy code"
+                              >
+                                <IconCopy size={12} />
+                              </button>
+                            </div>
+                            <SyntaxHighlighter
+                              style={customVs2015}
+                              language={match[1]}
+                              PreTag="div"
+                              customStyle={{
+                                margin: 0,
+                                borderRadius: 0,
+                                background: '#0a0a0a',
+                                fontSize: '10px',
+                              }}
+                              {...props}
+                            >
+                              {String(children).replace(/\n$/, '')}
+                            </SyntaxHighlighter>
+                          </div>
+                        ) : (
+                          <code className={className} {...props}>
+                            {children}
+                          </code>
+                        );
+                      },
+                      a: ({node, children, href, ...props}) => (
+                        <a
+                          href={href}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="markdown-link"
+                          {...props}
+                        >
+                          {children}
+                        </a>
+                      ),
+                      blockquote: ({node, children, ...props}) => (
+                        <blockquote className="markdown-blockquote" {...props}>
+                          {children}
+                        </blockquote>
+                      ),
+                      ul: ({node, children, ...props}) => (
+                        <ul className="markdown-list" {...props}>
+                          {children}
+                        </ul>
+                      ),
+                      ol: ({node, children, ...props}) => (
+                        <ol className="markdown-list" {...props}>
+                          {children}
+                        </ol>
+                      ),
+                      table: ({node, children, ...props}) => (
+                        <div className="table-wrapper">
+                          <table className="markdown-table" {...props}>
+                            {children}
+                          </table>
+                        </div>
+                      ),
+                    }}
+                  >
+                    {resultText}
+                  </ReactMarkdown>
+                </div>
               </div>
             )}
             <div className="elapsed-time">
               {elapsedSeconds}s
               {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
               {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
+              {message.model && ` • ${message.model === 'opus' ? 'opus 4.1' : 'sonnet 4.0'}`}
             </div>
           </div>
         );

@@ -187,7 +187,7 @@
 .tab-context-bar {
   width: 2px;
   height: 16px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 0;
   position: relative;
   overflow: hidden;
@@ -475,7 +475,7 @@
 
 .tab-context-menu .separator {
   height: 1px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.15);
   margin: 2px;
 }
 
