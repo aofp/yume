@@ -6,13 +6,53 @@
     <!-- CSP temporarily disabled for debugging -->
     <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://localhost:* ws://localhost:*; connect-src 'self' http://localhost:* ws://localhost:*; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com;"> -->
     <title>yurucode</title>
-    <script src="/polyfills.js"></script>
+    <!-- Blocking polyfill script - runs before ANY modules -->
     <script>
-      // Ensure require_core is available before modules load
-      window.require_core = function() {
-        return { Object: Object };
-      };
+      // CRITICAL: This MUST run before modules to prevent Object.assign errors
+      (function() {
+        'use strict';
+        
+        // Polyfill Object.assign
+        if (typeof Object.assign !== 'function') {
+          Object.defineProperty(Object, 'assign', {
+            value: function(target) {
+              if (target === null || target === undefined) {
+                throw new TypeError('Cannot convert undefined or null to object');
+              }
+              var to = Object(target);
+              for (var index = 1; index < arguments.length; index++) {
+                var nextSource = arguments[index];
+                if (nextSource !== null && nextSource !== undefined) {
+                  for (var nextKey in nextSource) {
+                    if (Object.prototype.hasOwnProperty.call(nextSource, nextKey)) {
+                      to[nextKey] = nextSource[nextKey];
+                    }
+                  }
+                }
+              }
+              return to;
+            },
+            writable: true,
+            configurable: true
+          });
+        }
+        
+        // Ensure require_core is available
+        window.require_core = function() {
+          return { 
+            Object: Object,
+            ReactCurrentOwner: { current: null },
+            ReactCurrentDispatcher: { current: null },
+            ReactCurrentBatchConfig: { transition: null },
+            ReactDebugCurrentFrame: { setExtraStackFrame: function() {} }
+          };
+        };
+        
+        console.log('[Polyfill] Object.assign ready:', typeof Object.assign);
+      })();
     </script>
+    <!-- Additional polyfills (non-blocking) -->
+    <script src="/polyfills.js" defer></script>
     <link rel="icon" type="image/png" href="/yurucode.png" />
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

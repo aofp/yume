@@ -733,8 +733,25 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           }
           
           if (block.is_error) {
+            const handleErrorContextMenu = (e: React.MouseEvent) => {
+              e.preventDefault();
+              e.stopPropagation();
+              
+              // Copy error to clipboard
+              navigator.clipboard.writeText(resultContent).then(() => {
+                console.log('Tool error copied to clipboard');
+              }).catch(err => {
+                console.error('Failed to copy error:', err);
+              });
+            };
+            
             return (
-              <div key={idx} className="tool-result error">
+              <div 
+                key={idx} 
+                className="tool-result error"
+                onContextMenu={handleErrorContextMenu}
+                title="right-click to copy error"
+              >
                 <span className="result-text">{resultContent}</span>
               </div>
             );
@@ -874,12 +891,34 @@ const MessageRendererBase: React.FC<{
     case 'system':
       // Show error messages and interruption messages
       if (message.subtype === 'error') {
+        const errorText = typeof message.message === 'string' 
+          ? message.message 
+          : (typeof message.message === 'object' && message.message?.message) 
+            ? message.message.message 
+            : 'An error occurred';
+            
+        const handleContextMenu = (e: React.MouseEvent) => {
+          e.preventDefault();
+          e.stopPropagation();
+          
+          // Copy error to clipboard
+          navigator.clipboard.writeText(errorText).then(() => {
+            console.log('Error copied to clipboard');
+          }).catch(err => {
+            console.error('Failed to copy error:', err);
+          });
+        };
+        
         return (
-          <div className="message system-error">
+          <div 
+            className="message system-error" 
+            onContextMenu={handleContextMenu}
+            title="right-click to copy error"
+          >
             <div className="message-content">
               <div className="error-message">
                 <IconAlertTriangle size={14} stroke={1.5} />
-                <span>{message.message || 'An error occurred'}</span>
+                <span>{errorText}</span>
               </div>
             </div>
           </div>
