@@ -9,6 +9,11 @@ export const ConnectionStatus: React.FC = () => {
   useEffect(() => {
     // Don't set any initial details - just show the spinner
     
+    // Auto-hide after 3 seconds to allow app to work
+    const timer = setTimeout(() => {
+      setStatus('connected');
+    }, 3000);
+    
     // Listen for console logs to determine connection status
     const originalLog = console.log;
     const originalError = console.error;
@@ -57,6 +62,7 @@ export const ConnectionStatus: React.FC = () => {
     };
 
     return () => {
+      clearTimeout(timer);
       console.log = originalLog;
       console.error = originalError;
       console.warn = originalWarn;

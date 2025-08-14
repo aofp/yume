@@ -1,3 +1,14 @@
+/// WebSocket server module (alternative to Socket.IO)
+/// This module provides a pure Rust WebSocket implementation for client-server communication
+/// Currently not actively used - the application uses the Node.js Socket.IO server instead
+/// Kept as a potential future alternative to eliminate Node.js dependency
+/// 
+/// Features:
+/// - Native WebSocket server using tokio-tungstenite
+/// - Direct integration with ClaudeManager
+/// - Async message handling with tokio channels
+/// - WSL path conversion for Windows compatibility
+
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -10,6 +21,8 @@ use tracing::{error, info};
 
 use crate::claude::{ClaudeManager, ClaudeMessage};
 
+/// WebSocket message types for client-server communication
+/// Uses tagged JSON with "event" field for message routing
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "event")]
 pub enum SocketMessage {
@@ -36,12 +49,15 @@ pub enum SocketMessage {
     HealthResponse { status: String },
 }
 
+/// WebSocket server for handling real-time communication with the frontend
+/// Manages WebSocket connections and routes messages to ClaudeManager
 pub struct WebSocketServer {
-    port: u16,
-    claude_manager: Arc<ClaudeManager>,
+    port: u16,                           // Port to listen on
+    claude_manager: Arc<ClaudeManager>,   // Reference to Claude session manager
 }
 
 impl WebSocketServer {
+    /// Creates a new WebSocket server instance
     pub fn new(port: u16, claude_manager: Arc<ClaudeManager>) -> Self {
         Self {
             port,
@@ -49,6 +65,8 @@ impl WebSocketServer {
         }
     }
 
+    /// Starts the WebSocket server and begins accepting connections
+    /// Each connection is handled in a separate tokio task
     pub async fn start(&self) -> Result<()> {
         let addr = format!("127.0.0.1:{}", self.port);
         let listener = TcpListener::bind(&addr).await?;
@@ -66,6 +84,8 @@ impl WebSocketServer {
         Ok(())
     }
 
+    /// Finds an available port in the range 3001-3005
+    /// Returns 3001 as fallback if all ports are occupied
     pub fn find_available_port() -> u16 {
         for port in 3001..=3005 {
             if std::net::TcpListener::bind(format!("127.0.0.1:{}", port)).is_ok() {
@@ -76,6 +96,8 @@ impl WebSocketServer {
     }
 }
 
+/// Handles a single WebSocket connection
+/// Sets up bidirectional communication channels and message routing
 async fn handle_connection(
     stream: TcpStream,
     addr: SocketAddr,
@@ -117,6 +139,8 @@ async fn handle_connection(
     Ok(())
 }
 
+/// Routes incoming WebSocket messages to appropriate handlers
+/// Manages Claude session lifecycle and message passing
 async fn handle_socket_message(
     msg: SocketMessage,
     claude_manager: &Arc<ClaudeManager>,
@@ -186,6 +210,9 @@ async fn handle_socket_message(
     }
 }
 
+/// Converts WSL paths to Windows paths
+/// Example: /mnt/c/Users -> C:\Users
+/// Required for Windows compatibility when paths come from WSL
 fn convert_wsl_path(path: &str) -> String {
     if path.starts_with("/mnt/") && path.len() > 6 {
         let parts: Vec<&str> = path[5..].split('/').collect();

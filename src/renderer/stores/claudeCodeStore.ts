@@ -344,21 +344,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       
       // Listen for title updates
       const titleCleanup = claudeCodeClient.onTitle(sessionId, (title: string) => {
-        // CRITICAL: Check if this session is still the current one
-        const currentState = get();
-        if (currentState.currentSessionId !== sessionId) {
-          console.warn('[Store] Ignoring title for inactive session:', {
-            titleForSession: sessionId,
-            currentSession: currentState.currentSessionId
-          });
-          return; // Don't process titles for inactive sessions
-        }
-        
         console.log('[Store] Received title for session:', sessionId, title);
         set(state => ({
           sessions: state.sessions.map(s => 
-            // Only update title if user hasn't manually renamed and session is still current
-            s.id === sessionId && !s.userRenamed && state.currentSessionId === sessionId
+            // Only update title if user hasn't manually renamed
+            s.id === sessionId && !s.userRenamed
               ? { ...s, claudeTitle: title } 
               : s
           )
@@ -368,13 +358,25 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       const messageCleanup = claudeCodeClient.onMessage(sessionId, (message) => {
           // CRITICAL: Check if this session is still the current one
           const currentState = get();
-          if (currentState.currentSessionId !== sessionId) {
+          const isCurrentSession = currentState.currentSessionId === sessionId;
+          
+          // ALWAYS process these message types for ALL sessions to maintain correct state
+          const shouldAlwaysProcess = 
+            message.type === 'result' || 
+            message.type === 'error' ||
+            (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) ||
+            message.type === 'assistant' || // Process ALL assistant messages to track streaming state
+            message.type === 'tool_use' ||  // Process tool_use messages to track streaming
+            message.type === 'tool_result'; // Process tool_result messages to track streaming
+          
+          // Only skip non-critical messages for background tabs
+          if (!isCurrentSession && !shouldAlwaysProcess) {
             console.warn('[Store] Ignoring message for inactive session:', {
               messageForSession: sessionId,
               currentSession: currentState.currentSessionId,
               messageType: message.type
             });
-            return; // Don't process messages for inactive sessions
+            return; // Don't process non-critical messages for inactive sessions
           }
           
           console.log('[Store] Processing message:', {
@@ -399,9 +401,19 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           
           // Handle streaming messages by updating existing message or adding new
           set(state => {
-            // Double-check session is still current inside set() 
-            if (state.currentSessionId !== sessionId) {
-              console.warn('[Store] Session changed during message processing, ignoring');
+            // For critical messages that update streaming state, always process them
+            const shouldAlwaysProcess = 
+              message.type === 'result' || 
+              message.type === 'error' ||
+              (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) ||
+              message.type === 'assistant' || // Process ALL assistant messages to track streaming state
+              message.type === 'tool_use' ||  // Process tool_use messages to track streaming
+              message.type === 'tool_result'; // Process tool_result messages to track streaming
+            
+            // Process messages for all sessions to maintain correct streaming state
+            // This ensures background tabs show correct streaming indicators
+            if (!shouldAlwaysProcess && state.currentSessionId !== sessionId) {
+              console.warn('[Store] Skipping non-critical message for background session');
               return state;
             }
             
@@ -823,9 +835,25 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 result: message.result,
                 sessionMessages: sessions.find(s => s.id === sessionId)?.messages.length || 0
               });
+              
+              // Clear claudeSessionId on normal completion (not error)
+              // This ensures followup messages start fresh since Claude can't resume completed sessions
+              const shouldClearSession = message.subtype === 'success' && !message.is_error;
+              
               sessions = sessions.map(s => 
-                s.id === sessionId ? { ...s, streaming: false } : s
+                s.id === sessionId 
+                  ? { 
+                      ...s, 
+                      streaming: false,
+                      claudeSessionId: shouldClearSession ? undefined : s.claudeSessionId
+                    } 
+                  : s
               );
+              
+              if (shouldClearSession) {
+                console.log('Cleared claudeSessionId after successful completion');
+              }
+              
               return { sessions };
             } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
               // Clear streaming on interruption or error
@@ -888,6 +916,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     }
     
     console.log('[Store] Switching session from', oldSessionId, 'to', sessionId);
+    
+    // Don't clear streaming state when switching tabs - let it persist
+    // The streaming state will be cleared when the actual response finishes
     
     // Update the current session
     set({ currentSessionId: sessionId });
@@ -995,8 +1026,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       return;
     }
     
-    // Update current session
-    set({ currentSessionId: sessionId, persistedSessionId: sessionId });
+    // Use setCurrentSession to properly handle session switching
+    get().setCurrentSession(sessionId);
+    set({ persistedSessionId: sessionId });
     
     // Notify server of directory change if needed
     if (session.workingDirectory) {
@@ -1075,16 +1107,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       
       // Listen for title updates
       const titleCleanup = claudeCodeClient.onTitle(sessionId, (title: string) => {
-        // CRITICAL: Check if this session is still the current one
-        const currentState = get();
-        if (currentState.currentSessionId !== sessionId) {
-          console.warn('[Store] Ignoring title for inactive resumed session:', {
-            titleForSession: sessionId,
-            currentSession: currentState.currentSessionId
-          });
-          return; // Don't process titles for inactive sessions
-        }
-        
         console.log('[Store] Received title for resumed session:', sessionId, title);
         set(state => ({
           sessions: state.sessions.map(s => 

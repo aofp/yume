@@ -1,3 +1,12 @@
+/// Node.js server process management module
+/// This module handles spawning and managing the Node.js backend server that bridges
+/// between Tauri and the Claude CLI. The server:
+/// - Spawns Claude CLI processes with proper arguments
+/// - Parses Claude's stream-json output format
+/// - Communicates with the frontend via Socket.IO WebSocket
+/// - Manages multiple concurrent Claude sessions
+/// - Handles platform-specific requirements (WSL on Windows, etc.)
+
 use std::process::{Command, Child, Stdio};
 use std::sync::{Arc, Mutex};
 use std::fs::{self, OpenOptions};
@@ -6,13 +15,19 @@ use std::path::PathBuf;
 use tracing::info;
 
 // SIMPLE FLAG TO CONTROL CONSOLE VISIBILITY AND DEVTOOLS
+// Set to true during development to see server console output and force DevTools open
 pub const YURUCODE_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
 
 // Global handle to the server process and port
+// We use Arc<Mutex<>> for thread-safe access to the child process
+// This allows us to kill the specific server process on shutdown
 static SERVER_PROCESS: Mutex<Option<Arc<Mutex<Child>>>> = Mutex::new(None);
 static SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
 
-// Get log file path
+/// Returns the platform-specific path for server log files
+/// - macOS: ~/Library/Logs/yurucode/server.log
+/// - Windows: %LOCALAPPDATA%\yurucode\logs\server.log
+/// - Linux: ~/.yurucode/logs/server.log
 pub fn get_log_path() -> PathBuf {
     let log_dir = if cfg!(target_os = "macos") {
         dirs::home_dir()
@@ -37,7 +52,8 @@ pub fn get_log_path() -> PathBuf {
     log_dir.join("server.log")
 }
 
-// Write to log file
+/// Appends a timestamped message to the server log file
+/// Used for debugging server startup and runtime issues
 fn write_log(message: &str) {
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
@@ -49,7 +65,8 @@ fn write_log(message: &str) {
     }
 }
 
-// Clear log file (called at server start)
+/// Clears the log file and writes a header with current timestamp
+/// Called at server startup to ensure fresh logs for each session
 fn clear_log() {
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
@@ -62,7 +79,9 @@ fn clear_log() {
     }
 }
 
-// Get server logs (limited to last 800 lines)
+/// Returns the contents of the server log file (limited to last 800 lines)
+/// Used by the frontend to display server logs for debugging
+/// Creates a placeholder log file on Windows if it doesn't exist
 pub fn get_server_logs() -> String {
     // On Windows with embedded server, create a log file if it doesn't exist
     #[cfg(target_os = "windows")]
@@ -92,7 +111,16 @@ pub fn get_server_logs() -> String {
     }
 }
 
-// EMBEDDED SERVER - REQUIRES SOCKET.IO TO BE BUNDLED
+/// Embedded Node.js server code as a string literal
+/// This is the actual server implementation that gets written to a temp file and executed
+/// The server:
+/// - Creates a Socket.IO WebSocket server for real-time communication
+/// - Spawns Claude CLI processes with proper arguments
+/// - Parses Claude's stream-json output format
+/// - Manages session state and working directories
+/// - Handles platform-specific Claude execution (WSL on Windows)
+/// - Implements tool use detection and forwarding
+/// - Manages streaming state for proper UI updates
 const EMBEDDED_SERVER: &str = r#"
 // Override console completely to prevent EBADF errors
 const noop = () => {};
@@ -667,10 +695,15 @@ server.listen(PORT, '0.0.0.0', () => {
 });
 "#;
 
+/// Returns the port number where the server is running
+/// Returns None if the server hasn't been started yet
 pub fn get_server_port() -> Option<u16> {
     SERVER_PORT.lock().ok()?.clone()
 }
 
+/// Stops the Node.js server process for this specific Tauri instance
+/// This is instance-specific to support multiple app windows
+/// Uses normal kill first, then force kill if needed
 pub fn stop_logged_server() {
     info!("Stopping server for THIS instance only...");
     
@@ -707,6 +740,11 @@ pub fn stop_logged_server() {
     }
 }
 
+/// Starts the Node.js backend server on the specified port
+/// Platform-specific behavior:
+/// - macOS: Uses external server file from bundle/project
+/// - Windows/Linux: Uses embedded server code
+/// The server is started as a detached process that survives parent crashes
 pub fn start_logged_server(port: u16) {
     info!("Starting server on port {}", port);
     
@@ -819,6 +857,10 @@ pub fn start_logged_server(port: u16) {
     info!("❌ Failed to start server");
 }
 
+/// macOS-specific server startup
+/// Uses an external server file (server-claude-macos.js) rather than embedded code
+/// This allows for easier debugging and avoids code signing issues
+/// Handles both development (project root) and production (.app bundle) scenarios
 #[cfg(target_os = "macos")]
 fn start_macos_server(port: u16) {
     info!("Starting macOS server on port {}", port);

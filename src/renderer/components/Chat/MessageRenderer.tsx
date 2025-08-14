@@ -540,6 +540,11 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               ? JSON.stringify(block.content, null, 2)
               : '';
           
+          // Check if content is empty and display placeholder
+          if (!resultContent || resultContent.trim() === '') {
+            resultContent = '(no content)';
+          }
+          
           // Trim trailing newlines from tool results
           resultContent = resultContent.replace(/\n+$/, '');
           

@@ -14,7 +14,7 @@
     "macOSPrivateApi": true,
     "windows": [
       {
-        "title": "yuru>code",
+        "title": "yuru code",
         "width": 516,
         "height": 509,
         "minWidth": 516,
@@ -26,7 +26,7 @@
         "center": true,
         "skipTaskbar": false,
         "acceptFirstMouse": true,
-        "hiddenTitle": false,
+        "hiddenTitle": true,
         "visible": false
       }
     ],

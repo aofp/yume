@@ -231,10 +231,10 @@
   flex: 1 1 0;
   overflow-y: auto;
   overflow-x: hidden;
-  padding: 4px;
+  margin-top: 60px;
+  padding: 4px 4px 4px 4px;
   scroll-behavior: auto;
   min-height: 0;
-  margin-top: 60px;
 }
 
 .message {
@@ -268,7 +268,7 @@
 }
 
 .message.assistant .message-content {
-  max-width: 80%;
+  max-width: 100%;
 }
 
 .message-text {
@@ -600,6 +600,7 @@
   min-height: 60px;
   max-height: 40vh;
   overflow-y: auto;
+  position: relative; /* Add relative positioning for attachment container */
 }
 
 /* Windows-specific fix to keep input visible when zoomed */
@@ -672,17 +673,19 @@
   background: #000000;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: #ffffff;
-  padding: 1px 5px;
-  margin-bottom: 1px;
+  padding: 4px;
+  margin-bottom: 0;
   border-radius: 4px;
   font-size: 12px;
   line-height: 18px;
-  min-height: 54px; /* 3 lines * 18px line-height */
+  min-height: 34px;
+  max-height: 106px; /* 5 lines: 18px * 5 + 16px padding */
+  box-sizing: border-box;
   resize: none;
   transition: all 0.2s ease;
   font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
   outline: none;
-  overflow-y: hidden; /* Hide scrollbar when not needed */
+  overflow-y: auto;
   user-select: text;
   -webkit-user-select: text;
 }
@@ -892,12 +895,33 @@
   color: rgba(255, 153, 204, 0.8);
 }
 
+/* Bash command mode indicator */
+.bash-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ff9999;
+  padding: 0 8px;
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+}
+
+.chat-input.bash-mode {
+  border-left: 2px solid #ff9999;
+  padding-left: 10px;
+}
+
 /* Context bar - stats section */
 .context-bar {
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 0;
+  margin-top: 2px;
   background: #000000;
   flex-shrink: 0; /* Prevent shrinking */
 }
@@ -1047,7 +1071,7 @@
 /* New Attachments System */
 .attachments-container {
   position: absolute;
-  bottom: 88px;
+  bottom: calc(100% + 8px); /* Position above the input container with 8px gap */
   right: 14px;
   display: flex;
   gap: 2px;
@@ -1354,6 +1378,10 @@
   font-size: 10px;
 }
 
+.stat-row.opus-stat-row {
+  margin-top: 5px !important;
+}
+
 .stat-keys {
   display: inline-flex;
   align-items: center;
@@ -1564,7 +1592,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
+  padding: 4px 12px;
   background: none;
   border: none;
   color: rgba(255, 255, 255, 0.6);
@@ -1593,7 +1621,7 @@
 }
 
 .recent-item-path {
-  font-size: 10px;
+  font-size: 8px;
   color: rgba(255, 255, 255, 0.3);
   text-overflow: ellipsis;
   overflow: hidden;

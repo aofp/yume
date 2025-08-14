@@ -1,0 +1,14 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "yuru code (dev)",
+  "app": {
+    "windows": [
+      {
+        "title": "yuru code (dev)",
+        "decorations": false,
+        "transparent": true,
+        "hiddenTitle": true
+      }
+    ]
+  }
+}

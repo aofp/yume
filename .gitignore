@@ -39,6 +39,10 @@ final_test.log
 .server-port
 ports.tmp
 
+# Server pid files
+*.pid
+server-*.pid
+
 # IDE
 .vscode/
 .idea/

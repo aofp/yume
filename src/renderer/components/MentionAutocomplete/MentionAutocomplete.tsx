@@ -271,7 +271,14 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           if (trigger.includes('/')) {
             // We're in a subfolder, go up one level
             const lastSlashIndex = trigger.lastIndexOf('/');
-            const parentPath = trigger.substring(0, lastSlashIndex);
+            let parentPath = trigger.substring(0, lastSlashIndex);
+            
+            // If we're going back from a single folder (e.g., "assets/"), parentPath should be empty
+            // If we're going back from nested folders (e.g., "src/components/"), keep the parent part
+            if (parentPath && !parentPath.includes('/')) {
+              // Going back from single folder to root
+              parentPath = '';
+            }
             
             if (inputRef.current) {
               const text = inputRef.current.value;

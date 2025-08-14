@@ -1,3 +1,12 @@
+/// Tauri command handlers module
+/// This module contains all the IPC commands exposed to the frontend via Tauri's invoke system
+/// Commands handle various operations including:
+/// - Window management (DevTools, minimize, maximize, close)
+/// - File system operations (folder selection, file search)
+/// - Application state management (sessions, settings)
+/// - Git integration
+/// - Server communication
+
 use serde::{Deserialize, Serialize};
 use tauri::{State, Window};
 use std::path::{Path, PathBuf};
@@ -7,11 +16,14 @@ use std::time::SystemTime;
 use crate::state::AppState;
 use crate::logged_server;
 
+/// Represents a folder selection from the native file dialog
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FolderSelection {
     pub path: String,
 }
 
+/// Represents a file or directory found during search operations
+/// Used by search_files, get_recent_files, and get_folder_contents commands
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileSearchResult {
     #[serde(rename = "type")]
@@ -24,6 +36,8 @@ pub struct FileSearchResult {
     pub last_modified: Option<u64>,
 }
 
+/// Represents the Git status of a repository
+/// Parsed from `git status --porcelain` output
 #[derive(Debug, Serialize, Deserialize)]
 pub struct GitStatus {
     pub modified: Vec<String>,
@@ -32,6 +46,9 @@ pub struct GitStatus {
     pub renamed: Vec<String>,
 }
 
+/// Toggles the Chrome DevTools window
+/// Only available in debug builds for security reasons
+/// Triggered by F12 key in the frontend
 #[tauri::command]
 pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
     println!("DevTools toggle requested via F12");
@@ -57,6 +74,9 @@ pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
     Ok(())
 }
 
+/// Opens a native folder selection dialog
+/// Returns the selected folder path or None if cancelled
+/// Uses rfd (Rust File Dialog) for better cross-platform support
 #[tauri::command]
 pub async fn select_folder() -> Result<Option<String>, String> {
     println!("select_folder command called");
@@ -82,19 +102,30 @@ pub async fn select_folder() -> Result<Option<String>, String> {
     }
 }
 
+/// Returns the port number where the Node.js backend server is running
+/// This port is dynamically allocated at startup to avoid conflicts
 #[tauri::command]
 pub async fn get_server_port(state: State<'_, AppState>) -> Result<u16, String> {
     Ok(state.server_port())
 }
 
+/// Creates a new application window with the same configuration as the main window
+/// Each window gets a unique ID to support multiple instances
+/// Windows are borderless, transparent, and have custom decorations
 #[tauri::command]
 pub async fn new_window(app: tauri::AppHandle) -> Result<(), String> {
+    let title = if cfg!(debug_assertions) {
+        "yuru code (dev)"
+    } else {
+        "yuru code"
+    };
+    
     let _window = tauri::WebviewWindowBuilder::new(
         &app,
         format!("main-{}", uuid::Uuid::new_v4()), // Unique window label
         tauri::WebviewUrl::App("index.html".into())
     )
-    .title("yuru>code")
+    .title(title)
     .inner_size(516.0, 509.0)
     .min_inner_size(516.0, 509.0)
     .resizable(true)
@@ -110,6 +141,8 @@ pub async fn new_window(app: tauri::AppHandle) -> Result<(), String> {
     Ok(())
 }
 
+/// Sends a message to the Claude CLI for a specific session
+/// Currently a placeholder - actual implementation handled by WebSocket server
 #[tauri::command]
 pub fn send_message(
     _state: State<'_, AppState>,
@@ -122,6 +155,8 @@ pub fn send_message(
     Ok(())
 }
 
+/// Interrupts an active Claude session (Ctrl+C equivalent)
+/// Currently a placeholder - actual implementation handled by WebSocket server
 #[tauri::command]
 pub fn interrupt_session(
     _state: State<'_, AppState>,
@@ -131,6 +166,8 @@ pub fn interrupt_session(
     Ok(())
 }
 
+/// Clears the context for a Claude session
+/// Currently a placeholder - actual implementation handled by WebSocket server
 #[tauri::command]
 pub fn clear_session(
     _state: State<'_, AppState>,
@@ -140,22 +177,29 @@ pub fn clear_session(
     Ok(())
 }
 
+/// Returns information about all active Claude sessions
+/// Used by the frontend to populate the tab bar
 #[tauri::command]
 pub async fn get_sessions(state: State<'_, AppState>) -> Result<Vec<SessionInfo>, String> {
     Ok(state.get_sessions())
 }
 
+/// Sets the zoom level for the webview
+/// Currently handled by frontend CSS transforms
 #[tauri::command]
 pub async fn set_zoom_level(_window: Window, _level: f64) -> Result<(), String> {
     // Zoom level will be handled via frontend for now
     Ok(())
 }
 
+/// Minimizes the application window to the taskbar/dock
 #[tauri::command]
 pub async fn minimize_window(window: Window) -> Result<(), String> {
     window.minimize().map_err(|e| e.to_string())
 }
 
+/// Toggles window maximization state
+/// If maximized, restores to previous size; otherwise maximizes
 #[tauri::command]
 pub async fn maximize_window(window: Window) -> Result<(), String> {
     if window.is_maximized().unwrap_or(false) {
@@ -165,6 +209,9 @@ pub async fn maximize_window(window: Window) -> Result<(), String> {
     }
 }
 
+/// Closes the current window
+/// The server remains running if other windows are open (multi-window support)
+/// Server cleanup happens automatically when the last window closes
 #[tauri::command]
 pub async fn close_window(window: Window) -> Result<(), String> {
     use tracing::info;
@@ -179,6 +226,8 @@ pub async fn close_window(window: Window) -> Result<(), String> {
     Ok(())
 }
 
+/// Shows a context menu at the specified coordinates
+/// Placeholder for future implementation with Tauri's menu API
 #[tauri::command]
 pub async fn show_context_menu(
     _window: Window,
@@ -190,6 +239,8 @@ pub async fn show_context_menu(
     Ok(())
 }
 
+/// Saves a setting value to persistent storage
+/// Settings are stored as JSON and persist across app restarts
 #[tauri::command]
 pub async fn save_settings(
     state: State<'_, AppState>,
@@ -199,6 +250,8 @@ pub async fn save_settings(
     state.save_setting(key, value).map_err(|e| e.to_string())
 }
 
+/// Loads a setting value from persistent storage
+/// Returns None if the setting doesn't exist
 #[tauri::command]
 pub async fn load_settings(
     state: State<'_, AppState>,
@@ -207,11 +260,15 @@ pub async fn load_settings(
     Ok(state.load_setting(key))
 }
 
+/// Returns the list of recently opened project directories
+/// Used to populate the recent projects modal (Ctrl+R)
 #[tauri::command]
 pub async fn get_recent_projects(state: State<'_, AppState>) -> Result<Vec<String>, String> {
     Ok(state.get_recent_projects())
 }
 
+/// Adds a project directory to the recent projects list
+/// Automatically manages list size and deduplication
 #[tauri::command]
 pub async fn add_recent_project(
     state: State<'_, AppState>,
@@ -221,21 +278,28 @@ pub async fn add_recent_project(
     Ok(())
 }
 
+/// Information about a Claude session
+/// Used for session management and tab display
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionInfo {
-    pub id: String,
-    pub working_dir: String,
-    pub model: String,
-    pub message_count: usize,
-    pub token_count: usize,
+    pub id: String,              // Unique session identifier
+    pub working_dir: String,     // Current working directory for the session
+    pub model: String,           // Claude model being used (opus/sonnet)
+    pub message_count: usize,    // Number of messages in the conversation
+    pub token_count: usize,      // Total tokens used in the session
 }
 
+/// Checks if a given path is a directory
+/// Used to validate dropped items and path inputs
 #[tauri::command]
 pub fn check_is_directory(path: String) -> Result<bool, String> {
     let path = Path::new(&path);
     Ok(path.is_dir())
 }
 
+/// Toggles the console visibility setting for the Node.js server
+/// Changes take effect on next server restart
+/// Used for debugging server issues
 #[tauri::command]
 pub fn toggle_console_visibility() -> Result<String, String> {
     // Toggle the environment variable
@@ -251,6 +315,8 @@ pub fn toggle_console_visibility() -> Result<String, String> {
     }
 }
 
+/// Opens a URL in the system's default browser
+/// Platform-specific implementation for Windows, macOS, and Linux
 #[tauri::command]
 pub fn open_external(url: String) -> Result<(), String> {
     // Open URL in default browser
@@ -285,16 +351,23 @@ pub fn open_external(url: String) -> Result<(), String> {
     Ok(())
 }
 
+/// Returns the current Node.js server logs
+/// Used for debugging server issues
 #[tauri::command]
 pub fn get_server_logs() -> Result<String, String> {
     Ok(logged_server::get_server_logs())
 }
 
+/// Returns the file path where server logs are stored
+/// Useful for accessing historical logs
 #[tauri::command]
 pub fn get_server_log_path() -> Result<String, String> {
     Ok(logged_server::get_log_path().to_string_lossy().to_string())
 }
 
+/// Searches for files and directories matching a query string
+/// Supports fuzzy matching and filters out common ignore patterns
+/// Returns results sorted by relevance (exact matches first)
 #[tauri::command]
 pub async fn search_files(
     query: String,
@@ -384,6 +457,9 @@ pub async fn search_files(
     Ok(results)
 }
 
+/// Returns the most recently modified files in a directory
+/// Recursively searches up to 5 levels deep
+/// Filters out hidden files and common build/dependency directories
 #[tauri::command]
 pub async fn get_recent_files(
     directory: String,
@@ -461,6 +537,9 @@ pub async fn get_recent_files(
     Ok(files)
 }
 
+/// Returns the immediate contents of a folder (non-recursive)
+/// Sorts results with directories first, then config files, then alphabetically
+/// Filters out hidden files
 #[tauri::command]
 pub async fn get_folder_contents(
     folder_path: String,
@@ -562,6 +641,9 @@ pub async fn get_folder_contents(
     }
 }
 
+/// Returns the Git status for a repository
+/// Parses output from `git status --porcelain`
+/// Returns an error if the directory is not a Git repository
 #[tauri::command]
 pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
     use std::process::Command;
@@ -631,7 +713,9 @@ pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
     Ok(status)
 }
 
-// Helper function for fuzzy matching
+/// Helper function for fuzzy matching
+/// Returns true if all characters in the query appear in the text in order
+/// Example: "abc" matches "app_bar_config" (a-b-c appear in order)
 fn fuzzy_match(query: &str, text: &str) -> bool {
     let mut query_chars = query.chars();
     let mut current_char = query_chars.next();

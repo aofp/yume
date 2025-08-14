@@ -3,6 +3,7 @@ import { IconX, IconPlus, IconFolder, IconFolderOpen, IconBolt, IconTrash, IconC
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { AboutModal } from '../About/AboutModal';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
+// RecentProjectsModal removed - handled by ClaudeChat component instead
 import './SessionTabs.css';
 
 export const SessionTabs: React.FC = () => {
@@ -20,7 +21,7 @@ export const SessionTabs: React.FC = () => {
 
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
-  const [showRecentModal, setShowRecentModal] = useState(false);
+  // Recent modal state removed - handled by ClaudeChat component
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [showAbout, setShowAbout] = useState(false);
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
@@ -101,33 +102,9 @@ export const SessionTabs: React.FC = () => {
     };
     
     checkRecentProjects();
-    // Check again when modal closes or sessions change
-    if (!showRecentModal) {
-      checkRecentProjects();
-    }
-  }, [showRecentModal, sessions.length]);
+  }, [sessions.length]);
 
-  // Handle number keys for recent projects modal
-  useEffect(() => {
-    if (!showRecentModal) return;
-
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const key = e.key;
-      if (key >= '1' && key <= '9') {
-        const index = parseInt(key) - 1;
-        if (index < recentProjects.length) {
-          e.preventDefault();
-          createSession(undefined, recentProjects[index].path);
-          setShowRecentModal(false);
-        }
-      } else if (e.key === 'Escape') {
-        setShowRecentModal(false);
-      }
-    };
-
-    document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showRecentModal, recentProjects, createSession]);
+  // Keyboard handling moved to RecentProjectsModal component to avoid conflicts
 
   // Handle vertical scroll as horizontal scroll on tabs container
   useEffect(() => {
@@ -618,7 +595,10 @@ export const SessionTabs: React.FC = () => {
           {hasRecentProjects && (
             <button 
               className={`tab-recent ${dragOverRecent ? 'drag-over-save' : ''}`}
-              onClick={() => setShowRecentModal(true)}
+              onClick={() => {
+                // Emit event to open recent modal in ClaudeChat
+                window.dispatchEvent(new CustomEvent('openRecentProjects'));
+              }}
               onMouseDown={(e) => {
                 handleRipple(e);
                 e.currentTarget.classList.add('ripple-held');
@@ -843,95 +823,7 @@ export const SessionTabs: React.FC = () => {
         </div>
       )}
       
-      {showRecentModal && (
-        <div 
-          className="recent-modal-overlay"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowRecentModal(false);
-            }
-          }}
-        >
-          <div 
-            className="recent-modal"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <div className="modal-title-row">
-                <IconChevronDown size={16} className="modal-icon" />
-                <span className="modal-title">recent projects</span>
-              </div>
-              <button 
-                className="clear-all-icon"
-                onClick={() => {
-                  if (confirm('clear all recent projects?')) {
-                    localStorage.removeItem('yurucode-recent-projects');
-                    setShowRecentModal(false);
-                  }
-                }}
-                title="clear all"
-              >
-                <IconTrash size={14} />
-              </button>
-            </div>
-            
-            <div className="modal-content">
-              {(() => {
-                const stored = localStorage.getItem('yurucode-recent-projects');
-                if (!stored) {
-                  return <div className="no-recent">no recent projects</div>;
-                }
-                
-                try {
-                  const projects = JSON.parse(stored);
-                  if (!projects || projects.length === 0) {
-                    return <div className="no-recent">no recent projects</div>;
-                  }
-                  
-                  return projects.map((project: any, idx: number) => (
-                    <div key={idx} className="recent-item-container">
-                      <button
-                        className="recent-item"
-                        onClick={async () => {
-                          await createSession(undefined, project.path);
-                          setShowRecentModal(false);
-                        }}
-                      >
-                        <span className="recent-item-number">{idx < 9 ? idx + 1 : ''}</span>
-                        <IconFolder size={14} />
-                        <div className="recent-item-info">
-                          <div className="recent-item-name">{project.name}</div>
-                          <div className="recent-item-path">{project.path}</div>
-                        </div>
-                      </button>
-                      <button
-                        className="recent-item-remove"
-                        onClick={() => {
-                          const updated = projects.filter((_: any, i: number) => i !== idx);
-                          if (updated.length > 0) {
-                            localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
-                          } else {
-                            localStorage.removeItem('yurucode-recent-projects');
-                          }
-                          // Force re-render
-                          setShowRecentModal(false);
-                          setTimeout(() => setShowRecentModal(true), 0);
-                        }}
-                        title="remove"
-                      >
-                        <IconX size={12} />
-                      </button>
-                    </div>
-                  ));
-                } catch (err) {
-                  console.error('Failed to parse recent projects:', err);
-                  return <div className="no-recent">no recent projects</div>;
-                }
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
+      {/* RecentProjectsModal removed - handled by ClaudeChat component */}
       
       {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />}
     </div>

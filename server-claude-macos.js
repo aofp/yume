@@ -109,6 +109,10 @@ let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
 
+// Add process spawn mutex to prevent race conditions
+let isSpawningProcess = false;
+const processSpawnQueue = [];
+
 // Helper function to generate title with Sonnet
 async function generateTitle(sessionId, userMessage, socket) {
   try {
@@ -267,6 +271,18 @@ process.on('exit', () => {
   removePidFile();
 });
 
+process.on('uncaughtException', (error) => {
+  console.error('💥 Uncaught exception:', error);
+  removePidFile();
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('💥 Unhandled rejection at:', promise, 'reason:', reason);
+  removePidFile();
+  process.exit(1);
+});
+
 // Socket.IO connection handling - EXACTLY LIKE WINDOWS
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);
@@ -286,7 +302,8 @@ io.on('connection', (socket) => {
         messages: [],
         createdAt: Date.now(),
         claudeSessionId: null,
-        hasGeneratedTitle: false
+        hasGeneratedTitle: false,
+        wasInterrupted: false  // Track if last conversation was interrupted vs completed
       };
       
       sessions.set(sessionId, sessionData);
@@ -322,39 +339,59 @@ io.on('connection', (socket) => {
       return;
     }
     
-    try {
-      console.log('\n📨 Received message request:', {
-        sessionId,
-        messageLength: message?.length || 0,
-        model
-      });
+    // Queue the request to prevent concurrent spawning issues
+    const spawnRequest = async () => {
+      try {
+        console.log('\n📨 Processing message request:', {
+          sessionId,
+          messageLength: message?.length || 0,
+          model,
+          queueLength: processSpawnQueue.length
+        });
 
-      // Kill any existing process for this session
-      if (activeProcesses.has(sessionId)) {
-        const existingProcess = activeProcesses.get(sessionId);
-        console.log(`⚠️ Killing existing process for session ${sessionId}`);
-        existingProcess.kill('SIGINT');
-        activeProcesses.delete(sessionId);
-      }
+        // Kill any existing process for this session
+        if (activeProcesses.has(sessionId)) {
+          const existingProcess = activeProcesses.get(sessionId);
+          console.log(`⚠️ Killing existing process for session ${sessionId} (PID: ${existingProcess.pid})`);
+          
+          // Kill the entire process group if on Unix
+          if (process.platform !== 'win32' && existingProcess.pid) {
+            try {
+              process.kill(-existingProcess.pid, 'SIGINT'); // Negative PID kills process group
+            } catch (e) {
+              // Fallback to regular kill
+              existingProcess.kill('SIGINT');
+            }
+          } else {
+            existingProcess.kill('SIGINT');
+          }
+          
+          activeProcesses.delete(sessionId);
+          // Wait a bit for the process to fully terminate
+          await new Promise(resolve => setTimeout(resolve, 150));
+        }
 
-      // Clear the last assistant message ID for this session
-      lastAssistantMessageIds.delete(sessionId);
+        // Clear the last assistant message ID for this session
+        lastAssistantMessageIds.delete(sessionId);
 
-      // Use session's working directory
-      const processWorkingDir = session.workingDirectory || process.cwd();
-      console.log(`📂 Using working directory: ${processWorkingDir}`);
+        // Use session's working directory
+        const processWorkingDir = session.workingDirectory || process.cwd();
+        console.log(`📂 Using working directory: ${processWorkingDir}`);
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
       const args = ['--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
       
-      // Add resume flag if we have a claude session ID
+      // Use --resume if we have a claudeSessionId (for continuing conversations)
       if (session.claudeSessionId) {
         args.push('--resume', session.claudeSessionId);
         console.log('🔄 Using --resume flag with session:', session.claudeSessionId);
+      } else {
+        console.log('📝 Starting fresh conversation (no previous session)');
       }
 
       // Spawn claude process with proper PATH for Node.js
       console.log(`🚀 Spawning claude with args:`, args);
+      console.log(`🔍 Active processes count: ${activeProcesses.size}`);
       
       // Ensure Node.js is in PATH for Claude CLI (which uses #!/usr/bin/env node)
       const enhancedEnv = { ...process.env };
@@ -364,16 +401,39 @@ io.on('connection', (socket) => {
         console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
       }
       
+      // Add unique session identifier to environment to ensure isolation
+      enhancedEnv.CLAUDE_SESSION_ID = sessionId;
+      enhancedEnv.CLAUDE_INSTANCE = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Add small delay to prevent race conditions with multiple Claude instances
+      if (isSpawningProcess) {
+        console.log(`⏳ Waiting for previous Claude process to initialize...`);
+        await new Promise(resolve => setTimeout(resolve, 200));
+      }
+      
+      isSpawningProcess = true;
+      
       const claudeProcess = spawn(CLAUDE_PATH, args, {
         cwd: processWorkingDir,
         env: enhancedEnv,
         shell: false,
         windowsHide: true,  // Always hide windows
-        detached: false
+        detached: true,  // Run in separate process group for better isolation
+        stdio: ['pipe', 'pipe', 'pipe']  // Explicit stdio configuration
       });
+      
+      // Mark spawning as complete after a short delay
+      setTimeout(() => {
+        isSpawningProcess = false;
+      }, 500);
 
       // Store process reference
       activeProcesses.set(sessionId, claudeProcess);
+      
+      // On Unix systems, detached processes need special handling
+      if (process.platform !== 'win32') {
+        claudeProcess.unref(); // Allow parent to exit independently
+      }
 
       // Send input if not resuming
       if (!session.claudeSessionId && message) {
@@ -663,6 +723,15 @@ io.on('connection', (socket) => {
         console.log(`   └─ Exit code: ${code}`);
         activeProcesses.delete(sessionId);
         
+        // Mark session as completed (not interrupted) when process exits normally
+        if (code === 0) {
+          const session = sessions.get(sessionId);
+          if (session) {
+            session.wasInterrupted = false;
+            console.log(`✅ Marked session ${sessionId} as completed normally`);
+          }
+        }
+        
         // Process any remaining buffer
         if (lineBuffer.trim()) {
           try {
@@ -757,27 +826,68 @@ io.on('connection', (socket) => {
         if (callback) callback({ success: false, error: err.message });
       });
 
-      // Send success callback
-      if (callback) callback({ success: true });
+        // Send success callback
+        if (callback) callback({ success: true });
 
-    } catch (error) {
-      console.error('❌ Error in sendMessage handler:', error);
-      socket.emit(`message:${sessionId}`, { 
-        type: 'error',
-        error: error.message, 
-        claudeSessionId: session.claudeSessionId,
-        streaming: false 
-      });
-      if (callback) callback({ success: false, error: error.message });
+      } catch (error) {
+        console.error('❌ Error in spawnRequest:', error);
+        socket.emit(`message:${sessionId}`, { 
+          type: 'error',
+          error: error.message, 
+          claudeSessionId: session.claudeSessionId,
+          streaming: false 
+        });
+        if (callback) callback({ success: false, error: error.message });
+      } finally {
+        // Process next request in queue
+        processNextInQueue();
+      }
+    };
+    
+    // Add to queue and process
+    processSpawnQueue.push(spawnRequest);
+    console.log(`📋 Added request to queue. Queue length: ${processSpawnQueue.length}`);
+    
+    // Process queue if not already processing
+    if (processSpawnQueue.length === 1) {
+      processNextInQueue();
     }
   });
+  
+  // Helper function to process spawn queue
+  function processNextInQueue() {
+    if (processSpawnQueue.length > 0) {
+      const nextRequest = processSpawnQueue.shift();
+      console.log(`🔄 Processing next spawn request. Remaining in queue: ${processSpawnQueue.length}`);
+      nextRequest();
+    }
+  }
 
   socket.on('interrupt', ({ sessionId }) => {
     const process = activeProcesses.get(sessionId);
+    const session = sessions.get(sessionId);
     if (process) {
-      console.log(`🛑 Killing claude process for session ${sessionId}`);
-      process.kill('SIGINT');  // Use SIGINT for graceful interrupt
+      console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${process.pid})`);
+      
+      // Kill the entire process group if on Unix
+      if (process.platform !== 'win32' && process.pid) {
+        try {
+          process.kill(-process.pid, 'SIGINT'); // Negative PID kills process group
+        } catch (e) {
+          // Fallback to regular kill
+          process.kill('SIGINT');
+        }
+      } else {
+        process.kill('SIGINT');  // Use SIGINT for graceful interrupt
+      }
+      
       activeProcesses.delete(sessionId);
+      
+      // Mark session as interrupted but keep the session ID for potential resume
+      if (session) {
+        session.wasInterrupted = true;
+        console.log(`🔄 Marked session ${sessionId} as interrupted`);
+      }
       
       // If we have a last assistant message, mark it as done streaming
       const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
@@ -819,6 +929,7 @@ io.on('connection', (socket) => {
     session.messages = [];
     session.claudeSessionId = null;  // Reset Claude session ID so next message starts fresh
     session.hasGeneratedTitle = false;  // Reset title generation flag so next message gets a new title
+    session.wasInterrupted = false;  // Reset interrupted flag
     lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
     
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);

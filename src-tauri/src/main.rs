@@ -1,21 +1,33 @@
-// Prevents additional console window on Windows in release, DO NOT REMOVE!!
+// Prevents additional console window on Windows in release builds
+// This attribute is crucial for Windows GUI applications to avoid showing a console
+// DO NOT REMOVE - without this, Windows will show both the GUI and a console window
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
+/// Main entry point for the yurucode Tauri application
+/// This is the actual executable entry that bootstraps the entire application
 fn main() {
-    // Set up panic hook to ensure cleanup on panic
+    // Custom panic handler for graceful error handling
+    // Ensures the application exits cleanly even on unexpected panics
+    // This is important for:
+    // - Logging panic information for debugging
+    // - Ensuring proper cleanup (though server cleanup is handled separately)
+    // - Preventing zombie processes
     std::panic::set_hook(Box::new(|info| {
         eprintln!("Application panic: {:?}", info);
         
-        // DON'T kill all node processes - that affects other instances!
-        // The logged_server module will handle cleanup of our specific process
+        // Important: We DON'T kill all node processes here
+        // Each instance manages its own server process via logged_server module
+        // Killing all node processes would affect other running instances
         
-        // Force exit
+        // Force exit with error code
         std::process::exit(1);
     }));
     
-    // Run the app
+    // Delegate to the library crate where the actual application logic lives
+    // This separation allows for better code organization and testing
     yurucode_lib::run();
     
-    // DON'T kill all node processes on exit
-    // Each instance's server is managed by logged_server::stop_logged_server()
+    // Note: Server cleanup is handled within the library's run() function
+    // Each instance's server is managed individually by logged_server::stop_logged_server()
+    // We specifically avoid killing all node processes to support multiple instances
 }

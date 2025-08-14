@@ -53,26 +53,31 @@ npm run tauri:build:linux      # Build for Linux x64
    - Native system integration
    - WebSocket support via Rust
    - Bundled server resource management
+   - Dynamic port allocation (60000-61000 range)
 
 2. **Node.js Server** (`server-claude-macos.js`)
    - Spawns Claude CLI binary directly (no SDK/API key)
-   - Parses `--output-format stream-json` output
+   - Parses `--output-format stream-json --verbose` output
    - WebSocket communication via Socket.IO
    - Session resumption with `--resume` flag
    - Multi-platform Claude path detection
+   - Title generation with separate Sonnet process
+   - Memory management with 10MB buffer limit
+   - Health checks every 5 seconds during streaming
 
 3. **React Frontend** (`src/renderer/`)
    - Socket.IO client with retry logic
    - Zustand store for state management
    - Multi-tab session management
-   - Token analytics per conversation
+   - Token analytics per conversation (use `+=` for accumulation)
+   - Compact detection for context compression
 
 ### Key Implementation Details
 
 - **Message Flow**: User input → Socket.IO → Server spawns `claude` → Parse stream-json → Stream back
 - **Session Management**: Each tab has unique `claudeSessionId`
-- **Token Tracking**: Analytics track per-conversation tokens (use `=` not `+=`)
-- **Streaming State**: Per-session `streaming` flag in Zustand store
+- **Token Tracking**: Analytics use accumulation (`+=`) not assignment - CRITICAL for correct counting
+- **Streaming State**: Per-session `streaming` flag with `lastAssistantMessageIds` tracking
 - **Clear Context**: Resets `claudeSessionId` and analytics
 - **Resource Bundling**: Server gets bundled into `src-tauri/resources/` for distribution
 
@@ -85,6 +90,7 @@ npm run tauri:build:linux      # Build for Linux x64
 - Tabler icons (no emojis in UI)
 - Right-click context menu with copy functionality
 - Transparent window with custom decorations
+- Window size: 516x509 pixels
 
 ### Important Files & Patterns
 
@@ -92,7 +98,7 @@ npm run tauri:build:linux      # Build for Linux x64
 - `src/renderer/stores/claudeCodeStore.ts` - Use `let sessions` not `const sessions` in setState
 - `src/renderer/services/claudeCodeClient.ts` - Socket.IO connection management
 - `src/renderer/components/Chat/MessageRenderer.tsx` - Message rendering logic
-- `src-tauri/tauri.conf.json` - Tauri configuration (window size: 516x509)
+- `src-tauri/tauri.conf.json` - Tauri configuration and window settings
 - `src-tauri/src/logged_server.rs` - Server process management in Rust
 - `scripts/inject-version.cjs` - Version injection during build
 - `scripts/bundle-macos-server.js` - Bundle server for macOS distribution
@@ -114,13 +120,14 @@ npm run tauri:build:linux      # Build for Linux x64
 
 ### Common Issues & Solutions
 
-1. **Token accumulation**: Use `=` not `+=` in analytics, restart app after store changes
-2. **Thinking indicator stuck**: Check `message.streaming` flag properly cleared
+1. **Token accumulation**: Use `+=` for analytics accumulation, restart app after store changes
+2. **Thinking indicator stuck**: Check `message.streaming` flag and `lastAssistantMessageIds` properly cleared
 3. **Zustand store changes**: Require full app restart
 4. **Hot reload**: Components hot-reload, server uses nodemon, store needs restart
 5. **macOS paths**: Server handles path conversion for Claude CLI
-6. **Port conflicts**: `scripts/kill-ports.js` handles cleanup before dev
+6. **Port conflicts**: Dynamic allocation (60000-61000) prevents conflicts
 7. **Version mismatch**: Check `scripts/inject-version.cjs` runs during build
+8. **Memory issues**: Server has 2GB heap limit with GC exposed
 
 ### Testing Changes
 

@@ -3,6 +3,7 @@ import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown } from '@ta
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
+import { RecentProjectsModal } from '../RecentProjectsModal/RecentProjectsModal';
 import { tauriApi } from '../../services/tauriApi';
 import './WelcomeScreen.css';
 
@@ -20,18 +21,33 @@ export const WelcomeScreen: React.FC = () => {
 
   useEffect(() => {
     // Load recent projects from localStorage
-    const stored = localStorage.getItem('yurucode-recent-projects');
-    if (stored) {
-      try {
-        const projects = JSON.parse(stored).map((p: any) => ({
-          ...p,
-          lastOpened: new Date(p.lastOpened)
-        }));
-        setRecentProjects(projects.slice(0, 8)); // Show max 8 recent projects
-      } catch (e) {
-        console.error('Failed to load recent projects:', e);
+    const loadRecentProjects = () => {
+      const stored = localStorage.getItem('yurucode-recent-projects');
+      if (stored) {
+        try {
+          const projects = JSON.parse(stored).map((p: any) => ({
+            ...p,
+            lastOpened: new Date(p.lastOpened)
+          }));
+          setRecentProjects(projects.slice(0, 8)); // Show max 8 recent projects
+        } catch (e) {
+          console.error('Failed to load recent projects:', e);
+        }
+      } else {
+        setRecentProjects([]);
       }
-    }
+    };
+
+    loadRecentProjects();
+
+    // Listen for updates to recent projects
+    const handleRecentProjectsUpdate = () => {
+      loadRecentProjects();
+      setShowRecentModal(true);
+    };
+
+    window.addEventListener('recentProjectsUpdated', handleRecentProjectsUpdate);
+    return () => window.removeEventListener('recentProjectsUpdated', handleRecentProjectsUpdate);
   }, []);
 
   // Handle keyboard shortcuts (moved after function definitions)
@@ -116,16 +132,7 @@ export const WelcomeScreen: React.FC = () => {
         return;
       }
       
-      // Handle number keys (1-9) for recent projects when modal is open
-      if (showRecentModal && e.key >= '1' && e.key <= '9') {
-        const index = parseInt(e.key) - 1;
-        if (index < recentProjects.length) {
-          e.preventDefault();
-          openProject(recentProjects[index].path);
-          setShowRecentModal(false);
-        }
-        return;
-      }
+      // Number key handling moved to RecentProjectsModal component to avoid conflicts
       
       // Don't process other shortcuts if in input field
       if (isInputField) return;
@@ -198,83 +205,11 @@ export const WelcomeScreen: React.FC = () => {
 
       
       {/* Recent Projects Modal */}
-      {showRecentModal && (
-        <div 
-          className="recent-modal-overlay"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowRecentModal(false);
-            }
-          }}
-        >
-          <div 
-            className="recent-modal"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <span className="modal-title">
-                <IconChevronDown size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                recent projects
-              </span>
-              <button 
-                className="clear-all-icon"
-                onClick={() => {
-                  if (confirm('clear all recent projects?')) {
-                    setRecentProjects([]);
-                    localStorage.removeItem('yurucode-recent-projects');
-                    setShowRecentModal(false);
-                  }
-                }}
-                title="clear all"
-              >
-                <IconTrash size={14} />
-              </button>
-            </div>
-            
-            <div className="modal-content">
-              {recentProjects.length > 0 ? (
-                <>
-                  {recentProjects.slice(0, 10).map((project, idx) => (
-                    <div key={project.path} className="recent-item-container">
-                      <button
-                        className="recent-item"
-                        onClick={() => {
-                          openProject(project.path);
-                          setShowRecentModal(false);
-                        }}
-                      >
-                        <span className="recent-item-number">{idx < 9 ? idx + 1 : ''}</span>
-                        <IconFolderOpen size={14} />
-                        <div className="recent-item-info">
-                          <div className="recent-item-name">{project.name}</div>
-                          <div className="recent-item-path">{project.path}</div>
-                        </div>
-                      </button>
-                      <button
-                        className="recent-item-remove"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const updated = recentProjects.filter(p => p.path !== project.path);
-                          setRecentProjects(updated);
-                          localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
-                          if (updated.length === 0) {
-                            setShowRecentModal(false);
-                          }
-                        }}
-                        title="remove from recent"
-                      >
-                        <IconX size={12} />
-                      </button>
-                    </div>
-                  ))}
-                </>
-              ) : (
-                <div className="no-recent">no recent projects</div>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
+      <RecentProjectsModal
+        isOpen={showRecentModal}
+        onClose={() => setShowRecentModal(false)}
+        onProjectSelect={(path) => openProject(path)}
+      />
       
       {/* Help Modal - using shared component */}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}

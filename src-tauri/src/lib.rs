@@ -1,14 +1,16 @@
 // MacOS-specific imports must be at crate root
+// The objc crate provides Objective-C runtime bindings for macOS-specific window customization
 #[cfg(target_os = "macos")]
 #[macro_use]
 extern crate objc;
 
-mod claude;
-mod commands;
-mod state;
-mod websocket;
-mod logged_server;
-mod port_manager;
+// Module declarations for the application's core functionality
+mod claude;         // Claude CLI process management and communication
+mod commands;       // Tauri IPC commands exposed to the frontend
+mod state;          // Application state management (sessions, settings, etc.)
+mod websocket;      // WebSocket server for real-time communication with frontend
+mod logged_server;  // Node.js server process management with logging
+mod port_manager;   // Dynamic port allocation for server instances
 
 use std::sync::Arc;
 use tauri::{Manager, Listener};
@@ -17,44 +19,63 @@ use tracing::{info, error};
 use claude::ClaudeManager;
 use state::AppState;
 
+/// Main entry point for the Tauri application
+/// This function sets up the entire application infrastructure:
+/// - Initializes logging/tracing for debugging
+/// - Configures Tauri plugins (filesystem, dialog, shell, etc.)
+/// - Starts the Node.js backend server for Claude CLI communication
+/// - Sets up window styling and event handlers
+/// - Manages application lifecycle and cleanup
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    // Initialize tracing
+    // Initialize tracing/logging system for application-wide debugging
+    // Logs are output to console with INFO level and above
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .init();
 
+    // Build the Tauri application with required plugins
     tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())
-        .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_shell::init())
-        .plugin(tauri_plugin_store::Builder::new().build())
-        .plugin(tauri_plugin_clipboard_manager::init())
+        .plugin(tauri_plugin_fs::init())        // File system access for project navigation
+        .plugin(tauri_plugin_dialog::init())    // Native file/folder selection dialogs
+        .plugin(tauri_plugin_shell::init())     // Shell command execution capabilities
+        .plugin(tauri_plugin_store::Builder::new().build()) // Persistent storage for settings/state
+        .plugin(tauri_plugin_clipboard_manager::init())     // Clipboard operations for copy/paste
         .setup(|app| {
+            // Application setup phase - runs once at startup
             info!("Starting yurucode Tauri app");
 
-            // Initialize Claude manager
+            // Initialize Claude manager for handling Claude CLI process lifecycle
+            // Arc allows safe sharing across threads
             let claude_manager = Arc::new(ClaudeManager::new());
 
-            // ALWAYS allocate a fresh dynamic port for EVERY instance
+            // Dynamic port allocation strategy to avoid conflicts
+            // Each app instance gets its own port in the 60000-61000 range
+            // This prevents multiple instances from conflicting
             let server_port = {
                 info!("Allocating dynamic port for this instance");
                 port_manager::find_available_port()
                     .unwrap_or_else(|| port_manager::get_fallback_port())
             };
             
+            // Start the Node.js backend server that bridges between Tauri and Claude CLI
+            // This server handles spawning Claude processes and parsing their output
             info!("Starting LOGGED Node.js server on port: {}", server_port);
             logged_server::start_logged_server(server_port);
             info!("Server started on port {}", server_port);
 
-            // Initialize app state
+            // Initialize centralized application state
+            // Contains: sessions, settings, recent projects, Claude manager reference
             let app_state = AppState::new(claude_manager, server_port);
-            let _ = app_state.load_persisted_data();
+            let _ = app_state.load_persisted_data();  // Restore previous session data
 
-            // Store state for commands
+            // Register app state with Tauri's state management system
+            // This makes it accessible to all command handlers
             app.manage(app_state);
             
-            // Wait for Vite to be ready (only in dev mode)
+            // Development mode: Wait for Vite dev server to fully initialize
+            // This prevents the window from opening before the frontend is ready
+            // Windows has networking quirks that prevent connection checks, so we use a fixed delay
             #[cfg(debug_assertions)]
             {
                 info!("Waiting for Vite dev server to be ready...");
@@ -63,10 +84,19 @@ pub fn run() {
                 info!("Proceeding to open window after 5 second wait...");
             }
 
-            // Set up window event handlers
+            // Get reference to the main application window for configuration
             let window = app.get_webview_window("main").unwrap();
             
-            // Restore window state BEFORE showing the window
+            // Development builds get a (dev) suffix in the title bar
+            // This helps distinguish dev instances from production
+            #[cfg(debug_assertions)]
+            {
+                let _ = window.set_title("yuru code (dev)");
+                info!("Set window title to: yuru code (dev)");
+            }
+            
+            // Restore previous window size and position from persistent storage
+            // This happens BEFORE showing the window to prevent visual jumps
             {
                 let window_clone = window.clone();
                 let app_handle = app.handle().clone();
@@ -75,7 +105,12 @@ pub fn run() {
                 });
             }
             
-            // Show the window after a small delay to ensure everything is ready
+            // Delayed window display strategy
+            // The window starts hidden (configured in tauri.conf.json)
+            // We show it after a brief delay to ensure:
+            // - WebView is fully loaded
+            // - Styles are applied
+            // - No white flash on startup
             {
                 let window_clone = window.clone();
                 std::thread::spawn(move || {
@@ -86,8 +121,9 @@ pub fn run() {
                 });
             }
             
-            // Check if YURUCODE_SHOW_CONSOLE is set (from logged_server)
-            // DevTools methods are only available in debug builds
+            // DevTools configuration for debugging
+            // In debug builds, DevTools can be opened programmatically
+            // YURUCODE_SHOW_CONSOLE environment variable forces DevTools open
             #[cfg(debug_assertions)]
             {
                 if logged_server::YURUCODE_SHOW_CONSOLE {
@@ -107,7 +143,9 @@ pub fn run() {
                 }
             }
             
-            // Enable F12 listener for DevTools
+            // Register F12 key listener for DevTools toggle
+            // The actual toggle is handled by the toggle_devtools command
+            // which properly checks debug vs release build constraints
             {
                 let _window_clone = window.clone();
                 window.listen("open-devtools", move |_| {
@@ -117,18 +155,31 @@ pub fn run() {
                 });
             }
             
-            // Note: Tauri v2 file drops are handled via webview events
-            // The frontend will handle drag-and-drop directly using web APIs
-            // and can call Tauri commands if needed to process dropped folders
+            // File drag-and-drop handling note:
+            // Tauri v2 delegates drag-and-drop to the webview
+            // The React frontend handles drops via HTML5 drag-and-drop API
+            // and calls Tauri commands when folders are dropped
             
-            // Apply custom window styles for macOS
+            // macOS-specific window customization using Objective-C runtime
+            // Creates a native macOS look with:
+            // - Rounded corners
+            // - Subtle border
+            // - True transparency
+            // - Black OLED-optimized background
             #[cfg(target_os = "macos")]
             {
                 use cocoa::base::{id, YES, NO};
+                use cocoa::appkit::NSWindowTitleVisibility;
                 
                 let ns_window = window.ns_window().unwrap() as id;
                 
                 unsafe {
+                    // CRITICAL: Hide the native titlebar completely
+                    let _: () = msg_send![ns_window, setTitleVisibility: NSWindowTitleVisibility::NSWindowTitleHidden];
+                    
+                    // CRITICAL: Make titlebar fully transparent
+                    let _: () = msg_send![ns_window, setTitlebarAppearsTransparent: YES];
+                    
                     // Get the content view
                     let content_view: id = msg_send![ns_window, contentView];
                     
@@ -161,7 +212,11 @@ pub fn run() {
                 }
             }
 
-            // Handle window close event - simplified for Windows
+            // Window lifecycle event handlers
+            // Manages:
+            // - Saving window state on close/resize/move
+            // - Graceful cleanup when closing
+            // - Multi-window support (server stays alive for other windows)
             {
                 let window_clone = window.clone();
                 let app_handle = app.handle().clone();
@@ -170,19 +225,20 @@ pub fn run() {
                         tauri::WindowEvent::CloseRequested { .. } => {
                             info!("Window close requested, saving state...");
                             
-                            // Save window state before closing
+                            // Persist window dimensions and position for next launch
                             let window_for_save = window_clone.clone();
                             let app_for_save = app_handle.clone();
                             tauri::async_runtime::block_on(async move {
                                 save_window_state(&window_for_save, &app_for_save).await;
                             });
                             
-                            // DON'T stop the server - other windows might be using it!
-                            // DON'T exit the app - let Tauri handle window lifecycle
+                            // Multi-window support: Server stays alive for other windows
+                            // Tauri handles the actual window close and app exit logic
                             info!("Window closing, server remains running for other windows");
                         }
                         tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
-                            // Save window state on resize/move with debouncing
+                            // Auto-save window position/size changes
+                            // Debounced to avoid excessive disk writes during drag operations
                             let window_for_save = window_clone.clone();
                             let app_for_save = app_handle.clone();
                             tauri::async_runtime::spawn(async move {
@@ -198,7 +254,9 @@ pub fn run() {
             
             // DevTools - will open via keyboard shortcut F12
 
-            // Inject custom styles and debugging info for OLED theme
+            // Inject critical styles and debugging code into the webview
+            // This ensures the OLED black theme is applied immediately
+            // Also provides debugging info if React fails to mount
             window.eval(r#"
                 console.log('Tauri window.eval executed!');
                 console.log('Current URL:', window.location.href);
@@ -279,11 +337,13 @@ pub fn run() {
             commands::get_folder_contents,
         ])
         .on_window_event(|app_handle, event| {
-            // Only handle cleanup when truly needed
+            // Global window event handler for app-level lifecycle
+            // Manages server cleanup when the last window closes
             match event {
                 tauri::WindowEvent::Destroyed => {
-                    // The Destroyed event fires AFTER the window is removed
-                    // So we need to check if any windows remain
+                    // Multi-window cleanup logic
+                    // The Destroyed event fires AFTER the window is removed from the list
+                    // Check if this was the last window, and stop the server if so
                     let remaining_windows = app_handle.webview_windows();
                     
                     // Note: The destroyed window is already removed from the list
@@ -301,23 +361,32 @@ pub fn run() {
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
     
-    // If we get here (app quit normally), ensure cleanup
+    // Final cleanup when the app exits normally
+    // Ensures the Node.js server process is terminated
     info!("App exiting normally, cleaning up...");
     logged_server::stop_logged_server();
 }
 
+/// macOS-specific window customization traits and implementations
+/// Provides safe Rust wrappers around Objective-C NSWindow methods
+/// Used for creating the custom transparent, borderless window style
 #[cfg(target_os = "macos")]
 mod macos {
     use cocoa::appkit::{NSWindowStyleMask, NSWindowTitleVisibility};
     use cocoa::base::{id, BOOL};
     
     pub trait NSWindowExt {
+        #[allow(non_snake_case)]
         unsafe fn setTitleVisibility_(&self, visibility: NSWindowTitleVisibility);
+        #[allow(non_snake_case)]
         unsafe fn setTitlebarAppearsTransparent_(&self, transparent: BOOL);
+        #[allow(non_snake_case)]
         unsafe fn styleMask(&self) -> NSWindowStyleMask;
+        #[allow(non_snake_case)]
         unsafe fn setStyleMask_(&self, mask: NSWindowStyleMask);
     }
     
+    #[allow(non_snake_case)]
     impl NSWindowExt for id {
         unsafe fn setTitleVisibility_(&self, visibility: NSWindowTitleVisibility) {
             msg_send![*self, setTitleVisibility:visibility]
@@ -337,7 +406,9 @@ mod macos {
     }
 }
 
-// Window state persistence functions
+/// Saves the current window state (size and position) to persistent storage
+/// This data is used to restore the window to its previous state on next launch
+/// Uses the tauri-plugin-store for JSON-based persistence
 async fn save_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHandle) {
     use tauri_plugin_store::StoreExt;
     
@@ -357,6 +428,9 @@ async fn save_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHandle
     }
 }
 
+/// Restores window size and position from persistent storage
+/// Called during app initialization before the window is shown
+/// Provides a seamless experience by remembering user's window preferences
 async fn restore_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHandle) {
     use tauri_plugin_store::StoreExt;
     
@@ -383,7 +457,10 @@ async fn restore_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHan
     }
 }
 
-// Fallback server start function
+/// Fallback function to start the Node.js server if the primary method fails
+/// Attempts to locate and spawn the server process manually
+/// Uses different server scripts for development vs production builds
+/// This is a last-resort recovery mechanism
 fn start_server_fallback(app_handle: tauri::AppHandle) {
     use std::process::Command;
     

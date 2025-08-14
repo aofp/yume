@@ -39,6 +39,7 @@ import { WelcomeScreen } from '../Welcome/WelcomeScreen';
 import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete';
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
+import { RecentProjectsModal } from '../RecentProjectsModal/RecentProjectsModal';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -156,6 +157,8 @@ export const ClaudeChat: React.FC = () => {
   const [mentionCursorPos, setMentionCursorPos] = useState(0);
   const [commandTrigger, setCommandTrigger] = useState<string | null>(null);
   const [commandCursorPos, setCommandCursorPos] = useState(0);
+  const [bashCommandMode, setBashCommandMode] = useState(false);
+  const [isAtBottom, setIsAtBottom] = useState<{ [sessionId: string]: boolean }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -244,20 +247,44 @@ export const ClaudeChat: React.FC = () => {
     };
   }, []);
 
-  // Save scroll position when scrolling
+  // Track scroll position and whether we're at bottom
   useEffect(() => {
     const handleScroll = () => {
       if (chatContainerRef.current && currentSessionId) {
-        setScrollPositions(prev => ({
+        const container = chatContainerRef.current;
+        
+        // More reliable bottom detection
+        const scrollTop = container.scrollTop;
+        const scrollHeight = container.scrollHeight;
+        const clientHeight = container.clientHeight;
+        const atBottom = scrollHeight - scrollTop - clientHeight < 1;
+        
+        // Update isAtBottom state for this session
+        setIsAtBottom(prev => ({
           ...prev,
-          [currentSessionId]: chatContainerRef.current!.scrollTop
+          [currentSessionId]: atBottom
         }));
+        
+        // Save scroll position
+        if (atBottom) {
+          setScrollPositions(prev => ({
+            ...prev,
+            [currentSessionId]: -1 // Special value meaning "stick to bottom"
+          }));
+        } else {
+          setScrollPositions(prev => ({
+            ...prev,
+            [currentSessionId]: scrollTop
+          }));
+        }
       }
     };
 
     const container = chatContainerRef.current;
     if (container) {
-      container.addEventListener('scroll', handleScroll);
+      container.addEventListener('scroll', handleScroll, { passive: true });
+      // Initial check
+      handleScroll();
       return () => container.removeEventListener('scroll', handleScroll);
     }
   }, [currentSessionId]);
@@ -275,8 +302,13 @@ export const ClaudeChat: React.FC = () => {
           if (chatContainerRef.current) {
             const savedPosition = scrollPositions[currentSessionId];
             if (savedPosition !== undefined) {
-              // Restore saved position instantly
-              chatContainerRef.current.scrollTop = savedPosition;
+              if (savedPosition === -1) {
+                // Special value: user was at bottom, scroll to bottom
+                chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+              } else {
+                // Restore exact saved position
+                chatContainerRef.current.scrollTop = savedPosition;
+              }
             } else {
               // New session, check if has messages
               if (currentSession?.messages?.length > 0) {
@@ -298,46 +330,76 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSessionId, scrollPositions, currentSession?.messages?.length]);
 
-  // SIMPLE AUTO-SCROLL - only scroll if user is at bottom
+  // AUTO-SCROLL - only scroll if user is at bottom
   useEffect(() => {
-    if (!chatContainerRef.current || !currentSession) return;
+    if (!chatContainerRef.current || !currentSession || !currentSessionId) return;
     
     // Skip auto-scroll if we're switching tabs
     if (isTabSwitchingRef.current) return;
     
-    const container = chatContainerRef.current;
-    // Check if near bottom (within 200px)
-    const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
+    // Check if we should auto-scroll (only if already at bottom)
+    const shouldScroll = isAtBottom[currentSessionId] !== false; // Default to true for new sessions
     
-    // Only scroll if near bottom (remove streaming condition)
-    if (isNearBottom) {
-      // Small delay to ensure DOM is updated
-      setTimeout(() => {
-        if (!isTabSwitchingRef.current && chatContainerRef.current) {
+    if (shouldScroll) {
+      // Force scroll to bottom
+      requestAnimationFrame(() => {
+        if (chatContainerRef.current && !isTabSwitchingRef.current) {
           chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-      }, 10);
+      });
     }
-  }, [currentSession?.messages, currentSession?.streaming]);
+  }, [currentSession?.messages, currentSession?.streaming, currentSessionId, isAtBottom]);
   
   // Force scroll to bottom when user sends a message
   useEffect(() => {
-    if (!currentSession) return;
+    if (!currentSession || !currentSessionId) return;
     
     // Skip if we're switching tabs
     if (isTabSwitchingRef.current) return;
     
     const lastMessage = currentSession.messages[currentSession.messages.length - 1];
     
-    // If the last message is from the user, force scroll to bottom
+    // If the last message is from the user, force scroll to bottom and set isAtBottom
     if (lastMessage?.type === 'user') {
-      setTimeout(() => {
-        if (!isTabSwitchingRef.current && chatContainerRef.current) {
+      // Mark as at bottom
+      setIsAtBottom(prev => ({
+        ...prev,
+        [currentSessionId]: true
+      }));
+      
+      // Force scroll
+      requestAnimationFrame(() => {
+        if (chatContainerRef.current && !isTabSwitchingRef.current) {
           chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-      }, 50);
+      });
     }
-  }, [currentSession?.messages?.length]);
+  }, [currentSession?.messages?.length, currentSessionId]);
+
+  // MutationObserver for more reliable autoscroll during streaming
+  useEffect(() => {
+    if (!chatContainerRef.current || !currentSessionId) return;
+    
+    const container = chatContainerRef.current;
+    
+    const observer = new MutationObserver(() => {
+      // Skip if switching tabs
+      if (isTabSwitchingRef.current) return;
+      
+      // Only scroll if we're at bottom
+      if (isAtBottom[currentSessionId] !== false) {
+        container.scrollTop = container.scrollHeight;
+      }
+    });
+    
+    observer.observe(container, {
+      childList: true,
+      subtree: true,
+      characterData: true
+    });
+    
+    return () => observer.disconnect();
+  }, [currentSessionId, isAtBottom]);
 
   // Track thinking time per session
   useEffect(() => {
@@ -393,13 +455,8 @@ export const ClaudeChat: React.FC = () => {
                            target.tagName === 'TEXTAREA' || 
                            target.contentEditable === 'true';
       
-      // Ctrl+W to close tab (works even in input fields)
-      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
-        e.preventDefault();
-        if (currentSessionId && sessions.length > 0) {
-          deleteSession(currentSessionId);
-        }
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 't') {
+      // Ctrl+W handled in main.tsx to avoid duplicate handlers
+      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
         // Ctrl+T for new tab (works even in input fields)
         e.preventDefault();
         createSession();
@@ -410,12 +467,15 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         if (currentSessionId) {
           clearContext(currentSessionId);
-          // Clear scroll position for this session
-          setScrollPositions(prev => {
-            const newPositions = { ...prev };
-            delete newPositions[currentSessionId];
-            return newPositions;
-          });
+          // Reset to stick to bottom for this session
+          setIsAtBottom(prev => ({
+            ...prev,
+            [currentSessionId]: true
+          }));
+          setScrollPositions(prev => ({
+            ...prev,
+            [currentSessionId]: -1
+          }));
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
@@ -440,22 +500,6 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Toggle model between opus and sonnet
         toggleModel();
-      } else if (showRecentModal && e.key >= '1' && e.key <= '9') {
-        // Handle number keys for recent projects
-        e.preventDefault();
-        const stored = localStorage.getItem('yurucode-recent-projects');
-        if (stored) {
-          try {
-            const projects = JSON.parse(stored);
-            const index = parseInt(e.key) - 1;
-            if (index < projects.length) {
-              createSession(projects[index].name, projects[index].path);
-              setShowRecentModal(false);
-            }
-          } catch (err) {
-            console.error('Failed to parse recent projects:', err);
-          }
-        }
       } else if (e.key === 'Escape') {
         // First check if we're streaming and should stop
         if (currentSession?.streaming) {
@@ -475,8 +519,18 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, showRecentModal, currentSession, setShowStatsModal, interruptSession, setScrollPositions, deleteSession, createSession, sessions.length]);
+  }, [searchVisible, currentSessionId, clearContext, showRecentModal, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length]);
 
+
+  // Listen for event to open recent projects modal from SessionTabs
+  useEffect(() => {
+    const handleOpenRecentProjects = () => {
+      setShowRecentModal(true);
+    };
+    
+    window.addEventListener('openRecentProjects', handleOpenRecentProjects);
+    return () => window.removeEventListener('openRecentProjects', handleOpenRecentProjects);
+  }, []);
 
   // Search functionality
   useEffect(() => {
@@ -586,15 +640,14 @@ export const ClaudeChat: React.FC = () => {
         setInput('');
         // Reset textarea height when clearing context
         if (inputRef.current) {
-          inputRef.current.style.height = '54px'; // Reset to 3 lines
+          inputRef.current.style.height = '43px'; // Reset to min-height
           inputRef.current.style.overflow = 'hidden';
         }
-        // Clear scroll position for this session
-        setScrollPositions(prev => {
-          const newPositions = { ...prev };
-          delete newPositions[currentSessionId];
-          return newPositions;
-        });
+        // Reset scroll position to "stick to bottom" for this session
+        setScrollPositions(prev => ({
+          ...prev,
+          [currentSessionId]: -1
+        }));
         return;
       }
     } else if (trimmedInput === '/model' || trimmedInput.startsWith('/model ')) {
@@ -603,7 +656,7 @@ export const ClaudeChat: React.FC = () => {
       setInput('');
       // Reset textarea height
       if (inputRef.current) {
-        inputRef.current.style.height = '54px';
+        inputRef.current.style.height = '43px';
         inputRef.current.style.overflow = 'hidden';
       }
       return;
@@ -668,19 +721,27 @@ export const ClaudeChat: React.FC = () => {
       setAttachments([]);
       // Reset textarea height to minimum after sending
       if (inputRef.current) {
-        inputRef.current.style.height = '54px'; // Reset to 3 lines
+        inputRef.current.style.height = '43px'; // Reset to 3 lines
         inputRef.current.style.overflow = 'hidden';
       }
       // Clear drafts after sending
       updateSessionDraft(currentSessionId, '', []);
       await sendMessage(messageContent);
       
-      // Force scroll to bottom after sending message
-      setTimeout(() => {
+      // Mark as at bottom and force scroll after sending message
+      if (currentSessionId) {
+        setIsAtBottom(prev => ({
+          ...prev,
+          [currentSessionId]: true
+        }));
+      }
+      
+      // Force scroll to bottom
+      requestAnimationFrame(() => {
         if (chatContainerRef.current) {
           chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
         }
-      }, 50);
+      });
     } catch (error) {
       console.error('[ClaudeChat] Failed to send message:', error);
     }
@@ -993,12 +1054,15 @@ export const ClaudeChat: React.FC = () => {
       setCommandTrigger(null);
       if (currentSessionId) {
         clearContext(currentSessionId);
-        // Clear scroll position for this session
-        setScrollPositions(prev => {
-          const newPositions = { ...prev };
-          delete newPositions[currentSessionId];
-          return newPositions;
-        });
+        // Reset to stick to bottom for this session
+        setIsAtBottom(prev => ({
+          ...prev,
+          [currentSessionId]: true
+        }));
+        setScrollPositions(prev => ({
+          ...prev,
+          [currentSessionId]: -1
+        }));
       }
     } else if (command === '/model') {
       // Handle model command locally - toggle between opus and sonnet
@@ -1006,20 +1070,28 @@ export const ClaudeChat: React.FC = () => {
       setCommandTrigger(null);
       toggleModel();
     } else {
-      // For other commands like /compact, just insert into input
+      // For other commands like /compact and /init, insert into input and optionally send
       const newValue = input.substring(0, start) + replacement + input.substring(end);
       setInput(newValue);
       setCommandTrigger(null);
       
-      // Focus back on the input and set cursor after the replacement
-      if (inputRef.current) {
-        inputRef.current.focus();
-        const newCursorPos = start + replacement.length;
+      // For /init command, automatically send it
+      if (command === '/init') {
+        // Set the input then immediately send
         setTimeout(() => {
-          if (inputRef.current) {
-            inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
-          }
+          handleSend();
         }, 0);
+      } else {
+        // Focus back on the input and set cursor after the replacement
+        if (inputRef.current) {
+          inputRef.current.focus();
+          const newCursorPos = start + replacement.length;
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+            }
+          }, 0);
+        }
       }
     }
   };
@@ -1066,21 +1138,16 @@ export const ClaudeChat: React.FC = () => {
         } else {
           setMentionTrigger(null);
         }
-      } else if (lastSlashIndex >= 0 && lastSlashIndex > lastAtIndex) {
-        // Check if / is at the start or preceded by whitespace/newline
-        const charBefore = lastSlashIndex > 0 ? beforeCursor[lastSlashIndex - 1] : ' ';
-        if (charBefore === ' ' || charBefore === '\n' || lastSlashIndex === 0) {
-          // Get the text after / until cursor
-          const commandText = beforeCursor.substring(lastSlashIndex);
-          
-          // Check if there's no space in the command text (still typing the command)
-          if (!commandText.includes(' ') && !commandText.includes('\n')) {
-            setCommandTrigger(commandText);
-            setCommandCursorPos(cursorPosition);
-            setMentionTrigger(null);
-          } else {
-            setCommandTrigger(null);
-          }
+      } else if (lastSlashIndex === 0 && lastSlashIndex > lastAtIndex) {
+        // Only trigger if / is at the very beginning of the message
+        // Get the text after / until cursor
+        const commandText = beforeCursor.substring(lastSlashIndex);
+        
+        // Check if there's no space in the command text (still typing the command)
+        if (!commandText.includes(' ') && !commandText.includes('\n')) {
+          setCommandTrigger(commandText);
+          setCommandCursorPos(cursorPosition);
+          setMentionTrigger(null);
         } else {
           setCommandTrigger(null);
         }
@@ -1096,20 +1163,33 @@ export const ClaudeChat: React.FC = () => {
     
     // Simple auto-resize without jumps
     const textarea = e.target;
-    const minHeight = 54; // 3 lines * 18px
+    const minHeight = 42; // Updated to match CSS min-height
     const maxHeight = 90; // 5 lines * 18px
+    
+    // Check if we're at bottom before resizing
+    const container = chatContainerRef.current;
+    const wasAtBottom = container && currentSessionId &&
+      (isAtBottom[currentSessionId] !== false || 
+       (container.scrollHeight - container.scrollTop - container.clientHeight < 1));
     
     // Reset height to auto to force recalculation when content is deleted
     textarea.style.height = 'auto';
     
-    // Calculate new height based on scrollHeight
-    const newHeight = Math.min(Math.max(textarea.scrollHeight, minHeight), maxHeight);
+    // Calculate new height based on scrollHeight with 3px padding
+    const newHeight = Math.min(Math.max(textarea.scrollHeight + 3, minHeight), maxHeight);
     
     // Set the calculated height
     textarea.style.height = newHeight + 'px';
     
     // Show scrollbar only when content exceeds max height
     textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    
+    // If we were at bottom, maintain scroll position at bottom
+    if (wasAtBottom && container) {
+      requestAnimationFrame(() => {
+        container.scrollTop = container.scrollHeight;
+      });
+    }
   };
 
   // Update input container height when it changes
@@ -1359,10 +1439,15 @@ export const ClaudeChat: React.FC = () => {
           </div>
         )}
         <div className="input-row">
+          {bashCommandMode && (
+            <div className="bash-indicator">
+              <IconTerminal size={14} stroke={1.5} />
+            </div>
+          )}
           <textarea
             ref={inputRef}
-            className="chat-input"
-            placeholder={currentSession?.streaming ? "append message..." : "code prompt..."}
+            className={`chat-input ${bashCommandMode ? 'bash-mode' : ''}`}
+            placeholder={bashCommandMode ? "bash command..." : currentSession?.streaming ? "append message..." : "code prompt..."}
             value={input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
@@ -1377,7 +1462,6 @@ export const ClaudeChat: React.FC = () => {
               e.stopPropagation();
             }}
             disabled={false}
-            style={{ height: '54px' }}
           />
           {currentSession?.streaming && (
             <button 
@@ -1409,8 +1493,8 @@ export const ClaudeChat: React.FC = () => {
               // Calculate percentage but show warning if over 100%
               const rawPercentage = (tokens / contextWindowTokens * 100);
               const percentageNum = Math.min(100, rawPercentage);
-              // Format: show decimal only if not a whole number
-              const percentage = percentageNum % 1 === 0 ? percentageNum.toFixed(0) : percentageNum.toFixed(1);
+              // Format: always show 2 decimal places
+              const percentage = percentageNum.toFixed(2);
               
               // Log warning if tokens exceed context window
               if (rawPercentage > 100) {
@@ -1433,7 +1517,11 @@ export const ClaudeChat: React.FC = () => {
                       // Clear messages but keep session
                       if (currentSessionId && hasActivity) {
                         clearContext(currentSessionId);
-                        // Clear scroll position for this session
+                        // Reset to stick to bottom for this session
+                        setIsAtBottom(prev => ({
+                          ...prev,
+                          [currentSessionId]: true
+                        }));
                         setScrollPositions(prev => {
                           const newPositions = { ...prev };
                           delete newPositions[currentSessionId];
@@ -1489,97 +1577,14 @@ export const ClaudeChat: React.FC = () => {
       )}
       
       {/* Recent Projects Modal */}
-      {showRecentModal && (
-        <div 
-          className="recent-modal-overlay"
-          onMouseDown={(e) => {
-            if (e.target === e.currentTarget) {
-              setShowRecentModal(false);
-            }
-          }}
-        >
-          <div 
-            className="recent-modal"
-            onMouseDown={(e) => e.stopPropagation()}
-          >
-            <div className="modal-header">
-              <div className="modal-title-row">
-                <IconChevronDown size={16} className="modal-icon" />
-                <span className="modal-title">recent projects</span>
-              </div>
-              <button 
-                className="clear-all-icon"
-                onClick={() => {
-                  if (confirm('clear all recent projects?')) {
-                    localStorage.removeItem('yurucode-recent-projects');
-                    setShowRecentModal(false);
-                  }
-                }}
-                title="clear all"
-              >
-                <IconTrash size={14} />
-              </button>
-            </div>
-            
-            <div className="modal-content">
-              {(() => {
-                const stored = localStorage.getItem('yurucode-recent-projects');
-                if (!stored) {
-                  return <div className="no-recent">no recent projects</div>;
-                }
-                try {
-                  const projects = JSON.parse(stored).map((p: any) => ({
-                    ...p,
-                    lastOpened: new Date(p.lastOpened)
-                  }));
-                  
-                  if (projects.length === 0) {
-                    return <div className="no-recent">no recent projects</div>;
-                  }
-                  
-                  return projects.slice(0, 10).map((project: any, idx: number) => (
-                    <div key={project.path} className="recent-item-container">
-                      <button
-                        className="recent-item"
-                        onClick={() => {
-                          createSession(project.name, project.path);
-                          setShowRecentModal(false);
-                        }}
-                      >
-                        <span className="recent-item-number">{idx < 9 ? idx + 1 : ''}</span>
-                        <IconFolderOpen size={14} />
-                        <div className="recent-item-info">
-                          <div className="recent-item-name">{project.name}</div>
-                          <div className="recent-item-path">{project.path}</div>
-                        </div>
-                      </button>
-                      <button
-                        className="recent-item-remove"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          const updated = projects.filter((p: any) => p.path !== project.path);
-                          localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
-                          if (updated.length === 0) {
-                            setShowRecentModal(false);
-                          }
-                          // Force re-render by closing and reopening
-                          setShowRecentModal(false);
-                          setTimeout(() => setShowRecentModal(true), 0);
-                        }}
-                        title="remove from recent"
-                      >
-                        <IconX size={12} />
-                      </button>
-                    </div>
-                  ));
-                } catch (e) {
-                  return <div className="no-recent">no recent projects</div>;
-                }
-              })()}
-            </div>
-          </div>
-        </div>
-      )}
+      <RecentProjectsModal
+        isOpen={showRecentModal}
+        onClose={() => setShowRecentModal(false)}
+        onProjectSelect={(path) => {
+          const name = path.split(/[\\/]/).pop() || path;
+          createSession(name, path);
+        }}
+      />
 
       
       {showStatsModal && currentSession?.analytics && (
@@ -1681,7 +1686,7 @@ export const ClaudeChat: React.FC = () => {
                       style={{ width: `${currentSession.analytics.tokens.total > 0 ? (currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100 : 0}%` }}
                     />
                   </div>
-                  <div className="stat-row" style={{ marginTop: '5px' }}>
+                  <div className="stat-row opus-stat-row">
                     <div className="stat-keys">
                       <IconBrain size={14} />
                       <span className="stat-name">opus %</span>

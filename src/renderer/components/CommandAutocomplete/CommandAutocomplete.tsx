@@ -33,6 +33,7 @@ interface Command {
 const commands: Command[] = [
   { name: 'clear', description: 'clear context and start fresh', icon: <IconTrash size={14} />, handleLocally: true },
   { name: 'model', description: 'switch model (opus/sonnet)', icon: <IconBolt size={14} />, handleLocally: true },
+  { name: 'init', description: 'create/update claude.md file', icon: <IconSettings size={14} />, handleLocally: false },
   { name: 'compact', description: 'compact message display', icon: <IconEye size={14} />, handleLocally: false },
 ];
 

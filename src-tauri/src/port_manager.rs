@@ -1,12 +1,30 @@
+/// Dynamic port allocation module
+/// Manages port allocation for the Node.js backend server to avoid conflicts
+/// when running multiple instances of the application
+/// 
+/// Port allocation strategy:
+/// - Uses ports in the 60000-61000 range to avoid common service conflicts
+/// - First tries random ports for better distribution
+/// - Falls back to sequential search if random fails
+/// - Has hardcoded fallback ports as last resort
+
 use std::net::{TcpListener, SocketAddr};
 use std::sync::Mutex;
 use rand::Rng;
 use tracing::{info, warn};
 
-// Store allocated ports to avoid conflicts between Vite and server
+// Store allocated ports to avoid conflicts between multiple servers
+// Note: This is per-process, not shared between app instances
 static ALLOCATED_PORTS: Mutex<Vec<u16>> = Mutex::new(Vec::new());
 
-/// Find an available port in the range 60000-61000
+/// Finds an available port in the range 60000-61000
+/// 
+/// Algorithm:
+/// 1. Try random ports for first half of attempts (better distribution)
+/// 2. Try sequential ports from a random starting point
+/// 3. Return None if no port found after MAX_ATTEMPTS
+/// 
+/// This approach minimizes conflicts between multiple app instances
 pub fn find_available_port() -> Option<u16> {
     let mut rng = rand::thread_rng();
     let mut attempts = 0;
@@ -48,7 +66,9 @@ pub fn find_available_port() -> Option<u16> {
     None
 }
 
-/// Check if a specific port is available
+/// Checks if a specific port is available by attempting to bind to it
+/// Tests binding on 0.0.0.0 (all interfaces) which matches server behavior
+/// The TcpListener is immediately dropped, freeing the port
 fn is_port_available(port: u16) -> bool {
     // Check both 0.0.0.0 and 127.0.0.1 to be sure
     // Try binding to 0.0.0.0 which is what the server uses
@@ -64,7 +84,9 @@ fn is_port_available(port: u16) -> bool {
     }
 }
 
-/// Mark a port as allocated to avoid conflicts
+/// Marks a port as allocated within this process
+/// Helps avoid re-checking the same ports during allocation
+/// Note: This doesn't prevent other processes from using the port
 fn mark_port_allocated(port: u16) {
     let mut allocated = ALLOCATED_PORTS.lock().unwrap();
     if !allocated.contains(&port) {
@@ -73,14 +95,17 @@ fn mark_port_allocated(port: u16) {
     }
 }
 
-/// Clear all allocated ports (for cleanup)
+/// Clears all allocated ports from the tracking list
+/// Used for cleanup, though ports are freed when processes exit
 pub fn clear_allocated_ports() {
     let mut allocated = ALLOCATED_PORTS.lock().unwrap();
     allocated.clear();
     info!("Cleared all allocated ports");
 }
 
-/// Get the default fallback port if dynamic allocation fails
+/// Returns a fallback port when dynamic allocation fails
+/// Tries a predefined list of ports that are unlikely to be in use
+/// Last resort returns 3001 (common development port) even if occupied
 pub fn get_fallback_port() -> u16 {
     // Try a few fallback ports in case dynamic allocation fails
     let fallbacks = vec![60001, 60002, 60003, 60999, 3001];
@@ -97,6 +122,8 @@ pub fn get_fallback_port() -> u16 {
     3001
 }
 
+/// Unit tests for port allocation
+/// Note: These tests might be flaky in CI environments where ports are in use
 #[cfg(test)]
 mod tests {
     use super::*;
