@@ -3,7 +3,6 @@ import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown } from '@ta
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
-import { RecentProjectsModal } from '../RecentProjectsModal/RecentProjectsModal';
 import { tauriApi } from '../../services/tauriApi';
 import './WelcomeScreen.css';
 
@@ -16,7 +15,6 @@ interface RecentProject {
 export const WelcomeScreen: React.FC = () => {
   const { createSession, selectedModel, setSelectedModel } = useClaudeCodeStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
-  const [showRecentModal, setShowRecentModal] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
 
   useEffect(() => {
@@ -43,11 +41,14 @@ export const WelcomeScreen: React.FC = () => {
     // Listen for updates to recent projects
     const handleRecentProjectsUpdate = () => {
       loadRecentProjects();
-      setShowRecentModal(true);
+      // Don't automatically open modal when projects are updated
     };
 
+
     window.addEventListener('recentProjectsUpdated', handleRecentProjectsUpdate);
-    return () => window.removeEventListener('recentProjectsUpdated', handleRecentProjectsUpdate);
+    return () => {
+      window.removeEventListener('recentProjectsUpdated', handleRecentProjectsUpdate);
+    };
   }, []);
 
   // Handle keyboard shortcuts (moved after function definitions)
@@ -123,9 +124,6 @@ export const WelcomeScreen: React.FC = () => {
       
       // Handle ESC to close modals
       if (e.key === 'Escape') {
-        if (showRecentModal) {
-          setShowRecentModal(false);
-        }
         if (showHelpModal) {
           setShowHelpModal(false);
         }
@@ -147,7 +145,8 @@ export const WelcomeScreen: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
         if (recentProjects.length > 0) {
-          setShowRecentModal(true);
+          const event = new CustomEvent('openRecentProjects');
+          window.dispatchEvent(event);
         }
       }
       
@@ -160,7 +159,7 @@ export const WelcomeScreen: React.FC = () => {
     
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showRecentModal, showHelpModal, recentProjects, handleNewSession]);
+  }, [showHelpModal, recentProjects, handleNewSession]);
 
   return (
     <div className="welcome-screen">
@@ -182,7 +181,10 @@ export const WelcomeScreen: React.FC = () => {
 
           <button 
             className="action-button"
-            onClick={() => setShowRecentModal(true)}
+            onClick={() => {
+              const event = new CustomEvent('openRecentProjects');
+              window.dispatchEvent(event);
+            }}
             disabled={recentProjects.length === 0}
             title={`recent projects (ctrl+r)`}
           >
@@ -203,13 +205,6 @@ export const WelcomeScreen: React.FC = () => {
         </button>
       </div>
 
-      
-      {/* Recent Projects Modal */}
-      <RecentProjectsModal
-        isOpen={showRecentModal}
-        onClose={() => setShowRecentModal(false)}
-        onProjectSelect={(path) => openProject(path)}
-      />
       
       {/* Help Modal - using shared component */}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}

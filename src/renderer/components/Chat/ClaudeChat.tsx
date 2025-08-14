@@ -39,7 +39,6 @@ import { WelcomeScreen } from '../Welcome/WelcomeScreen';
 import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete';
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
-import { RecentProjectsModal } from '../RecentProjectsModal/RecentProjectsModal';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -140,7 +139,6 @@ export const ClaudeChat: React.FC = () => {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
-  const [showRecentModal, setShowRecentModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
@@ -480,8 +478,9 @@ export const ClaudeChat: React.FC = () => {
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
-        // Toggle recent modal instead of just opening it
-        setShowRecentModal(prev => !prev);
+        // Dispatch event to open recent modal in App
+        const event = new CustomEvent('openRecentProjects');
+        window.dispatchEvent(event);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'd') {
         e.preventDefault();
         // Create new session in same directory (fresh start, same working dir)
@@ -507,8 +506,6 @@ export const ClaudeChat: React.FC = () => {
           e.preventDefault();
           console.log('[ClaudeChat] ESC pressed - interrupting stream');
           interruptSession();
-        } else if (showRecentModal) {
-          setShowRecentModal(false);
         } else if (searchVisible) {
           setSearchVisible(false);
           setSearchQuery('');
@@ -520,19 +517,9 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, showRecentModal, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length]);
+  }, [searchVisible, currentSessionId, clearContext, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length]);
 
 
-  // Listen for event to open recent projects modal from SessionTabs
-  useEffect(() => {
-    const handleOpenRecentProjects = () => {
-      console.log('[ClaudeChat] Received openRecentProjects event, opening modal');
-      setShowRecentModal(true);
-    };
-    
-    window.addEventListener('openRecentProjects', handleOpenRecentProjects);
-    return () => window.removeEventListener('openRecentProjects', handleOpenRecentProjects);
-  }, []);
 
   // Search functionality
   useEffect(() => {
@@ -1663,17 +1650,6 @@ export const ClaudeChat: React.FC = () => {
         />
       )}
       
-      {/* Recent Projects Modal */}
-      <RecentProjectsModal
-        isOpen={showRecentModal}
-        onClose={() => setShowRecentModal(false)}
-        onProjectSelect={(path) => {
-          // Close modal first to prevent duplicate event handling
-          setShowRecentModal(false);
-          const name = path.split(/[\\/]/).pop() || path;
-          createSession(name, path);
-        }}
-      />
 
       
       {showStatsModal && currentSession?.analytics && (

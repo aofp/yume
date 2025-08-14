@@ -8,6 +8,7 @@ import { AboutModal } from './components/About/AboutModal';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
 import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 import { ServerLogs } from './components/ServerLogs/ServerLogs';
+import { RecentProjectsModal } from './components/RecentProjectsModal/RecentProjectsModal';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { platformBridge } from './services/platformBridge';
 import './App.minimal.css';
@@ -18,6 +19,7 @@ export const App: React.FC = () => {
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showServerLogs, setShowServerLogs] = useState(false);
+  const [showRecentModal, setShowRecentModal] = useState(false);
   // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -153,6 +155,19 @@ export const App: React.FC = () => {
     }
   };
   
+  // Handle global event for opening recent projects modal
+  useEffect(() => {
+    const handleOpenRecentProjects = () => {
+      console.log('[App] Received openRecentProjects event');
+      setShowRecentModal(true);
+    };
+
+    window.addEventListener('openRecentProjects', handleOpenRecentProjects);
+    return () => {
+      window.removeEventListener('openRecentProjects', handleOpenRecentProjects);
+    };
+  }, []);
+
   useEffect(() => {
     console.log('App useEffect running');
     // Set page title
@@ -224,6 +239,22 @@ export const App: React.FC = () => {
               console.error('Failed to toggle console:', err);
             });
           });
+        }
+      }
+      
+      // Ctrl+R for recent projects
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+        e.preventDefault();
+        const stored = localStorage.getItem('yurucode-recent-projects');
+        if (stored) {
+          try {
+            const projects = JSON.parse(stored);
+            if (projects && projects.length > 0) {
+              setShowRecentModal(true);
+            }
+          } catch (err) {
+            console.error('Failed to parse recent projects:', err);
+          }
         }
       }
       
@@ -530,6 +561,14 @@ export const App: React.FC = () => {
       {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
       <ServerLogs isOpen={showServerLogs} onClose={() => setShowServerLogs(false)} />
+      <RecentProjectsModal
+        isOpen={showRecentModal}
+        onClose={() => setShowRecentModal(false)}
+        onProjectSelect={(path) => {
+          const name = path.split(/[/\\]/).pop() || path;
+          createSession(name, path);
+        }}
+      />
     </div>
   );
 };

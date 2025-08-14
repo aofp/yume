@@ -68,13 +68,11 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         onClose();
       }
       
-      // Force re-render by closing and reopening
+      // Just close the modal and trigger update event for UI refresh
       onClose();
-      setTimeout(() => {
-        // This will trigger parent to reopen if needed
-        const event = new CustomEvent('recentProjectsUpdated');
-        window.dispatchEvent(event);
-      }, 0);
+      // Dispatch event to update the project list display
+      const event = new CustomEvent('recentProjectsUpdated');
+      window.dispatchEvent(event);
     } catch (err) {
       console.error('Failed to update recent projects:', err);
     }
@@ -129,6 +127,24 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     }
   };
 
+  React.useEffect(() => {
+    // Track global modal state to prevent duplicates
+    if (isOpen) {
+      // @ts-ignore - adding global flag
+      window.__recentModalOpen = true;
+    } else {
+      // @ts-ignore - adding global flag
+      window.__recentModalOpen = false;
+      setIsSelecting(false);
+    }
+    
+    // Clean up on unmount
+    return () => {
+      // @ts-ignore - adding global flag
+      window.__recentModalOpen = false;
+    };
+  }, [isOpen]);
+  
   React.useEffect(() => {
     // Reset selection state when modal opens/closes
     if (!isOpen) {
