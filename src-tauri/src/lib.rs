@@ -174,6 +174,12 @@ pub fn run() {
                 let ns_window = window.ns_window().unwrap() as id;
                 
                 unsafe {
+                    // CRITICAL: Set minimum window size for macOS
+                    use cocoa::foundation::NSSize;
+                    let min_size = NSSize::new(516.0, 509.0);
+                    let _: () = msg_send![ns_window, setMinSize: min_size];
+                    info!("Set macOS minimum window size to 516x509");
+                    
                     // CRITICAL: Hide the native titlebar completely
                     let _: () = msg_send![ns_window, setTitleVisibility: NSWindowTitleVisibility::NSWindowTitleHidden];
                     
@@ -236,9 +242,34 @@ pub fn run() {
                             // Tauri handles the actual window close and app exit logic
                             info!("Window closing, server remains running for other windows");
                         }
-                        tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
-                            // Auto-save window position/size changes
-                            // Debounced to avoid excessive disk writes during drag operations
+                        tauri::WindowEvent::Resized(size) => {
+                            // Enforce minimum size constraints
+                            if size.width < 516 || size.height < 509 {
+                                let new_width = size.width.max(516);
+                                let new_height = size.height.max(509);
+                                let window_for_resize = window_clone.clone();
+                                // Force resize back to minimum immediately
+                                std::thread::spawn(move || {
+                                    std::thread::sleep(std::time::Duration::from_millis(10));
+                                    let _ = window_for_resize.set_size(tauri::PhysicalSize::new(new_width, new_height));
+                                });
+                                info!("Window too small ({}x{}), enforcing minimum size: {}x{}", size.width, size.height, new_width, new_height);
+                                // Don't save invalid size - return early
+                            } else {
+                                // Only save valid sizes
+                                // Auto-save window position/size changes
+                                // Debounced to avoid excessive disk writes during drag operations
+                                let window_for_save = window_clone.clone();
+                                let app_for_save = app_handle.clone();
+                                tauri::async_runtime::spawn(async move {
+                                    // Simple debounce - wait 500ms before saving
+                                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                                    save_window_state(&window_for_save, &app_for_save).await;
+                                });
+                            }
+                        }
+                        tauri::WindowEvent::Moved(_) => {
+                            // Auto-save window position changes
                             let window_for_save = window_clone.clone();
                             let app_for_save = app_handle.clone();
                             tauri::async_runtime::spawn(async move {
@@ -437,12 +468,15 @@ async fn restore_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHan
     
     let store = app.store("window-state.json").expect("Failed to get store");
     
-    // Try to restore window size
+    // Try to restore window size with minimum size enforcement
     if let Some(width) = store.get("width") {
         if let Some(height) = store.get("height") {
             if let (Some(w), Some(h)) = (width.as_u64(), height.as_u64()) {
-                let _ = window.set_size(tauri::PhysicalSize::new(w as u32, h as u32));
-                info!("Restored window size: {}x{}", w, h);
+                // Enforce minimum size of 516x509
+                let final_width = (w as u32).max(516);
+                let final_height = (h as u32).max(509);
+                let _ = window.set_size(tauri::PhysicalSize::new(final_width, final_height));
+                info!("Restored window size: {}x{} (enforced minimums)", final_width, final_height);
             }
         }
     }

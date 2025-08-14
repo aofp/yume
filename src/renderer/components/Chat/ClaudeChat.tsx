@@ -1663,19 +1663,17 @@ export const ClaudeChat: React.FC = () => {
         />
       )}
       
-      {/* Recent Projects Modal - only render when we have a session to avoid duplicate modals */}
-      {currentSession && (
-        <RecentProjectsModal
-          isOpen={showRecentModal}
-          onClose={() => setShowRecentModal(false)}
-          onProjectSelect={(path) => {
-            // Close modal first to prevent duplicate event handling
-            setShowRecentModal(false);
-            const name = path.split(/[\\/]/).pop() || path;
-            createSession(name, path);
-          }}
-        />
-      )}
+      {/* Recent Projects Modal */}
+      <RecentProjectsModal
+        isOpen={showRecentModal}
+        onClose={() => setShowRecentModal(false)}
+        onProjectSelect={(path) => {
+          // Close modal first to prevent duplicate event handling
+          setShowRecentModal(false);
+          const name = path.split(/[\\/]/).pop() || path;
+          createSession(name, path);
+        }}
+      />
 
       
       {showStatsModal && currentSession?.analytics && (

@@ -247,7 +247,7 @@
   color: #ffffff;
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 8px;
   font-family: 'Fira Code', monospace;
 }
 
@@ -256,7 +256,7 @@
   border: none !important;
   border-radius: 2px !important;
   padding: 2px;
-  margin: 0 0 2px 0;
+  margin: 0;
   overflow-x: visible;
   white-space: pre-wrap;
   word-break: break-all;
