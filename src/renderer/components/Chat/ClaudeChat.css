@@ -615,8 +615,8 @@
 
 .input-row {
   display: flex;
-  gap: 8px;
-  align-items: flex-end;
+  gap: 0;
+  align-items: flex-start;
   width: 100%;
   position: relative;
 }
@@ -678,7 +678,7 @@
   border-radius: 4px;
   font-size: 12px;
   line-height: 18px;
-  min-height: 34px;
+  min-height: 44px;
   max-height: 106px; /* 5 lines: 18px * 5 + 16px padding */
   box-sizing: border-box;
   resize: none;
@@ -898,10 +898,10 @@
 /* Bash command mode indicator */
 .bash-indicator {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #ff9999;
-  padding: 0 8px;
+  align-items: flex-start;
+  justify-content: flex-start;
+  color: var(--accent-color);
+  padding: 0;
   animation: pulse 1.5s ease-in-out infinite;
 }
 
@@ -911,7 +911,6 @@
 }
 
 .chat-input.bash-mode {
-  border-left: 2px solid #ff9999;
   padding-left: 10px;
 }
 
@@ -921,7 +920,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 0;
-  margin-top: 2px;
+  margin-top: 1px;
   background: #000000;
   flex-shrink: 0; /* Prevent shrinking */
 }
@@ -1070,20 +1069,12 @@
 
 /* New Attachments System */
 .attachments-container {
-  position: absolute;
-  bottom: calc(100% + 8px); /* Position above the input container with 8px gap */
-  right: 14px;
   display: flex;
-  gap: 2px;
+  gap: 4px;
   padding: 0;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  backdrop-filter: none;
-  max-width: 400px;
+  background: #000000;
+  margin-bottom: 4px;
   flex-wrap: wrap;
-  animation: none;
-  z-index: 100;
 }
 
 /* removed animation */
@@ -1092,19 +1083,24 @@
   position: relative;
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px 6px;
-  background: rgba(0, 0, 0, 0.4);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 2px;
-  transition: border-color 0.2s;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
+  transition: all 0.2s;
   user-select: none;
+}
+
+.attachment-item:hover {
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.4);
 }
 
 
 .attachment-text {
-  font-size: 9px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.9);
   font-family: 'Fira Code', monospace;
   opacity: 1;
 }
@@ -1124,7 +1120,7 @@
 }
 
 .attachment-remove:hover {
-  color: var(--accent-color);
+  color: rgba(var(--accent-rgb), 0.9);
 }
 
 /* Message attachment preview (in chat bubbles) */
@@ -1167,7 +1163,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 90%;
-  max-width: 520px;
+  max-width: 460px;
   max-height: 80vh;
   overflow-y: auto;
   user-select: none;
@@ -1203,9 +1199,9 @@
 }
 
 .help-content {
-  padding: 12px 12px 12px 16px;
+  padding: 8px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
   gap: 8px;
   justify-content: center;
 }
@@ -1244,7 +1240,7 @@
   display: inline-block;
   background: rgba(128, 128, 128, 0.2);
   color: rgba(255, 255, 255, 0.8);
-  padding: 2px 6px;
+  padding: 1px 4px;
   border-radius: 3px;
   font-family: 'Fira Code', monospace;
   font-size: 9px;
@@ -1262,7 +1258,7 @@
 
 .shortcut-dots {
   flex: 1;
-  margin: 0 6px;
+  margin: 0 3px;
   color: rgba(255, 255, 255, 0.2);
   overflow: hidden;
   line-height: 1;
@@ -1345,7 +1341,7 @@
 .stats-content {
   padding: 12px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
   gap: 8px;
   justify-content: center;
 }

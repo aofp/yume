@@ -331,6 +331,7 @@ pub fn run() {
             commands::check_is_directory,
             commands::toggle_console_visibility,
             commands::open_external,
+            commands::execute_bash,
             commands::search_files,
             commands::get_recent_files,
             commands::get_git_status,

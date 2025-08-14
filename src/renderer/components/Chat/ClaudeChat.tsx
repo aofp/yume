@@ -180,7 +180,8 @@ export const ClaudeChat: React.FC = () => {
     setSelectedModel,
     toggleModel,
     loadPersistedSession,
-    updateSessionDraft
+    updateSessionDraft,
+    addMessageToSession
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -525,6 +526,7 @@ export const ClaudeChat: React.FC = () => {
   // Listen for event to open recent projects modal from SessionTabs
   useEffect(() => {
     const handleOpenRecentProjects = () => {
+      console.log('[ClaudeChat] Received openRecentProjects event, opening modal');
       setShowRecentModal(true);
     };
     
@@ -620,16 +622,88 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [input, attachments, currentSessionId, updateSessionDraft]);
 
+  // Set initial textarea height to prevent jump
+  useEffect(() => {
+    if (inputRef.current) {
+      inputRef.current.style.height = '44px';
+    }
+  }, [currentSessionId]);
+
   const handleSend = async () => {
     console.log('[ClaudeChat] handleSend called', { 
       input: input.slice(0, 50), 
       attachments: attachments.length,
       streaming: currentSession?.streaming,
-      sessionId: currentSessionId 
+      sessionId: currentSessionId,
+      bashCommandMode 
     });
     
     // Allow sending messages during streaming (they'll be queued)
     if (!input.trim() && attachments.length === 0) return;
+    
+    // Check for bash mode command (starts with !)
+    if (bashCommandMode && input.startsWith('!')) {
+      const bashCommand = input.slice(1).trim(); // Remove the ! prefix
+      if (bashCommand) {
+        console.log('[ClaudeChat] Executing bash command:', bashCommand);
+        
+        // Add the command to the messages as a user message with proper structure
+        const commandMessage = {
+          id: `bash-cmd-${Date.now()}`,
+          type: 'user' as const,
+          message: { content: `!${bashCommand}` },
+          timestamp: Date.now()
+        };
+        
+        // Add to session messages
+        if (currentSessionId) {
+          addMessageToSession(currentSessionId, commandMessage);
+        }
+        
+        // Clear input and reset bash mode
+        setInput('');
+        setBashCommandMode(false);
+        if (inputRef.current) {
+          inputRef.current.style.height = '44px';
+          inputRef.current.style.overflow = 'hidden';
+        }
+        
+        try {
+          // Execute the bash command via Tauri
+          const { invoke } = await import('@tauri-apps/api/core');
+          const output = await invoke<string>('execute_bash', { command: bashCommand });
+          
+          // Add the output as an assistant message with proper structure
+          const outputMessage = {
+            id: `bash-out-${Date.now()}`,
+            type: 'assistant' as const,
+            message: { content: `\`\`\`bash\n$ ${bashCommand}\n${output}\`\`\`` },
+            timestamp: Date.now()
+          };
+          
+          // Add output to session messages
+          if (currentSessionId) {
+            addMessageToSession(currentSessionId, outputMessage);
+          }
+        } catch (error) {
+          console.error('[ClaudeChat] Failed to execute bash command:', error);
+          
+          // Add error message with proper structure
+          const errorMessage = {
+            id: `bash-err-${Date.now()}`,
+            type: 'assistant' as const,
+            message: { content: `Error executing command: ${error}` },
+            timestamp: Date.now()
+          };
+          
+          if (currentSessionId) {
+            addMessageToSession(currentSessionId, errorMessage);
+          }
+        }
+        
+        return;
+      }
+    }
     
     // Check for slash commands and special inputs
     const trimmedInput = input.trim();
@@ -640,7 +714,7 @@ export const ClaudeChat: React.FC = () => {
         setInput('');
         // Reset textarea height when clearing context
         if (inputRef.current) {
-          inputRef.current.style.height = '43px'; // Reset to min-height
+          inputRef.current.style.height = '44px'; // Reset to min-height
           inputRef.current.style.overflow = 'hidden';
         }
         // Reset scroll position to "stick to bottom" for this session
@@ -656,7 +730,7 @@ export const ClaudeChat: React.FC = () => {
       setInput('');
       // Reset textarea height
       if (inputRef.current) {
-        inputRef.current.style.height = '43px';
+        inputRef.current.style.height = '44px';
         inputRef.current.style.overflow = 'hidden';
       }
       return;
@@ -721,7 +795,7 @@ export const ClaudeChat: React.FC = () => {
       setAttachments([]);
       // Reset textarea height to minimum after sending
       if (inputRef.current) {
-        inputRef.current.style.height = '43px'; // Reset to 3 lines
+        inputRef.current.style.height = '44px'; // Reset to min-height
         inputRef.current.style.overflow = 'hidden';
       }
       // Clear drafts after sending
@@ -1102,6 +1176,9 @@ export const ClaudeChat: React.FC = () => {
     const cursorPosition = e.target.selectionStart;
     setInput(newValue);
     
+    // Check for bash mode (starts with !)
+    setBashCommandMode(newValue.startsWith('!'));
+    
     // Only check for triggers if textarea is focused
     const isTextareaFocused = document.activeElement === e.target;
     
@@ -1163,7 +1240,7 @@ export const ClaudeChat: React.FC = () => {
     
     // Simple auto-resize without jumps
     const textarea = e.target;
-    const minHeight = 42; // Updated to match CSS min-height
+    const minHeight = 44; // Match CSS min-height exactly
     const maxHeight = 90; // 5 lines * 18px
     
     // Check if we're at bottom before resizing
@@ -1172,14 +1249,23 @@ export const ClaudeChat: React.FC = () => {
       (isAtBottom[currentSessionId] !== false || 
        (container.scrollHeight - container.scrollTop - container.clientHeight < 1));
     
-    // Reset height to auto to force recalculation when content is deleted
+    // Store the current height before resetting
+    const currentHeight = textarea.offsetHeight;
+    
+    // Reset height to auto to force recalculation
     textarea.style.height = 'auto';
     
-    // Calculate new height based on scrollHeight with 3px padding
-    const newHeight = Math.min(Math.max(textarea.scrollHeight + 3, minHeight), maxHeight);
+    // Calculate new height based on scrollHeight
+    const scrollHeight = textarea.scrollHeight;
+    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
     
-    // Set the calculated height
-    textarea.style.height = newHeight + 'px';
+    // Only update if height actually changed to prevent unnecessary reflows
+    if (newHeight !== currentHeight) {
+      textarea.style.height = newHeight + 'px';
+    } else {
+      // Restore the original height if no change needed
+      textarea.style.height = currentHeight + 'px';
+    }
     
     // Show scrollbar only when content exceeds max height
     textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
@@ -1452,6 +1538,7 @@ export const ClaudeChat: React.FC = () => {
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            style={{ height: '44px' }}
             onBlur={() => {
               // Close autocomplete when textarea loses focus
               setMentionTrigger(null);
@@ -1576,15 +1663,19 @@ export const ClaudeChat: React.FC = () => {
         />
       )}
       
-      {/* Recent Projects Modal */}
-      <RecentProjectsModal
-        isOpen={showRecentModal}
-        onClose={() => setShowRecentModal(false)}
-        onProjectSelect={(path) => {
-          const name = path.split(/[\\/]/).pop() || path;
-          createSession(name, path);
-        }}
-      />
+      {/* Recent Projects Modal - only render when we have a session to avoid duplicate modals */}
+      {currentSession && (
+        <RecentProjectsModal
+          isOpen={showRecentModal}
+          onClose={() => setShowRecentModal(false)}
+          onProjectSelect={(path) => {
+            // Close modal first to prevent duplicate event handling
+            setShowRecentModal(false);
+            const name = path.split(/[\\/]/).pop() || path;
+            createSession(name, path);
+          }}
+        />
+      )}
 
       
       {showStatsModal && currentSession?.analytics && (

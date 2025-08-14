@@ -23,7 +23,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             <IconX size={16} />
           </button>
         </div>
-        <div className="help-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gridTemplateRows: 'repeat(2, 1fr)', gap: '20px' }}>
+        <div className="help-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateRows: 'repeat(2, 1fr)', gap: '8px' }}>
           <div className="help-section">
             <h4>tabs</h4>
             <div className="shortcut-item">

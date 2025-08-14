@@ -315,6 +315,58 @@ pub fn toggle_console_visibility() -> Result<String, String> {
     }
 }
 
+/// Executes a bash command and returns the output
+/// Platform-specific implementation for Windows (via WSL/Git Bash), macOS, and Linux
+#[tauri::command]
+pub async fn execute_bash(command: String) -> Result<String, String> {
+    use std::process::Command;
+    
+    #[cfg(target_os = "windows")]
+    {
+        // Try WSL first, then Git Bash, then cmd
+        let output = Command::new("wsl")
+            .args(&["bash", "-c", &command])
+            .output()
+            .or_else(|_| {
+                Command::new("bash")
+                    .args(&["-c", &command])
+                    .output()
+            })
+            .or_else(|_| {
+                Command::new("cmd")
+                    .args(&["/C", &command])
+                    .output()
+            })
+            .map_err(|e| format!("Failed to execute command: {}", e))?;
+        
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        
+        if !stderr.is_empty() {
+            Ok(format!("{}\n{}", stdout, stderr))
+        } else {
+            Ok(stdout.to_string())
+        }
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output = Command::new("bash")
+            .args(&["-c", &command])
+            .output()
+            .map_err(|e| format!("Failed to execute command: {}", e))?;
+        
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        
+        if !stderr.is_empty() {
+            Ok(format!("{}\n{}", stdout, stderr))
+        } else {
+            Ok(stdout.to_string())
+        }
+    }
+}
+
 /// Opens a URL in the system's default browser
 /// Platform-specific implementation for Windows, macOS, and Linux
 #[tauri::command]

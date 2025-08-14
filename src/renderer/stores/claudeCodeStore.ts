@@ -100,6 +100,7 @@ interface ClaudeCodeStore {
   clearContext: (sessionId: string) => void;
   updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => void;
   restoreToMessage: (sessionId: string, messageIndex: number) => void;
+  addMessageToSession: (sessionId: string, message: SDKMessage) => void;
   
   // Session persistence
   loadSessionHistory: (sessionId: string) => Promise<void>;
@@ -1457,6 +1458,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       'claude-opus-4-1-20250805';
     set({ selectedModel: newModel });
     console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus 4.1' : 'Sonnet 4.0'}`);
+  },
+
+  addMessageToSession: (sessionId: string, message: SDKMessage) => {
+    set(state => ({
+      sessions: state.sessions.map(s => 
+        s.id === sessionId 
+          ? { ...s, messages: [...s.messages, message], updatedAt: new Date() }
+          : s
+      )
+    }));
   },
 
   restoreToMessage: (sessionId: string, messageIndex: number) => {

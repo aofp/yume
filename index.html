@@ -114,7 +114,7 @@
         </div>
       </div>
     </div>
-    <div id="debug" style="position: fixed; top: 0; left: 0; right: 0; background: rgba(255,0,0,0.8); color: white; padding: 10px; display: none; z-index: 9999;"></div>
+    <div id="debug" style="position: fixed; top: 0; left: 0; right: 0; background: rgba(255,0,0,0.8); color: white; padding: 10px; display: none; z-index: 9999; user-select: text; -webkit-user-select: text; cursor: text;"></div>
     <script>
       window.onerror = function(msg, url, line) {
         document.getElementById('debug').style.display = 'block';

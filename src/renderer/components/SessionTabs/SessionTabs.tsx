@@ -595,9 +595,13 @@ export const SessionTabs: React.FC = () => {
           {hasRecentProjects && (
             <button 
               className={`tab-recent ${dragOverRecent ? 'drag-over-save' : ''}`}
-              onClick={() => {
+              onClick={(e) => {
+                e.stopPropagation();
                 // Emit event to open recent modal in ClaudeChat
-                window.dispatchEvent(new CustomEvent('openRecentProjects'));
+                console.log('[SessionTabs] Recent button clicked, dispatching openRecentProjects event');
+                const event = new CustomEvent('openRecentProjects');
+                window.dispatchEvent(event);
+                console.log('[SessionTabs] Event dispatched');
               }}
               onMouseDown={(e) => {
                 handleRipple(e);

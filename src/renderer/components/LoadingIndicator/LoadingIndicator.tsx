@@ -8,7 +8,7 @@ interface LoadingIndicatorProps {
 
 export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({ 
   size = 'medium',
-  color = 'red' 
+  color = 'grey' 
 }) => {
   return (
     <div className={`loading-indicator loading-indicator--${size} loading-indicator--${color}`}>

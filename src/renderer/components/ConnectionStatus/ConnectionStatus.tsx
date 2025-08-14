@@ -78,7 +78,7 @@ export const ConnectionStatus: React.FC = () => {
       {/* Loading overlay to prevent interactions */}
       <div className="connection-overlay">
         <div className="connection-overlay-content">
-          <LoadingIndicator size="large" color="red" />
+          <LoadingIndicator size="large" color="grey" />
         </div>
       </div>
     </>
