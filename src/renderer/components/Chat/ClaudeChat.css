@@ -1656,8 +1656,3 @@
   min-width: 12px;
   text-align: center;
 }
-
-/* macOS-specific adjustments */
-.platform-darwin .stats-modal .stat-row:last-of-type {
-  margin-top: 0px !important; /* Move up 3px on macOS */
-}
