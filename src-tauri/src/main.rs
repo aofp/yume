@@ -6,13 +6,8 @@ fn main() {
     std::panic::set_hook(Box::new(|info| {
         eprintln!("Application panic: {:?}", info);
         
-        // Quick cleanup on panic (non-blocking)
-        #[cfg(target_os = "windows")]
-        {
-            let _ = std::process::Command::new("taskkill")
-                .args(&["/F", "/IM", "node.exe"])
-                .spawn();
-        }
+        // DON'T kill all node processes - that affects other instances!
+        // The logged_server module will handle cleanup of our specific process
         
         // Force exit
         std::process::exit(1);
@@ -21,11 +16,6 @@ fn main() {
     // Run the app
     yurucode_lib::run();
     
-    // If we get here, ensure cleanup before exit
-    #[cfg(target_os = "windows")]
-    {
-        let _ = std::process::Command::new("taskkill")
-            .args(&["/F", "/IM", "node.exe"])
-            .spawn();
-    }
+    // DON'T kill all node processes on exit
+    // Each instance's server is managed by logged_server::stop_logged_server()
 }

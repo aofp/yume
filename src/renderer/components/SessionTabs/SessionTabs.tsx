@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, DragEvent } from 'react';
-import { IconX, IconPlus, IconFolder, IconLoader2, IconFolderOpen, IconBolt, IconTrash, IconChevronDown, IconClock } from '@tabler/icons-react';
+import { IconX, IconPlus, IconFolder, IconFolderOpen, IconBolt, IconTrash, IconChevronDown, IconClock } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { AboutModal } from '../About/AboutModal';
+import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import './SessionTabs.css';
 
 export const SessionTabs: React.FC = () => {
@@ -321,6 +322,11 @@ export const SessionTabs: React.FC = () => {
               setContextMenu({ x: e.clientX, y: e.clientY, sessionId: session.id });
             }}
             onMouseDown={(e) => {
+              // Prevent dragging when renaming
+              if (renamingTab === session.id) {
+                return;
+              }
+              
               if (e.button === 0) { // Left click only
                 const startX = e.clientX;
                 const startY = e.clientY;
@@ -526,7 +532,14 @@ export const SessionTabs: React.FC = () => {
                 />
               ) : (
                 (session as any).claudeTitle && (
-                  <span className="tab-title">
+                  <span 
+                    className="tab-title"
+                    onDoubleClick={(e) => {
+                      e.stopPropagation();
+                      setRenameValue((session as any).claudeTitle || 'new session');
+                      setRenamingTab(session.id);
+                    }}
+                  >
                     {(session as any).claudeTitle}
                   </span>
                 )
@@ -535,7 +548,7 @@ export const SessionTabs: React.FC = () => {
             {/* Show loading icon for pending sessions or streaming */}
             {(session.status === 'pending' || session.streaming) ? (
               <div className="tab-progress">
-                <IconLoader2 className="tab-streaming-icon" size={14} />
+                <LoadingIndicator size="small" color="red" />
               </div>
             ) : (
               <button
@@ -833,11 +846,15 @@ export const SessionTabs: React.FC = () => {
       {showRecentModal && (
         <div 
           className="recent-modal-overlay"
-          onClick={() => setShowRecentModal(false)}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowRecentModal(false);
+            }
+          }}
         >
           <div 
             className="recent-modal"
-            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <div className="modal-title-row">

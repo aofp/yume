@@ -1145,13 +1145,29 @@ const MessageRendererBase: React.FC<{
       );
       
     case 'assistant':
+      console.log(`[MessageRenderer] 🤖 ASSISTANT CASE - Processing message ${message.id}`);
+      console.log(`[MessageRenderer] 🤖 Streaming state: ${message.streaming}`);
+      console.log(`[MessageRenderer] 🤖 Message index: ${index}, isLast: ${isLast}`);
+      
       const assistantContent = message.message?.content;
+      console.log(`[MessageRenderer] 🤖 Content check:`, {
+        hasContent: !!assistantContent,
+        contentType: typeof assistantContent,
+        contentLength: typeof assistantContent === 'string' ? assistantContent.length : 
+                      Array.isArray(assistantContent) ? assistantContent.length : 0,
+        contentPreview: typeof assistantContent === 'string' ? 
+                        assistantContent.substring(0, 100) : 'non-string'
+      });
+      
       const isEmpty = !assistantContent || 
         (typeof assistantContent === 'string' && !assistantContent.trim()) ||
         (Array.isArray(assistantContent) && assistantContent.filter(b => b.type === 'text' && b.text).length === 0);
       
+      console.log(`[MessageRenderer] 🤖 Is empty: ${isEmpty}`);
+      
       // Always show buttons for non-streaming assistant messages
       const showButtons = message.streaming !== true;
+      console.log(`[MessageRenderer] 🤖 Show buttons: ${showButtons}`);
       
       // Don't render if content is a raw JSON string or object that's not properly formatted
       let contentToRender = message.message?.content;
@@ -1184,11 +1200,28 @@ const MessageRendererBase: React.FC<{
       if (Array.isArray(contentToRender)) {
         textContent = contentToRender.filter(b => b.type === 'text');
         toolUses = contentToRender.filter(b => b.type === 'tool_use');
+        console.log(`[MessageRenderer] 🤖 Array content - text blocks: ${textContent.length}, tool uses: ${toolUses.length}`);
       } else if (typeof contentToRender === 'string') {
         // If it's a string, treat it as text content
         textContent = contentToRender;
         toolUses = [];
+        console.log(`[MessageRenderer] 🤖 String content - length: ${contentToRender.length}`);
+      } else {
+        console.log(`[MessageRenderer] 🤖 Unknown content type: ${typeof contentToRender}`);
       }
+      
+      const shouldRenderText = textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim()));
+      console.log(`[MessageRenderer] 🤖 Should render text: ${shouldRenderText}`);
+      
+      if (shouldRenderText) {
+        const renderedContent = renderContent(textContent, message, searchQuery, isCurrentMatch);
+        console.log(`[MessageRenderer] 🤖 Rendered content result:`, {
+          hasRendered: !!renderedContent,
+          renderedType: typeof renderedContent
+        });
+      }
+      
+      console.log(`[MessageRenderer] 🤖 FINAL - Returning JSX for message ${message.id}`);
       
       return (
         <>
@@ -1704,7 +1737,7 @@ const MessageRendererBase: React.FC<{
               {elapsedSeconds}s
               {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
               {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
-              {message.model && ` • ${message.model === 'opus' ? 'opus 4.1' : 'sonnet 4.0'}`}
+              {message.model && ` • ${message.model === 'opus' ? 'opus 4.1' : message.model === 'sonnet' ? 'sonnet 4.0' : message.model}`}
             </div>
           </div>
         );

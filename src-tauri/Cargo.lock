@@ -6408,6 +6408,7 @@ dependencies = [
  "native-dialog",
  "objc",
  "parking_lot",
+ "rand 0.8.5",
  "regex",
  "rfd 0.14.1",
  "serde",

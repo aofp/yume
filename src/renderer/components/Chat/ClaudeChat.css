@@ -259,7 +259,7 @@
 }
 
 .message.user .message-content {
-  max-width: 70%;
+  max-width: 80%;
 }
 
 .message.assistant {
@@ -554,11 +554,7 @@
   text-align: left;
 }
 
-.spinning-loader {
-  animation: spin 1s linear infinite;
-  color: var(--accent-color);
-  opacity: 1;
-}
+/* Removed - using LoadingIndicator component now */
 
 @keyframes spin {
   from { transform: rotate(0deg); }
@@ -1441,7 +1437,7 @@
   align-items: center;
   justify-content: center;
   z-index: 10001;
-  cursor: pointer;
+  cursor: default;
   animation: fadeIn 0.15s ease;
 }
 

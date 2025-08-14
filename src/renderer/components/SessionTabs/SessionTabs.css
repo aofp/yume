@@ -280,15 +280,13 @@
   flex-shrink: 0;
 }
 
-.tab-streaming-icon {
-  color: var(--accent-color);
-  animation: spin 1s linear infinite;
+/* Position adjustment for LoadingIndicator in tabs */
+.tab-progress .loading-indicator {
+  position: relative;
+  top: 1px;
 }
 
-@keyframes spin {
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
-}
+/* Removed - using LoadingIndicator component now */
 
 .tab-close {
   background: transparent !important;

@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { IconLoader2 } from '@tabler/icons-react';
+import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import './ConnectionStatus.css';
 
 export const ConnectionStatus: React.FC = () => {
@@ -72,7 +72,7 @@ export const ConnectionStatus: React.FC = () => {
       {/* Loading overlay to prevent interactions */}
       <div className="connection-overlay">
         <div className="connection-overlay-content">
-          <IconLoader2 size={48} stroke={1.5} className="connection-spinner" />
+          <LoadingIndicator size="large" color="red" />
         </div>
       </div>
     </>

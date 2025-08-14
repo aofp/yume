@@ -2,6 +2,56 @@
  * macOS-compatible server that runs claude CLI directly
  * IDENTICAL TO WINDOWS SERVER - NO SDK, NO API KEY - just direct claude CLI calls with streaming
  */
+// Safe console wrapper to handle closed file descriptors in production
+const originalConsole = {
+  log: console.log.bind(console),
+  error: console.error.bind(console),
+  warn: console.warn.bind(console),
+  info: console.info.bind(console),
+  debug: console.debug.bind(console)
+};
+
+// Override console methods with safe versions
+console.log = function(...args) {
+  try {
+    originalConsole.log(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
+console.error = function(...args) {
+  try {
+    originalConsole.error(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
+console.warn = function(...args) {
+  try {
+    originalConsole.warn(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
+console.info = function(...args) {
+  try {
+    originalConsole.info(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
+console.debug = function(...args) {
+  try {
+    originalConsole.debug(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
 
 // No need for module override when not using asar
 
@@ -51,6 +101,7 @@ if (CLAUDE_PATH === 'claude') {
 
 const express = require("express");
 const cors = require("cors");
+const net = require("net");
 
 const app = express();
 const httpServer = createServer(app);
@@ -60,14 +111,45 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"]
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000
+  pingTimeout: 120000, // 2 minutes
+  pingInterval: 30000, // 30 seconds
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e8 // 100mb
 });
 
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3001;
+// ALWAYS use dynamic port - for BOTH development AND production
+const PORT = (() => {
+  // First check environment variable (passed from Rust)
+  if (process.env.PORT) {
+    const port = parseInt(process.env.PORT);
+    console.log(`✅ Using PORT from Rust: ${port}`);
+    return port;
+  }
+  
+  // Otherwise find an available port dynamically
+  console.log('🔍 Finding available port in range 60000-61000...');
+  let port = 60000 + Math.floor(Math.random() * 1001);
+  
+  for (let i = 0; i < 100; i++) {
+    const testPort = 60000 + ((port - 60000 + i) % 1001);
+    const server = net.createServer();
+    try {
+      server.listen(testPort, '127.0.0.1');
+      server.close();
+      console.log(`✅ Found available port: ${testPort}`);
+      return testPort;
+    } catch (e) {
+      // Port in use, try next
+    }
+  }
+  
+  // Last resort fallback
+  console.log('⚠️ Could not find available port, using 3001');
+  return 3001;
+})();
 
 // Track active Claude processes and assistant message IDs - EXACTLY LIKE WINDOWS
 let sessions = new Map();
@@ -102,7 +184,9 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     const child = spawn(CLAUDE_PATH, titleArgs, {
       cwd: process.cwd(),
       env: enhancedEnv,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,  // Always hide windows
+      detached: false
     });
     
     let output = '';
@@ -187,9 +271,10 @@ app.get('/health', (req, res) => {
 });
 
 // PID file management - use temp directory for production
+// Each server instance gets a unique PID file based on its port
 const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 
-  ? join(homedir(), '.yurucode-server.pid')
-  : join(__dirname, 'server.pid');
+  ? join(homedir(), `.yurucode-server-${PORT}.pid`)
+  : join(__dirname, `server-${PORT}.pid`);
 
 function writePidFile() {
   try {
@@ -329,7 +414,9 @@ io.on('connection', (socket) => {
       const claudeProcess = spawn(CLAUDE_PATH, args, {
         cwd: processWorkingDir,
         env: enhancedEnv,
-        shell: false
+        shell: false,
+        windowsHide: true,  // Always hide windows
+        detached: false
       });
 
       // Store process reference
@@ -434,6 +521,7 @@ io.on('connection', (socket) => {
               // Send text content as separate assistant message
               if (hasText && textContent) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
+                console.log(`📝 Emitting assistant message ${messageId} with streaming=true`);
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
                   message: { content: textContent },
@@ -498,9 +586,14 @@ io.on('connection', (socket) => {
             // If we have a last assistant message, send an update to mark it as done streaming
             const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
             if (lastAssistantMessageId) {
+              console.log(`✅ Marking assistant message ${lastAssistantMessageId} as streaming=false (result received)`);
+              const session = sessions.get(sessionId);
+              const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+              
               socket.emit(`message:${sessionId}`, {
                 type: 'assistant',
                 id: lastAssistantMessageId,
+                message: lastAssistantMsg?.message || { content: '' },
                 streaming: false,
                 timestamp: Date.now()
               });
@@ -530,7 +623,18 @@ io.on('connection', (socket) => {
         
         // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {
-          console.error('⚠️ Line buffer overflow, clearing buffer');
+          console.error('⚠️ Line buffer overflow, processing and clearing');
+          // Try to process what we have
+          const lines = lineBuffer.split('\n');
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                processStreamLine(line);
+              } catch (e) {
+                console.error('Failed to process line during overflow:', e);
+              }
+            }
+          }
           lineBuffer = '';
         }
         
@@ -562,28 +666,54 @@ io.on('connection', (socket) => {
         
         // Process any remaining buffer
         if (lineBuffer.trim()) {
-          processStreamLine(lineBuffer);
+          try {
+            processStreamLine(lineBuffer);
+          } catch (e) {
+            console.error('Failed to process remaining buffer:', e);
+          }
         }
         
-        // If we have a last assistant message, mark it as done streaming
+        // ALWAYS clear streaming state on process exit - send complete message update
         const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
         if (lastAssistantMessageId) {
+          console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on process exit`);
+          // Get the last assistant message to preserve its content
+          const session = sessions.get(sessionId);
+          const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+          
           socket.emit(`message:${sessionId}`, {
             type: 'assistant',
             id: lastAssistantMessageId,
+            message: lastAssistantMsg?.message || { content: '' },
             streaming: false,
             timestamp: Date.now()
           });
           lastAssistantMessageIds.delete(sessionId);
         }
         
-        // If process exited with error code and no result was sent
-        if (code !== 0 && code !== null) {
+        // Always ensure streaming is marked as false for all messages
+        socket.emit(`message:${sessionId}`, {
+          type: 'system',
+          subtype: 'stream_end',
+          streaming: false,
+          timestamp: Date.now()
+        });
+        
+        // Handle unexpected exit codes
+        if (code === null || code === -2 || code === 'SIGKILL') {
+          console.error(`⚠️ Claude process terminated unexpectedly (code: ${code})`);
+          socket.emit(`message:${sessionId}`, {
+            type: 'error',
+            error: 'session terminated unexpectedly. you can resume by sending another message.',
+            streaming: false,
+            timestamp: Date.now()
+          });
+        } else if (code !== 0) {
           console.error(`Claude process failed with exit code ${code}`);
           socket.emit(`message:${sessionId}`, {
             type: 'system',
             subtype: 'info',
-            message: `Process completed with code ${code}`,
+            message: `process completed with code ${code}`,
             timestamp: Date.now()
           });
         }
@@ -592,12 +722,30 @@ io.on('connection', (socket) => {
       // Handle process errors
       claudeProcess.on('error', (err) => {
         console.error('❌ Failed to spawn claude:', err);
+        
+        // Clean up any streaming state - send complete message update
+        const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+        if (lastAssistantMessageId) {
+          console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on process error`);
+          const session = sessions.get(sessionId);
+          const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+          
+          socket.emit(`message:${sessionId}`, {
+            type: 'assistant',
+            id: lastAssistantMessageId,
+            message: lastAssistantMsg?.message || { content: '' },
+            streaming: false,
+            timestamp: Date.now()
+          });
+        }
+        
         socket.emit(`message:${sessionId}`, { 
           type: 'error',
-          error: `Failed to spawn claude: ${err.message}`, 
+          error: `claude process error: ${err.message}. try sending your message again.`, 
           claudeSessionId: session.claudeSessionId,
           streaming: false 
         });
+        
         activeProcesses.delete(sessionId);
         lastAssistantMessageIds.delete(sessionId);
         if (callback) callback({ success: false, error: err.message });

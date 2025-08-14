@@ -8,8 +8,9 @@ use tracing::info;
 // SIMPLE FLAG TO CONTROL CONSOLE VISIBILITY AND DEVTOOLS
 pub const YURUCODE_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
 
-// Global handle to the server process
+// Global handle to the server process and port
 static SERVER_PROCESS: Mutex<Option<Arc<Mutex<Child>>>> = Mutex::new(None);
+static SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
 
 // Get log file path
 pub fn get_log_path() -> PathBuf {
@@ -69,7 +70,7 @@ pub fn get_server_logs() -> String {
         let log_path = get_log_path();
         if !log_path.exists() {
             let _ = fs::create_dir_all(log_path.parent().unwrap());
-            let _ = fs::write(&log_path, "=== yurucode server log ===\nEmbedded server running on port 3001\nNote: Real-time logging not available in embedded mode\n");
+            let _ = fs::write(&log_path, "=== yurucode server log ===\nEmbedded server running\nNote: Real-time logging not available in embedded mode\n");
         }
     }
     
@@ -93,21 +94,21 @@ pub fn get_server_logs() -> String {
 
 // EMBEDDED SERVER - REQUIRES SOCKET.IO TO BE BUNDLED
 const EMBEDDED_SERVER: &str = r#"
+// Override console completely to prevent EBADF errors
+const noop = () => {};
+global.console = new Proxy(console, {
+  get: () => noop
+});
+
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
 
+// No logging - it causes crashes when stdout is closed
 function log(msg) {
-    console.log(`[SERVER] ${msg}`);
+    // Do nothing - logging causes EBADF errors
 }
-
-log('=================================');
-log('YURUCODE SERVER STARTING');
-log('=================================');
-log('Node version: ' + process.version);
-log('Current directory: ' + process.cwd());
-log('NODE_PATH: ' + (process.env.NODE_PATH || 'not set'));
 
 // Load Socket.IO - it must be available
 let io;
@@ -280,7 +281,8 @@ socketServer.on('connection', (socket) => {
             
             claude = spawn('wsl.exe', wslArgs, {
                 cwd: session.workingDirectory, // Use original Windows path for spawn
-                stdio: ['pipe', 'pipe', 'pipe']
+                stdio: ['pipe', 'pipe', 'pipe'],
+                windowsHide: true  // Hide WSL console window
             });
         } else {
             // Unix/Mac - try to find Claude
@@ -303,7 +305,8 @@ socketServer.on('connection', (socket) => {
             
             claude = spawn(CLAUDE_PATH, args, {
                 cwd: workingDir,
-                shell: false
+                shell: false,
+                windowsHide: true  // Hide Claude window on Windows
             });
         }
         
@@ -653,31 +656,67 @@ socketServer.on('connection', (socket) => {
     });
 });
 
-server.listen(3001, '0.0.0.0', () => {
-    log('✅ SOCKET.IO SERVER RUNNING ON PORT 3001');
+// ALWAYS use dynamic port from environment (set by Rust)
+const PORT = process.env.PORT || (() => {
+    // This should never happen as Rust always sets PORT
+    log('⚠️ WARNING: PORT not set by Rust, using fallback 3001');
+    return 3001;
+})();
+server.listen(PORT, '0.0.0.0', () => {
+    log('✅ SOCKET.IO SERVER RUNNING ON PORT ' + PORT);
 });
 "#;
 
+pub fn get_server_port() -> Option<u16> {
+    SERVER_PORT.lock().ok()?.clone()
+}
+
 pub fn stop_logged_server() {
-    info!("Stopping server...");
+    info!("Stopping server for THIS instance only...");
     
     if let Ok(mut process_guard) = SERVER_PROCESS.try_lock() {
         if let Some(process_arc) = process_guard.take() {
             if let Ok(mut process) = process_arc.try_lock() {
-                let _ = process.kill();
+                let pid = process.id();
+                info!("Killing server process with PID: {}", pid);
+                
+                // Try normal kill first
+                if let Err(e) = process.kill() {
+                    info!("Normal kill failed: {}, trying force kill", e);
+                    
+                    // On Windows, use taskkill for this specific PID only
+                    #[cfg(target_os = "windows")]
+                    {
+                        use std::process::Command;
+                        let _ = Command::new("taskkill")
+                            .args(&["/F", "/PID", &pid.to_string()])
+                            .output();
+                        info!("Force killed PID {}", pid);
+                    }
+                } else {
+                    info!("Server process killed successfully");
+                }
+            } else {
+                info!("Could not lock process");
             }
+        } else {
+            info!("No server process to stop");
         }
+    } else {
+        info!("Could not lock SERVER_PROCESS");
     }
-    
-    // Don't kill ALL node.exe processes - that would kill Vite too!
-    // Just rely on killing our stored process handle above
 }
 
-pub fn start_logged_server() {
-    info!("Starting server");
+pub fn start_logged_server(port: u16) {
+    info!("Starting server on port {}", port);
     
     // Stop any existing server first to avoid port conflicts
     stop_logged_server();
+    
+    // Store the port
+    if let Ok(mut port_guard) = SERVER_PORT.lock() {
+        *port_guard = Some(port);
+    }
     
     // Wait a bit for the port to be released
     std::thread::sleep(std::time::Duration::from_millis(500));
@@ -685,12 +724,12 @@ pub fn start_logged_server() {
     // On macOS, use the bundled server file directly
     #[cfg(target_os = "macos")]
     {
-        start_macos_server();
+        start_macos_server(port);
         return;
     }
     
     // Original embedded server logic for other platforms (Windows/Linux)
-    info!("Starting embedded server");
+    info!("Starting embedded server on port {}", port);
     
     // Create temp directory for server
     let server_dir = std::env::temp_dir().join("yurucode-server");
@@ -726,7 +765,8 @@ pub fn start_logged_server() {
         
         let mut cmd = Command::new(node_cmd);
         cmd.arg(&server_path)
-           .current_dir(&server_dir);
+           .current_dir(&server_dir)
+           .env("PORT", port.to_string());
         
         // Set NODE_PATH if we found node_modules
         if let Some(ref modules_path) = node_path {
@@ -739,13 +779,16 @@ pub fn start_logged_server() {
             use std::os::windows::process::CommandExt;
             const CREATE_NEW_CONSOLE: u32 = 0x00000010;
             const CREATE_NO_WINDOW: u32 = 0x08000000;
+            const DETACHED_PROCESS: u32 = 0x00000008;
             
+            // Use DETACHED_PROCESS so the server survives if the parent crashes
+            // We'll explicitly kill it in stop_logged_server()
             let flags = if YURUCODE_SHOW_CONSOLE {
-                info!("Console VISIBLE");
-                CREATE_NEW_CONSOLE
+                info!("Console VISIBLE + DETACHED");
+                CREATE_NEW_CONSOLE | DETACHED_PROCESS
             } else {
-                info!("Console HIDDEN");
-                CREATE_NO_WINDOW
+                info!("Console HIDDEN + DETACHED");
+                CREATE_NO_WINDOW | DETACHED_PROCESS
             };
             
             cmd.creation_flags(flags);
@@ -777,8 +820,8 @@ pub fn start_logged_server() {
 }
 
 #[cfg(target_os = "macos")]
-fn start_macos_server() {
-    info!("Starting macOS server");
+fn start_macos_server(port: u16) {
+    info!("Starting macOS server on port {}", port);
     clear_log(); // Clear logs from previous run
     write_log("=== Starting macOS server ===");
     
@@ -858,9 +901,10 @@ fn start_macos_server() {
             }
         }
         
-        write_log("Attempting to spawn Node.js server...");
+        write_log(&format!("Attempting to spawn Node.js server on port {}...", port));
         let mut cmd = Command::new("node");
-        cmd.arg(&server_file);
+        cmd.arg(&server_file)
+           .env("PORT", port.to_string());
         
         if let Some(ref modules) = node_modules {
             write_log(&format!("Setting NODE_PATH to: {:?}", modules));
@@ -950,9 +994,10 @@ fn start_macos_server() {
                     if std::path::Path::new(path).exists() {
                         write_log(&format!("Found node at: {}", path));
                         // Try to spawn with absolute path
-                        write_log(&format!("Retrying with absolute path: {}", path));
+                        write_log(&format!("Retrying with absolute path: {} on port {}", path, port));
                         let mut retry_cmd = Command::new(path);
-                        retry_cmd.arg(&server_file);
+                        retry_cmd.arg(&server_file)
+                                 .env("PORT", port.to_string());
                         
                         if let Some(ref modules) = node_modules {
                             retry_cmd.env("NODE_PATH", modules);

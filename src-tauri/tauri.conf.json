@@ -1,11 +1,11 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "yuru code",
-  "version": "0.8.0",
+  "version": "0.1.0",
   "identifier": "be.yuru.yurucode",
   "build": {
     "frontendDist": "../dist/renderer",
-    "devUrl": "http://localhost:5173",
+    "devUrl": "http://localhost:60694",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
@@ -26,7 +26,8 @@
         "center": true,
         "skipTaskbar": false,
         "acceptFirstMouse": true,
-        "hiddenTitle": false
+        "hiddenTitle": false,
+        "visible": false
       }
     ],
     "security": {
@@ -45,6 +46,18 @@
     ],
     "resources": [
       "resources/**/*"
-    ]
+    ],
+    "windows": {
+      "wix": {
+        "language": "en-US"
+      },
+      "nsis": {
+        "displayLanguageSelector": false
+      },
+      "webviewInstallMode": {
+        "type": "embedBootstrapper",
+        "silent": true
+      }
+    }
   }
 }

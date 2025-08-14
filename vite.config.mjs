@@ -2,17 +2,68 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
+import { readFileSync, writeFileSync, existsSync } from 'fs';
+import net from 'net';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
+
+// Function to find an available port synchronously
+function findAvailablePortSync(startPort = 60000, endPort = 61000) {
+  const randomStart = startPort + Math.floor(Math.random() * (endPort - startPort + 1));
+  
+  for (let offset = 0; offset <= (endPort - startPort); offset++) {
+    const port = startPort + ((randomStart - startPort + offset) % (endPort - startPort + 1));
+    const server = net.createServer();
+    try {
+      server.listen(port, '127.0.0.1');
+      server.close();
+      return port;
+    } catch (e) {
+      // Port in use, try next
+    }
+  }
+  
+  return 5173; // Fallback
+}
+
+// Dynamic port allocation for dev
+let vitePort = 5173; // Default
+
+if (process.env.NODE_ENV !== 'production') {
+  // Read the port FROM Tauri config instead of updating it
+  const tauriConfigPath = resolve(__dirname, 'src-tauri', 'tauri.conf.json');
+  try {
+    const config = JSON.parse(readFileSync(tauriConfigPath, 'utf8'));
+    // Extract port from devUrl (e.g., "http://localhost:60470" -> 60470)
+    const devUrl = config.build.devUrl || 'http://localhost:5173';
+    const match = devUrl.match(/:([0-9]+)/);
+    if (match) {
+      vitePort = parseInt(match[1]);
+      console.log(`📖 Using port ${vitePort} from Tauri config`);
+    } else {
+      // If can't parse, find a new port and update the config
+      vitePort = findAvailablePortSync();
+      config.build.devUrl = `http://localhost:${vitePort}`;
+      writeFileSync(tauriConfigPath, JSON.stringify(config, null, 2));
+      console.log(`🎲 Found available port: ${vitePort} and updated Tauri config`);
+    }
+  } catch (e) {
+    console.error('Warning: Could not read Tauri config:', e.message);
+    vitePort = findAvailablePortSync();
+  }
+  
+  console.log(`\n🚀 Vite server will run on port: ${vitePort}\n`);
+}
 
 export default defineConfig({
   plugins: [react()],
   base: './',
   publicDir: 'public',
   server: {
-    port: 5173,
+    port: vitePort,
     strictPort: true,
+    host: '127.0.0.1', // Force IPv4 to avoid permission issues
     watch: {
       // Ignore build output and release directories
       ignored: [

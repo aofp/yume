@@ -32,20 +32,25 @@ export class ClaudeCodeClient {
   }
   
   private async checkServerAndConnect() {
-    // Check if Node.js server is running - retry multiple times
-    console.log('[ClaudeCodeClient] Checking server health at localhost:3001...');
+    // Get dynamic port from Tauri backend
+    console.log('[ClaudeCodeClient] Getting server port from Tauri...');
     
     let retries = 10; // Try 10 times
     const retryDelay = 1000; // 1 second between retries
     
     const tryConnect = async () => {
       try {
-        const response = await fetch('http://localhost:3001/health', {
+        // Get the dynamic port from Tauri
+        const port = await platformAPI.claude.getServerPort();
+        console.log('[ClaudeCodeClient] Got server port from Tauri:', port);
+        this.serverPort = port;
+        
+        // Check if server is ready
+        const response = await fetch(`http://localhost:${port}/health`, {
           signal: AbortSignal.timeout(2000)
         });
         if (response.ok) {
-          console.log('[ClaudeCodeClient] Server health check OK');
-          this.serverPort = 3001;
+          console.log('[ClaudeCodeClient] Server health check OK on port', port);
           this.connect();
           return true;
         } else {
@@ -53,6 +58,7 @@ export class ClaudeCodeClient {
           return false;
         }
       } catch (err) {
+        console.error('[ClaudeCodeClient] Error in tryConnect:', err);
         console.log('[ClaudeCodeClient] Server not ready yet, retrying...', retries, 'attempts left');
         return false;
       }
@@ -76,12 +82,19 @@ export class ClaudeCodeClient {
   private async discoverAndConnect() {
     console.log('[ClaudeCodeClient] Starting server discovery...');
     
-    // For Tauri, we know the server is on port 3001
+    // For Tauri, get the dynamic port from the backend
     if (isTauri()) {
-      console.log('[ClaudeCodeClient] Tauri mode - using port 3001');
-      this.serverPort = 3001;
-      this.connectWithRetry();
-      return;
+      console.log('[ClaudeCodeClient] Tauri mode - getting dynamic port...');
+      try {
+        const port = await platformAPI.claude.getServerPort();
+        console.log('[ClaudeCodeClient] Got dynamic port from Tauri:', port);
+        this.serverPort = port;
+        this.connectWithRetry();
+        return;
+      } catch (err) {
+        console.error('[ClaudeCodeClient] Failed to get server port from Tauri:', err);
+        // Fall through to port discovery
+      }
     }
     
     // Fallback: Try to discover running servers by checking multiple ports
@@ -161,20 +174,24 @@ export class ClaudeCodeClient {
     });
 
     this.socket.on('connect', () => {
-      console.log('✅ Successfully connected to Claude Code server');
+      const timestamp = new Date().toISOString();
+      console.log(`[Client] ✅ [${timestamp}] Successfully connected to Claude Code server`);
       console.log('  Socket ID:', this.socket?.id);
       console.log('  Transport:', (this.socket as any)?.io?.engine?.transport?.name);
+      console.log('  Server URL:', serverUrl);
       this.connected = true;
     });
 
     this.socket.on('disconnect', (reason) => {
-      console.log('❌ Disconnected from Claude Code server');
+      const timestamp = new Date().toISOString();
+      console.log(`[Client] ❌ [${timestamp}] Disconnected from Claude Code server`);
       console.log('  Reason:', reason);
+      console.log('  Was connected:', this.connected);
       this.connected = false;
       
       // Auto-reconnect on unexpected disconnects
       if (reason === 'io server disconnect' || reason === 'transport close') {
-        console.log('🔄 Attempting to reconnect...');
+        console.log('[Client] 🔄 Attempting to reconnect...');
         setTimeout(() => {
           if (this.socket && !this.connected) {
             this.socket.connect();
@@ -184,8 +201,10 @@ export class ClaudeCodeClient {
     });
 
     this.socket.on('connect_error', (error) => {
-      console.error('🔴 Socket connection error:', error.message);
+      const timestamp = new Date().toISOString();
+      console.error(`[Client] 🔴 [${timestamp}] Socket connection error:`, error.message);
       console.error('  Type:', error.type);
+      console.error('  Server URL:', serverUrl);
       if (error.message.includes('xhr poll error')) {
         console.error('  This usually means the server is not running or not accessible');
       }
@@ -326,11 +345,14 @@ export class ClaudeCodeClient {
         return;
       }
 
-      console.log('[Client] 📤 Sending message:', {
+      const timestamp = new Date().toISOString();
+      console.log(`[Client] 📤 [${timestamp}] Sending message:`, {
         sessionId,
         contentLength: content.length,
+        contentPreview: content.substring(0, 100),
         model,
-        socketId: this.socket?.id
+        socketId: this.socket?.id,
+        connected: this.connected
       });
 
       this.socket.emit('sendMessage', { sessionId, content, model }, (response: any) => {
@@ -354,17 +376,37 @@ export class ClaudeCodeClient {
 
     const channel = `message:${sessionId}`;
     
-    // Wrap handler with logging
+    // Wrap handler with extensive logging
     const loggingHandler = (message: any) => {
-      console.log('[Client] 📨 Received message:', {
+      const timestamp = new Date().toISOString();
+      console.log(`[Client] 📨 [${timestamp}] Received message:`, {
         channel,
         type: message.type,
+        subtype: message.subtype,
         streaming: message.streaming,
         hasContent: !!message.message?.content,
+        contentLength: message.message?.content?.length,
+        contentPreview: message.message?.content?.substring?.(0, 100),
         id: message.id,
         hasUsage: !!message.usage,
-        usage: message.usage
+        usage: message.usage,
+        fullMessage: JSON.stringify(message).substring(0, 500)
       });
+      
+      // Log specific message types for debugging
+      if (message.type === 'assistant' && message.streaming === false) {
+        console.log(`[Client] ⭐ STREAM END detected for assistant message ${message.id}`);
+      }
+      if (message.type === 'result') {
+        console.log(`[Client] ✅ RESULT message received, stream complete`);
+      }
+      if (message.type === 'error') {
+        console.error(`[Client] ❌ ERROR message:`, message.error);
+      }
+      if (message.type === 'system' && message.subtype === 'stream_end') {
+        console.log(`[Client] 🔚 SYSTEM STREAM_END received`);
+      }
+      
       handler(message);
     };
     

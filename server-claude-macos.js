@@ -54,6 +54,7 @@ if (CLAUDE_PATH === 'claude') {
 
 import express from 'express';
 import cors from 'cors';
+import net from 'net';
 
 const app = express();
 const httpServer = createServer(app);
@@ -72,7 +73,36 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 
-const PORT = process.env.PORT || 3001;
+// ALWAYS use dynamic port - for BOTH development AND production
+const PORT = (() => {
+  // First check environment variable (passed from Rust)
+  if (process.env.PORT) {
+    const port = parseInt(process.env.PORT);
+    console.log(`✅ Using PORT from Rust: ${port}`);
+    return port;
+  }
+  
+  // Otherwise find an available port dynamically
+  console.log('🔍 Finding available port in range 60000-61000...');
+  let port = 60000 + Math.floor(Math.random() * 1001);
+  
+  for (let i = 0; i < 100; i++) {
+    const testPort = 60000 + ((port - 60000 + i) % 1001);
+    const server = net.createServer();
+    try {
+      server.listen(testPort, '127.0.0.1');
+      server.close();
+      console.log(`✅ Found available port: ${testPort}`);
+      return testPort;
+    } catch (e) {
+      // Port in use, try next
+    }
+  }
+  
+  // Last resort fallback
+  console.log('⚠️ Could not find available port, using 3001');
+  return 3001;
+})();
 
 // Track active Claude processes and assistant message IDs - EXACTLY LIKE WINDOWS
 let sessions = new Map();
@@ -107,7 +137,9 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     const child = spawn(CLAUDE_PATH, titleArgs, {
       cwd: process.cwd(),
       env: enhancedEnv,
-      stdio: ['pipe', 'pipe', 'pipe']
+      stdio: ['pipe', 'pipe', 'pipe'],
+      windowsHide: true,  // Always hide windows
+      detached: false
     });
     
     let output = '';
@@ -192,9 +224,10 @@ app.get('/health', (req, res) => {
 });
 
 // PID file management - use temp directory for production
+// Each server instance gets a unique PID file based on its port
 const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 
-  ? join(homedir(), '.yurucode-server.pid')
-  : join(__dirname, 'server.pid');
+  ? join(homedir(), `.yurucode-server-${PORT}.pid`)
+  : join(__dirname, `server-${PORT}.pid`);
 
 function writePidFile() {
   try {
@@ -334,7 +367,9 @@ io.on('connection', (socket) => {
       const claudeProcess = spawn(CLAUDE_PATH, args, {
         cwd: processWorkingDir,
         env: enhancedEnv,
-        shell: false
+        shell: false,
+        windowsHide: true,  // Always hide windows
+        detached: false
       });
 
       // Store process reference
@@ -383,18 +418,43 @@ io.on('connection', (socket) => {
       // Process streaming output - EXACTLY LIKE WINDOWS
       let lineBuffer = '';
       let messageCount = 0;
+      let bytesReceived = 0;
+      let lastDataTime = Date.now();
+      let streamStartTime = Date.now();
+      
+      // Log stream health check every 5 seconds
+      const streamHealthInterval = setInterval(() => {
+        const timeSinceLastData = Date.now() - lastDataTime;
+        const streamDuration = Date.now() - streamStartTime;
+        console.log(`🩺 STREAM HEALTH CHECK [${sessionId}]`);
+        console.log(`   ├─ Stream duration: ${streamDuration}ms`);
+        console.log(`   ├─ Time since last data: ${timeSinceLastData}ms`);
+        console.log(`   ├─ Bytes received: ${bytesReceived}`);
+        console.log(`   ├─ Messages processed: ${messageCount}`);
+        console.log(`   ├─ Buffer size: ${lineBuffer.length}`);
+        console.log(`   └─ Process alive: ${activeProcesses.has(sessionId)}`);
+        
+        if (timeSinceLastData > 10000) {
+          console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
+        }
+      }, 5000);
       
       const processStreamLine = (line) => {
-        if (!line.trim()) return;
+        if (!line.trim()) {
+          console.log(`🔸 [${sessionId}] Empty line received`);
+          return;
+        }
+        
+        console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line.substring(0, 100)}...`);
         
         try {
           const jsonData = JSON.parse(line);
-          console.log(`📦 Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
+          console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
           
           // Extract session ID if present (update it every time to ensure we have the latest)
           if (jsonData.session_id) {
             session.claudeSessionId = jsonData.session_id;
-            console.log(`📌 Claude session ID: ${session.claudeSessionId}`);
+            console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
           }
           
           // Handle different message types - EXACTLY LIKE WINDOWS
@@ -439,7 +499,9 @@ io.on('connection', (socket) => {
               // Send text content as separate assistant message
               if (hasText && textContent) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
-                console.log(`📝 Emitting assistant message ${messageId} with streaming=true`);
+                console.log(`📝 [${sessionId}] Emitting assistant message ${messageId} with streaming=true`);
+                console.log(`📝 [${sessionId}] Content length: ${textContent.length} chars`);
+                console.log(`📝 [${sessionId}] Content preview: ${textContent.substring(0, 100)}...`);
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
                   message: { content: textContent },
@@ -519,6 +581,7 @@ io.on('connection', (socket) => {
             }
             
             // Just send the result message with model info
+            console.log(`✅ [${sessionId}] Sending result message, stream complete`);
             socket.emit(`message:${sessionId}`, {
               type: 'result',
               ...jsonData,
@@ -526,30 +589,37 @@ io.on('connection', (socket) => {
               id: `result-${sessionId}-${Date.now()}`,
               model: model // Include the model that was used
             });
+            messageCount++;
           }
           
         } catch (e) {
           // Not JSON, treat as plain text
-          console.log('Plain text output:', line);
+          console.log(`⚠️ [${sessionId}] Failed to parse JSON, treating as plain text:`, e.message);
+          console.log(`⚠️ [${sessionId}] Line was: ${line}`);
         }
       };
 
       // Handle stdout
       claudeProcess.stdout.on('data', (data) => {
         const str = data.toString();
-        console.log('STDOUT received:', str.length, 'bytes');
+        bytesReceived += data.length;
+        lastDataTime = Date.now();
+        
+        console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
+        console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200).replace(/\n/g, '\\n')}...`);
         
         // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {
-          console.error('⚠️ Line buffer overflow, processing and clearing');
+          console.error(`⚠️ [${sessionId}] Line buffer overflow (${lineBuffer.length} bytes), processing and clearing`);
           // Try to process what we have
           const lines = lineBuffer.split('\n');
+          console.log(`⚠️ [${sessionId}] Processing ${lines.length} buffered lines`);
           for (const line of lines) {
             if (line.trim()) {
               try {
                 processStreamLine(line);
               } catch (e) {
-                console.error('Failed to process line during overflow:', e);
+                console.error(`[${sessionId}] Failed to process line during overflow:`, e);
               }
             }
           }
@@ -560,15 +630,19 @@ io.on('connection', (socket) => {
         const lines = lineBuffer.split('\n');
         lineBuffer = lines.pop() || '';
         
-        for (const line of lines) {
-          processStreamLine(line);
+        console.log(`📋 [${sessionId}] Split into ${lines.length} lines, buffer remaining: ${lineBuffer.length} chars`);
+        
+        for (let i = 0; i < lines.length; i++) {
+          console.log(`📋 [${sessionId}] Processing line ${i + 1}/${lines.length}`);
+          processStreamLine(lines[i]);
         }
       });
 
       // Handle stderr
       claudeProcess.stderr.on('data', (data) => {
         const error = data.toString();
-        console.error('⚠️ Claude stderr:', error);
+        console.error(`⚠️ [${sessionId}] Claude stderr (${data.length} bytes):`, error);
+        lastDataTime = Date.now();
         socket.emit(`message:${sessionId}`, { 
           type: 'error',
           error, 
@@ -579,7 +653,14 @@ io.on('connection', (socket) => {
 
       // Handle process exit
       claudeProcess.on('close', (code) => {
-        console.log(`👋 Claude process exited with code ${code}`);
+        clearInterval(streamHealthInterval);
+        const streamDuration = Date.now() - streamStartTime;
+        console.log(`👋 [${sessionId}] Claude process exited with code ${code}`);
+        console.log(`📊 [${sessionId}] STREAM SUMMARY:`);
+        console.log(`   ├─ Total duration: ${streamDuration}ms`);
+        console.log(`   ├─ Total bytes: ${bytesReceived}`);
+        console.log(`   ├─ Messages: ${messageCount}`);
+        console.log(`   └─ Exit code: ${code}`);
         activeProcesses.delete(sessionId);
         
         // Process any remaining buffer
@@ -639,7 +720,14 @@ io.on('connection', (socket) => {
 
       // Handle process errors
       claudeProcess.on('error', (err) => {
-        console.error('❌ Failed to spawn claude:', err);
+        clearInterval(streamHealthInterval);
+        console.error(`❌ [${sessionId}] Failed to spawn claude:`, err);
+        console.error(`❌ [${sessionId}] Error details:`, {
+          message: err.message,
+          code: err.code,
+          syscall: err.syscall,
+          path: err.path
+        });
         
         // Clean up any streaming state - send complete message update
         const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);

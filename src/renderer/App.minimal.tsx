@@ -10,6 +10,7 @@ import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortc
 import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 // import { FileChangesSidebar } from './components/FileChanges/FileChangesSidebar';
 import { ServerLogs } from './components/ServerLogs/ServerLogs';
+import { DebugPanel } from './components/DebugPanel/DebugPanel';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { platformBridge } from './services/platformBridge';
 import './App.minimal.css';

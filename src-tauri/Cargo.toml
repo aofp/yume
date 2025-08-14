@@ -48,6 +48,7 @@ rfd = "0.14"
 native-dialog = "0.7"
 dirs = "5.0"
 walkdir = "2.4"
+rand = "0.8"
 # sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "sqlite"] }  # Commented out for now
 # notify = "6.1"  # Commented out for now
 

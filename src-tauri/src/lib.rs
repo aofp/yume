@@ -8,6 +8,7 @@ mod commands;
 mod state;
 mod websocket;
 mod logged_server;
+mod port_manager;
 
 use std::sync::Arc;
 use tauri::{Manager, Listener};
@@ -35,16 +36,19 @@ pub fn run() {
             // Initialize Claude manager
             let claude_manager = Arc::new(ClaudeManager::new());
 
-            // Start the LOGGED server with full debugging
-            let port = 3001;
-            info!("Starting LOGGED Node.js server on port: {}", port);
+            // ALWAYS allocate a fresh dynamic port for EVERY instance
+            let server_port = {
+                info!("Allocating dynamic port for this instance");
+                port_manager::find_available_port()
+                    .unwrap_or_else(|| port_manager::get_fallback_port())
+            };
             
-            logged_server::start_logged_server();
-            
-            info!("Server started on port {}", port);
+            info!("Starting LOGGED Node.js server on port: {}", server_port);
+            logged_server::start_logged_server(server_port);
+            info!("Server started on port {}", server_port);
 
             // Initialize app state
-            let app_state = AppState::new(claude_manager, port);
+            let app_state = AppState::new(claude_manager, server_port);
             let _ = app_state.load_persisted_data();
 
             // Store state for commands
@@ -62,12 +66,23 @@ pub fn run() {
             // Set up window event handlers
             let window = app.get_webview_window("main").unwrap();
             
-            // Restore window state
+            // Restore window state BEFORE showing the window
             {
                 let window_clone = window.clone();
                 let app_handle = app.handle().clone();
-                tauri::async_runtime::spawn(async move {
+                tauri::async_runtime::block_on(async move {
                     restore_window_state(&window_clone, &app_handle).await;
+                });
+            }
+            
+            // Show the window after a small delay to ensure everything is ready
+            {
+                let window_clone = window.clone();
+                std::thread::spawn(move || {
+                    // Wait a bit for the webview to load and apply styles
+                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    let _ = window_clone.show();
+                    info!("Window shown after initialization");
                 });
             }
             
@@ -153,7 +168,7 @@ pub fn run() {
                 window.on_window_event(move |event| {
                     match event {
                         tauri::WindowEvent::CloseRequested { .. } => {
-                            info!("Window close requested, saving state and cleaning up...");
+                            info!("Window close requested, saving state...");
                             
                             // Save window state before closing
                             let window_for_save = window_clone.clone();
@@ -162,12 +177,9 @@ pub fn run() {
                                 save_window_state(&window_for_save, &app_for_save).await;
                             });
                             
-                            // Stop the server immediately
-                            logged_server::stop_logged_server();
-                            info!("Server stopped, exiting application...");
-                            
-                            // Force exit immediately - don't wait
-                            std::process::exit(0);
+                            // DON'T stop the server - other windows might be using it!
+                            // DON'T exit the app - let Tauri handle window lifecycle
+                            info!("Window closing, server remains running for other windows");
                         }
                         tauri::WindowEvent::Resized(_) | tauri::WindowEvent::Moved(_) => {
                             // Save window state on resize/move with debouncing
@@ -242,6 +254,7 @@ pub fn run() {
             commands::toggle_devtools,
             commands::select_folder,
             commands::get_server_port,
+            commands::new_window,
             commands::send_message,
             commands::interrupt_session,
             commands::clear_session,
@@ -265,21 +278,22 @@ pub fn run() {
             commands::get_git_status,
             commands::get_folder_contents,
         ])
-        .on_window_event(|_app_handle, event| {
-            // Additional handler for window events at app level
+        .on_window_event(|app_handle, event| {
+            // Only handle cleanup when truly needed
             match event {
                 tauri::WindowEvent::Destroyed => {
-                    info!("Window destroyed, ensuring final cleanup...");
-                    // Final cleanup if not already done
-                    logged_server::stop_logged_server();
-                    // Exit immediately
-                    std::process::exit(0);
-                }
-                tauri::WindowEvent::CloseRequested { .. } => {
-                    info!("App-level close requested, stopping server...");
-                    // Stop server at app level too
-                    logged_server::stop_logged_server();
-                    std::process::exit(0);
+                    // The Destroyed event fires AFTER the window is removed
+                    // So we need to check if any windows remain
+                    let remaining_windows = app_handle.webview_windows();
+                    
+                    // Note: The destroyed window is already removed from the list
+                    if remaining_windows.is_empty() {
+                        info!("Last window destroyed, stopping server and exiting...");
+                        logged_server::stop_logged_server();
+                        // Let Tauri handle the exit properly
+                    } else {
+                        info!("Window destroyed, {} window(s) still open", remaining_windows.len());
+                    }
                 }
                 _ => {}
             }

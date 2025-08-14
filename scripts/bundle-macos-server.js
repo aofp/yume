@@ -18,11 +18,10 @@ console.log('📦 Bundling macOS server for production...');
 const resourcesDir = join(projectRoot, 'src-tauri', 'resources');
 mkdirSync(resourcesDir, { recursive: true });
 
-// Copy the original server file AS IS (it works!)
+// Read the original server file
 const serverSource = readFileSync(join(projectRoot, 'server-claude-macos.js'), 'utf8');
-writeFileSync(join(resourcesDir, 'server-claude-macos.js'), serverSource);
 
-// Also create a CommonJS version as backup
+// Create a CommonJS version for production use
 let serverCJS = serverSource
   .replace(/^import\s+{([^}]+)}\s+from\s+['"]([^'"]+)['"]/gm, 'const {$1} = require("$2")')
   .replace(/^import\s+(\w+)\s+from\s+['"]([^'"]+)['"]/gm, 'const $1 = require("$2")');
@@ -33,6 +32,65 @@ serverCJS = serverCJS
   .replace(/import\s+{\s*fileURLToPath\s*}\s+from\s+['"]url['"]\s*;?\s*\n/g, '')
   .replace(/const\s+__filename\s*=\s*fileURLToPath\(import\.meta\.url\);?\s*\n/g, '')
   .replace(/const\s+__dirname\s*=\s*dirname\(__filename\);?\s*\n/g, '// __dirname is already defined in CommonJS\n');
+
+// Add safe console wrapper at the beginning for production
+const safeConsoleWrapper = `
+// Safe console wrapper to handle closed file descriptors in production
+const originalConsole = {
+  log: console.log.bind(console),
+  error: console.error.bind(console),
+  warn: console.warn.bind(console),
+  info: console.info.bind(console),
+  debug: console.debug.bind(console)
+};
+
+// Override console methods with safe versions
+console.log = function(...args) {
+  try {
+    originalConsole.log(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
+console.error = function(...args) {
+  try {
+    originalConsole.error(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
+console.warn = function(...args) {
+  try {
+    originalConsole.warn(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
+console.info = function(...args) {
+  try {
+    originalConsole.info(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+
+console.debug = function(...args) {
+  try {
+    originalConsole.debug(...args);
+  } catch (e) {
+    if (e.code !== 'EBADF' && e.code !== 'EPIPE') throw e;
+  }
+};
+`;
+
+// Insert safe console wrapper after the header comment
+const headerEnd = serverCJS.indexOf('*/');
+if (headerEnd !== -1) {
+  serverCJS = serverCJS.slice(0, headerEnd + 2) + safeConsoleWrapper + serverCJS.slice(headerEnd + 2);
+}
 
 writeFileSync(join(resourcesDir, 'server-claude-macos.cjs'), serverCJS);
 

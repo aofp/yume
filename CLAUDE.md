@@ -30,13 +30,18 @@ yurucode is a cross-platform desktop application providing a minimal UI for the 
 npm install
 
 # Development (user manages these)
-npm run dev           # Vite dev server (port 5173)
-npm run tauri:dev     # Tauri development mode
-npm run server:macos  # Node.js server for Claude CLI
+npm run dev                    # Vite dev server (port 5173)
+npm run tauri:dev              # Tauri development mode
+npm run tauri:dev:win          # Windows: concurrent Vite + Tauri
+npm run server:macos           # Node.js server for Claude CLI (macOS)
+npm run server:wsl             # Node.js server for Claude CLI (WSL)
 
 # Build commands (only when explicitly requested)
-npm run build         # Build React app
-npm run tauri:build   # Build for current platform
+npm run build                  # Build React app with version injection
+npm run tauri:build            # Build for current platform with macOS bundling
+npm run tauri:build:win        # Build specifically for Windows x64
+npm run tauri:build:mac        # Build for macOS ARM64
+npm run tauri:build:linux      # Build for Linux x64
 ```
 
 ## Critical Architecture
@@ -47,12 +52,14 @@ npm run tauri:build   # Build for current platform
    - Window lifecycle management
    - Native system integration
    - WebSocket support via Rust
+   - Bundled server resource management
 
 2. **Node.js Server** (`server-claude-macos.js`)
    - Spawns Claude CLI binary directly (no SDK/API key)
    - Parses `--output-format stream-json` output
    - WebSocket communication via Socket.IO
    - Session resumption with `--resume` flag
+   - Multi-platform Claude path detection
 
 3. **React Frontend** (`src/renderer/`)
    - Socket.IO client with retry logic
@@ -67,6 +74,7 @@ npm run tauri:build   # Build for current platform
 - **Token Tracking**: Analytics track per-conversation tokens (use `=` not `+=`)
 - **Streaming State**: Per-session `streaming` flag in Zustand store
 - **Clear Context**: Resets `claudeSessionId` and analytics
+- **Resource Bundling**: Server gets bundled into `src-tauri/resources/` for distribution
 
 ### UI Design Philosophy
 
@@ -76,6 +84,7 @@ npm run tauri:build   # Build for current platform
 - Pastel accents: red (#ff9999), magenta (#ff99cc)
 - Tabler icons (no emojis in UI)
 - Right-click context menu with copy functionality
+- Transparent window with custom decorations
 
 ### Important Files & Patterns
 
@@ -83,7 +92,10 @@ npm run tauri:build   # Build for current platform
 - `src/renderer/stores/claudeCodeStore.ts` - Use `let sessions` not `const sessions` in setState
 - `src/renderer/services/claudeCodeClient.ts` - Socket.IO connection management
 - `src/renderer/components/Chat/MessageRenderer.tsx` - Message rendering logic
-- `src-tauri/tauri.conf.json` - Tauri configuration
+- `src-tauri/tauri.conf.json` - Tauri configuration (window size: 516x509)
+- `src-tauri/src/logged_server.rs` - Server process management in Rust
+- `scripts/inject-version.cjs` - Version injection during build
+- `scripts/bundle-macos-server.js` - Bundle server for macOS distribution
 
 ### Keyboard Shortcuts
 
@@ -107,13 +119,16 @@ npm run tauri:build   # Build for current platform
 3. **Zustand store changes**: Require full app restart
 4. **Hot reload**: Components hot-reload, server uses nodemon, store needs restart
 5. **macOS paths**: Server handles path conversion for Claude CLI
+6. **Port conflicts**: `scripts/kill-ports.js` handles cleanup before dev
+7. **Version mismatch**: Check `scripts/inject-version.cjs` runs during build
 
 ### Testing Changes
 
 When modifying:
 1. React components hot-reload automatically (HMR)
-2. Server changes reload with nodemon
+2. Server changes reload with nodemon (if using dev server)
 3. Zustand store changes require app restart
 4. Tauri main process needs manual restart
 5. Check browser console for Socket.IO errors
 6. Check terminal for Claude spawn errors
+7. Verify bundled resources after build in `src-tauri/resources/`

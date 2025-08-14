@@ -22,7 +22,6 @@ import {
   IconAlertTriangle,
   IconFileText,
   IconFile,
-  IconLoader2,
   IconChartBar,
   IconCoin,
   IconChevronUp,
@@ -39,6 +38,7 @@ import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
 import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete';
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
+import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -298,7 +298,7 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSessionId, scrollPositions, currentSession?.messages?.length]);
 
-  // SIMPLE AUTO-SCROLL - always scroll to bottom when messages change
+  // SIMPLE AUTO-SCROLL - only scroll if user is at bottom
   useEffect(() => {
     if (!chatContainerRef.current || !currentSession) return;
     
@@ -309,8 +309,8 @@ export const ClaudeChat: React.FC = () => {
     // Check if near bottom (within 200px)
     const isNearBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 200;
     
-    // Scroll if near bottom OR if streaming
-    if (isNearBottom || currentSession?.streaming) {
+    // Only scroll if near bottom (remove streaming condition)
+    if (isNearBottom) {
       // Small delay to ensure DOM is updated
       setTimeout(() => {
         if (!isTabSwitchingRef.current && chatContainerRef.current) {
@@ -1302,9 +1302,9 @@ export const ClaudeChat: React.FC = () => {
           <div className="message assistant">
             <div className="message-content">
               <div className="thinking-indicator-bottom">
-                <IconLoader2 size={14} stroke={1.5} className="spinning-loader" />
+                <LoadingIndicator size="small" color="red" />
                 <span className="thinking-text-wrapper">
-                  <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
+                  <span className="thinking-text">thinking</span>
                   {currentSessionId && thinkingElapsed[currentSessionId] > 0 && (
                     <span className="thinking-timer">{thinkingElapsed[currentSessionId]}s</span>
                   )}
@@ -1476,11 +1476,15 @@ export const ClaudeChat: React.FC = () => {
       {showRecentModal && (
         <div 
           className="recent-modal-overlay"
-          onClick={() => setShowRecentModal(false)}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowRecentModal(false);
+            }
+          }}
         >
           <div 
             className="recent-modal"
-            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <div className="modal-title-row">

@@ -6,6 +6,8 @@
   "author": "yuruko",
   "scripts": {
     "dev": "vite",
+    "dev:allocate": "node scripts/allocate-port.mjs",
+    "dev:dynamic": "npm run dev:allocate && npm run tauri:dev",
     "server:macos": "node --expose-gc --max-old-space-size=2048 server-claude-macos.js",
     "server:wsl": "node server-claude-direct.cjs",
     "build": "node scripts/inject-version.cjs && vite build && node scripts/patch-vendor.cjs",

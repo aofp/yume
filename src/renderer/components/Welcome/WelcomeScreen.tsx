@@ -201,11 +201,15 @@ export const WelcomeScreen: React.FC = () => {
       {showRecentModal && (
         <div 
           className="recent-modal-overlay"
-          onClick={() => setShowRecentModal(false)}
+          onMouseDown={(e) => {
+            if (e.target === e.currentTarget) {
+              setShowRecentModal(false);
+            }
+          }}
         >
           <div 
             className="recent-modal"
-            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
           >
             <div className="modal-header">
               <span className="modal-title">

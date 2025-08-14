@@ -57,11 +57,24 @@
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+      /* Critical styles to prevent white flash */
+      html, body {
+        background-color: #000000 !important;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      #root {
+        background-color: #000000 !important;
+        min-height: 100vh;
+      }
+    </style>
   </head>
   <body>
     <div id="root">
-      <div style="color: white; padding: 20px; font-family: monospace;">
-        Loading yurucode...
+      <div style="background-color: #000000; color: #808080; padding: 20px; font-family: monospace; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+        <div>loading...</div>
       </div>
     </div>
     <div id="debug" style="position: fixed; top: 0; left: 0; right: 0; background: rgba(255,0,0,0.8); color: white; padding: 10px; display: none; z-index: 9999;"></div>

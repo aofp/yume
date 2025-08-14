@@ -50,6 +50,15 @@ class PlatformBridge {
   zoom = {
     in: async (): Promise<number> => {
       console.log('[PlatformBridge] zoom.in() called');
+      
+      // Check if user is scrolled to bottom before zoom
+      const chatContainer = document.querySelector('.chat-container');
+      let wasAtBottom = false;
+      if (chatContainer) {
+        const threshold = 10;
+        wasAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < threshold;
+      }
+      
       // Get current zoom percentage from localStorage (100 = 100%)
       let currentZoom = parseInt(localStorage.getItem('zoomPercent') || '100');
       
@@ -68,6 +77,13 @@ class PlatformBridge {
       // Save to localStorage
       localStorage.setItem('zoomPercent', newZoom.toString());
       
+      // If was at bottom, scroll back to bottom after zoom
+      if (wasAtBottom && chatContainer) {
+        setTimeout(() => {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 0);
+      }
+      
       // Calculate zoom level for display (-5 to +10, where 0 = 100%)
       const zoomLevel = (newZoom - 100) / 10;
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
@@ -76,6 +92,15 @@ class PlatformBridge {
     },
     out: async (): Promise<number> => {
       console.log('[PlatformBridge] zoom.out() called');
+      
+      // Check if user is scrolled to bottom before zoom
+      const chatContainer = document.querySelector('.chat-container');
+      let wasAtBottom = false;
+      if (chatContainer) {
+        const threshold = 10;
+        wasAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < threshold;
+      }
+      
       // Get current zoom percentage from localStorage
       let currentZoom = parseInt(localStorage.getItem('zoomPercent') || '100');
       
@@ -94,6 +119,13 @@ class PlatformBridge {
       // Save to localStorage
       localStorage.setItem('zoomPercent', newZoom.toString());
       
+      // If was at bottom, scroll back to bottom after zoom
+      if (wasAtBottom && chatContainer) {
+        setTimeout(() => {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 0);
+      }
+      
       // Calculate zoom level for display
       const zoomLevel = (newZoom - 100) / 10;
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
@@ -102,11 +134,27 @@ class PlatformBridge {
     },
     reset: async (): Promise<number> => {
       console.log('[PlatformBridge] zoom.reset() called');
+      
+      // Check if user is scrolled to bottom before zoom
+      const chatContainer = document.querySelector('.chat-container');
+      let wasAtBottom = false;
+      if (chatContainer) {
+        const threshold = 10;
+        wasAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < threshold;
+      }
+      
       // Reset zoom to 100%
       document.body.style.zoom = '1';
       
       // Save to localStorage
       localStorage.setItem('zoomPercent', '100');
+      
+      // If was at bottom, scroll back to bottom after zoom
+      if (wasAtBottom && chatContainer) {
+        setTimeout(() => {
+          chatContainer.scrollTop = chatContainer.scrollHeight;
+        }, 0);
+      }
       
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));
       console.log('[PlatformBridge] Zoom reset to 100%');
