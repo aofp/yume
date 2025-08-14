@@ -440,6 +440,22 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Toggle model between opus and sonnet
         toggleModel();
+      } else if (showRecentModal && e.key >= '1' && e.key <= '9') {
+        // Handle number keys for recent projects
+        e.preventDefault();
+        const stored = localStorage.getItem('yurucode-recent-projects');
+        if (stored) {
+          try {
+            const projects = JSON.parse(stored);
+            const index = parseInt(e.key) - 1;
+            if (index < projects.length) {
+              createSession(projects[index].name, projects[index].path);
+              setShowRecentModal(false);
+            }
+          } catch (err) {
+            console.error('Failed to parse recent projects:', err);
+          }
+        }
       } else if (e.key === 'Escape') {
         // First check if we're streaming and should stop
         if (currentSession?.streaming) {
@@ -666,11 +682,11 @@ export const ClaudeChat: React.FC = () => {
     const cursorPos = textarea.selectionStart;
     
     // If mention or command autocomplete is open, let it handle arrow keys and tab
-    if ((mentionTrigger || commandTrigger) && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Tab')) {
+    if ((mentionTrigger !== null || commandTrigger) && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Tab')) {
       return; // Let the autocomplete component handle these
     }
     
-    if (e.key === 'Escape' && (mentionTrigger || commandTrigger)) {
+    if (e.key === 'Escape' && (mentionTrigger !== null || commandTrigger)) {
       e.preventDefault();
       setMentionTrigger(null);
       setCommandTrigger(null);
@@ -808,6 +824,16 @@ export const ClaudeChat: React.FC = () => {
     
     console.log('Chat drop event:', e.dataTransfer);
     
+    // Helper function to convert Windows path to WSL path
+    const convertToWSLPath = (path: string): string => {
+      if (path.match(/^[A-Z]:\\/)) {
+        const driveLetter = path[0].toLowerCase();
+        const pathWithoutDrive = path.substring(2).replace(/\\/g, '/');
+        return `/mnt/${driveLetter}${pathWithoutDrive}`;
+      }
+      return path;
+    };
+    
     // Try to detect folders using webkitGetAsEntry
     const items = Array.from(e.dataTransfer.items);
     for (const item of items) {
@@ -821,9 +847,20 @@ export const ClaudeChat: React.FC = () => {
             const file = item.getAsFile();
             const path = (file as any)?.path;
             if (path) {
-              console.log('Creating session for folder:', path);
+              const wslPath = convertToWSLPath(path);
+              console.log('Creating session for folder:', path, '->', wslPath);
               const sessionName = path.split(/[/\\]/).pop() || 'new session';
-              await createSession(sessionName, path);
+              await createSession(sessionName, wslPath);
+              return;
+            }
+          } else {
+            // It's a file - insert path into input
+            const file = item.getAsFile();
+            const path = (file as any)?.path;
+            if (path) {
+              const wslPath = convertToWSLPath(path);
+              console.log('Inserting file path:', path, '->', wslPath);
+              setInput(prev => prev + (prev ? ' ' : '') + wslPath);
               return;
             }
           }
@@ -831,25 +868,48 @@ export const ClaudeChat: React.FC = () => {
       }
     }
     
-    // Fallback: Check files array
+    // Fallback: Check files array (for browsers that don't support webkitGetAsEntry)
     const files = Array.from(e.dataTransfer.files);
-    for (const file of files) {
-      console.log('File:', file.name, 'Type:', file.type, 'Size:', file.size, 'Path:', (file as any).path);
-      
+    if (files.length === 1) {
+      const file = files[0];
       const path = (file as any).path;
-      if (path && window.electronAPI?.isDirectory) {
-        // Use Electron's fs to check if it's a directory
-        const isDir = window.electronAPI.isDirectory(path);
-        if (isDir) {
-          console.log('Creating session for folder:', path);
+      
+      if (path) {
+        // Check if it's likely a folder (no extension, or type is empty)
+        const hasExtension = file.name.includes('.') && file.name.lastIndexOf('.') > 0;
+        const isLikelyFolder = !hasExtension && file.type === '';
+        
+        if (isLikelyFolder) {
+          const wslPath = convertToWSLPath(path);
+          console.log('Creating session for folder (fallback):', path, '->', wslPath);
           const sessionName = path.split(/[/\\]/).pop() || 'new session';
-          await createSession(sessionName, path);
+          await createSession(sessionName, wslPath);
+          return;
+        } else {
+          // It's a file - insert path into input
+          const wslPath = convertToWSLPath(path);
+          console.log('Inserting file path (fallback):', path, '->', wslPath);
+          setInput(prev => prev + (prev ? ' ' : '') + wslPath);
           return;
         }
       }
     }
     
-    // Handle regular file drops for attachments
+    // Handle multiple file drops - insert all paths
+    if (files.length > 1) {
+      const paths = files
+        .map(file => (file as any).path)
+        .filter(Boolean)
+        .map(convertToWSLPath);
+      
+      if (paths.length > 0) {
+        console.log('Inserting multiple file paths:', paths);
+        setInput(prev => prev + (prev ? ' ' : '') + paths.join(' '));
+        return;
+      }
+    }
+    
+    // If no path available, handle as attachment (images/text files)
     for (const file of files) {
       if (attachments.length >= 10) break;
       
@@ -961,49 +1021,59 @@ export const ClaudeChat: React.FC = () => {
     const cursorPosition = e.target.selectionStart;
     setInput(newValue);
     
-    // Check for @mention and /command triggers
-    const beforeCursor = newValue.substring(0, cursorPosition);
-    const lastAtIndex = beforeCursor.lastIndexOf('@');
-    const lastSlashIndex = beforeCursor.lastIndexOf('/');
+    // Only check for triggers if textarea is focused
+    const isTextareaFocused = document.activeElement === e.target;
     
-    // Determine which trigger is more recent
-    if (lastAtIndex >= 0 && lastAtIndex > lastSlashIndex) {
-      // Check if @ is at the start or preceded by whitespace
-      const charBefore = lastAtIndex > 0 ? beforeCursor[lastAtIndex - 1] : ' ';
-      if (charBefore === ' ' || charBefore === '\n' || lastAtIndex === 0) {
-        // Get the text after @ until cursor
-        const mentionText = beforeCursor.substring(lastAtIndex);
-        
-        // Check if there's no space in the mention text (still typing the mention)
-        if (!mentionText.includes(' ') && !mentionText.includes('\n')) {
-          setMentionTrigger(mentionText);
-          setMentionCursorPos(cursorPosition);
-          setCommandTrigger(null);
+    if (isTextareaFocused) {
+      // Check for @mention and /command triggers
+      const beforeCursor = newValue.substring(0, cursorPosition);
+      const lastAtIndex = beforeCursor.lastIndexOf('@');
+      const lastSlashIndex = beforeCursor.lastIndexOf('/');
+      
+      // Determine which trigger is more recent
+      if (lastAtIndex >= 0 && lastAtIndex > lastSlashIndex) {
+        // Check if @ is at the start or preceded by whitespace
+        const charBefore = lastAtIndex > 0 ? beforeCursor[lastAtIndex - 1] : ' ';
+        if (charBefore === ' ' || charBefore === '\n' || lastAtIndex === 0) {
+          // Get the text after @ until cursor (excluding the @ itself)
+          const mentionText = beforeCursor.substring(lastAtIndex + 1);
+          
+          // Check if there's no space in the mention text (still typing the mention)
+          if (!mentionText.includes(' ') && !mentionText.includes('\n')) {
+            // Pass empty string for just @ to show root directory
+            setMentionTrigger(mentionText);
+            setMentionCursorPos(cursorPosition);
+            setCommandTrigger(null);
+          } else {
+            setMentionTrigger(null);
+          }
         } else {
           setMentionTrigger(null);
+        }
+      } else if (lastSlashIndex >= 0 && lastSlashIndex > lastAtIndex) {
+        // Check if / is at the start or preceded by whitespace/newline
+        const charBefore = lastSlashIndex > 0 ? beforeCursor[lastSlashIndex - 1] : ' ';
+        if (charBefore === ' ' || charBefore === '\n' || lastSlashIndex === 0) {
+          // Get the text after / until cursor
+          const commandText = beforeCursor.substring(lastSlashIndex);
+          
+          // Check if there's no space in the command text (still typing the command)
+          if (!commandText.includes(' ') && !commandText.includes('\n')) {
+            setCommandTrigger(commandText);
+            setCommandCursorPos(cursorPosition);
+            setMentionTrigger(null);
+          } else {
+            setCommandTrigger(null);
+          }
+        } else {
+          setCommandTrigger(null);
         }
       } else {
         setMentionTrigger(null);
-      }
-    } else if (lastSlashIndex >= 0 && lastSlashIndex > lastAtIndex) {
-      // Check if / is at the start or preceded by whitespace/newline
-      const charBefore = lastSlashIndex > 0 ? beforeCursor[lastSlashIndex - 1] : ' ';
-      if (charBefore === ' ' || charBefore === '\n' || lastSlashIndex === 0) {
-        // Get the text after / until cursor
-        const commandText = beforeCursor.substring(lastSlashIndex);
-        
-        // Check if there's no space in the command text (still typing the command)
-        if (!commandText.includes(' ') && !commandText.includes('\n')) {
-          setCommandTrigger(commandText);
-          setCommandCursorPos(cursorPosition);
-          setMentionTrigger(null);
-        } else {
-          setCommandTrigger(null);
-        }
-      } else {
         setCommandTrigger(null);
       }
     } else {
+      // Clear triggers if textarea is not focused
       setMentionTrigger(null);
       setCommandTrigger(null);
     }
@@ -1281,6 +1351,11 @@ export const ClaudeChat: React.FC = () => {
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
+            onBlur={() => {
+              // Close autocomplete when textarea loses focus
+              setMentionTrigger(null);
+              setCommandTrigger(null);
+            }}
             onContextMenu={(e) => {
               // Allow default context menu for right-click paste
               e.stopPropagation();
@@ -1375,7 +1450,7 @@ export const ClaudeChat: React.FC = () => {
       </div>
       
       {/* Mention Autocomplete */}
-      {mentionTrigger && (
+      {mentionTrigger !== null && (
         <MentionAutocomplete
           trigger={mentionTrigger}
           cursorPosition={mentionCursorPos}
@@ -1442,7 +1517,7 @@ export const ClaudeChat: React.FC = () => {
                     return <div className="no-recent">no recent projects</div>;
                   }
                   
-                  return projects.slice(0, 10).map((project: any) => (
+                  return projects.slice(0, 10).map((project: any, idx: number) => (
                     <div key={project.path} className="recent-item-container">
                       <button
                         className="recent-item"
@@ -1451,6 +1526,7 @@ export const ClaudeChat: React.FC = () => {
                           setShowRecentModal(false);
                         }}
                       >
+                        <span className="recent-item-number">{idx < 9 ? idx + 1 : ''}</span>
                         <IconFolderOpen size={14} />
                         <div className="recent-item-info">
                           <div className="recent-item-name">{project.name}</div>

@@ -211,13 +211,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     
     try {
       // Generate more entropic session ID with timestamp and random components
-      const timestamp = Date.now().toString(36).substring(5);
-      const random1 = Math.random().toString(36).substring(2, 5);
-      const random2 = (Math.random() * 1000000).toString(36).substring(0, 3);
-      const hexId = `${random1}${timestamp}${random2}`.substring(0, 8);
+      const timestamp = Date.now().toString(36);
+      const random1 = Math.random().toString(36).substring(2, 8);
+      const random2 = Math.random().toString(36).substring(2, 8);
+      const hexId = `${timestamp}-${random1}-${random2}`;
       // ALWAYS use unique session name to prevent duplicate sessions
-      const sessionName = `session ${hexId}`;
-      const workingDirectory = directory || '/';
+      const sessionName = `session-${hexId}`;
+      // Use the provided directory, or default to home directory
+      // The user should always select a folder, but have a fallback
+      const workingDirectory = directory || 'C:\\';
       
       // STEP 1: Create tab immediately with pending status
       const tempSessionId = `temp-${hexId}`;
@@ -791,6 +793,28 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 }
               }
               // If streaming is undefined, don't change the state
+            } else if (message.type === 'error') {
+              // Handle error messages - ALWAYS clear streaming and show to user
+              console.log('[Store] Error message received:', message.error);
+              sessions = sessions.map(s => {
+                if (s.id === sessionId) {
+                  // Add error as a system message so user sees it
+                  const errorMessage = {
+                    id: `error-${Date.now()}`,
+                    type: 'system' as const,
+                    subtype: 'error' as const,
+                    message: { content: message.error || 'an error occurred' },
+                    timestamp: Date.now()
+                  };
+                  return { 
+                    ...s, 
+                    streaming: false,
+                    messages: [...s.messages, errorMessage]
+                  };
+                }
+                return s;
+              });
+              return { sessions };
             } else if (message.type === 'result') {
               // Always clear streaming when we get a result message
               console.log('Received result message, clearing streaming state. Result details:', {
@@ -803,7 +827,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 s.id === sessionId ? { ...s, streaming: false } : s
               );
               return { sessions };
-            } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error')) {
+            } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
               // Clear streaming on interruption or error
               console.log('System message received, clearing streaming state');
               sessions = sessions.map(s => 

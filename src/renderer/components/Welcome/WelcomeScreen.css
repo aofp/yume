@@ -277,6 +277,14 @@
   color: var(--accent-color);
 }
 
+.recent-item-number {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  min-width: 12px;
+  text-align: center;
+}
+
 .recent-item-remove {
   display: flex;
   align-items: center;

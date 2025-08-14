@@ -524,3 +524,12 @@
   background: rgba(255, 255, 255, 0.12);
   color: rgba(255, 255, 255, 0.8);
 }
+
+/* Recent projects modal styles */
+.recent-item-number {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  min-width: 12px;
+  text-align: center;
+}

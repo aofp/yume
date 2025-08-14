@@ -1428,3 +1428,191 @@
   background: rgba(255, 153, 153, 0.4);
   color: #ffffff;
 }
+
+/* Recent Projects Modal */
+.recent-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10001;
+  cursor: pointer;
+  animation: fadeIn 0.15s ease;
+}
+
+.recent-modal {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 500px;
+  max-height: 70vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: 0;
+  animation: modalFadeIn 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+  position: relative;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  margin-bottom: 0;
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: #0a0a0a;
+  z-index: 1;
+}
+
+.modal-title-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.modal-icon {
+  color: var(--accent-color);
+  opacity: 0.8;
+}
+
+.modal-title {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--accent-color);
+  text-transform: lowercase;
+  display: flex;
+  align-items: center;
+}
+
+.clear-all-icon {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.clear-all-icon:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
+}
+
+.modal-content {
+  flex: 1;
+  overflow-y: auto;
+  padding: 2px;
+}
+
+.no-recent {
+  padding: 20px;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  text-transform: lowercase;
+}
+
+.recent-item-container {
+  display: flex;
+  align-items: center;
+  border-bottom: none;
+}
+
+.recent-item {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  text-align: left;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.recent-item:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
+}
+
+.recent-item-info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.recent-item-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-color);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+}
+
+.recent-item-path {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  margin-top: 2px;
+}
+
+.recent-item-remove {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  margin-right: 0;
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: default;
+  transition: all 0.15s ease;
+  border-radius: 4px;
+}
+
+.recent-item-remove:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
+}
+
+.recent-item-number {
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  min-width: 12px;
+  text-align: center;
+}

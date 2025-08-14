@@ -63,6 +63,16 @@ fn clear_log() {
 
 // Get server logs (limited to last 800 lines)
 pub fn get_server_logs() -> String {
+    // On Windows with embedded server, create a log file if it doesn't exist
+    #[cfg(target_os = "windows")]
+    {
+        let log_path = get_log_path();
+        if !log_path.exists() {
+            let _ = fs::create_dir_all(log_path.parent().unwrap());
+            let _ = fs::write(&log_path, "=== yurucode server log ===\nEmbedded server running on port 3001\nNote: Real-time logging not available in embedded mode\n");
+        }
+    }
+    
     match fs::read_to_string(get_log_path()) {
         Ok(contents) => {
             let lines: Vec<&str> = contents.lines().collect();
@@ -659,20 +669,12 @@ pub fn stop_logged_server() {
         }
     }
     
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-        
-        let _ = Command::new("taskkill")
-            .args(&["/F", "/IM", "node.exe"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .spawn();
-    }
+    // Don't kill ALL node.exe processes - that would kill Vite too!
+    // Just rely on killing our stored process handle above
 }
 
 pub fn start_logged_server() {
-    info!("Starting server for macOS");
+    info!("Starting server");
     
     // Stop any existing server first to avoid port conflicts
     stop_logged_server();
@@ -687,36 +689,34 @@ pub fn start_logged_server() {
         return;
     }
     
-    // Original embedded server logic for other platforms
-    #[cfg(not(target_os = "macos"))]
-    {
-        info!("Starting embedded server");
-        
-        // Create temp directory for server
-        let server_dir = std::env::temp_dir().join("yurucode-server");
-        let _ = fs::create_dir_all(&server_dir);
-        
-        // Write embedded server to temp
-        let server_path = server_dir.join("server.js");
-        if let Err(e) = fs::write(&server_path, EMBEDDED_SERVER) {
-            info!("Failed to write server: {}", e);
-            return;
-        }
-        
-        // Determine where to find node_modules
-        let node_path = if cfg!(debug_assertions) {
-            // In development, find project root dynamically
-            std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-                .map(|p| p.join("node_modules"))
-        } else {
-            // In production, look for bundled node_modules
-            std::env::current_exe()
-                .ok()
-                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-                .map(|p| p.join("resources").join("node_modules"))
-        };
+    // Original embedded server logic for other platforms (Windows/Linux)
+    info!("Starting embedded server");
+    
+    // Create temp directory for server
+    let server_dir = std::env::temp_dir().join("yurucode-server");
+    let _ = fs::create_dir_all(&server_dir);
+    
+    // Write embedded server to temp
+    let server_path = server_dir.join("server.js");
+    if let Err(e) = fs::write(&server_path, EMBEDDED_SERVER) {
+        info!("Failed to write server: {}", e);
+        return;
+    }
+    
+    // Determine where to find node_modules
+    let node_path = if cfg!(debug_assertions) {
+        // In development, find project root dynamically
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
+            .map(|p| p.join("node_modules"))
+    } else {
+        // In production, look for bundled node_modules
+        std::env::current_exe()
+            .ok()
+            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+            .map(|p| p.join("resources").join("node_modules"))
+    };
     
     // Try to start server with Node.js
     let node_paths = vec!["node", "node.exe"];
@@ -773,8 +773,7 @@ pub fn start_logged_server() {
         }
     }
     
-        info!("❌ Failed to start server");
-    }
+    info!("❌ Failed to start server");
 }
 
 #[cfg(target_os = "macos")]

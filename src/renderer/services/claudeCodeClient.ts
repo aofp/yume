@@ -151,11 +151,13 @@ export class ClaudeCodeClient {
     // Connect to the Claude Code server with balanced retry settings
     this.socket = io(serverUrl, {
       reconnection: true,
-      reconnectionAttempts: 10, // Try 10 times before giving up
+      reconnectionAttempts: Infinity, // Keep trying forever
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
       timeout: 20000, // 20 second connection timeout
       transports: ['websocket', 'polling'], // Try both transports
+      autoConnect: true,
+      forceNew: false // Reuse connection if possible
     });
 
     this.socket.on('connect', () => {
@@ -169,6 +171,16 @@ export class ClaudeCodeClient {
       console.log('❌ Disconnected from Claude Code server');
       console.log('  Reason:', reason);
       this.connected = false;
+      
+      // Auto-reconnect on unexpected disconnects
+      if (reason === 'io server disconnect' || reason === 'transport close') {
+        console.log('🔄 Attempting to reconnect...');
+        setTimeout(() => {
+          if (this.socket && !this.connected) {
+            this.socket.connect();
+          }
+        }, 1000);
+      }
     });
 
     this.socket.on('connect_error', (error) => {

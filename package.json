@@ -14,7 +14,8 @@
     "tauri": "tauri",
     "tauri:dev": "tauri dev",
     "tauri:dev:macos": "tauri dev",
-    "tauri:dev:win": "concurrently -k \"npm run server:wsl\" \"tauri dev\"",
+    "tauri:dev:win": "concurrently -k \"npm run dev\" \"tauri dev --no-dev-server\"",
+    "tauri:dev:manual": "tauri dev --no-dev-server",
     "tauri:build": "npm run bundle:macos && tauri build",
     "bundle:macos": "node scripts/bundle-macos-server.js",
     "tauri:build:mac": "npm run bundle:macos && tauri build --target aarch64-apple-darwin",
@@ -68,5 +69,9 @@
     "socket.io-client": "^4.8.1",
     "vary": "^1.1.2",
     "zustand": "^4.4.7"
+  },
+  "optionalDependencies": {
+    "@rollup/rollup-win32-x64-msvc": "^4.46.2",
+    "@tauri-apps/cli-win32-x64-msvc": "^2.7.1"
   }
 }

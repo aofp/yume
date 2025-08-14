@@ -72,3 +72,15 @@ strip = "debuginfo"      # Strip debug info only
 [profile.release.package."*"]
 opt-level = "z"
 strip = true
+
+# Windows-specific settings to prevent console window
+[target.'cfg(windows)']
+version = "0.48"
+
+[[bin]]
+name = "yurucode"
+path = "src/main.rs"
+
+# This is important for Windows to not show console window
+[package.metadata.tauri]
+windows_subsystem = "windows"

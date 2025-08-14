@@ -28,17 +28,30 @@ const store = useClaudeCodeStore.getState();
 store.deleteAllSessions();
 console.log('Cleared all sessions on startup');
 
-const rootElement = document.getElementById('root');
-console.log('Root element:', rootElement);
+// Wait for DOM to be ready
+function initApp() {
+  const rootElement = document.getElementById('root');
+  console.log('Root element:', rootElement);
 
-if (rootElement) {
-  console.log('Creating React root...');
-  ReactDOM.createRoot(rootElement).render(
-    <App />
-  );
-  console.log('React app rendered');
+  if (rootElement) {
+    console.log('Creating React root...');
+    ReactDOM.createRoot(rootElement).render(
+      <App />
+    );
+    console.log('React app rendered');
+  } else {
+    console.error('Root element not found!');
+    // Try again in 100ms if root not found
+    setTimeout(initApp, 100);
+  }
+}
+
+// Initialize when DOM is ready
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initApp);
 } else {
-  console.error('Root element not found!');
+  // DOM is already ready
+  initApp();
 }
 
 // Clean up sessions when window is about to close

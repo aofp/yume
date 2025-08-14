@@ -116,6 +116,17 @@ export const WelcomeScreen: React.FC = () => {
         return;
       }
       
+      // Handle number keys (1-9) for recent projects when modal is open
+      if (showRecentModal && e.key >= '1' && e.key <= '9') {
+        const index = parseInt(e.key) - 1;
+        if (index < recentProjects.length) {
+          e.preventDefault();
+          openProject(recentProjects[index].path);
+          setShowRecentModal(false);
+        }
+        return;
+      }
+      
       // Don't process other shortcuts if in input field
       if (isInputField) return;
       
@@ -142,7 +153,7 @@ export const WelcomeScreen: React.FC = () => {
     
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [showRecentModal, showHelpModal, recentProjects.length, handleNewSession]);
+  }, [showRecentModal, showHelpModal, recentProjects, handleNewSession]);
 
   return (
     <div className="welcome-screen">
@@ -219,7 +230,7 @@ export const WelcomeScreen: React.FC = () => {
             <div className="modal-content">
               {recentProjects.length > 0 ? (
                 <>
-                  {recentProjects.slice(0, 10).map((project) => (
+                  {recentProjects.slice(0, 10).map((project, idx) => (
                     <div key={project.path} className="recent-item-container">
                       <button
                         className="recent-item"
@@ -228,6 +239,7 @@ export const WelcomeScreen: React.FC = () => {
                           setShowRecentModal(false);
                         }}
                       >
+                        <span className="recent-item-number">{idx < 9 ? idx + 1 : ''}</span>
                         <IconFolderOpen size={14} />
                         <div className="recent-item-info">
                           <div className="recent-item-name">{project.name}</div>

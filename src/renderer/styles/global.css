@@ -1,8 +1,8 @@
 /* CSS Variables - Minimal Black Theme */
 :root {
   /* Accent Color - can be changed via settings */
-  --accent-color: #cccccc;
-  --accent-rgb: 204, 204, 204;
+  --accent-color: #ff9999;
+  --accent-rgb: 255, 153, 153;
   
   /* Code diff and status colors */
   --color-cyan: #99e6ff;  /* pastel cyan for additions/success */

@@ -10,10 +10,14 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - Only provide code fixes, never execute server commands
 - If the app isn't working, provide fixes but let the user restart
 
-**NEVER BUILD THE APP** - DO NOT run build commands unless explicitly asked:
-- `npm run build` - NEVER run this unless user explicitly asks
-- `npm run tauri:build` - NEVER run distribution builds unless requested
-- Only fix code, don't test builds unless specifically requested
+**NEVER BUILD THE APP** - DO NOT run build commands. ONLY THE USER BUILDS:
+- `npm run build` - NEVER run this
+- `npm run tauri:build` - NEVER run this
+- `npx tauri build` - NEVER run this
+- `REBUILD-WIN.bat` - NEVER run this
+- `BUILD-WIN.bat` - NEVER run this
+- ANY build command - NEVER run any build commands
+- Only fix code, the user will build and test
 
 ## Project Overview
 
@@ -89,6 +93,7 @@ npm run tauri:build   # Build for current platform
 - `Ctrl+L` - Clear context
 - `Ctrl+O` - Toggle model (Opus/Sonnet)
 - `Ctrl+R` - Recent projects modal
+  - `1-9` - Open project by number (when modal is open)
 - `Ctrl+F` - Search in messages
 - `Ctrl+0/+/-` - Zoom controls
 - `F12` - DevTools

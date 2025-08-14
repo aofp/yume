@@ -29,8 +29,7 @@ import {
   IconServer,
   IconTerminal2,
   IconPlayerStop,
-  IconScissors,
-  IconCopy
+  IconScissors
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';

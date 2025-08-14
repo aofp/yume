@@ -49,6 +49,15 @@ pub fn run() {
 
             // Store state for commands
             app.manage(app_state);
+            
+            // Wait for Vite to be ready (only in dev mode)
+            #[cfg(debug_assertions)]
+            {
+                info!("Waiting for Vite dev server to be ready...");
+                // On Windows, just wait a fixed time - connection checks fail due to Windows networking
+                std::thread::sleep(std::time::Duration::from_secs(5));
+                info!("Proceeding to open window after 5 second wait...");
+            }
 
             // Set up window event handlers
             let window = app.get_webview_window("main").unwrap();
@@ -180,6 +189,11 @@ pub fn run() {
             // Inject custom styles and debugging info for OLED theme
             window.eval(r#"
                 console.log('Tauri window.eval executed!');
+                console.log('Current URL:', window.location.href);
+                console.log('Document ready state:', document.readyState);
+                console.log('Document body:', document.body ? 'exists' : 'missing');
+                console.log('Root element:', document.getElementById('root'));
+                
                 const style = document.createElement('style');
                 style.textContent = `
                     body {
@@ -210,6 +224,8 @@ pub fn run() {
                 
                 // Add debug message to check if JavaScript is running
                 if (!document.getElementById('root')) {
+                    console.error('Root element not found!');
+                    console.log('Document HTML:', document.documentElement.innerHTML.substring(0, 500));
                     document.body.innerHTML = '<div style="color: white; padding: 20px;">Debug: Root element not found. Window loaded but React not mounting.</div>';
                 } else if (document.getElementById('root').children.length === 0) {
                     setTimeout(() => {

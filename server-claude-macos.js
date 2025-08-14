@@ -63,8 +63,10 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"]
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 60000,
-  pingInterval: 25000
+  pingTimeout: 120000, // 2 minutes
+  pingInterval: 30000, // 30 seconds
+  upgradeTimeout: 30000,
+  maxHttpBufferSize: 1e8 // 100mb
 });
 
 app.use(cors());
@@ -437,6 +439,7 @@ io.on('connection', (socket) => {
               // Send text content as separate assistant message
               if (hasText && textContent) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
+                console.log(`📝 Emitting assistant message ${messageId} with streaming=true`);
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
                   message: { content: textContent },
@@ -501,9 +504,14 @@ io.on('connection', (socket) => {
             // If we have a last assistant message, send an update to mark it as done streaming
             const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
             if (lastAssistantMessageId) {
+              console.log(`✅ Marking assistant message ${lastAssistantMessageId} as streaming=false (result received)`);
+              const session = sessions.get(sessionId);
+              const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+              
               socket.emit(`message:${sessionId}`, {
                 type: 'assistant',
                 id: lastAssistantMessageId,
+                message: lastAssistantMsg?.message || { content: '' },
                 streaming: false,
                 timestamp: Date.now()
               });
@@ -533,7 +541,18 @@ io.on('connection', (socket) => {
         
         // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {
-          console.error('⚠️ Line buffer overflow, clearing buffer');
+          console.error('⚠️ Line buffer overflow, processing and clearing');
+          // Try to process what we have
+          const lines = lineBuffer.split('\n');
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                processStreamLine(line);
+              } catch (e) {
+                console.error('Failed to process line during overflow:', e);
+              }
+            }
+          }
           lineBuffer = '';
         }
         
@@ -565,28 +584,54 @@ io.on('connection', (socket) => {
         
         // Process any remaining buffer
         if (lineBuffer.trim()) {
-          processStreamLine(lineBuffer);
+          try {
+            processStreamLine(lineBuffer);
+          } catch (e) {
+            console.error('Failed to process remaining buffer:', e);
+          }
         }
         
-        // If we have a last assistant message, mark it as done streaming
+        // ALWAYS clear streaming state on process exit - send complete message update
         const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
         if (lastAssistantMessageId) {
+          console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on process exit`);
+          // Get the last assistant message to preserve its content
+          const session = sessions.get(sessionId);
+          const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+          
           socket.emit(`message:${sessionId}`, {
             type: 'assistant',
             id: lastAssistantMessageId,
+            message: lastAssistantMsg?.message || { content: '' },
             streaming: false,
             timestamp: Date.now()
           });
           lastAssistantMessageIds.delete(sessionId);
         }
         
-        // If process exited with error code and no result was sent
-        if (code !== 0 && code !== null) {
+        // Always ensure streaming is marked as false for all messages
+        socket.emit(`message:${sessionId}`, {
+          type: 'system',
+          subtype: 'stream_end',
+          streaming: false,
+          timestamp: Date.now()
+        });
+        
+        // Handle unexpected exit codes
+        if (code === null || code === -2 || code === 'SIGKILL') {
+          console.error(`⚠️ Claude process terminated unexpectedly (code: ${code})`);
+          socket.emit(`message:${sessionId}`, {
+            type: 'error',
+            error: 'session terminated unexpectedly. you can resume by sending another message.',
+            streaming: false,
+            timestamp: Date.now()
+          });
+        } else if (code !== 0) {
           console.error(`Claude process failed with exit code ${code}`);
           socket.emit(`message:${sessionId}`, {
             type: 'system',
             subtype: 'info',
-            message: `Process completed with code ${code}`,
+            message: `process completed with code ${code}`,
             timestamp: Date.now()
           });
         }
@@ -595,12 +640,30 @@ io.on('connection', (socket) => {
       // Handle process errors
       claudeProcess.on('error', (err) => {
         console.error('❌ Failed to spawn claude:', err);
+        
+        // Clean up any streaming state - send complete message update
+        const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+        if (lastAssistantMessageId) {
+          console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on process error`);
+          const session = sessions.get(sessionId);
+          const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+          
+          socket.emit(`message:${sessionId}`, {
+            type: 'assistant',
+            id: lastAssistantMessageId,
+            message: lastAssistantMsg?.message || { content: '' },
+            streaming: false,
+            timestamp: Date.now()
+          });
+        }
+        
         socket.emit(`message:${sessionId}`, { 
           type: 'error',
-          error: `Failed to spawn claude: ${err.message}`, 
+          error: `claude process error: ${err.message}. try sending your message again.`, 
           claudeSessionId: session.claudeSessionId,
           streaming: false 
         });
+        
         activeProcesses.delete(sessionId);
         lastAssistantMessageIds.delete(sessionId);
         if (callback) callback({ success: false, error: err.message });

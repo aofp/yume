@@ -1,9 +1,24 @@
 // Dynamic import for Tauri to support both Tauri and server modes
 let tauriInvoke: any = null;
+let tauriLoadPromise: Promise<void> | null = null;
+
 if (typeof window !== 'undefined' && (window as any).__TAURI__) {
-  import('@tauri-apps/api/core').then(module => {
+  tauriLoadPromise = import('@tauri-apps/api/core').then(module => {
     tauriInvoke = module.invoke;
+    console.log('[FileSearchService] Tauri API loaded successfully');
+  }).catch(err => {
+    console.error('[FileSearchService] Failed to load Tauri API:', err);
   });
+}
+
+// Helper to ensure Tauri is loaded
+async function ensureTauriLoaded(): Promise<boolean> {
+  if (tauriInvoke) return true;
+  if (tauriLoadPromise) {
+    await tauriLoadPromise;
+    return !!tauriInvoke;
+  }
+  return false;
 }
 
 export interface FileSearchResult {
@@ -25,12 +40,28 @@ interface GitStatus {
 const searchCache = new Map<string, { results: FileSearchResult[]; timestamp: number }>();
 const CACHE_TTL = 5000; // 5 seconds
 
-// Fuzzy matching function
+// Pattern matching function with glob support
 function fuzzyMatch(query: string, text: string): boolean {
   if (!query) return true;
   
   const queryLower = query.toLowerCase();
   const textLower = text.toLowerCase();
+  
+  // Support wildcard patterns
+  if (queryLower.includes('*')) {
+    // Convert glob pattern to regex
+    const pattern = queryLower
+      .replace(/[.+?^${}()|[\]\\]/g, '\\$&') // escape special chars except *
+      .replace(/\*/g, '.*'); // convert * to .*
+    
+    try {
+      const regex = new RegExp(`^${pattern}$`);
+      return regex.test(textLower);
+    } catch {
+      // fallback to substring match if regex fails
+      return textLower.includes(queryLower.replace(/\*/g, ''));
+    }
+  }
   
   // Direct substring match
   if (textLower.includes(queryLower)) {
@@ -67,8 +98,11 @@ export async function searchFiles(
   }
   
   try {
+    // Wait for Tauri to load if available
+    const hasTauri = await ensureTauriLoaded();
+    
     // Use Tauri command to search files if available
-    if (tauriInvoke) {
+    if (hasTauri && tauriInvoke) {
       const results = await tauriInvoke<FileSearchResult[]>('search_files', {
         query,
         directory: workingDirectory,
@@ -121,7 +155,10 @@ export async function searchFiles(
 // Get recently modified files
 export async function getRecentFiles(workingDirectory: string, limit: number = 10): Promise<FileSearchResult[]> {
   try {
-    if (tauriInvoke) {
+    // Wait for Tauri to load if available
+    const hasTauri = await ensureTauriLoaded();
+    
+    if (hasTauri && tauriInvoke) {
       const results = await tauriInvoke<FileSearchResult[]>('get_recent_files', {
         directory: workingDirectory,
         limit
@@ -141,18 +178,39 @@ export async function getRecentFiles(workingDirectory: string, limit: number = 1
 // Get folder contents
 export async function getFolderContents(folderPath: string, maxResults: number = 20): Promise<FileSearchResult[]> {
   try {
-    if (tauriInvoke) {
-      const results = await tauriInvoke<FileSearchResult[]>('get_folder_contents', {
-        folderPath,
-        maxResults
-      });
-      
-      // Normalize paths to Unix-style
-      return results.map(result => ({
-        ...result,
-        relativePath: result.relativePath.replace(/\\/g, '/')
-      }));
+    console.log('[FileSearchService] getFolderContents called with:', { folderPath, maxResults });
+    
+    // Check if path is provided
+    if (!folderPath) {
+      console.warn('[FileSearchService] No folder path provided');
+      return [];
+    }
+    
+    // Wait for Tauri to load if available
+    const hasTauri = await ensureTauriLoaded();
+    
+    if (hasTauri && tauriInvoke) {
+      console.log('[FileSearchService] Getting folder contents via Tauri:', folderPath);
+      try {
+        const results = await tauriInvoke<FileSearchResult[]>('get_folder_contents', {
+          folderPath,
+          maxResults
+        });
+        
+        console.log('[FileSearchService] Got', results.length, 'results');
+        
+        // Normalize paths to Unix-style
+        return results.map(result => ({
+          ...result,
+          relativePath: result.relativePath.replace(/\\/g, '/')
+        }));
+      } catch (tauriError) {
+        console.error('[FileSearchService] Tauri invoke error:', tauriError);
+        // Return empty array instead of throwing
+        return [];
+      }
     } else {
+      console.log('[FileSearchService] Using mock folder contents (Tauri not available)');
       // Return mock folder contents
       return [
         {
@@ -176,7 +234,7 @@ export async function getFolderContents(folderPath: string, maxResults: number =
       ];
     }
   } catch (error) {
-    console.error('Error getting folder contents:', error);
+    console.error('[FileSearchService] Unexpected error in getFolderContents:', error);
     return [];
   }
 }
@@ -184,7 +242,10 @@ export async function getFolderContents(folderPath: string, maxResults: number =
 // Get git changed files
 export async function getGitChangedFiles(workingDirectory: string): Promise<FileSearchResult[]> {
   try {
-    if (tauriInvoke) {
+    // Wait for Tauri to load if available
+    const hasTauri = await ensureTauriLoaded();
+    
+    if (hasTauri && tauriInvoke) {
       const status = await tauriInvoke<GitStatus>('get_git_status', {
         directory: workingDirectory
       });

@@ -45,8 +45,8 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Parse the search query from the trigger
-  const searchQuery = trigger.slice(1); // Remove @ symbol
+  // The trigger is already the text after @ (without the @ symbol)
+  const searchQuery = trigger;
 
   // Get icon based on file type
   const getFileIcon = (path: string, type: 'file' | 'folder'): React.ReactNode => {
@@ -114,12 +114,22 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
   // Search for files
   useEffect(() => {
     const search = async () => {
+      console.log('[MentionAutocomplete] Search triggered with:', { searchQuery, trigger, workingDirectory });
+      
+      // If no working directory, don't try to search (avoids errors)
+      if (!workingDirectory) {
+        console.warn('[MentionAutocomplete] No working directory set');
+        setItems([]);
+        setLoading(false);
+        return;
+      }
+      
       setLoading(true);
       
       try {
         // Handle special @mention types
         if (searchQuery === 'r' || searchQuery === 'recent' || searchQuery.startsWith('recent')) {
-          const recentFiles = await getRecentFiles(workingDirectory || process.cwd(), 10);
+          const recentFiles = await getRecentFiles(workingDirectory, 10);
           const mentionItems: MentionItem[] = recentFiles.map(result => ({
             type: 'file',
             path: result.path,
@@ -130,7 +140,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           setItems(mentionItems);
           setCurrentView('recent');
         } else if (searchQuery === 'm' || searchQuery === 'modified' || searchQuery.startsWith('modified')) {
-          const changedFiles = await getGitChangedFiles(workingDirectory || process.cwd());
+          const changedFiles = await getGitChangedFiles(workingDirectory);
           const mentionItems: MentionItem[] = changedFiles.map(result => ({
             type: 'file',
             path: result.path,
@@ -140,10 +150,22 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           }));
           setItems(mentionItems);
           setCurrentView('modified');
-        } else if (!searchQuery) {
+        } else if (!searchQuery || searchQuery === '') {
+          console.log('[MentionAutocomplete] Empty search query - showing root directory');
           setCurrentView('default');
-          // When just @ is typed, show root folder contents
-          const contents = await getFolderContents(workingDirectory || process.cwd(), 30);
+          
+          let contents: FileSearchResult[] = [];
+          // Add try-catch to isolate any errors
+          try {
+            console.log('[MentionAutocomplete] About to call getFolderContents...');
+            // When just @ is typed, show root folder contents
+            contents = await getFolderContents(workingDirectory, 30);
+            console.log('[MentionAutocomplete] Folder contents:', contents.length, 'items');
+          } catch (err) {
+            console.error('[MentionAutocomplete] Error getting folder contents:', err);
+            // Continue with empty results
+            contents = [];
+          }
           
           const mentionItems: MentionItem[] = contents.map(result => ({
             type: result.type === 'directory' ? 'folder' : 'file',
@@ -155,7 +177,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           
           // Check if there are git changes before adding @m
           try {
-            const changedFiles = await getGitChangedFiles(workingDirectory || process.cwd());
+            const changedFiles = await getGitChangedFiles(workingDirectory);
             if (changedFiles.length > 0) {
               mentionItems.unshift({
                 type: 'changed',
@@ -187,7 +209,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           setCurrentPath(folderPath);
           
           // Search within the folder path
-          const results = await searchFiles(searchQuery, workingDirectory || process.cwd());
+          const results = await searchFiles(searchQuery, workingDirectory);
           const mentionItems: MentionItem[] = results.map(result => ({
             type: result.type === 'directory' ? 'folder' : 'file',
             path: result.path,
@@ -200,7 +222,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           setCurrentView('default');
         } else {
           // Regular file search
-          const results = await searchFiles(searchQuery, workingDirectory || process.cwd());
+          const results = await searchFiles(searchQuery, workingDirectory);
           
           // Convert results to MentionItems
           const mentionItems: MentionItem[] = results.map(result => ({
@@ -245,55 +267,53 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
         case 'ArrowLeft':
           e.preventDefault(); // Always prevent cursor movement when autocomplete is open
           
-          // Go back to parent folder or default view
-          if (currentPath && currentPath.includes('/')) {
-            // Navigate to parent folder
-            const parentPath = currentPath.substring(0, currentPath.lastIndexOf('/'));
-            setCurrentPath(parentPath);
+          // Parse the current trigger to determine where we are
+          if (trigger.includes('/')) {
+            // We're in a subfolder, go up one level
+            const lastSlashIndex = trigger.lastIndexOf('/');
+            const parentPath = trigger.substring(0, lastSlashIndex);
             
             if (inputRef.current) {
               const text = inputRef.current.value;
-              const start = cursorPosition - trigger.length;
-              const newTrigger = '@' + parentPath + '/';
+              const start = cursorPosition - trigger.length - 1; // -1 for the @
+              const newTrigger = parentPath ? `@${parentPath}/` : '@';
               const newValue = text.substring(0, start) + newTrigger + text.substring(cursorPosition);
               inputRef.current.value = newValue;
               const newCursorPos = start + newTrigger.length;
               inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+              
+              // Dispatch input event to trigger re-render
               const changeEvent = new Event('input', { bubbles: true });
               inputRef.current.dispatchEvent(changeEvent);
             }
-          } else if (currentPath && !currentPath.includes('/')) {
-            // We're in a top-level folder, go back to root
-            setCurrentPath('');
-            setCurrentView('default');
-            
+          } else if (trigger === 'r' || trigger === 'recent') {
+            // Go back from @recent view to root
             if (inputRef.current) {
               const text = inputRef.current.value;
-              const start = cursorPosition - trigger.length;
+              const start = cursorPosition - trigger.length - 1; // -1 for the @
               const newValue = text.substring(0, start) + '@' + text.substring(cursorPosition);
               inputRef.current.value = newValue;
               const newCursorPos = start + 1;
               inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+              
               const changeEvent = new Event('input', { bubbles: true });
               inputRef.current.dispatchEvent(changeEvent);
             }
-          } else if (currentView === 'recent' || currentView === 'modified') {
-            // Go back to default @ view (root directory)
-            setCurrentPath('');
-            setCurrentView('default');
-            
+          } else if (trigger === 'm' || trigger === 'modified') {
+            // Go back from @modified view to root
             if (inputRef.current) {
               const text = inputRef.current.value;
-              const start = cursorPosition - trigger.length;
+              const start = cursorPosition - trigger.length - 1; // -1 for the @
               const newValue = text.substring(0, start) + '@' + text.substring(cursorPosition);
               inputRef.current.value = newValue;
               const newCursorPos = start + 1;
               inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+              
               const changeEvent = new Event('input', { bubbles: true });
               inputRef.current.dispatchEvent(changeEvent);
             }
           }
-          // If we're already at root, do nothing (but still prevent cursor movement)
+          // If we're already at root (trigger is empty or just a search term), do nothing but still prevent cursor movement
           break;
         case 'ArrowRight':
           const selectedItem = items[selectedIndex];
@@ -309,7 +329,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               // Load recent files and update input to show @r
               setLoading(true);
               try {
-                const recentFiles = await getRecentFiles(workingDirectory || process.cwd(), 15);
+                const recentFiles = await getRecentFiles(workingDirectory, 15);
                 const mentionItems: MentionItem[] = recentFiles.map(result => ({
                   type: 'file',
                   path: result.path,
@@ -340,7 +360,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               // Load changed files and update input to show @m
               setLoading(true);
               try {
-                const changedFiles = await getGitChangedFiles(workingDirectory || process.cwd());
+                const changedFiles = await getGitChangedFiles(workingDirectory);
                 const mentionItems: MentionItem[] = changedFiles.map(result => ({
                   type: 'file',
                   path: result.path,
@@ -423,12 +443,12 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           handleSelect(items[selectedIndex]);
           break;
         case 'Backspace':
-          // If we're in @r or @m view, first backspace goes back to default @ view
-          if (currentView === 'recent' || currentView === 'modified') {
+          // If we're in @r or @m view, first backspace goes back to @ view  
+          if (searchQuery === 'r' || searchQuery === 'm') {
             e.preventDefault();
             if (inputRef.current) {
               const text = inputRef.current.value;
-              const start = cursorPosition - trigger.length;
+              const start = cursorPosition - trigger.length - 1; // -1 for the @
               const newValue = text.substring(0, start) + '@' + text.substring(cursorPosition);
               inputRef.current.value = newValue;
               const newCursorPos = start + 1;
@@ -532,7 +552,11 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
 
   const position = getPosition();
 
-  if (!items.length && !loading) {
+  // Always show if loading or have items
+  // Also show if trigger is empty string (just typed @)
+  // In production, give it more time to load
+  if (!loading && items.length === 0 && trigger !== '' && searchQuery !== '') {
+    // Only hide if not loading, no items, and trigger is not empty string
     return null;
   }
 

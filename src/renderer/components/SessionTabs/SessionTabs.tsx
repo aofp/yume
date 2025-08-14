@@ -20,6 +20,7 @@ export const SessionTabs: React.FC = () => {
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
   const [showRecentModal, setShowRecentModal] = useState(false);
+  const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [showAbout, setShowAbout] = useState(false);
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
@@ -52,10 +53,10 @@ export const SessionTabs: React.FC = () => {
   useEffect(() => {
     const setupDrag = async () => {
       if ((window as any).__TAURI__) {
-        const windowApi = await import('@tauri-apps/api/window');
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
         
         // Get the current window instance
-        const appWindow = windowApi.getCurrent();
+        const appWindow = getCurrentWindow();
         
         if (appWindow) {
           const tabsArea = document.querySelector('.session-tabs') as HTMLElement;
@@ -87,11 +88,14 @@ export const SessionTabs: React.FC = () => {
         try {
           const projects = JSON.parse(stored);
           setHasRecentProjects(projects && projects.length > 0);
+          setRecentProjects(projects || []);
         } catch {
           setHasRecentProjects(false);
+          setRecentProjects([]);
         }
       } else {
         setHasRecentProjects(false);
+        setRecentProjects([]);
       }
     };
     
@@ -101,6 +105,28 @@ export const SessionTabs: React.FC = () => {
       checkRecentProjects();
     }
   }, [showRecentModal, sessions.length]);
+
+  // Handle number keys for recent projects modal
+  useEffect(() => {
+    if (!showRecentModal) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const key = e.key;
+      if (key >= '1' && key <= '9') {
+        const index = parseInt(key) - 1;
+        if (index < recentProjects.length) {
+          e.preventDefault();
+          createSession(undefined, recentProjects[index].path);
+          setShowRecentModal(false);
+        }
+      } else if (e.key === 'Escape') {
+        setShowRecentModal(false);
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [showRecentModal, recentProjects, createSession]);
 
   // Handle vertical scroll as horizontal scroll on tabs container
   useEffect(() => {
@@ -854,6 +880,7 @@ export const SessionTabs: React.FC = () => {
                           setShowRecentModal(false);
                         }}
                       >
+                        <span className="recent-item-number">{idx < 9 ? idx + 1 : ''}</span>
                         <IconFolder size={14} />
                         <div className="recent-item-info">
                           <div className="recent-item-name">{project.name}</div>
