@@ -102,8 +102,8 @@
 }
 
 .window-control.close:hover {
-  background-color: #e81123;
-  color: white;
+  background-color: var(--accent-color, #ff9999);
+  color: #000000;
 }
 
 .window-control:active {

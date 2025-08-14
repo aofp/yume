@@ -252,9 +252,9 @@
 }
 
 .markdown-content pre {
-  background: #000000;
+  background: #0a0a0a;
   border: none !important;
-  border-radius: 0 !important;
+  border-radius: 2px !important;
   padding: 2px;
   margin: 0 0 2px 0;
   overflow-x: visible;
@@ -273,7 +273,7 @@
   margin: 0;
   padding: 0;
   border: none !important;
-  border-radius: 0;
+  border-radius: 2px;
   overflow: hidden;
   background: transparent;
 }

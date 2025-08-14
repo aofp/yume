@@ -32,6 +32,7 @@
   z-index: 9999;
   animation: slideIn 0.15s ease;
   backdrop-filter: blur(8px);
+  min-width: 320px; /* Fixed minimum width to prevent jumping */
 }
 
 @keyframes slideIn {
@@ -66,6 +67,8 @@
   display: flex;
   align-items: center;
   gap: 6px;
+  min-width: 120px; /* Fixed minimum width for stable layout */
+  justify-content: flex-end;
 }
 
 .search-count {
@@ -73,27 +76,27 @@
   color: rgba(255, 255, 255, 0.4);
   font-family: 'Fira Code', monospace;
   margin-right: 6px;
-  min-width: 35px;
-  text-align: right;
+  width: 45px; /* Fixed width to prevent jumping */
+  text-align: center;
 }
 
 .search-btn {
   background: transparent;
-  border: 1px solid transparent;
-  color: rgba(255, 255, 255, 0.3);
+  border: none;
+  color: #808080;
   cursor: default;
   padding: 4px;
   border-radius: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.15s ease;
+  transition: color 0.15s ease;
 }
 
 .search-btn:hover:not(:disabled) {
-  color: rgba(255, 153, 153, 0.8);
-  border-color: rgba(255, 153, 153, 0.2);
-  background: rgba(255, 153, 153, 0.05);
+  color: var(--accent-color, #ff9999);
+  background: transparent;
+  border: none;
 }
 
 .search-btn:disabled {
@@ -102,14 +105,14 @@
 }
 
 .search-btn.close {
-  color: rgba(255, 153, 153, 0.4);
+  color: #808080;
   margin-left: 4px;
 }
 
 .search-btn.close:hover {
-  color: rgba(255, 153, 153, 0.9);
-  background: rgba(255, 153, 153, 0.1);
-  border-color: rgba(255, 153, 153, 0.3);
+  color: var(--accent-color, #ff9999);
+  background: transparent;
+  border: none;
 }
 
 /* Search highlight in messages */

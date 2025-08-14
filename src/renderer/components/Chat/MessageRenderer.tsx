@@ -443,7 +443,7 @@ const CodeBlock = ({ children, className, ...props }: any) => {
           padding: '2px',
           border: 'none',
           borderRadius: '2px',
-          fontSize: '12px',
+          fontSize: language === 'bash' ? '10px' : '12px',
           backgroundColor: '#000000'
         }}
         {...props}
