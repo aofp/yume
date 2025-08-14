@@ -78,7 +78,7 @@ export interface ClaudeMessage {
 }
 
 interface ContentBlock {
-  type: 'text' | 'tool_use' | 'tool_result';
+  type: 'text' | 'tool_use' | 'tool_result' | 'thinking';
   text?: string;
   name?: string;
   input?: any;
@@ -510,6 +510,20 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className="content-text">
               <ReactMarkdown>{block.text || ''}</ReactMarkdown>
+            </div>
+          );
+          
+        case 'thinking':
+          // Render thinking blocks with special styling
+          return (
+            <div key={idx} className="thinking-block">
+              <div className="thinking-header">
+                <IconBolt size={12} stroke={1.5} />
+                <span>thinking...</span>
+              </div>
+              <div className="thinking-content">
+                {block.text || ''}
+              </div>
             </div>
           );
           
