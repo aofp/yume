@@ -1737,7 +1737,11 @@ const MessageRendererBase: React.FC<{
               {elapsedSeconds}s
               {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
               {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
-              {message.model && ` • ${message.model === 'opus' ? 'opus 4.1' : message.model === 'sonnet' ? 'sonnet 4.0' : message.model}`}
+              {message.model && ` • ${
+                message.model === 'opus' || message.model === 'claude-opus-4-1-20250805' ? 'opus 4.1' : 
+                message.model === 'sonnet' || message.model === 'claude-sonnet-4-20250514' ? 'sonnet 4.0' : 
+                message.model
+              }`}
             </div>
           </div>
         );

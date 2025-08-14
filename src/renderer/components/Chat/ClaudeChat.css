@@ -534,8 +534,7 @@
   opacity: 1;
   color: var(--accent-color);
   font-weight: bold;
-  display: inline-block;
-  min-width: 60px; /* Fixed width to prevent layout shift */
+  display: inline;
 }
 
 .thinking-indicator-bottom .thinking-timer {
@@ -544,6 +543,12 @@
   font-size: 11px;
   opacity: 0.8;
   font-family: 'Fira Code', monospace;
+}
+
+.thinking-indicator-bottom .thinking-dots {
+  display: inline;
+  color: var(--accent-color);
+  font-weight: bold;
 }
 
 .thinking-indicator-bottom .thinking-dots::after {

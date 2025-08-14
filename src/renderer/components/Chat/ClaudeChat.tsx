@@ -528,31 +528,40 @@ export const ClaudeChat: React.FC = () => {
     element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
   };
 
+  // Track the previous session ID to know when we're actually switching sessions
+  const prevSessionIdRef = useRef<string | null>(null);
+  
   useEffect(() => {
-    // Load draft input and attachments when session changes
-    // Only trigger on sessionId change, not on session updates (to avoid losing text during streaming)
-    console.log('[ClaudeChat] Session changed:', { 
-      sessionId: currentSessionId,
-      hasDraft: !!(currentSession?.draftInput),
-      workingDir: currentSession?.workingDirectory 
-    });
-    
-    inputRef.current?.focus();
-    if (currentSession) {
-      setInput(currentSession.draftInput || '');
-      setAttachments(currentSession.draftAttachments || []);
-    } else {
-      setInput('');
-      setAttachments([]);
+    // Only load draft when actually switching to a different session
+    // Don't reload if it's the same session (prevents losing typed text)
+    if (prevSessionIdRef.current !== currentSessionId) {
+      console.log('[ClaudeChat] Session changed:', { 
+        from: prevSessionIdRef.current,
+        to: currentSessionId,
+        hasDraft: !!(currentSession?.draftInput),
+        workingDir: currentSession?.workingDirectory 
+      });
+      
+      prevSessionIdRef.current = currentSessionId;
+      inputRef.current?.focus();
+      
+      if (currentSession) {
+        setInput(currentSession.draftInput || '');
+        setAttachments(currentSession.draftAttachments || []);
+      } else {
+        setInput('');
+        setAttachments([]);
+      }
     }
-  }, [currentSessionId]); // Removed currentSession to prevent resets during streaming
+  }, [currentSessionId, currentSession?.draftInput, currentSession?.draftAttachments]); // Include draft values to ensure proper loading
 
   // Save drafts when input or attachments change
   useEffect(() => {
-    if (currentSessionId) {
+    if (currentSessionId && prevSessionIdRef.current === currentSessionId) {
+      // Only save if we're still on the same session (not switching)
       const timeoutId = setTimeout(() => {
         updateSessionDraft(currentSessionId, input, attachments);
-      }, 500); // Debounce saving
+      }, 300); // Reduced debounce for faster saving
       return () => clearTimeout(timeoutId);
     }
   }, [input, attachments, currentSessionId, updateSessionDraft]);
@@ -1311,7 +1320,7 @@ export const ClaudeChat: React.FC = () => {
               <div className="thinking-indicator-bottom">
                 <LoadingIndicator size="small" color="red" />
                 <span className="thinking-text-wrapper">
-                  <span className="thinking-text">thinking</span>
+                  <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
                   {currentSessionId && thinkingElapsed[currentSessionId] > 0 && (
                     <span className="thinking-timer">{thinkingElapsed[currentSessionId]}s</span>
                   )}

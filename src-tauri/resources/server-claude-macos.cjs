@@ -465,18 +465,43 @@ io.on('connection', (socket) => {
       // Process streaming output - EXACTLY LIKE WINDOWS
       let lineBuffer = '';
       let messageCount = 0;
+      let bytesReceived = 0;
+      let lastDataTime = Date.now();
+      let streamStartTime = Date.now();
+      
+      // Log stream health check every 5 seconds
+      const streamHealthInterval = setInterval(() => {
+        const timeSinceLastData = Date.now() - lastDataTime;
+        const streamDuration = Date.now() - streamStartTime;
+        console.log(`🩺 STREAM HEALTH CHECK [${sessionId}]`);
+        console.log(`   ├─ Stream duration: ${streamDuration}ms`);
+        console.log(`   ├─ Time since last data: ${timeSinceLastData}ms`);
+        console.log(`   ├─ Bytes received: ${bytesReceived}`);
+        console.log(`   ├─ Messages processed: ${messageCount}`);
+        console.log(`   ├─ Buffer size: ${lineBuffer.length}`);
+        console.log(`   └─ Process alive: ${activeProcesses.has(sessionId)}`);
+        
+        if (timeSinceLastData > 10000) {
+          console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
+        }
+      }, 5000);
       
       const processStreamLine = (line) => {
-        if (!line.trim()) return;
+        if (!line.trim()) {
+          console.log(`🔸 [${sessionId}] Empty line received`);
+          return;
+        }
+        
+        console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line.substring(0, 100)}...`);
         
         try {
           const jsonData = JSON.parse(line);
-          console.log(`📦 Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
+          console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
           
           // Extract session ID if present (update it every time to ensure we have the latest)
           if (jsonData.session_id) {
             session.claudeSessionId = jsonData.session_id;
-            console.log(`📌 Claude session ID: ${session.claudeSessionId}`);
+            console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
           }
           
           // Handle different message types - EXACTLY LIKE WINDOWS
@@ -521,7 +546,9 @@ io.on('connection', (socket) => {
               // Send text content as separate assistant message
               if (hasText && textContent) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
-                console.log(`📝 Emitting assistant message ${messageId} with streaming=true`);
+                console.log(`📝 [${sessionId}] Emitting assistant message ${messageId} with streaming=true`);
+                console.log(`📝 [${sessionId}] Content length: ${textContent.length} chars`);
+                console.log(`📝 [${sessionId}] Content preview: ${textContent.substring(0, 100)}...`);
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
                   message: { content: textContent },
@@ -601,6 +628,7 @@ io.on('connection', (socket) => {
             }
             
             // Just send the result message with model info
+            console.log(`✅ [${sessionId}] Sending result message, stream complete`);
             socket.emit(`message:${sessionId}`, {
               type: 'result',
               ...jsonData,
@@ -608,30 +636,37 @@ io.on('connection', (socket) => {
               id: `result-${sessionId}-${Date.now()}`,
               model: model // Include the model that was used
             });
+            messageCount++;
           }
           
         } catch (e) {
           // Not JSON, treat as plain text
-          console.log('Plain text output:', line);
+          console.log(`⚠️ [${sessionId}] Failed to parse JSON, treating as plain text:`, e.message);
+          console.log(`⚠️ [${sessionId}] Line was: ${line}`);
         }
       };
 
       // Handle stdout
       claudeProcess.stdout.on('data', (data) => {
         const str = data.toString();
-        console.log('STDOUT received:', str.length, 'bytes');
+        bytesReceived += data.length;
+        lastDataTime = Date.now();
+        
+        console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
+        console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200).replace(/\n/g, '\\n')}...`);
         
         // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {
-          console.error('⚠️ Line buffer overflow, processing and clearing');
+          console.error(`⚠️ [${sessionId}] Line buffer overflow (${lineBuffer.length} bytes), processing and clearing`);
           // Try to process what we have
           const lines = lineBuffer.split('\n');
+          console.log(`⚠️ [${sessionId}] Processing ${lines.length} buffered lines`);
           for (const line of lines) {
             if (line.trim()) {
               try {
                 processStreamLine(line);
               } catch (e) {
-                console.error('Failed to process line during overflow:', e);
+                console.error(`[${sessionId}] Failed to process line during overflow:`, e);
               }
             }
           }
@@ -642,15 +677,19 @@ io.on('connection', (socket) => {
         const lines = lineBuffer.split('\n');
         lineBuffer = lines.pop() || '';
         
-        for (const line of lines) {
-          processStreamLine(line);
+        console.log(`📋 [${sessionId}] Split into ${lines.length} lines, buffer remaining: ${lineBuffer.length} chars`);
+        
+        for (let i = 0; i < lines.length; i++) {
+          console.log(`📋 [${sessionId}] Processing line ${i + 1}/${lines.length}`);
+          processStreamLine(lines[i]);
         }
       });
 
       // Handle stderr
       claudeProcess.stderr.on('data', (data) => {
         const error = data.toString();
-        console.error('⚠️ Claude stderr:', error);
+        console.error(`⚠️ [${sessionId}] Claude stderr (${data.length} bytes):`, error);
+        lastDataTime = Date.now();
         socket.emit(`message:${sessionId}`, { 
           type: 'error',
           error, 
@@ -661,7 +700,14 @@ io.on('connection', (socket) => {
 
       // Handle process exit
       claudeProcess.on('close', (code) => {
-        console.log(`👋 Claude process exited with code ${code}`);
+        clearInterval(streamHealthInterval);
+        const streamDuration = Date.now() - streamStartTime;
+        console.log(`👋 [${sessionId}] Claude process exited with code ${code}`);
+        console.log(`📊 [${sessionId}] STREAM SUMMARY:`);
+        console.log(`   ├─ Total duration: ${streamDuration}ms`);
+        console.log(`   ├─ Total bytes: ${bytesReceived}`);
+        console.log(`   ├─ Messages: ${messageCount}`);
+        console.log(`   └─ Exit code: ${code}`);
         activeProcesses.delete(sessionId);
         
         // Process any remaining buffer
@@ -721,7 +767,14 @@ io.on('connection', (socket) => {
 
       // Handle process errors
       claudeProcess.on('error', (err) => {
-        console.error('❌ Failed to spawn claude:', err);
+        clearInterval(streamHealthInterval);
+        console.error(`❌ [${sessionId}] Failed to spawn claude:`, err);
+        console.error(`❌ [${sessionId}] Error details:`, {
+          message: err.message,
+          code: err.code,
+          syscall: err.syscall,
+          path: err.path
+        });
         
         // Clean up any streaming state - send complete message update
         const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
