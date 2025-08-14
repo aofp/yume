@@ -1047,8 +1047,8 @@
 /* New Attachments System */
 .attachments-container {
   position: absolute;
-  bottom: 90px;
-  right: 4px;
+  bottom: 88px;
+  right: 14px;
   display: flex;
   gap: 2px;
   padding: 0;
@@ -1628,4 +1628,9 @@
   color: rgba(255, 255, 255, 0.3);
   min-width: 12px;
   text-align: center;
+}
+
+/* macOS-specific adjustments */
+.platform-darwin .stats-modal .stat-row:last-of-type {
+  margin-top: 0px !important; /* Move up 3px on macOS */
 }
