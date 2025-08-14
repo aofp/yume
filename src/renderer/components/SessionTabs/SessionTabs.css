@@ -431,7 +431,6 @@
 .tab-recent.drag-over-save {
   background: rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);
-  animation: pulse 0.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
