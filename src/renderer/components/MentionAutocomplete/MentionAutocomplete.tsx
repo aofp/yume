@@ -443,8 +443,13 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           handleSelect(items[selectedIndex]);
           break;
         case 'Backspace':
-          // If we're in @r or @m view, first backspace goes back to @ view  
-          if (searchQuery === 'r' || searchQuery === 'm') {
+          // If we're at just @ (empty searchQuery), don't prevent default - let it delete @
+          if (searchQuery === '') {
+            // Don't prevent default - allow the backspace to delete @ naturally
+            return;
+          }
+          // If we have a single character typed (like @r, @m, @a, etc), go back to @ view
+          if (searchQuery.length === 1) {
             e.preventDefault();
             if (inputRef.current) {
               const text = inputRef.current.value;
@@ -457,11 +462,8 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               inputRef.current.dispatchEvent(changeEvent);
               setCurrentView('default');
             }
-          } else if (searchQuery === '' && currentView === 'default') {
-            // If we're at just @ in default view, let the default backspace behavior delete it
-            // Don't prevent default, let it delete the @
-            onClose();
           }
+          // For any other case, let normal backspace behavior work
           break;
         case 'Escape':
           e.preventDefault();

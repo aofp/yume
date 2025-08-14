@@ -1030,6 +1030,13 @@ export const ClaudeChat: React.FC = () => {
       const lastAtIndex = beforeCursor.lastIndexOf('@');
       const lastSlashIndex = beforeCursor.lastIndexOf('/');
       
+      // If no @ found and mention was open, close it (handles backspace deletion of @)
+      if (lastAtIndex === -1 && mentionTrigger !== null) {
+        setMentionTrigger(null);
+        setCommandTrigger(null);
+        return;
+      }
+      
       // Determine which trigger is more recent
       if (lastAtIndex >= 0 && lastAtIndex > lastSlashIndex) {
         // Check if @ is at the start or preceded by whitespace

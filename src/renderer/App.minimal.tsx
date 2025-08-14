@@ -1,5 +1,4 @@
 import React, { useEffect, useState, useRef } from 'react';
-// import { IconDiff } from '@tabler/icons-react';
 import { TitleBar } from './components/Layout/TitleBar';
 import { SessionTabs } from './components/SessionTabs/SessionTabs';
 import { ClaudeChat } from './components/Chat/ClaudeChat';
@@ -8,9 +7,7 @@ import { SettingsModal } from './components/Settings/SettingsModal';
 import { AboutModal } from './components/About/AboutModal';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
 import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
-// import { FileChangesSidebar } from './components/FileChanges/FileChangesSidebar';
 import { ServerLogs } from './components/ServerLogs/ServerLogs';
-import { DebugPanel } from './components/DebugPanel/DebugPanel';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { platformBridge } from './services/platformBridge';
 import './App.minimal.css';
