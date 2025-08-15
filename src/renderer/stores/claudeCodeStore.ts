@@ -880,11 +880,29 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               
               return { sessions };
             } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
-              // Clear streaming and bash running on interruption or error
-              console.log('System message received, clearing streaming and bash state');
-              sessions = sessions.map(s => 
-                s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
+              // Check if we have a recent user message (within last 2 seconds)
+              // If so, this is likely a followup during streaming, so keep streaming state
+              const session = sessions.find(s => s.id === sessionId);
+              const recentUserMessage = session?.messages.findLast(m => 
+                m.type === 'user' && 
+                m.timestamp && 
+                Date.now() - m.timestamp < 2000
               );
+              
+              if (recentUserMessage && message.subtype === 'stream_end') {
+                // This is a stream_end from killing the process for a followup
+                // Keep streaming state active
+                console.log('Stream end detected but recent user message found - keeping streaming state for followup');
+                sessions = sessions.map(s => 
+                  s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
+                );
+              } else {
+                // Clear streaming and bash running on interruption or error
+                console.log('System message received, clearing streaming and bash state');
+                sessions = sessions.map(s => 
+                  s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
+                );
+              }
               return { sessions };
             } else if (message.type === 'tool_use') {
               // When we get a tool_use message, ensure streaming is active
@@ -1025,14 +1043,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     set(state => ({
       sessions: state.sessions.map(s => {
         if (s.id === sessionToUse) {
-          // Preserve existing streaming state if already streaming (followup message)
-          // Only set to true if not currently streaming (new conversation)
-          const shouldSetStreaming = !s.streaming;
-          console.log('[Store] Current streaming state:', s.streaming, 'Setting streaming:', shouldSetStreaming ? 'true' : 'keeping existing');
+          // When already streaming (followup during active response), keep streaming true
+          // When not streaming (new conversation), set streaming to true
+          const newStreamingState = s.streaming ? true : true; // Always true when sending a message
+          console.log('[Store] Current streaming state:', s.streaming, 'New streaming state:', newStreamingState);
           return { 
             ...s, 
             messages: [...s.messages, userMessage], 
-            streaming: s.streaming || true // Keep existing true, or set to true
+            streaming: true // Always set to true when sending a message
           };
         }
         return s;

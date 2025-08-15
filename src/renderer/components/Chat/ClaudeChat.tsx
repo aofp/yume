@@ -503,13 +503,8 @@ export const ClaudeChat: React.FC = () => {
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === '.') {
         e.preventDefault();
-        // Show stats modal
-        const hasActivity = currentSession && currentSession.messages.some(m => 
-          m.type === 'user' || m.type === 'assistant' || m.type === 'result'
-        );
-        if (hasActivity) {
-          setShowStatsModal(true);
-        }
+        // Toggle stats modal
+        setShowStatsModal(prev => !prev);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
         // Toggle model between opus and sonnet
@@ -2051,7 +2046,7 @@ export const ClaudeChat: React.FC = () => {
       
 
       
-      {showStatsModal && currentSession?.analytics && (
+      {showStatsModal && (
         <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
           <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
             <div className="stats-header">
@@ -2064,6 +2059,21 @@ export const ClaudeChat: React.FC = () => {
               </button>
             </div>
             <div className="stats-content">
+              {!currentSession || !currentSession.messages?.some(m => 
+                m.type === 'user' || m.type === 'assistant' || m.type === 'result'
+              ) ? (
+                <div style={{ 
+                  display: 'flex', 
+                  justifyContent: 'center', 
+                  alignItems: 'center', 
+                  height: '200px',
+                  color: '#666',
+                  fontSize: '14px'
+                }}>
+                  no active session
+                </div>
+              ) : (
+                <>
               <div className="stats-column">
                 <div className="stats-section">
                   <h4>usage & cost</h4>
@@ -2166,6 +2176,8 @@ export const ClaudeChat: React.FC = () => {
                   </div>
                 </div>
               </div>
+                </>
+              )}
             </div>
           </div>
         </div>
