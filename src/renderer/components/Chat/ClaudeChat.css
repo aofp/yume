@@ -400,7 +400,7 @@
   background: rgba(255, 153, 204, 0.05);
   border: none;
   border-radius: 12px;
-  font-size: 9px;
+  font-size: 7pt;
   margin: 4px 4px 4px 0;
   animation: toolFade 0.3s ease;
   transition: all 0.2s ease;
@@ -426,7 +426,7 @@
 .tool-detail {
   color: #ffffff !important;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   opacity: 1;
 }
 
@@ -445,7 +445,7 @@
 .tool-success,
 .tool-todos {
   color: #ffb3d9;
-  font-size: 9px;
+  font-size: 7pt;
   padding: 2px 0;
   animation: successPulse 0.4s ease;
 }
@@ -457,7 +457,7 @@
 
 .tool-error {
   color: #ff9999;
-  font-size: 9px;
+  font-size: 7pt;
   padding: 2px 0;
 }
 
@@ -627,7 +627,7 @@
 .stop-streaming-btn {
   position: absolute;
   right: 4px;
-  bottom: 4px;
+  bottom: 5px;
   background: #000;
   border: 1px solid rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);
@@ -868,7 +868,7 @@
   right: 0;
   background: rgba(0, 0, 0, 0.8);
   padding: 2px 4px;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.5);
   text-transform: lowercase;
 }
@@ -1228,7 +1228,7 @@
   display: flex;
   align-items: center;
   padding: 2px 0;
-  font-size: 9px;
+  font-size: 7pt;
   user-select: none;
 }
 
@@ -1247,7 +1247,7 @@
   padding: 1px 4px;
   border-radius: 3px;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   font-weight: 500;
   border: none;
   user-select: none;
@@ -1255,7 +1255,7 @@
 
 .key-plus {
   color: rgba(255, 255, 255, 0.3);
-  font-size: 9px;
+  font-size: 7pt;
   padding: 0 1px;
   user-select: none;
 }
@@ -1275,7 +1275,7 @@
   content: '....................................................';
   letter-spacing: 1px;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
 }
 
 .shortcut-desc {
@@ -1414,7 +1414,7 @@
   content: '........................................................................................................................................................';
   letter-spacing: 1px;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
 }
 
 .stat-desc {
@@ -1621,7 +1621,7 @@
 }
 
 .recent-item-path {
-  font-size: 8px;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.3);
   text-overflow: ellipsis;
   overflow: hidden;
@@ -1683,7 +1683,7 @@
 
 .bash-cancel-btn {
   padding: 2px 6px;
-  font-size: 9px;
+  font-size: 7pt;
   background: none;
   border: 1px solid rgba(255, 0, 255, 0.15);
   color: rgba(255, 0, 255, 0.5);

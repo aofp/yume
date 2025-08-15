@@ -48,7 +48,7 @@
   padding: 0;
   margin: 0;
   background: transparent;
-  font-size: 9px;
+  font-size: 7pt;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -243,11 +243,11 @@
 }
 
 .markdown-content code {
-  background: rgba(152, 204, 255, 0.08);
+  background: rgba(0, 0, 0, 0.5);
   color: #ffffff;
-  padding: 2px 6px;
+  padding: 2px;
   border-radius: 4px;
-  font-size: 8px;
+  font-size: 8pt;
   font-family: 'Fira Code', monospace;
 }
 
@@ -541,7 +541,7 @@ ol {
   margin: 0 0 2px 0;
   padding: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.8);
   white-space: pre-wrap;
   word-break: break-all;
@@ -579,7 +579,7 @@ ol {
 .diff-file-path {
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   line-height: 1.4;
   font-weight: 400;
 }
@@ -589,7 +589,7 @@ ol {
   margin: 0;
   padding: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   background: transparent;
   overflow-x: auto;
 }
@@ -606,7 +606,7 @@ ol {
   color: rgba(255, 255, 255, 0.3);
   text-align: right;
   flex-shrink: 0;
-  font-size: 9px;
+  font-size: 7pt;
   margin-right: 8px;
 }
 
@@ -627,7 +627,7 @@ ol {
 
 .diff-summary {
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.5);
   margin: 2px 0;
   padding-left: 20px;
@@ -657,21 +657,21 @@ ol {
 .edit-action {
   color: var(--accent-color);
   font-weight: 500;
-  font-size: 9px;
+  font-size: 7pt;
   margin-right: 8px;
 }
 
 .edit-file {
   color: rgba(255, 255, 255, 0.9);
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   display: block;
   margin-top: 4px;
 }
 
 .edit-diff {
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   margin: 0;
   margin-bottom: 2px;
   padding: 0;
@@ -793,7 +793,7 @@ body.platform-win32 .tool-detail {
   gap: 6px;
   padding: 0;
   border-radius: 0;
-  font-size: 9px;
+  font-size: 7pt;
   margin: 0;
   animation: resultFade 0.3s ease;
 }
@@ -807,7 +807,7 @@ body.platform-win32 .tool-detail {
 
 .elapsed-time {
   color: #808080;
-  font-size: 8px;
+  font-size: 8pt;
   font-family: 'Fira Code', monospace;
   padding: 0 !important;
   margin: 0 !important;
@@ -836,7 +836,7 @@ body.platform-win32 .tool-detail {
   background: transparent;
   color: #606060;
   opacity: 0.6;
-  font-size: 9px;
+  font-size: 7pt;
   padding: 0;
 }
 
@@ -852,7 +852,7 @@ body.platform-win32 .tool-detail {
 .read-content {
   margin: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
   word-break: break-all;
@@ -871,7 +871,7 @@ body.platform-win32 .tool-detail {
   border-radius: 0;
   padding: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.85);
   white-space: pre-wrap;
   word-break: break-all;
@@ -884,7 +884,7 @@ body.platform-win32 .tool-detail {
 .bash-more {
   display: block;
   margin-top: 2px;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(128, 128, 128, 0.6);
   font-family: 'Fira Code', monospace;
   cursor: default;
@@ -904,7 +904,7 @@ body.platform-win32 .tool-detail {
 .search-content {
   margin: 0;
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
   word-break: break-all;
@@ -931,7 +931,7 @@ body.platform-win32 .tool-detail {
 .bash-more {
   display: block;
   margin-top: 4px;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.5);
   font-family: 'Fira Code', monospace;
 }
@@ -939,7 +939,7 @@ body.platform-win32 .tool-detail {
 .read-more, .search-more, .result-more {
   display: block;
   margin-top: 2px;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.7);
   font-family: 'Fira Code', monospace;
   cursor: default;
@@ -952,7 +952,7 @@ body.platform-win32 .tool-detail {
 
 .result-text {
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
 }
 
 /* Result Messages */
@@ -1122,7 +1122,7 @@ body.platform-win32 .tool-detail {
 
 .diff-content {
   font-family: 'Fira Code', monospace;
-  font-size: 9px;
+  font-size: 7pt;
   line-height: 1.4;
   color: #a0a0a0;
   white-space: pre-wrap;

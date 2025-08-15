@@ -30,7 +30,7 @@
 .command-category {
   padding: 4px 10px;
   color: #555;
-  font-size: 9px;
+  font-size: 7pt;
   text-transform: lowercase;
   letter-spacing: 0.5px;
 }
@@ -93,7 +93,7 @@
 
 .command-description {
   color: #666;
-  font-size: 9px;
+  font-size: 7pt;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -106,7 +106,7 @@
   padding: 5px 10px;
   border-top: 1px solid #222;
   background: #000;
-  font-size: 9px;
+  font-size: 7pt;
   justify-content: flex-start;
   align-items: center;
 }

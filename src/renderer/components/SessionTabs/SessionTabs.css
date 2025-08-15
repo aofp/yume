@@ -146,7 +146,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 8px;
+  font-size: 8pt;
   color: rgba(var(--accent-rgb), 0.5);
   text-transform: lowercase;
   pointer-events: none;
@@ -230,7 +230,7 @@
 }
 
 .tab-title {
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
   overflow: hidden;
@@ -356,7 +356,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 8px;
+  font-size: 8pt;
   color: rgba(var(--accent-rgb), 0.5);
   text-transform: lowercase;
   pointer-events: none;
@@ -416,7 +416,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  font-size: 8px;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.3);
   text-transform: lowercase;
   pointer-events: none;

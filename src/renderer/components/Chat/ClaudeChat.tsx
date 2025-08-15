@@ -698,6 +698,15 @@ export const ClaudeChat: React.FC = () => {
           addMessageToSession(currentSessionId, commandMessage);
         }
         
+        // Add to message history for up/down navigation
+        if (input.trim() && currentSessionId) {
+          setMessageHistory(prev => ({
+            ...prev,
+            [currentSessionId]: [...(prev[currentSessionId] || []).filter(m => m !== input), input].slice(-50) // Keep last 50 messages
+          }));
+          setHistoryIndex(-1); // Reset history navigation
+        }
+        
         // Clear input and reset bash mode
         setInput('');
         setBashCommandMode(false);

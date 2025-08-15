@@ -271,27 +271,59 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           if (trigger.includes('/')) {
             // We're in a subfolder, go up one level
             const lastSlashIndex = trigger.lastIndexOf('/');
-            let parentPath = trigger.substring(0, lastSlashIndex);
             
-            // If we're going back from a single folder (e.g., "assets/"), parentPath should be empty
-            // If we're going back from nested folders (e.g., "src/components/"), keep the parent part
-            if (parentPath && !parentPath.includes('/')) {
-              // Going back from single folder to root
-              parentPath = '';
-            }
-            
-            if (inputRef.current) {
-              const text = inputRef.current.value;
-              const start = cursorPosition - trigger.length - 1; // -1 for the @
-              const newTrigger = parentPath ? `@${parentPath}/` : '@';
-              const newValue = text.substring(0, start) + newTrigger + text.substring(cursorPosition);
-              inputRef.current.value = newValue;
-              const newCursorPos = start + newTrigger.length;
-              inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+            // If the slash is at the end (e.g., "src/"), go back to parent
+            if (lastSlashIndex === trigger.length - 1 && trigger.length > 1) {
+              // Remove the folder and its slash
+              const folderPath = trigger.substring(0, lastSlashIndex);
+              const parentSlashIndex = folderPath.lastIndexOf('/');
               
-              // Dispatch input event to trigger re-render
-              const changeEvent = new Event('input', { bubbles: true });
-              inputRef.current.dispatchEvent(changeEvent);
+              if (inputRef.current) {
+                const text = inputRef.current.value;
+                const start = cursorPosition - trigger.length - 1; // -1 for the @
+                
+                let newTrigger: string;
+                if (parentSlashIndex !== -1) {
+                  // Has parent folder, go to parent with trailing slash
+                  newTrigger = `@${folderPath.substring(0, parentSlashIndex + 1)}`;
+                } else {
+                  // No parent folder, go to root
+                  newTrigger = '@';
+                }
+                
+                const newValue = text.substring(0, start) + newTrigger + text.substring(cursorPosition);
+                inputRef.current.value = newValue;
+                const newCursorPos = start + newTrigger.length;
+                inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+                
+                // Dispatch input event to trigger re-render
+                const changeEvent = new Event('input', { bubbles: true });
+                inputRef.current.dispatchEvent(changeEvent);
+              }
+            } else {
+              // Slash is in the middle, go up one level normally
+              let parentPath = trigger.substring(0, lastSlashIndex);
+              
+              // If we're going back from a single folder (e.g., "assets/file"), parentPath should be empty
+              // If we're going back from nested folders (e.g., "src/components/file"), keep the parent part
+              if (parentPath && !parentPath.includes('/')) {
+                // Going back from single folder to root
+                parentPath = '';
+              }
+              
+              if (inputRef.current) {
+                const text = inputRef.current.value;
+                const start = cursorPosition - trigger.length - 1; // -1 for the @
+                const newTrigger = parentPath ? `@${parentPath}/` : '@';
+                const newValue = text.substring(0, start) + newTrigger + text.substring(cursorPosition);
+                inputRef.current.value = newValue;
+                const newCursorPos = start + newTrigger.length;
+                inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+                
+                // Dispatch input event to trigger re-render
+                const changeEvent = new Event('input', { bubbles: true });
+                inputRef.current.dispatchEvent(changeEvent);
+              }
             }
           } else if (trigger === 'r' || trigger === 'recent') {
             // Go back from @recent view to root
@@ -503,7 +535,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
     if (!input) return;
     
     const text = input.value;
-    let start = cursorPosition - trigger.length;
+    let start = cursorPosition - trigger.length - 1; // -1 to include the @ symbol
     
     // Build the replacement text
     let replacement = '';
