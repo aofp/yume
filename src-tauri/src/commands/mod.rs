@@ -94,28 +94,45 @@ pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
 
 /// Opens a native folder selection dialog
 /// Returns the selected folder path or None if cancelled
-/// Uses rfd (Rust File Dialog) for better cross-platform support
+/// Uses Tauri's dialog plugin with async callback for macOS stability
 #[tauri::command]
-pub async fn select_folder() -> Result<Option<String>, String> {
+pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     println!("select_folder command called");
     
-    // Use rfd which works better on macOS
-    use rfd::AsyncFileDialog;
+    use tauri_plugin_dialog::DialogExt;
+    use tokio::sync::oneshot;
     
-    let folder = AsyncFileDialog::new()
+    // Create a channel to receive the result
+    let (tx, rx) = oneshot::channel();
+    
+    // Get the dialog builder
+    let dialog = app.dialog().file();
+    
+    // Configure and show the dialog with callback
+    dialog
         .set_title("Select a folder")
-        .pick_folder()
-        .await;
+        .pick_folder(move |path| {
+            let result = match path {
+                Some(p) => {
+                    let path_str = p.to_string();
+                    println!("Folder selected: {}", path_str);
+                    Some(path_str)
+                }
+                None => {
+                    println!("Folder selection cancelled");
+                    None
+                }
+            };
+            // Send the result through the channel
+            let _ = tx.send(result);
+        });
     
-    match folder {
-        Some(path) => {
-            let path_str = path.path().to_string_lossy().to_string();
-            println!("Folder selected: {}", path_str);
-            Ok(Some(path_str))
-        }
-        None => {
-            println!("Folder selection cancelled");
-            Ok(None)
+    // Wait for the result
+    match rx.await {
+        Ok(result) => Ok(result),
+        Err(_) => {
+            println!("Failed to receive folder selection result");
+            Err("Failed to receive folder selection result".to_string())
         }
     }
 }

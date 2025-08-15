@@ -458,7 +458,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
   if (!content) return null;
   
   if (typeof content === 'string') {
-    // Check if this is raw JSON that shouldn't be displayed
+    // Check if this is raw JSON that needs to be processed
     const trimmedContent = content.trim();
     if ((trimmedContent.startsWith('[') && trimmedContent.endsWith(']')) ||
         (trimmedContent.startsWith('{') && trimmedContent.endsWith('}'))) {
@@ -472,9 +472,61 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
         if (parsed.type && (parsed.text || parsed.name)) {
           return renderContent([parsed], message, searchQuery, isCurrentMatch);
         }
-        // Otherwise it's raw JSON data that shouldn't be shown
-        console.warn('[MessageRenderer] Filtering out raw JSON string:', trimmedContent.substring(0, 100));
-        return null;
+        // If it's a plain object with a text field, extract and display it
+        if (parsed.text && typeof parsed.text === 'string') {
+          return (
+            <ReactMarkdown 
+              className="markdown-content"
+              components={{
+                code({ node, inline, className, children, ...props }) {
+                  if (inline) {
+                    return <code className={className} {...props}>{children}</code>;
+                  }
+                  return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
+                },
+                p({ children, ...props }) {
+                  if (
+                    children &&
+                    Array.isArray(children) &&
+                    children.length === 1 &&
+                    children[0] &&
+                    typeof children[0] === 'object' &&
+                    'type' in children[0] &&
+                    children[0].type === CodeBlock
+                  ) {
+                    return <>{children}</>;
+                  }
+                  return <p {...props}>{children}</p>;
+                }
+              }}
+            >
+              {parsed.text}
+            </ReactMarkdown>
+          );
+        }
+        // Otherwise it's raw JSON data - show it as formatted JSON in a code block
+        console.warn('[MessageRenderer] Raw JSON data detected, displaying as code:', trimmedContent.substring(0, 100));
+        return (
+          <div className="code-block-wrapper">
+            <div className="code-block-header">
+              <span className="code-language">json</span>
+            </div>
+            <SyntaxHighlighter
+              language="json"
+              style={customVs2015}
+              customStyle={{
+                margin: 0,
+                padding: '2px',
+                border: 'none',
+                borderRadius: '2px',
+                fontSize: '12px',
+                backgroundColor: '#000000'
+              }}
+            >
+              {JSON.stringify(parsed, null, 2)}
+            </SyntaxHighlighter>
+          </div>
+        );
       } catch (e) {
         // Not valid JSON, render as markdown
       }
@@ -1229,10 +1281,10 @@ const MessageRendererBase: React.FC<{
       const showButtons = message.streaming !== true;
       console.log(`[MessageRenderer] 🤖 Show buttons: ${showButtons}`);
       
-      // Don't render if content is a raw JSON string or object that's not properly formatted
+      // Process content that might be JSON
       let contentToRender = message.message?.content;
       if (typeof contentToRender === 'string') {
-        // Check if it's a JSON string that shouldn't be shown
+        // Check if it's a JSON string that needs processing
         if ((contentToRender.startsWith('{') && contentToRender.endsWith('}')) ||
             (contentToRender.startsWith('[') && contentToRender.endsWith(']'))) {
           try {
@@ -1242,10 +1294,16 @@ const MessageRendererBase: React.FC<{
               contentToRender = parsed;
             } else if (parsed.type && parsed.text) {
               contentToRender = [parsed];
+            } else if (parsed.text && typeof parsed.text === 'string') {
+              // Plain object with text field - convert to text content block
+              contentToRender = [{type: 'text', text: parsed.text}];
+            } else if (Array.isArray(parsed) && parsed.length === 1 && parsed[0].text) {
+              // Array with single object containing text
+              contentToRender = [{type: 'text', text: parsed[0].text}];
             } else {
-              // It's raw JSON data that shouldn't be shown
-              console.warn('[MessageRenderer] Filtering out raw JSON content');
-              contentToRender = null;
+              // It's other JSON data - keep as is to be rendered as JSON
+              console.warn('[MessageRenderer] Raw JSON content detected in assistant message');
+              // contentToRender stays as string, will be rendered by renderContent
             }
           } catch (e) {
             // Not JSON, treat as regular text

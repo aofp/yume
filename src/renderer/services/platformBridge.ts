@@ -52,11 +52,13 @@ class PlatformBridge {
       console.log('[PlatformBridge] zoom.in() called');
       
       // Check if user is scrolled to bottom before zoom
-      const chatContainer = document.querySelector('.chat-container');
+      const chatMessages = document.querySelector('.chat-messages') as HTMLElement;
       let wasAtBottom = false;
-      if (chatContainer) {
-        const threshold = 10;
-        wasAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < threshold;
+      let savedScrollTop = 0;
+      if (chatMessages) {
+        const threshold = 1; // Match the main scroll logic threshold
+        savedScrollTop = chatMessages.scrollTop;
+        wasAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < threshold;
       }
       
       // Get current zoom percentage from localStorage (100 = 100%)
@@ -77,11 +79,18 @@ class PlatformBridge {
       // Save to localStorage
       localStorage.setItem('zoomPercent', newZoom.toString());
       
-      // If was at bottom, scroll back to bottom after zoom
-      if (wasAtBottom && chatContainer) {
-        setTimeout(() => {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        }, 0);
+      // Restore scroll position after zoom
+      if (chatMessages) {
+        requestAnimationFrame(() => {
+          if (wasAtBottom) {
+            // If was at bottom, scroll back to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          } else {
+            // Otherwise, try to maintain relative position
+            const zoomRatio = newZoom / currentZoom;
+            chatMessages.scrollTop = savedScrollTop * zoomRatio;
+          }
+        });
       }
       
       // Calculate zoom level for display (-5 to +10, where 0 = 100%)
@@ -94,11 +103,13 @@ class PlatformBridge {
       console.log('[PlatformBridge] zoom.out() called');
       
       // Check if user is scrolled to bottom before zoom
-      const chatContainer = document.querySelector('.chat-container');
+      const chatMessages = document.querySelector('.chat-messages') as HTMLElement;
       let wasAtBottom = false;
-      if (chatContainer) {
-        const threshold = 10;
-        wasAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < threshold;
+      let savedScrollTop = 0;
+      if (chatMessages) {
+        const threshold = 1; // Match the main scroll logic threshold
+        savedScrollTop = chatMessages.scrollTop;
+        wasAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < threshold;
       }
       
       // Get current zoom percentage from localStorage
@@ -119,11 +130,18 @@ class PlatformBridge {
       // Save to localStorage
       localStorage.setItem('zoomPercent', newZoom.toString());
       
-      // If was at bottom, scroll back to bottom after zoom
-      if (wasAtBottom && chatContainer) {
-        setTimeout(() => {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        }, 0);
+      // Restore scroll position after zoom
+      if (chatMessages) {
+        requestAnimationFrame(() => {
+          if (wasAtBottom) {
+            // If was at bottom, scroll back to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          } else {
+            // Otherwise, try to maintain relative position
+            const zoomRatio = newZoom / currentZoom;
+            chatMessages.scrollTop = savedScrollTop * zoomRatio;
+          }
+        });
       }
       
       // Calculate zoom level for display
@@ -136,11 +154,13 @@ class PlatformBridge {
       console.log('[PlatformBridge] zoom.reset() called');
       
       // Check if user is scrolled to bottom before zoom
-      const chatContainer = document.querySelector('.chat-container');
+      const chatMessages = document.querySelector('.chat-messages') as HTMLElement;
       let wasAtBottom = false;
-      if (chatContainer) {
-        const threshold = 10;
-        wasAtBottom = chatContainer.scrollHeight - chatContainer.scrollTop - chatContainer.clientHeight < threshold;
+      let savedScrollTop = 0;
+      if (chatMessages) {
+        const threshold = 1; // Match the main scroll logic threshold
+        savedScrollTop = chatMessages.scrollTop;
+        wasAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < threshold;
       }
       
       // Reset zoom to 100%
@@ -149,11 +169,18 @@ class PlatformBridge {
       // Save to localStorage
       localStorage.setItem('zoomPercent', '100');
       
-      // If was at bottom, scroll back to bottom after zoom
-      if (wasAtBottom && chatContainer) {
-        setTimeout(() => {
-          chatContainer.scrollTop = chatContainer.scrollHeight;
-        }, 0);
+      // Restore scroll position after zoom
+      if (chatMessages) {
+        requestAnimationFrame(() => {
+          if (wasAtBottom) {
+            // If was at bottom, scroll back to bottom
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+          } else {
+            // Otherwise, try to maintain relative position
+            const zoomRatio = newZoom / currentZoom;
+            chatMessages.scrollTop = savedScrollTop * zoomRatio;
+          }
+        });
       }
       
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));

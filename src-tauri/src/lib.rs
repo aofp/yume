@@ -122,7 +122,7 @@ pub fn run() {
             }
             
             // DevTools configuration for debugging
-            // In debug builds, DevTools can be opened programmatically
+            // In debug builds, DevTools can be opened with F12
             // YURUCODE_SHOW_CONSOLE environment variable forces DevTools open
             #[cfg(debug_assertions)]
             {
@@ -130,8 +130,9 @@ pub fn run() {
                     window.open_devtools();
                     info!("DevTools FORCED OPEN (YURUCODE_SHOW_CONSOLE=true)");
                 } else {
-                    window.open_devtools();
-                    info!("DevTools opened (debug build)");
+                    // DevTools not auto-opened in debug builds anymore
+                    // Use F12 to open DevTools when needed
+                    info!("DevTools available via F12 (debug build)");
                 }
             }
             

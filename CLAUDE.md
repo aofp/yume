@@ -21,7 +21,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-yurucode is a cross-platform desktop application providing a minimal UI for the Claude CLI. Built with Tauri v2 (Rust + React), it features an ultra-minimal black OLED theme with pastel red (#ff9999) and magenta (#ff99cc) accents. The app spawns the Claude CLI binary directly and parses its stream-json output.
+yurucode is a cross-platform desktop application providing a minimal UI for the Claude CLI. Built with Tauri v2 (Rust + React), it features an ultra-minimal black OLED theme with pastel cyan, magenta, and grey accents. The app spawns the Claude CLI binary directly and parses its stream-json output.
 
 ## Development Commands
 
@@ -86,7 +86,7 @@ npm run tauri:build:linux      # Build for Linux x64
 - Everything lowercase (no capitalization)
 - No pointer cursors (`cursor: default` everywhere)
 - Black background (#000000) for OLED
-- Pastel accents: red (#ff9999), magenta (#ff99cc)
+- Pastel accents: cyan, magenta, grey
 - Tabler icons (no emojis in UI)
 - Right-click context menu with copy functionality
 - Transparent window with custom decorations
