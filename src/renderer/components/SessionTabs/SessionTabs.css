@@ -240,6 +240,8 @@
   font-family: 'Fira Code', monospace;
   user-select: none;
   -webkit-user-select: none;
+  position: relative;
+  top: 1px;
 }
 
 .session-tab.active .tab-title {

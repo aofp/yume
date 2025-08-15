@@ -13,6 +13,22 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
                    navigator.userAgent.toLowerCase().includes('windows');
   
+  // Track window focus state
+  const [isWindowFocused, setIsWindowFocused] = React.useState(true);
+  
+  React.useEffect(() => {
+    const handleFocus = () => setIsWindowFocused(true);
+    const handleBlur = () => setIsWindowFocused(false);
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+  
   // Always show controls for frameless window
   // if (!isWindows) return null;
 
@@ -65,7 +81,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   // macOS style traffic lights
   if (isMac) {
     return (
-      <div className="window-controls mac-controls">
+      <div className={`window-controls mac-controls ${!isWindowFocused ? 'inactive' : ''}`}>
         <button className="mac-control close" onClick={handleClose}>
           <span className="mac-control-icon">×</span>
         </button>

@@ -52,27 +52,37 @@
 }
 
 .mac-control.close {
-  background: #ff5f56;
+  background: #666666;
 }
 
 .mac-control.close:hover {
-  background: #ff8a82; /* Lighter on hover */
+  background: #888888;
 }
 
 .mac-control.minimize {
-  background: #ffbd2e;
+  background: #666666;
 }
 
 .mac-control.minimize:hover {
-  background: #ffd666; /* Lighter on hover */
+  background: #888888;
 }
 
 .mac-control.maximize {
-  background: #27c93f;
+  background: #666666;
 }
 
 .mac-control.maximize:hover {
-  background: #5ee370; /* Lighter on hover */
+  background: #888888;
+}
+
+/* Grey out all buttons when window is inactive */
+.mac-controls.inactive .mac-control {
+  background: #666666;
+}
+
+.mac-controls.inactive .mac-control:hover {
+  background: #666666;
+  opacity: 1;
 }
 
 .window-control {
