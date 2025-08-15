@@ -1153,6 +1153,10 @@ export const ClaudeChat: React.FC = () => {
     }
     
     if (e.key === 'Enter' && !e.shiftKey) {
+      // Don't send if autocomplete is open - let autocomplete handle it
+      if (mentionTrigger !== null || commandTrigger !== null) {
+        return;
+      }
       e.preventDefault();
       handleSend();
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'u') {

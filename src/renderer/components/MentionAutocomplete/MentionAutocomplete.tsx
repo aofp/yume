@@ -281,6 +281,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               if (inputRef.current) {
                 const text = inputRef.current.value;
                 const start = cursorPosition - trigger.length - 1; // -1 for the @
+                const end = cursorPosition; // Current cursor position is the end
                 
                 let newTrigger: string;
                 if (parentSlashIndex !== -1) {
@@ -291,7 +292,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
                   newTrigger = '@';
                 }
                 
-                const newValue = text.substring(0, start) + newTrigger + text.substring(cursorPosition);
+                const newValue = text.substring(0, start) + newTrigger + text.substring(end);
                 inputRef.current.value = newValue;
                 const newCursorPos = start + newTrigger.length;
                 inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
@@ -314,8 +315,9 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               if (inputRef.current) {
                 const text = inputRef.current.value;
                 const start = cursorPosition - trigger.length - 1; // -1 for the @
+                const end = cursorPosition; // Current cursor position is the end
                 const newTrigger = parentPath ? `@${parentPath}/` : '@';
-                const newValue = text.substring(0, start) + newTrigger + text.substring(cursorPosition);
+                const newValue = text.substring(0, start) + newTrigger + text.substring(end);
                 inputRef.current.value = newValue;
                 const newCursorPos = start + newTrigger.length;
                 inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
@@ -330,7 +332,8 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
             if (inputRef.current) {
               const text = inputRef.current.value;
               const start = cursorPosition - trigger.length - 1; // -1 for the @
-              const newValue = text.substring(0, start) + '@' + text.substring(cursorPosition);
+              const end = cursorPosition; // Current cursor position is the end
+              const newValue = text.substring(0, start) + '@' + text.substring(end);
               inputRef.current.value = newValue;
               const newCursorPos = start + 1;
               inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
@@ -343,7 +346,8 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
             if (inputRef.current) {
               const text = inputRef.current.value;
               const start = cursorPosition - trigger.length - 1; // -1 for the @
-              const newValue = text.substring(0, start) + '@' + text.substring(cursorPosition);
+              const end = cursorPosition; // Current cursor position is the end
+              const newValue = text.substring(0, start) + '@' + text.substring(end);
               inputRef.current.value = newValue;
               const newCursorPos = start + 1;
               inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
@@ -485,9 +489,10 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           handleSelect(items[selectedIndex]);
           break;
         case 'Backspace':
-          // If we're at just @ (empty searchQuery), don't prevent default - let it delete @
+          // If we're at just @ (empty searchQuery), close the autocomplete
           if (searchQuery === '') {
-            // Don't prevent default - allow the backspace to delete @ naturally
+            // Don't prevent default - let it delete @ and close naturally
+            onClose();
             return;
           }
           // If we have a single character typed (like @r, @m, @a, etc), go back to @ view
