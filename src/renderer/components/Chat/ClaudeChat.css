@@ -596,7 +596,7 @@
 /* Input Area */
 .chat-input-container {
   flex: 0 0 auto;
-  padding: 3px 4px 2px 4px;
+  padding: 3px 4px 3px 4px;
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   transition: background 0.2s ease;
