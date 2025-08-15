@@ -102,12 +102,17 @@ body {
 
 /* Prevent selection during any drag operation */
 body.dragging,
-body.dragging *,
+body.dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: default !important;
+}
+
 body.tab-dragging,
 body.tab-dragging * {
   user-select: none !important;
   -webkit-user-select: none !important;
-  cursor: default !important;
+  cursor: grabbing !important;
 }
 
 /* Prevent all interaction with chat area during tab dragging */

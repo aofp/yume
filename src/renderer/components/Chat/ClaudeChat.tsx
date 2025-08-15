@@ -200,52 +200,9 @@ export const ClaudeChat: React.FC = () => {
 
   // NO auto-selection - user must explicitly choose or create a session
   
-  // Track if bash warmup has completed (Windows only)
-  const bashWarmupCompleteRef = useRef<boolean>(false);
-  const bashWarmupPromiseRef = useRef<Promise<void> | null>(null);
+  // Removed bash warmup - it was causing the focus issue it was trying to prevent
   
-  // Warm up bash on Windows to prevent focus issues
-  useEffect(() => {
-    const warmupBash = async () => {
-      if (navigator.platform.includes('Win')) {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
-          const { listen } = await import('@tauri-apps/api/event');
-          
-          console.log('[Bash] Starting warmup to prevent focus loss...');
-          
-          // Run a silent echo command to warm up bash
-          const processId = await invoke<string>('spawn_bash', { 
-            command: 'echo warmup',
-            workingDir: undefined 
-          });
-          
-          // Set up listeners to clean up when done
-          const unlistenOutput = await listen<string>(`bash-output-${processId}`, () => {});
-          const unlistenError = await listen<string>(`bash-error-${processId}`, () => {});
-          const unlistenComplete = await listen<number | null>(`bash-complete-${processId}`, () => {
-            unlistenOutput();
-            unlistenError();
-            unlistenComplete();
-            bashWarmupCompleteRef.current = true;
-            console.log('[Bash] Warmup complete, ready for commands');
-            // Ensure focus is on input after warmup
-            setTimeout(() => {
-              inputRef.current?.focus();
-            }, 100);
-          });
-        } catch (e) {
-          console.log('[Bash] Warmup failed:', e);
-          bashWarmupCompleteRef.current = true; // Mark as complete anyway to not block
-        }
-      } else {
-        bashWarmupCompleteRef.current = true; // Not Windows, no warmup needed
-      }
-    };
-    
-    // Store the promise so we can await it if needed
-    bashWarmupPromiseRef.current = warmupBash();
-  }, []); // Run once on mount
+  // Bash warmup removed - it was causing focus issues
   
   // Track viewport and input container changes for zoom
   useEffect(() => {
@@ -983,13 +940,7 @@ export const ClaudeChat: React.FC = () => {
         }
         
         try {
-          // On Windows, ensure warmup is complete before first command
-          if (navigator.platform.includes('Win') && !bashWarmupCompleteRef.current) {
-            console.log('[Bash] Waiting for warmup to complete before first command...');
-            if (bashWarmupPromiseRef.current) {
-              await bashWarmupPromiseRef.current;
-            }
-          }
+          // Bash warmup removed - proceed directly to command execution
           
           // Execute the bash command via Tauri with streaming
           const { invoke } = await import('@tauri-apps/api/core');
@@ -1006,25 +957,33 @@ export const ClaudeChat: React.FC = () => {
             workingDir: workingDir 
           });
           
-          // Aggressively restore focus on Windows
+          // Aggressively restore focus on Windows to combat OS focus stealing
           if (navigator.platform.includes('Win')) {
-            // Multiple attempts to ensure focus is restored
+            // Multiple attempts to ensure focus is restored after WSL process spawn
             const restoreFocus = () => {
               if (inputRef.current && hadFocus) {
+                // Force window to foreground first
+                window.focus();
+                // Then focus the input
                 inputRef.current.focus();
                 // Double-check focus was actually restored
                 if (document.activeElement !== inputRef.current) {
-                  setTimeout(() => inputRef.current?.focus(), 50);
+                  setTimeout(() => {
+                    window.focus();
+                    inputRef.current?.focus();
+                  }, 50);
                 }
               }
             };
             
             // Try immediately
             restoreFocus();
-            // Try after a short delay
+            // Try after WSL initialization (critical timing)
+            setTimeout(restoreFocus, 50);
             setTimeout(restoreFocus, 100);
-            // Try after process likely started
-            setTimeout(restoreFocus, 250);
+            setTimeout(restoreFocus, 200);
+            // Try after process likely fully started
+            setTimeout(restoreFocus, 500);
           }
           
           // Store process ID for cancellation

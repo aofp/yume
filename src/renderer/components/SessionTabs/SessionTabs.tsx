@@ -371,7 +371,7 @@ export const SessionTabs: React.FC = () => {
                     position: fixed;
                     pointer-events: none !important;
                     z-index: 9999;
-                    opacity: 0.8;
+                    opacity: 1;
                     transform: rotate(2deg);
                     transition: none;
                     cursor: grabbing !important;

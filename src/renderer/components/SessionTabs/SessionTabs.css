@@ -109,6 +109,11 @@
   -webkit-user-select: none;
 }
 
+/* Override cursor for dragging states */
+body.tab-dragging .session-tab {
+  cursor: grabbing !important;
+}
+
 /* Ripple effect with animation */
 @keyframes ripple-expand {
   0% {
@@ -143,7 +148,7 @@
 
 /* Make ripple more visible on active tabs */
 .session-tab.active.ripple-active::before {
-  background: rgba(255, 255, 255, 0.35);
+  background: rgba(var(--accent-rgb), 0.5);
 }
 
 
@@ -167,19 +172,12 @@
 
 .session-tab.drag-over {
   background: rgba(var(--accent-rgb), 0.1);
+  cursor: grabbing !important;
 }
 
 /* Apply grabbing cursor to entire body when dragging */
 body.tab-dragging,
 body.tab-dragging * {
-  cursor: grabbing !important;
-}
-
-/* Ensure cursor applies to all tab elements during drag */
-body.tab-dragging .session-tab,
-body.tab-dragging .tabs-wrapper,
-body.tab-dragging .tabs-scrollable,
-body.tab-dragging .session-tabs {
   cursor: grabbing !important;
 }
 
