@@ -1,6 +1,7 @@
 /**
- * macOS-compatible server that runs claude CLI directly
- * IDENTICAL TO WINDOWS SERVER - NO SDK, NO API KEY - just direct claude CLI calls with streaming
+ * Windows-compatible server that runs claude CLI directly
+ * NO SDK, NO API KEY - just direct claude CLI calls with streaming
+ * Hardened for multiple concurrent sessions and long-running operations
  */
 
 // No need for module override when not using asar
@@ -19,11 +20,11 @@ const __dirname = dirname(__filename);
 
 let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 
-// Try to find Claude CLI in common locations
+// Try to find Claude CLI in common Windows locations
 const possibleClaudePaths = [
-  '/opt/homebrew/bin/claude',
-  '/usr/local/bin/claude',
-  '/usr/bin/claude',
+  'C:\\Program Files\\Claude\\claude.exe',
+  'C:\\Users\\' + process.env.USERNAME + '\\AppData\\Local\\Programs\\claude\\claude.exe',
+  'C:\\claude\\claude.exe',
   process.env.CLAUDE_PATH, // Allow env override
 ].filter(Boolean);
 
@@ -39,13 +40,13 @@ for (const claudePath of possibleClaudePaths) {
   }
 }
 
-// If still not found, try 'which' command
+// If still not found, try 'where' command (Windows equivalent of 'which')
 if (CLAUDE_PATH === 'claude') {
   try {
-    const whichResult = execSync('which claude', { encoding: 'utf8' }).trim();
-    if (whichResult) {
-      CLAUDE_PATH = whichResult;
-      console.log(`✅ Found Claude CLI via which: ${CLAUDE_PATH}`);
+    const whereResult = execSync('where claude', { encoding: 'utf8' }).trim().split('\n')[0];
+    if (whereResult) {
+      CLAUDE_PATH = whereResult;
+      console.log(`✅ Found Claude CLI via where: ${CLAUDE_PATH}`);
     }
   } catch (e) {
     console.warn(`⚠️ Claude CLI not found in PATH. Using 'claude' and hoping for the best.`);
@@ -85,11 +86,11 @@ const PORT = (() => {
   }
   
   // Otherwise find an available port dynamically
-  console.log('🔍 Finding available port in range 60000-61000...');
-  let port = 60000 + Math.floor(Math.random() * 1001);
+  console.log('🔍 Finding available port in range 20000-65000...');
+  let port = 20000 + Math.floor(Math.random() * 45001);
   
   for (let i = 0; i < 100; i++) {
-    const testPort = 60000 + ((port - 60000 + i) % 1001);
+    const testPort = 20000 + ((port - 20000 + i) % 45001);
     const server = net.createServer();
     try {
       server.listen(testPort, '127.0.0.1');
@@ -106,7 +107,7 @@ const PORT = (() => {
   return 3001;
 })();
 
-// Track active Claude processes and assistant message IDs - EXACTLY LIKE WINDOWS
+// Track active Claude processes and assistant message IDs
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
@@ -135,12 +136,8 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
     
-    // Ensure Node.js is in PATH for Claude CLI
+    // Windows environment setup for title generation
     const enhancedEnv = { ...process.env };
-    const nodeBinDir = '/opt/homebrew/bin';
-    if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-      enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
-    }
     
     const child = spawn(CLAUDE_PATH, titleArgs, {
       cwd: process.cwd(),
@@ -205,152 +202,157 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       }
     });
     
-    child.on('error', (error) => {
-      console.error('🏷️ Failed to spawn title generation process:', error);
-    });
-    
     // Send the prompt
-    console.log(`🏷️ Writing prompt to stdin`);
     child.stdin.write(titlePrompt);
     child.stdin.end();
     
-  } catch (error) {
-    console.error('🏷️ Failed to generate title:', error);
+    // Add timeout
+    setTimeout(() => {
+      if (child.exitCode === null) {
+        console.log('🏷️ Title generation timeout, killing process');
+        child.kill('SIGTERM');
+      }
+    }, 5000);
+    
+  } catch (e) {
+    console.error('🏷️ Title generation error:', e);
   }
 }
 
-// Memory management - EXACTLY LIKE WINDOWS
-const MAX_MESSAGE_HISTORY = 1000; // Limit message history per session
-const MAX_LINE_BUFFER_SIZE = 50 * 1024 * 1024; // 50MB max buffer for large responses
+// Create PID directory and file
+const PID_DIR = join(homedir(), '.yurucode');
+const PID_FILE = join(PID_DIR, `server-${PORT}.pid`);
+
+function writePidFile() {
+  try {
+    if (!existsSync(PID_DIR)) {
+      mkdirSync(PID_DIR, { recursive: true });
+    }
+    writeFileSync(PID_FILE, process.pid.toString());
+    console.log(`📝 PID ${process.pid} written to ${PID_FILE}`);
+  } catch (e) {
+    console.error('Failed to write PID file:', e);
+  }
+}
 
 // Health check endpoint
 app.get('/health', (req, res) => {
   res.json({ 
     status: 'ok', 
+    port: PORT, 
     pid: process.pid,
-    service: 'yurucode-claude',
-    claudeCodeLoaded: true
+    sessions: sessions.size,
+    activeProcesses: activeProcesses.size,
+    platform: platform()
   });
 });
 
-// PID file management - use temp directory for production
-// Each server instance gets a unique PID file based on its port
-const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 
-  ? join(homedir(), `.yurucode-server-${PORT}.pid`)
-  : join(__dirname, `server-${PORT}.pid`);
+// Increase max line buffer size to handle very large messages
+const MAX_LINE_BUFFER_SIZE = 50 * 1024 * 1024; // 50MB max buffer for large responses
 
-function writePidFile() {
-  try {
-    writeFileSync(pidFilePath, process.pid.toString());
-    console.log(`📝 Server PID ${process.pid} written to ${pidFilePath}`);
-  } catch (err) {
-    console.log(`⚠️ Could not write PID file (running from read-only location?):`, err.message);
-    // Don't fail if we can't write PID file in production
-  }
-}
-
-function removePidFile() {
-  try {
-    if (fs.existsSync(pidFilePath)) {
-      fs.unlinkSync(pidFilePath);
-      console.log(`🗑️ Removed PID file`);
-    }
-  } catch (err) {
-    // Ignore errors when removing PID file
-  }
-}
-
-// Clean up on exit
-process.on('SIGINT', () => {
-  console.log('\n🛑 Server shutting down...');
-  removePidFile();
-  process.exit(0);
-});
-
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Server terminated');
-  removePidFile();
-  process.exit(0);
-});
-
-process.on('exit', () => {
-  removePidFile();
-});
-
-process.on('uncaughtException', (error) => {
-  console.error('💥 Uncaught exception:', error);
-  removePidFile();
-  process.exit(1);
-});
-
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('💥 Unhandled rejection at:', promise, 'reason:', reason);
-  removePidFile();
-  process.exit(1);
-});
-
-// Socket.IO connection handling - EXACTLY LIKE WINDOWS
+// Socket.io connection handling
 io.on('connection', (socket) => {
-  console.log('🔌 Client connected:', socket.id);
-
+  console.log('🔌 New connection from client:', socket.id);
+  
   socket.on('createSession', async (data, callback) => {
-    try {
-      const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`✨ Creating new session: ${sessionId}`);
-      
-      // Use provided directory, or home directory as fallback (NOT process.cwd() which would be the app bundle)
-      const workingDirectory = data.workingDirectory || homedir();
-      
-      const sessionData = {
+    const { name, workingDirectory, sessionId, options } = data;
+    console.log('📋 Creating/resuming session:', { name, workingDirectory, sessionId, socketId: socket.id, options });
+    
+    // Get existing session or create new one
+    if (sessions.has(sessionId)) {
+      const existingSession = sessions.get(sessionId);
+      console.log(`♻️ Resuming existing session ${sessionId} with ${existingSession.messages.length} messages`);
+      existingSession.socketId = socket.id; // Update socket ID in case of reconnection
+      callback({ 
+        success: true, 
+        sessionId,
+        messages: existingSession.messages,
+        workingDirectory: existingSession.workingDirectory
+      });
+    } else {
+      const session = {
         id: sessionId,
-        name: data.name || 'new session',
+        name: name || `Session ${sessionId}`,
         socketId: socket.id,
-        workingDirectory: workingDirectory,
         messages: [],
-        createdAt: Date.now(),
-        claudeSessionId: null,
-        hasGeneratedTitle: false,
-        wasInterrupted: false  // Track if last conversation was interrupted vs completed
+        createdAt: new Date(),
+        workingDirectory: workingDirectory || process.cwd(),
+        claudeSessionId: undefined,  // Will be set when Claude responds
+        hasGeneratedTitle: false,  // Track if we've generated a title for this session
+        wasInterrupted: false, // Track if the last command was interrupted
+        ...options // Spread any additional options
       };
       
-      sessions.set(sessionId, sessionData);
-      
-      console.log(`✅ Session ready: ${sessionId}`);
-      console.log(`📁 Working directory: ${workingDirectory}`);
-      
-      if (callback) {
-        callback({
-          success: true,
-          sessionId: sessionId,
-          workingDirectory: workingDirectory
-        });
-      }
-    } catch (error) {
-      console.error('❌ Error creating session:', error);
-      if (callback) {
-        callback({
-          success: false,
-          error: error.message
-        });
-      }
+      sessions.set(sessionId, session);
+      console.log(`✅ Created new session: ${sessionId}`);
+      callback({ 
+        success: true, 
+        sessionId,
+        messages: [],
+        workingDirectory: session.workingDirectory
+      });
     }
   });
-
-  socket.on('sendMessage', async (data, callback) => {
-    const { sessionId, content: message, model } = data;
+  
+  socket.on('getSessionHistory', ({ sessionId }, callback) => {
     const session = sessions.get(sessionId);
+    if (session) {
+      callback({ 
+        success: true, 
+        messages: session.messages,
+        workingDirectory: session.workingDirectory
+      });
+    } else {
+      callback({ success: false, error: 'Session not found' });
+    }
+  });
+  
+  socket.on('listSessions', (data, callback) => {
+    const sessionList = Array.from(sessions.values()).map(s => ({
+      id: s.id,
+      name: s.name,
+      createdAt: s.createdAt,
+      messageCount: s.messages.length,
+      workingDirectory: s.workingDirectory
+    }));
+    callback({ success: true, sessions: sessionList });
+  });
+  
+  socket.on('message', async (data) => {
+    const { sessionId, message, model } = data;
+    console.log('📨 Received message for session:', sessionId, 'Model:', model || 'default', 'Message length:', message?.length || 0);
     
+    const session = sessions.get(sessionId);
     if (!session) {
-      console.error(`❌ Session not found: ${sessionId}`);
-      if (callback) callback({ success: false, error: 'Session not found' });
+      console.error(`Session not found: ${sessionId}`);
+      socket.emit(`message:${sessionId}`, { 
+        type: 'error', 
+        error: 'Session not found. Please refresh and try again.' 
+      });
       return;
     }
     
-    // Queue the request to prevent concurrent spawning issues
-    const spawnRequest = async () => {
+    // Check if this is likely a followup during streaming
+    const wasInterrupted = session.wasInterrupted;
+    if (wasInterrupted) {
+      console.log('🔄 Last command was interrupted, marking this as a followup');
+      session.wasInterrupted = false; // Reset flag
+    }
+    
+    // Store message in session history
+    if (message) {
+      session.messages.push({
+        type: 'user',
+        content: message,
+        timestamp: new Date()
+      });
+    }
+    
+    // Spawn Claude process in background
       try {
-        console.log('\n📨 Processing message request:', {
+        console.log('🚀 Spawning Claude process...', {
           sessionId,
+          hasClaudeSessionId: !!session.claudeSessionId,
           messageLength: message?.length || 0,
           model,
           queueLength: processSpawnQueue.length
@@ -361,17 +363,8 @@ io.on('connection', (socket) => {
           const existingProcess = activeProcesses.get(sessionId);
           console.log(`⚠️ Killing existing process for session ${sessionId} (PID: ${existingProcess.pid})`);
           
-          // Kill the entire process group if on Unix
-          if (process.platform !== 'win32' && existingProcess.pid) {
-            try {
-              process.kill(-existingProcess.pid, 'SIGINT'); // Negative PID kills process group
-            } catch (e) {
-              // Fallback to regular kill
-              existingProcess.kill('SIGINT');
-            }
-          } else {
-            existingProcess.kill('SIGINT');
-          }
+          // Kill the process on Windows
+          existingProcess.kill('SIGTERM');
           
           activeProcesses.delete(sessionId);
           // Wait a bit for the process to fully terminate
@@ -385,8 +378,8 @@ io.on('connection', (socket) => {
         const processWorkingDir = session.workingDirectory || homedir();
         console.log(`📂 Using working directory: ${processWorkingDir}`);
 
-      // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
-      const args = ['--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
+      // Build the claude command for Windows
+      const args = ['--output-format', 'stream-json', '--verbose'];
       
       // Use --resume if we have a claudeSessionId (for continuing conversations)
       if (session.claudeSessionId) {
@@ -400,13 +393,8 @@ io.on('connection', (socket) => {
       console.log(`🚀 Spawning claude with args:`, args);
       console.log(`🔍 Active processes count: ${activeProcesses.size}`);
       
-      // Ensure Node.js is in PATH for Claude CLI (which uses #!/usr/bin/env node)
+      // Windows environment setup
       const enhancedEnv = { ...process.env };
-      const nodeBinDir = '/opt/homebrew/bin';
-      if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-        enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
-        console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
-      }
       
       // Add unique session identifier to environment to ensure isolation
       enhancedEnv.CLAUDE_SESSION_ID = sessionId;
@@ -436,7 +424,7 @@ io.on('connection', (socket) => {
         env: enhancedEnv,
         shell: false,
         windowsHide: true,  // Always hide windows
-        detached: true,  // Run in separate process group for better isolation
+        detached: false,  // Windows doesn't support detached well
         stdio: ['pipe', 'pipe', 'pipe']  // Explicit stdio configuration
       };
       
@@ -455,11 +443,6 @@ io.on('connection', (socket) => {
 
       // Store process reference
       activeProcesses.set(sessionId, claudeProcess);
-      
-      // On Unix systems, detached processes need special handling
-      if (process.platform !== 'win32') {
-        claudeProcess.unref(); // Allow parent to exit independently
-      }
 
       // Send input if not resuming
       if (!session.claudeSessionId && message) {
@@ -513,7 +496,7 @@ io.on('connection', (socket) => {
         }
       }
 
-      // Process streaming output - EXACTLY LIKE WINDOWS
+      // Process streaming output
       let lineBuffer = '';
       let messageCount = 0;
       let bytesReceived = 0;
@@ -590,7 +573,7 @@ io.on('connection', (socket) => {
             console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
           }
           
-          // Handle different message types - EXACTLY LIKE WINDOWS
+          // Handle different message types
           if (jsonData.type === 'system' && jsonData.subtype === 'init') {
             // Send system init message
             socket.emit(`message:${sessionId}`, {
@@ -637,101 +620,83 @@ io.on('connection', (socket) => {
                 console.log(`📝 [${sessionId}] Content preview: ${textContent.substring(0, 100)}...`);
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
-                  message: { content: textContent },
-                  streaming: true,  // Set streaming to true during active streaming
                   id: messageId,
+                  message: { content: textContent },
+                  streaming: true,
                   timestamp: Date.now()
                 });
-                
-                // Save to session with memory management
-                session.messages.push({
-                  type: 'assistant',
-                  message: { content: textContent },
-                  id: messageId,
-                  timestamp: Date.now()
-                });
-                
-                // Trim message history if too large
-                if (session.messages.length > MAX_MESSAGE_HISTORY) {
-                  const trimCount = Math.floor(MAX_MESSAGE_HISTORY * 0.2); // Remove 20%
-                  session.messages.splice(0, trimCount);
-                  console.log(`🧹 Trimmed ${trimCount} old messages from session ${sessionId}`);
-                }
-                
-                messageCount++;
-              } else if (!hasText && jsonData.message?.content) {
-                // If there's no text but there are content blocks (e.g., only tool uses),
-                // don't send the raw JSON structure as assistant message
-                console.log('Assistant message with only tool uses, skipping text message');
               }
             }
             
-          } else if (jsonData.type === 'user' && jsonData.message?.content) {
-            // Handle tool results from user messages
-            for (const block of jsonData.message.content) {
-              if (block.type === 'tool_result') {
-                socket.emit(`message:${sessionId}`, {
-                  type: 'tool_result',
-                  message: {
-                    tool_use_id: block.tool_use_id,
-                    content: block.content,
-                    is_error: block.is_error
-                  },
-                  timestamp: Date.now(),
-                  id: `toolresult-${sessionId}-${Date.now()}`
-                });
-              }
-            }
+          } else if (jsonData.type === 'tool_use') {
+            // Tool use message from Claude
+            socket.emit(`message:${sessionId}`, {
+              type: 'tool_use',
+              message: jsonData.message,
+              timestamp: Date.now(),
+              id: `tool-${sessionId}-${Date.now()}`
+            });
+            
+          } else if (jsonData.type === 'tool_result') {
+            // Tool result from Claude
+            socket.emit(`message:${sessionId}`, {
+              type: 'tool_result',
+              message: jsonData.message,
+              timestamp: Date.now()
+            });
             
           } else if (jsonData.type === 'result') {
-            console.log(`📦 Message type: result`);
-            console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
+            // Final result - MARK STREAMING AS COMPLETE
+            console.log(`🏁 [${sessionId}] RESULT message received - marking stream as complete`);
             
-            // Log usage/cost information if present
-            if (jsonData.usage) {
-              console.log(`\n📊 TOKEN USAGE FROM CLAUDE CLI:`);
-              console.log(`   input_tokens: ${jsonData.usage.input_tokens || 0}`);
-              console.log(`   output_tokens: ${jsonData.usage.output_tokens || 0}`);
-              console.log(`   cache_creation_input_tokens: ${jsonData.usage.cache_creation_input_tokens || 0}`);
-              console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0}`);
-            }
-            
-            // If we have a last assistant message, send an update to mark it as done streaming
+            // Clear the streaming state for any tracked assistant message
             const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
             if (lastAssistantMessageId) {
-              console.log(`✅ Marking assistant message ${lastAssistantMessageId} as streaming=false (result received)`);
-              const session = sessions.get(sessionId);
-              const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
-              
+              console.log(`🔴 Marking assistant message ${lastAssistantMessageId} as streaming=false`);
+              // Emit an update to mark the last assistant message as no longer streaming
               socket.emit(`message:${sessionId}`, {
                 type: 'assistant',
                 id: lastAssistantMessageId,
-                message: lastAssistantMsg?.message || { content: '' },
                 streaming: false,
                 timestamp: Date.now()
               });
-              lastAssistantMessageIds.delete(sessionId); // Reset
+              lastAssistantMessageIds.delete(sessionId);
             }
             
-            // Just send the result message with model info
-            console.log(`✅ [${sessionId}] Sending result message, stream complete`);
             socket.emit(`message:${sessionId}`, {
               type: 'result',
-              ...jsonData,
-              streaming: false,
-              id: `result-${sessionId}-${Date.now()}`,
-              model: model // Include the model that was used
+              subtype: jsonData.subtype,
+              message: jsonData.message,
+              result: jsonData.result,
+              is_error: jsonData.is_error,
+              usage: jsonData.usage,
+              timestamp: Date.now()
             });
-            messageCount++;
+            
+          } else if (jsonData.type === 'user') {
+            // Echo user message back (shouldn't happen in stream mode)
+            socket.emit(`message:${sessionId}`, {
+              type: 'user',
+              message: jsonData.message,
+              timestamp: Date.now()
+            });
+            
+          } else {
+            // Unknown message type - send as-is
+            console.log(`❓ [${sessionId}] Unknown message type, forwarding as-is:`, jsonData.type);
+            socket.emit(`message:${sessionId}`, {
+              ...jsonData,
+              timestamp: Date.now()
+            });
           }
           
+          messageCount++;
         } catch (e) {
-          // Not JSON, treat as plain text
-          console.log(`⚠️ [${sessionId}] Failed to parse JSON, treating as plain text:`, e.message);
-          console.log(`⚠️ [${sessionId}] Line was: ${line}`);
+          console.error(`[${sessionId}] Failed to parse line:`, e);
+          console.error(`[${sessionId}] Line was:`, line);
         }
       };
-
+      
       // Handle stdout
       claudeProcess.stdout.on('data', (data) => {
         const str = data.toString();
@@ -903,89 +868,72 @@ io.on('connection', (socket) => {
             streaming: false,
             timestamp: Date.now()
           });
+          lastAssistantMessageIds.delete(sessionId);
+        }
+        
+        activeProcesses.delete(sessionId);
+        
+        // Send appropriate error message based on error type
+        let errorMessage = 'Failed to start Claude CLI. ';
+        if (err.code === 'ENOENT') {
+          errorMessage += 'Claude CLI not found. Please ensure claude is installed and in PATH.';
+        } else if (err.code === 'EACCES') {
+          errorMessage += 'Permission denied. Please check file permissions.';
+        } else {
+          errorMessage += err.message;
         }
         
         socket.emit(`message:${sessionId}`, { 
           type: 'error',
-          error: `claude process error: ${err.message}. try sending your message again.`, 
-          claudeSessionId: session.claudeSessionId,
-          streaming: false 
+          error: errorMessage,
+          streaming: false,
+          timestamp: Date.now()
         });
-        
-        activeProcesses.delete(sessionId);
-        lastAssistantMessageIds.delete(sessionId);
-        if (callback) callback({ success: false, error: err.message });
       });
-
-        // Send success callback
-        if (callback) callback({ success: true });
-
-      } catch (error) {
-        console.error('❌ Error in spawnRequest:', error);
-        socket.emit(`message:${sessionId}`, { 
-          type: 'error',
-          error: error.message, 
-          claudeSessionId: session.claudeSessionId,
-          streaming: false 
-        });
-        if (callback) callback({ success: false, error: error.message });
-      } finally {
-        // Process next request in queue
-        processNextInQueue();
-      }
-    };
-    
-    // Add to queue and process
-    processSpawnQueue.push(spawnRequest);
-    console.log(`📋 Added request to queue. Queue length: ${processSpawnQueue.length}`);
-    
-    // Process queue if not already processing
-    if (processSpawnQueue.length === 1) {
-      processNextInQueue();
+      
+    } catch (err) {
+      console.error('Failed to spawn Claude process:', err);
+      
+      // Clean up tracking
+      lastAssistantMessageIds.delete(sessionId);
+      
+      socket.emit(`message:${sessionId}`, { 
+        type: 'error', 
+        error: err.message || 'Failed to start Claude process',
+        streaming: false 
+      });
     }
   });
   
-  // Helper function to process spawn queue
-  function processNextInQueue() {
-    if (processSpawnQueue.length > 0) {
-      const nextRequest = processSpawnQueue.shift();
-      console.log(`🔄 Processing next spawn request. Remaining in queue: ${processSpawnQueue.length}`);
-      nextRequest();
-    }
-  }
-
-  socket.on('interrupt', ({ sessionId }) => {
+  socket.on('interrupt', ({ sessionId }, callback) => {
+    console.log(`⛔ Interrupt request for session ${sessionId}`);
     const process = activeProcesses.get(sessionId);
-    const session = sessions.get(sessionId);
+    
     if (process) {
-      console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${process.pid})`);
+      console.log(`🛑 Killing process for session ${sessionId}`);
       
-      // Kill the entire process group if on Unix
-      if (process.platform !== 'win32' && process.pid) {
-        try {
-          process.kill(-process.pid, 'SIGINT'); // Negative PID kills process group
-        } catch (e) {
-          // Fallback to regular kill
-          process.kill('SIGINT');
-        }
-      } else {
-        process.kill('SIGINT');  // Use SIGINT for graceful interrupt
-      }
-      
-      activeProcesses.delete(sessionId);
-      
-      // Mark session as interrupted but keep the session ID for potential resume
+      // Mark session as interrupted
+      const session = sessions.get(sessionId);
       if (session) {
         session.wasInterrupted = true;
-        console.log(`🔄 Marked session ${sessionId} as interrupted`);
+        console.log(`⚠️ Marked session ${sessionId} as interrupted`);
       }
       
-      // If we have a last assistant message, mark it as done streaming
+      // Kill the process on Windows
+      process.kill('SIGTERM');
+      activeProcesses.delete(sessionId);
+      
+      // Clear any streaming state for this session - send complete message update
       const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
       if (lastAssistantMessageId) {
+        console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on interrupt`);
+        // Get the last assistant message to preserve its content
+        const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+        
         socket.emit(`message:${sessionId}`, {
           type: 'assistant',
           id: lastAssistantMessageId,
+          message: lastAssistantMsg?.message || { content: '' },
           streaming: false,
           timestamp: Date.now()
         });
@@ -1018,10 +966,9 @@ io.on('connection', (socket) => {
     
     // Clear the session data but keep the session alive
     session.messages = [];
-    session.claudeSessionId = null;  // Reset Claude session ID so next message starts fresh
-    session.hasGeneratedTitle = false;  // Reset title generation flag so next message gets a new title
-    session.wasInterrupted = false;  // Reset interrupted flag
-    lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
+    session.claudeSessionId = undefined;
+    session.hasGeneratedTitle = false;
+    session.wasInterrupted = false;
     
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
     
@@ -1067,7 +1014,6 @@ io.on('connection', (socket) => {
           process.kill('SIGINT');
           activeProcesses.delete(sessionId);
         }
-        lastAssistantMessageIds.delete(sessionId);
       }
     }
   });
@@ -1076,11 +1022,13 @@ io.on('connection', (socket) => {
 // Start server with error handling
 httpServer.listen(PORT, () => {
   writePidFile();
-  console.log(`🚀 macOS Claude CLI server running on port ${PORT}`);
+  console.log(`🚀 Windows Claude CLI server running on port ${PORT}`);
+  console.log(`🤖 Claude CLI: ${CLAUDE_PATH}`);
+  console.log(`📁 PID file: ${PID_FILE}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🖥️ Platform: ${platform()}`);
   console.log(`🏠 Home directory: ${homedir()}`);
-  console.log(`✅ Server configured EXACTLY like Windows server`);
+  console.log(`✅ Server hardened for multiple concurrent sessions`);
 });
 
 // Handle port already in use error
@@ -1089,16 +1037,34 @@ httpServer.on('error', (error) => {
     console.error(`❌ Port ${PORT} is already in use`);
     console.log('Attempting to kill existing process and retry...');
     
-    // Try to kill any existing Node.js servers on this port
+    // Try to kill any existing Node.js servers on this port (Windows)
     const { exec } = require('child_process');
-    exec(`lsof -ti :${PORT} | xargs kill -9`, (err) => {
-      if (!err) {
-        console.log('Killed existing process, retrying in 1 second...');
-        setTimeout(() => {
-          httpServer.listen(PORT);
-        }, 1000);
+    exec(`netstat -ano | findstr :${PORT}`, (err, stdout) => {
+      if (!err && stdout) {
+        const lines = stdout.trim().split('\n');
+        const pids = new Set();
+        lines.forEach(line => {
+          const parts = line.trim().split(/\s+/);
+          const pid = parts[parts.length - 1];
+          if (pid && !isNaN(pid)) pids.add(pid);
+        });
+        
+        if (pids.size > 0) {
+          pids.forEach(pid => {
+            exec(`taskkill /F /PID ${pid}`, (killErr) => {
+              if (!killErr) console.log(`Killed process ${pid}`);
+            });
+          });
+          console.log('Killed existing processes, retrying in 1 second...');
+          setTimeout(() => {
+            httpServer.listen(PORT);
+          }, 1000);
+        } else {
+          console.error('Failed to find process. Please restart the app.');
+          process.exit(1);
+        }
       } else {
-        console.error('Failed to kill existing process. Please restart the app.');
+        console.error('Failed to check for existing process. Please restart the app.');
         process.exit(1);
       }
     });
@@ -1106,4 +1072,40 @@ httpServer.on('error', (error) => {
     console.error('Server error:', error);
     process.exit(1);
   }
+});
+
+// Clean up on exit
+process.on('SIGINT', () => {
+  console.log('\n🛑 Shutting down server...');
+  
+  // Kill all active Claude processes
+  for (const [sessionId, process] of activeProcesses.entries()) {
+    console.log(`Killing process for session ${sessionId}`);
+    process.kill('SIGINT');
+  }
+  
+  // Clean up all intervals and timeouts
+  for (const interval of streamHealthChecks.values()) {
+    clearInterval(interval);
+  }
+  for (const timeout of streamTimeouts.values()) {
+    clearTimeout(timeout);
+  }
+  
+  // Remove PID file
+  try {
+    if (existsSync(PID_FILE)) {
+      unlinkSync(PID_FILE);
+      console.log(`📝 Removed PID file: ${PID_FILE}`);
+    }
+  } catch (e) {
+    console.error('Failed to remove PID file:', e);
+  }
+  
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('🛑 Received SIGTERM, shutting down...');
+  process.exit(0);
 });

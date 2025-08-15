@@ -167,7 +167,7 @@ export class ClaudeCodeClient {
       reconnectionAttempts: Infinity, // Keep trying forever
       reconnectionDelay: 2000,
       reconnectionDelayMax: 10000,
-      timeout: 20000, // 20 second connection timeout
+      timeout: 60000, // 60 second connection timeout for long operations
       transports: ['websocket', 'polling'], // Try both transports
       autoConnect: true,
       forceNew: false // Reuse connection if possible

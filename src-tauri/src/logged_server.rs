@@ -187,12 +187,20 @@ const server = http.createServer((req, res) => {
 
 const socketServer = new io(server, {
     cors: { origin: "*" },
-    transports: ['websocket', 'polling']
+    transports: ['websocket', 'polling'],
+    pingTimeout: 600000, // 10 minutes - prevent timeout during long operations
+    pingInterval: 30000, // 30 seconds heartbeat
+    upgradeTimeout: 60000, // 60 seconds for upgrade
+    maxHttpBufferSize: 5e8, // 500mb - handle large contexts
+    perMessageDeflate: false, // Disable compression for better streaming performance
+    httpCompression: false // Disable HTTP compression for streaming
 });
 
 const activeProcesses = new Map();
 const lastAssistantMessageIds = new Map();
 const sessions = new Map(); // Store session data including working directory
+const streamHealthChecks = new Map(); // Map of sessionId -> interval
+const streamTimeouts = new Map(); // Map of sessionId -> timeout
 
 // Helper function to generate title with Sonnet
 async function generateTitle(sessionId, userMessage, socket) {
@@ -450,8 +458,60 @@ socketServer.on('connection', (socket) => {
         let buffer = '';
         let assistantMessageId = null;
         let messageCount = 0;
+        let lastDataTime = Date.now();
+        let streamStartTime = Date.now();
+        
+        // Cleanup any existing health check for this session
+        if (streamHealthChecks.has(sessionId)) {
+            clearInterval(streamHealthChecks.get(sessionId));
+        }
+        if (streamTimeouts.has(sessionId)) {
+            clearTimeout(streamTimeouts.get(sessionId));
+        }
+        
+        // Log stream health check every 5 seconds
+        const streamHealthInterval = setInterval(() => {
+            const timeSinceLastData = Date.now() - lastDataTime;
+            const streamDuration = Date.now() - streamStartTime;
+            log(`🩺 STREAM HEALTH CHECK [${sessionId}]`);
+            log(`   ├─ Stream duration: ${streamDuration}ms`);
+            log(`   ├─ Time since last data: ${timeSinceLastData}ms`);
+            log(`   └─ Process alive: ${activeProcesses.has(sessionId)}`);
+            
+            if (timeSinceLastData > 30000) {
+                log(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
+                // Send keepalive to prevent client timeout
+                socket.emit(`keepalive:${sessionId}`, { timestamp: Date.now() });
+            }
+            
+            // If no data for 5 minutes, consider stream dead
+            if (timeSinceLastData > 300000) {
+                log(`💀 Stream appears dead after ${timeSinceLastData}ms, cleaning up`);
+                if (activeProcesses.has(sessionId)) {
+                    const proc = activeProcesses.get(sessionId);
+                    proc.kill('SIGTERM');
+                    activeProcesses.delete(sessionId);
+                }
+                clearInterval(streamHealthInterval);
+            }
+        }, 5000);
+        
+        // Store health check interval for cleanup
+        streamHealthChecks.set(sessionId, streamHealthInterval);
+        
+        // Set overall stream timeout (10 minutes max per stream)
+        const streamTimeout = setTimeout(() => {
+            log(`⏰ Stream timeout reached for session ${sessionId} after 10 minutes`);
+            if (activeProcesses.has(sessionId)) {
+                const proc = activeProcesses.get(sessionId);
+                log(`⏰ Terminating long-running process for ${sessionId}`);
+                proc.kill('SIGTERM');
+            }
+        }, 600000); // 10 minutes
+        streamTimeouts.set(sessionId, streamTimeout);
         
         claude.stdout.on('data', (data) => {
+            lastDataTime = Date.now();
             const str = data.toString();
             log(`[${sessionId}] STDOUT received: ${str.length} bytes`);
             log(`[${sessionId}] Raw data preview: ${str.substring(0, 200).replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r')}...`);
@@ -676,6 +736,17 @@ socketServer.on('connection', (socket) => {
         
         claude.on('error', (err) => {
             log(`[${sessionId}] Process error: ${err}`);
+            
+            // Clean up all tracking for this session
+            if (streamHealthChecks.has(sessionId)) {
+                clearInterval(streamHealthChecks.get(sessionId));
+                streamHealthChecks.delete(sessionId);
+            }
+            if (streamTimeouts.has(sessionId)) {
+                clearTimeout(streamTimeouts.get(sessionId));
+                streamTimeouts.delete(sessionId);
+            }
+            
             socket.emit(`message:${sessionId}`, {
                 type: 'system',
                 subtype: 'error',
@@ -688,6 +759,16 @@ socketServer.on('connection', (socket) => {
         claude.on('exit', (code) => {
             log(`[${sessionId}] Claude process exited with code ${code}`);
             log(`[${sessionId}] Total messages processed: ${messageCount}`);
+            
+            // Clean up all tracking for this session
+            if (streamHealthChecks.has(sessionId)) {
+                clearInterval(streamHealthChecks.get(sessionId));
+                streamHealthChecks.delete(sessionId);
+            }
+            if (streamTimeouts.has(sessionId)) {
+                clearTimeout(streamTimeouts.get(sessionId));
+                streamTimeouts.delete(sessionId);
+            }
             activeProcesses.delete(sessionId);
             
             // Clear any remaining streaming state
