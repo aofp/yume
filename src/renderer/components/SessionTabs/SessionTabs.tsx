@@ -291,8 +291,22 @@ export const SessionTabs: React.FC = () => {
             key={session.id}
             data-session-id={session.id}
             className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
-            onClick={() => {
+            onClick={(e) => {
               if (!isDragging) {
+                // Add ripple effect
+                const target = e.currentTarget;
+                const rect = target.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                target.style.setProperty('--ripple-x', `${x}px`);
+                target.style.setProperty('--ripple-y', `${y}px`);
+                target.classList.add('ripple-active');
+                
+                setTimeout(() => {
+                  target.classList.remove('ripple-active');
+                }, 800);
+                
                 resumeSession(session.id);
               }
             }}

@@ -394,7 +394,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             message.type === 'result' || 
             message.type === 'error' ||
             (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) ||
-            message.type === 'assistant' || // Process ALL assistant messages to track streaming state
+            (message.type === 'assistant' && !message.streaming) || // Only process final assistant messages for background sessions
             message.type === 'tool_use' ||  // Process tool_use messages to track streaming
             message.type === 'tool_result'; // Process tool_result messages to track streaming
           

@@ -162,6 +162,9 @@ export const ClaudeChat: React.FC = () => {
   const [isAtBottom, setIsAtBottom] = useState<{ [sessionId: string]: boolean }>({});
   const [pendingFollowupMessage, setPendingFollowupMessage] = useState<string | null>(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [bashStartTimes, setBashStartTimes] = useState<{ [sessionId: string]: number }>({});
+  const [bashElapsedTimes, setBashElapsedTimes] = useState<{ [sessionId: string]: number }>({});
+  const [bashDotCounts, setBashDotCounts] = useState<{ [sessionId: string]: number }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -491,6 +494,60 @@ export const ClaudeChat: React.FC = () => {
       return () => clearInterval(interval);
     }
   }, [currentSession?.streaming, currentSessionId, thinkingStartTimes[currentSessionId]]);
+
+  // Handle bash running timer and dots animation per session
+  useEffect(() => {
+    if (!currentSessionId) return;
+    
+    if (currentSession?.runningBash || currentSession?.userBashRunning) {
+      // Start timer for this session
+      if (!bashStartTimes[currentSessionId]) {
+        setBashStartTimes(prev => ({ ...prev, [currentSessionId]: Date.now() }));
+        setBashDotCounts(prev => ({ ...prev, [currentSessionId]: 1 }));
+      }
+      
+      // Update elapsed time every second for this session
+      const timerInterval = setInterval(() => {
+        const startTime = bashStartTimes[currentSessionId];
+        if (startTime) {
+          setBashElapsedTimes(prev => ({
+            ...prev,
+            [currentSessionId]: Math.floor((Date.now() - startTime) / 1000)
+          }));
+        }
+      }, 1000);
+      
+      // Animate dots every 500ms for this session
+      const dotsInterval = setInterval(() => {
+        setBashDotCounts(prev => ({
+          ...prev,
+          [currentSessionId]: (prev[currentSessionId] || 1) >= 3 ? 1 : (prev[currentSessionId] || 1) + 1
+        }));
+      }, 500);
+      
+      return () => {
+        clearInterval(timerInterval);
+        clearInterval(dotsInterval);
+      };
+    } else {
+      // Clean up when bash stops for this session
+      setBashStartTimes(prev => {
+        const newTimes = { ...prev };
+        delete newTimes[currentSessionId];
+        return newTimes;
+      });
+      setBashElapsedTimes(prev => {
+        const newElapsed = { ...prev };
+        delete newElapsed[currentSessionId];
+        return newElapsed;
+      });
+      setBashDotCounts(prev => {
+        const newCounts = { ...prev };
+        delete newCounts[currentSessionId];
+        return newCounts;
+      });
+    }
+  }, [currentSession?.runningBash, currentSession?.userBashRunning, currentSessionId, bashStartTimes[currentSessionId]]);
 
   // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {
@@ -1926,7 +1983,10 @@ export const ClaudeChat: React.FC = () => {
       {/* Bash running indicator - shows for both user bash commands and Claude's bash tool */}
       {(currentSession?.runningBash || currentSession?.userBashRunning) && (
         <div className="bash-running-indicator">
-          <span className="bash-running-text">bash running...</span>
+          <span className="bash-running-text">
+            bash running<span className="bash-running-dots">{'.'.repeat(bashDotCounts[currentSessionId || ''] || 1)}</span>
+            <span className="bash-running-time">{bashElapsedTimes[currentSessionId || ''] || 0}s</span>
+          </span>
           <button 
             className="bash-cancel-btn"
             onClick={async () => {

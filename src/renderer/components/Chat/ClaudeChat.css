@@ -1710,14 +1710,22 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  background: rgba(var(--accent-rgb), 0.08);
-  border-top: 1px solid rgba(var(--accent-rgb), 0.25);
-  animation: bashPulse 3s ease-in-out infinite;
+  background: transparent;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
 }
 
-@keyframes bashPulse {
-  0%, 100% { opacity: 0.9; }
-  50% { opacity: 1; }
+.bash-running-dots {
+  display: inline-block;
+  width: 15px;
+  text-align: left;
+  font-family: 'Fira Code', monospace;
+}
+
+.bash-running-time {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  font-family: 'Fira Code', monospace;
+  margin-left: 8px;
 }
 
 /* Pending followup indicator */
