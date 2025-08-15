@@ -161,7 +161,7 @@ let isSpawningProcess = false;
 const processSpawnQueue = [];
 
 // Helper function to generate title with Sonnet
-async function generateTitle(sessionId, userMessage, socket) {
+async function generateTitle(sessionId, userMessage, socket, onSuccess) {
   try {
     console.log(`🏷️ Generating title for session ${sessionId}`);
     console.log(`🏷️ Message preview: "${userMessage.substring(0, 100)}..."`);
@@ -234,6 +234,8 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
             const eventName = `title:${sessionId}`;
             console.log(`🏷️ Emitting event: ${eventName} with data:`, { title });
             socket.emit(eventName, { title });
+            // Mark title as successfully generated
+            if (onSuccess) onSuccess();
           } else {
             console.log(`🏷️ Title too short or empty: "${title}"`);
           }
@@ -535,8 +537,20 @@ io.on('connection', (socket) => {
         // Only generate title if we have actual text content
         if (textContent && textContent.trim().length > 5) {
           console.log(`🏷️ Calling generateTitle for session ${sessionId}`);
-          generateTitle(sessionId, textContent, socket);
-          session.hasGeneratedTitle = true;
+          // Only mark as generated after successful generation
+          generateTitle(sessionId, textContent, socket, () => {
+            console.log(`🏷️ Title successfully generated for session ${sessionId}`);
+            session.hasGeneratedTitle = true;
+          });
+          // Add retry logic if title generation fails
+          setTimeout(() => {
+            if (!session.hasGeneratedTitle) {
+              console.log(`🏷️ Retrying title generation for session ${sessionId}`);
+              generateTitle(sessionId, textContent, socket, () => {
+                session.hasGeneratedTitle = true;
+              });
+            }
+          }, 5000); // Retry after 5 seconds if first attempt fails
         } else {
           console.log(`🏷️ Skipping title generation - text too short: "${textContent}"`);
         }

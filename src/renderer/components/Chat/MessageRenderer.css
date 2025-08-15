@@ -677,6 +677,20 @@ ol {
   padding: 0;
 }
 
+.edit-diff pre,
+pre.edit-diff {
+  font-family: 'Fira Code', monospace;
+  font-size: 7pt;
+  margin: 0;
+  padding: 4px 8px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  color: var(--color-grey);
+  background: transparent;
+  border: none;
+  overflow-x: auto;
+}
+
 .diff-section {
   margin: 0;
   padding: 0;

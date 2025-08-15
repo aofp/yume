@@ -1665,15 +1665,19 @@ const MessageRendererBase: React.FC<{
             : `lines ${lineNumbers[0]}-${lineNumbers[lineNumbers.length - 1]}`
           : '';
         
-        // Display the edit result with line numbers
+        // Display the edit result with line numbers AND the diff
         return (
           <div className="message tool-message">
             <div className="tool-use standalone">
               <IconEdit size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">edited</span>
-              <span className="tool-detail">{filePath}{lineRange ? `:${lineNumbers[0]}` : ''}</span>
-              {lineRange && <span className="tool-line-info">{lineRange}</span>}
+              <span className="tool-detail">{filePath}{lineNumbers.length > 0 ? `:${lineNumbers[0]}` : ''}</span>
             </div>
+            {diffLines.length > 0 && (
+              <div className="tool-result file-edit">
+                <pre className="edit-diff">{diffLines.join('\n')}</pre>
+              </div>
+            )}
           </div>
         );
       }

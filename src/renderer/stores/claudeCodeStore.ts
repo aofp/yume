@@ -1018,12 +1018,24 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     };
     
     console.log('[Store] Adding user message to session:', userMessage.id);
+    
+    // Only set streaming to true if it's not already streaming
+    // This prevents the thinking indicator from disappearing when sending followup messages
     set(state => ({
-      sessions: state.sessions.map(s => 
-        s.id === sessionToUse 
-          ? { ...s, messages: [...s.messages, userMessage], streaming: true }
-          : s
-      )
+      sessions: state.sessions.map(s => {
+        if (s.id === sessionToUse) {
+          // Preserve existing streaming state if already streaming (followup message)
+          // Only set to true if not currently streaming (new conversation)
+          const shouldSetStreaming = !s.streaming;
+          console.log('[Store] Current streaming state:', s.streaming, 'Setting streaming:', shouldSetStreaming ? 'true' : 'keeping existing');
+          return { 
+            ...s, 
+            messages: [...s.messages, userMessage], 
+            streaming: s.streaming || true // Keep existing true, or set to true
+          };
+        }
+        return s;
+      })
     }));
     
     try {

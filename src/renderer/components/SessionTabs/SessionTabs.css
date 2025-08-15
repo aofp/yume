@@ -237,11 +237,11 @@
   text-overflow: ellipsis;
   flex: 1;
   font-weight: 400;
-  font-family: 'Fira Code', monospace;
+  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
   user-select: none;
   -webkit-user-select: none;
   position: relative;
-  top: 1px;
+  top: 0;
 }
 
 .session-tab.active .tab-title {
@@ -253,8 +253,8 @@
   border: 1px solid var(--accent-color);
   border-radius: 2px;
   color: var(--text-secondary);
-  font-family: 'Fira Code', monospace;
-  font-size: 11px;
+  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 10px;
   padding: 2px 4px;
   margin-left: 4px;
   width: 120px;

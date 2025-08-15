@@ -596,7 +596,7 @@
 /* Input Area */
 .chat-input-container {
   flex: 0 0 auto;
-  padding: 3px 4px 3px 4px;
+  padding: 3px 4px 3px 4px; /* Default padding */
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   transition: background 0.2s ease;
@@ -604,6 +604,11 @@
   max-height: 40vh;
   overflow-y: auto;
   position: relative; /* Add relative positioning for attachment container */
+}
+
+/* macOS-specific padding */
+.platform-darwin .chat-input-container {
+  padding: 3px 4px 2px 4px; /* macOS only: top right bottom left */
 }
 
 /* Windows-specific fix to keep input visible when zoomed */
@@ -1672,6 +1677,24 @@
 @keyframes bashPulse {
   0%, 100% { opacity: 0.8; }
   50% { opacity: 0.95; }
+}
+
+/* Pending followup indicator */
+.pending-followup-indicator {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px 12px;
+  background: rgba(var(--accent-rgb), 0.02);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.08);
+  animation: bashPulse 2s ease-in-out infinite;
+}
+
+.pending-followup-text {
+  font-size: 11px;
+  color: var(--accent-color);
+  font-style: italic;
+  opacity: 0.9;
 }
 
 .bash-running-text {

@@ -158,6 +158,7 @@ export const ClaudeChat: React.FC = () => {
   const [commandCursorPos, setCommandCursorPos] = useState(0);
   const [bashCommandMode, setBashCommandMode] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState<{ [sessionId: string]: boolean }>({});
+  const [pendingFollowupMessage, setPendingFollowupMessage] = useState<string | null>(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
@@ -165,6 +166,8 @@ export const ClaudeChat: React.FC = () => {
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const previousSessionIdRef = useRef<string | null>(null);
   const isTabSwitchingRef = useRef(false);
+  const streamingStartTimeRef = useRef<{ [sessionId: string]: number }>({});
+  const pendingFollowupRef = useRef<{ sessionId: string; content: string; attachments: Attachment[]; timeoutId?: NodeJS.Timeout } | null>(null);
   
   const {
     sessions,
@@ -402,7 +405,7 @@ export const ClaudeChat: React.FC = () => {
     return () => observer.disconnect();
   }, [currentSessionId, isAtBottom]);
 
-  // Track thinking time per session
+  // Track thinking time per session and clean up streaming start times
   useEffect(() => {
     if (currentSession?.streaming && currentSessionId) {
       // Start timing when streaming begins
@@ -428,6 +431,15 @@ export const ClaudeChat: React.FC = () => {
         delete newElapsed[currentSessionId];
         return newElapsed;
       });
+      
+      // Clean up streaming start time after streaming ends
+      // (but only after a delay to ensure followups work correctly)
+      setTimeout(() => {
+        if (streamingStartTimeRef.current[currentSessionId]) {
+          console.log('[ClaudeChat] Cleaning up streaming start time for session:', currentSessionId);
+          delete streamingStartTimeRef.current[currentSessionId];
+        }
+      }, 10000); // Clean up after 10 seconds
     }
   }, [currentSession?.streaming, currentSessionId]);
 
@@ -610,6 +622,18 @@ export const ClaudeChat: React.FC = () => {
   // Track the previous session ID to know when we're actually switching sessions
   const prevSessionIdRef = useRef<string | null>(null);
   
+  // Clean up pending followup if session changes
+  useEffect(() => {
+    if (pendingFollowupRef.current && pendingFollowupRef.current.sessionId !== currentSessionId) {
+      console.log('[ClaudeChat] Cancelling pending followup due to session change');
+      if (pendingFollowupRef.current.timeoutId) {
+        clearTimeout(pendingFollowupRef.current.timeoutId);
+      }
+      pendingFollowupRef.current = null;
+      setPendingFollowupMessage(null);
+    }
+  }, [currentSessionId]);
+  
   useEffect(() => {
     // Only load draft when actually switching to a different session
     // Don't reload if it's the same session (prevents losing typed text)
@@ -652,17 +676,156 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSessionId]);
 
+  // Helper function to handle delayed sends
+  const handleDelayedSend = async (content: string, attachments: Attachment[], sessionId: string) => {
+    // Build message content with attachments
+    let messageContent = content;
+    if (attachments.length > 0) {
+      const contentBlocks = [];
+      
+      // Add all attachments as content blocks
+      for (const attachment of attachments) {
+        if (attachment.type === 'image') {
+          contentBlocks.push({
+            type: 'image',
+            source: {
+              type: 'base64',
+              media_type: attachment.content.startsWith('data:image/png') ? 'image/png' : 'image/jpeg',
+              data: attachment.content.split(',')[1]
+            }
+          });
+        } else if (attachment.type === 'text') {
+          // Include text attachments as part of the message
+          contentBlocks.push({
+            type: 'text',
+            text: `[Attached text]:\n${attachment.content}`
+          });
+        }
+      }
+      
+      // Add the main message text
+      if (content.trim()) {
+        contentBlocks.push({ type: 'text', text: content });
+      }
+      
+      messageContent = JSON.stringify(contentBlocks);
+    }
+    
+    // Clear drafts after sending
+    updateSessionDraft(sessionId, '', []);
+    
+    // Track when streaming starts for this session
+    const session = sessions.find(s => s.id === sessionId);
+    const isFirstMessage = !session?.messages?.some(m => m.type === 'user');
+    if (isFirstMessage || !streamingStartTimeRef.current[sessionId]) {
+      streamingStartTimeRef.current[sessionId] = Date.now();
+      console.log('[ClaudeChat] Recording streaming start time for delayed send (first message):', sessionId);
+    }
+    
+    await sendMessage(messageContent);
+    
+    // Mark as at bottom and force scroll after sending message
+    setIsAtBottom(prev => ({
+      ...prev,
+      [sessionId]: true
+    }));
+    
+    // Force scroll to bottom
+    requestAnimationFrame(() => {
+      if (chatContainerRef.current) {
+        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+      }
+    });
+  };
+
   const handleSend = async () => {
     console.log('[ClaudeChat] handleSend called', { 
       input: input.slice(0, 50), 
       attachments: attachments.length,
       streaming: currentSession?.streaming,
       sessionId: currentSessionId,
-      bashCommandMode 
+      bashCommandMode,
+      streamingStartTime: streamingStartTimeRef.current[currentSessionId || ''] 
     });
     
     // Allow sending messages during streaming (they'll be queued)
     if (!input.trim() && attachments.length === 0) return;
+    
+    // Check if we need to delay this message (followup sent too soon after streaming started)
+    // This prevents session crashes when sending followup messages too quickly
+    if (currentSession?.streaming && currentSessionId) {
+      const streamingStartTime = streamingStartTimeRef.current[currentSessionId];
+      if (streamingStartTime) {
+        const timeSinceStart = Date.now() - streamingStartTime;
+        const SAFE_DELAY = 5000; // 5 seconds - gives Claude CLI time to fully initialize
+        
+        if (timeSinceStart < SAFE_DELAY) {
+          const remainingDelay = SAFE_DELAY - timeSinceStart;
+          console.log(`[ClaudeChat] Delaying followup message by ${remainingDelay}ms to avoid session crash`);
+          
+          // Clear any existing pending followup
+          if (pendingFollowupRef.current?.timeoutId) {
+            clearTimeout(pendingFollowupRef.current.timeoutId);
+          }
+          
+          // Store the message to send later
+          const messageToSend = input;
+          const attachmentsToSend = [...attachments];
+          
+          // Clear input immediately to show user we got their message
+          setInput('');
+          setAttachments([]);
+          if (inputRef.current) {
+            inputRef.current.style.height = '44px';
+            inputRef.current.style.overflow = 'hidden';
+          }
+          
+          // Show pending indicator
+          setPendingFollowupMessage(`waiting ${Math.ceil(remainingDelay / 1000)}s to send followup...`)
+          
+          // Add to message history
+          if (input.trim() && currentSessionId) {
+            setMessageHistory(prev => ({
+              ...prev,
+              [currentSessionId]: [...(prev[currentSessionId] || []).filter(m => m !== input), input].slice(-50)
+            }));
+            setHistoryIndex(-1);
+          }
+          
+          // Schedule the actual send with countdown
+          const updateCountdown = () => {
+            const remaining = SAFE_DELAY - (Date.now() - streamingStartTime);
+            if (remaining > 0) {
+              setPendingFollowupMessage(`waiting ${Math.ceil(remaining / 1000)}s to send followup...`);
+              setTimeout(updateCountdown, 500);
+            } else {
+              setPendingFollowupMessage(null);
+            }
+          };
+          
+          // Start countdown updates
+          setTimeout(updateCountdown, 500);
+          
+          // Schedule the actual send
+          const timeoutId = setTimeout(() => {
+            console.log('[ClaudeChat] Sending delayed followup message now');
+            setPendingFollowupMessage(null);
+            pendingFollowupRef.current = null;
+            // Call sendMessage directly with the stored content
+            handleDelayedSend(messageToSend, attachmentsToSend, currentSessionId);
+          }, remainingDelay);
+          
+          pendingFollowupRef.current = {
+            sessionId: currentSessionId,
+            content: messageToSend,
+            attachments: attachmentsToSend,
+            timeoutId
+          };
+          
+          return;
+        }
+      }
+    }
     
     // Check for bash mode command (starts with !)
     if (bashCommandMode && input.startsWith('!')) {
@@ -949,6 +1112,14 @@ export const ClaudeChat: React.FC = () => {
       }
       // Clear drafts after sending
       updateSessionDraft(currentSessionId, '', []);
+      // Track when streaming starts for this session (for first message of a fresh session)
+      // This helps prevent followup crashes when session is just starting
+      const isFirstMessage = !currentSession?.messages?.some(m => m.type === 'user');
+      if (isFirstMessage || !streamingStartTimeRef.current[currentSessionId]) {
+        streamingStartTimeRef.current[currentSessionId] = Date.now();
+        console.log('[ClaudeChat] Recording streaming start time for session (first message):', currentSessionId);
+      }
+      
       await sendMessage(messageContent);
       
       // Mark as at bottom and force scroll after sending message
@@ -1647,6 +1818,13 @@ export const ClaudeChat: React.FC = () => {
         )}
         <div ref={messagesEndRef} />
       </div>
+      
+      {/* Pending followup indicator */}
+      {pendingFollowupMessage && (
+        <div className="pending-followup-indicator">
+          <span className="pending-followup-text">{pendingFollowupMessage}</span>
+        </div>
+      )}
       
       {/* Bash running indicator - shows for both user bash commands and Claude's bash tool */}
       {(currentSession?.runningBash || currentSession?.userBashRunning) && (
