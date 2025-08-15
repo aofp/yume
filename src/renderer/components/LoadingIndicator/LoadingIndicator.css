@@ -20,7 +20,7 @@
   top: 50%;
   left: 50%;
   border-radius: 50%;
-  opacity: 0.8;
+  opacity: 1;
   transform-origin: center;
   /* Animation set per circle */
   /* Ensure circles are visible */
@@ -33,6 +33,7 @@
     orbit-1 6s linear infinite,
     pulse-1 6s ease-in-out infinite;
   background-color: var(--accent-color, #ff9999);
+  filter: brightness(1.2);
 }
 
 .loading-indicator__circle--2 {
@@ -40,6 +41,7 @@
     orbit-2 6s linear infinite,
     pulse-2 6s ease-in-out infinite;
   background-color: var(--accent-color, #ff9999);
+  filter: brightness(1.2);
 }
 
 .loading-indicator__circle--3 {
@@ -47,6 +49,7 @@
     orbit-3 6s linear infinite,
     pulse-3 6s ease-in-out infinite;
   background-color: var(--accent-color, #ff9999);
+  filter: brightness(1.2);
 }
 
 /* Size variants */
@@ -83,39 +86,43 @@
 /* Color variants - use CSS variables for theme consistency */
 .loading-indicator--red .loading-indicator__circle {
   background-color: var(--accent-color, #ff9999);
+  filter: brightness(1.2);
 }
 
 .loading-indicator--magenta .loading-indicator__circle {
-  background-color: var(--accent-color-alt, #ff99cc);
+  background-color: var(--accent-color, #ff9999);
+  filter: brightness(1.2);
 }
 
 .loading-indicator--grey .loading-indicator__circle {
-  background-color: #808080;
+  background-color: var(--accent-color, #ff9999);
+  filter: brightness(1.2);
 }
 
 /* Default to accent color */
 .loading-indicator__circle {
   background-color: var(--accent-color, #ff9999);
+  filter: brightness(1.2);
 }
 
 /* Removed - using orbit animations instead */
 
 /* Smooth sine-wave pulse animations with subtle size changes */
 @keyframes pulse-1 {
-  0%, 100% { scale: 0.95; opacity: 0.8; }
+  0%, 100% { scale: 0.95; opacity: 0.9; }
   50% { scale: 1.1; opacity: 1; }
 }
 
 @keyframes pulse-2 {
-  0%, 100% { scale: 1.0; opacity: 0.9; }
-  33% { scale: 0.9; opacity: 0.8; }
+  0%, 100% { scale: 1.0; opacity: 0.95; }
+  33% { scale: 0.9; opacity: 0.9; }
   66% { scale: 1.1; opacity: 1; }
 }
 
 @keyframes pulse-3 {
   0%, 100% { scale: 1.1; opacity: 1; }
-  33% { scale: 1.0; opacity: 0.9; }
-  66% { scale: 0.9; opacity: 0.8; }
+  33% { scale: 1.0; opacity: 0.95; }
+  66% { scale: 0.9; opacity: 0.9; }
 }
 
 /* Smooth continuous orbit animations with dynamic spacing */

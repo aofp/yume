@@ -114,8 +114,10 @@ export const SessionTabs: React.FC = () => {
     const handleWheel = (e: WheelEvent) => {
       // Prevent default vertical scroll
       e.preventDefault();
-      // Apply vertical scroll delta as horizontal scroll
-      container.scrollLeft += e.deltaY;
+      // Apply both vertical and horizontal scroll deltas as horizontal scroll
+      // Use whichever delta is larger for better UX
+      const scrollAmount = Math.abs(e.deltaY) > Math.abs(e.deltaX) ? e.deltaY : e.deltaX;
+      container.scrollLeft += scrollAmount;
     };
 
     container.addEventListener('wheel', handleWheel, { passive: false });
