@@ -942,6 +942,15 @@ export const ClaudeChat: React.FC = () => {
                 return s;
               })
             }));
+            
+            // Auto-scroll if at bottom
+            if (isAtBottom[currentSessionId] !== false && chatContainerRef.current) {
+              requestAnimationFrame(() => {
+                if (chatContainerRef.current) {
+                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                }
+              });
+            }
           });
           
           // Listen for errors
@@ -969,6 +978,15 @@ export const ClaudeChat: React.FC = () => {
                 return s;
               })
             }));
+            
+            // Auto-scroll if at bottom
+            if (isAtBottom[currentSessionId] !== false && chatContainerRef.current) {
+              requestAnimationFrame(() => {
+                if (chatContainerRef.current) {
+                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                }
+              });
+            }
           });
           
           // Listen for completion
@@ -991,6 +1009,15 @@ export const ClaudeChat: React.FC = () => {
             
             // Force re-render
             useClaudeCodeStore.getState().sessions.find(s => s.id === currentSessionId);
+            
+            // Final auto-scroll if at bottom
+            if (isAtBottom[currentSessionId] !== false && chatContainerRef.current) {
+              requestAnimationFrame(() => {
+                if (chatContainerRef.current) {
+                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+                }
+              });
+            }
           });
           
         } catch (error) {
