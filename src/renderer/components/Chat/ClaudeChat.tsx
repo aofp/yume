@@ -901,8 +901,8 @@ export const ClaudeChat: React.FC = () => {
       }));
       
       // Windows CMD alias conversion
-      if (bashCommand.startsWith('c:')) {
-        const cmdCommand = bashCommand.slice(2).trim(); // Remove 'c:' prefix
+      if (bashCommand.startsWith('!')) {
+        const cmdCommand = bashCommand.slice(1).trim(); // Remove '!' prefix
         bashCommand = `cmd.exe /c "${cmdCommand}"`;
       }
       
