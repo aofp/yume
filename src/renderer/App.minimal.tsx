@@ -72,6 +72,7 @@ export const App: React.FC = () => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
+    document.body.classList.remove('dragging');
     
     // In Tauri, we need to handle drops differently
     if (window.__TAURI__) {
@@ -143,8 +144,10 @@ export const App: React.FC = () => {
   
   const handleGlobalDragOver = (e: React.DragEvent) => {
     e.preventDefault();
-    if (!isDragging) {
+    // Only show drag overlay for file/folder drops, not internal drags
+    if (e.dataTransfer.types.includes('Files') && !isDragging) {
       setIsDragging(true);
+      document.body.classList.add('dragging');
     }
   };
   
@@ -152,6 +155,7 @@ export const App: React.FC = () => {
     // Only set dragging to false if leaving the window entirely
     if (e.currentTarget === e.target) {
       setIsDragging(false);
+      document.body.classList.remove('dragging');
     }
   };
   

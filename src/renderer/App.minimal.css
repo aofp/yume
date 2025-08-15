@@ -96,6 +96,29 @@ body {
 .app-minimal.dragging {
   border: 2px dashed #ff9999;
   border-radius: 8px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* Prevent selection during any drag operation */
+body.dragging,
+body.dragging *,
+body.tab-dragging,
+body.tab-dragging * {
+  user-select: none !important;
+  -webkit-user-select: none !important;
+  cursor: default !important;
+}
+
+/* Prevent all interaction with chat area during tab dragging */
+body.tab-dragging .main-chat-area {
+  pointer-events: none !important;
+}
+
+/* But keep tabs interactive */
+body.tab-dragging .session-tabs,
+body.tab-dragging .session-tabs * {
+  pointer-events: auto !important;
 }
 
 /* Remove all default focus outlines */

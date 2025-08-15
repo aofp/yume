@@ -90,11 +90,6 @@
   line-height: 1.5;
 }
 
-.about-credits {
-  padding-top: 16px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
-}
-
 .about-author {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.4);

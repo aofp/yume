@@ -359,6 +359,7 @@ export const SessionTabs: React.FC = () => {
                     setIsDragging(true);
                     setDraggedTab(session.id);
                     dragPreview = createDragPreview();
+                    document.body.classList.add('tab-dragging');
                     console.log('Started dragging:', session.id);
                   }
                   
@@ -403,6 +404,9 @@ export const SessionTabs: React.FC = () => {
                 const handleMouseUp = (upEvent: MouseEvent) => {
                   document.removeEventListener('mousemove', handleMouseMove);
                   document.removeEventListener('mouseup', handleMouseUp);
+                  
+                  // Remove drag class from body
+                  document.body.classList.remove('tab-dragging');
                   
                   // Remove drag preview
                   if (dragPreview && document.body.contains(dragPreview)) {

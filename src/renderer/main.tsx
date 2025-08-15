@@ -250,7 +250,7 @@ function showKeyboardShortcutsHelp() {
     max-width: 90vw;
     color: rgba(255, 255, 255, 0.9);
     font-family: monospace;
-    font-size: 13px;
+    font-size: 13pt;
     line-height: 1.6;
     box-shadow: 0 8px 32px rgba(0, 0, 0, 0.8);
   `;
@@ -258,10 +258,10 @@ function showKeyboardShortcutsHelp() {
   // Create structured content with better formatting
   modal.innerHTML = `
     <div style="margin-bottom: 24px;">
-      <div style="color: #ff99cc; font-size: 11px; letter-spacing: 1px; margin-bottom: 16px;">KEYBOARD SHORTCUTS</div>
+      <div style="color: #ff99cc; font-size: 11pt; letter-spacing: 1px; margin-bottom: 16px;">KEYBOARD SHORTCUTS</div>
       
       <div style="margin-bottom: 16px;">
-        <div style="color: rgba(255, 255, 255, 0.4); font-size: 11px; margin-bottom: 8px;">tabs</div>
+        <div style="color: rgba(255, 255, 255, 0.4); font-size: 11pt; margin-bottom: 8px;">tabs</div>
         <div style="display: flex; align-items: center; margin-bottom: 4px;">
           <span style="color: rgba(255, 255, 255, 0.6);">new tab</span>
           <span style="flex: 1; border-bottom: 1px dotted rgba(255, 255, 255, 0.15); margin: 0 8px 2px 8px;"></span>
@@ -290,7 +290,7 @@ function showKeyboardShortcutsHelp() {
       </div>
       
       <div style="margin-bottom: 16px;">
-        <div style="color: rgba(255, 255, 255, 0.4); font-size: 11px; margin-bottom: 8px;">chat</div>
+        <div style="color: rgba(255, 255, 255, 0.4); font-size: 11pt; margin-bottom: 8px;">chat</div>
         <div style="display: flex; align-items: center; margin-bottom: 4px;">
           <span style="color: rgba(255, 255, 255, 0.6);">send</span>
           <span style="flex: 1; border-bottom: 1px dotted rgba(255, 255, 255, 0.15); margin: 0 8px 2px 8px;"></span>
@@ -319,7 +319,7 @@ function showKeyboardShortcutsHelp() {
       </div>
       
       <div>
-        <div style="color: rgba(255, 255, 255, 0.4); font-size: 11px; margin-bottom: 8px;">app</div>
+        <div style="color: rgba(255, 255, 255, 0.4); font-size: 11pt; margin-bottom: 8px;">app</div>
         <div style="display: flex; align-items: center; margin-bottom: 4px;">
           <span style="color: rgba(255, 255, 255, 0.6);">quit</span>
           <span style="flex: 1; border-bottom: 1px dotted rgba(255, 255, 255, 0.15); margin: 0 8px 2px 8px;"></span>
@@ -332,7 +332,7 @@ function showKeyboardShortcutsHelp() {
         </div>
       </div>
     </div>
-    <div style="text-align: center; color: rgba(255, 255, 255, 0.3); font-size: 11px; margin-top: 20px;">
+    <div style="text-align: center; color: rgba(255, 255, 255, 0.3); font-size: 11pt; margin-top: 20px;">
       press ? or click to close
     </div>
   `;
