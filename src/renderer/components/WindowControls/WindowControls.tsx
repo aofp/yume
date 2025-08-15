@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconX, IconMinus, IconSquare, IconSettings, IconHelp } from '@tabler/icons-react';
+import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp } from '@tabler/icons-react';
 import './WindowControls.css';
 
 interface WindowControlsProps {
@@ -12,6 +12,16 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   const isMac = navigator.platform.toLowerCase().includes('mac');
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
                    navigator.userAgent.toLowerCase().includes('windows');
+  
+  console.log('WindowControls platform detection:', {
+    platform: navigator.platform,
+    userAgent: navigator.userAgent,
+    isMac,
+    isWindows,
+    onHelpClick: !!onHelpClick,
+    onSettingsClick: !!onSettingsClick,
+    onHelpClickFunc: onHelpClick
+  });
   
   // Track window focus state
   const [isWindowFocused, setIsWindowFocused] = React.useState(true);
@@ -81,16 +91,28 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   // macOS style traffic lights
   if (isMac) {
     return (
-      <div className={`window-controls mac-controls ${!isWindowFocused ? 'inactive' : ''}`}>
-        <button className="mac-control close" onClick={handleClose}>
-          <span className="mac-control-icon">×</span>
-        </button>
-        <button className="mac-control minimize" onClick={handleMinimize}>
-          <span className="mac-control-icon">−</span>
-        </button>
-        <button className="mac-control maximize" onClick={handleMaximize}>
-          <span className="mac-control-icon">+</span>
-        </button>
+      <div className="mac-window-controls-wrapper">
+        <div className={`window-controls mac-controls ${!isWindowFocused ? 'inactive' : ''}`}>
+          <button className="mac-control close" onClick={handleClose}>
+            <span className="mac-control-icon">×</span>
+          </button>
+          <button className="mac-control minimize" onClick={handleMinimize}>
+            <span className="mac-control-icon">−</span>
+          </button>
+          <button className="mac-control maximize" onClick={handleMaximize}>
+            <span className="mac-control-icon">+</span>
+          </button>
+        </div>
+        <div className="window-controls mac-right-controls">
+          <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+            <span style={{ fontSize: '14px' }}>?</span>
+          </button>
+          {onSettingsClick && (
+            <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
+              <IconSettingsFilled size={14} />
+            </button>
+          )}
+        </div>
       </div>
     );
   }
@@ -98,14 +120,12 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   // Windows style controls
   return (
     <div className="window-controls">
-      {onHelpClick && (
-        <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
-          <IconHelp size={14} stroke={1.5} />
-        </button>
-      )}
+      <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+        <span style={{ fontSize: '14px' }}>?</span>
+      </button>
       {onSettingsClick && (
-        <button className="window-control settings" onClick={onSettingsClick}>
-          <IconSettings size={14} stroke={1.5} />
+        <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
+          <IconSettingsFilled size={14} />
         </button>
       )}
       <button className="window-control minimize" onClick={handleMinimize}>

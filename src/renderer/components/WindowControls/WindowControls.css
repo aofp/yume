@@ -4,9 +4,14 @@
   right: 0;
   display: flex;
   height: 28px;
-  z-index: 9999;
+  z-index: 100000;
   -webkit-app-region: no-drag;
   background: #000000;
+}
+
+/* macOS window controls wrapper */
+.mac-window-controls-wrapper {
+  position: relative;
 }
 
 /* macOS traffic light controls */
@@ -19,6 +24,18 @@
   gap: 8px;
   background: transparent;
   height: auto;
+  -webkit-app-region: no-drag;
+  z-index: 10002;
+}
+
+/* macOS right side controls (help and settings) */
+.mac-right-controls {
+  position: fixed;
+  top: 0;
+  right: 0;
+  display: flex;
+  height: 28px;
+  background: transparent;
   -webkit-app-region: no-drag;
   z-index: 10002;
 }
@@ -107,6 +124,15 @@
 }
 
 .window-control.settings:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: var(--accent-color);
+}
+
+.window-control.help {
+  width: 36px;
+}
+
+.window-control.help:hover {
   background-color: rgba(255, 255, 255, 0.15);
   color: var(--accent-color);
 }

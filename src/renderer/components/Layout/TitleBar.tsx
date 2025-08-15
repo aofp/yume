@@ -91,9 +91,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
             </span>
           </div>
         </div>
-        <button className="titlebar-settings" onClick={onSettingsClick}>
-          <IconSettings size={14} stroke={1.5} />
-        </button>
+        {/* Settings button removed - now in WindowControls */}
       </div>
       <AboutModal isOpen={showAboutModal} onClose={() => setShowAboutModal(false)} />
     </div>

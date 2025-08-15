@@ -2170,13 +2170,6 @@ export const ClaudeChat: React.FC = () => {
                   >
                     {percentage}% used
                   </button>
-                  <button 
-                    className="btn-help" 
-                    onClick={() => setShowHelpModal(true)}
-                    title="keyboard shortcuts (?)"
-                  >
-                    ?
-                  </button>
                 </>
               );
             })()}

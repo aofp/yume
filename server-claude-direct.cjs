@@ -79,6 +79,61 @@ let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMe
 let sessionStates = new Map();  // Map of sessionId -> state
 let sessionRetryCount = new Map();  // Map of sessionId -> retry count
 
+// Session persistence for recovery from crashes
+const SESSION_CACHE_FILE = path.join(os.tmpdir(), 'yurucode-sessions.json');
+
+// Load persisted sessions on startup
+function loadPersistedSessions() {
+  try {
+    if (fs.existsSync(SESSION_CACHE_FILE)) {
+      const data = fs.readFileSync(SESSION_CACHE_FILE, 'utf8');
+      const persistedSessions = JSON.parse(data);
+      console.log(`📂 Loading ${Object.keys(persistedSessions).length} persisted sessions`);
+      
+      // Only restore claudeSessionId for recent sessions (within last 2 hours)
+      const twoHoursAgo = Date.now() - (2 * 60 * 60 * 1000);
+      for (const [id, session] of Object.entries(persistedSessions)) {
+        if (session.lastActivity && session.lastActivity > twoHoursAgo && session.claudeSessionId) {
+          // Validate the session ID format before restoring
+          const isValidSessionId = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(session.claudeSessionId);
+          if (isValidSessionId) {
+            sessions.set(id, session);
+            sessionStates.set(id, SessionState.IDLE);
+            console.log(`✅ Restored session ${id} with claudeSessionId: ${session.claudeSessionId}`);
+          }
+        }
+      }
+    }
+  } catch (error) {
+    console.error('Failed to load persisted sessions:', error);
+  }
+}
+
+// Save sessions periodically
+function persistSessions() {
+  try {
+    const sessionsToSave = {};
+    for (const [id, session] of sessions) {
+      // Only persist essential data
+      sessionsToSave[id] = {
+        id: session.id,
+        claudeSessionId: session.claudeSessionId,
+        lastActivity: session.lastActivity || Date.now(),
+        workingDirectory: session.workingDirectory
+      };
+    }
+    fs.writeFileSync(SESSION_CACHE_FILE, JSON.stringify(sessionsToSave, null, 2));
+  } catch (error) {
+    console.error('Failed to persist sessions:', error);
+  }
+}
+
+// Load sessions on startup
+loadPersistedSessions();
+
+// Save sessions every 30 seconds
+setInterval(persistSessions, 30000);
+
 // macOS: Handle process cleanup on exit
 if (process.platform !== 'win32') {
   process.on('exit', () => {
@@ -472,9 +527,17 @@ io.on('connection', (socket) => {
       console.log(`📌 Session check - claudeSessionId: ${session.claudeSessionId}`);
       console.log(`📌 Session object keys: ${Object.keys(session).join(', ')}`);
       if (session.claudeSessionId) {
-        args.push('--resume', session.claudeSessionId);
-        console.log(`📌 ✅ RESUMING Claude session: ${session.claudeSessionId}`);
-        console.log(`⚠️ RESUMING WILL INCLUDE ALL PREVIOUS TOKENS FROM THIS CLAUDE SESSION!`);
+        // Validate session ID format (should be a UUID-like string)
+        const isValidSessionId = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i.test(session.claudeSessionId);
+        if (isValidSessionId) {
+          args.push('--resume', session.claudeSessionId);
+          console.log(`📌 ✅ RESUMING Claude session: ${session.claudeSessionId}`);
+          console.log(`⚠️ RESUMING WILL INCLUDE ALL PREVIOUS TOKENS FROM THIS CLAUDE SESSION!`);
+        } else {
+          console.log(`⚠️ Invalid session ID format, clearing: ${session.claudeSessionId}`);
+          session.claudeSessionId = undefined;
+          console.log(`🆕 Starting NEW Claude session (invalid session cleared)`);
+        }
       } else {
         console.log(`🆕 Starting NEW Claude session (no claudeSessionId found)`);
         console.log(`✨ This should start with ~0 tokens (only system prompt)`);
@@ -716,6 +779,7 @@ io.on('connection', (socket) => {
             // NOW we can save the session ID from a successful conversation
             if (jsonData.session_id && !jsonData.is_error) {
               session.claudeSessionId = jsonData.session_id;
+              session.lastActivity = Date.now(); // Update activity timestamp
               console.log(`📌 ✅ SAVED Claude session ID for resume: ${session.claudeSessionId}`);
             } else {
               console.log(`📌 ⚠️ NOT saving session ID - session_id: ${jsonData.session_id}, is_error: ${jsonData.is_error}`);
@@ -833,40 +897,44 @@ io.on('connection', (socket) => {
           // Clear the invalid session ID
           const session = sessions.get(sessionId);
           if (session) {
+            const oldSessionId = session.claudeSessionId;
             session.claudeSessionId = undefined;
             sessionRetryCount.set(sessionId, 0); // Reset retry count
             sessionStates.set(sessionId, SessionState.IDLE); // Reset state
-            console.log(`🔄 Cleared invalid Claude session ID for ${sessionId}`);
-          }
-          
-          // Clear streaming state
-          const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-          if (lastAssistantMessageId) {
+            console.log(`🔄 Cleared invalid Claude session ID for ${sessionId}: ${oldSessionId}`);
+            
+            // Auto-retry the message with a fresh session
+            console.log(`🔁 Auto-retrying message with fresh session...`);
+            
+            // Clear streaming state first
+            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+            if (lastAssistantMessageId) {
+              socket.emit(`message:${sessionId}`, {
+                type: 'assistant',
+                id: lastAssistantMessageId,
+                streaming: false,
+                timestamp: Date.now()
+              });
+              lastAssistantMessageIds.delete(sessionId);
+            }
+            
+            // Notify user about session recovery
             socket.emit(`message:${sessionId}`, {
-              type: 'assistant',
-              id: lastAssistantMessageId,
-              streaming: false,
+              type: 'system',
+              subtype: 'info',
+              message: 'session expired, starting fresh...',
               timestamp: Date.now()
             });
-            lastAssistantMessageIds.delete(sessionId);
+            
+            // Auto-retry after a brief delay to ensure cleanup
+            setTimeout(() => {
+              if (content && sessionStates.get(sessionId) === SessionState.IDLE) {
+                console.log(`🔁 Retrying message after session reset`);
+                // Trigger the same message again with cleared session
+                sendMessageToClaude(socket, sessionId, content, model, workingDirectory);
+              }
+            }, 100);
           }
-          
-          // Don't show the technical error to user
-          socket.emit(`message:${sessionId}`, {
-            type: 'system',
-            subtype: 'info',
-            message: 'starting fresh conversation...',
-            timestamp: Date.now()
-          });
-          
-          // Send result message to ensure UI clears streaming state
-          socket.emit(`message:${sessionId}`, {
-            type: 'result',
-            id: `${sessionId}-session-reset-${Date.now()}`,
-            sessionId,
-            streaming: false,
-            timestamp: Date.now()
-          });
         } else {
           // Show other errors to user
           socket.emit(`message:${sessionId}`, {
@@ -1204,6 +1272,9 @@ io.on('connection', (socket) => {
     console.log('Reason:', reason);
     console.log('Time:', new Date().toISOString());
     console.log('==================================');
+    
+    // Persist sessions on disconnect
+    persistSessions();
   });
 });
 

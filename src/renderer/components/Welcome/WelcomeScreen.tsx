@@ -194,17 +194,6 @@ export const WelcomeScreen: React.FC = () => {
         </div>
       </div>
       
-      {/* Help button - same position as in chat */}
-      <div className="welcome-help-container">
-        <button 
-          className="btn-help" 
-          onClick={() => setShowHelpModal(true)}
-          title="keyboard shortcuts (?)"
-        >
-          ?
-        </button>
-      </div>
-
       
       {/* Help Modal - using shared component */}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
