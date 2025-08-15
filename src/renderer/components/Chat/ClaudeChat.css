@@ -617,7 +617,7 @@
   max-height: 40vh; /* Limit to 40% of viewport height */
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 3px 4px 2px 4px;
+  padding: 3px 4px 3px 4px;
   overflow-y: auto; /* Allow scrolling if content gets too tall */
 }
 
@@ -1009,7 +1009,7 @@
 .btn-stats.low:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 1);
 }
 
 /* Yellow at 70-80% */
@@ -1353,6 +1353,74 @@
   grid-template-columns: repeat(2, minmax(150px, 1fr));
   gap: 8px;
   justify-content: center;
+}
+
+/* Usage graph spanning 2 columns at top */
+.stats-usage-graph {
+  grid-column: 1 / -1;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  margin-bottom: 4px;
+}
+
+.stats-usage-graph h4 {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  font-weight: 400;
+  margin-bottom: 8px;
+  text-transform: lowercase;
+}
+
+.usage-graph-container {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.usage-graph-bar {
+  height: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  position: relative;
+}
+
+.usage-graph-fill {
+  height: 100%;
+  background: linear-gradient(90deg, var(--accent-color), var(--accent-color));
+  transition: width 0.3s ease, background 0.3s ease;
+}
+
+.usage-graph-fill.low {
+  background: linear-gradient(90deg, rgba(255, 255, 255, 0.3), rgba(255, 255, 255, 0.4));
+}
+
+.usage-graph-fill.medium {
+  background: linear-gradient(90deg, rgba(255, 255, 100, 0.6), rgba(255, 255, 100, 0.8));
+}
+
+.usage-graph-fill.orange {
+  background: linear-gradient(90deg, rgba(255, 200, 100, 0.6), rgba(255, 200, 100, 0.8));
+}
+
+.usage-graph-fill.high {
+  background: linear-gradient(90deg, rgba(255, 100, 100, 0.6), rgba(255, 100, 100, 0.8));
+}
+
+.usage-graph-labels {
+  display: flex;
+  justify-content: space-between;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Fira Code', monospace;
+}
+
+.usage-label-center {
+  color: var(--accent-color);
+  font-weight: 500;
 }
 
 .stats-column {

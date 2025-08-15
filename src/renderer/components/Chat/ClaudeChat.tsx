@@ -2074,6 +2074,22 @@ export const ClaudeChat: React.FC = () => {
                 </div>
               ) : (
                 <>
+              <div className="stats-usage-graph">
+                <h4>context usage</h4>
+                <div className="usage-graph-container">
+                  <div className="usage-graph-bar">
+                    <div 
+                      className={`usage-graph-fill ${usageClass}`}
+                      style={{ width: `${percentage}%` }}
+                    />
+                  </div>
+                  <div className="usage-graph-labels">
+                    <span className="usage-label-left">{tokens.toLocaleString()} tokens</span>
+                    <span className="usage-label-center">{percentage}% used</span>
+                    <span className="usage-label-right">{contextWindowTokens.toLocaleString()} max</span>
+                  </div>
+                </div>
+              </div>
               <div className="stats-column">
                 <div className="stats-section">
                   <h4>usage & cost</h4>
