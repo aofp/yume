@@ -12,7 +12,7 @@ mod websocket;      // WebSocket server for real-time communication with fronten
 mod logged_server;  // Node.js server process management with logging
 mod port_manager;   // Dynamic port allocation for server instances
 
-use std::sync::Arc;
+use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tauri::{Manager, Listener};
 use tracing::{info, error};
 
@@ -161,6 +161,109 @@ pub fn run() {
             // The React frontend handles drops via HTML5 drag-and-drop API
             // and calls Tauri commands when folders are dropped
             
+            // Windows-specific minimum size enforcement with WndProc hook
+            #[cfg(target_os = "windows")]
+            {
+                use windows::Win32::Foundation::{HWND, LPARAM, WPARAM, LRESULT};
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    SetWindowLongPtrW, GetWindowLongPtrW, CallWindowProcW,
+                    SetWindowPos, SWP_NOMOVE, SWP_NOZORDER,
+                    GWLP_WNDPROC, WM_GETMINMAXINFO, WM_SIZING,
+                    MINMAXINFO
+                };
+                use windows::Win32::Foundation::RECT;
+                use std::sync::Mutex;
+                
+                if let Ok(hwnd) = window.hwnd() {
+                    let hwnd = HWND(hwnd.0);
+                    
+                    // Store the original window procedure
+                    static mut ORIGINAL_WNDPROC: Option<isize> = None;
+                    static INIT: Mutex<bool> = Mutex::new(false);
+                    
+                    unsafe {
+                        // Custom window procedure to enforce minimum size
+                        unsafe extern "system" fn wndproc(
+                            hwnd: HWND,
+                            msg: u32,
+                            wparam: WPARAM,
+                            lparam: LPARAM,
+                        ) -> LRESULT {
+                            match msg {
+                                WM_GETMINMAXINFO => {
+                                    // Enforce minimum size through MINMAXINFO
+                                    let info = lparam.0 as *mut MINMAXINFO;
+                                    if !info.is_null() {
+                                        (*info).ptMinTrackSize.x = 516;
+                                        (*info).ptMinTrackSize.y = 509;
+                                    }
+                                    LRESULT(0)
+                                }
+                                WM_SIZING => {
+                                    // Enforce minimum size during resize dragging
+                                    let rect = lparam.0 as *mut RECT;
+                                    if !rect.is_null() {
+                                        let width = (*rect).right - (*rect).left;
+                                        let height = (*rect).bottom - (*rect).top;
+                                        
+                                        if width < 516 {
+                                            (*rect).right = (*rect).left + 516;
+                                        }
+                                        if height < 509 {
+                                            (*rect).bottom = (*rect).top + 509;
+                                        }
+                                    }
+                                    LRESULT(1) // TRUE to indicate we modified the rect
+                                }
+                                _ => {
+                                    // Call the original window procedure for other messages
+                                    if let Some(original) = ORIGINAL_WNDPROC {
+                                        CallWindowProcW(
+                                            Some(std::mem::transmute(original)),
+                                            hwnd,
+                                            msg,
+                                            wparam,
+                                            lparam
+                                        )
+                                    } else {
+                                        LRESULT(0)
+                                    }
+                                }
+                            }
+                        }
+                        
+                        let mut init = INIT.lock().unwrap();
+                        if !*init {
+                            // Get and store the original window procedure
+                            let original = GetWindowLongPtrW(hwnd, GWLP_WNDPROC);
+                            ORIGINAL_WNDPROC = Some(original);
+                            
+                            // Set our custom window procedure
+                            SetWindowLongPtrW(
+                                hwnd,
+                                GWLP_WNDPROC,
+                                wndproc as usize as isize
+                            );
+                            
+                            *init = true;
+                            info!("Installed Windows WndProc hook for minimum size enforcement");
+                        }
+                        
+                        // Also force initial size to at least minimum
+                        let _ = SetWindowPos(
+                            hwnd,
+                            HWND::default(),
+                            0,
+                            0,
+                            516,
+                            509,
+                            SWP_NOMOVE | SWP_NOZORDER
+                        );
+                        info!("Set Windows initial size to 516x509");
+                    }
+                }
+            }
+            
             // macOS-specific window customization using Objective-C runtime
             // Creates a native macOS look with:
             // - Rounded corners
@@ -227,6 +330,9 @@ pub fn run() {
             {
                 let window_clone = window.clone();
                 let app_handle = app.handle().clone();
+                let resize_pending = Arc::new(AtomicBool::new(false));
+                let save_pending = Arc::new(AtomicBool::new(false));
+                
                 window.on_window_event(move |event| {
                     match event {
                         tauri::WindowEvent::CloseRequested { .. } => {
@@ -246,38 +352,52 @@ pub fn run() {
                         tauri::WindowEvent::Resized(size) => {
                             // Enforce minimum size constraints
                             if size.width < 516 || size.height < 509 {
-                                let new_width = size.width.max(516);
-                                let new_height = size.height.max(509);
-                                let window_for_resize = window_clone.clone();
-                                // Force resize back to minimum immediately
-                                std::thread::spawn(move || {
-                                    std::thread::sleep(std::time::Duration::from_millis(10));
+                                // Only resize if not already pending
+                                if !resize_pending.swap(true, Ordering::SeqCst) {
+                                    let new_width = size.width.max(516);
+                                    let new_height = size.height.max(509);
+                                    let window_for_resize = window_clone.clone();
+                                    let resize_flag = resize_pending.clone();
+                                    
+                                    // Set size synchronously to prevent flicker
                                     let _ = window_for_resize.set_size(tauri::PhysicalSize::new(new_width, new_height));
-                                });
-                                info!("Window too small ({}x{}), enforcing minimum size: {}x{}", size.width, size.height, new_width, new_height);
-                                // Don't save invalid size - return early
+                                    
+                                    // Reset flag after a delay
+                                    std::thread::spawn(move || {
+                                        std::thread::sleep(std::time::Duration::from_millis(100));
+                                        resize_flag.store(false, Ordering::SeqCst);
+                                    });
+                                }
                             } else {
-                                // Only save valid sizes
-                                // Auto-save window position/size changes
-                                // Debounced to avoid excessive disk writes during drag operations
-                                let window_for_save = window_clone.clone();
-                                let app_for_save = app_handle.clone();
-                                tauri::async_runtime::spawn(async move {
-                                    // Simple debounce - wait 500ms before saving
-                                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                                    save_window_state(&window_for_save, &app_for_save).await;
-                                });
+                                // Only save valid sizes with debounce
+                                if !save_pending.swap(true, Ordering::SeqCst) {
+                                    let window_for_save = window_clone.clone();
+                                    let app_for_save = app_handle.clone();
+                                    let save_flag = save_pending.clone();
+                                    
+                                    tauri::async_runtime::spawn(async move {
+                                        // Debounce - wait 500ms before saving
+                                        tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                                        save_window_state(&window_for_save, &app_for_save).await;
+                                        save_flag.store(false, Ordering::SeqCst);
+                                    });
+                                }
                             }
                         }
                         tauri::WindowEvent::Moved(_) => {
-                            // Auto-save window position changes
-                            let window_for_save = window_clone.clone();
-                            let app_for_save = app_handle.clone();
-                            tauri::async_runtime::spawn(async move {
-                                // Simple debounce - wait 500ms before saving
-                                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
-                                save_window_state(&window_for_save, &app_for_save).await;
-                            });
+                            // Auto-save window position changes with debounce
+                            if !save_pending.swap(true, Ordering::SeqCst) {
+                                let window_for_save = window_clone.clone();
+                                let app_for_save = app_handle.clone();
+                                let save_flag = save_pending.clone();
+                                
+                                tauri::async_runtime::spawn(async move {
+                                    // Debounce - wait 500ms before saving
+                                    tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                                    save_window_state(&window_for_save, &app_for_save).await;
+                                    save_flag.store(false, Ordering::SeqCst);
+                                });
+                            }
                         }
                         _ => {}
                     }

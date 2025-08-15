@@ -1474,6 +1474,23 @@ const MessageRendererBase: React.FC<{
         const oldLines = oldString.split('\n');
         const newLines = newString.split('\n');
         
+        // Find which lines actually changed
+        const changedLines: { type: 'removed' | 'added', line: string, lineNum: number }[] = [];
+        
+        // Add removed lines with their line numbers
+        oldLines.forEach((line, idx) => {
+          if (!newLines.includes(line)) {
+            changedLines.push({ type: 'removed', line, lineNum: idx + 1 });
+          }
+        });
+        
+        // Add new lines with their line numbers
+        newLines.forEach((line, idx) => {
+          if (!oldLines.includes(line)) {
+            changedLines.push({ type: 'added', line, lineNum: idx + 1 });
+          }
+        });
+        
         return (
           <div className="message tool-message">
             <div className="tool-use standalone">
@@ -1482,26 +1499,12 @@ const MessageRendererBase: React.FC<{
               <span className="tool-detail">{filePath}</span>
             </div>
             <div className="edit-diff">
-              {oldLines.length > 0 && oldLines[0] && (
-                <div className="diff-section removed">
-                  {oldLines.map((line, idx) => (
-                    <div key={`old-${idx}`} className="diff-line removed">
-                      <span className="diff-marker">-</span>
-                      <span className="diff-text">{line}</span>
-                    </div>
-                  ))}
+              {changedLines.map((change, idx) => (
+                <div key={idx} className={`diff-line ${change.type}`}>
+                  <span className="diff-marker">{change.type === 'removed' ? '-' : '+'}</span>
+                  <span className="diff-text">{change.line}</span>
                 </div>
-              )}
-              {newLines.length > 0 && newLines[0] && (
-                <div className="diff-section added">
-                  {newLines.map((line, idx) => (
-                    <div key={`new-${idx}`} className="diff-line added">
-                      <span className="diff-marker">+</span>
-                      <span className="diff-text">{line}</span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              ))}
             </div>
           </div>
         );

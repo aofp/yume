@@ -351,10 +351,10 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
                 // Update input to show @r
                 if (inputRef.current) {
                   const text = inputRef.current.value;
-                  const start = cursorPosition - trigger.length;
-                  const newValue = text.substring(0, start) + '@r ' + text.substring(cursorPosition);
+                  const start = cursorPosition - trigger.length - 1; // -1 for the @
+                  const newValue = text.substring(0, start) + '@r' + text.substring(cursorPosition);
                   inputRef.current.value = newValue;
-                  const newCursorPos = start + 3; // Position after '@r '
+                  const newCursorPos = start + 2; // Position after '@r'
                   inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
                   const changeEvent = new Event('input', { bubbles: true });
                   inputRef.current.dispatchEvent(changeEvent);
@@ -382,10 +382,10 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
                 // Update input to show @m
                 if (inputRef.current) {
                   const text = inputRef.current.value;
-                  const start = cursorPosition - trigger.length;
-                  const newValue = text.substring(0, start) + '@m ' + text.substring(cursorPosition);
+                  const start = cursorPosition - trigger.length - 1; // -1 for the @
+                  const newValue = text.substring(0, start) + '@m' + text.substring(cursorPosition);
                   inputRef.current.value = newValue;
-                  const newCursorPos = start + 3; // Position after '@m '
+                  const newCursorPos = start + 2; // Position after '@m'
                   inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
                   const changeEvent = new Event('input', { bubbles: true });
                   inputRef.current.dispatchEvent(changeEvent);
@@ -398,18 +398,21 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               // Navigate into folder
               if (inputRef.current) {
                 const text = inputRef.current.value;
-                const start = cursorPosition - trigger.length;
+                const start = cursorPosition - trigger.length - 1; // -1 for the @
                 
                 // Determine the folder path based on current context
                 let folderPath: string;
-                if (currentPath) {
-                  // We're already in a subfolder, just append the folder name
-                  folderPath = `${currentPath}/${selectedItem.name}`;
+                if (trigger.includes('/')) {
+                  // We're already in a subfolder path, replace everything after last folder
+                  const lastSlash = trigger.lastIndexOf('/');
+                  const basePath = trigger.substring(0, lastSlash);
+                  folderPath = `${basePath}/${selectedItem.name}`;
                 } else {
-                  // We're at root, use just the folder name
+                  // We're at root or searching, use just the folder name
                   folderPath = selectedItem.name;
                 }
                 
+                // Replace the entire @mention with the new path
                 const newValue = text.substring(0, start) + '@' + folderPath + '/' + text.substring(cursorPosition);
                 
                 // Update input and trigger

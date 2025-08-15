@@ -365,21 +365,27 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
     
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        
         // Try WSL first, then Git Bash, then cmd
         let output = Command::new("wsl")
             .current_dir(&cwd)
             .args(&["bash", "-c", &command])
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .or_else(|_| {
                 Command::new("bash")
                     .current_dir(&cwd)
                     .args(&["-c", &command])
+                    .creation_flags(CREATE_NO_WINDOW)
                     .output()
             })
             .or_else(|_| {
                 Command::new("cmd")
                     .current_dir(&cwd)
                     .args(&["/C", &command])
+                    .creation_flags(CREATE_NO_WINDOW)
                     .output()
             })
             .map_err(|e| format!("Failed to execute command: {}", e))?;

@@ -5,7 +5,7 @@
   "identifier": "be.yuru.yurucode",
   "build": {
     "frontendDist": "../dist/renderer",
-    "devUrl": "http://localhost:60592",
+    "devUrl": "http://localhost:60176",
     "beforeDevCommand": "npm run dev",
     "beforeBuildCommand": "npm run build"
   },
@@ -15,10 +15,10 @@
     "windows": [
       {
         "title": "yuru code",
-        "width": 516,
-        "height": 509,
-        "minWidth": 516,
-        "minHeight": 509,
+        "width": 500,
+        "height": 500,
+        "minWidth": 500,
+        "minHeight": 500,
         "resizable": true,
         "fullscreen": false,
         "decorations": false,
