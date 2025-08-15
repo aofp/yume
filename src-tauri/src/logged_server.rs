@@ -194,6 +194,80 @@ const activeProcesses = new Map();
 const lastAssistantMessageIds = new Map();
 const sessions = new Map(); // Store session data including working directory
 
+// Helper function to generate title with Sonnet
+async function generateTitle(sessionId, userMessage, socket) {
+    try {
+        log(`🏷️ Generating title for session ${sessionId}`);
+        log(`🏷️ Message preview: "${userMessage.substring(0, 100)}..."`);
+        
+        const titlePrompt = `user message: "${userMessage.substring(0, 200)}"
+task: reply with ONLY 1-3 words describing what user wants. lowercase only. no punctuation. be extremely concise. examples: "echo command", "file search", "debug issue"`;
+        
+        // Build args for title generation - simpler than main Claude
+        const titleArgs = ['--output-format', 'json', '--model', 'claude-3-5-sonnet-20241022', '--print'];
+        
+        let titleProcess;
+        
+        // On Windows, use WSL
+        if (process.platform === 'win32') {
+            const escapedArgs = titleArgs.map(arg => {
+                if (arg.includes(' ') || arg.includes('\n')) {
+                    return "'" + arg.replace(/'/g, "'\\''") + "'";
+                }
+                return arg;
+            }).join(' ');
+            
+            const wslArgs = ['-e', 'bash', '-c', 
+                `(if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else exit 127; fi)`
+            ];
+            
+            titleProcess = spawn('wsl.exe', wslArgs, {
+                stdio: ['pipe', 'pipe', 'pipe'],
+                windowsHide: true
+            });
+        } else {
+            // Direct spawn for non-Windows
+            titleProcess = spawn('claude', titleArgs, {
+                stdio: ['pipe', 'pipe', 'pipe']
+            });
+        }
+        
+        let output = '';
+        
+        titleProcess.stdout.on('data', (data) => {
+            output += data.toString();
+        });
+        
+        titleProcess.on('exit', (code) => {
+            if (code === 0) {
+                try {
+                    const lines = output.trim().split('\n');
+                    const lastLine = lines[lines.length - 1];
+                    const parsed = JSON.parse(lastLine);
+                    
+                    if (parsed.result) {
+                        const title = parsed.result.substring(0, 30).toLowerCase().trim();
+                        log(`🏷️ Generated title: "${title}"`);
+                        
+                        socket.emit(`title:${sessionId}`, {
+                            title
+                        });
+                    }
+                } catch (e) {
+                    log(`🏷️ Failed to parse title response: ${e.message}`);
+                }
+            }
+        });
+        
+        // Send the prompt
+        titleProcess.stdin.write(titlePrompt);
+        titleProcess.stdin.end();
+        
+    } catch (error) {
+        log(`🏷️ Failed to generate title: ${error.message}`);
+    }
+}
+
 socketServer.on('connection', (socket) => {
     log('Client connected: ' + socket.id);
     
@@ -349,8 +423,12 @@ socketServer.on('connection', (socket) => {
         
         activeProcesses.set(sessionId, claude);
         
-        // Title generation is handled by the main server (server-claude-direct.cjs)
-        // We don't generate titles here to avoid duplicates
+        // Generate title for first message in session
+        if (!session.hasGeneratedTitle && userMessage && userMessage.length > 5) {
+            log(`🏷️ Triggering title generation for session ${sessionId}`);
+            generateTitle(sessionId, userMessage, socket);
+            session.hasGeneratedTitle = true;
+        }
         
         // Send user message with proper encoding
         const inputContent = userMessage.endsWith('\\n') ? userMessage : userMessage + '\\n';

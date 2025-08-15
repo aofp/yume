@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { IconX, IconKeyboard } from '@tabler/icons-react';
 import './KeyboardShortcuts.css';
 
@@ -11,6 +11,20 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0 || 
                 navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
   const modKey = isMac ? 'cmd' : 'ctrl';
+  
+  // Handle keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '?' || e.key === 'Escape') {
+        e.preventDefault();
+        onClose();
+      }
+    };
+    
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
+  
   return (
     <div className="help-modal-overlay" onClick={onClose}>
       <div className="help-modal" onClick={(e) => e.stopPropagation()}>

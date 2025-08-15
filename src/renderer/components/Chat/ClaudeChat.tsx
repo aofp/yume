@@ -39,6 +39,7 @@ import { WelcomeScreen } from '../Welcome/WelcomeScreen';
 import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete';
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
+import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -157,6 +158,7 @@ export const ClaudeChat: React.FC = () => {
   const [commandCursorPos, setCommandCursorPos] = useState(0);
   const [bashCommandMode, setBashCommandMode] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState<{ [sessionId: string]: boolean }>({});
+  const [showHelpModal, setShowHelpModal] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
@@ -1165,6 +1167,16 @@ export const ClaudeChat: React.FC = () => {
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newValue = e.target.value;
     const cursorPosition = e.target.selectionStart;
+    
+    // Check if ? is typed as first character when input was empty
+    if (input === '' && newValue === '?') {
+      // Prevent the ? from being typed and show help
+      e.preventDefault();
+      setInput('');
+      setShowHelpModal(true);
+      return;
+    }
+    
     setInput(newValue);
     
     // Check for bash mode (starts with !)
@@ -1624,6 +1636,13 @@ export const ClaudeChat: React.FC = () => {
                   >
                     {percentage}% used
                   </button>
+                  <button 
+                    className="btn-help" 
+                    onClick={() => setShowHelpModal(true)}
+                    title="keyboard shortcuts (?)"
+                  >
+                    ?
+                  </button>
                 </>
               );
             })()}
@@ -1775,6 +1794,7 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       )}
+      {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
     </div>
   );
 };
