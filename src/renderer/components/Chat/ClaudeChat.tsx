@@ -2170,24 +2170,37 @@ export const ClaudeChat: React.FC = () => {
                 }}>
                   no active session
                 </div>
-              ) : (
-                <>
-              <div className="stats-usage-graph">
-                <h4>context usage</h4>
-                <div className="usage-graph-container">
-                  <div className="usage-graph-bar">
-                    <div 
-                      className={`usage-graph-fill ${percentageNum >= 90 ? 'high' : percentageNum >= 80 ? 'orange' : percentageNum >= 70 ? 'medium' : 'low'}`}
-                      style={{ width: `${percentage}%` }}
-                    />
-                  </div>
-                  <div className="usage-graph-labels">
-                    <span className="usage-label-left">{tokens.toLocaleString()} tokens</span>
-                    <span className="usage-label-center">{percentage}% used</span>
-                    <span className="usage-label-right">{contextWindowTokens.toLocaleString()} max</span>
-                  </div>
-                </div>
-              </div>
+              ) : (() => {
+                // Recalculate these values for the modal
+                const tokens = currentSession.analytics?.tokens?.total || 0;
+                const contextWindowTokens = 200000;
+                const rawPercentage = (tokens / contextWindowTokens * 100);
+                const percentageNum = Math.min(100, rawPercentage);
+                const percentage = percentageNum.toFixed(2);
+                
+                return (
+                  <>
+                    <div className="stats-column" style={{ gridColumn: 'span 2' }}>
+                      <div className="stats-section">
+                        <h4>context usage</h4>
+                        <div className="stat-row">
+                          <div className="stat-keys">
+                            <IconChartBar size={14} />
+                            <span className="stat-name">tokens</span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc">
+                            {tokens.toLocaleString()} / {contextWindowTokens.toLocaleString()} ({percentage}%)
+                          </span>
+                        </div>
+                        <div className="breakdown-bar">
+                          <div 
+                            className={`input-bar ${percentageNum >= 90 ? 'high' : percentageNum >= 80 ? 'orange' : percentageNum >= 70 ? 'medium' : ''}`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
               <div className="stats-column">
                 <div className="stats-section">
                   <h4>usage & cost</h4>
@@ -2290,8 +2303,9 @@ export const ClaudeChat: React.FC = () => {
                   </div>
                 </div>
               </div>
-                </>
-              )}
+                  </>
+                );
+              })()}
             </div>
           </div>
         </div>
