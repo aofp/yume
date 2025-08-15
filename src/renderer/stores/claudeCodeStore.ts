@@ -218,9 +218,26 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       const hexId = `${timestamp}-${random1}-${random2}`;
       // ALWAYS use unique session name to prevent duplicate sessions
       const sessionName = `session-${hexId}`;
-      // Use the provided directory, or default to home directory
-      // The user should always select a folder, but have a fallback
-      const workingDirectory = directory || 'C:\\';
+      // Use the provided directory, or get home directory from Tauri
+      let workingDirectory = directory;
+      
+      if (!workingDirectory && window.__TAURI__) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          // Try to get home directory from Tauri
+          workingDirectory = await invoke<string>('get_home_directory');
+          console.log('[Store] Using home directory from Tauri:', workingDirectory);
+        } catch (err) {
+          console.error('[Store] Failed to get home directory:', err);
+          // Platform-specific fallbacks
+          const isWindows = navigator.platform.toLowerCase().includes('win');
+          workingDirectory = isWindows ? 'C:\\Users\\' : '/Users';
+        }
+      } else if (!workingDirectory) {
+        // Fallback for non-Tauri environments
+        const isWindows = navigator.platform.toLowerCase().includes('win');
+        workingDirectory = isWindows ? 'C:\\Users\\' : '/Users';
+      }
       
       // STEP 1: Create tab immediately with pending status
       const tempSessionId = `temp-${hexId}`;
@@ -1069,13 +1086,25 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   loadPersistedSession: async (sessionId: string) => {
     set({ isLoadingHistory: true });
     try {
+      // Get home directory for resumed session
+      let workingDirectory = '/';
+      if (window.__TAURI__) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          workingDirectory = await invoke<string>('get_home_directory');
+        } catch (err) {
+          const isWindows = navigator.platform.toLowerCase().includes('win');
+          workingDirectory = isWindows ? 'C:\\Users\\' : '/Users';
+        }
+      }
+      
       // Create/resume session with existing ID
-      const result = await claudeCodeClient.createSession('resumed session', '/', {
+      const result = await claudeCodeClient.createSession('resumed session', workingDirectory, {
         sessionId
       });
       
       const messages = result.messages || [];
-      const workingDirectory = result.workingDirectory || '/';
+      workingDirectory = result.workingDirectory || workingDirectory;
       
       const session: Session = {
         id: sessionId,

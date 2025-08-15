@@ -46,6 +46,24 @@ pub struct GitStatus {
     pub renamed: Vec<String>,
 }
 
+/// Get the user's home directory path
+#[tauri::command]
+pub fn get_home_directory() -> Result<String, String> {
+    use dirs::home_dir;
+    
+    home_dir()
+        .map(|path| path.to_string_lossy().to_string())
+        .ok_or_else(|| "Could not determine home directory".to_string())
+}
+
+/// Get the current working directory
+#[tauri::command] 
+pub fn get_current_directory() -> Result<String, String> {
+    std::env::current_dir()
+        .map(|path| path.to_string_lossy().to_string())
+        .map_err(|e| format!("Failed to get current directory: {}", e))
+}
+
 /// Toggles the Chrome DevTools window
 /// Only available in debug builds for security reasons
 /// Triggered by F12 key in the frontend
@@ -318,22 +336,32 @@ pub fn toggle_console_visibility() -> Result<String, String> {
 /// Executes a bash command and returns the output
 /// Platform-specific implementation for Windows (via WSL/Git Bash), macOS, and Linux
 #[tauri::command]
-pub async fn execute_bash(command: String) -> Result<String, String> {
+pub async fn execute_bash(command: String, working_dir: Option<String>) -> Result<String, String> {
     use std::process::Command;
+    
+    // Use provided working directory or home directory as fallback
+    let cwd = working_dir.unwrap_or_else(|| {
+        dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| String::from("/"))
+    });
     
     #[cfg(target_os = "windows")]
     {
         // Try WSL first, then Git Bash, then cmd
         let output = Command::new("wsl")
+            .current_dir(&cwd)
             .args(&["bash", "-c", &command])
             .output()
             .or_else(|_| {
                 Command::new("bash")
+                    .current_dir(&cwd)
                     .args(&["-c", &command])
                     .output()
             })
             .or_else(|_| {
                 Command::new("cmd")
+                    .current_dir(&cwd)
                     .args(&["/C", &command])
                     .output()
             })
@@ -352,6 +380,7 @@ pub async fn execute_bash(command: String) -> Result<String, String> {
     #[cfg(not(target_os = "windows"))]
     {
         let output = Command::new("bash")
+            .current_dir(&cwd)
             .args(&["-c", &command])
             .output()
             .map_err(|e| format!("Failed to execute command: {}", e))?;

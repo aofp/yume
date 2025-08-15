@@ -656,9 +656,14 @@ export const ClaudeChat: React.FC = () => {
         }
         
         try {
-          // Execute the bash command via Tauri
+          // Execute the bash command via Tauri with session's working directory
           const { invoke } = await import('@tauri-apps/api/core');
-          const output = await invoke<string>('execute_bash', { command: bashCommand });
+          const session = sessions.find(s => s.id === currentSessionId);
+          const workingDir = session?.workingDirectory || undefined;
+          const output = await invoke<string>('execute_bash', { 
+            command: bashCommand,
+            workingDir: workingDir 
+          });
           
           // Add the output as an assistant message with proper structure
           const outputMessage = {

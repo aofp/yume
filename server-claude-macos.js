@@ -292,7 +292,8 @@ io.on('connection', (socket) => {
       const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       console.log(`✨ Creating new session: ${sessionId}`);
       
-      const workingDirectory = data.workingDirectory || process.cwd();
+      // Use provided directory, or home directory as fallback (NOT process.cwd() which would be the app bundle)
+      const workingDirectory = data.workingDirectory || homedir();
       
       const sessionData = {
         id: sessionId,
@@ -374,8 +375,8 @@ io.on('connection', (socket) => {
         // Clear the last assistant message ID for this session
         lastAssistantMessageIds.delete(sessionId);
 
-        // Use session's working directory
-        const processWorkingDir = session.workingDirectory || process.cwd();
+        // Use session's working directory, fallback to home directory (NOT process.cwd() in bundled app)
+        const processWorkingDir = session.workingDirectory || homedir();
         console.log(`📂 Using working directory: ${processWorkingDir}`);
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
@@ -405,6 +406,11 @@ io.on('connection', (socket) => {
       enhancedEnv.CLAUDE_SESSION_ID = sessionId;
       enhancedEnv.CLAUDE_INSTANCE = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
+      // Explicitly set PWD environment variable for Claude's bash commands
+      enhancedEnv.PWD = processWorkingDir;
+      enhancedEnv.HOME = homedir(); // Ensure HOME is set correctly
+      console.log(`🔧 Set PWD=${processWorkingDir} and HOME=${homedir()} in environment`);
+      
       // Add small delay to prevent race conditions with multiple Claude instances
       if (isSpawningProcess) {
         console.log(`⏳ Waiting for previous Claude process to initialize...`);
@@ -413,14 +419,28 @@ io.on('connection', (socket) => {
       
       isSpawningProcess = true;
       
-      const claudeProcess = spawn(CLAUDE_PATH, args, {
+      // Ensure the directory exists before spawning
+      if (!existsSync(processWorkingDir)) {
+        console.warn(`⚠️ Working directory does not exist: ${processWorkingDir}, using home directory`);
+        processWorkingDir = homedir();
+      }
+      
+      const spawnOptions = {
         cwd: processWorkingDir,
         env: enhancedEnv,
         shell: false,
         windowsHide: true,  // Always hide windows
         detached: true,  // Run in separate process group for better isolation
         stdio: ['pipe', 'pipe', 'pipe']  // Explicit stdio configuration
+      };
+      
+      console.log(`🚀 Spawning claude process with options:`, {
+        cwd: spawnOptions.cwd,
+        claudePath: CLAUDE_PATH,
+        args: args
       });
+      
+      const claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
       
       // Mark spawning as complete after a short delay
       setTimeout(() => {
