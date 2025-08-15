@@ -1029,6 +1029,19 @@ httpServer.listen(PORT, () => {
   console.log(`🖥️ Platform: ${platform()}`);
   console.log(`🏠 Home directory: ${homedir()}`);
   console.log(`✅ Server hardened for multiple concurrent sessions`);
+  
+  // Warmup bash command to prevent focus loss on first run
+  console.log('🔥 Warming up bash execution...');
+  const warmupCmd = spawn('echo', ['warmup'], {
+    shell: false,
+    stdio: 'pipe'
+  });
+  warmupCmd.on('close', () => {
+    console.log('✅ Bash warmup complete');
+  });
+  warmupCmd.on('error', (err) => {
+    console.warn('⚠️ Bash warmup failed:', err.message);
+  });
 });
 
 // Handle port already in use error

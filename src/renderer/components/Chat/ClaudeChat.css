@@ -633,10 +633,10 @@
   position: absolute;
   right: 4px;
   bottom: 3px;
-  background: #000;
+  background: transparent;
   border: 1px solid rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);
-  padding: 6px;
+  padding: 10px;
   border-radius: 4px;
   cursor: default;
   display: flex;
@@ -648,8 +648,11 @@
 }
 
 .stop-streaming-btn:hover {
-  background: #000;
-  border-color: var(--accent-color);
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  opacity: 1;
+  animation: none;
 }
 
 @keyframes pulse {
@@ -1707,14 +1710,14 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  background: rgba(var(--accent-rgb), 0.02);
-  border-top: 1px solid rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.25);
   animation: bashPulse 3s ease-in-out infinite;
 }
 
 @keyframes bashPulse {
-  0%, 100% { opacity: 0.8; }
-  50% { opacity: 0.95; }
+  0%, 100% { opacity: 0.9; }
+  50% { opacity: 1; }
 }
 
 /* Pending followup indicator */
@@ -1738,7 +1741,7 @@
 .bash-running-text {
   font-size: 10px;
   color: var(--accent-color);
-  opacity: 0.8;
+  opacity: 1;
   font-family: 'Fira Code', monospace;
   letter-spacing: 0.5px;
 }

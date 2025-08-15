@@ -1254,7 +1254,10 @@ export const ClaudeChat: React.FC = () => {
         if (historyIndex < sessionHistory.length - 1) {
           const newIndex = historyIndex + 1;
           setHistoryIndex(newIndex);
-          setInput(sessionHistory[sessionHistory.length - 1 - newIndex]);
+          const historyValue = sessionHistory[sessionHistory.length - 1 - newIndex];
+          setInput(historyValue);
+          // Update bash mode if retrieved command starts with !
+          setBashCommandMode(historyValue.startsWith('!'));
         }
       }
     } else if (e.key === 'ArrowDown') {
@@ -1273,11 +1276,15 @@ export const ClaudeChat: React.FC = () => {
           if (historyIndex > 0) {
             const newIndex = historyIndex - 1;
             setHistoryIndex(newIndex);
-            setInput(sessionHistory[sessionHistory.length - 1 - newIndex]);
+            const historyValue = sessionHistory[sessionHistory.length - 1 - newIndex];
+            setInput(historyValue);
+            // Update bash mode if retrieved command starts with !
+            setBashCommandMode(historyValue.startsWith('!'));
           } else if (historyIndex === 0) {
             // Return to the original input
             setHistoryIndex(-1);
             setInput('');
+            setBashCommandMode(false);
           }
         }
       }
