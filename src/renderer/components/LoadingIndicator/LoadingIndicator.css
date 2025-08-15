@@ -83,23 +83,7 @@
   height: 10px;
 }
 
-/* Color variants - use CSS variables for theme consistency */
-.loading-indicator--red .loading-indicator__circle {
-  background-color: var(--accent-color, #ff9999);
-  filter: brightness(1.2);
-}
-
-.loading-indicator--magenta .loading-indicator__circle {
-  background-color: var(--accent-color, #ff9999);
-  filter: brightness(1.2);
-}
-
-.loading-indicator--grey .loading-indicator__circle {
-  background-color: var(--accent-color, #ff9999);
-  filter: brightness(1.2);
-}
-
-/* Default to accent color */
+/* Always use accent color */
 .loading-indicator__circle {
   background-color: var(--accent-color, #ff9999);
   filter: brightness(1.2);

@@ -1664,8 +1664,8 @@
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  background: rgba(0, 255, 255, 0.02);
-  border-top: 1px solid rgba(0, 255, 255, 0.08);
+  background: rgba(var(--accent-rgb), 0.02);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.08);
   animation: bashPulse 3s ease-in-out infinite;
 }
 
@@ -1676,7 +1676,8 @@
 
 .bash-running-text {
   font-size: 10px;
-  color: rgba(0, 255, 255, 0.5);
+  color: var(--accent-color);
+  opacity: 0.8;
   font-family: 'Fira Code', monospace;
   letter-spacing: 0.5px;
 }
@@ -1685,15 +1686,16 @@
   padding: 2px 6px;
   font-size: 7pt;
   background: none;
-  border: 1px solid rgba(255, 0, 255, 0.15);
-  color: rgba(255, 0, 255, 0.5);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
+  opacity: 0.7;
   border-radius: 2px;
   cursor: default;
   transition: all 0.15s ease;
 }
 
 .bash-cancel-btn:hover {
-  border-color: rgba(255, 0, 255, 0.3);
-  color: rgba(255, 0, 255, 0.7);
-  background: rgba(255, 0, 255, 0.08);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  opacity: 1;
+  background: rgba(var(--accent-rgb), 0.1);
 }

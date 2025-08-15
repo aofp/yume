@@ -90,6 +90,28 @@
   line-height: 1.5;
 }
 
+.about-license {
+  margin: 16px 0;
+}
+
+.about-buy-license {
+  padding: 8px 20px;
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 500;
+  text-transform: lowercase;
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.about-buy-license:hover {
+  background: var(--accent-color);
+  color: #000;
+}
+
 .about-author {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.4);

@@ -8,7 +8,7 @@ const versionInfo = {
   version: '0.1.0',
   author: 'yurufrog',
   website: 'yuru.be',
-  isDemo: false // Set to true for demo version
+  isDemo: false // Set to true for demo version (limited to 1 session)
 };
 
 interface AboutModalProps {
@@ -54,7 +54,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           </div>
           
           <div className="about-version">
-            version {versionInfo.version} <span style={{ color: 'var(--accent-color)' }}>[{versionInfo.isDemo ? 'demo' : 'full'}]</span>
+            version {versionInfo.version} <span style={{ color: 'var(--accent-color)' }}>[{versionInfo.isDemo ? 'try' : 'pro'}]</span>
           </div>
           
           {versionInfo.isDemo && (
@@ -62,11 +62,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
               <button 
                 className="about-buy-license"
                 onClick={() => {
-                  console.log('Buy license clicked - placeholder');
-                  // TODO: Implement license purchase flow
+                  console.log('Get pro clicked - placeholder');
+                  // TODO: Implement pro version purchase flow
                 }}
               >
-                buy license
+                get pro
               </button>
             </div>
           )}
