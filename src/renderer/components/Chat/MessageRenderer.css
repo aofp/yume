@@ -786,6 +786,15 @@ body.platform-win32 .tool-detail {
   top: 1px;
 }
 
+/* Line info display for edit results */
+.tool-line-info {
+  color: rgba(255, 255, 255, 0.4);
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  margin-left: 6px;
+  opacity: 0.8;
+}
+
 /* Tool Results */
 .tool-result {
   display: inline-flex;

@@ -1558,6 +1558,16 @@ const MessageRendererBase: React.FC<{
         contentStr = resultContent.output;
       } else if (typeof resultContent === 'object' && resultContent.content !== undefined) {
         contentStr = resultContent.content;
+      } else if (Array.isArray(resultContent)) {
+        // Handle array of content blocks (e.g., from Task tool)
+        const textBlocks = resultContent.filter(block => block?.type === 'text' && block?.text);
+        if (textBlocks.length > 0) {
+          // Join all text blocks with newlines
+          contentStr = textBlocks.map(block => block.text).join('\n\n');
+        } else {
+          // No text blocks found, stringify as fallback
+          contentStr = JSON.stringify(resultContent, null, 2);
+        }
       } else {
         contentStr = typeof resultContent === 'string' ? resultContent : JSON.stringify(resultContent, null, 2);
       }
@@ -1629,17 +1639,43 @@ const MessageRendererBase: React.FC<{
         }
         let filePath = filePathMatch ? filePathMatch[1] : 'file';
         
-        // Convert Windows path to relative Unix path
-        // Remove C:\Users\muuko\Desktop\testproject\ or similar
-        filePath = filePath.replace(/^[A-Z]:\\.*\\(testproject|yurucode)\\/, '')
-                          .replace(/\\/g, '/');  // Convert backslashes to forward slashes
+        // Convert to relative path using formatPath
+        filePath = formatPath(filePath);
         
         // Find the actual diff part (after "Here's the result of running")
         const diffStartIdx = lines.findIndex(line => line.includes("Here's the result of running"));
         const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
         
-        // Hide edit results completely
-        return null;
+        // Extract line numbers from the diff output
+        // Look for lines like "   473→/* macOS-specific..." 
+        const lineNumberRegex = /^\s*(\d+)→/;
+        let lineNumbers: number[] = [];
+        diffLines.forEach(line => {
+          const match = line.match(lineNumberRegex);
+          if (match) {
+            lineNumbers.push(parseInt(match[1]));
+          }
+        });
+        
+        // Get unique line numbers and create a range
+        lineNumbers = [...new Set(lineNumbers)].sort((a, b) => a - b);
+        const lineRange = lineNumbers.length > 0 
+          ? lineNumbers.length === 1 
+            ? `line ${lineNumbers[0]}` 
+            : `lines ${lineNumbers[0]}-${lineNumbers[lineNumbers.length - 1]}`
+          : '';
+        
+        // Display the edit result with line numbers
+        return (
+          <div className="message tool-message">
+            <div className="tool-use standalone">
+              <IconEdit size={14} stroke={1.5} className="tool-icon" />
+              <span className="tool-action">edited</span>
+              <span className="tool-detail">{filePath}{lineRange ? `:${lineNumbers[0]}` : ''}</span>
+              {lineRange && <span className="tool-line-info">{lineRange}</span>}
+            </div>
+          </div>
+        );
       }
       
       // Check if this is a Read operation result (already have prevMessage from above)

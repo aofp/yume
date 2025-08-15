@@ -470,6 +470,11 @@
   z-index: 100;
 }
 
+/* macOS-specific adjustment for keyboard shortcuts button */
+.platform-darwin .welcome-help-container {
+  bottom: 5px; /* Move up exactly 1px on macOS */
+}
+
 /* Import btn-help styles from ClaudeChat.css */
 .btn-help {
   background: transparent;
