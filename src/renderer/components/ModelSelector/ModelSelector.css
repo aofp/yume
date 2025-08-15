@@ -1,7 +1,6 @@
 .model-selector {
   position: relative;
   display: inline-block;
-  margin-bottom: 1px;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -25,7 +24,7 @@
 .model-selector-trigger.highlighted {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 1);
 }
 
 /* Windows-specific positioning */

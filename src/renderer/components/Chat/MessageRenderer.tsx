@@ -1341,10 +1341,14 @@ const MessageRendererBase: React.FC<{
       
       console.log(`[MessageRenderer] 🤖 FINAL - Returning JSX for message ${message.id}`);
       
+      // During streaming, if there's no content yet, don't render anything
+      // The thinking indicator is shown separately in ClaudeChat
+      const hasTextContent = textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim()));
+      
       return (
         <>
           {/* Render text content in message bubble if there is any */}
-          {textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim())) && (
+          {hasTextContent && (
             <div className="message assistant">
               <div className="message-content">
                 <div className="message-bubble">

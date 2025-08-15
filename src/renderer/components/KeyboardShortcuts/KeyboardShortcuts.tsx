@@ -215,6 +215,20 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
+                <span className="key-btn">@</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">mention</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">/</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">commands</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
                 <span className="key-btn">!</span>
               </div>
               <span className="shortcut-dots"></span>
@@ -226,20 +240,6 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               </div>
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">cmd.exe /c</span>
-            </div>
-            <div className="shortcut-item">
-              <div className="shortcut-keys">
-                <span className="key-btn">/</span>
-              </div>
-              <span className="shortcut-dots"></span>
-              <span className="shortcut-desc">commands</span>
-            </div>
-            <div className="shortcut-item">
-              <div className="shortcut-keys">
-                <span className="key-btn">@</span>
-              </div>
-              <span className="shortcut-dots"></span>
-              <span className="shortcut-desc">mention</span>
             </div>
           </div>
           

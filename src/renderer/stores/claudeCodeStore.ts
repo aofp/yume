@@ -500,7 +500,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       message: {
                         ...message.message,
                         content: finalContent
-                      }
+                      },
+                      streaming: message.streaming // Explicitly preserve streaming flag
                     };
                   } else {
                     existingMessages[existingIndex] = message;

@@ -48,7 +48,7 @@
 .titlebar-settings:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 1);
 }
 
 
@@ -256,7 +256,7 @@
 .stats-btn:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 1);
 }
 
 /* Stats Modal */
