@@ -70,6 +70,7 @@ export interface Session {
   runningBash?: boolean; // Track if bash command is currently running
   userBashRunning?: boolean; // Track if user's bash command (!) is running
   bashProcessId?: string; // Current bash process ID for cancellation
+  watermarkImage?: string; // Base64 or URL for watermark image
 }
 
 interface ClaudeCodeStore {
@@ -80,6 +81,9 @@ interface ClaudeCodeStore {
   
   // Model
   selectedModel: string;
+  
+  // Watermark
+  globalWatermarkImage: string | null; // Global watermark for all sessions
   
   // Streaming (deprecated - now per-session)
   streamingMessage: string;
@@ -117,6 +121,9 @@ interface ClaudeCodeStore {
   configureMcpServers: (servers: any) => Promise<void>;
   setPermissionMode: (mode: 'default' | 'acceptEdits' | 'bypassPermissions' | 'plan') => void;
   updateAllowedTools: (tools: string[]) => void;
+  
+  // Watermark
+  setGlobalWatermark: (image: string | null) => void;
 }
 
 // Helper function to track file changes from tool operations
@@ -199,6 +206,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   currentSessionId: null,
   persistedSessionId: null,
   selectedModel: 'claude-opus-4-1-20250805',
+  globalWatermarkImage: null,
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],
@@ -1610,13 +1618,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   updateAllowedTools: (tools) => {
     // Tool allowlist would be updated here
     console.log('Allowed tools:', tools);
+  },
+  
+  setGlobalWatermark: (image: string | null) => {
+    set({ globalWatermarkImage: image });
   }
 }),
     {
       name: 'claude-code-storage',
       partialize: (state) => ({
-        // Only persist model selection - sessions should be ephemeral
-        selectedModel: state.selectedModel
+        // Only persist model selection and watermark - sessions should be ephemeral
+        selectedModel: state.selectedModel,
+        globalWatermarkImage: state.globalWatermarkImage
         // Do NOT persist sessionId - sessions should not survive app restarts
       })
     }

@@ -40,6 +40,7 @@ import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete'
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
+import { Watermark } from '../Watermark/Watermark';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -139,6 +140,7 @@ export const ClaudeChat: React.FC = () => {
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [isTextareaFocused, setIsTextareaFocused] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
@@ -871,6 +873,12 @@ export const ClaudeChat: React.FC = () => {
         if (inputRef.current) {
           inputRef.current.style.height = '44px';
           inputRef.current.style.overflow = 'hidden';
+          // Maintain focus on Windows to prevent focus loss
+          if (navigator.platform.includes('Win')) {
+            requestAnimationFrame(() => {
+              inputRef.current?.focus();
+            });
+          }
         }
         
         try {
@@ -1497,7 +1505,18 @@ export const ClaudeChat: React.FC = () => {
     setInput(newValue);
     
     // Check for bash mode (starts with !)
-    setBashCommandMode(newValue.startsWith('!'));
+    const wasInBashMode = bashCommandMode;
+    const isNowBashMode = newValue.startsWith('!');
+    
+    if (wasInBashMode !== isNowBashMode) {
+      setBashCommandMode(isNowBashMode);
+      // Preserve focus when entering/exiting bash mode on Windows
+      if (navigator.platform.includes('Win')) {
+        requestAnimationFrame(() => {
+          inputRef.current?.focus();
+        });
+      }
+    }
     
     // Only check for triggers if textarea is focused
     const isTextareaFocused = document.activeElement === e.target;
@@ -1917,10 +1936,12 @@ export const ClaudeChat: React.FC = () => {
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             style={{ height: '44px' }}
+            onFocus={() => setIsTextareaFocused(true)}
             onBlur={() => {
               // Close autocomplete when textarea loses focus
               setMentionTrigger(null);
               setCommandTrigger(null);
+              setIsTextareaFocused(false);
             }}
             onContextMenu={(e) => {
               // Allow default context menu for right-click paste
@@ -1928,6 +1949,7 @@ export const ClaudeChat: React.FC = () => {
             }}
             disabled={false}
           />
+          <Watermark inputLength={input.length} isFocused={isTextareaFocused} isStreaming={currentSession?.streaming} />
           {currentSession?.streaming && (
             <button 
               className="stop-streaming-btn"

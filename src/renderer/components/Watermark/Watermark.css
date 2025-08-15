@@ -1,0 +1,33 @@
+.watermark-container {
+  position: absolute;
+  right: 1px;
+  bottom: 1px;
+  width: 42px;
+  height: 42px;
+  z-index: 10;
+  pointer-events: none;
+  transition: opacity 0.3s ease;
+  opacity: 0.8;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  align-items: flex-end;
+  justify-content: flex-end;
+}
+
+.watermark-container.full-opacity {
+  opacity: 1;
+}
+
+.watermark-container.fade-out {
+  opacity: 0.1;
+}
+
+.watermark-image {
+  max-width: 42px;
+  max-height: 42px;
+  object-fit: contain;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-user-drag: none;
+}

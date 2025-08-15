@@ -1,6 +1,7 @@
-import React, { useState, useEffect } from 'react';
-import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette } from '@tabler/icons-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette, IconPhoto, IconTrash } from '@tabler/icons-react';
 import './SettingsModal.css';
+import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 
 // Access the electron API exposed by preload script
 declare global {
@@ -54,6 +55,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [zoomLevel, setZoomLevel] = useState(0);
   const [accentColor, setAccentColor] = useState('#dddddd');
   const [showColorPicker, setShowColorPicker] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { globalWatermarkImage, setGlobalWatermark } = useClaudeCodeStore();
 
   useEffect(() => {
     // Get current zoom level
@@ -164,6 +167,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     localStorage.setItem('accentColor', color);
   };
 
+  const handleWatermarkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    // Check if it's an image
+    if (!file.type.startsWith('image/')) {
+      console.error('selected file is not an image');
+      return;
+    }
+
+    // Convert to base64
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      setGlobalWatermark(base64);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveWatermark = () => {
+    setGlobalWatermark(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   const getZoomPercentage = () => {
     // Convert zoom level to percentage (0 = 100%, 1 = 110%, -1 = 90%, etc.)
     return 100 + (zoomLevel * 10);
@@ -252,6 +281,41 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <span className="color-value">{accentColor}</span>
                 </button>
                 
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h4>watermark</h4>
+              <div className="watermark-controls">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleWatermarkUpload}
+                  style={{ display: 'none' }}
+                  id="watermark-upload"
+                />
+                {globalWatermarkImage ? (
+                  <div className="watermark-preview">
+                    <img 
+                      src={globalWatermarkImage} 
+                      alt="watermark preview" 
+                      className="watermark-thumb"
+                    />
+                    <button 
+                      className="watermark-remove"
+                      onClick={handleRemoveWatermark}
+                      title="remove watermark"
+                    >
+                      <IconTrash size={14} />
+                    </button>
+                  </div>
+                ) : (
+                  <label htmlFor="watermark-upload" className="watermark-upload-btn">
+                    <IconPhoto size={14} />
+                    <span>upload image</span>
+                  </label>
+                )}
               </div>
             </div>
           </div>
