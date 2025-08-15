@@ -269,24 +269,24 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="settings-section">
-              <h4>accent color</h4>
-              <div className="color-picker-container">
-                <button 
-                  className="color-preview"
-                  onClick={() => setShowColorPicker(!showColorPicker)}
-                  title="click to select color"
-                >
-                  <span className="color-square" style={{ backgroundColor: accentColor }} />
-                  <span className="color-value">{accentColor}</span>
-                </button>
-                
+            <div className="settings-row">
+              <div className="settings-section half-width">
+                <h4>accent color</h4>
+                <div className="color-picker-container">
+                  <button 
+                    className="color-preview"
+                    onClick={() => setShowColorPicker(!showColorPicker)}
+                    title="click to select color"
+                  >
+                    <span className="color-square" style={{ backgroundColor: accentColor }} />
+                    <span className="color-value">{accentColor}</span>
+                  </button>
+                </div>
               </div>
-            </div>
 
-            <div className="settings-section">
-              <h4>watermark</h4>
-              <div className="watermark-controls">
+              <div className="settings-section half-width">
+                <h4>watermark</h4>
+                <div className="watermark-controls">
                 <input
                   ref={fileInputRef}
                   type="file"
@@ -318,6 +318,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 )}
               </div>
             </div>
+          </div>
           </div>
         </div>
       </div>

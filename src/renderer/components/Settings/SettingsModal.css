@@ -19,7 +19,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 90%;
-  max-width: 238px;
+  max-width: 320px;
   max-height: 80vh;
   overflow-y: auto;
   user-select: none;
@@ -66,6 +66,17 @@
 }
 
 .settings-section:last-child {
+  margin-bottom: 0;
+}
+
+.settings-row {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.settings-row .half-width {
+  flex: 1;
   margin-bottom: 0;
 }
 
@@ -127,7 +138,7 @@
 .color-picker-container {
   position: relative;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
 }
 
 .color-preview {
@@ -309,7 +320,7 @@
   display: flex;
   align-items: center;
   gap: 12px;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .watermark-upload-btn {
@@ -328,8 +339,8 @@
 
 .watermark-upload-btn:hover {
   background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.15);
-  color: #bbb;
+  border-color: var(--accent-color);
+  color: var(--accent-color);
 }
 
 .watermark-preview {
@@ -354,16 +365,16 @@
   justify-content: center;
   width: 24px;
   height: 24px;
-  background: rgba(255, 0, 0, 0.1);
-  border: 1px solid rgba(255, 0, 0, 0.2);
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: 4px;
-  color: #ff6666;
+  color: var(--accent-color);
   cursor: default;
   transition: all 0.2s;
 }
 
 .watermark-remove:hover {
-  background: rgba(255, 0, 0, 0.2);
-  border-color: rgba(255, 0, 0, 0.3);
-  color: #ff8888;
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
 }
