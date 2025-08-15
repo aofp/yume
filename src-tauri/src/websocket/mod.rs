@@ -141,6 +141,7 @@ async fn handle_connection(
 
 /// Routes incoming WebSocket messages to appropriate handlers
 /// Manages Claude session lifecycle and message passing
+#[allow(dead_code)]
 async fn handle_socket_message(
     msg: SocketMessage,
     claude_manager: &Arc<ClaudeManager>,
@@ -213,6 +214,7 @@ async fn handle_socket_message(
 /// Converts WSL paths to Windows paths
 /// Example: /mnt/c/Users -> C:\Users
 /// Required for Windows compatibility when paths come from WSL
+#[allow(dead_code)]
 fn convert_wsl_path(path: &str) -> String {
     if path.starts_with("/mnt/") && path.len() > 6 {
         let parts: Vec<&str> = path[5..].split('/').collect();

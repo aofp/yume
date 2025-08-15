@@ -50,7 +50,7 @@ pub fn run() {
             let claude_manager = Arc::new(ClaudeManager::new());
 
             // Dynamic port allocation strategy to avoid conflicts
-            // Each app instance gets its own port in the 60000-61000 range
+            // Each app instance gets its own port in the 20000-65000 range
             // This prevents multiple instances from conflicting
             let server_port = {
                 info!("Allocating dynamic port for this instance");

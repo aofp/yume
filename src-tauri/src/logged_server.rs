@@ -802,6 +802,7 @@ server.listen(PORT, '0.0.0.0', () => {
 
 /// Returns the port number where the server is running
 /// Returns None if the server hasn't been started yet
+#[allow(dead_code)]
 pub fn get_server_port() -> Option<u16> {
     SERVER_PORT.lock().ok()?.clone()
 }

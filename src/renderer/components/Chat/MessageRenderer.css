@@ -797,7 +797,7 @@ pre.edit-diff {
 /* Windows-specific adjustment for tool-detail positioning */
 body.platform-win32 .tool-detail {
   position: relative;
-  top: 1px;
+  top: 0px;
 }
 
 /* Line info display for edit results */
@@ -830,7 +830,7 @@ body.platform-win32 .tool-detail {
 
 .elapsed-time {
   color: #808080;
-  font-size: 8pt;
+  font-size: 7pt;
   font-family: 'Fira Code', monospace;
   padding: 0 !important;
   margin: 0 !important;

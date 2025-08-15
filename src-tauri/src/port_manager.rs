@@ -3,7 +3,7 @@
 /// when running multiple instances of the application
 /// 
 /// Port allocation strategy:
-/// - Uses ports in the 60000-61000 range to avoid common service conflicts
+/// - Uses ports in the 20000-65000 range to avoid common service conflicts
 /// - First tries random ports for better distribution
 /// - Falls back to sequential search if random fails
 /// - Has hardcoded fallback ports as last resort
@@ -17,7 +17,7 @@ use tracing::{info, warn};
 // Note: This is per-process, not shared between app instances
 static ALLOCATED_PORTS: Mutex<Vec<u16>> = Mutex::new(Vec::new());
 
-/// Finds an available port in the range 60000-61000
+/// Finds an available port in the range 20000-65000
 /// 
 /// Algorithm:
 /// 1. Try random ports for first half of attempts (better distribution)
@@ -31,13 +31,13 @@ pub fn find_available_port() -> Option<u16> {
     const MAX_ATTEMPTS: u32 = 500; // Increased attempts
     
     // Start with a random port in the range
-    let start_port = rng.gen_range(60000..=61000);
+    let start_port = rng.gen_range(20000..=65000);
     
     info!("Searching for available port starting from {}", start_port);
     
     // Try random ports first
     while attempts < MAX_ATTEMPTS / 2 {
-        let port = rng.gen_range(60000..=61000);
+        let port = rng.gen_range(20000..=65000);
         // ONLY check if port is actually available - don't use ALLOCATED_PORTS
         // because it's not shared between processes
         if is_port_available(port) {
@@ -49,8 +49,8 @@ pub fn find_available_port() -> Option<u16> {
     }
     
     // If random didn't work, try sequential from start_port
-    for offset in 0..=1000 {
-        let port = 60000 + ((start_port - 60000 + offset) % 1001);
+    for offset in 0..=45000 {
+        let port = 20000 + ((start_port - 20000 + offset) % 45001);
         if is_port_available(port) {
             info!("Found available port: {}", port);
             mark_port_allocated(port);
@@ -62,7 +62,7 @@ pub fn find_available_port() -> Option<u16> {
         }
     }
     
-    warn!("Could not find an available port in range 60000-61000 after {} attempts", attempts);
+    warn!("Could not find an available port in range 20000-65000 after {} attempts", attempts);
     None
 }
 
@@ -97,6 +97,7 @@ fn mark_port_allocated(port: u16) {
 
 /// Clears all allocated ports from the tracking list
 /// Used for cleanup, though ports are freed when processes exit
+#[allow(dead_code)]
 pub fn clear_allocated_ports() {
     let mut allocated = ALLOCATED_PORTS.lock().unwrap();
     allocated.clear();
@@ -108,7 +109,7 @@ pub fn clear_allocated_ports() {
 /// Last resort returns 3001 (common development port) even if occupied
 pub fn get_fallback_port() -> u16 {
     // Try a few fallback ports in case dynamic allocation fails
-    let fallbacks = vec![60001, 60002, 60003, 60999, 3001];
+    let fallbacks = vec![30001, 30002, 30003, 40001, 50001, 3001];
     
     for port in fallbacks {
         if is_port_available(port) {
@@ -133,14 +134,14 @@ mod tests {
         let port = find_available_port();
         assert!(port.is_some());
         let port = port.unwrap();
-        assert!(port >= 60000 && port <= 61000);
+        assert!(port >= 20000 && port <= 65000);
     }
 
     #[test]
     fn test_is_port_available() {
-        // This test might be flaky if port 60999 is actually in use
+        // This test might be flaky if port 64999 is actually in use
         // But it's unlikely
-        let available = is_port_available(60999);
+        let available = is_port_available(64999);
         // We can't assert true because the port might actually be in use
         // Just check that the function doesn't panic
         let _ = available;

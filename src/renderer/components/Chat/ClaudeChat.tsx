@@ -2079,7 +2079,7 @@ export const ClaudeChat: React.FC = () => {
                 <div className="usage-graph-container">
                   <div className="usage-graph-bar">
                     <div 
-                      className={`usage-graph-fill ${usageClass}`}
+                      className={`usage-graph-fill ${percentageNum >= 90 ? 'high' : percentageNum >= 80 ? 'orange' : percentageNum >= 70 ? 'medium' : 'low'}`}
                       style={{ width: `${percentage}%` }}
                     />
                   </div>
