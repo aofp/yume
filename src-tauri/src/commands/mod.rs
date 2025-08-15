@@ -8,13 +8,23 @@
 /// - Server communication
 
 use serde::{Deserialize, Serialize};
-use tauri::{State, Window};
+use tauri::{State, Window, Emitter};
 use std::path::{Path, PathBuf};
 use std::fs;
 use std::time::SystemTime;
+use std::sync::{Arc, Mutex};
+use std::collections::HashMap;
+use std::process::{Child, Stdio};
+use std::io::BufRead;
+use once_cell::sync::Lazy;
 
 use crate::state::AppState;
 use crate::logged_server;
+
+// Global store for running bash processes
+static BASH_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Child>>>> = Lazy::new(|| {
+    Arc::new(Mutex::new(HashMap::new()))
+});
 
 /// Represents a folder selection from the native file dialog
 #[derive(Debug, Serialize, Deserialize)]
@@ -352,9 +362,11 @@ pub fn toggle_console_visibility() -> Result<String, String> {
 
 /// Executes a bash command and returns the output
 /// Platform-specific implementation for Windows (via WSL/Git Bash), macOS, and Linux
+/// Now with process tracking for cancellation support
 #[tauri::command]
 pub async fn execute_bash(command: String, working_dir: Option<String>) -> Result<String, String> {
     use std::process::Command;
+    use tokio::time::{timeout, Duration};
     
     // Use provided working directory or home directory as fallback
     let cwd = working_dir.unwrap_or_else(|| {
@@ -363,59 +375,238 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
             .unwrap_or_else(|| String::from("/"))
     });
     
+    // Spawn task to handle bash execution
+    let handle = tokio::spawn(async move {
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            
+            // Try WSL first, then Git Bash, then cmd
+            let output = Command::new("wsl")
+                .current_dir(&cwd)
+                .args(&["bash", "-c", &command])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output()
+                .or_else(|_| {
+                    Command::new("bash")
+                        .current_dir(&cwd)
+                        .args(&["-c", &command])
+                        .creation_flags(CREATE_NO_WINDOW)
+                        .output()
+                })
+                .or_else(|_| {
+                    Command::new("cmd")
+                        .current_dir(&cwd)
+                        .args(&["/C", &command])
+                        .creation_flags(CREATE_NO_WINDOW)
+                        .output()
+                })
+                .map_err(|e| format!("Failed to execute command: {}", e))?;
+            
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            
+            if !stderr.is_empty() {
+                Ok(format!("{}\n{}", stdout, stderr))
+            } else {
+                Ok(stdout.to_string())
+            }
+        }
+        
+        #[cfg(not(target_os = "windows"))]
+        {
+            let output = Command::new("bash")
+                .current_dir(&cwd)
+                .args(&["-c", &command])
+                .output()
+                .map_err(|e| format!("Failed to execute command: {}", e))?;
+            
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            
+            if !stderr.is_empty() {
+                Ok(format!("{}\n{}", stdout, stderr))
+            } else {
+                Ok(stdout.to_string())
+            }
+        }
+    });
+    
+    // Wait for the task with a timeout (30 seconds for long-running commands)
+    match timeout(Duration::from_secs(30), handle).await {
+        Ok(Ok(result)) => result,
+        Ok(Err(e)) => Err(format!("Task error: {}", e)),
+        Err(_) => Err("Command timed out after 30 seconds".to_string()),
+    }
+}
+
+/// Spawn a bash command and stream output in real-time
+#[tauri::command]
+pub async fn spawn_bash(
+    window: Window,
+    command: String, 
+    working_dir: Option<String>
+) -> Result<String, String> {
+    use std::process::{Command, Stdio};
+    use std::thread;
+    use std::io::{BufRead, BufReader as StdBufReader};
+    
+    // Generate unique process ID
+    let process_id = format!("bash-{}", uuid::Uuid::new_v4());
+    let pid_clone = process_id.clone();
+    
+    tracing::info!("Spawning bash command: {} with ID: {}", command, process_id);
+    
+    // Use provided working directory or home directory as fallback
+    let cwd = working_dir.unwrap_or_else(|| {
+        dirs::home_dir()
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| String::from("/"))
+    });
+    
+    tracing::info!("Working directory: {}", cwd);
+    
+    // Spawn the process
     #[cfg(target_os = "windows")]
-    {
+    let mut child = {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         
-        // Try WSL first, then Git Bash, then cmd
-        let output = Command::new("wsl")
+        Command::new("wsl")
             .current_dir(&cwd)
             .args(&["bash", "-c", &command])
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
             .creation_flags(CREATE_NO_WINDOW)
-            .output()
+            .spawn()
             .or_else(|_| {
                 Command::new("bash")
                     .current_dir(&cwd)
                     .args(&["-c", &command])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
                     .creation_flags(CREATE_NO_WINDOW)
-                    .output()
+                    .spawn()
             })
             .or_else(|_| {
                 Command::new("cmd")
                     .current_dir(&cwd)
                     .args(&["/C", &command])
+                    .stdout(Stdio::piped())
+                    .stderr(Stdio::piped())
                     .creation_flags(CREATE_NO_WINDOW)
-                    .output()
+                    .spawn()
             })
-            .map_err(|e| format!("Failed to execute command: {}", e))?;
-        
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        
-        if !stderr.is_empty() {
-            Ok(format!("{}\n{}", stdout, stderr))
-        } else {
-            Ok(stdout.to_string())
-        }
-    }
+            .map_err(|e| format!("Failed to spawn command: {}", e))?
+    };
     
     #[cfg(not(target_os = "windows"))]
+    let mut child = Command::new("bash")
+        .current_dir(&cwd)
+        .args(&["-c", &command])
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| format!("Failed to spawn command: {}", e))?;
+    
+    // Take stdout and stderr for streaming
+    let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
+    let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
+    
+    // Store process for potential cancellation
     {
-        let output = Command::new("bash")
-            .current_dir(&cwd)
-            .args(&["-c", &command])
-            .output()
-            .map_err(|e| format!("Failed to execute command: {}", e))?;
-        
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        
-        if !stderr.is_empty() {
-            Ok(format!("{}\n{}", stdout, stderr))
-        } else {
-            Ok(stdout.to_string())
+        let mut processes = BASH_PROCESSES.lock().unwrap();
+        processes.insert(process_id.clone(), child);
+    }
+    
+    // Spawn threads to stream stdout and stderr
+    let window_clone = window.clone();
+    let pid_stdout = process_id.clone();
+    thread::spawn(move || {
+        let reader = StdBufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                tracing::info!("Bash stdout: {}", line);
+                let _ = window_clone.emit(&format!("bash-output-{}", pid_stdout), &line);
+            }
         }
+        tracing::info!("Bash stdout reader finished for {}", pid_stdout);
+    });
+    
+    let window_clone = window.clone();
+    let pid_stderr = process_id.clone();
+    thread::spawn(move || {
+        let reader = StdBufReader::new(stderr);
+        for line in reader.lines() {
+            if let Ok(line) = line {
+                tracing::info!("Bash stderr: {}", line);
+                let _ = window_clone.emit(&format!("bash-error-{}", pid_stderr), &line);
+            }
+        }
+        tracing::info!("Bash stderr reader finished for {}", pid_stderr);
+    });
+    
+    // Spawn task to wait for completion and clean up
+    let processes_clone = BASH_PROCESSES.clone();
+    tokio::spawn(async move {
+        tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        
+        loop {
+            let should_break = {
+                let mut processes = processes_clone.lock().unwrap();
+                if let Some(mut child) = processes.remove(&pid_clone) {
+                    match child.try_wait() {
+                        Ok(Some(status)) => {
+                            tracing::info!("Bash process {} completed with status: {:?}", pid_clone, status.code());
+                            let _ = window.emit(&format!("bash-complete-{}", pid_clone), &status.code());
+                            true
+                        }
+                        Ok(None) => {
+                            // Still running, put it back
+                            processes.insert(pid_clone.clone(), child);
+                            false
+                        }
+                        Err(e) => {
+                            tracing::error!("Error checking bash process {}: {}", pid_clone, e);
+                            true
+                        }
+                    }
+                } else {
+                    // Process was killed or removed
+                    true
+                }
+            };
+            
+            if should_break {
+                break;
+            }
+            
+            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        }
+    });
+    
+    Ok(process_id)
+}
+
+/// Kill a specific bash process
+#[tauri::command]
+pub fn kill_bash_process(process_id: String) -> Result<(), String> {
+    let mut processes = BASH_PROCESSES.lock().unwrap();
+    
+    if let Some(mut child) = processes.remove(&process_id) {
+        match child.kill() {
+            Ok(_) => {
+                tracing::info!("Killed bash process: {}", process_id);
+                Ok(())
+            }
+            Err(e) => {
+                tracing::error!("Failed to kill bash process {}: {}", process_id, e);
+                Err(format!("Failed to kill process: {}", e))
+            }
+        }
+    } else {
+        Err("Process not found".to_string())
     }
 }
 

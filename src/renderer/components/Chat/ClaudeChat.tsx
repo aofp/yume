@@ -503,11 +503,45 @@ export const ClaudeChat: React.FC = () => {
         // Toggle model between opus and sonnet
         toggleModel();
       } else if (e.key === 'Escape') {
-        // First check if we're streaming and should stop
-        if (currentSession?.streaming) {
+        // First check if we're streaming or bash is running
+        if (currentSession?.streaming || currentSession?.userBashRunning) {
           e.preventDefault();
-          console.log('[ClaudeChat] ESC pressed - interrupting stream');
-          interruptSession();
+          console.log('[ClaudeChat] ESC pressed - interrupting');
+          
+          // Kill bash process if running
+          if (currentSession?.bashProcessId) {
+            import('@tauri-apps/api/core').then(({ invoke }) => {
+              invoke('kill_bash_process', { 
+                processId: currentSession.bashProcessId 
+              }).then(() => {
+                // Add cancelled message
+                const cancelMessage = {
+                  id: `bash-cancel-${Date.now()}`,
+                  type: 'system' as const,
+                  subtype: 'interrupted' as const,
+                  message: 'bash command cancelled',
+                  timestamp: Date.now()
+                };
+                
+                if (currentSessionId) {
+                  addMessageToSession(currentSessionId, cancelMessage);
+                }
+                
+                // Clear flags immediately
+                useClaudeCodeStore.setState(state => ({
+                  sessions: state.sessions.map(s => 
+                    s.id === currentSessionId 
+                      ? { ...s, userBashRunning: false, bashProcessId: undefined } 
+                      : s
+                  )
+                }));
+              }).catch(error => {
+                console.error('Failed to kill bash process:', error);
+              });
+            });
+          } else {
+            interruptSession();
+          }
         } else if (searchVisible) {
           setSearchVisible(false);
           setSearchQuery('');
@@ -635,9 +669,16 @@ export const ClaudeChat: React.FC = () => {
       let bashCommand = input.slice(1).trim(); // Remove the ! prefix
       const originalCommand = bashCommand; // Store original for display
       
+      // Set userBashRunning to true when executing user bash command
+      useClaudeCodeStore.setState(state => ({
+        sessions: state.sessions.map(s => 
+          s.id === currentSessionId ? { ...s, userBashRunning: true } : s
+        )
+      }));
+      
       // Windows CMD alias conversion
-      if (bashCommand.startsWith('cmd:')) {
-        const cmdCommand = bashCommand.slice(4).trim(); // Remove 'cmd:' prefix
+      if (bashCommand.startsWith('c:')) {
+        const cmdCommand = bashCommand.slice(2).trim(); // Remove 'c:' prefix
         bashCommand = `cmd.exe /c "${cmdCommand}"`;
       }
       
@@ -666,27 +707,117 @@ export const ClaudeChat: React.FC = () => {
         }
         
         try {
-          // Execute the bash command via Tauri with session's working directory
+          // Execute the bash command via Tauri with streaming
           const { invoke } = await import('@tauri-apps/api/core');
+          const { listen } = await import('@tauri-apps/api/event');
           const session = sessions.find(s => s.id === currentSessionId);
           const workingDir = session?.workingDirectory || undefined;
-          const output = await invoke<string>('execute_bash', { 
+          
+          // Spawn bash process and get process ID
+          const processId = await invoke<string>('spawn_bash', { 
             command: bashCommand,
             workingDir: workingDir 
           });
           
-          // Add the output as an assistant message with proper structure
+          // Store process ID for cancellation
+          useClaudeCodeStore.setState(state => ({
+            sessions: state.sessions.map(s => 
+              s.id === currentSessionId ? { ...s, bashProcessId: processId } : s
+            )
+          }));
+          
+          // Create initial message with command
+          const commandOutput: string[] = [`$ ${bashCommand}`];
+          const messageId = `bash-out-${Date.now()}`;
+          
           const outputMessage = {
-            id: `bash-out-${Date.now()}`,
+            id: messageId,
             type: 'assistant' as const,
-            message: { content: `\`\`\`bash\n$ ${bashCommand}\n${output}\`\`\`` },
+            message: { content: `\`\`\`bash\n$ ${bashCommand}\n\`\`\`` },
             timestamp: Date.now()
           };
           
-          // Add output to session messages
+          // Add initial message
           if (currentSessionId) {
             addMessageToSession(currentSessionId, outputMessage);
           }
+          
+          // Listen for output
+          const unlistenOutput = await listen<string>(`bash-output-${processId}`, (event) => {
+            console.log('[Bash] Output received:', event.payload);
+            commandOutput.push(event.payload);
+            
+            // Create updated message
+            const updatedContent = `\`\`\`bash\n${commandOutput.join('\n')}\n\`\`\``;
+            
+            // Update the message in the store
+            useClaudeCodeStore.setState(state => ({
+              sessions: state.sessions.map(s => {
+                if (s.id === currentSessionId) {
+                  return {
+                    ...s,
+                    messages: s.messages.map(m => 
+                      m.id === messageId ? {
+                        ...m,
+                        message: { content: updatedContent }
+                      } : m
+                    )
+                  };
+                }
+                return s;
+              })
+            }));
+          });
+          
+          // Listen for errors
+          const unlistenError = await listen<string>(`bash-error-${processId}`, (event) => {
+            console.log('[Bash] Error received:', event.payload);
+            commandOutput.push(event.payload);
+            
+            // Create updated message
+            const updatedContent = `\`\`\`bash\n${commandOutput.join('\n')}\n\`\`\``;
+            
+            // Update the message in the store
+            useClaudeCodeStore.setState(state => ({
+              sessions: state.sessions.map(s => {
+                if (s.id === currentSessionId) {
+                  return {
+                    ...s,
+                    messages: s.messages.map(m => 
+                      m.id === messageId ? {
+                        ...m,
+                        message: { content: updatedContent }
+                      } : m
+                    )
+                  };
+                }
+                return s;
+              })
+            }));
+          });
+          
+          // Listen for completion
+          const unlistenComplete = await listen<number | null>(`bash-complete-${processId}`, (event) => {
+            console.log('[Bash] Process completed with code:', event.payload);
+            
+            // Clean up listeners
+            unlistenOutput();
+            unlistenError();
+            unlistenComplete();
+            
+            // Clear flags - force update
+            useClaudeCodeStore.setState(state => ({
+              sessions: state.sessions.map(s => 
+                s.id === currentSessionId 
+                  ? { ...s, userBashRunning: false, bashProcessId: undefined } 
+                  : s
+              )
+            }));
+            
+            // Force re-render
+            useClaudeCodeStore.getState().sessions.find(s => s.id === currentSessionId);
+          });
+          
         } catch (error) {
           console.error('[ClaudeChat] Failed to execute bash command:', error);
           
@@ -701,6 +832,13 @@ export const ClaudeChat: React.FC = () => {
           if (currentSessionId) {
             addMessageToSession(currentSessionId, errorMessage);
           }
+          
+          // Clear userBashRunning flag even on error
+          useClaudeCodeStore.setState(state => ({
+            sessions: state.sessions.map(s => 
+              s.id === currentSessionId ? { ...s, userBashRunning: false, bashProcessId: undefined } : s
+            )
+          }));
         }
         
         return;
@@ -1500,6 +1638,57 @@ export const ClaudeChat: React.FC = () => {
         )}
         <div ref={messagesEndRef} />
       </div>
+      
+      {/* Bash running indicator - shows for both user bash commands and Claude's bash tool */}
+      {(currentSession?.runningBash || currentSession?.userBashRunning) && (
+        <div className="bash-running-indicator">
+          <span className="bash-running-text">bash running...</span>
+          <button 
+            className="bash-cancel-btn"
+            onClick={async () => {
+              // Kill bash process if it exists
+              if (currentSession?.bashProcessId) {
+                try {
+                  const { invoke } = await import('@tauri-apps/api/core');
+                  await invoke('kill_bash_process', { 
+                    processId: currentSession.bashProcessId 
+                  });
+                  
+                  // Add cancelled message
+                  const cancelMessage = {
+                    id: `bash-cancel-${Date.now()}`,
+                    type: 'system' as const,
+                    subtype: 'interrupted' as const,
+                    message: 'bash command cancelled',
+                    timestamp: Date.now()
+                  };
+                  
+                  if (currentSessionId) {
+                    addMessageToSession(currentSessionId, cancelMessage);
+                  }
+                  
+                  // Clear flags immediately
+                  useClaudeCodeStore.setState(state => ({
+                    sessions: state.sessions.map(s => 
+                      s.id === currentSessionId 
+                        ? { ...s, userBashRunning: false, bashProcessId: undefined } 
+                        : s
+                    )
+                  }));
+                } catch (error) {
+                  console.error('Failed to kill bash process:', error);
+                }
+              } else {
+                // Also interrupt Claude session if needed
+                interruptSession();
+              }
+            }}
+            title="cancel bash (esc)"
+          >
+            cancel
+          </button>
+        </div>
+      )}
       
       <div 
         className={`chat-input-container ${isDragging ? 'dragging' : ''}`}

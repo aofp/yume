@@ -10,7 +10,7 @@
 use std::process::{Command, Child, Stdio};
 use std::sync::{Arc, Mutex};
 use std::fs::{self, OpenOptions};
-use std::io::{Write, BufRead, BufReader};
+use std::io::Write;
 use std::path::PathBuf;
 use tracing::info;
 

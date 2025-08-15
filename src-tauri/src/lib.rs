@@ -486,6 +486,8 @@ pub fn run() {
             commands::toggle_console_visibility,
             commands::open_external,
             commands::execute_bash,
+            commands::spawn_bash,
+            commands::kill_bash_process,
             commands::search_files,
             commands::get_recent_files,
             commands::get_git_status,

@@ -6471,6 +6471,7 @@ dependencies = [
  "log",
  "native-dialog",
  "objc",
+ "once_cell",
  "parking_lot",
  "rand 0.8.5",
  "regex",

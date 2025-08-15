@@ -67,6 +67,9 @@ export interface Session {
   streaming?: boolean; // Track if this session is currently streaming
   restorePoints?: RestorePoint[]; // Track file changes at each message
   modifiedFiles?: Set<string>; // Track all files touched in this session
+  runningBash?: boolean; // Track if bash command is currently running
+  userBashRunning?: boolean; // Track if user's bash command (!) is running
+  bashProcessId?: string; // Current bash process ID for cancellation
 }
 
 interface ClaudeCodeStore {
@@ -866,7 +869,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 s.id === sessionId 
                   ? { 
                       ...s, 
-                      streaming: false
+                      streaming: false,
+                      runningBash: false,
+                      userBashRunning: false
                       // Keep claudeSessionId for resumption
                     } 
                   : s
@@ -874,22 +879,38 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               
               return { sessions };
             } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
-              // Clear streaming on interruption or error
-              console.log('System message received, clearing streaming state');
+              // Clear streaming and bash running on interruption or error
+              console.log('System message received, clearing streaming and bash state');
               sessions = sessions.map(s => 
-                s.id === sessionId ? { ...s, streaming: false } : s
+                s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
               );
               return { sessions };
             } else if (message.type === 'tool_use') {
               // When we get a tool_use message, ensure streaming is active
               // This handles cases where tools are running (especially Task/agent tools)
               console.log('Tool use message received, ensuring streaming state is active');
+              
+              // Track if this is a Bash command
+              const isBash = message.message?.name === 'Bash';
+              if (isBash) {
+                console.log('🖥️ Bash command started');
+              }
+              
               sessions = sessions.map(s => 
-                s.id === sessionId ? { ...s, streaming: true } : s
+                s.id === sessionId ? { 
+                  ...s, 
+                  streaming: true,
+                  runningBash: isBash ? true : s.runningBash 
+                } : s
               );
             } else if (message.type === 'tool_result') {
               // Keep streaming active for tool results as more tools may follow
               // The streaming state will be cleared by the result message
+              
+              // Clear bash running state when we get the result
+              sessions = sessions.map(s => 
+                s.id === sessionId ? { ...s, runningBash: false } : s
+              );
             }
             
             return { sessions };
@@ -1258,7 +1279,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           } else if (message.type === 'result' || 
                      (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error'))) {
             sessions = sessions.map(s => 
-              s.id === sessionId ? { ...s, streaming: false } : s
+              s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
             );
           }
           
@@ -1370,10 +1391,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     
     // Only interrupt if actually streaming
     if (currentSessionId && currentSession?.streaming) {
-      // Immediately set streaming to false to prevent double calls
+      // Immediately set streaming and runningBash to false to prevent double calls
       set(state => ({
         sessions: state.sessions.map(s => 
-          s.id === currentSessionId ? { ...s, streaming: false } : s
+          s.id === currentSessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
         )
       }));
       
