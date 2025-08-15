@@ -23,9 +23,10 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             <IconX size={16} />
           </button>
         </div>
-        <div className="help-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gridTemplateRows: 'repeat(2, 1fr)', gap: '8px' }}>
-          <div className="help-section">
-            <h4>tabs</h4>
+        <div className="help-content" style={{ display: 'grid', gap: '8px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            <div className="help-section">
+              <h4>tabs</h4>
             <div className="shortcut-item">
               <div className="shortcut-keys">
                 <span className="key-btn">{modKey}</span>
@@ -74,25 +75,9 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <span className="shortcut-desc">prev tab</span>
             </div>
           </div>
-          
-          <div className="help-section">
-            <h4>chat</h4>
-            <div className="shortcut-item">
-              <div className="shortcut-keys">
-                <span className="key-btn">enter</span>
-              </div>
-              <span className="shortcut-dots"></span>
-              <span className="shortcut-desc">send message</span>
-            </div>
-            <div className="shortcut-item">
-              <div className="shortcut-keys">
-                <span className="key-btn">shift</span>
-                <span className="key-plus">+</span>
-                <span className="key-btn">enter</span>
-              </div>
-              <span className="shortcut-dots"></span>
-              <span className="shortcut-desc">new line</span>
-            </div>
+            
+            <div className="help-section">
+              <h4>view</h4>
             <div className="shortcut-item">
               <div className="shortcut-keys">
                 <span className="key-btn">{modKey}</span>
@@ -120,10 +105,6 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">session stats</span>
             </div>
-          </div>
-          
-          <div className="help-section">
-            <h4>view</h4>
             <div className="shortcut-item">
               <div className="shortcut-keys">
                 <span className="key-btn">{modKey}</span>
@@ -169,6 +150,83 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">zoom out</span>
             </div>
+            </div>
+          </div>
+          
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+          <div className="help-section">
+            <h4>chat</h4>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">enter</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">send message</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">shift</span>
+                <span className="key-plus">+</span>
+                <span className="key-btn">enter</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">new line</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">{modKey}</span>
+                <span className="key-plus">+</span>
+                <span className="key-btn">l</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">clear context</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">{modKey}</span>
+                <span className="key-plus">+</span>
+                <span className="key-btn">u</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">clear input</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">{modKey}</span>
+                <span className="key-plus">+</span>
+                <span className="key-btn">f</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">search messages</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">!</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">bash mode</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">!cmd:</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">alias: cmd.exe /c "input"</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">/</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">commands</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">@</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">mention</span>
+            </div>
           </div>
           
           <div className="help-section">
@@ -205,6 +263,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">quit app</span>
             </div>
+          </div>
           </div>
         </div>
       </div>

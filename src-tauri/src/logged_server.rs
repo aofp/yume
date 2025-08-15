@@ -10,7 +10,7 @@
 use std::process::{Command, Child, Stdio};
 use std::sync::{Arc, Mutex};
 use std::fs::{self, OpenOptions};
-use std::io::Write;
+use std::io::{Write, BufRead, BufReader};
 use std::path::PathBuf;
 use tracing::info;
 
@@ -122,20 +122,21 @@ pub fn get_server_logs() -> String {
 /// - Implements tool use detection and forwarding
 /// - Manages streaming state for proper UI updates
 const EMBEDDED_SERVER: &str = r#"
-// Override console completely to prevent EBADF errors
-const noop = () => {};
-global.console = new Proxy(console, {
-  get: () => noop
-});
+// Restore console logging for debugging
+const originalConsole = console;
 
 const fs = require('fs');
 const path = require('path');
 const http = require('http');
 const { spawn } = require('child_process');
 
-// No logging - it causes crashes when stdout is closed
+// Enable logging to original console
 function log(msg) {
-    // Do nothing - logging causes EBADF errors
+    try {
+        originalConsole.log(msg);
+    } catch (e) {
+        // Fallback if console fails
+    }
 }
 
 // Load Socket.IO - it must be available
@@ -263,6 +264,14 @@ socketServer.on('connection', (socket) => {
         
         // Build args for Claude - MUST include all critical flags
         const args = ['--print', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
+        
+        // Use --resume if we have a claudeSessionId (for continuing conversations)
+        if (session.claudeSessionId) {
+            args.push('--resume', session.claudeSessionId);
+            log(`[${sessionId}] Using --resume with Claude session ID: ${session.claudeSessionId}`);
+        } else {
+            log(`[${sessionId}] Starting fresh conversation (no previous session)`);
+        }
         
         // Add casual prompt for yurucode
         const casualPrompt = `CRITICAL: you are in yurucode ui. ALWAYS:
@@ -427,6 +436,15 @@ socketServer.on('connection', (socket) => {
                     const json = JSON.parse(jsonStr);
                     log(`[${sessionId}] Parsed JSON: ${JSON.stringify(json).substring(0, 200)}...`);
                     log(`[${sessionId}] Message type: ${json.type}`);
+                    
+                    // Capture Claude session ID from system init message
+                    if (json.type === 'system' && json.subtype === 'init' && json.session_id) {
+                        const session = sessions.get(sessionId);
+                        if (session) {
+                            session.claudeSessionId = json.session_id;
+                            log(`[${sessionId}] Captured Claude session ID: ${json.session_id}`);
+                        }
+                    }
                     
                     // Handle stream-json format from Claude CLI
                     if (json.type === 'message_start' && json.message) {
@@ -663,6 +681,15 @@ socketServer.on('connection', (socket) => {
             activeProcesses.delete(sessionId);
         }
         lastAssistantMessageIds.delete(sessionId);
+        
+        // Reset session to clear context
+        const session = sessions.get(sessionId);
+        if (session) {
+            session.claudeSessionId = null;  // Reset Claude session ID so next message starts fresh
+            session.hasGeneratedTitle = false;  // Reset title generation flag
+            log(`[${sessionId}] Session context cleared`);
+        }
+        
         if (callback) callback({ success: true });
     });
     
@@ -768,6 +795,8 @@ pub fn start_logged_server(port: u16) {
     
     // Original embedded server logic for other platforms (Windows/Linux)
     info!("Starting embedded server on port {}", port);
+    clear_log(); // Clear logs from previous run
+    write_log("=== Starting embedded server ===");
     
     // Create temp directory for server
     let server_dir = std::env::temp_dir().join("yurucode-server");
@@ -832,14 +861,47 @@ pub fn start_logged_server(port: u16) {
             cmd.creation_flags(flags);
         }
         
-        if YURUCODE_SHOW_CONSOLE {
-            cmd.stdout(Stdio::inherit())
-               .stderr(Stdio::inherit());
-        }
+        // Always capture output for logging, even when console is hidden
+        cmd.stdout(Stdio::piped())
+           .stderr(Stdio::piped());
         
         match cmd.spawn() {
-            Ok(child) => {
+            Ok(mut child) => {
                 info!("✅ Server started with PID: {}", child.id());
+                write_log(&format!("✅ Server started with PID: {}", child.id()));
+                
+                // Spawn threads to capture and log stdout/stderr
+                if let Some(stdout) = child.stdout.take() {
+                    std::thread::spawn(move || {
+                        use std::io::{BufRead, BufReader};
+                        let reader = BufReader::new(stdout);
+                        for line in reader.lines() {
+                            if let Ok(line) = line {
+                                write_log(&format!("[SERVER OUT] {}", line));
+                                info!("[SERVER OUT] {}", line);
+                                if YURUCODE_SHOW_CONSOLE {
+                                    println!("[SERVER OUT] {}", line);
+                                }
+                            }
+                        }
+                    });
+                }
+                
+                if let Some(stderr) = child.stderr.take() {
+                    std::thread::spawn(move || {
+                        use std::io::{BufRead, BufReader};
+                        let reader = BufReader::new(stderr);
+                        for line in reader.lines() {
+                            if let Ok(line) = line {
+                                write_log(&format!("[SERVER ERR] {}", line));
+                                info!("[SERVER ERR] {}", line);
+                                if YURUCODE_SHOW_CONSOLE {
+                                    eprintln!("[SERVER ERR] {}", line);
+                                }
+                            }
+                        }
+                    });
+                }
                 
                 let child_arc = Arc::new(Mutex::new(child));
                 if let Ok(mut process_guard) = SERVER_PROCESS.lock() {

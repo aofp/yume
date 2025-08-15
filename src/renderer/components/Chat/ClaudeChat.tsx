@@ -630,7 +630,15 @@ export const ClaudeChat: React.FC = () => {
     
     // Check for bash mode command (starts with !)
     if (bashCommandMode && input.startsWith('!')) {
-      const bashCommand = input.slice(1).trim(); // Remove the ! prefix
+      let bashCommand = input.slice(1).trim(); // Remove the ! prefix
+      const originalCommand = bashCommand; // Store original for display
+      
+      // Windows CMD alias conversion
+      if (bashCommand.startsWith('cmd:')) {
+        const cmdCommand = bashCommand.slice(4).trim(); // Remove 'cmd:' prefix
+        bashCommand = `cmd.exe /c "${cmdCommand}"`;
+      }
+      
       if (bashCommand) {
         console.log('[ClaudeChat] Executing bash command:', bashCommand);
         
@@ -638,7 +646,7 @@ export const ClaudeChat: React.FC = () => {
         const commandMessage = {
           id: `bash-cmd-${Date.now()}`,
           type: 'user' as const,
-          message: { content: `!${bashCommand}` },
+          message: { content: `!${originalCommand}` }, // Show original input
           timestamp: Date.now()
         };
         
@@ -833,21 +841,9 @@ export const ClaudeChat: React.FC = () => {
       e.preventDefault();
       handleSend();
     } else if ((e.ctrlKey || e.metaKey) && e.key === 'u') {
-      // Delete everything before cursor (like terminal)
+      // Clear entire input when textarea is focused
       e.preventDefault();
-      const afterCursor = input.substring(cursorPos);
-      setInput(afterCursor);
-      // Set cursor to beginning after React re-renders
-      setTimeout(() => {
-        if (inputRef.current) {
-          inputRef.current.selectionStart = inputRef.current.selectionEnd = 0;
-        }
-      }, 0);
-    } else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      // Delete everything after cursor (like terminal)
-      e.preventDefault();
-      const beforeCursor = input.substring(0, cursorPos);
-      setInput(beforeCursor);
+      setInput('');
     } else if (e.key === 'ArrowUp') {
       // Only navigate history if cursor is at the beginning of the text
       if (cursorPos === 0 && textarea.selectionEnd === 0 && currentSessionId) {

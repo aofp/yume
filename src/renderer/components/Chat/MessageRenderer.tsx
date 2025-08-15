@@ -633,8 +633,8 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               ? JSON.stringify(block.content, null, 2)
               : '';
           
-          // Check if content is empty and display placeholder
-          if (!resultContent || resultContent.trim() === '') {
+          // Check if content is empty or just whitespace and display placeholder
+          if (!resultContent || resultContent.trim() === '' || resultContent.trim() === '""') {
             resultContent = '(no content)';
           }
           
@@ -1238,17 +1238,17 @@ const MessageRendererBase: React.FC<{
             </button>
           </div>
           <div className="message-bubble">
-            {typeof displayText === 'string' && displayText.includes('\n') ? (
-              <pre style={{ 
-                whiteSpace: 'pre-wrap', 
-                wordBreak: 'break-word',
-                margin: 0,
-                fontFamily: 'monospace',
-                fontSize: '11px',
-                lineHeight: '1.4'
-              }}>{highlightText(displayText, searchQuery, isCurrentMatch)}</pre>
-            ) : typeof displayText === 'string' ? (
-              <span>{highlightText(displayText, searchQuery, isCurrentMatch)}</span>
+            {typeof displayText === 'string' ? (
+              displayText.includes('\n') ? (
+                <span dangerouslySetInnerHTML={{ 
+                  __html: displayText
+                    .split('\n')
+                    .map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;'))
+                    .join('<br>') 
+                }} />
+              ) : (
+                <span>{highlightText(displayText, searchQuery, isCurrentMatch)}</span>
+              )
             ) : (
               displayText
             )}
@@ -1528,7 +1528,19 @@ const MessageRendererBase: React.FC<{
       let contentStr = '';
       if (typeof resultContent === 'string') {
         // Check if it's JSON with tool_use_id and output
-        if (resultContent.includes('tool_use_id') && resultContent.includes('"output"')) {
+        if (resultContent.includes('tool_use_id') && resultContent.includes('"content"')) {
+          try {
+            const parsed = JSON.parse(resultContent);
+            // Check for content field (not output)
+            if (parsed.content !== undefined) {
+              contentStr = parsed.content;
+            } else {
+              contentStr = resultContent;
+            }
+          } catch (e) {
+            contentStr = resultContent;
+          }
+        } else if (resultContent.includes('tool_use_id') && resultContent.includes('"output"')) {
           try {
             const parsed = JSON.parse(resultContent);
             if (parsed.output) {
@@ -1544,8 +1556,16 @@ const MessageRendererBase: React.FC<{
         }
       } else if (typeof resultContent === 'object' && resultContent.output) {
         contentStr = resultContent.output;
+      } else if (typeof resultContent === 'object' && resultContent.content !== undefined) {
+        contentStr = resultContent.content;
       } else {
         contentStr = typeof resultContent === 'string' ? resultContent : JSON.stringify(resultContent, null, 2);
+      }
+      
+      // Check if content is empty and display placeholder
+      if (contentStr === '' || contentStr === null || contentStr === undefined || 
+          (typeof contentStr === 'string' && contentStr.trim() === '')) {
+        contentStr = '(no content)';
       }
       
       // Replace absolute paths with relative paths in result content

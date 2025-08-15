@@ -303,9 +303,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         
         const sessionId = result.sessionId || result;
         const existingMessages = result.messages || [];
-        // IMPORTANT: Don't store claudeSessionId for new tabs - each tab should start fresh
-        // Only store it when explicitly resuming an existing session
-        const claudeSessionId = existingSessionId ? result.claudeSessionId : undefined;
+        // Store claudeSessionId from server response - server decides if this is a resume
+        // The server returns claudeSessionId when resuming, undefined when starting fresh
+        const claudeSessionId = result.claudeSessionId;
         
         console.log(`[Store] Session ${sessionId}:`);
         console.log(`  - Existing messages: ${existingMessages.length}`);
@@ -437,6 +437,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             
             let sessions = state.sessions.map(s => {
               if (s.id !== sessionId) return s;
+              
+              // Update claudeSessionId if present in message
+              if (message.session_id && !s.claudeSessionId) {
+                console.log(`[Store] Updating claudeSessionId for session ${sessionId}: ${message.session_id}`);
+                s = { ...s, claudeSessionId: message.session_id };
+              }
               
               const existingMessages = [...s.messages];
               
@@ -854,23 +860,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 sessionMessages: sessions.find(s => s.id === sessionId)?.messages.length || 0
               });
               
-              // Clear claudeSessionId on normal completion (not error)
-              // This ensures followup messages start fresh since Claude can't resume completed sessions
-              const shouldClearSession = message.subtype === 'success' && !message.is_error;
-              
+              // Never clear claudeSessionId - keep it for session resumption
+              // Claude CLI handles session management, we just track the ID
               sessions = sessions.map(s => 
                 s.id === sessionId 
                   ? { 
                       ...s, 
-                      streaming: false,
-                      claudeSessionId: shouldClearSession ? undefined : s.claudeSessionId
+                      streaming: false
+                      // Keep claudeSessionId for resumption
                     } 
                   : s
               );
-              
-              if (shouldClearSession) {
-                console.log('Cleared claudeSessionId after successful completion');
-              }
               
               return { sessions };
             } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {

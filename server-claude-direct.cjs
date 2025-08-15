@@ -118,7 +118,9 @@ const GC_INTERVAL = 5 * 60 * 1000; // Run GC every 5 minutes
 // Helper function to generate title with Sonnet
 async function generateTitle(sessionId, userMessage, socket) {
   try {
-    console.log(`🏷️ Generating title for session ${sessionId}`);
+    console.log(`🏷️ === TITLE GENERATION START ===`);
+    console.log(`🏷️ Session: ${sessionId}`);
+    console.log(`🏷️ Platform: ${process.platform}`);
     console.log(`🏷️ Message preview: "${userMessage.substring(0, 100)}..."`);
     
     // Spawn a separate claude process just for title generation
@@ -131,13 +133,14 @@ async function generateTitle(sessionId, userMessage, socket) {
     const titlePrompt = `user message: "${userMessage.substring(0, 200)}"
 task: reply with ONLY 1-3 words describing what user wants. lowercase only. no punctuation. be extremely concise. examples: "echo command", "file search", "debug issue"`;
     
-    console.log(`🏷️ Title prompt: "${titlePrompt}"`);
+    console.log(`🏷️ Title prompt length: ${titlePrompt.length} chars`);
     
     // Use WSL on Windows for title generation too
     let child;
     if (process.platform === 'win32') {
-      // For Windows/WSL, we need to echo the prompt through the pipe
-      const escapedPrompt = titlePrompt.replace(/"/g, '\\"').replace(/\n/g, '\\n');
+      console.log(`🏷️ Windows detected - using WSL for title generation`);
+      
+      // For Windows/WSL, spawn the process and write to stdin like macOS
       const escapedArgs = titleArgs.map(arg => {
         if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
           return "'" + arg.replace(/'/g, "'\\''") + "'";
@@ -146,14 +149,18 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       }).join(' ');
       
       const wslArgs = ['-e', 'bash', '-c', 
-        `echo "${escapedPrompt}" | (if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found" >&2 && exit 127; fi)`
+        `if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found" >&2 && exit 127; fi`
       ];
+      
+      console.log(`🏷️ WSL command: wsl.exe ${wslArgs[0]} ${wslArgs[1]} ${wslArgs[2].substring(0, 100)}...`);
       
       child = spawn('wsl.exe', wslArgs, {
         cwd: process.cwd(),
         env: { ...process.env },
-        stdio: ['inherit', 'pipe', 'pipe']  // inherit stdin since we're using echo
+        stdio: ['pipe', 'pipe', 'pipe']  // pipe stdin so we can write to it
       });
+      
+      console.log(`🏷️ WSL process spawned with PID: ${child.pid}`);
     } else {
       child = spawn('claude', titleArgs, {
         cwd: process.cwd(),
@@ -177,19 +184,31 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     child.on('close', (code) => {
       console.log(`🏷️ Title generation process closed with code ${code}`);
+      console.log(`🏷️ Full output length: ${output.length} chars`);
       console.log(`🏷️ Full output: "${output}"`);
       if (errorOutput) {
         console.log(`🏷️ Error output: "${errorOutput}"`);
       }
       
       try {
+        if (!output || output.trim().length === 0) {
+          console.log(`🏷️ ⚠️ No output received from title generation`);
+          return;
+        }
+        
         const lines = output.trim().split('\n');
         const lastLine = lines[lines.length - 1];
         console.log(`🏷️ Parsing last line: "${lastLine}"`);
+        
+        if (!lastLine || lastLine.trim().length === 0) {
+          console.log(`🏷️ ⚠️ Empty last line, cannot parse`);
+          return;
+        }
+        
         const response = JSON.parse(lastLine);
         
         // Handle both 'completion' and 'result' fields
-        const titleText = response.completion || response.result;
+        const titleText = response.completion || response.result || response.content;
         
         if (titleText) {
           let title = titleText
@@ -199,10 +218,11 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
             .substring(0, 30);
           
           if (title && title.length > 2) {
-            console.log(`🏷️ Generated title: "${title}" - emitting to client`);
+            console.log(`🏷️ ✅ Generated title: "${title}" - emitting to client`);
             const eventName = `title:${sessionId}`;
             console.log(`🏷️ Emitting event: ${eventName} with data:`, { title });
             socket.emit(eventName, { title });
+            console.log(`🏷️ === TITLE GENERATION COMPLETE ===`);
           } else {
             console.log(`🏷️ Title too short or empty: "${title}"`);
           }
@@ -210,7 +230,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
           console.log(`🏷️ No title text in response:`, response);
         }
       } catch (e) {
-        console.error('🏷️ Failed to parse title response:', e);
+        console.error('🏷️ Failed to parse title response:', e.message);
         console.error('🏷️ Raw output was:', output);
       }
     });
@@ -219,12 +239,16 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       console.error('🏷️ Failed to spawn title generation process:', error);
     });
     
-    // Send the prompt (only for non-Windows, Windows uses echo in the command)
-    if (process.platform !== 'win32') {
-      console.log(`🏷️ Writing prompt to stdin`);
-      child.stdin.write(titlePrompt);
-      child.stdin.end();
-    }
+    // Send the prompt to stdin for both Windows and macOS
+    console.log(`🏷️ Writing prompt to stdin...`);
+    child.stdin.write(titlePrompt, 'utf8', (err) => {
+      if (err) {
+        console.error(`🏷️ Error writing to stdin:`, err);
+      } else {
+        console.log(`🏷️ ✅ Successfully wrote ${titlePrompt.length} chars to stdin`);
+      }
+    });
+    child.stdin.end();
     
   } catch (error) {
     console.error('🏷️ Failed to generate title:', error);
@@ -445,12 +469,14 @@ io.on('connection', (socket) => {
       }
       
       // Add session resume if we have one for follow-up messages
+      console.log(`📌 Session check - claudeSessionId: ${session.claudeSessionId}`);
+      console.log(`📌 Session object keys: ${Object.keys(session).join(', ')}`);
       if (session.claudeSessionId) {
         args.push('--resume', session.claudeSessionId);
-        console.log(`📌 Resuming Claude session: ${session.claudeSessionId}`);
+        console.log(`📌 ✅ RESUMING Claude session: ${session.claudeSessionId}`);
         console.log(`⚠️ RESUMING WILL INCLUDE ALL PREVIOUS TOKENS FROM THIS CLAUDE SESSION!`);
       } else {
-        console.log(`🆕 Starting new Claude session`);
+        console.log(`🆕 Starting NEW Claude session (no claudeSessionId found)`);
         console.log(`✨ This should start with ~0 tokens (only system prompt)`);
       }
       
@@ -488,7 +514,7 @@ io.on('connection', (socket) => {
           }).join(' ');
           
           const wslArgs = ['-e', 'bash', '-c', 
-            `if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found in WSL" >&2 && exit 127; fi`
+            `cd '${workingDir}' && (if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found in WSL" >&2 && exit 127; fi)`
           ];
           
           console.log('WSL command:', 'wsl.exe', wslArgs.join(' '));
@@ -682,13 +708,17 @@ io.on('connection', (socket) => {
             }
             
           } else if (jsonData.type === 'result') {
-            console.log(`📦 Message type: result (${jsonData.result})`);
-            console.log(`   ✅ Result: success=${jsonData.result === 'success'}, duration=${jsonData.duration}ms`);
+            console.log(`📦 Message type: result`);
+            console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
+            console.log(`   📌 Session ID in result: ${jsonData.session_id}`);
+            console.log(`   📌 Current saved session ID: ${session.claudeSessionId}`);
             
             // NOW we can save the session ID from a successful conversation
-            if (jsonData.session_id && jsonData.result === 'success') {
+            if (jsonData.session_id && !jsonData.is_error) {
               session.claudeSessionId = jsonData.session_id;
-              console.log(`📌 Saved Claude session ID for resume: ${session.claudeSessionId}`);
+              console.log(`📌 ✅ SAVED Claude session ID for resume: ${session.claudeSessionId}`);
+            } else {
+              console.log(`📌 ⚠️ NOT saving session ID - session_id: ${jsonData.session_id}, is_error: ${jsonData.is_error}`);
             }
             
             // Update session state
