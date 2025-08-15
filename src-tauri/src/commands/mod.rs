@@ -15,7 +15,6 @@ use std::time::SystemTime;
 use std::sync::{Arc, Mutex};
 use std::collections::HashMap;
 use std::process::{Child, Stdio};
-use std::io::BufRead;
 use once_cell::sync::Lazy;
 
 use crate::state::AppState;
@@ -448,7 +447,7 @@ pub async fn spawn_bash(
     command: String, 
     working_dir: Option<String>
 ) -> Result<String, String> {
-    use std::process::{Command, Stdio};
+    use std::process::Command;
     use std::thread;
     use std::io::{BufRead, BufReader as StdBufReader};
     
@@ -473,11 +472,13 @@ pub async fn spawn_bash(
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         
+        // Use CREATE_NO_WINDOW to prevent console window
         Command::new("wsl")
             .current_dir(&cwd)
             .args(&["bash", "-c", &command])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
+            .stdin(Stdio::null())
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .or_else(|_| {
@@ -486,6 +487,7 @@ pub async fn spawn_bash(
                     .args(&["-c", &command])
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
+                    .stdin(Stdio::null())
                     .creation_flags(CREATE_NO_WINDOW)
                     .spawn()
             })
@@ -495,6 +497,7 @@ pub async fn spawn_bash(
                     .args(&["/C", &command])
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
+                    .stdin(Stdio::null())
                     .creation_flags(CREATE_NO_WINDOW)
                     .spawn()
             })
@@ -549,6 +552,7 @@ pub async fn spawn_bash(
     
     // Spawn task to wait for completion and clean up
     let processes_clone = BASH_PROCESSES.clone();
+    let window_for_async = window.clone();  // Clone for async closure
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         
@@ -559,7 +563,7 @@ pub async fn spawn_bash(
                     match child.try_wait() {
                         Ok(Some(status)) => {
                             tracing::info!("Bash process {} completed with status: {:?}", pid_clone, status.code());
-                            let _ = window.emit(&format!("bash-complete-{}", pid_clone), &status.code());
+                            let _ = window_for_async.emit(&format!("bash-complete-{}", pid_clone), &status.code());
                             true
                         }
                         Ok(None) => {

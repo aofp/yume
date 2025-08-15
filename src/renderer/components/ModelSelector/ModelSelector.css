@@ -29,7 +29,7 @@
 
 /* Windows-specific positioning */
 .platform-win32 .model-selector-trigger {
-  top: 0px;
+  top: -1px;
 }
 
 /* Windows-specific positioning on welcome screen */

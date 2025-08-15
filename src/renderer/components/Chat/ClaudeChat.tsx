@@ -197,6 +197,37 @@ export const ClaudeChat: React.FC = () => {
 
   // NO auto-selection - user must explicitly choose or create a session
   
+  // Warm up bash on Windows to prevent focus issues
+  useEffect(() => {
+    const warmupBash = async () => {
+      if (navigator.platform.includes('Win')) {
+        try {
+          const { invoke } = await import('@tauri-apps/api/core');
+          const { listen } = await import('@tauri-apps/api/event');
+          
+          // Run a silent echo command to warm up bash
+          const processId = await invoke<string>('spawn_bash', { 
+            command: 'echo "warmup"',
+            workingDir: undefined 
+          });
+          
+          // Set up listeners to clean up when done
+          const unlistenOutput = await listen<string>(`bash-output-${processId}`, () => {});
+          const unlistenError = await listen<string>(`bash-error-${processId}`, () => {});
+          const unlistenComplete = await listen<number | null>(`bash-complete-${processId}`, () => {
+            unlistenOutput();
+            unlistenError();
+            unlistenComplete();
+          });
+        } catch (e) {
+          console.log('Bash warmup failed:', e);
+        }
+      }
+    };
+    
+    warmupBash();
+  }, []); // Run once on mount
+  
   // Track viewport and input container changes for zoom
   useEffect(() => {
     const handleResize = () => {
@@ -894,6 +925,13 @@ export const ClaudeChat: React.FC = () => {
             workingDir: workingDir 
           });
           
+          // Focus the textarea after spawning process
+          setTimeout(() => {
+            if (inputRef.current) {
+              inputRef.current.focus();
+            }
+          }, 100);
+          
           // Store process ID for cancellation
           useClaudeCodeStore.setState(state => ({
             sessions: state.sessions.map(s => 
@@ -1018,6 +1056,13 @@ export const ClaudeChat: React.FC = () => {
                 }
               });
             }
+            
+            // Refocus the input after bash completes
+            setTimeout(() => {
+              if (inputRef.current) {
+                inputRef.current.focus();
+              }
+            }, 50);
           });
           
         } catch (error) {

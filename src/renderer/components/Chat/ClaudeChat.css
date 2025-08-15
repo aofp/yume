@@ -937,6 +937,12 @@
   flex-shrink: 0; /* Prevent shrinking */
 }
 
+/* Windows release build specific adjustment - buttons need to go down 1px */
+.platform-win32 .context-bar {
+  position: relative;
+  top: 1px; /* Move buttons down 1px in Windows builds */
+}
+
 .context-info {
   display: flex;
   gap: 2px;
