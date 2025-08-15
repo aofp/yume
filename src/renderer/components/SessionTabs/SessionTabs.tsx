@@ -33,6 +33,7 @@ export const SessionTabs: React.FC = () => {
   const [dragOverRecent, setDragOverRecent] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [activeRipples, setActiveRipples] = useState<{ [key: string]: { x: string; y: string } }>({});
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -290,23 +291,20 @@ export const SessionTabs: React.FC = () => {
           <div
             key={session.id}
             data-session-id={session.id}
-            className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
+            className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''} ${Object.keys(activeRipples).some(id => id.startsWith(session.id + '-')) ? 'ripple-active' : ''}`}
+            style={(() => {
+              // Find active ripple for this session
+              const rippleKey = Object.keys(activeRipples).find(id => id.startsWith(session.id + '-'));
+              if (rippleKey && activeRipples[rippleKey]) {
+                return {
+                  '--ripple-x': activeRipples[rippleKey].x,
+                  '--ripple-y': activeRipples[rippleKey].y
+                } as React.CSSProperties;
+              }
+              return {};
+            })()}
             onClick={(e) => {
               if (!isDragging) {
-                // Add ripple effect
-                const target = e.currentTarget;
-                const rect = target.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
-                target.style.setProperty('--ripple-x', `${x}px`);
-                target.style.setProperty('--ripple-y', `${y}px`);
-                target.classList.add('ripple-active');
-                
-                setTimeout(() => {
-                  target.classList.remove('ripple-active');
-                }, 800);
-                
                 resumeSession(session.id);
               }
             }}
@@ -318,6 +316,43 @@ export const SessionTabs: React.FC = () => {
               // Prevent dragging when renaming
               if (renamingTab === session.id) {
                 return;
+              }
+              
+              // ALWAYS add ripple effect on mousedown for left click
+              if (e.button === 0) { // Left click only
+                // Add ripple effect immediately on mousedown
+                const target = e.currentTarget;
+                const rect = target.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                target.style.setProperty('--ripple-x', `${x}px`);
+                target.style.setProperty('--ripple-y', `${y}px`);
+                target.classList.add('ripple-active');
+                
+                // Track this ripple in state to persist through re-renders
+                const rippleId = `${session.id}-${Date.now()}`;
+                setActiveRipples(prev => ({
+                  ...prev,
+                  [rippleId]: { x: `${x}px`, y: `${y}px` }
+                }));
+                
+                // Remove ripple after 1.5 seconds
+                // This ensures the animation (1s) completes fully even with re-renders
+                setTimeout(() => {
+                  // Remove from state
+                  setActiveRipples(prev => {
+                    const next = { ...prev };
+                    delete next[rippleId];
+                    return next;
+                  });
+                  
+                  // Also remove class from DOM element if it still exists
+                  const tabElement = document.querySelector(`[data-session-id="${session.id}"]`);
+                  if (tabElement) {
+                    tabElement.classList.remove('ripple-active');
+                  }
+                }, 1500); // 1.5 seconds to ensure animation completes
               }
               
               if (e.button === 0) { // Left click only
@@ -334,11 +369,13 @@ export const SessionTabs: React.FC = () => {
                   const preview = tabElement.cloneNode(true) as HTMLElement;
                   preview.style.cssText = `
                     position: fixed;
-                    pointer-events: none;
-                    z-index: 10000;
+                    pointer-events: none !important;
+                    z-index: 9999;
                     opacity: 0.8;
                     transform: rotate(2deg);
                     transition: none;
+                    cursor: grabbing !important;
+                    user-select: none;
                   `;
                   
                   // Copy computed styles from original
@@ -376,14 +413,21 @@ export const SessionTabs: React.FC = () => {
                     setDraggedTab(session.id);
                     dragPreview = createDragPreview();
                     document.body.classList.add('tab-dragging');
+                    // Force cursor change immediately
+                    document.body.style.cursor = 'grabbing';
                     console.log('Started dragging:', session.id);
                   }
                   
                   if (moved) {
-                    // Update drag preview position
+                    // Update drag preview position - offset more to avoid cursor interference
                     if (dragPreview) {
-                      dragPreview.style.left = `${moveEvent.clientX + 10}px`;
-                      dragPreview.style.top = `${moveEvent.clientY - 10}px`;
+                      dragPreview.style.left = `${moveEvent.clientX + 15}px`;
+                      dragPreview.style.top = `${moveEvent.clientY + 15}px`;
+                    }
+                    
+                    // Ensure cursor stays as grabbing
+                    if (document.body.style.cursor !== 'grabbing') {
+                      document.body.style.cursor = 'grabbing';
                     }
                     
                     // Find which tab we're over
@@ -397,6 +441,11 @@ export const SessionTabs: React.FC = () => {
                         console.log('Over tab:', targetSessionId);
                         currentDragOver = targetSessionId;
                         setDragOverTab(targetSessionId);
+                      } else if (targetSessionId === session.id) {
+                        // Dragged back to original position - clear drag over
+                        console.log('Back to original tab');
+                        currentDragOver = null;
+                        setDragOverTab(null);
                       }
                     } else if (newTabButton) {
                       // Over the new tab button - mark for moving to end
@@ -412,6 +461,7 @@ export const SessionTabs: React.FC = () => {
                       } else {
                         currentDragOver = null;
                         setDragOverTab(null);
+                        setDragOverNewTab(false);
                       }
                     }
                   }
@@ -421,8 +471,9 @@ export const SessionTabs: React.FC = () => {
                   document.removeEventListener('mousemove', handleMouseMove);
                   document.removeEventListener('mouseup', handleMouseUp);
                   
-                  // Remove drag class from body
+                  // Remove drag class and cursor from body
                   document.body.classList.remove('tab-dragging');
+                  document.body.style.cursor = '';
                   
                   // Remove drag preview
                   if (dragPreview && document.body.contains(dragPreview)) {
@@ -508,6 +559,7 @@ export const SessionTabs: React.FC = () => {
                   className="tab-rename-input"
                   value={renameValue}
                   onChange={(e) => setRenameValue(e.target.value)}
+                  onFocus={(e) => e.target.select()}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       if (renameValue.trim()) {

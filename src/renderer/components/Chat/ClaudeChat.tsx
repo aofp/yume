@@ -200,6 +200,10 @@ export const ClaudeChat: React.FC = () => {
 
   // NO auto-selection - user must explicitly choose or create a session
   
+  // Track if bash warmup has completed (Windows only)
+  const bashWarmupCompleteRef = useRef<boolean>(false);
+  const bashWarmupPromiseRef = useRef<Promise<void> | null>(null);
+  
   // Warm up bash on Windows to prevent focus issues
   useEffect(() => {
     const warmupBash = async () => {
@@ -208,9 +212,11 @@ export const ClaudeChat: React.FC = () => {
           const { invoke } = await import('@tauri-apps/api/core');
           const { listen } = await import('@tauri-apps/api/event');
           
+          console.log('[Bash] Starting warmup to prevent focus loss...');
+          
           // Run a silent echo command to warm up bash
           const processId = await invoke<string>('spawn_bash', { 
-            command: 'echo "warmup"',
+            command: 'echo warmup',
             workingDir: undefined 
           });
           
@@ -221,14 +227,24 @@ export const ClaudeChat: React.FC = () => {
             unlistenOutput();
             unlistenError();
             unlistenComplete();
+            bashWarmupCompleteRef.current = true;
+            console.log('[Bash] Warmup complete, ready for commands');
+            // Ensure focus is on input after warmup
+            setTimeout(() => {
+              inputRef.current?.focus();
+            }, 100);
           });
         } catch (e) {
-          console.log('Bash warmup failed:', e);
+          console.log('[Bash] Warmup failed:', e);
+          bashWarmupCompleteRef.current = true; // Mark as complete anyway to not block
         }
+      } else {
+        bashWarmupCompleteRef.current = true; // Not Windows, no warmup needed
       }
     };
     
-    warmupBash();
+    // Store the promise so we can await it if needed
+    bashWarmupPromiseRef.current = warmupBash();
   }, []); // Run once on mount
   
   // Track viewport and input container changes for zoom
@@ -471,13 +487,15 @@ export const ClaudeChat: React.FC = () => {
       // Clean up streaming start time after streaming ends
       // (but only after a delay to ensure followups work correctly)
       setTimeout(() => {
-        if (streamingStartTimeRef.current[currentSessionId]) {
+        // Only clean up if streaming is still false (not restarted)
+        const session = sessions.find(s => s.id === currentSessionId);
+        if (!session?.streaming && streamingStartTimeRef.current[currentSessionId]) {
           console.log('[ClaudeChat] Cleaning up streaming start time for session:', currentSessionId);
           delete streamingStartTimeRef.current[currentSessionId];
         }
       }, 10000); // Clean up after 10 seconds
     }
-  }, [currentSession?.streaming, currentSessionId]);
+  }, [currentSession?.streaming, currentSessionId, sessions]);
 
   // Update elapsed time every 100ms for smooth display
   useEffect(() => {
@@ -800,9 +818,10 @@ export const ClaudeChat: React.FC = () => {
     updateSessionDraft(sessionId, '', []);
     
     // Track when streaming starts for this session
+    // Don't clear if already streaming - preserve the tracking
     const session = sessions.find(s => s.id === sessionId);
     const isFirstMessage = !session?.messages?.some(m => m.type === 'user');
-    if (isFirstMessage || !streamingStartTimeRef.current[sessionId]) {
+    if ((isFirstMessage || !streamingStartTimeRef.current[sessionId]) && !session?.streaming) {
       streamingStartTimeRef.current[sessionId] = Date.now();
       console.log('[ClaudeChat] Recording streaming start time for delayed send (first message):', sessionId);
     }
@@ -961,20 +980,25 @@ export const ClaudeChat: React.FC = () => {
         if (inputRef.current) {
           inputRef.current.style.height = '44px';
           inputRef.current.style.overflow = 'hidden';
-          // Maintain focus on Windows to prevent focus loss
-          if (navigator.platform.includes('Win')) {
-            requestAnimationFrame(() => {
-              inputRef.current?.focus();
-            });
-          }
         }
         
         try {
+          // On Windows, ensure warmup is complete before first command
+          if (navigator.platform.includes('Win') && !bashWarmupCompleteRef.current) {
+            console.log('[Bash] Waiting for warmup to complete before first command...');
+            if (bashWarmupPromiseRef.current) {
+              await bashWarmupPromiseRef.current;
+            }
+          }
+          
           // Execute the bash command via Tauri with streaming
           const { invoke } = await import('@tauri-apps/api/core');
           const { listen } = await import('@tauri-apps/api/event');
           const session = sessions.find(s => s.id === currentSessionId);
           const workingDir = session?.workingDirectory || undefined;
+          
+          // Store current focus state on Windows
+          const hadFocus = document.activeElement === inputRef.current;
           
           // Spawn bash process and get process ID
           const processId = await invoke<string>('spawn_bash', { 
@@ -982,12 +1006,26 @@ export const ClaudeChat: React.FC = () => {
             workingDir: workingDir 
           });
           
-          // Focus the textarea after spawning process
-          setTimeout(() => {
-            if (inputRef.current) {
-              inputRef.current.focus();
-            }
-          }, 100);
+          // Aggressively restore focus on Windows
+          if (navigator.platform.includes('Win')) {
+            // Multiple attempts to ensure focus is restored
+            const restoreFocus = () => {
+              if (inputRef.current && hadFocus) {
+                inputRef.current.focus();
+                // Double-check focus was actually restored
+                if (document.activeElement !== inputRef.current) {
+                  setTimeout(() => inputRef.current?.focus(), 50);
+                }
+              }
+            };
+            
+            // Try immediately
+            restoreFocus();
+            // Try after a short delay
+            setTimeout(restoreFocus, 100);
+            // Try after process likely started
+            setTimeout(restoreFocus, 250);
+          }
           
           // Store process ID for cancellation
           useClaudeCodeStore.setState(state => ({
@@ -1246,8 +1284,9 @@ export const ClaudeChat: React.FC = () => {
       updateSessionDraft(currentSessionId, '', []);
       // Track when streaming starts for this session (for first message of a fresh session)
       // This helps prevent followup crashes when session is just starting
+      // Don't clear if already streaming - preserve the tracking
       const isFirstMessage = !currentSession?.messages?.some(m => m.type === 'user');
-      if (isFirstMessage || !streamingStartTimeRef.current[currentSessionId]) {
+      if ((isFirstMessage || !streamingStartTimeRef.current[currentSessionId]) && !currentSession?.streaming) {
         streamingStartTimeRef.current[currentSessionId] = Date.now();
         console.log('[ClaudeChat] Recording streaming start time for session (first message):', currentSessionId);
       }
@@ -1954,8 +1993,8 @@ export const ClaudeChat: React.FC = () => {
             );
           });
         })()}
-        {/* ALWAYS show thinking indicator when streaming */}
-        {currentSession?.streaming && (
+        {/* ALWAYS show thinking indicator when streaming - check both store state and local tracking */}
+        {(currentSession?.streaming || (currentSessionId && streamingStartTimeRef.current[currentSessionId])) && (
           <div className="message assistant">
             <div className="message-content">
               <div className="thinking-indicator-bottom">

@@ -114,11 +114,11 @@
   0% {
     width: 0;
     height: 0;
-    opacity: 0.4;
+    opacity: 0.6;
   }
   100% {
-    width: 60px;
-    height: 60px;
+    width: 80px;
+    height: 80px;
     opacity: 0;
   }
 }
@@ -131,27 +131,21 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(var(--accent-rgb), 0.2);
+  background: rgba(var(--accent-rgb), 0.4);
   transform: translate(-50%, -50%);
   pointer-events: none;
+  z-index: 10;
 }
 
 .session-tab.ripple-active::before {
-  animation: ripple-expand 0.8s ease-out;
+  animation: ripple-expand 1s ease-out;
 }
 
-.session-tab.ripple-held::after {
-  content: 'held';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 8pt;
-  color: rgba(var(--accent-rgb), 0.5);
-  text-transform: lowercase;
-  pointer-events: none;
-  animation: fade-in 0.2s ease-in;
+/* Make ripple more visible on active tabs */
+.session-tab.active.ripple-active::before {
+  background: rgba(255, 255, 255, 0.35);
 }
+
 
 @keyframes fade-in {
   from { opacity: 0; }
@@ -168,10 +162,25 @@
 
 .session-tab.dragging {
   opacity: 0.5;
+  cursor: grabbing !important;
 }
 
 .session-tab.drag-over {
-  background: rgba(var(--accent-rgb), 0.08);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+/* Apply grabbing cursor to entire body when dragging */
+body.tab-dragging,
+body.tab-dragging * {
+  cursor: grabbing !important;
+}
+
+/* Ensure cursor applies to all tab elements during drag */
+body.tab-dragging .session-tab,
+body.tab-dragging .tabs-wrapper,
+body.tab-dragging .tabs-scrollable,
+body.tab-dragging .session-tabs {
+  cursor: grabbing !important;
 }
 
 .tab-content {
@@ -352,18 +361,6 @@
   animation: ripple-expand 0.8s ease-out;
 }
 
-.tab-new.ripple-held::after {
-  content: 'held';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 8pt;
-  color: rgba(var(--accent-rgb), 0.5);
-  text-transform: lowercase;
-  pointer-events: none;
-  animation: fade-in 0.2s ease-in;
-}
 
 .tab-new:hover {
   background: rgba(var(--accent-rgb), 0.25);
@@ -371,7 +368,7 @@
 }
 
 .tab-new.drag-over-duplicate {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.45);
 }
 
 /* Recent button - gray style */
@@ -412,18 +409,6 @@
   animation: ripple-expand 0.8s ease-out;
 }
 
-.tab-recent.ripple-held::after {
-  content: 'held';
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  font-size: 8pt;
-  color: rgba(255, 255, 255, 0.3);
-  text-transform: lowercase;
-  pointer-events: none;
-  animation: fade-in 0.2s ease-in;
-}
 
 .tab-recent:hover {
   background: rgba(var(--accent-rgb), 0.25);
@@ -431,7 +416,7 @@
 }
 
 .tab-recent.drag-over-save {
-  background: rgba(var(--accent-rgb), 0.3);
+  background: rgba(var(--accent-rgb), 0.45);
   color: var(--accent-color);
 }
 
