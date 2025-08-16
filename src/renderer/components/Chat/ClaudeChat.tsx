@@ -430,16 +430,12 @@ export const ClaudeChat: React.FC = () => {
         }));
       }
     } else if (currentSessionId && !currentSession?.streaming) {
-      // Reset when streaming stops for this session
+      // When streaming stops, keep the final elapsed time for display
+      // Don't delete it immediately - let it persist
       setThinkingStartTimes(prev => {
         const newTimes = { ...prev };
         delete newTimes[currentSessionId];
         return newTimes;
-      });
-      setThinkingElapsed(prev => {
-        const newElapsed = { ...prev };
-        delete newElapsed[currentSessionId];
-        return newElapsed;
       });
       
       // Clean up streaming start time after streaming ends
@@ -2017,8 +2013,8 @@ export const ClaudeChat: React.FC = () => {
             );
           });
         })()}
-        {/* ALWAYS show thinking indicator when streaming - check both store state and local tracking */}
-        {(currentSession?.streaming || (currentSessionId && streamingStartTimeRef.current[currentSessionId])) && (
+        {/* Show thinking indicator only when actually streaming */}
+        {currentSession?.streaming && (
           <div className="message assistant">
             <div className="message-content">
               <div className="thinking-indicator-bottom">
@@ -2307,12 +2303,6 @@ export const ClaudeChat: React.FC = () => {
                     <div className="stats-column" style={{ gridColumn: 'span 2' }}>
                       <div className="stats-section">
                         <h4>context usage</h4>
-                        <div className="breakdown-bar">
-                          <div 
-                            className={`input-bar ${percentageNum >= 90 ? 'high' : percentageNum >= 80 ? 'orange' : percentageNum >= 70 ? 'medium' : ''}`}
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
                         <div className="stat-row">
                           <div className="stat-keys">
                             <IconChartBar size={14} />
@@ -2325,6 +2315,61 @@ export const ClaudeChat: React.FC = () => {
                         </div>
                       </div>
                     </div>
+              <div className="stats-column">
+                <div className="stats-section">
+                  <h4>token breakdown</h4>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconClock size={14} />
+                      <span className="stat-name">thinking</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      {(() => {
+                        const thinkingSeconds = currentSession.analytics.thinkingTime || 0;
+                        const minutes = Math.floor(thinkingSeconds / 60);
+                        const seconds = thinkingSeconds % 60;
+                        if (minutes > 0) {
+                          return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        }
+                        return `${seconds}s`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconArrowsUpDown size={14} />
+                      <span className="stat-name">in/out %</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      {(() => {
+                        const inputTokens = currentSession.analytics.tokens.input || 0;
+                        const outputTokens = currentSession.analytics.tokens.output || 0;
+                        const totalTokens = inputTokens + outputTokens || 1;
+                        const inputPercent = Math.round((inputTokens / totalTokens) * 100);
+                        const outputPercent = Math.round((outputTokens / totalTokens) * 100);
+                        return `${inputPercent}% / ${outputPercent}%`;
+                      })()}
+                    </span>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconBrain size={14} />
+                      <span className="stat-name">opus %</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      {(() => {
+                        const opusTokens = currentSession.analytics.tokens.byModel?.opus?.total || 0;
+                        const totalTokens = currentSession.analytics.tokens.total || 1;
+                        return `${Math.round((opusTokens / totalTokens) * 100)}%`;
+                      })()}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
               <div className="stats-column">
                 <div className="stats-section">
                   <h4>usage & cost</h4>
@@ -2368,44 +2413,6 @@ export const ClaudeChat: React.FC = () => {
                         const sonnetCost = (sonnetInput / 1000000) * 2.50 + (sonnetOutput / 1000000) * 12.50;
                         
                         return (opusCost + sonnetCost).toFixed(2);
-                      })()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stats-column">
-                <div className="stats-section">
-                  <h4>token breakdown</h4>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconClock size={14} />
-                      <span className="stat-name">thinking</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {(() => {
-                        const thinkingSeconds = currentSession.analytics.thinkingTime || 0;
-                        const minutes = Math.floor(thinkingSeconds / 60);
-                        const seconds = thinkingSeconds % 60;
-                        if (minutes > 0) {
-                          return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                        }
-                        return `${seconds}s`;
-                      })()}
-                    </span>
-                  </div>
-                  <div className="stat-row opus-stat-row">
-                    <div className="stat-keys">
-                      <IconBrain size={14} />
-                      <span className="stat-name">opus %</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {(() => {
-                        const opusTokens = currentSession.analytics.tokens.byModel?.opus?.total || 0;
-                        const totalTokens = currentSession.analytics.tokens.total || 1;
-                        return `${Math.round((opusTokens / totalTokens) * 100)}%`;
                       })()}
                     </span>
                   </div>

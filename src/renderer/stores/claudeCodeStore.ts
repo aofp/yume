@@ -362,7 +362,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             },
             cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
             duration: 0,
-            lastActivity: new Date()
+            lastActivity: new Date(),
+            thinkingTime: 0
           }
         };
         
@@ -828,9 +829,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             // Update streaming state based on message type
             if (message.type === 'assistant') {
               // Update streaming state based on the message's streaming flag
+              console.log(`[THINKING TIME DEBUG] Assistant message - streaming: ${message.streaming}, sessionId: ${sessionId}`);
               if (message.streaming === true) {
+                // Don't reset thinkingStartTime here - it's already set when user sends message
+                console.log(`[THINKING TIME DEBUG] Assistant streaming started, keeping existing thinkingStartTime`);
                 sessions = sessions.map(s => 
-                  s.id === sessionId ? { ...s, streaming: true, thinkingStartTime: Date.now() } : s
+                  s.id === sessionId ? { ...s, streaming: true } : s
                 );
               } else if (message.streaming === false) {
                 // Check if we have pending tool operations
@@ -1182,6 +1186,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     
     // Only set streaming to true if it's not already streaming
     // This prevents the thinking indicator from disappearing when sending followup messages
+    // START THINKING TIME when user sends a message
+    const now = Date.now();
     set(state => ({
       sessions: state.sessions.map(s => {
         if (s.id === sessionToUse) {
@@ -1189,10 +1195,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           // When not streaming (new conversation), set streaming to true
           const newStreamingState = s.streaming ? true : true; // Always true when sending a message
           console.log('[Store] Current streaming state:', s.streaming, 'New streaming state:', newStreamingState);
+          console.log(`[THINKING TIME] Starting thinking timer at ${now} when user sends message`);
           return { 
             ...s, 
             messages: [...s.messages, userMessage], 
-            streaming: true // Always set to true when sending a message
+            streaming: true, // Always set to true when sending a message
+            thinkingStartTime: now // Start tracking thinking time when user sends message
           };
         }
         return s;
@@ -1646,7 +1654,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 },
                 cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
                 duration: 0,
-                lastActivity: new Date()
+                lastActivity: new Date(),
+                thinkingTime: 0
               },
               updatedAt: new Date()
             }
@@ -1738,7 +1747,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               }
             },
             cost: session.analytics?.cost || { total: 0, byModel: { opus: 0, sonnet: 0 } },
-            lastActivity: new Date()
+            lastActivity: new Date(),
+            thinkingTime: session.analytics?.thinkingTime || 0
           }
         };
         
