@@ -2287,6 +2287,12 @@ export const ClaudeChat: React.FC = () => {
                     <div className="stats-column" style={{ gridColumn: 'span 2' }}>
                       <div className="stats-section">
                         <h4>context usage</h4>
+                        <div className="breakdown-bar">
+                          <div 
+                            className={`input-bar ${percentageNum >= 90 ? 'high' : percentageNum >= 80 ? 'orange' : percentageNum >= 70 ? 'medium' : ''}`}
+                            style={{ width: `${percentage}%` }}
+                          />
+                        </div>
                         <div className="stat-row">
                           <div className="stat-keys">
                             <IconChartBar size={14} />
@@ -2296,12 +2302,6 @@ export const ClaudeChat: React.FC = () => {
                           <span className="stat-desc">
                             {tokens.toLocaleString()} / {contextWindowTokens.toLocaleString()} ({percentage}%)
                           </span>
-                        </div>
-                        <div className="breakdown-bar">
-                          <div 
-                            className={`input-bar ${percentageNum >= 90 ? 'high' : percentageNum >= 80 ? 'orange' : percentageNum >= 70 ? 'medium' : ''}`}
-                            style={{ width: `${percentage}%` }}
-                          />
                         </div>
                       </div>
                     </div>
@@ -2323,14 +2323,6 @@ export const ClaudeChat: React.FC = () => {
                     </div>
                     <span className="stat-dots"></span>
                     <span className="stat-desc">{currentSession.analytics.toolUses}</span>
-                  </div>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconChartBar size={14} />
-                      <span className="stat-name">total tokens</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">{currentSession.analytics.tokens.total.toLocaleString()}</span>
                   </div>
                   <div className="stat-row">
                     <div className="stat-keys">
@@ -2365,25 +2357,21 @@ export const ClaudeChat: React.FC = () => {
               <div className="stats-column">
                 <div className="stats-section">
                   <h4>token breakdown</h4>
-                  <div className="stat-row">
-                    <div className="stat-keys">
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <IconArrowUp size={14} />
-                      <span className="stat-name">input</span>
+                      <span className="stat-name">in</span>
+                      <span style={{ marginLeft: 'auto', color: '#999', fontSize: '12px' }}>
+                        {currentSession.analytics.tokens.input.toLocaleString()} ({currentSession.analytics.tokens.total > 0 ? Math.round((currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100) : 0}%)
+                      </span>
                     </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {currentSession.analytics.tokens.input.toLocaleString()} ({currentSession.analytics.tokens.total > 0 ? Math.round((currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100) : 0}%)
-                    </span>
-                  </div>
-                  <div className="stat-row">
-                    <div className="stat-keys">
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                       <IconArrowDown size={14} />
-                      <span className="stat-name">output</span>
+                      <span className="stat-name">out</span>
+                      <span style={{ marginLeft: 'auto', color: '#999', fontSize: '12px' }}>
+                        {currentSession.analytics.tokens.output.toLocaleString()} ({currentSession.analytics.tokens.total > 0 ? Math.round((currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100) : 0}%)
+                      </span>
                     </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {currentSession.analytics.tokens.output.toLocaleString()} ({currentSession.analytics.tokens.total > 0 ? Math.round((currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100) : 0}%)
-                    </span>
                   </div>
                   <div className="breakdown-bar">
                     <div 

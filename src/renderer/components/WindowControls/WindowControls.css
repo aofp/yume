@@ -19,8 +19,8 @@
 /* macOS traffic light controls */
 .mac-controls {
   position: fixed;
-  top: 8px;
-  left: 8px;
+  top: 6px;
+  left: 2px;
   right: auto;
   display: flex;
   gap: 8px;
