@@ -2198,20 +2198,20 @@ export const ClaudeChat: React.FC = () => {
                         });
                       }
                     }}
-                    disabled={!hasActivity}
-                    title={hasActivity ? "clear context (ctrl+l)" : "no messages to clear"}
+                    disabled={false}
+                    title={hasActivity ? "clear context (ctrl+l)" : "clear context (ctrl+l)"}
                     style={{
-                      opacity: hasActivity ? 1 : 0.3,
+                      opacity: 1,
                       cursor: 'default'
                     }}
                   >
                     clear
                   </button>
                   <button 
-                    className={`btn-stats ${!hasActivity ? 'disabled' : ''} ${usageClass}`} 
-                    onClick={() => hasActivity && setShowStatsModal(true)}
-                    disabled={!hasActivity}
-                    title={hasActivity ? `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)` : "no activity yet"}
+                    className={`btn-stats ${usageClass}`} 
+                    onClick={() => setShowStatsModal(true)}
+                    disabled={false}
+                    title={hasActivity ? `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)` : "0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)"}
                   >
                     {percentage}% used
                   </button>

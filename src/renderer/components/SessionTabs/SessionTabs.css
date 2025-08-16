@@ -158,7 +158,7 @@ body.tab-dragging .session-tab {
 }
 
 .session-tab:hover {
-  background: linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(var(--accent-rgb), 0.1));
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .session-tab.active {
