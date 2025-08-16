@@ -21,7 +21,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   // State to prevent duplicate selections
   const [isSelecting, setIsSelecting] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
-  const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
+  const [selectedIndex, setSelectedIndex] = React.useState(0);
   // Ref to track current open state in event handlers
   const isOpenRef = React.useRef(isOpen);
   
@@ -156,7 +156,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
           key={project.path} 
           className={`recent-item-container ${
             hoveredIndex === idx ? 'hovered' : ''
-          } ${selectedIndex === idx ? 'selected' : ''}`}
+          }`}
           onMouseEnter={() => setHoveredIndex(idx)}
           onMouseLeave={() => setHoveredIndex(null)}
         >
@@ -270,9 +270,6 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       // enter to select current
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (selectedIndex < projects.length) {
-          selectProject(projects[selectedIndex]);
-        }
         return;
       }
       
@@ -306,7 +303,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       console.log('[RecentProjectsModal] Removing keydown listener');
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose, isSelecting, selectedIndex, selectProject]);
+  }, [isOpen, onClose, isSelecting, selectProject]);
 
   // Early return when not open to prevent rendering
   if (!isOpen) return null;

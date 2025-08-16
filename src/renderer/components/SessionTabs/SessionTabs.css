@@ -94,7 +94,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 2px 2px 2px 4px; /* Reduced padding by half */
+  padding: 2px 2px 2px 5px; /* Added 1px to left padding */
   background: rgba(255, 255, 255, 0.04);
   border: none;
   border-radius: 6px; /* Uniform radius */

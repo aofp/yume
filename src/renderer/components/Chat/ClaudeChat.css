@@ -1700,6 +1700,7 @@
   white-space: nowrap;
   margin-left: 8px;
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  transition: color 0.15s ease;
 }
 
 .recent-item-count {
@@ -1740,6 +1741,7 @@
   font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
   width: 100%;
   max-width: 350px;
+  transition: color 0.15s ease;
 }
 
 .recent-item-path::-webkit-scrollbar {
@@ -1765,6 +1767,11 @@
 
 .recent-item-container:hover .recent-item-remove {
   opacity: 1;
+}
+
+.recent-item-container:hover .recent-item-time,
+.recent-item-container:hover .recent-item-path {
+  color: rgba(255, 255, 255, 0.5);
 }
 
 .recent-item-remove:hover {

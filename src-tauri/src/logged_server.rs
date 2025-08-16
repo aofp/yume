@@ -1151,129 +1151,132 @@ pub fn start_logged_server(port: u16) {
     }
     
     // Original embedded server logic for other platforms (Windows/Linux)
-    info!("Starting embedded server on port {}", port);
-    clear_log(); // Clear logs from previous run
-    write_log("=== Starting embedded server ===");
-    
-    // Create temp directory for server
-    let server_dir = std::env::temp_dir().join("yurucode-server");
-    let _ = fs::create_dir_all(&server_dir);
-    
-    // Write embedded server to temp
-    let server_path = server_dir.join("server.js");
-    if let Err(e) = fs::write(&server_path, EMBEDDED_SERVER) {
-        info!("Failed to write server: {}", e);
-        return;
-    }
-    
-    // Determine where to find node_modules
-    let node_path = if cfg!(debug_assertions) {
-        // In development, find project root dynamically
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("node_modules"))
-    } else {
-        // In production, look for bundled node_modules
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("resources").join("node_modules"))
-    };
-    
-    // Try to start server with Node.js
-    let node_paths = vec!["node", "node.exe"];
-    
-    for node_cmd in node_paths {
-        info!("Trying: {}", node_cmd);
+    #[cfg(not(target_os = "macos"))]
+    {
+        info!("Starting embedded server on port {}", port);
+        clear_log(); // Clear logs from previous run
+        write_log("=== Starting embedded server ===");
         
-        let mut cmd = Command::new(node_cmd);
-        cmd.arg(&server_path)
-           .current_dir(&server_dir)
-           .env("PORT", port.to_string());
+        // Create temp directory for server
+        let server_dir = std::env::temp_dir().join("yurucode-server");
+        let _ = fs::create_dir_all(&server_dir);
         
-        // Set NODE_PATH if we found node_modules
-        if let Some(ref modules_path) = node_path {
-            info!("Setting NODE_PATH to: {:?}", modules_path);
-            cmd.env("NODE_PATH", modules_path);
+        // Write embedded server to temp
+        let server_path = server_dir.join("server.js");
+        if let Err(e) = fs::write(&server_path, EMBEDDED_SERVER) {
+            info!("Failed to write server: {}", e);
+            return;
         }
         
-        #[cfg(target_os = "windows")]
-        {
-            use std::os::windows::process::CommandExt;
-            const CREATE_NEW_CONSOLE: u32 = 0x00000010;
-            const CREATE_NO_WINDOW: u32 = 0x08000000;
-            const DETACHED_PROCESS: u32 = 0x00000008;
-            
-            // Use DETACHED_PROCESS so the server survives if the parent crashes
-            // We'll explicitly kill it in stop_logged_server()
-            let flags = if YURUCODE_SHOW_CONSOLE {
-                info!("Console VISIBLE + DETACHED");
-                CREATE_NEW_CONSOLE | DETACHED_PROCESS
-            } else {
-                info!("Console HIDDEN + DETACHED");
-                CREATE_NO_WINDOW | DETACHED_PROCESS
-            };
-            
-            cmd.creation_flags(flags);
-        }
+        // Determine where to find node_modules
+        let node_path = if cfg!(debug_assertions) {
+            // In development, find project root dynamically
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
+                .map(|p| p.join("node_modules"))
+        } else {
+            // In production, look for bundled node_modules
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.to_path_buf()))
+                .map(|p| p.join("resources").join("node_modules"))
+        };
         
-        // Always capture output for logging, even when console is hidden
-        cmd.stdout(Stdio::piped())
-           .stderr(Stdio::piped());
+        // Try to start server with Node.js
+        let node_paths = vec!["node", "node.exe"];
         
-        match cmd.spawn() {
-            Ok(mut child) => {
-                info!("✅ Server started with PID: {}", child.id());
-                write_log(&format!("✅ Server started with PID: {}", child.id()));
+        for node_cmd in node_paths {
+            info!("Trying: {}", node_cmd);
+            
+            let mut cmd = Command::new(node_cmd);
+            cmd.arg(&server_path)
+               .current_dir(&server_dir)
+               .env("PORT", port.to_string());
+            
+            // Set NODE_PATH if we found node_modules
+            if let Some(ref modules_path) = node_path {
+                info!("Setting NODE_PATH to: {:?}", modules_path);
+                cmd.env("NODE_PATH", modules_path);
+            }
+            
+            #[cfg(target_os = "windows")]
+            {
+                use std::os::windows::process::CommandExt;
+                const CREATE_NEW_CONSOLE: u32 = 0x00000010;
+                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                const DETACHED_PROCESS: u32 = 0x00000008;
                 
-                // Spawn threads to capture and log stdout/stderr
-                if let Some(stdout) = child.stdout.take() {
-                    std::thread::spawn(move || {
-                        use std::io::{BufRead, BufReader};
-                        let reader = BufReader::new(stdout);
-                        for line in reader.lines() {
-                            if let Ok(line) = line {
-                                write_log(&format!("[SERVER OUT] {}", line));
-                                info!("[SERVER OUT] {}", line);
-                                if YURUCODE_SHOW_CONSOLE {
-                                    println!("[SERVER OUT] {}", line);
+                // Use DETACHED_PROCESS so the server survives if the parent crashes
+                // We'll explicitly kill it in stop_logged_server()
+                let flags = if YURUCODE_SHOW_CONSOLE {
+                    info!("Console VISIBLE + DETACHED");
+                    CREATE_NEW_CONSOLE | DETACHED_PROCESS
+                } else {
+                    info!("Console HIDDEN + DETACHED");
+                    CREATE_NO_WINDOW | DETACHED_PROCESS
+                };
+                
+                cmd.creation_flags(flags);
+            }
+            
+            // Always capture output for logging, even when console is hidden
+            cmd.stdout(Stdio::piped())
+               .stderr(Stdio::piped());
+            
+            match cmd.spawn() {
+                Ok(mut child) => {
+                    info!("✅ Server started with PID: {}", child.id());
+                    write_log(&format!("✅ Server started with PID: {}", child.id()));
+                    
+                    // Spawn threads to capture and log stdout/stderr
+                    if let Some(stdout) = child.stdout.take() {
+                        std::thread::spawn(move || {
+                            use std::io::{BufRead, BufReader};
+                            let reader = BufReader::new(stdout);
+                            for line in reader.lines() {
+                                if let Ok(line) = line {
+                                    write_log(&format!("[SERVER OUT] {}", line));
+                                    info!("[SERVER OUT] {}", line);
+                                    if YURUCODE_SHOW_CONSOLE {
+                                        println!("[SERVER OUT] {}", line);
+                                    }
                                 }
                             }
-                        }
-                    });
-                }
-                
-                if let Some(stderr) = child.stderr.take() {
-                    std::thread::spawn(move || {
-                        use std::io::{BufRead, BufReader};
-                        let reader = BufReader::new(stderr);
-                        for line in reader.lines() {
-                            if let Ok(line) = line {
-                                write_log(&format!("[SERVER ERR] {}", line));
-                                info!("[SERVER ERR] {}", line);
-                                if YURUCODE_SHOW_CONSOLE {
-                                    eprintln!("[SERVER ERR] {}", line);
+                        });
+                    }
+                    
+                    if let Some(stderr) = child.stderr.take() {
+                        std::thread::spawn(move || {
+                            use std::io::{BufRead, BufReader};
+                            let reader = BufReader::new(stderr);
+                            for line in reader.lines() {
+                                if let Ok(line) = line {
+                                    write_log(&format!("[SERVER ERR] {}", line));
+                                    info!("[SERVER ERR] {}", line);
+                                    if YURUCODE_SHOW_CONSOLE {
+                                        eprintln!("[SERVER ERR] {}", line);
+                                    }
                                 }
                             }
-                        }
-                    });
+                        });
+                    }
+                    
+                    let child_arc = Arc::new(Mutex::new(child));
+                    if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
+                        *process_guard = Some(child_arc);
+                    }
+                    
+                    return;
                 }
-                
-                let child_arc = Arc::new(Mutex::new(child));
-                if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
-                    *process_guard = Some(child_arc);
+                Err(e) => {
+                    info!("Failed: {}", e);
                 }
-                
-                return;
-            }
-            Err(e) => {
-                info!("Failed: {}", e);
             }
         }
+        
+        info!("❌ Failed to start server");
     }
-    
-    info!("❌ Failed to start server");
 }
 
 /// macOS-specific server startup
