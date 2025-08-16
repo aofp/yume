@@ -321,13 +321,28 @@ export const SessionTabs: React.FC = () => {
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
                 
-                target.style.setProperty('--ripple-x', `${x}px`);
-                target.style.setProperty('--ripple-y', `${y}px`);
-                target.classList.add('ripple-active');
+                // Create ripple element directly in DOM to avoid React re-render interruption
+                const ripple = document.createElement('div');
+                ripple.style.cssText = `
+                  position: absolute;
+                  top: ${y}px;
+                  left: ${x}px;
+                  width: 0;
+                  height: 0;
+                  border-radius: 50%;
+                  background: rgba(var(--accent-rgb), 0.4);
+                  transform: translate(-50%, -50%);
+                  pointer-events: none;
+                  z-index: 100;
+                  animation: ripple-expand 1s ease-out forwards;
+                `;
+                target.appendChild(ripple);
                 
-                // Remove ripple after animation completes (1s)
+                // Remove ripple after animation completes
                 setTimeout(() => {
-                  target.classList.remove('ripple-active');
+                  if (ripple.parentNode) {
+                    ripple.parentNode.removeChild(ripple);
+                  }
                 }, 1000);
               }
               
@@ -609,13 +624,29 @@ export const SessionTabs: React.FC = () => {
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
                 
-                target.style.setProperty('--ripple-x', `${x}px`);
-                target.style.setProperty('--ripple-y', `${y}px`);
-                target.classList.add('ripple-active');
+                // Create ripple element directly in DOM to avoid React re-render interruption
+                const ripple = document.createElement('div');
+                ripple.style.cssText = `
+                  position: absolute;
+                  top: ${y}px;
+                  left: ${x}px;
+                  width: 0;
+                  height: 0;
+                  border-radius: 50%;
+                  background: rgba(var(--accent-rgb), 0.2);
+                  transform: translate(-50%, -50%);
+                  pointer-events: none;
+                  z-index: 100;
+                  animation: ripple-expand 0.8s ease-out forwards;
+                `;
+                target.appendChild(ripple);
                 
+                // Remove ripple after animation completes
                 setTimeout(() => {
-                  target.classList.remove('ripple-active');
-                }, 1000);
+                  if (ripple.parentNode) {
+                    ripple.parentNode.removeChild(ripple);
+                  }
+                }, 800);
               }
               e.currentTarget.classList.add('ripple-held');
             }}
@@ -670,13 +701,29 @@ export const SessionTabs: React.FC = () => {
                   const x = e.clientX - rect.left;
                   const y = e.clientY - rect.top;
                   
-                  target.style.setProperty('--ripple-x', `${x}px`);
-                  target.style.setProperty('--ripple-y', `${y}px`);
-                  target.classList.add('ripple-active');
+                  // Create ripple element directly in DOM to avoid React re-render interruption
+                  const ripple = document.createElement('div');
+                  ripple.style.cssText = `
+                    position: absolute;
+                    top: ${y}px;
+                    left: ${x}px;
+                    width: 0;
+                    height: 0;
+                    border-radius: 50%;
+                    background: rgba(255, 255, 255, 0.2);
+                    transform: translate(-50%, -50%);
+                    pointer-events: none;
+                    z-index: 100;
+                    animation: ripple-expand 0.8s ease-out forwards;
+                  `;
+                  target.appendChild(ripple);
                   
+                  // Remove ripple after animation completes
                   setTimeout(() => {
-                    target.classList.remove('ripple-active');
-                  }, 1000);
+                    if (ripple.parentNode) {
+                      ripple.parentNode.removeChild(ripple);
+                    }
+                  }, 800);
                 }
                 e.currentTarget.classList.add('ripple-held');
               }}
