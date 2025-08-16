@@ -1649,7 +1649,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 4px;
   background: none;
   border: none;
   color: rgba(255, 255, 255, 0.6);

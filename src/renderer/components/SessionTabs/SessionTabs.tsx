@@ -688,7 +688,8 @@ export const SessionTabs: React.FC = () => {
                   const sessionToSave = sessions.find(s => s.id === draggedTab);
                   if (sessionToSave) {
                     const workingDir = (sessionToSave as any)?.workingDirectory;
-                    if (workingDir && workingDir !== '/') {
+                    // Only save if it's a full path (contains directory separators)
+                    if (workingDir && workingDir !== '/' && workingDir !== '.' && (workingDir.includes('/') || workingDir.includes('\\'))) {
                       const name = workingDir.split(/[/\\]/).pop() || workingDir;
                       const newProject = { path: workingDir, name, lastOpened: new Date() };
                       

@@ -818,7 +818,15 @@ socketServer.on('connection', (socket) => {
                                 // Skip thinking blocks - they're internal and shouldn't be shown
                                 log(`[${sessionId}] 🤔 THINKING block found, skipping...`);
                             } else if (block.type === 'tool_use') {
-                                log(`[${sessionId}] 🔧 TOOL USE FOUND: ${block.name}`);
+                                // Enhanced logging for Edit tool to show what's being changed
+                                if (block.name === 'Edit' && block.input) {
+                                    const oldStr = block.input.old_string || '';
+                                    const firstLine = oldStr.split('\\n')[0];
+                                    const preview = firstLine.length > 80 ? firstLine.substring(0, 80) + '...' : firstLine;
+                                    log(`[${sessionId}] 🔧 TOOL USE FOUND: Edit - changing line: "${preview}"`);
+                                } else {
+                                    log(`[${sessionId}] 🔧 TOOL USE FOUND: ${block.name}`);
+                                }
                                 toolUses.push(block);
                                 // Send tool use as separate message
                                 socket.emit(`message:${sessionId}`, {

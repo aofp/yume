@@ -1177,17 +1177,39 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     set(state => ({
       sessions: state.sessions.map(s => {
         if (s.id === sessionToUse) {
-          // When already streaming (followup during active response), keep streaming true
+          // When already streaming (followup during active response), preserve streaming state
           // When not streaming (new conversation), set streaming to true
-          const newStreamingState = s.streaming ? true : true; // Always true when sending a message
-          console.log('[Store] Current streaming state:', s.streaming, 'New streaming state:', newStreamingState);
+          const wasStreaming = s.streaming;
+          console.log('[Store] Current streaming state:', wasStreaming, 'Preserving during followup:', wasStreaming);
           console.log(`[THINKING TIME] Starting thinking timer at ${now} when user sends message`);
-          return { 
-            ...s, 
-            messages: [...s.messages, userMessage], 
-            streaming: true, // Always set to true when sending a message
-            thinkingStartTime: now // Start tracking thinking time when user sends message
+          
+          const updates: any = { 
+            messages: [...s.messages, userMessage]
           };
+          
+          // Handle thinking time accumulation
+          let updatedAnalytics = s.analytics;
+          if (wasStreaming && s.thinkingStartTime && updatedAnalytics) {
+            // If already streaming, accumulate the previous thinking time before starting new timer
+            const previousThinkingDuration = Math.floor((now - s.thinkingStartTime) / 1000);
+            updatedAnalytics = {
+              ...updatedAnalytics,
+              thinkingTime: (updatedAnalytics.thinkingTime || 0) + previousThinkingDuration
+            };
+            console.log(`📊 [THINKING TIME] Accumulated ${previousThinkingDuration}s from followup, total: ${updatedAnalytics.thinkingTime}s`);
+          }
+          
+          // Always start new thinking timer when user sends message
+          updates.thinkingStartTime = now;
+          updates.analytics = updatedAnalytics;
+          
+          // Only set streaming to true if we're not already streaming
+          // This prevents flickering the thinking indicator during followups
+          if (!wasStreaming) {
+            updates.streaming = true;
+          }
+          
+          return { ...s, ...updates };
         }
         return s;
       })
@@ -1561,15 +1583,31 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     if (currentSessionId && currentSession?.streaming) {
       // Immediately set streaming and runningBash to false to prevent double calls
       set(state => ({
-        sessions: state.sessions.map(s => 
-          s.id === currentSessionId ? { 
-            ...s, 
-            streaming: false, 
-            runningBash: false, 
-            userBashRunning: false,
-            pendingToolIds: new Set() // Clear pending tools on interrupt
-          } : s
-        )
+        sessions: state.sessions.map(s => {
+          if (s.id === currentSessionId) {
+            // Calculate thinking time before clearing streaming state
+            let updatedAnalytics = s.analytics;
+            if (s.thinkingStartTime && updatedAnalytics) {
+              const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+              updatedAnalytics = {
+                ...updatedAnalytics,
+                thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+              };
+              console.log(`📊 [THINKING TIME] Interrupt - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+            }
+            
+            return { 
+              ...s, 
+              streaming: false, 
+              runningBash: false, 
+              userBashRunning: false,
+              thinkingStartTime: undefined,
+              pendingToolIds: new Set(), // Clear pending tools on interrupt
+              analytics: updatedAnalytics
+            };
+          }
+          return s;
+        })
       }));
       
       try {
@@ -1591,9 +1629,27 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         console.error('Failed to interrupt session:', error);
         // Still stop streaming indicator even if interrupt fails
         set(state => ({
-          sessions: state.sessions.map(s => 
-            s.id === currentSessionId ? { ...s, streaming: false } : s
-          ),
+          sessions: state.sessions.map(s => {
+            if (s.id === currentSessionId) {
+              // Calculate thinking time even if interrupt fails
+              let updatedAnalytics = s.analytics;
+              if (s.thinkingStartTime && updatedAnalytics) {
+                const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                updatedAnalytics = {
+                  ...updatedAnalytics,
+                  thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                };
+                console.log(`📊 [THINKING TIME] Interrupt failed - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+              }
+              return { 
+                ...s, 
+                streaming: false, 
+                thinkingStartTime: undefined,
+                analytics: updatedAnalytics
+              };
+            }
+            return s;
+          }),
           streamingMessage: ''
         }));
       }

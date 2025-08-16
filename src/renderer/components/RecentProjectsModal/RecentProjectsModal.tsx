@@ -83,18 +83,32 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       localStorage.removeItem('yurucode-recent-projects');
       onClose();
     }
+    // don't close modal if user cancels
   };
 
   const formatFolderPath = (fullPath: string): string => {
-    // Remove the last folder (project folder) from the path
-    const pathParts = fullPath.split('/').filter(part => part.length > 0);
-    if (pathParts.length <= 1) return '/';
+    // Handle Windows paths (C:\Users\...) and WSL paths (/mnt/c/...)
+    const separator = fullPath.includes('\\') ? '\\' : '/';
+    const pathParts = fullPath.split(separator).filter(part => part.length > 0);
+    
+    // If path has no separators or only one part, it's just a folder name
+    // In this case, return the current working directory indicator
+    if (pathParts.length <= 1) {
+      // Check if it's the current directory
+      if (fullPath === '.' || fullPath === './' || fullPath === '.\\') {
+        return './';
+      }
+      // It's just a folder name without path - likely current directory
+      return './';
+    }
     
     // Remove last part (project folder)
     pathParts.pop();
     
-    // Reconstruct path with leading slash
-    const folderPath = '/' + pathParts.join('/') + '/';
+    // Reconstruct path with appropriate separator
+    const folderPath = separator === '\\' 
+      ? pathParts.join('\\') + '\\'
+      : '/' + pathParts.join('/') + '/';
     
     // If path is 80 chars or less, return as-is
     if (folderPath.length <= 80) {
