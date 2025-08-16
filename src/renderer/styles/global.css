@@ -187,6 +187,10 @@ body {
   background: var(--color-text-tertiary);
 }
 
+::-webkit-scrollbar-corner {
+  background: #000000;
+}
+
 /* Selection */
 ::selection {
   background: rgba(var(--accent-rgb), 0.25);
