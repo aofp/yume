@@ -16,10 +16,8 @@
   background: #0a0a0a;
   border: 1px solid #333;
   border-radius: 8px;
-  width: 90%;
-  max-width: 900px;
-  height: 80%;
-  max-height: 600px;
+  width: 100%;
+  height: 100%;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -69,7 +67,7 @@
 
 .server-logs-path {
   padding: 8px 16px;
-  font-size: 11px;
+  font-size: 9px;
   color: #666;
   border-bottom: 1px solid #222;
   font-family: 'SF Mono', Monaco, monospace;
@@ -85,8 +83,8 @@
 .server-logs-content pre {
   margin: 0;
   font-family: 'SF Mono', Monaco, monospace;
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 9px;
+  line-height: 1.3;
   color: #999;
   white-space: pre-wrap;
   word-wrap: break-word;

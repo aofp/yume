@@ -67,35 +67,132 @@ const { homedir, platform } = require("os");
 let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 
 // Try to find Claude CLI in common locations
-const possibleClaudePaths = [
-  '/opt/homebrew/bin/claude',
-  '/usr/local/bin/claude',
-  '/usr/bin/claude',
-  process.env.CLAUDE_PATH, // Allow env override
-].filter(Boolean);
+const isWindows = platform() === 'win32';
 
-for (const claudePath of possibleClaudePaths) {
-  try {
-    if (existsSync(claudePath)) {
-      CLAUDE_PATH = claudePath;
-      console.log(`✅ Found Claude CLI at: ${CLAUDE_PATH}`);
-      break;
+// Helper function to create WSL command for claude with comprehensive path checking
+function createWslClaudeCommand(args, workingDir) {
+  // Escape args for bash
+  const escapedArgs = args.map(arg => {
+    // Use strong quoting for args with special characters
+    if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('$') || arg.includes('\\') || arg.includes('\n')) {
+      return "'" + arg.replace(/'/g, "'\\''") + "'";
     }
-  } catch (e) {
-    // Continue searching
-  }
+    return arg;
+  }).join(' ');
+  
+  // Build a simpler, more robust detection script
+  const findClaudeScript = `
+    claude_paths=(
+      "/usr/local/bin/claude"
+      "/usr/bin/claude"
+      "$HOME/.local/bin/claude"
+      "$HOME/.npm-global/bin/claude"
+      "$HOME/node_modules/.bin/claude"
+      "$HOME/.claude/local/claude"
+      "/opt/claude/bin/claude"
+    )
+    
+    # Check each user's .npm-global
+    for user_home in /home/*; do
+      if [ -d "$user_home" ]; then
+        claude_paths+=("$user_home/.npm-global/bin/claude")
+        claude_paths+=("$user_home/node_modules/.bin/claude")
+        claude_paths+=("$user_home/.local/bin/claude")
+      fi
+    done
+    
+    # Check nvm installations
+    if [ -d "$HOME/.nvm" ]; then
+      for nvm_path in $HOME/.nvm/versions/node/*/bin/claude; do
+        [ -x "$nvm_path" ] && claude_paths+=("$nvm_path")
+      done
+    fi
+    
+    # Try to find claude in PATH first
+    if command -v claude &>/dev/null; then
+      claude_cmd="claude"
+    else
+      # Check all known paths
+      claude_cmd=""
+      for path in "\${claude_paths[@]}"; do
+        if [ -x "$path" ]; then
+          claude_cmd="$path"
+          break
+        fi
+      done
+    fi
+    
+    if [ -z "$claude_cmd" ]; then
+      echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2
+      exit 127
+    fi
+    
+    ${workingDir ? `cd '${workingDir.replace(/'/g, "'\\''")}'` : ':'}
+    exec "$claude_cmd" ${escapedArgs}
+  `.trim();
+  
+  return ['wsl.exe', ['-e', 'bash', '-c', findClaudeScript]];
 }
 
-// If still not found, try 'which' command
-if (CLAUDE_PATH === 'claude') {
-  try {
-    const whichResult = execSync('which claude', { encoding: 'utf8' }).trim();
-    if (whichResult) {
-      CLAUDE_PATH = whichResult;
-      console.log(`✅ Found Claude CLI via which: ${CLAUDE_PATH}`);
+if (isWindows) {
+  // On Windows, Claude only runs in WSL, so we'll use our comprehensive command builder
+  console.log('🔍 Windows detected, Claude will be invoked through WSL with comprehensive path detection...');
+  CLAUDE_PATH = 'WSL_CLAUDE'; // Special marker to use createWslClaudeCommand
+  
+} else {
+  // macOS/Linux paths
+  const possibleClaudePaths = [
+    join(homedir(), '.npm-global/bin/claude'), // npm global install path
+    '/opt/homebrew/bin/claude',
+    '/usr/local/bin/claude',
+    '/usr/bin/claude',
+    process.env.CLAUDE_PATH, // Allow env override
+  ].filter(Boolean);
+
+  for (const claudePath of possibleClaudePaths) {
+    try {
+      if (existsSync(claudePath)) {
+        CLAUDE_PATH = claudePath;
+        console.log(`✅ Found Claude CLI at: ${CLAUDE_PATH}`);
+        break;
+      }
+    } catch (e) {
+      // Continue searching
     }
-  } catch (e) {
-    console.warn(`⚠️ Claude CLI not found in PATH. Using 'claude' and hoping for the best.`);
+  }
+
+  // If still not found, try 'which' command
+  if (CLAUDE_PATH === 'claude') {
+    try {
+      const whichResult = execSync('which claude', { encoding: 'utf8' }).trim();
+      if (whichResult) {
+        CLAUDE_PATH = whichResult;
+        console.log(`✅ Found Claude CLI via which: ${CLAUDE_PATH}`);
+      }
+    } catch (e) {
+      // Not in PATH, continue to whereis
+    }
+  }
+
+  // If still not found, try 'whereis' command
+  if (CLAUDE_PATH === 'claude') {
+    try {
+      const whereisResult = execSync('whereis claude', { encoding: 'utf8' }).trim();
+      // whereis output format: "claude: /path/to/claude /another/path/to/claude"
+      const matches = whereisResult.match(/claude:\s+(.+)/);
+      if (matches && matches[1]) {
+        const paths = matches[1].split(/\s+/);
+        for (const path of paths) {
+          if (existsSync(path)) {
+            CLAUDE_PATH = path;
+            console.log(`✅ Found Claude CLI via whereis: ${CLAUDE_PATH}`);
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ Claude CLI not found via whereis. Using 'claude' and hoping for the best.`);
+    }
   }
 }
 
@@ -172,9 +269,9 @@ async function generateTitle(sessionId, userMessage, socket, onSuccess) {
     
     // Spawn a separate claude process just for title generation
     const titleArgs = [
+      '--print',  // Non-interactive mode
       '--output-format', 'json',
-      '--model', 'claude-3-5-sonnet-20241022',
-      '--print'  // Non-interactive mode
+      '--model', 'claude-3-5-sonnet-20241022'
     ];
     
     const titlePrompt = `user message: "${userMessage.substring(0, 200)}"
@@ -189,7 +286,18 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
     }
     
-    const child = spawn(CLAUDE_PATH, titleArgs, {
+    const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
+      (() => {
+        const [wslCommand, wslArgs] = createWslClaudeCommand(titleArgs, null);
+        return spawn(wslCommand, wslArgs, {
+          cwd: process.cwd(),
+          env: enhancedEnv,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true,
+          detached: false
+        });
+      })() :
+      spawn(CLAUDE_PATH, titleArgs, {
       cwd: process.cwd(),
       env: enhancedEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -393,6 +501,9 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Log the model being used
+    console.log(`[${sessionId}] Using model: ${model} (type: ${typeof model})`);
+    
     // Queue the request to prevent concurrent spawning issues
     const spawnRequest = async () => {
       try {
@@ -433,7 +544,13 @@ io.on('connection', (socket) => {
         console.log(`📂 Using working directory: ${processWorkingDir}`);
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
-      const args = ['--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
+      const args = [
+        '--print',
+        '--output-format', 'stream-json', 
+        '--verbose', 
+        '--dangerously-skip-permissions',
+        '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred'
+      ];
       
       // Add model flag if specified
       if (model) {
@@ -499,7 +616,24 @@ io.on('connection', (socket) => {
         args: args
       });
       
-      const claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
+      const claudeProcess = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
+        (() => {
+          // Convert Windows path to WSL path if needed
+          let wslWorkingDir = processWorkingDir;
+          if (processWorkingDir && processWorkingDir.match(/^[A-Z]:\\/)) {
+            const driveLetter = processWorkingDir[0].toLowerCase();
+            const pathWithoutDrive = processWorkingDir.substring(2).replace(/\\/g, '/');
+            wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
+            console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
+          }
+          
+          const [wslCommand, wslArgs] = createWslClaudeCommand(args, wslWorkingDir);
+          console.log(`🚀 Running WSL command: wsl.exe -e bash -c`);
+          console.log(`🚀 WSL bash command (first 500 chars):`, wslArgs[2].substring(0, 500));
+          
+          return spawn(wslCommand, wslArgs, spawnOptions);
+        })() :
+        spawn(CLAUDE_PATH, args, spawnOptions);
       
       // Mark spawning as complete after a short delay
       setTimeout(() => {
@@ -514,15 +648,42 @@ io.on('connection', (socket) => {
         claudeProcess.unref(); // Allow parent to exit independently
       }
 
-      // Send input if not resuming
-      if (!session.claudeSessionId && message) {
+      // Send input if not resuming - handle WSL differently
+      if (message) {
+        const messageToSend = message + '\n';
         console.log(`📝 Sending message to claude (${message.length} chars)`);
-        claudeProcess.stdin.write(message + '\n');
-        claudeProcess.stdin.end();
-      } else if (session.claudeSessionId && message) {
-        console.log(`📝 Sending message to resumed session (${message.length} chars)`);
-        claudeProcess.stdin.write(message + '\n');
-        claudeProcess.stdin.end();
+        
+        // For WSL, we need to be more careful with stdin
+        if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
+          // Write in chunks to avoid buffer issues with WSL
+          const chunkSize = 4096;
+          let offset = 0;
+          
+          const writeNextChunk = () => {
+            if (offset < messageToSend.length) {
+              const chunk = messageToSend.substring(offset, offset + chunkSize);
+              claudeProcess.stdin.write(chunk, (err) => {
+                if (err) {
+                  console.error(`❌ Error writing to stdin:`, err);
+                  claudeProcess.stdin.end();
+                } else {
+                  offset += chunkSize;
+                  // Small delay between chunks for WSL
+                  setTimeout(writeNextChunk, 10);
+                }
+              });
+            } else {
+              claudeProcess.stdin.end();
+            }
+          };
+          
+          // Add delay for WSL to ensure bash script starts
+          setTimeout(writeNextChunk, 500);
+        } else {
+          // Normal operation for macOS/Linux
+          claudeProcess.stdin.write(messageToSend);
+          claudeProcess.stdin.end();
+        }
       }
       
       // Generate title with Sonnet (fire and forget) - only for first message
@@ -585,13 +746,7 @@ io.on('connection', (socket) => {
       const streamHealthInterval = setInterval(() => {
         const timeSinceLastData = Date.now() - lastDataTime;
         const streamDuration = Date.now() - streamStartTime;
-        console.log(`🩺 STREAM HEALTH CHECK [${sessionId}]`);
-        console.log(`   ├─ Stream duration: ${streamDuration}ms`);
-        console.log(`   ├─ Time since last data: ${timeSinceLastData}ms`);
-        console.log(`   ├─ Bytes received: ${bytesReceived}`);
-        console.log(`   ├─ Messages processed: ${messageCount}`);
-        console.log(`   ├─ Buffer size: ${lineBuffer.length}`);
-        console.log(`   └─ Process alive: ${activeProcesses.has(sessionId)}`);
+        console.log(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
         
         if (timeSinceLastData > 30000) {
           console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
@@ -659,15 +814,20 @@ io.on('connection', (socket) => {
             
             // Extract content from assistant message
             if (jsonData.message?.content) {
-              let hasText = false;
-              let textContent = '';
+              let hasContent = false;
+              let contentBlocks = [];
+              let hasToolUse = false;
               
-              // First check what content we have
+              // Check what content we have and preserve all blocks
               for (const block of jsonData.message.content) {
-                if (block.type === 'text') {
-                  hasText = true;
-                  textContent = block.text;
+                if (block.type === 'text' || block.type === 'thinking') {
+                  hasContent = true;
+                  contentBlocks.push(block);
+                  if (block.type === 'thinking') {
+                    console.log(`🧠 [${sessionId}] Found thinking block: ${(block.thinking || block.text || '').substring(0, 100)}...`);
+                  }
                 } else if (block.type === 'tool_use') {
+                  hasToolUse = true;
                   // Send tool use as separate message immediately
                   socket.emit(`message:${sessionId}`, {
                     type: 'tool_use',
@@ -682,15 +842,22 @@ io.on('connection', (socket) => {
                 }
               }
               
-              // Send text content as separate assistant message
-              if (hasText && textContent) {
+              // Send assistant message with all non-tool content blocks (text + thinking)
+              if (hasContent && contentBlocks.length > 0) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
                 console.log(`📝 [${sessionId}] Emitting assistant message ${messageId} with streaming=true`);
-                console.log(`📝 [${sessionId}] Content length: ${textContent.length} chars`);
-                console.log(`📝 [${sessionId}] Content preview: ${textContent.substring(0, 100)}...`);
+                console.log(`📝 [${sessionId}] Content blocks: ${contentBlocks.length} (types: ${contentBlocks.map(b => b.type).join(', ')})`);
+                
+                // Log full details for thinking blocks
+                for (const block of contentBlocks) {
+                  if (block.type === 'thinking') {
+                    console.log(`🧠 [${sessionId}] Emitting thinking block in message ${messageId}`);
+                  }
+                }
+                
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
-                  message: { content: textContent },
+                  message: { content: contentBlocks },  // Send full content blocks array
                   streaming: true,  // Set streaming to true during active streaming
                   id: messageId,
                   timestamp: Date.now()
@@ -699,7 +866,7 @@ io.on('connection', (socket) => {
                 // Save to session with memory management
                 session.messages.push({
                   type: 'assistant',
-                  message: { content: textContent },
+                  message: { content: contentBlocks },
                   id: messageId,
                   timestamp: Date.now()
                 });
@@ -712,9 +879,8 @@ io.on('connection', (socket) => {
                 }
                 
                 messageCount++;
-              } else if (!hasText && jsonData.message?.content) {
-                // If there's no text but there are content blocks (e.g., only tool uses),
-                // don't send the raw JSON structure as assistant message
+              } else if (hasToolUse && !hasContent) {
+                // If there's only tool uses and no text/thinking, skip assistant message
                 console.log('Assistant message with only tool uses, skipping text message');
               }
             }
@@ -767,14 +933,17 @@ io.on('connection', (socket) => {
             }
             
             // Just send the result message with model info
-            console.log(`✅ [${sessionId}] Sending result message, stream complete`);
-            socket.emit(`message:${sessionId}`, {
+            // Model is available from the outer scope (sendMessage handler)
+            console.log(`✅ [${sessionId}] Sending result message with model: ${model}`);
+            const resultMessage = {
               type: 'result',
               ...jsonData,
               streaming: false,
               id: `result-${sessionId}-${Date.now()}`,
-              model: model // Include the model that was used
-            });
+              model: model || 'unknown' // Use model from outer scope directly
+            };
+            console.log(`   - Model in result message: ${resultMessage.model}`);
+            socket.emit(`message:${sessionId}`, resultMessage);
             messageCount++;
           }
           

@@ -539,13 +539,7 @@ io.on('connection', (socket) => {
       const streamHealthInterval = setInterval(() => {
         const timeSinceLastData = Date.now() - lastDataTime;
         const streamDuration = Date.now() - streamStartTime;
-        console.log(`🩺 STREAM HEALTH CHECK [${sessionId}]`);
-        console.log(`   ├─ Stream duration: ${streamDuration}ms`);
-        console.log(`   ├─ Time since last data: ${timeSinceLastData}ms`);
-        console.log(`   ├─ Bytes received: ${bytesReceived}`);
-        console.log(`   ├─ Messages processed: ${messageCount}`);
-        console.log(`   ├─ Buffer size: ${lineBuffer.length}`);
-        console.log(`   └─ Process alive: ${activeProcesses.has(sessionId)}`);
+        console.log(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
         
         if (timeSinceLastData > 30000) {
           console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);

@@ -476,6 +476,7 @@ pub fn run() {
             commands::maximize_window,
             commands::get_server_logs,
             commands::get_server_log_path,
+            commands::clear_server_logs,
             commands::close_window,
             commands::show_context_menu,
             commands::save_settings,

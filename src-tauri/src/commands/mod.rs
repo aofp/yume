@@ -664,6 +664,14 @@ pub fn get_server_log_path() -> Result<String, String> {
     Ok(logged_server::get_log_path().to_string_lossy().to_string())
 }
 
+/// Clears the server logs file
+/// Used to reset logs for debugging
+#[tauri::command]
+pub fn clear_server_logs() -> Result<(), String> {
+    logged_server::clear_log();
+    Ok(())
+}
+
 /// Searches for files and directories matching a query string
 /// Supports fuzzy matching and filters out common ignore patterns
 /// Returns results sorted by relevance (exact matches first)

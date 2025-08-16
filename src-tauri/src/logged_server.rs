@@ -67,7 +67,7 @@ fn write_log(message: &str) {
 
 /// Clears the log file and writes a header with current timestamp
 /// Called at server startup to ensure fresh logs for each session
-fn clear_log() {
+pub fn clear_log() {
     if let Ok(mut file) = OpenOptions::new()
         .create(true)
         .write(true)
@@ -205,89 +205,107 @@ const streamTimeouts = new Map(); // Map of sessionId -> timeout
 // Cache Claude command path - initialized once at startup
 let CLAUDE_CMD = null;
 let CLAUDE_INIT_ERROR = null;
+let CLAUDE_INIT_PROMISE = null;
+let CLAUDE_INIT_STARTED = false;
 
-// Initialize Claude command path once at startup
-function initializeClaude() {
-    log('🚀 Initializing Claude CLI detection...');
+// Initialize Claude command path asynchronously
+async function initializeClaude() {
+    if (CLAUDE_INIT_STARTED) return CLAUDE_INIT_PROMISE;
+    CLAUDE_INIT_STARTED = true;
     
-    if (process.platform === 'win32') {
-        // Windows: Use WSL to find Claude
-        const { execSync } = require('child_process');
-        try {
-            // Use a simpler approach - directly execute the command
-            const findCommand = [
-                'claude_paths=(',
-                '"/usr/local/bin/claude"',
-                '"/usr/bin/claude"',
-                '"$HOME/.local/bin/claude"',
-                '"$HOME/.npm-global/bin/claude"',
-                '"$HOME/node_modules/.bin/claude"',
-                '"$HOME/.claude/local/claude"',
-                '"/opt/claude/bin/claude"',
-                ');',
-                'for user_home in /home/*; do',
-                '[ -d "$user_home" ] && claude_paths+=("$user_home/.npm-global/bin/claude" "$user_home/node_modules/.bin/claude" "$user_home/.local/bin/claude");',
-                'done;',
-                'if [ -d "$HOME/.nvm" ]; then',
-                'for nvm_path in $HOME/.nvm/versions/node/*/bin/claude; do',
-                '[ -x "$nvm_path" ] && claude_paths+=("$nvm_path");',
-                'done;',
-                'fi;',
-                'if command -v claude &>/dev/null; then echo "claude"; exit 0; fi;',
-                'for path in "${claude_paths[@]}"; do',
-                'if [ -x "$path" ]; then echo "$path"; exit 0; fi;',
-                'done;',
-                'exit 127'
-            ].join(' ');
-            
-            const result = execSync(`wsl.exe -e bash -c "${findCommand}"`, { 
-                encoding: 'utf8',
-                windowsHide: true  // Prevent console window from appearing
-            });
-            CLAUDE_CMD = result.trim();
-            log(`✅ Claude found in WSL at: ${CLAUDE_CMD}`);
-        } catch (e) {
-            CLAUDE_INIT_ERROR = 'Claude CLI not found in WSL. Please install Claude CLI in WSL first.';
-            log(`❌ Failed to find Claude in WSL: ${e.message}`);
-        }
-    } else {
-        // Unix/Mac - try to find Claude
-        const claudePaths = [
-            'claude',
-            '/usr/local/bin/claude',
-            path.join(process.env.HOME || '', '.local', 'bin', 'claude'),
-            path.join(process.env.HOME || '', '.npm-global', 'bin', 'claude'),
-            path.join(process.env.HOME || '', 'node_modules', '.bin', 'claude'),
-            path.join(process.env.HOME || '', '.claude', 'local', 'claude')
-        ];
-        
-        for (const p of claudePaths) {
-            try {
-                require('child_process').execSync(`"${p}" --version`, { 
-                    stdio: 'ignore',
-                    windowsHide: true  // Prevent console window (ignored on non-Windows)
-                });
-                CLAUDE_CMD = p;
-                log(`✅ Claude found at: ${p}`);
-                break;
-            } catch (e) {
-                // Continue searching
+    log('🚀 Starting async Claude CLI detection...');
+    
+    CLAUDE_INIT_PROMISE = new Promise((resolve) => {
+        // Run detection in next tick to not block server startup
+        setImmediate(() => {
+            if (process.platform === 'win32') {
+                // Windows: Use WSL to find Claude
+                const { execSync } = require('child_process');
+                try {
+                    // Use a simpler approach - directly execute the command
+                    const findCommand = [
+                        'claude_paths=(',
+                        '"/usr/local/bin/claude"',
+                        '"/usr/bin/claude"',
+                        '"$HOME/.local/bin/claude"',
+                        '"$HOME/.npm-global/bin/claude"',
+                        '"$HOME/node_modules/.bin/claude"',
+                        '"$HOME/.claude/local/claude"',
+                        '"/opt/claude/bin/claude"',
+                        ');',
+                        'for user_home in /home/*; do',
+                        '[ -d "$user_home" ] && claude_paths+=("$user_home/.npm-global/bin/claude" "$user_home/node_modules/.bin/claude" "$user_home/.local/bin/claude");',
+                        'done;',
+                        'if [ -d "$HOME/.nvm" ]; then',
+                        'for nvm_path in $HOME/.nvm/versions/node/*/bin/claude; do',
+                        '[ -x "$nvm_path" ] && claude_paths+=("$nvm_path");',
+                        'done;',
+                        'fi;',
+                        'if command -v claude &>/dev/null; then echo "claude"; exit 0; fi;',
+                        'for path in "${claude_paths[@]}"; do',
+                        'if [ -x "$path" ]; then echo "$path"; exit 0; fi;',
+                        'done;',
+                        'exit 127'
+                    ].join(' ');
+                    
+                    const result = execSync(`wsl.exe -e bash -c "${findCommand}"`, { 
+                        encoding: 'utf8',
+                        windowsHide: true  // Prevent console window from appearing
+                    });
+                    CLAUDE_CMD = result.trim();
+                    log(`✅ Claude found in WSL at: ${CLAUDE_CMD}`);
+                } catch (e) {
+                    CLAUDE_INIT_ERROR = 'Claude CLI not found in WSL. Please install Claude CLI in WSL first.';
+                    log(`❌ Failed to find Claude in WSL: ${e.message}`);
+                }
+            } else {
+                // Unix/Mac - try to find Claude
+                const claudePaths = [
+                    'claude',
+                    '/usr/local/bin/claude',
+                    path.join(process.env.HOME || '', '.local', 'bin', 'claude'),
+                    path.join(process.env.HOME || '', '.npm-global', 'bin', 'claude'),
+                    path.join(process.env.HOME || '', 'node_modules', '.bin', 'claude'),
+                    path.join(process.env.HOME || '', '.claude', 'local', 'claude')
+                ];
+                
+                for (const p of claudePaths) {
+                    try {
+                        require('child_process').execSync(`"${p}" --version`, { 
+                            stdio: 'ignore',
+                            windowsHide: true  // Prevent console window (ignored on non-Windows)
+                        });
+                        CLAUDE_CMD = p;
+                        log(`✅ Claude found at: ${p}`);
+                        break;
+                    } catch (e) {
+                        // Continue searching
+                    }
+                }
+                
+                if (!CLAUDE_CMD) {
+                    CLAUDE_INIT_ERROR = 'Claude CLI not found. Please install Claude CLI first.';
+                    log(`❌ Failed to find Claude CLI`);
+                }
             }
-        }
-        
-        if (!CLAUDE_CMD) {
-            CLAUDE_INIT_ERROR = 'Claude CLI not found. Please install Claude CLI first.';
-            log(`❌ Failed to find Claude CLI`);
-        }
-    }
+            resolve();
+        });
+    });
+    
+    return CLAUDE_INIT_PROMISE;
 }
 
-// Initialize Claude on server start
+// Start Claude detection asynchronously - doesn't block server startup
 initializeClaude();
 
 // Helper function to generate title with Sonnet
 async function generateTitle(sessionId, userMessage, socket) {
     try {
+        // Wait for Claude initialization if needed
+        if (!CLAUDE_CMD && CLAUDE_INIT_PROMISE) {
+            await CLAUDE_INIT_PROMISE;
+        }
+        
         // Check if Claude is available
         if (!CLAUDE_CMD) {
             log(`🏷️ Cannot generate title: ${CLAUDE_INIT_ERROR}`);
@@ -403,7 +421,7 @@ socketServer.on('connection', (socket) => {
         if (callback) callback({ success: true, sessionId });
     });
     
-    socket.on('sendMessage', (data, callback) => {
+    socket.on('sendMessage', async (data, callback) => {
         const { sessionId, message, content, model } = data;
         const userMessage = message || content; // Handle both field names
         
@@ -449,6 +467,12 @@ socketServer.on('connection', (socket) => {
         args.push('--append-system-prompt', casualPrompt);
         
         if (model) args.push('--model', model);
+        
+        // Wait for Claude initialization if needed
+        if (!CLAUDE_CMD && CLAUDE_INIT_PROMISE) {
+            log(`[${sessionId}] Waiting for Claude CLI detection to complete...`);
+            await CLAUDE_INIT_PROMISE;
+        }
         
         // Check if Claude is available
         if (!CLAUDE_CMD) {
@@ -568,10 +592,7 @@ socketServer.on('connection', (socket) => {
         const streamHealthInterval = setInterval(() => {
             const timeSinceLastData = Date.now() - lastDataTime;
             const streamDuration = Date.now() - streamStartTime;
-            log(`🩺 STREAM HEALTH CHECK [${sessionId}]`);
-            log(`   ├─ Stream duration: ${streamDuration}ms`);
-            log(`   ├─ Time since last data: ${timeSinceLastData}ms`);
-            log(`   └─ Process alive: ${activeProcesses.has(sessionId)}`);
+            log(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | msgs: ${messageCount} | buffer: ${buffer.length} | alive: ${activeProcesses.has(sessionId)}`);
             
             if (timeSinceLastData > 30000) {
                 log(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);

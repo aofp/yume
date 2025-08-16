@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { IconRefresh, IconCopy, IconX } from '@tabler/icons-react';
+import { IconRefresh, IconCopy, IconX, IconTrash } from '@tabler/icons-react';
 import './ServerLogs.css';
 
 interface ServerLogsProps {
@@ -43,6 +43,17 @@ export const ServerLogs: React.FC<ServerLogsProps> = ({ isOpen, onClose }) => {
     navigator.clipboard.writeText(logs);
   };
 
+  const clearLogs = async () => {
+    try {
+      await invoke('clear_server_logs');
+      setLogs('');
+      // Fetch fresh logs after clearing
+      setTimeout(fetchLogs, 100);
+    } catch (error) {
+      console.error('failed to clear logs:', error);
+    }
+  };
+
   if (!isOpen) return null;
 
   return (
@@ -53,6 +64,9 @@ export const ServerLogs: React.FC<ServerLogsProps> = ({ isOpen, onClose }) => {
           <div className="server-logs-actions">
             <button onClick={fetchLogs} disabled={isLoading} title="refresh">
               <IconRefresh size={16} />
+            </button>
+            <button onClick={clearLogs} title="clear logs">
+              <IconTrash size={16} />
             </button>
             <button onClick={copyLogs} title="copy all">
               <IconCopy size={16} />

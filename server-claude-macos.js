@@ -206,6 +206,7 @@ const PORT = (() => {
 // Track active Claude processes and assistant message IDs - EXACTLY LIKE WINDOWS
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
+let activeProcessStartTimes = new Map();  // Map of sessionId -> process start time
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
@@ -467,10 +468,35 @@ io.on('connection', (socket) => {
           queueLength: processSpawnQueue.length
         });
 
-        // Kill any existing process for this session
+        // Check if there's an existing process for this session
         if (activeProcesses.has(sessionId)) {
           const existingProcess = activeProcesses.get(sessionId);
-          console.log(`⚠️ Killing existing process for session ${sessionId} (PID: ${existingProcess.pid})`);
+          const processStartTime = activeProcessStartTimes.get(sessionId) || Date.now();
+          const processAge = Date.now() - processStartTime;
+          
+          // If process is very young (< 3 seconds), queue this message instead of killing
+          if (processAge < 3000) {
+            console.log(`⏳ Process for session ${sessionId} is only ${processAge}ms old, queueing message instead of killing`);
+            
+            // Send a status message to the client
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'info',
+              message: 'processing previous message, will send yours next...',
+              timestamp: Date.now()
+            });
+            
+            // Re-queue this request to try again later
+            setTimeout(() => {
+              processSpawnQueue.push(spawnRequest);
+              processNextInQueue();
+            }, 2000);
+            
+            // Exit early without processing this message yet
+            return;
+          }
+          
+          console.log(`⚠️ Killing existing process for session ${sessionId} (PID: ${existingProcess.pid}, age: ${processAge}ms)`);
           
           // Kill the entire process group if on Unix
           if (process.platform !== 'win32' && existingProcess.pid) {
@@ -485,12 +511,20 @@ io.on('connection', (socket) => {
           }
           
           activeProcesses.delete(sessionId);
+          activeProcessStartTimes.delete(sessionId);
+          
+          // Mark session as interrupted since we killed the process
+          session.wasInterrupted = true;
+          // Clear the session ID since the conversation was interrupted
+          session.claudeSessionId = null;
+          console.log(`🔄 Marked session ${sessionId} as interrupted and cleared claudeSessionId`);
+          
           // Wait a bit for the process to fully terminate
-          await new Promise(resolve => setTimeout(resolve, 150));
+          await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // Clear the last assistant message ID for this session
-        lastAssistantMessageIds.delete(sessionId);
+        // Don't modify streaming state here - let the UI continue showing streaming
+        // The process exit handler will properly clean up when the old process dies
 
         // Use session's working directory, fallback to home directory (NOT process.cwd() in bundled app)
         const processWorkingDir = session.workingDirectory || homedir();
@@ -511,12 +545,18 @@ io.on('connection', (socket) => {
         console.log(`🤖 Using model: ${model}`);
       }
       
-      // Use --resume if we have a claudeSessionId (for continuing conversations)
-      if (session.claudeSessionId) {
+      // Use --resume if we have a claudeSessionId AND the last conversation wasn't interrupted
+      if (session.claudeSessionId && !session.wasInterrupted) {
         args.push('--resume', session.claudeSessionId);
         console.log('🔄 Using --resume flag with session:', session.claudeSessionId);
       } else {
-        console.log('📝 Starting fresh conversation (no previous session)');
+        if (session.wasInterrupted) {
+          console.log('📝 Starting fresh conversation (last conversation was interrupted)');
+          session.wasInterrupted = false; // Reset the flag
+          session.claudeSessionId = null; // Clear the invalid session ID
+        } else {
+          console.log('📝 Starting fresh conversation (no previous session)');
+        }
       }
 
       // Spawn claude process with proper PATH for Node.js
@@ -593,8 +633,9 @@ io.on('connection', (socket) => {
         isSpawningProcess = false;
       }, 500);
 
-      // Store process reference
+      // Store process reference and start time
       activeProcesses.set(sessionId, claudeProcess);
+      activeProcessStartTimes.set(sessionId, Date.now());
       
       // On Unix systems, detached processes need special handling
       if (process.platform !== 'win32') {
@@ -699,13 +740,7 @@ io.on('connection', (socket) => {
       const streamHealthInterval = setInterval(() => {
         const timeSinceLastData = Date.now() - lastDataTime;
         const streamDuration = Date.now() - streamStartTime;
-        console.log(`🩺 STREAM HEALTH CHECK [${sessionId}]`);
-        console.log(`   ├─ Stream duration: ${streamDuration}ms`);
-        console.log(`   ├─ Time since last data: ${timeSinceLastData}ms`);
-        console.log(`   ├─ Bytes received: ${bytesReceived}`);
-        console.log(`   ├─ Messages processed: ${messageCount}`);
-        console.log(`   ├─ Buffer size: ${lineBuffer.length}`);
-        console.log(`   └─ Process alive: ${activeProcesses.has(sessionId)}`);
+        console.log(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
         
         if (timeSinceLastData > 30000) {
           console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
@@ -720,6 +755,7 @@ io.on('connection', (socket) => {
             const proc = activeProcesses.get(sessionId);
             proc.kill('SIGTERM');
             activeProcesses.delete(sessionId);
+            activeProcessStartTimes.delete(sessionId);
           }
           clearInterval(streamHealthInterval);
         }
@@ -946,12 +982,26 @@ io.on('connection', (socket) => {
         const error = data.toString();
         console.error(`⚠️ [${sessionId}] Claude stderr (${data.length} bytes):`, error);
         lastDataTime = Date.now();
-        socket.emit(`message:${sessionId}`, { 
-          type: 'error',
-          error, 
-          claudeSessionId: session.claudeSessionId,
-          streaming: false 
-        });
+        
+        // Check if this is a "No conversation found" error
+        if (error.includes('No conversation found with session ID')) {
+          console.log(`🔄 Resume failed - clearing invalid session ID and retrying with fresh conversation`);
+          
+          // Clear the invalid session ID
+          session.claudeSessionId = null;
+          session.wasInterrupted = false;
+          
+          // Don't emit the error to client, just log it
+          console.log(`🔄 Will start fresh on next message`);
+        } else {
+          // Emit other errors to client
+          socket.emit(`message:${sessionId}`, { 
+            type: 'error',
+            error, 
+            claudeSessionId: session.claudeSessionId,
+            streaming: false 
+          });
+        }
       });
 
       // Handle process exit
@@ -974,6 +1024,7 @@ io.on('connection', (socket) => {
         console.log(`   ├─ Messages: ${messageCount}`);
         console.log(`   └─ Exit code: ${code}`);
         activeProcesses.delete(sessionId);
+        activeProcessStartTimes.delete(sessionId);
         
         // Mark session as completed (not interrupted) when process exits normally
         if (code === 0) {
@@ -981,6 +1032,14 @@ io.on('connection', (socket) => {
           if (session) {
             session.wasInterrupted = false;
             console.log(`✅ Marked session ${sessionId} as completed normally`);
+          }
+        } else if (code === 1) {
+          // Exit code 1 often means --resume failed
+          const session = sessions.get(sessionId);
+          if (session && session.claudeSessionId) {
+            console.log(`⚠️ Process exited with code 1 - likely resume failed, clearing session ID`);
+            session.claudeSessionId = null;
+            session.wasInterrupted = false;
           }
         }
         
@@ -1083,6 +1142,7 @@ io.on('connection', (socket) => {
         });
         
         activeProcesses.delete(sessionId);
+        activeProcessStartTimes.delete(sessionId);
         lastAssistantMessageIds.delete(sessionId);
         if (callback) callback({ success: false, error: err.message });
       });
@@ -1143,6 +1203,7 @@ io.on('connection', (socket) => {
       }
       
       activeProcesses.delete(sessionId);
+      activeProcessStartTimes.delete(sessionId);
       
       // Mark session as interrupted but keep the session ID for potential resume
       if (session) {
@@ -1184,6 +1245,7 @@ io.on('connection', (socket) => {
       console.log(`🛑 Killing process for cleared session ${sessionId}`);
       process.kill('SIGINT');
       activeProcesses.delete(sessionId);
+      activeProcessStartTimes.delete(sessionId);
     }
     
     // Clear the session data but keep the session alive
@@ -1236,6 +1298,7 @@ io.on('connection', (socket) => {
           console.log(`🧹 Cleaning up process for session ${sessionId}`);
           process.kill('SIGINT');
           activeProcesses.delete(sessionId);
+          activeProcessStartTimes.delete(sessionId);
         }
         lastAssistantMessageIds.delete(sessionId);
       }
