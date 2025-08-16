@@ -79,6 +79,7 @@ export interface ClaudeMessage {
 interface ContentBlock {
   type: 'text' | 'tool_use' | 'tool_result' | 'thinking';
   text?: string;
+  thinking?: string;  // For thinking blocks
   name?: string;
   input?: any;
   output?: any;
@@ -577,7 +578,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
         // Only keep text blocks and the last tool use that doesn't have a result yet
         const lastTool = toolUses[toolUses.length - 1];
         toolsToRender = content.filter(b => 
-          b?.type === 'text' || b === lastTool || b?.type === 'tool_result'
+          b?.type === 'text' || b?.type === 'thinking' || b === lastTool || b?.type === 'tool_result'
         );
       }
     }
@@ -615,7 +616,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 <span>thinking...</span>
               </div>
               <div className="thinking-content">
-                {block.text || ''}
+                {block.thinking || block.text || ''}
               </div>
             </div>
           );
@@ -1795,6 +1796,8 @@ const MessageRendererBase: React.FC<{
         const elapsedMs = message.duration_ms || message.message?.duration_ms || message.duration || 0;
         const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
         const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
+        
+        console.log('[MessageRenderer] Result message model:', message.model, 'full message:', message);
         
         // Count tool uses in the current conversation turn only
         // Look back through messages to count tool_use messages since the last user message

@@ -24,40 +24,67 @@ const isWindows = platform() === 'win32';
 
 // Helper function to create WSL command for claude with comprehensive path checking
 function createWslClaudeCommand(args, workingDir) {
-  // Comprehensive list of paths to check for Claude in WSL
-  const claudePathChecks = [
-    'command -v claude &> /dev/null && claude',
-    '[ -x /usr/local/bin/claude ] && /usr/local/bin/claude',
-    '[ -x /usr/bin/claude ] && /usr/bin/claude',
-    '[ -x ~/.local/bin/claude ] && ~/.local/bin/claude',
-    '[ -x ~/.npm-global/bin/claude ] && ~/.npm-global/bin/claude',
-    '[ -x ~/node_modules/.bin/claude ] && ~/node_modules/.bin/claude',
-    '[ -x ~/.claude/local/claude ] && ~/.claude/local/claude',
-    'for u in /home/*; do [ -x "$u/.npm-global/bin/claude" ] && { "$u/.npm-global/bin/claude" "$@"; exit $?; }; done; false',
-    'for u in /home/*; do [ -x "$u/node_modules/.bin/claude" ] && { "$u/node_modules/.bin/claude" "$@"; exit $?; }; done; false',
-    'for n in ~/.nvm/versions/node/*/bin/claude; do [ -x "$n" ] && { "$n" "$@"; exit $?; }; done; false',
-    '[ -x /opt/claude/bin/claude ] && /opt/claude/bin/claude'
-  ];
-  
   // Escape args for bash
   const escapedArgs = args.map(arg => {
-    if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
-      return "'" + arg.replace(/'/g, "'\\'") + "'";
+    // Use strong quoting for args with special characters
+    if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('$') || arg.includes('\\') || arg.includes('\n')) {
+      return "'" + arg.replace(/'/g, "'\\''") + "'";
     }
     return arg;
   }).join(' ');
   
-  // Build the command chain
-  const commandChain = claudePathChecks
-    .map(check => `(${check} ${escapedArgs})`)
-    .join(' || ');
+  // Build a simpler, more robust detection script
+  const findClaudeScript = `
+    claude_paths=(
+      "/usr/local/bin/claude"
+      "/usr/bin/claude"
+      "$HOME/.local/bin/claude"
+      "$HOME/.npm-global/bin/claude"
+      "$HOME/node_modules/.bin/claude"
+      "$HOME/.claude/local/claude"
+      "/opt/claude/bin/claude"
+    )
+    
+    # Check each user's .npm-global
+    for user_home in /home/*; do
+      if [ -d "$user_home" ]; then
+        claude_paths+=("$user_home/.npm-global/bin/claude")
+        claude_paths+=("$user_home/node_modules/.bin/claude")
+        claude_paths+=("$user_home/.local/bin/claude")
+      fi
+    done
+    
+    # Check nvm installations
+    if [ -d "$HOME/.nvm" ]; then
+      for nvm_path in $HOME/.nvm/versions/node/*/bin/claude; do
+        [ -x "$nvm_path" ] && claude_paths+=("$nvm_path")
+      done
+    fi
+    
+    # Try to find claude in PATH first
+    if command -v claude &>/dev/null; then
+      claude_cmd="claude"
+    else
+      # Check all known paths
+      claude_cmd=""
+      for path in "\${claude_paths[@]}"; do
+        if [ -x "$path" ]; then
+          claude_cmd="$path"
+          break
+        fi
+      done
+    fi
+    
+    if [ -z "$claude_cmd" ]; then
+      echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2
+      exit 127
+    fi
+    
+    ${workingDir ? `cd '${workingDir.replace(/'/g, "'\\''")}'` : ':'}
+    exec "$claude_cmd" ${escapedArgs}
+  `.trim();
   
-  // Build final WSL command
-  const wslCommand = workingDir ? 
-    `cd '${workingDir}' && (${commandChain} || (echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2 && exit 127))` :
-    `${commandChain} || (echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2 && exit 127)`;
-  
-  return ['wsl.exe', ['-e', 'bash', '-c', wslCommand]];
+  return ['wsl.exe', ['-e', 'bash', '-c', findClaudeScript]];
 }
 
 if (isWindows) {
@@ -195,9 +222,9 @@ async function generateTitle(sessionId, userMessage, socket, onSuccess) {
     
     // Spawn a separate claude process just for title generation
     const titleArgs = [
+      '--print',  // Non-interactive mode
       '--output-format', 'json',
-      '--model', 'claude-3-5-sonnet-20241022',
-      '--print'  // Non-interactive mode
+      '--model', 'claude-3-5-sonnet-20241022'
     ];
     
     const titlePrompt = `user message: "${userMessage.substring(0, 200)}"
@@ -427,6 +454,9 @@ io.on('connection', (socket) => {
       return;
     }
     
+    // Log the model being used
+    console.log(`[${sessionId}] Using model: ${model} (type: ${typeof model})`);
+    
     // Queue the request to prevent concurrent spawning issues
     const spawnRequest = async () => {
       try {
@@ -467,7 +497,13 @@ io.on('connection', (socket) => {
         console.log(`📂 Using working directory: ${processWorkingDir}`);
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
-      const args = ['--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
+      const args = [
+        '--print',
+        '--output-format', 'stream-json', 
+        '--verbose', 
+        '--dangerously-skip-permissions',
+        '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred'
+      ];
       
       // Add model flag if specified
       if (model) {
@@ -545,7 +581,8 @@ io.on('connection', (socket) => {
           }
           
           const [wslCommand, wslArgs] = createWslClaudeCommand(args, wslWorkingDir);
-          console.log(`🚀 Running WSL command: ${wslCommand} with args:`, wslArgs);
+          console.log(`🚀 Running WSL command: wsl.exe -e bash -c`);
+          console.log(`🚀 WSL bash command (first 500 chars):`, wslArgs[2].substring(0, 500));
           
           return spawn(wslCommand, wslArgs, spawnOptions);
         })() :
@@ -564,15 +601,41 @@ io.on('connection', (socket) => {
         claudeProcess.unref(); // Allow parent to exit independently
       }
 
-      // Send input if not resuming
-      if (!session.claudeSessionId && message) {
+      // Send input if not resuming - handle WSL differently
+      if (message) {
+        const messageToSend = message + '\n';
         console.log(`📝 Sending message to claude (${message.length} chars)`);
-        claudeProcess.stdin.write(message + '\n');
-        claudeProcess.stdin.end();
-      } else if (session.claudeSessionId && message) {
-        console.log(`📝 Sending message to resumed session (${message.length} chars)`);
-        claudeProcess.stdin.write(message + '\n');
-        claudeProcess.stdin.end();
+        
+        // For WSL, we need to be more careful with stdin
+        if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
+          // Write in chunks to avoid buffer issues with WSL
+          const chunkSize = 4096;
+          let offset = 0;
+          
+          const writeNextChunk = () => {
+            if (offset < messageToSend.length) {
+              const chunk = messageToSend.substring(offset, offset + chunkSize);
+              claudeProcess.stdin.write(chunk, (err) => {
+                if (err) {
+                  console.error(`❌ Error writing to stdin:`, err);
+                  claudeProcess.stdin.end();
+                } else {
+                  offset += chunkSize;
+                  // Small delay between chunks for WSL
+                  setTimeout(writeNextChunk, 10);
+                }
+              });
+            } else {
+              claudeProcess.stdin.end();
+            }
+          };
+          
+          writeNextChunk();
+        } else {
+          // Normal operation for macOS/Linux
+          claudeProcess.stdin.write(messageToSend);
+          claudeProcess.stdin.end();
+        }
       }
       
       // Generate title with Sonnet (fire and forget) - only for first message
@@ -709,15 +772,17 @@ io.on('connection', (socket) => {
             
             // Extract content from assistant message
             if (jsonData.message?.content) {
-              let hasText = false;
-              let textContent = '';
+              let hasContent = false;
+              let contentBlocks = [];
+              let hasToolUse = false;
               
-              // First check what content we have
+              // Check what content we have and preserve all blocks
               for (const block of jsonData.message.content) {
-                if (block.type === 'text') {
-                  hasText = true;
-                  textContent = block.text;
+                if (block.type === 'text' || block.type === 'thinking') {
+                  hasContent = true;
+                  contentBlocks.push(block);
                 } else if (block.type === 'tool_use') {
+                  hasToolUse = true;
                   // Send tool use as separate message immediately
                   socket.emit(`message:${sessionId}`, {
                     type: 'tool_use',
@@ -732,15 +797,14 @@ io.on('connection', (socket) => {
                 }
               }
               
-              // Send text content as separate assistant message
-              if (hasText && textContent) {
+              // Send assistant message with all non-tool content blocks (text + thinking)
+              if (hasContent && contentBlocks.length > 0) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
                 console.log(`📝 [${sessionId}] Emitting assistant message ${messageId} with streaming=true`);
-                console.log(`📝 [${sessionId}] Content length: ${textContent.length} chars`);
-                console.log(`📝 [${sessionId}] Content preview: ${textContent.substring(0, 100)}...`);
+                console.log(`📝 [${sessionId}] Content blocks: ${contentBlocks.length} (types: ${contentBlocks.map(b => b.type).join(', ')})`);
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
-                  message: { content: textContent },
+                  message: { content: contentBlocks },  // Send full content blocks array
                   streaming: true,  // Set streaming to true during active streaming
                   id: messageId,
                   timestamp: Date.now()
@@ -749,7 +813,7 @@ io.on('connection', (socket) => {
                 // Save to session with memory management
                 session.messages.push({
                   type: 'assistant',
-                  message: { content: textContent },
+                  message: { content: contentBlocks },
                   id: messageId,
                   timestamp: Date.now()
                 });
@@ -762,9 +826,8 @@ io.on('connection', (socket) => {
                 }
                 
                 messageCount++;
-              } else if (!hasText && jsonData.message?.content) {
-                // If there's no text but there are content blocks (e.g., only tool uses),
-                // don't send the raw JSON structure as assistant message
+              } else if (hasToolUse && !hasContent) {
+                // If there's only tool uses and no text/thinking, skip assistant message
                 console.log('Assistant message with only tool uses, skipping text message');
               }
             }
@@ -817,14 +880,17 @@ io.on('connection', (socket) => {
             }
             
             // Just send the result message with model info
-            console.log(`✅ [${sessionId}] Sending result message, stream complete`);
-            socket.emit(`message:${sessionId}`, {
+            // Model is available from the outer scope (sendMessage handler)
+            console.log(`✅ [${sessionId}] Sending result message with model: ${model}`);
+            const resultMessage = {
               type: 'result',
               ...jsonData,
               streaming: false,
               id: `result-${sessionId}-${Date.now()}`,
-              model: model // Include the model that was used
-            });
+              model: model || 'unknown' // Use model from outer scope directly
+            };
+            console.log(`   - Model in result message: ${resultMessage.model}`);
+            socket.emit(`message:${sessionId}`, resultMessage);
             messageCount++;
           }
           

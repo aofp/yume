@@ -225,24 +225,57 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
                 return arg;
             }).join(' ');
             
-            // WSL command for title generation with comprehensive path fallbacks
-            const claudePathChecks = [
-                'command -v claude &> /dev/null && claude',
-                '[ -x /usr/local/bin/claude ] && /usr/local/bin/claude',
-                '[ -x /usr/bin/claude ] && /usr/bin/claude',
-                '[ -x ~/.local/bin/claude ] && ~/.local/bin/claude',
-                '[ -x ~/.npm-global/bin/claude ] && ~/.npm-global/bin/claude',
-                '[ -x ~/node_modules/.bin/claude ] && ~/node_modules/.bin/claude',
-                '[ -x ~/.claude/local/claude ] && ~/.claude/local/claude',
-                'for u in /home/*; do [ -x "$u/.npm-global/bin/claude" ] && { "$u/.npm-global/bin/claude" "$@"; exit $?; }; done; false',
-                'for u in /home/*; do [ -x "$u/node_modules/.bin/claude" ] && { "$u/node_modules/.bin/claude" "$@"; exit $?; }; done; false',
-                'for n in ~/.nvm/versions/node/*/bin/claude; do [ -x "$n" ] && { "$n" "$@"; exit $?; }; done; false',
-                '[ -x /opt/claude/bin/claude ] && /opt/claude/bin/claude'
-            ].map(check => `(${check} ${escapedArgs})`).join(' || ');
+            // Build simpler detection script for title generation
+            const findClaudeScript = `
+                claude_paths=(
+                    "/usr/local/bin/claude"
+                    "/usr/bin/claude"
+                    "\$HOME/.local/bin/claude"
+                    "\$HOME/.npm-global/bin/claude"
+                    "\$HOME/node_modules/.bin/claude"
+                    "\$HOME/.claude/local/claude"
+                    "/opt/claude/bin/claude"
+                )
+                
+                # Check each user's .npm-global
+                for user_home in /home/*; do
+                    if [ -d "\$user_home" ]; then
+                        claude_paths+=("\$user_home/.npm-global/bin/claude")
+                        claude_paths+=("\$user_home/node_modules/.bin/claude")
+                        claude_paths+=("\$user_home/.local/bin/claude")
+                    fi
+                done
+                
+                # Check nvm installations
+                if [ -d "\$HOME/.nvm" ]; then
+                    for nvm_path in \$HOME/.nvm/versions/node/*/bin/claude; do
+                        [ -x "\$nvm_path" ] && claude_paths+=("\$nvm_path")
+                    done
+                fi
+                
+                # Try to find claude in PATH first
+                if command -v claude &>/dev/null; then
+                    claude_cmd="claude"
+                else
+                    # Check all known paths
+                    claude_cmd=""
+                    for path in "\${claude_paths[@]}"; do
+                        if [ -x "\$path" ]; then
+                            claude_cmd="\$path"
+                            break
+                        fi
+                    done
+                fi
+                
+                if [ -z "\$claude_cmd" ]; then
+                    echo "Claude CLI not found in WSL" >&2
+                    exit 127
+                fi
+                
+                exec "\$claude_cmd" ${escapedArgs}
+            `.trim();
             
-            const wslArgs = ['-e', 'bash', '-c', 
-                `${claudePathChecks} || (echo "Claude CLI not found in WSL" >&2 && exit 127)`
-            ];
+            const wslArgs = ['-e', 'bash', '-c', findClaudeScript];
             
             titleProcess = spawn('wsl.exe', wslArgs, {
                 stdio: ['pipe', 'pipe', 'pipe'],
@@ -398,7 +431,7 @@ socketServer.on('connection', (socket) => {
                 workingDir = wslPath;
             }
             
-            // Build WSL command - escape args properly and include cd to working directory
+            // Build WSL command - escape args properly
             const escapedArgs = args.map(arg => {
                 if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
                     return "'" + arg.replace(/'/g, "'\\''") + "'";
@@ -406,24 +439,61 @@ socketServer.on('connection', (socket) => {
                 return arg;
             }).join(' ');
             
-            // WSL command with comprehensive path fallbacks for main Claude execution
-            const claudePathChecks = [
-                'command -v claude &> /dev/null && claude',
-                '[ -x /usr/local/bin/claude ] && /usr/local/bin/claude',
-                '[ -x /usr/bin/claude ] && /usr/bin/claude',
-                '[ -x ~/.local/bin/claude ] && ~/.local/bin/claude',
-                '[ -x ~/.npm-global/bin/claude ] && ~/.npm-global/bin/claude',
-                '[ -x ~/node_modules/.bin/claude ] && ~/node_modules/.bin/claude',
-                '[ -x ~/.claude/local/claude ] && ~/.claude/local/claude',
-                'for u in /home/*; do [ -x "$u/.npm-global/bin/claude" ] && { "$u/.npm-global/bin/claude" "$@"; exit $?; }; done; false',
-                'for u in /home/*; do [ -x "$u/node_modules/.bin/claude" ] && { "$u/node_modules/.bin/claude" "$@"; exit $?; }; done; false',
-                'for n in ~/.nvm/versions/node/*/bin/claude; do [ -x "$n" ] && { "$n" "$@"; exit $?; }; done; false',
-                '[ -x /opt/claude/bin/claude ] && /opt/claude/bin/claude'
-            ].map(check => `(${check} ${escapedArgs})`).join(' || ');
+            // Escape working directory for WSL
+            const escapedWorkingDir = workingDir.replace(/'/g, "'\\''");
             
-            const wslArgs = ['-e', 'bash', '-c', 
-                `cd '${workingDir}' && (${claudePathChecks} || (echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2 && exit 127))`
-            ];
+            // Build a simpler, more robust detection script
+            const findClaudeScript = `
+                claude_paths=(
+                    "/usr/local/bin/claude"
+                    "/usr/bin/claude"
+                    "\$HOME/.local/bin/claude"
+                    "\$HOME/.npm-global/bin/claude"
+                    "\$HOME/node_modules/.bin/claude"
+                    "\$HOME/.claude/local/claude"
+                    "/opt/claude/bin/claude"
+                )
+                
+                # Check each user's .npm-global
+                for user_home in /home/*; do
+                    if [ -d "\$user_home" ]; then
+                        claude_paths+=("\$user_home/.npm-global/bin/claude")
+                        claude_paths+=("\$user_home/node_modules/.bin/claude")
+                        claude_paths+=("\$user_home/.local/bin/claude")
+                    fi
+                done
+                
+                # Check nvm installations
+                if [ -d "\$HOME/.nvm" ]; then
+                    for nvm_path in \$HOME/.nvm/versions/node/*/bin/claude; do
+                        [ -x "\$nvm_path" ] && claude_paths+=("\$nvm_path")
+                    done
+                fi
+                
+                # Try to find claude in PATH first
+                if command -v claude &>/dev/null; then
+                    claude_cmd="claude"
+                else
+                    # Check all known paths
+                    claude_cmd=""
+                    for path in "\${claude_paths[@]}"; do
+                        if [ -x "\$path" ]; then
+                            claude_cmd="\$path"
+                            break
+                        fi
+                    done
+                fi
+                
+                if [ -z "\$claude_cmd" ]; then
+                    echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2
+                    exit 127
+                fi
+                
+                cd '${escapedWorkingDir}'
+                exec "\$claude_cmd" ${escapedArgs}
+            `.trim();
+            
+            const wslArgs = ['-e', 'bash', '-c', findClaudeScript];
             
             log('WSL command: wsl.exe ' + wslArgs.join(' '));
             
@@ -624,19 +694,24 @@ socketServer.on('connection', (socket) => {
                             streaming: true,
                             timestamp: Date.now()
                         });
-                    } else if (json.type === 'content_block_start' && json.content_block?.type === 'tool_use') {
-                        // Tool use starting in streaming format
-                        log(`[${sessionId}] 🔧 STREAMING TOOL USE START: ${json.content_block.name}`);
-                        socket.emit(`message:${sessionId}`, {
-                            type: 'tool_use',
-                            message: {
-                                name: json.content_block.name,
-                                input: {},  // Will be filled by deltas
-                                id: json.content_block.id
-                            },
-                            timestamp: Date.now(),
-                            id: `tool-${sessionId}-${Date.now()}-${json.index}`
-                        });
+                    } else if (json.type === 'content_block_start') {
+                        if (json.content_block?.type === 'thinking') {
+                            // Thinking block starting - skip but log
+                            log(`[${sessionId}] 🤔 THINKING block starting, skipping...`);
+                        } else if (json.content_block?.type === 'tool_use') {
+                            // Tool use starting in streaming format
+                            log(`[${sessionId}] 🔧 STREAMING TOOL USE START: ${json.content_block.name}`);
+                            socket.emit(`message:${sessionId}`, {
+                                type: 'tool_use',
+                                message: {
+                                    name: json.content_block.name,
+                                    input: {},  // Will be filled by deltas
+                                    id: json.content_block.id
+                                },
+                                timestamp: Date.now(),
+                                id: `tool-${sessionId}-${Date.now()}-${json.index}`
+                            });
+                        }
                     } else if (json.type === 'content_block_delta') {
                         if (json.delta?.text) {
                             // Text delta - use stored message ID if assistantMessageId is not set
@@ -653,6 +728,9 @@ socketServer.on('connection', (socket) => {
                                 streaming: true,
                                 timestamp: Date.now()
                             });
+                        } else if (json.delta?.thinking) {
+                            // Thinking delta - skip but log for debugging
+                            log(`[${sessionId}] 🤔 Thinking delta received, skipping...`);
                         } else if (json.delta?.partial_json) {
                             // Tool input delta - we could accumulate these but for now just log
                             log(`[${sessionId}] Tool input delta: ${json.delta.partial_json}`);
@@ -677,7 +755,8 @@ socketServer.on('connection', (socket) => {
                             id: `result-${sessionId}-${Date.now()}`,
                             sessionId,
                             streaming: false,
-                            timestamp: Date.now()
+                            timestamp: Date.now(),
+                            model: model || 'unknown' // Include the model that was used
                         });
                         log(`[${sessionId}] Sent result message after message_stop to clear UI`);
                     } else if (json.type === 'user' && json.message?.content) {
@@ -711,6 +790,9 @@ socketServer.on('connection', (socket) => {
                         for (const block of json.message.content) {
                             if (block.type === 'text') {
                                 textContent += block.text;
+                            } else if (block.type === 'thinking') {
+                                // Skip thinking blocks - they're internal and shouldn't be shown
+                                log(`[${sessionId}] 🤔 THINKING block found, skipping...`);
                             } else if (block.type === 'tool_use') {
                                 log(`[${sessionId}] 🔧 TOOL USE FOUND: ${block.name}`);
                                 toolUses.push(block);
@@ -728,16 +810,16 @@ socketServer.on('connection', (socket) => {
                             }
                         }
                         
-                        // Send text content if any
-                        if (textContent) {
-                            socket.emit(`message:${sessionId}`, {
-                                type: 'assistant',
-                                message: { content: textContent },
-                                streaming: true, // Keep streaming true - will be cleared by result or message_stop
-                                id: messageId,
-                                timestamp: Date.now()
-                            });
-                        }
+                        // Always send assistant message to update UI state
+                        // Even if there's no text content (e.g., only thinking blocks)
+                        socket.emit(`message:${sessionId}`, {
+                            type: 'assistant',
+                            message: { content: textContent || '' },
+                            streaming: true, // Keep streaming true - will be cleared by result or message_stop
+                            id: messageId,
+                            timestamp: Date.now()
+                        });
+                        
                     } else if (json.type === 'result') {
                         log(`[${sessionId}] Result received: ${json.result}`);
                         // Clear streaming state
@@ -754,12 +836,13 @@ socketServer.on('connection', (socket) => {
                         } else {
                             log(`[${sessionId}] No streaming message to clear on result`);
                         }
-                        // Send result message
+                        // Send result message with model info
                         socket.emit(`message:${sessionId}`, {
                             type: 'result',
                             ...json,
                             streaming: false,
-                            id: `result-${sessionId}-${Date.now()}`
+                            id: `result-${sessionId}-${Date.now()}`,
+                            model: model || 'unknown' // Include the model that was used
                         });
                     }
                     
@@ -851,7 +934,8 @@ socketServer.on('connection', (socket) => {
                     id: `result-${sessionId}-${Date.now()}`,
                     sessionId,
                     streaming: false,
-                    timestamp: Date.now()
+                    timestamp: Date.now(),
+                    model: model || 'unknown' // Include the model that was used
                 });
             }, 50);
         });

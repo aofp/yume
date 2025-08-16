@@ -399,24 +399,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           const currentState = get();
           const isCurrentSession = currentState.currentSessionId === sessionId;
           
-          // ALWAYS process these message types for ALL sessions to maintain correct state
-          const shouldAlwaysProcess = 
-            message.type === 'result' || 
-            message.type === 'error' ||
-            (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) ||
-            (message.type === 'assistant' && !message.streaming) || // Only process final assistant messages for background sessions
-            message.type === 'tool_use' ||  // Process tool_use messages to track streaming
-            message.type === 'tool_result'; // Process tool_result messages to track streaming
-          
-          // Only skip non-critical messages for background tabs
-          if (!isCurrentSession && !shouldAlwaysProcess) {
-            console.warn('[Store] Ignoring message for inactive session:', {
-              messageForSession: sessionId,
-              currentSession: currentState.currentSessionId,
-              messageType: message.type
-            });
-            return; // Don't process non-critical messages for inactive sessions
-          }
+          // ALWAYS process ALL messages for ALL sessions to maintain correct state
+          // This ensures that when you switch tabs, all messages are already there
+          // We're not filtering any messages - all sessions get all their messages
+          console.log('[Store] Message received for session:', {
+            sessionId,
+            isCurrentSession,
+            messageType: message.type,
+            messageSubtype: message.subtype,
+            streaming: message.streaming,
+            id: message.id
+          });
           
           console.log('[Store] Processing message:', {
             sessionId,
@@ -440,21 +433,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           
           // Handle streaming messages by updating existing message or adding new
           set(state => {
-            // For critical messages that update streaming state, always process them
-            const shouldAlwaysProcess = 
-              message.type === 'result' || 
-              message.type === 'error' ||
-              (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) ||
-              message.type === 'assistant' || // Process ALL assistant messages to track streaming state
-              message.type === 'tool_use' ||  // Process tool_use messages to track streaming
-              message.type === 'tool_result'; // Process tool_result messages to track streaming
-            
-            // Process messages for all sessions to maintain correct streaming state
-            // This ensures background tabs show correct streaming indicators
-            if (!shouldAlwaysProcess && state.currentSessionId !== sessionId) {
-              console.warn('[Store] Skipping non-critical message for background session');
-              return state;
-            }
+            // ALWAYS process ALL messages for ALL sessions
+            // This ensures that when you switch tabs, all messages are already there
+            // We're not skipping any messages anymore - all sessions get all their messages
+            console.log('[Store] Processing message in set state:', {
+              sessionId,
+              messageType: message.type,
+              isCurrentSession: state.currentSessionId === sessionId
+            });
             
             let sessions = state.sessions.map(s => {
               if (s.id !== sessionId) return s;
@@ -526,7 +512,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   }
                 } else {
                   // Add new message only if it doesn't exist
-                  console.log(`[CLIENT] Adding new message ${message.id} (type: ${message.type}, streaming: ${message.streaming})`);
+                  console.log(`[CLIENT] Adding new message ${message.id} (type: ${message.type}, streaming: ${message.streaming}, model: ${message.model})`);
                   
                   // Special handling for result messages with error_max_turns
                   if (message.type === 'result' && message.subtype === 'error_max_turns') {

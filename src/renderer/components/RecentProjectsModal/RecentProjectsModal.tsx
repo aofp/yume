@@ -108,7 +108,17 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
             <div className="recent-item-info">
               <div className="recent-item-name">
                 {project.name}
-                <span className="recent-item-path">{project.path}</span>
+                <span 
+                  className="recent-item-path"
+                  ref={(el) => {
+                    // Scroll to end on mount to show rightmost part of path
+                    if (el) {
+                      el.scrollLeft = el.scrollWidth;
+                    }
+                  }}
+                >
+                  {project.path}
+                </span>
               </div>
             </div>
           </button>

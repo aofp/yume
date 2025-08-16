@@ -1641,6 +1641,7 @@
   display: flex;
   align-items: center;
   border-bottom: none;
+  max-width: 100%;
 }
 
 .recent-item {
@@ -1664,6 +1665,7 @@
 
 .recent-item-info {
   flex: 1;
+  min-width: 0; /* Important for flex child overflow */
   overflow: hidden;
 }
 
@@ -1671,18 +1673,26 @@
   font-size: 12px;
   font-weight: 500;
   color: var(--text-color);
-  text-overflow: ellipsis;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
   overflow: hidden;
-  white-space: nowrap;
 }
 
 .recent-item-path {
   font-size: 8pt;
   color: rgba(255, 255, 255, 0.3);
-  text-overflow: ellipsis;
-  overflow: hidden;
   white-space: nowrap;
-  margin-top: 2px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  display: block;
+  /* Hide scrollbar */
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
+}
+
+.recent-item-path::-webkit-scrollbar {
+  display: none; /* Chrome/Safari/Opera */
 }
 
 .recent-item-remove {
