@@ -608,7 +608,7 @@
 
 /* macOS-specific padding */
 .platform-darwin .chat-input-container {
-  padding: 3px 4px 2px 4px; /* macOS only: top right bottom left */
+  padding: 2px 4px 2px 4px; /* macOS only: top right bottom left */
 }
 
 /* Windows-specific fix to keep input visible when zoomed */
