@@ -33,8 +33,8 @@
 /* macOS right side controls (help and settings) */
 .mac-right-controls {
   position: fixed;
-  top: 4px;
-  right: 4px;
+  top: 1px; /* Moved 3px up total (was 4px, now 1px) */
+  right: 70px; /* Moved 66px left total (was 74px, now 70px - moved 4px right) */
   display: flex;
   align-items: center;
   background: transparent;

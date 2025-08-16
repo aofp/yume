@@ -111,10 +111,12 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"]
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 120000, // 2 minutes
-  pingInterval: 30000, // 30 seconds
-  upgradeTimeout: 30000,
-  maxHttpBufferSize: 1e8 // 100mb
+  pingTimeout: 600000, // 10 minutes - prevent timeout during long operations
+  pingInterval: 30000, // 30 seconds heartbeat
+  upgradeTimeout: 60000, // 60 seconds for upgrade
+  maxHttpBufferSize: 5e8, // 500mb - handle large contexts
+  perMessageDeflate: false, // Disable compression for better streaming performance
+  httpCompression: false // Disable HTTP compression for streaming
 });
 
 app.use(cors());
@@ -155,6 +157,8 @@ const PORT = (() => {
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
+let streamHealthChecks = new Map(); // Map of sessionId -> interval
+let streamTimeouts = new Map(); // Map of sessionId -> timeout
 
 // Add process spawn mutex to prevent race conditions
 let isSpawningProcess = false;
@@ -264,7 +268,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
 
 // Memory management - EXACTLY LIKE WINDOWS
 const MAX_MESSAGE_HISTORY = 1000; // Limit message history per session
-const MAX_LINE_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB max buffer
+const MAX_LINE_BUFFER_SIZE = 50 * 1024 * 1024; // 50MB max buffer for large responses
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -563,6 +567,14 @@ io.on('connection', (socket) => {
       let lastDataTime = Date.now();
       let streamStartTime = Date.now();
       
+      // Cleanup any existing health check for this session
+      if (streamHealthChecks.has(sessionId)) {
+        clearInterval(streamHealthChecks.get(sessionId));
+      }
+      if (streamTimeouts.has(sessionId)) {
+        clearTimeout(streamTimeouts.get(sessionId));
+      }
+      
       // Log stream health check every 5 seconds
       const streamHealthInterval = setInterval(() => {
         const timeSinceLastData = Date.now() - lastDataTime;
@@ -575,10 +587,37 @@ io.on('connection', (socket) => {
         console.log(`   ├─ Buffer size: ${lineBuffer.length}`);
         console.log(`   └─ Process alive: ${activeProcesses.has(sessionId)}`);
         
-        if (timeSinceLastData > 10000) {
+        if (timeSinceLastData > 30000) {
           console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
+          // Send keepalive to prevent client timeout
+          socket.emit(`keepalive:${sessionId}`, { timestamp: Date.now() });
+        }
+        
+        // If no data for 5 minutes, consider stream dead
+        if (timeSinceLastData > 300000) {
+          console.error(`💀 Stream appears dead after ${timeSinceLastData}ms, cleaning up`);
+          if (activeProcesses.has(sessionId)) {
+            const proc = activeProcesses.get(sessionId);
+            proc.kill('SIGTERM');
+            activeProcesses.delete(sessionId);
+          }
+          clearInterval(streamHealthInterval);
         }
       }, 5000);
+      
+      // Store health check interval for cleanup
+      streamHealthChecks.set(sessionId, streamHealthInterval);
+      
+      // Set overall stream timeout (10 minutes max per stream)
+      const streamTimeout = setTimeout(() => {
+        console.warn(`⏰ Stream timeout reached for session ${sessionId} after 10 minutes`);
+        if (activeProcesses.has(sessionId)) {
+          const proc = activeProcesses.get(sessionId);
+          console.log(`⏰ Terminating long-running process for ${sessionId}`);
+          proc.kill('SIGTERM');
+        }
+      }, 600000); // 10 minutes
+      streamTimeouts.set(sessionId, streamTimeout);
       
       const processStreamLine = (line) => {
         if (!line.trim()) {
@@ -794,6 +833,15 @@ io.on('connection', (socket) => {
 
       // Handle process exit
       claudeProcess.on('close', (code) => {
+        // Clean up all tracking for this session
+        if (streamHealthChecks.has(sessionId)) {
+          clearInterval(streamHealthChecks.get(sessionId));
+          streamHealthChecks.delete(sessionId);
+        }
+        if (streamTimeouts.has(sessionId)) {
+          clearTimeout(streamTimeouts.get(sessionId));
+          streamTimeouts.delete(sessionId);
+        }
         clearInterval(streamHealthInterval);
         const streamDuration = Date.now() - streamStartTime;
         console.log(`👋 [${sessionId}] Claude process exited with code ${code}`);
@@ -870,6 +918,15 @@ io.on('connection', (socket) => {
 
       // Handle process errors
       claudeProcess.on('error', (err) => {
+        // Clean up all tracking for this session
+        if (streamHealthChecks.has(sessionId)) {
+          clearInterval(streamHealthChecks.get(sessionId));
+          streamHealthChecks.delete(sessionId);
+        }
+        if (streamTimeouts.has(sessionId)) {
+          clearTimeout(streamTimeouts.get(sessionId));
+          streamTimeouts.delete(sessionId);
+        }
         clearInterval(streamHealthInterval);
         console.error(`❌ [${sessionId}] Failed to spawn claude:`, err);
         console.error(`❌ [${sessionId}] Error details:`, {
@@ -1038,9 +1095,19 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('🔌 Client disconnected:', socket.id);
-    // Clean up any processes associated with this socket
+    // Clean up any processes and intervals associated with this socket
     for (const [sessionId, session] of sessions.entries()) {
       if (session.socketId === socket.id) {
+        // Clean up health checks and timeouts
+        if (streamHealthChecks.has(sessionId)) {
+          clearInterval(streamHealthChecks.get(sessionId));
+          streamHealthChecks.delete(sessionId);
+        }
+        if (streamTimeouts.has(sessionId)) {
+          clearTimeout(streamTimeouts.get(sessionId));
+          streamTimeouts.delete(sessionId);
+        }
+        
         const process = activeProcesses.get(sessionId);
         if (process) {
           console.log(`🧹 Cleaning up process for session ${sessionId}`);
@@ -1061,6 +1128,19 @@ httpServer.listen(PORT, () => {
   console.log(`🖥️ Platform: ${platform()}`);
   console.log(`🏠 Home directory: ${homedir()}`);
   console.log(`✅ Server configured EXACTLY like Windows server`);
+  
+  // Warmup bash command to prevent focus loss on first run
+  console.log('🔥 Warming up bash execution...');
+  const warmupCmd = spawn('echo', ['warmup'], {
+    shell: false,
+    stdio: 'pipe'
+  });
+  warmupCmd.on('close', () => {
+    console.log('✅ Bash warmup complete');
+  });
+  warmupCmd.on('error', (err) => {
+    console.warn('⚠️ Bash warmup failed:', err.message);
+  });
 });
 
 // Handle port already in use error

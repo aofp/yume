@@ -256,22 +256,23 @@ body.tab-dragging * {
 }
 
 .tab-rename-input {
-  background: transparent;
-  border: 1px solid var(--accent-color);
-  border-radius: 2px;
+  background: rgba(0, 0, 0, 0.1);
+  border: none;
+  border-radius: 0;
   color: var(--text-secondary);
   font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
-  font-size: 10px;
-  padding: 2px 4px;
-  margin-left: 4px;
+  font-size: 9px;
+  padding: 0;
+  margin: 0;
   width: 120px;
   outline: none;
   cursor: text;
+  transition: none;
 }
 
 .tab-rename-input:focus {
   color: var(--accent-color);
-  border-color: var(--accent-magenta);
+  border: none;
 }
 
 .streaming-icon {

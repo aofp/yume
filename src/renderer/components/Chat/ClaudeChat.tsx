@@ -2269,7 +2269,8 @@ export const ClaudeChat: React.FC = () => {
                   alignItems: 'center', 
                   height: '200px',
                   color: '#666',
-                  fontSize: '14px'
+                  fontSize: '14px',
+                  gridColumn: 'span 2'
                 }}>
                   no active session
                 </div>
