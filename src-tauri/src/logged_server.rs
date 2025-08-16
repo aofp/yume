@@ -202,9 +202,98 @@ const sessions = new Map(); // Store session data including working directory
 const streamHealthChecks = new Map(); // Map of sessionId -> interval
 const streamTimeouts = new Map(); // Map of sessionId -> timeout
 
+// Cache Claude command path - initialized once at startup
+let CLAUDE_CMD = null;
+let CLAUDE_INIT_ERROR = null;
+
+// Initialize Claude command path once at startup
+function initializeClaude() {
+    log('🚀 Initializing Claude CLI detection...');
+    
+    if (process.platform === 'win32') {
+        // Windows: Use WSL to find Claude
+        const { execSync } = require('child_process');
+        try {
+            // Use a simpler approach - directly execute the command
+            const findCommand = [
+                'claude_paths=(',
+                '"/usr/local/bin/claude"',
+                '"/usr/bin/claude"',
+                '"$HOME/.local/bin/claude"',
+                '"$HOME/.npm-global/bin/claude"',
+                '"$HOME/node_modules/.bin/claude"',
+                '"$HOME/.claude/local/claude"',
+                '"/opt/claude/bin/claude"',
+                ');',
+                'for user_home in /home/*; do',
+                '[ -d "$user_home" ] && claude_paths+=("$user_home/.npm-global/bin/claude" "$user_home/node_modules/.bin/claude" "$user_home/.local/bin/claude");',
+                'done;',
+                'if [ -d "$HOME/.nvm" ]; then',
+                'for nvm_path in $HOME/.nvm/versions/node/*/bin/claude; do',
+                '[ -x "$nvm_path" ] && claude_paths+=("$nvm_path");',
+                'done;',
+                'fi;',
+                'if command -v claude &>/dev/null; then echo "claude"; exit 0; fi;',
+                'for path in "${claude_paths[@]}"; do',
+                'if [ -x "$path" ]; then echo "$path"; exit 0; fi;',
+                'done;',
+                'exit 127'
+            ].join(' ');
+            
+            const result = execSync(`wsl.exe -e bash -c "${findCommand}"`, { 
+                encoding: 'utf8',
+                windowsHide: true  // Prevent console window from appearing
+            });
+            CLAUDE_CMD = result.trim();
+            log(`✅ Claude found in WSL at: ${CLAUDE_CMD}`);
+        } catch (e) {
+            CLAUDE_INIT_ERROR = 'Claude CLI not found in WSL. Please install Claude CLI in WSL first.';
+            log(`❌ Failed to find Claude in WSL: ${e.message}`);
+        }
+    } else {
+        // Unix/Mac - try to find Claude
+        const claudePaths = [
+            'claude',
+            '/usr/local/bin/claude',
+            path.join(process.env.HOME || '', '.local', 'bin', 'claude'),
+            path.join(process.env.HOME || '', '.npm-global', 'bin', 'claude'),
+            path.join(process.env.HOME || '', 'node_modules', '.bin', 'claude'),
+            path.join(process.env.HOME || '', '.claude', 'local', 'claude')
+        ];
+        
+        for (const p of claudePaths) {
+            try {
+                require('child_process').execSync(`"${p}" --version`, { 
+                    stdio: 'ignore',
+                    windowsHide: true  // Prevent console window (ignored on non-Windows)
+                });
+                CLAUDE_CMD = p;
+                log(`✅ Claude found at: ${p}`);
+                break;
+            } catch (e) {
+                // Continue searching
+            }
+        }
+        
+        if (!CLAUDE_CMD) {
+            CLAUDE_INIT_ERROR = 'Claude CLI not found. Please install Claude CLI first.';
+            log(`❌ Failed to find Claude CLI`);
+        }
+    }
+}
+
+// Initialize Claude on server start
+initializeClaude();
+
 // Helper function to generate title with Sonnet
 async function generateTitle(sessionId, userMessage, socket) {
     try {
+        // Check if Claude is available
+        if (!CLAUDE_CMD) {
+            log(`🏷️ Cannot generate title: ${CLAUDE_INIT_ERROR}`);
+            return;
+        }
+        
         log(`🏷️ Generating title for session ${sessionId}`);
         log(`🏷️ Message preview: "${userMessage.substring(0, 100)}..."`);
         
@@ -216,7 +305,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
         
         let titleProcess;
         
-        // On Windows, use WSL
+        // On Windows, use WSL with cached Claude path
         if (process.platform === 'win32') {
             const escapedArgs = titleArgs.map(arg => {
                 if (arg.includes(' ') || arg.includes('\n')) {
@@ -225,65 +314,17 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
                 return arg;
             }).join(' ');
             
-            // Build simpler detection script for title generation
-            const findClaudeScript = `
-                claude_paths=(
-                    "/usr/local/bin/claude"
-                    "/usr/bin/claude"
-                    "\$HOME/.local/bin/claude"
-                    "\$HOME/.npm-global/bin/claude"
-                    "\$HOME/node_modules/.bin/claude"
-                    "\$HOME/.claude/local/claude"
-                    "/opt/claude/bin/claude"
-                )
-                
-                # Check each user's .npm-global
-                for user_home in /home/*; do
-                    if [ -d "\$user_home" ]; then
-                        claude_paths+=("\$user_home/.npm-global/bin/claude")
-                        claude_paths+=("\$user_home/node_modules/.bin/claude")
-                        claude_paths+=("\$user_home/.local/bin/claude")
-                    fi
-                done
-                
-                # Check nvm installations
-                if [ -d "\$HOME/.nvm" ]; then
-                    for nvm_path in \$HOME/.nvm/versions/node/*/bin/claude; do
-                        [ -x "\$nvm_path" ] && claude_paths+=("\$nvm_path")
-                    done
-                fi
-                
-                # Try to find claude in PATH first
-                if command -v claude &>/dev/null; then
-                    claude_cmd="claude"
-                else
-                    # Check all known paths
-                    claude_cmd=""
-                    for path in "\${claude_paths[@]}"; do
-                        if [ -x "\$path" ]; then
-                            claude_cmd="\$path"
-                            break
-                        fi
-                    done
-                fi
-                
-                if [ -z "\$claude_cmd" ]; then
-                    echo "Claude CLI not found in WSL" >&2
-                    exit 127
-                fi
-                
-                exec "\$claude_cmd" ${escapedArgs}
-            `.trim();
-            
-            const wslArgs = ['-e', 'bash', '-c', findClaudeScript];
+            // Use cached CLAUDE_CMD directly
+            const wslScript = `exec "${CLAUDE_CMD}" ${escapedArgs}`;
+            const wslArgs = ['-e', 'bash', '-c', wslScript];
             
             titleProcess = spawn('wsl.exe', wslArgs, {
                 stdio: ['pipe', 'pipe', 'pipe'],
                 windowsHide: true
             });
         } else {
-            // Direct spawn for non-Windows
-            titleProcess = spawn('claude', titleArgs, {
+            // Direct spawn with cached path
+            titleProcess = spawn(CLAUDE_CMD, titleArgs, {
                 stdio: ['pipe', 'pipe', 'pipe']
             });
         }
@@ -403,18 +444,24 @@ socketServer.on('connection', (socket) => {
             log(`[${sessionId}] Starting fresh conversation (no previous session)`);
         }
         
-        // Add casual prompt for yurucode
-        const casualPrompt = `CRITICAL: you are in yurucode ui. ALWAYS:
-- use all lowercase (no capitals ever)
-- be extremely concise
-- never use formal language  
-- no greetings/pleasantries
-- straight to the point
-- code/variables keep proper case
-- one line answers preferred`;
+        // Add casual prompt for yurucode - simplified to avoid newline issues in WSL
+        const casualPrompt = 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings or pleasantries, straight to the point, code/variables keep proper case, one line answers preferred';
         args.push('--append-system-prompt', casualPrompt);
         
         if (model) args.push('--model', model);
+        
+        // Check if Claude is available
+        if (!CLAUDE_CMD) {
+            log(`[${sessionId}] ERROR: ${CLAUDE_INIT_ERROR}`);
+            socket.emit(`message:${sessionId}`, {
+                type: 'system',
+                subtype: 'error',
+                message: CLAUDE_INIT_ERROR,
+                timestamp: Date.now()
+            });
+            if (callback) callback({ success: false, error: CLAUDE_INIT_ERROR });
+            return;
+        }
         
         let claude;
         
@@ -433,7 +480,8 @@ socketServer.on('connection', (socket) => {
             
             // Build WSL command - escape args properly
             const escapedArgs = args.map(arg => {
-                if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
+                // Escape arguments that contain spaces or quotes
+                if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('\n')) {
                     return "'" + arg.replace(/'/g, "'\\''") + "'";
                 }
                 return arg;
@@ -442,58 +490,13 @@ socketServer.on('connection', (socket) => {
             // Escape working directory for WSL
             const escapedWorkingDir = workingDir.replace(/'/g, "'\\''");
             
-            // Build a simpler, more robust detection script
-            const findClaudeScript = `
-                claude_paths=(
-                    "/usr/local/bin/claude"
-                    "/usr/bin/claude"
-                    "\$HOME/.local/bin/claude"
-                    "\$HOME/.npm-global/bin/claude"
-                    "\$HOME/node_modules/.bin/claude"
-                    "\$HOME/.claude/local/claude"
-                    "/opt/claude/bin/claude"
-                )
-                
-                # Check each user's .npm-global
-                for user_home in /home/*; do
-                    if [ -d "\$user_home" ]; then
-                        claude_paths+=("\$user_home/.npm-global/bin/claude")
-                        claude_paths+=("\$user_home/node_modules/.bin/claude")
-                        claude_paths+=("\$user_home/.local/bin/claude")
-                    fi
-                done
-                
-                # Check nvm installations
-                if [ -d "\$HOME/.nvm" ]; then
-                    for nvm_path in \$HOME/.nvm/versions/node/*/bin/claude; do
-                        [ -x "\$nvm_path" ] && claude_paths+=("\$nvm_path")
-                    done
-                fi
-                
-                # Try to find claude in PATH first
-                if command -v claude &>/dev/null; then
-                    claude_cmd="claude"
-                else
-                    # Check all known paths
-                    claude_cmd=""
-                    for path in "\${claude_paths[@]}"; do
-                        if [ -x "\$path" ]; then
-                            claude_cmd="\$path"
-                            break
-                        fi
-                    done
-                fi
-                
-                if [ -z "\$claude_cmd" ]; then
-                    echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2
-                    exit 127
-                fi
-                
-                cd '${escapedWorkingDir}'
-                exec "\$claude_cmd" ${escapedArgs}
+            // Use cached CLAUDE_CMD directly
+            const wslScript = `
+                cd '${escapedWorkingDir}' || { echo "ERROR: Failed to cd to ${escapedWorkingDir}" >&2; exit 1; }
+                exec "${CLAUDE_CMD}" ${escapedArgs}
             `.trim();
             
-            const wslArgs = ['-e', 'bash', '-c', findClaudeScript];
+            const wslArgs = ['-e', 'bash', '-c', wslScript];
             
             log('WSL command: wsl.exe ' + wslArgs.join(' '));
             
@@ -503,25 +506,8 @@ socketServer.on('connection', (socket) => {
                 windowsHide: true  // Hide WSL console window
             });
         } else {
-            // Unix/Mac - try to find Claude
-            const claudePaths = [
-                'claude',
-                '/usr/local/bin/claude',
-                path.join(process.env.HOME || '', '.local', 'bin', 'claude'),
-                path.join(process.env.HOME || '', '.claude', 'local', 'claude')
-            ];
-            
-            let CLAUDE_PATH = 'claude';
-            for (const p of claudePaths) {
-                try {
-                    require('child_process').execSync(`"${p}" --version`, { stdio: 'ignore' });
-                    CLAUDE_PATH = p;
-                    log('Found Claude at: ' + p);
-                    break;
-                } catch (e) {}
-            }
-            
-            claude = spawn(CLAUDE_PATH, args, {
+            // Unix/Mac - use cached path
+            claude = spawn(CLAUDE_CMD, args, {
                 cwd: workingDir,
                 shell: false,
                 windowsHide: true  // Hide Claude window on Windows
@@ -538,27 +524,37 @@ socketServer.on('connection', (socket) => {
         }
         
         // Send user message with proper encoding
-        const inputContent = userMessage.endsWith('\\n') ? userMessage : userMessage + '\\n';
-        claude.stdin.write(inputContent, 'utf8', (err) => {
-            if (err) {
-                log(`[${sessionId}] Error writing to stdin: ${err}`);
-                socket.emit(`message:${sessionId}`, {
-                    type: 'system',
-                    subtype: 'error',
-                    message: `Failed to send prompt: ${err.message}`,
-                    timestamp: Date.now()
-                });
-            } else {
-                log(`[${sessionId}] Prompt sent to Claude`);
-            }
-            claude.stdin.end();
-        });
+        const inputContent = userMessage.endsWith('\n') ? userMessage : userMessage + '\n';
+        
+        // Small delay to ensure bash script starts
+        const stdinDelay = process.platform === 'win32' ? 500 : 0;
+        
+        setTimeout(() => {
+            log(`[${sessionId}] Sending prompt to stdin (${inputContent.length} bytes): ${inputContent.substring(0, 50)}...`);
+            
+            claude.stdin.write(inputContent, 'utf8', (err) => {
+                if (err) {
+                    log(`[${sessionId}] Error writing to stdin: ${err}`);
+                    socket.emit(`message:${sessionId}`, {
+                        type: 'system',
+                        subtype: 'error',
+                        message: `Failed to send prompt: ${err.message}`,
+                        timestamp: Date.now()
+                    });
+                } else {
+                    log(`[${sessionId}] Successfully wrote prompt to stdin`);
+                }
+                claude.stdin.end();
+                log(`[${sessionId}] Closed stdin`);
+            });
+        }, stdinDelay);
         
         let buffer = '';
         let assistantMessageId = null;
         let messageCount = 0;
         let lastDataTime = Date.now();
         let streamStartTime = Date.now();
+        const MAX_BUFFER_SIZE = 10 * 1024 * 1024; // 10MB max buffer
         
         // Cleanup any existing health check for this session
         if (streamHealthChecks.has(sessionId)) {
@@ -614,7 +610,14 @@ socketServer.on('connection', (socket) => {
             const str = data.toString();
             log(`[${sessionId}] STDOUT received: ${str.length} bytes`);
             log(`[${sessionId}] Raw data preview: ${str.substring(0, 200).replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r')}...`);
-            buffer += str;
+            
+            // Check buffer size before appending
+            if (buffer.length + str.length > MAX_BUFFER_SIZE) {
+                log(`[${sessionId}] WARNING: Buffer would exceed max size, clearing old buffer`);
+                buffer = str; // Start fresh with new data
+            } else {
+                buffer += str;
+            }
             
             // Claude CLI with --print sends complete JSON objects without newlines
             // Try to parse complete JSON objects from the buffer
@@ -634,7 +637,7 @@ socketServer.on('connection', (socket) => {
                         continue;
                     }
                     
-                    if (char === '\\\\') {
+                    if (char === '\\') {
                         escapeNext = true;
                         continue;
                     }
@@ -850,19 +853,33 @@ socketServer.on('connection', (socket) => {
                     socket.emit(`raw:${sessionId}`, json);
                     messageCount++;
                 } catch (e) {
-                    log(`[${sessionId}] Parse error: ${e.message} for JSON: ${jsonStr}`);
+                    log(`[${sessionId}] Parse error: ${e.message} for JSON: ${jsonStr.substring(0, 200)}...`);
+                    // Try to recover by looking for next JSON object starting with {
+                    const nextStart = buffer.indexOf('{', startIndex + 1);
+                    if (nextStart !== -1) {
+                        startIndex = nextStart;
+                        log(`[${sessionId}] Recovering from parse error, found next JSON at position ${nextStart}`);
+                    } else {
+                        // No more JSON objects found, clear buffer to prevent accumulation
+                        buffer = '';
+                        break;
+                    }
                 }
             }
             
-            // Clear buffer if all parsed
+            // Clear buffer if all parsed or buffer too large
             if (startIndex >= buffer.length) {
+                buffer = '';
+            } else if (buffer.length > MAX_BUFFER_SIZE) {
+                log(`[${sessionId}] WARNING: Buffer exceeded ${MAX_BUFFER_SIZE} bytes, clearing`);
                 buffer = '';
             }
         });
         
+        // Set up stderr handler immediately
         claude.stderr.on('data', (data) => {
             const error = data.toString();
-            log(`[${sessionId}] Claude stderr: ${error}`);
+            log(`[${sessionId}] STDERR OUTPUT: ${error}`);
             
             // Send error to UI
             socket.emit(`message:${sessionId}`, {
@@ -872,6 +889,9 @@ socketServer.on('connection', (socket) => {
                 timestamp: Date.now()
             });
         });
+        
+        // Add immediate logging when process spawns
+        log(`[${sessionId}] Claude process spawned with PID: ${claude.pid}`);
         
         claude.on('error', (err) => {
             log(`[${sessionId}] Process error: ${err}`);

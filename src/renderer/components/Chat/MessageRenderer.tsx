@@ -506,7 +506,6 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           );
         }
         // Otherwise it's raw JSON data - show it as formatted JSON in a code block
-        console.warn('[MessageRenderer] Raw JSON data detected, displaying as code:', trimmedContent.substring(0, 100));
         return (
           <div className="code-block-wrapper">
             <div className="code-block-header">
@@ -868,7 +867,6 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               
               // Copy error to clipboard
               navigator.clipboard.writeText(resultContent).then(() => {
-                console.log('Tool error copied to clipboard');
               }).catch(err => {
                 console.error('Failed to copy error:', err);
               });
@@ -910,7 +908,6 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
         default:
           // Never show raw JSON or unknown block types
-          console.warn('[MessageRenderer] Unknown content block type:', block.type);
           return null;
       }
     });
@@ -950,28 +947,6 @@ const MessageRendererBase: React.FC<{
   const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
   const sessionMessages = currentSession?.messages || [];
   
-  // Debug logging
-  React.useEffect(() => {
-    console.log('[MessageRenderer] Rendering message:', {
-      type: message.type,
-      id: message.id,
-      index,
-      isLast,
-      streaming: message.streaming,
-      hasContent: !!message.message?.content
-    });
-    
-    // Extra debug for tool messages
-    if (message.type === 'tool_use' || message.type === 'tool_result') {
-      console.log('[MessageRenderer] 🔧 TOOL MESSAGE DEBUG:', {
-        type: message.type,
-        toolName: message.message?.name,
-        hasInput: !!message.message?.input,
-        hasContent: !!message.message?.content,
-        fullMessage: message
-      });
-    }
-  }, [message, index, isLast]);
   
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -1043,7 +1018,6 @@ const MessageRendererBase: React.FC<{
           
           // Copy error to clipboard
           navigator.clipboard.writeText(errorText).then(() => {
-            console.log('Error copied to clipboard');
           }).catch(err => {
             console.error('Failed to copy error:', err);
           });
@@ -1129,7 +1103,6 @@ const MessageRendererBase: React.FC<{
               displayText = userContent;
             }
           } catch (e) {
-            console.log('[MessageRenderer] Failed to parse JSON content, treating as string');
             // If JSON parsing fails, treat as regular string
             displayText = userContent;
           }
@@ -1258,29 +1231,15 @@ const MessageRendererBase: React.FC<{
       );
       
     case 'assistant':
-      console.log(`[MessageRenderer] 🤖 ASSISTANT CASE - Processing message ${message.id}`);
-      console.log(`[MessageRenderer] 🤖 Streaming state: ${message.streaming}`);
-      console.log(`[MessageRenderer] 🤖 Message index: ${index}, isLast: ${isLast}`);
-      
       const assistantContent = message.message?.content;
-      console.log(`[MessageRenderer] 🤖 Content check:`, {
-        hasContent: !!assistantContent,
-        contentType: typeof assistantContent,
-        contentLength: typeof assistantContent === 'string' ? assistantContent.length : 
-                      Array.isArray(assistantContent) ? assistantContent.length : 0,
-        contentPreview: typeof assistantContent === 'string' ? 
-                        assistantContent.substring(0, 100) : 'non-string'
-      });
       
       const isEmpty = !assistantContent || 
         (typeof assistantContent === 'string' && !assistantContent.trim()) ||
         (Array.isArray(assistantContent) && assistantContent.filter(b => b.type === 'text' && b.text).length === 0);
       
-      console.log(`[MessageRenderer] 🤖 Is empty: ${isEmpty}`);
       
       // Always show buttons for non-streaming assistant messages
       const showButtons = message.streaming !== true;
-      console.log(`[MessageRenderer] 🤖 Show buttons: ${showButtons}`);
       
       // Process content that might be JSON
       let contentToRender = message.message?.content;
@@ -1303,7 +1262,6 @@ const MessageRendererBase: React.FC<{
               contentToRender = [{type: 'text', text: parsed[0].text}];
             } else {
               // It's other JSON data - keep as is to be rendered as JSON
-              console.warn('[MessageRenderer] Raw JSON content detected in assistant message');
               // contentToRender stays as string, will be rendered by renderContent
             }
           } catch (e) {
@@ -1319,28 +1277,15 @@ const MessageRendererBase: React.FC<{
       if (Array.isArray(contentToRender)) {
         textContent = contentToRender.filter(b => b.type === 'text');
         toolUses = contentToRender.filter(b => b.type === 'tool_use');
-        console.log(`[MessageRenderer] 🤖 Array content - text blocks: ${textContent.length}, tool uses: ${toolUses.length}`);
       } else if (typeof contentToRender === 'string') {
         // If it's a string, treat it as text content
         textContent = contentToRender;
         toolUses = [];
-        console.log(`[MessageRenderer] 🤖 String content - length: ${contentToRender.length}`);
       } else {
-        console.log(`[MessageRenderer] 🤖 Unknown content type: ${typeof contentToRender}`);
       }
       
       const shouldRenderText = textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim()));
-      console.log(`[MessageRenderer] 🤖 Should render text: ${shouldRenderText}`);
       
-      if (shouldRenderText) {
-        const renderedContent = renderContent(textContent, message, searchQuery, isCurrentMatch);
-        console.log(`[MessageRenderer] 🤖 Rendered content result:`, {
-          hasRendered: !!renderedContent,
-          renderedType: typeof renderedContent
-        });
-      }
-      
-      console.log(`[MessageRenderer] 🤖 FINAL - Returning JSX for message ${message.id}`);
       
       // During streaming, if there's no content yet, don't render anything
       // The thinking indicator is shown separately in ClaudeChat
@@ -1529,12 +1474,6 @@ const MessageRendererBase: React.FC<{
       // Standalone tool result message
       const resultContent = message.message?.content || message.message || '';
       
-      // Debug logging for tool results
-      console.log('[MessageRenderer] Processing tool_result content:', {
-        type: typeof resultContent,
-        isArray: Array.isArray(resultContent),
-        content: resultContent
-      });
       
       // Extract plain text from JSON if it's a tool result with output
       let contentStr = '';
@@ -1584,7 +1523,6 @@ const MessageRendererBase: React.FC<{
         contentStr = typeof resultContent === 'string' ? resultContent : JSON.stringify(resultContent, null, 2);
       }
       
-      console.log('[MessageRenderer] Extracted contentStr:', contentStr);
       
       // Check if content is empty and display placeholder
       if (contentStr === '' || contentStr === null || contentStr === undefined || 
@@ -1643,14 +1581,6 @@ const MessageRendererBase: React.FC<{
       const isEditResult = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
                           (contentStr.includes('Applied') && contentStr.includes('edits to'));
       
-      console.log('[MessageRenderer] Edit result check:', {
-        isEditResult,
-        hasUpdated: contentStr.includes('has been updated'),
-        hasArrow: contentStr.includes('→'),
-        hasApplied: contentStr.includes('Applied'),
-        hasEditsTo: contentStr.includes('edits to'),
-        contentPreview: contentStr.substring(0, 200)
-      });
       
       if (isEditResult) {
         // Parse the Edit result to extract the diff
@@ -1788,8 +1718,10 @@ const MessageRendererBase: React.FC<{
       
     case 'result':
       // Check if this is actually a success (even if subtype says error_during_execution)
+      // Note: Claude CLI sends is_error:false for success, not success:true
       const isSuccess = message.subtype === 'success' || 
-                       (message.subtype === 'error_during_execution' && message.success === true);
+                       (message.subtype === 'error_during_execution' && (message.success === true || message.is_error === false)) ||
+                       (!message.subtype && message.is_error === false);
       
       if (isSuccess) {
         // Show elapsed time for successful completion
@@ -1797,7 +1729,6 @@ const MessageRendererBase: React.FC<{
         const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
         const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
         
-        console.log('[MessageRenderer] Result message model:', message.model, 'full message:', message);
         
         // Count tool uses in the current conversation turn only
         // Look back through messages to count tool_use messages since the last user message
@@ -1982,7 +1913,6 @@ const MessageRendererBase: React.FC<{
       );
       
     default:
-      console.log('Unknown message type:', message.type, message);
       return null;
   }
 };

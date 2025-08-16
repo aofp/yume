@@ -1677,10 +1677,11 @@
   flex-direction: column;
   gap: 2px;
   overflow: hidden;
+  font-family: 'Fira Code', monospace;
 }
 
 .recent-item-path {
-  font-size: 8pt;
+  font-size: 7pt;
   color: rgba(255, 255, 255, 0.3);
   white-space: nowrap;
   overflow-x: auto;
@@ -1689,6 +1690,9 @@
   /* Hide scrollbar */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge */
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  width: 100%;
+  max-width: 350px;
 }
 
 .recent-item-path::-webkit-scrollbar {

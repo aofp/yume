@@ -67,37 +67,16 @@ export const App: React.FC = () => {
     }
   }, [contextMenu]);
   
-  // Handle global folder drops
+  // Handle global folder drops (for non-Tauri environments)
   const handleGlobalDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
     document.body.classList.remove('dragging');
     
-    // In Tauri, we need to handle drops differently
+    // In Tauri, drops are handled by onDragDropEvent listener
     if (window.__TAURI__) {
-      // Tauri file drops need special handling
-      const files = Array.from(e.dataTransfer.files);
-      for (const file of files) {
-        // In Tauri, we can get the full path from the File object
-        const path = (file as any).path || file.name;
-        if (path) {
-          // Check if it's a directory using Tauri command
-          try {
-            const { invoke } = await import('@tauri-apps/api/core');
-            const isDir = await invoke<boolean>('check_is_directory', { path });
-            if (isDir) {
-              console.log('Creating session for folder:', path);
-              const sessionName = path.split(/[/\\]/).pop() || 'new session';
-              await createSession(sessionName, path);
-              return;
-            }
-          } catch (err) {
-            console.error('Error checking directory:', err);
-          }
-        }
-      }
-      return;
+      return; // Let Tauri's native drag drop handler handle it
     }
     
     console.log('Global drop event (non-Tauri):', e.dataTransfer);
@@ -144,6 +123,10 @@ export const App: React.FC = () => {
   
   const handleGlobalDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    // In Tauri, drag enter/leave is handled by onDragDropEvent
+    if (window.__TAURI__) {
+      return;
+    }
     // Only show drag overlay for file/folder drops, not internal drags
     if (e.dataTransfer.types.includes('Files') && !isDragging) {
       setIsDragging(true);
@@ -152,6 +135,10 @@ export const App: React.FC = () => {
   };
   
   const handleGlobalDragLeave = (e: React.DragEvent) => {
+    // In Tauri, drag enter/leave is handled by onDragDropEvent
+    if (window.__TAURI__) {
+      return;
+    }
     // Only set dragging to false if leaving the window entirely
     if (e.currentTarget === e.target) {
       setIsDragging(false);
@@ -177,8 +164,105 @@ export const App: React.FC = () => {
     // Set page title
     document.title = 'yurucode';
     
-    // For Tauri, we rely on the web's native drag-and-drop API
-    // No special Tauri event listeners needed
+    // Setup Tauri file drop handler
+    let unlistenDragDrop: (() => void) | undefined;
+    
+    if (window.__TAURI__) {
+      (async () => {
+        try {
+          const { getCurrentWebviewWindow } = await import('@tauri-apps/api/webviewWindow');
+          const appWindow = getCurrentWebviewWindow();
+          
+          // Listen for drag and drop events
+          unlistenDragDrop = await appWindow.onDragDropEvent(async (event) => {
+            console.log('Tauri drag drop event:', event);
+            
+            if (event.payload.type === 'drop') {
+              // Always hide overlay on drop, regardless of what was dropped
+              setIsDragging(false);
+              document.body.classList.remove('dragging');
+              
+              if (event.payload.paths && event.payload.paths.length > 0) {
+                // Process dropped paths
+                const filePaths: string[] = [];
+                
+                for (const path of event.payload.paths) {
+                  try {
+                    const { invoke } = await import('@tauri-apps/api/core');
+                    const isDir = await invoke<boolean>('check_is_directory', { path });
+                    
+                    if (isDir) {
+                      // Folder: create new session
+                      console.log('Creating session for dropped folder:', path);
+                      const sessionName = path.split(/[/\\]/).pop() || 'new session';
+                      await createSession(sessionName, path);
+                      return; // Only handle the first folder
+                    } else {
+                      // File: collect path to insert into textarea
+                      filePaths.push(path);
+                    }
+                  } catch (err) {
+                    console.error('Error checking if path is directory:', err);
+                  }
+                }
+                
+                // If we have file paths, insert them into the textarea
+                if (filePaths.length > 0) {
+                  const textarea = document.querySelector('.chat-input') as HTMLTextAreaElement;
+                  if (textarea) {
+                    const pathsToInsert = filePaths.join('\n');
+                    
+                    // Insert at cursor position or append
+                    const start = textarea.selectionStart;
+                    const end = textarea.selectionEnd;
+                    const currentValue = textarea.value;
+                    
+                    const newValue = currentValue.substring(0, start) + 
+                                   pathsToInsert + 
+                                   currentValue.substring(end);
+                    
+                    // Use React's native setter to properly update the value
+                    const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')?.set;
+                    if (nativeInputValueSetter) {
+                      nativeInputValueSetter.call(textarea, newValue);
+                    }
+                    
+                    // Trigger React's synthetic event
+                    const event = new Event('input', { bubbles: true });
+                    textarea.dispatchEvent(event);
+                    
+                    // Also trigger change event for good measure
+                    const changeEvent = new Event('change', { bubbles: true });
+                    textarea.dispatchEvent(changeEvent);
+                    
+                    // Set cursor position after inserted text
+                    const newCursorPos = start + pathsToInsert.length;
+                    textarea.setSelectionRange(newCursorPos, newCursorPos);
+                    
+                    // Focus the textarea
+                    textarea.focus();
+                    
+                    console.log('Inserted file paths into textarea:', filePaths);
+                  } else {
+                    console.error('Could not find textarea with class .chat-input');
+                  }
+                }
+              }
+            } else if (event.payload.type === 'enter') {
+              setIsDragging(true);
+              document.body.classList.add('dragging');
+            } else if (event.payload.type === 'leave' || event.payload.type === 'cancel') {
+              setIsDragging(false);
+              document.body.classList.remove('dragging');
+            }
+          });
+          
+          console.log('Tauri drag drop listener registered');
+        } catch (err) {
+          console.error('Error setting up Tauri drag drop listener:', err);
+        }
+      })();
+    }
     
     // Listen for initial directory from command line (only once)
     const handleInitialDirectory = async (directory: string) => {
@@ -197,17 +281,23 @@ export const App: React.FC = () => {
       window.electronAPI.on('initial-directory', handleInitialDirectory);
       window.electronAPI.on('folder-changed', handleFolderChanged);
       window.electronAPI.on('show-help-modal', () => setShowHelpModal(true));
-      
-      // Cleanup listeners
-      return () => {
-        if (window.electronAPI?.off) {
-          window.electronAPI.off('initial-directory', handleInitialDirectory);
-          window.electronAPI.off('folder-changed', handleFolderChanged);
-          window.electronAPI.off('show-help-modal', () => setShowHelpModal(true));
-        }
-      };
     }
-  }, [createSession]);
+    
+    // Cleanup listeners
+    return () => {
+      // Cleanup Tauri drag drop listener
+      if (unlistenDragDrop) {
+        unlistenDragDrop();
+      }
+      
+      // Cleanup Electron listeners
+      if (window.electronAPI?.off) {
+        window.electronAPI.off('initial-directory', handleInitialDirectory);
+        window.electronAPI.off('folder-changed', handleFolderChanged);
+        window.electronAPI.off('show-help-modal', () => setShowHelpModal(true));
+      }
+    };
+  }, [createSession, setIsDragging]);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -413,7 +503,7 @@ export const App: React.FC = () => {
         <div className="drag-overlay">
           <div className="drag-overlay-content">
             <div className="drag-icon">📁</div>
-            <div className="drag-text">drop folder to create new session</div>
+            <div className="drag-text">drop files to insert paths • folders to create session</div>
           </div>
         </div>
       )}

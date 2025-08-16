@@ -630,7 +630,8 @@ io.on('connection', (socket) => {
             }
           };
           
-          writeNextChunk();
+          // Add delay for WSL to ensure bash script starts
+          setTimeout(writeNextChunk, 500);
         } else {
           // Normal operation for macOS/Linux
           claudeProcess.stdin.write(messageToSend);
