@@ -226,7 +226,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
             }).join(' ');
             
             const wslArgs = ['-e', 'bash', '-c', 
-                `(if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else exit 127; fi)`
+                `(if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x "$HOME/.npm-global/bin/claude" ]; then "$HOME/.npm-global/bin/claude" ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; elif npm_global=$(ls /home/*/.npm-global/bin/claude 2>/dev/null | head -1) && [ -x "$npm_global" ]; then "$npm_global" ${escapedArgs}; elif claude_path=$(which claude 2>/dev/null) && [ -n "$claude_path" ]; then "$claude_path" ${escapedArgs}; else exit 127; fi)`
             ];
             
             titleProcess = spawn('wsl.exe', wslArgs, {
@@ -393,7 +393,7 @@ socketServer.on('connection', (socket) => {
             
             // Change to working directory in WSL before running claude
             const wslArgs = ['-e', 'bash', '-c', 
-                `cd '${workingDir}' && (if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; else echo "Claude CLI not found in WSL" >&2 && exit 127; fi)`
+                `cd '${workingDir}' && (if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x "$HOME/.npm-global/bin/claude" ]; then "$HOME/.npm-global/bin/claude" ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; elif npm_global=$(ls /home/*/.npm-global/bin/claude 2>/dev/null | head -1) && [ -x "$npm_global" ]; then "$npm_global" ${escapedArgs}; elif claude_path=$(which claude 2>/dev/null) && [ -n "$claude_path" ]; then "$claude_path" ${escapedArgs}; else echo "Claude CLI not found in WSL" >&2 && exit 127; fi)`
             ];
             
             log('WSL command: wsl.exe ' + wslArgs.join(' '));
@@ -586,8 +586,9 @@ socketServer.on('connection', (socket) => {
                     
                     // Handle stream-json format from Claude CLI
                     if (json.type === 'message_start' && json.message) {
-                        assistantMessageId = json.message.id;
+                        assistantMessageId = json.message.id || `assistant-${sessionId}-${Date.now()}`;
                         lastAssistantMessageIds.set(sessionId, assistantMessageId);
+                        log(`[${sessionId}] message_start: tracking message ${assistantMessageId}`);
                         socket.emit(`message:${sessionId}`, {
                             type: 'assistant',
                             id: assistantMessageId,
@@ -609,10 +610,16 @@ socketServer.on('connection', (socket) => {
                         });
                     } else if (json.type === 'content_block_delta') {
                         if (json.delta?.text) {
-                            // Text delta
+                            // Text delta - use stored message ID if assistantMessageId is not set
+                            const messageId = assistantMessageId || lastAssistantMessageIds.get(sessionId);
+                            if (!messageId) {
+                                log(`[${sessionId}] WARNING: No message ID for delta, creating new one`);
+                                assistantMessageId = `assistant-${sessionId}-${Date.now()}`;
+                                lastAssistantMessageIds.set(sessionId, assistantMessageId);
+                            }
                             socket.emit(`message:${sessionId}`, {
                                 type: 'assistant',
-                                id: assistantMessageId,
+                                id: messageId || assistantMessageId,
                                 text: json.delta.text,
                                 streaming: true,
                                 timestamp: Date.now()
@@ -622,12 +629,17 @@ socketServer.on('connection', (socket) => {
                             log(`[${sessionId}] Tool input delta: ${json.delta.partial_json}`);
                         }
                     } else if (json.type === 'message_stop') {
-                        socket.emit(`message:${sessionId}`, {
-                            type: 'assistant',
-                            id: assistantMessageId,
-                            streaming: false,
-                            timestamp: Date.now()
-                        });
+                        log(`[${sessionId}] message_stop received, clearing streaming state`);
+                        const storedMessageId = lastAssistantMessageIds.get(sessionId) || assistantMessageId;
+                        if (storedMessageId) {
+                            socket.emit(`message:${sessionId}`, {
+                                type: 'assistant',
+                                id: storedMessageId,
+                                streaming: false,
+                                timestamp: Date.now()
+                            });
+                            log(`[${sessionId}] Sent streaming:false for message ${storedMessageId}`);
+                        }
                         lastAssistantMessageIds.delete(sessionId);
                     } else if (json.type === 'user' && json.message?.content) {
                         // Handle user message with tool results
@@ -649,8 +661,9 @@ socketServer.on('connection', (socket) => {
                         }
                     } else if (json.type === 'assistant' && json.message?.content) {
                         // Handle full assistant message (non-streaming format)
-                        const messageId = `assistant-${sessionId}-${Date.now()}`;
+                        const messageId = json.message.id || `assistant-${sessionId}-${Date.now()}`;
                         lastAssistantMessageIds.set(sessionId, messageId);
+                        log(`[${sessionId}] Full assistant message: tracking ${messageId}`);
                         
                         // Extract text content AND tool uses
                         let textContent = '';
@@ -681,7 +694,7 @@ socketServer.on('connection', (socket) => {
                             socket.emit(`message:${sessionId}`, {
                                 type: 'assistant',
                                 message: { content: textContent },
-                                streaming: true, // Keep streaming true - will be cleared by result message
+                                streaming: true, // Keep streaming true - will be cleared by result or message_stop
                                 id: messageId,
                                 timestamp: Date.now()
                             });
@@ -690,13 +703,17 @@ socketServer.on('connection', (socket) => {
                         log(`[${sessionId}] Result received: ${json.result}`);
                         // Clear streaming state
                         if (lastAssistantMessageIds.has(sessionId)) {
+                            const messageId = lastAssistantMessageIds.get(sessionId);
+                            log(`[${sessionId}] Clearing streaming for message ${messageId} on result`);
                             socket.emit(`message:${sessionId}`, {
                                 type: 'assistant',
-                                id: lastAssistantMessageIds.get(sessionId),
+                                id: messageId,
                                 streaming: false,
                                 timestamp: Date.now()
                             });
                             lastAssistantMessageIds.delete(sessionId);
+                        } else {
+                            log(`[${sessionId}] No streaming message to clear on result`);
                         }
                         // Send result message
                         socket.emit(`message:${sessionId}`, {
@@ -773,23 +790,31 @@ socketServer.on('connection', (socket) => {
             
             // Clear any remaining streaming state
             if (lastAssistantMessageIds.has(sessionId)) {
+                const messageId = lastAssistantMessageIds.get(sessionId);
+                log(`[${sessionId}] Clearing streaming for message ${messageId} on exit`);
                 socket.emit(`message:${sessionId}`, {
                     type: 'assistant',
-                    id: lastAssistantMessageIds.get(sessionId),
+                    id: messageId,
                     streaming: false,
                     timestamp: Date.now()
                 });
                 lastAssistantMessageIds.delete(sessionId);
+            } else {
+                log(`[${sessionId}] No active streaming message to clear on exit`);
             }
             
-            // Send result message to ensure UI clears streaming
-            socket.emit(`message:${sessionId}`, {
-                type: 'result',
-                id: `result-${sessionId}-${Date.now()}`,
-                sessionId,
-                streaming: false,
-                timestamp: Date.now()
-            });
+            // Always send result message to ensure UI clears streaming
+            // Small delay to ensure clear message arrives first
+            setTimeout(() => {
+                log(`[${sessionId}] Sending final result message to clear UI`);
+                socket.emit(`message:${sessionId}`, {
+                    type: 'result',
+                    id: `result-${sessionId}-${Date.now()}`,
+                    sessionId,
+                    streaming: false,
+                    timestamp: Date.now()
+                });
+            }, 50);
         });
         
         if (callback) callback({ success: true });

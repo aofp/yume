@@ -20,35 +20,122 @@ const __dirname = dirname(__filename);
 let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 
 // Try to find Claude CLI in common locations
-const possibleClaudePaths = [
-  '/opt/homebrew/bin/claude',
-  '/usr/local/bin/claude',
-  '/usr/bin/claude',
-  process.env.CLAUDE_PATH, // Allow env override
-].filter(Boolean);
+const isWindows = platform() === 'win32';
 
-for (const claudePath of possibleClaudePaths) {
-  try {
-    if (existsSync(claudePath)) {
-      CLAUDE_PATH = claudePath;
-      console.log(`✅ Found Claude CLI at: ${CLAUDE_PATH}`);
+if (isWindows) {
+  // On Windows, Claude only runs in WSL, so we need to use wsl.exe to find it
+  console.log('🔍 Windows detected, searching for Claude in WSL...');
+  
+  // Try common WSL paths for Claude
+  const wslPaths = [
+    '~/.npm-global/bin/claude',
+    '/usr/local/bin/claude',
+    '/usr/bin/claude',
+    '/home/*/.npm-global/bin/claude'
+  ];
+  
+  for (const wslPath of wslPaths) {
+    try {
+      // Test if claude exists at this path in WSL
+      execSync(`wsl.exe test -f ${wslPath}`, { encoding: 'utf8' });
+      CLAUDE_PATH = `wsl.exe ${wslPath}`;
+      console.log(`✅ Found Claude CLI in WSL at: ${wslPath}`);
       break;
+    } catch (e) {
+      // Path doesn't exist, continue searching
     }
-  } catch (e) {
-    // Continue searching
   }
-}
-
-// If still not found, try 'which' command
-if (CLAUDE_PATH === 'claude') {
-  try {
-    const whichResult = execSync('which claude', { encoding: 'utf8' }).trim();
-    if (whichResult) {
-      CLAUDE_PATH = whichResult;
-      console.log(`✅ Found Claude CLI via which: ${CLAUDE_PATH}`);
+  
+  // If not found, try which in WSL
+  if (CLAUDE_PATH === 'claude') {
+    try {
+      const whichResult = execSync('wsl.exe which claude', { encoding: 'utf8' }).trim();
+      if (whichResult) {
+        CLAUDE_PATH = 'wsl.exe claude';
+        console.log(`✅ Found Claude CLI in WSL via which: ${whichResult}`);
+      }
+    } catch (e) {
+      // Not found via which
     }
-  } catch (e) {
-    console.warn(`⚠️ Claude CLI not found in PATH. Using 'claude' and hoping for the best.`);
+  }
+  
+  // If still not found, try whereis in WSL
+  if (CLAUDE_PATH === 'claude') {
+    try {
+      const whereisResult = execSync('wsl.exe whereis claude', { encoding: 'utf8' }).trim();
+      const matches = whereisResult.match(/claude:\s+(.+)/);
+      if (matches && matches[1]) {
+        const paths = matches[1].split(/\s+/);
+        if (paths.length > 0 && paths[0]) {
+          CLAUDE_PATH = 'wsl.exe claude';
+          console.log(`✅ Found Claude CLI in WSL via whereis: ${paths[0]}`);
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ Claude CLI not found in WSL. Make sure it's installed in WSL.`);
+    }
+  }
+  
+  // Final fallback for Windows
+  if (CLAUDE_PATH === 'claude') {
+    CLAUDE_PATH = 'wsl.exe claude';
+    console.log('⚠️ Using default "wsl.exe claude" and hoping for the best...');
+  }
+  
+} else {
+  // macOS/Linux paths
+  const possibleClaudePaths = [
+    join(homedir(), '.npm-global/bin/claude'), // npm global install path
+    '/opt/homebrew/bin/claude',
+    '/usr/local/bin/claude',
+    '/usr/bin/claude',
+    process.env.CLAUDE_PATH, // Allow env override
+  ].filter(Boolean);
+
+  for (const claudePath of possibleClaudePaths) {
+    try {
+      if (existsSync(claudePath)) {
+        CLAUDE_PATH = claudePath;
+        console.log(`✅ Found Claude CLI at: ${CLAUDE_PATH}`);
+        break;
+      }
+    } catch (e) {
+      // Continue searching
+    }
+  }
+
+  // If still not found, try 'which' command
+  if (CLAUDE_PATH === 'claude') {
+    try {
+      const whichResult = execSync('which claude', { encoding: 'utf8' }).trim();
+      if (whichResult) {
+        CLAUDE_PATH = whichResult;
+        console.log(`✅ Found Claude CLI via which: ${CLAUDE_PATH}`);
+      }
+    } catch (e) {
+      // Not in PATH, continue to whereis
+    }
+  }
+
+  // If still not found, try 'whereis' command
+  if (CLAUDE_PATH === 'claude') {
+    try {
+      const whereisResult = execSync('whereis claude', { encoding: 'utf8' }).trim();
+      // whereis output format: "claude: /path/to/claude /another/path/to/claude"
+      const matches = whereisResult.match(/claude:\s+(.+)/);
+      if (matches && matches[1]) {
+        const paths = matches[1].split(/\s+/);
+        for (const path of paths) {
+          if (existsSync(path)) {
+            CLAUDE_PATH = path;
+            console.log(`✅ Found Claude CLI via whereis: ${CLAUDE_PATH}`);
+            break;
+          }
+        }
+      }
+    } catch (e) {
+      console.warn(`⚠️ Claude CLI not found via whereis. Using 'claude' and hoping for the best.`);
+    }
   }
 }
 
