@@ -241,7 +241,7 @@ export const SessionTabs: React.FC = () => {
     // Save to recent projects if it's not the root directory
     if (directory && directory !== '/') {
       const name = directory.split(/[/\\]/).pop() || directory;
-      const newProject = { path: directory, name, lastOpened: Date.now(), accessCount: 1 };
+      const newProject = { path: directory, name, lastOpened: Date.now() };
       
       // Get existing recent projects
       const stored = localStorage.getItem('yurucode-recent-projects');

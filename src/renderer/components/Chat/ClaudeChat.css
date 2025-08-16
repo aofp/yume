@@ -1657,7 +1657,7 @@
   padding: 4px;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: white;
   text-align: left;
   cursor: default;
   transition: all 0.15s ease;
@@ -1666,10 +1666,13 @@
 
 .recent-item:hover {
   background: rgba(var(--accent-rgb), 0.1);
+}
+
+.recent-item:hover .recent-item-name {
   color: var(--accent-color);
 }
 
-.recent-item-container.selected .recent-item {
+.recent-item-container.selected .recent-item .recent-item-name {
   color: var(--accent-color);
 }
 
@@ -1704,12 +1707,13 @@
   padding: 0 4px;
   border-radius: 3px;
   font-weight: 500;
+  display: none;
 }
 
 .recent-item-name {
   font-size: 12px;
   font-weight: 500;
-  color: var(--text-color);
+  color: #ffffff;
   display: flex;
   flex-direction: column;
   gap: 2px;

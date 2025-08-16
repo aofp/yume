@@ -5,7 +5,6 @@ interface RecentProject {
   path: string;
   name: string;
   lastOpened: number; // timestamp for sorting
-  accessCount?: number; // track usage frequency
 }
 
 interface RecentProjectsModalProps {
@@ -45,8 +44,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
           if (p.path === project.path) {
             return {
               ...p,
-              lastOpened: Date.now(),
-              accessCount: (p.accessCount || 0) + 1
+              lastOpened: Date.now()
             };
           }
           return p;
@@ -179,11 +177,6 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
                   {formatFolderPath(project.path)}
                 </span>
               </div>
-              {project.accessCount && project.accessCount > 1 && (
-                <div className="recent-item-meta">
-                  <span className="recent-item-count">×{project.accessCount}</span>
-                </div>
-              )}
             </div>
           </button>
           <button
