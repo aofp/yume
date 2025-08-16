@@ -18,40 +18,45 @@ import { homedir, platform } from 'os';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
-let CLAUDE_PATH = 'claude'; // Default to PATH lookup
-
-// Try to find Claude CLI in common Windows locations
-const possibleClaudePaths = [
-  'C:\\Program Files\\Claude\\claude.exe',
-  'C:\\Users\\' + process.env.USERNAME + '\\AppData\\Local\\Programs\\claude\\claude.exe',
-  'C:\\claude\\claude.exe',
-  process.env.CLAUDE_PATH, // Allow env override
-].filter(Boolean);
-
-for (const claudePath of possibleClaudePaths) {
-  try {
-    if (existsSync(claudePath)) {
-      CLAUDE_PATH = claudePath;
-      console.log(`✅ Found Claude CLI at: ${CLAUDE_PATH}`);
-      break;
+// Helper function to create WSL command for claude with comprehensive path checking
+function createWslClaudeCommand(args, workingDir) {
+  // Comprehensive list of paths to check for Claude in WSL
+  const claudePathChecks = [
+    'command -v claude &> /dev/null && claude',
+    '[ -x /usr/local/bin/claude ] && /usr/local/bin/claude',
+    '[ -x /usr/bin/claude ] && /usr/bin/claude',
+    '[ -x ~/.local/bin/claude ] && ~/.local/bin/claude',
+    '[ -x ~/.npm-global/bin/claude ] && ~/.npm-global/bin/claude',
+    '[ -x ~/node_modules/.bin/claude ] && ~/node_modules/.bin/claude',
+    '[ -x ~/.claude/local/claude ] && ~/.claude/local/claude',
+    'for u in /home/*; do [ -x "$u/.npm-global/bin/claude" ] && { "$u/.npm-global/bin/claude" "$@"; exit $?; }; done; false',
+    'for u in /home/*; do [ -x "$u/node_modules/.bin/claude" ] && { "$u/node_modules/.bin/claude" "$@"; exit $?; }; done; false',
+    'for n in ~/.nvm/versions/node/*/bin/claude; do [ -x "$n" ] && { "$n" "$@"; exit $?; }; done; false',
+    '[ -x /opt/claude/bin/claude ] && /opt/claude/bin/claude'
+  ];
+  
+  // Escape args for bash
+  const escapedArgs = args.map(arg => {
+    if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
+      return "'" + arg.replace(/'/g, "'\\'") + "'";
     }
-  } catch (e) {
-    // Continue searching
-  }
+    return arg;
+  }).join(' ');
+  
+  // Build the command chain
+  const commandChain = claudePathChecks
+    .map(check => `(${check} ${escapedArgs})`)
+    .join(' || ');
+  
+  // Build final WSL command
+  const wslCommand = workingDir ? 
+    `cd '${workingDir}' && (${commandChain} || (echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2 && exit 127))` :
+    `${commandChain} || (echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2 && exit 127)`;
+  
+  return ['wsl.exe', ['-e', 'bash', '-c', wslCommand]];
 }
 
-// If still not found, try 'where' command (Windows equivalent of 'which')
-if (CLAUDE_PATH === 'claude') {
-  try {
-    const whereResult = execSync('where claude', { encoding: 'utf8' }).trim().split('\n')[0];
-    if (whereResult) {
-      CLAUDE_PATH = whereResult;
-      console.log(`✅ Found Claude CLI via where: ${CLAUDE_PATH}`);
-    }
-  } catch (e) {
-    console.warn(`⚠️ Claude CLI not found in PATH. Using 'claude' and hoping for the best.`);
-  }
-}
+console.log('🔍 Windows detected, Claude will be invoked through WSL with comprehensive path detection...');
 
 import express from 'express';
 import cors from 'cors';
@@ -139,7 +144,8 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     // Windows environment setup for title generation
     const enhancedEnv = { ...process.env };
     
-    const child = spawn(CLAUDE_PATH, titleArgs, {
+    const [wslCommand, wslArgs] = createWslClaudeCommand(titleArgs, null);
+    const child = spawn(wslCommand, wslArgs, {
       cwd: process.cwd(),
       env: enhancedEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -381,6 +387,12 @@ io.on('connection', (socket) => {
       // Build the claude command for Windows
       const args = ['--output-format', 'stream-json', '--verbose'];
       
+      // Add model if specified
+      if (model) {
+        args.push('--model', model);
+        console.log(`🤖 Using model: ${model}`);
+      }
+      
       // Use --resume if we have a claudeSessionId (for continuing conversations)
       if (session.claudeSessionId) {
         args.push('--resume', session.claudeSessionId);
@@ -434,7 +446,19 @@ io.on('connection', (socket) => {
         args: args
       });
       
-      const claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
+      // Convert Windows path to WSL path if needed
+      let wslWorkingDir = processWorkingDir;
+      if (processWorkingDir && processWorkingDir.match(/^[A-Z]:\\/)) {
+        const driveLetter = processWorkingDir[0].toLowerCase();
+        const pathWithoutDrive = processWorkingDir.substring(2).replace(/\\/g, '/');
+        wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
+        console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
+      }
+      
+      const [wslCommand, wslArgs] = createWslClaudeCommand(args, wslWorkingDir);
+      console.log(`🚀 Running WSL command: ${wslCommand} with args:`, wslArgs);
+      
+      const claudeProcess = spawn(wslCommand, wslArgs, spawnOptions);
       
       // Mark spawning as complete after a short delay
       setTimeout(() => {
@@ -670,6 +694,11 @@ io.on('connection', (socket) => {
               result: jsonData.result,
               is_error: jsonData.is_error,
               usage: jsonData.usage,
+              duration_ms: jsonData.duration_ms,
+              duration_api_ms: jsonData.duration_api_ms,
+              num_turns: jsonData.num_turns,
+              total_cost_usd: jsonData.total_cost_usd,
+              model: model, // Include the model that was used
               timestamp: Date.now()
             });
             

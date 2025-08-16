@@ -225,8 +225,23 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
                 return arg;
             }).join(' ');
             
+            // WSL command for title generation with comprehensive path fallbacks
+            const claudePathChecks = [
+                'command -v claude &> /dev/null && claude',
+                '[ -x /usr/local/bin/claude ] && /usr/local/bin/claude',
+                '[ -x /usr/bin/claude ] && /usr/bin/claude',
+                '[ -x ~/.local/bin/claude ] && ~/.local/bin/claude',
+                '[ -x ~/.npm-global/bin/claude ] && ~/.npm-global/bin/claude',
+                '[ -x ~/node_modules/.bin/claude ] && ~/node_modules/.bin/claude',
+                '[ -x ~/.claude/local/claude ] && ~/.claude/local/claude',
+                'for u in /home/*; do [ -x "$u/.npm-global/bin/claude" ] && { "$u/.npm-global/bin/claude" "$@"; exit $?; }; done; false',
+                'for u in /home/*; do [ -x "$u/node_modules/.bin/claude" ] && { "$u/node_modules/.bin/claude" "$@"; exit $?; }; done; false',
+                'for n in ~/.nvm/versions/node/*/bin/claude; do [ -x "$n" ] && { "$n" "$@"; exit $?; }; done; false',
+                '[ -x /opt/claude/bin/claude ] && /opt/claude/bin/claude'
+            ].map(check => `(${check} ${escapedArgs})`).join(' || ');
+            
             const wslArgs = ['-e', 'bash', '-c', 
-                `(if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x "$HOME/.npm-global/bin/claude" ]; then "$HOME/.npm-global/bin/claude" ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; elif npm_global=$(ls /home/*/.npm-global/bin/claude 2>/dev/null | head -1) && [ -x "$npm_global" ]; then "$npm_global" ${escapedArgs}; elif claude_path=$(which claude 2>/dev/null) && [ -n "$claude_path" ]; then "$claude_path" ${escapedArgs}; else exit 127; fi)`
+                `${claudePathChecks} || (echo "Claude CLI not found in WSL" >&2 && exit 127)`
             ];
             
             titleProcess = spawn('wsl.exe', wslArgs, {
@@ -391,9 +406,23 @@ socketServer.on('connection', (socket) => {
                 return arg;
             }).join(' ');
             
-            // Change to working directory in WSL before running claude
+            // WSL command with comprehensive path fallbacks for main Claude execution
+            const claudePathChecks = [
+                'command -v claude &> /dev/null && claude',
+                '[ -x /usr/local/bin/claude ] && /usr/local/bin/claude',
+                '[ -x /usr/bin/claude ] && /usr/bin/claude',
+                '[ -x ~/.local/bin/claude ] && ~/.local/bin/claude',
+                '[ -x ~/.npm-global/bin/claude ] && ~/.npm-global/bin/claude',
+                '[ -x ~/node_modules/.bin/claude ] && ~/node_modules/.bin/claude',
+                '[ -x ~/.claude/local/claude ] && ~/.claude/local/claude',
+                'for u in /home/*; do [ -x "$u/.npm-global/bin/claude" ] && { "$u/.npm-global/bin/claude" "$@"; exit $?; }; done; false',
+                'for u in /home/*; do [ -x "$u/node_modules/.bin/claude" ] && { "$u/node_modules/.bin/claude" "$@"; exit $?; }; done; false',
+                'for n in ~/.nvm/versions/node/*/bin/claude; do [ -x "$n" ] && { "$n" "$@"; exit $?; }; done; false',
+                '[ -x /opt/claude/bin/claude ] && /opt/claude/bin/claude'
+            ].map(check => `(${check} ${escapedArgs})`).join(' || ');
+            
             const wslArgs = ['-e', 'bash', '-c', 
-                `cd '${workingDir}' && (if command -v claude &> /dev/null; then claude ${escapedArgs}; elif [ -x "$HOME/.npm-global/bin/claude" ]; then "$HOME/.npm-global/bin/claude" ${escapedArgs}; elif [ -x ~/.claude/local/claude ]; then ~/.claude/local/claude ${escapedArgs}; elif [ -x ~/.local/bin/claude ]; then ~/.local/bin/claude ${escapedArgs}; elif npm_global=$(ls /home/*/.npm-global/bin/claude 2>/dev/null | head -1) && [ -x "$npm_global" ]; then "$npm_global" ${escapedArgs}; elif claude_path=$(which claude 2>/dev/null) && [ -n "$claude_path" ]; then "$claude_path" ${escapedArgs}; else echo "Claude CLI not found in WSL" >&2 && exit 127; fi)`
+                `cd '${workingDir}' && (${claudePathChecks} || (echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2 && exit 127))`
             ];
             
             log('WSL command: wsl.exe ' + wslArgs.join(' '));
@@ -641,6 +670,16 @@ socketServer.on('connection', (socket) => {
                             log(`[${sessionId}] Sent streaming:false for message ${storedMessageId}`);
                         }
                         lastAssistantMessageIds.delete(sessionId);
+                        
+                        // Always send a result message after message_stop to ensure UI clears streaming
+                        socket.emit(`message:${sessionId}`, {
+                            type: 'result',
+                            id: `result-${sessionId}-${Date.now()}`,
+                            sessionId,
+                            streaming: false,
+                            timestamp: Date.now()
+                        });
+                        log(`[${sessionId}] Sent result message after message_stop to clear UI`);
                     } else if (json.type === 'user' && json.message?.content) {
                         // Handle user message with tool results
                         for (const block of json.message.content) {

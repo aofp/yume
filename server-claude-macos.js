@@ -22,65 +22,48 @@ let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 // Try to find Claude CLI in common locations
 const isWindows = platform() === 'win32';
 
-if (isWindows) {
-  // On Windows, Claude only runs in WSL, so we need to use wsl.exe to find it
-  console.log('🔍 Windows detected, searching for Claude in WSL...');
-  
-  // Try common WSL paths for Claude
-  const wslPaths = [
-    '~/.npm-global/bin/claude',
-    '/usr/local/bin/claude',
-    '/usr/bin/claude',
-    '/home/*/.npm-global/bin/claude'
+// Helper function to create WSL command for claude with comprehensive path checking
+function createWslClaudeCommand(args, workingDir) {
+  // Comprehensive list of paths to check for Claude in WSL
+  const claudePathChecks = [
+    'command -v claude &> /dev/null && claude',
+    '[ -x /usr/local/bin/claude ] && /usr/local/bin/claude',
+    '[ -x /usr/bin/claude ] && /usr/bin/claude',
+    '[ -x ~/.local/bin/claude ] && ~/.local/bin/claude',
+    '[ -x ~/.npm-global/bin/claude ] && ~/.npm-global/bin/claude',
+    '[ -x ~/node_modules/.bin/claude ] && ~/node_modules/.bin/claude',
+    '[ -x ~/.claude/local/claude ] && ~/.claude/local/claude',
+    'for u in /home/*; do [ -x "$u/.npm-global/bin/claude" ] && { "$u/.npm-global/bin/claude" "$@"; exit $?; }; done; false',
+    'for u in /home/*; do [ -x "$u/node_modules/.bin/claude" ] && { "$u/node_modules/.bin/claude" "$@"; exit $?; }; done; false',
+    'for n in ~/.nvm/versions/node/*/bin/claude; do [ -x "$n" ] && { "$n" "$@"; exit $?; }; done; false',
+    '[ -x /opt/claude/bin/claude ] && /opt/claude/bin/claude'
   ];
   
-  for (const wslPath of wslPaths) {
-    try {
-      // Test if claude exists at this path in WSL
-      execSync(`wsl.exe test -f ${wslPath}`, { encoding: 'utf8' });
-      CLAUDE_PATH = `wsl.exe ${wslPath}`;
-      console.log(`✅ Found Claude CLI in WSL at: ${wslPath}`);
-      break;
-    } catch (e) {
-      // Path doesn't exist, continue searching
+  // Escape args for bash
+  const escapedArgs = args.map(arg => {
+    if (arg.includes(' ') || arg.includes('\n') || arg.includes('"') || arg.includes("'")) {
+      return "'" + arg.replace(/'/g, "'\\'") + "'";
     }
-  }
+    return arg;
+  }).join(' ');
   
-  // If not found, try which in WSL
-  if (CLAUDE_PATH === 'claude') {
-    try {
-      const whichResult = execSync('wsl.exe which claude', { encoding: 'utf8' }).trim();
-      if (whichResult) {
-        CLAUDE_PATH = 'wsl.exe claude';
-        console.log(`✅ Found Claude CLI in WSL via which: ${whichResult}`);
-      }
-    } catch (e) {
-      // Not found via which
-    }
-  }
+  // Build the command chain
+  const commandChain = claudePathChecks
+    .map(check => `(${check} ${escapedArgs})`)
+    .join(' || ');
   
-  // If still not found, try whereis in WSL
-  if (CLAUDE_PATH === 'claude') {
-    try {
-      const whereisResult = execSync('wsl.exe whereis claude', { encoding: 'utf8' }).trim();
-      const matches = whereisResult.match(/claude:\s+(.+)/);
-      if (matches && matches[1]) {
-        const paths = matches[1].split(/\s+/);
-        if (paths.length > 0 && paths[0]) {
-          CLAUDE_PATH = 'wsl.exe claude';
-          console.log(`✅ Found Claude CLI in WSL via whereis: ${paths[0]}`);
-        }
-      }
-    } catch (e) {
-      console.warn(`⚠️ Claude CLI not found in WSL. Make sure it's installed in WSL.`);
-    }
-  }
+  // Build final WSL command
+  const wslCommand = workingDir ? 
+    `cd '${workingDir}' && (${commandChain} || (echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2 && exit 127))` :
+    `${commandChain} || (echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2 && exit 127)`;
   
-  // Final fallback for Windows
-  if (CLAUDE_PATH === 'claude') {
-    CLAUDE_PATH = 'wsl.exe claude';
-    console.log('⚠️ Using default "wsl.exe claude" and hoping for the best...');
-  }
+  return ['wsl.exe', ['-e', 'bash', '-c', wslCommand]];
+}
+
+if (isWindows) {
+  // On Windows, Claude only runs in WSL, so we'll use our comprehensive command builder
+  console.log('🔍 Windows detected, Claude will be invoked through WSL with comprehensive path detection...');
+  CLAUDE_PATH = 'WSL_CLAUDE'; // Special marker to use createWslClaudeCommand
   
 } else {
   // macOS/Linux paths
@@ -229,7 +212,18 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
     }
     
-    const child = spawn(CLAUDE_PATH, titleArgs, {
+    const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
+      (() => {
+        const [wslCommand, wslArgs] = createWslClaudeCommand(titleArgs, null);
+        return spawn(wslCommand, wslArgs, {
+          cwd: process.cwd(),
+          env: enhancedEnv,
+          stdio: ['pipe', 'pipe', 'pipe'],
+          windowsHide: true,
+          detached: false
+        });
+      })() :
+      spawn(CLAUDE_PATH, titleArgs, {
       cwd: process.cwd(),
       env: enhancedEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
@@ -539,7 +533,23 @@ io.on('connection', (socket) => {
         args: args
       });
       
-      const claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
+      const claudeProcess = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
+        (() => {
+          // Convert Windows path to WSL path if needed
+          let wslWorkingDir = processWorkingDir;
+          if (processWorkingDir && processWorkingDir.match(/^[A-Z]:\\/)) {
+            const driveLetter = processWorkingDir[0].toLowerCase();
+            const pathWithoutDrive = processWorkingDir.substring(2).replace(/\\/g, '/');
+            wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
+            console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
+          }
+          
+          const [wslCommand, wslArgs] = createWslClaudeCommand(args, wslWorkingDir);
+          console.log(`🚀 Running WSL command: ${wslCommand} with args:`, wslArgs);
+          
+          return spawn(wslCommand, wslArgs, spawnOptions);
+        })() :
+        spawn(CLAUDE_PATH, args, spawnOptions);
       
       // Mark spawning as complete after a short delay
       setTimeout(() => {
