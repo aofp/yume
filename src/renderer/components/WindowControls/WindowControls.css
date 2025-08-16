@@ -19,8 +19,8 @@
 /* macOS traffic light controls */
 .mac-controls {
   position: fixed;
-  top: 6px;
-  left: 2px;
+  top: 5px;
+  left: 5px;
   right: auto;
   display: flex;
   gap: 8px;
@@ -58,9 +58,9 @@
 
 .mac-control-icon {
   display: none;
-  font-size: 10px;
+  font-size: 13px;
   font-weight: bold;
-  color: rgba(0, 0, 0, 0.6);
+  color: rgba(0, 0, 0, 0.5);
   line-height: 1;
   position: relative;
   top: -1px; /* Move icons up 1px */
@@ -71,36 +71,36 @@
 }
 
 .mac-control.close {
-  background: #666666;
+  background: #222;
 }
 
 .mac-control.close:hover {
-  background: #888888;
+  background: #444;
 }
 
 .mac-control.minimize {
-  background: #666666;
+  background: #222;
 }
 
 .mac-control.minimize:hover {
-  background: #888888;
+  background: #444;
 }
 
 .mac-control.maximize {
-  background: #666666;
+  background: #222;
 }
 
 .mac-control.maximize:hover {
-  background: #888888;
+  background: #444;
 }
 
 /* Grey out all buttons when window is inactive */
 .mac-controls.inactive .mac-control {
-  background: #666666;
+  background: #222;
 }
 
 .mac-controls.inactive .mac-control:hover {
-  background: #666666;
+  background: #444;
   opacity: 1;
 }
 
