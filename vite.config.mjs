@@ -108,6 +108,7 @@ export default defineConfig({
     alias: {
       '@': resolve(__dirname, './src/renderer'),
       '@shared': resolve(__dirname, './src/shared'),
+      '@tabler/icons-react': resolve(__dirname, 'node_modules/@tabler/icons-react/dist/esm/tabler-icons-react.mjs'),
     },
   },
   define: {

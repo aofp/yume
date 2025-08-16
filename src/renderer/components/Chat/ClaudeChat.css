@@ -1757,6 +1757,7 @@
 .bash-cancel-btn {
   padding: 2px 6px;
   font-size: 7pt;
+  font-family: 'Fira Code', monospace;
   background: none;
   border: 1px solid rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);

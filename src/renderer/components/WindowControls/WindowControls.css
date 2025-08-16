@@ -3,10 +3,12 @@
   top: 0;
   right: 0;
   display: flex;
+  align-items: center;
   height: 28px;
   z-index: 100000;
   -webkit-app-region: no-drag;
   background: #000000;
+  padding: 0 4px;
 }
 
 /* macOS window controls wrapper */
@@ -31,10 +33,10 @@
 /* macOS right side controls (help and settings) */
 .mac-right-controls {
   position: fixed;
-  top: 0;
-  right: 0;
+  top: 4px;
+  right: 4px;
   display: flex;
-  height: 28px;
+  align-items: center;
   background: transparent;
   -webkit-app-region: no-drag;
   z-index: 10002;
@@ -119,22 +121,26 @@
   background-color: rgba(255, 255, 255, 0.15);
 }
 
-.window-control.settings {
-  width: 36px;
+.window-control.settings, .window-control.help {
+  width: 28px;
+  height: 21px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0;
+  border-radius: 4px;
+  font-size: 10px;
+  margin-right: 4px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
-.window-control.settings:hover {
-  background-color: rgba(255, 255, 255, 0.15);
+.window-control.settings:hover, .window-control.help:hover {
+  background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
-}
-
-.window-control.help {
-  width: 36px;
-}
-
-.window-control.help:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 1);
 }
 
 .window-control.close:hover {

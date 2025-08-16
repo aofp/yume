@@ -105,11 +105,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
         </div>
         <div className="window-controls mac-right-controls">
           <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
-            <span style={{ fontSize: '14px' }}>?</span>
+            <span style={{ fontSize: '10px' }}>?</span>
           </button>
           {onSettingsClick && (
             <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
-              <IconSettingsFilled size={14} />
+              <IconSettingsFilled size={10} />
             </button>
           )}
         </div>
@@ -121,11 +121,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   return (
     <div className="window-controls">
       <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
-        <span style={{ fontSize: '14px' }}>?</span>
+        <span style={{ fontSize: '10px' }}>?</span>
       </button>
       {onSettingsClick && (
         <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
-          <IconSettingsFilled size={14} />
+          <IconSettingsFilled size={10} />
         </button>
       )}
       <button className="window-control minimize" onClick={handleMinimize}>
