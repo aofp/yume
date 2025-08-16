@@ -318,7 +318,7 @@ body.tab-dragging * {
 }
 
 .tab-close:hover {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: transparent;
   color: rgba(var(--accent-rgb), 1); /* Keep same color */
   opacity: 1 !important;
 }

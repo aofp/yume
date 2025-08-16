@@ -97,6 +97,15 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">prev tab</span>
             </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">ctrl</span>
+                <span className="key-plus">+</span>
+                <span className="key-btn">1-9</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">switch to tab</span>
+            </div>
           </div>
             
             <div className="help-section">

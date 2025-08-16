@@ -14,7 +14,7 @@ import { platformBridge } from './services/platformBridge';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession /* , restoreToMessage */ } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, setCurrentSession /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -246,6 +246,18 @@ export const App: React.FC = () => {
         }
       }
       
+      // Ctrl+1/2/3... for tab switching
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
+        const tabNumber = parseInt(e.key);
+        if (tabNumber >= 1 && tabNumber <= 9 && sessions.length >= tabNumber) {
+          e.preventDefault();
+          const targetSession = sessions[tabNumber - 1];
+          if (targetSession) {
+            setCurrentSession(targetSession.id);
+          }
+        }
+      }
+      
       // Ctrl+R for recent projects
       if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
@@ -319,7 +331,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showHelpModal, showServerLogs]);
+  }, [showHelpModal, showServerLogs, sessions, setCurrentSession]);
 
   // Apply accent color, zoom level, and window state from localStorage on mount
   useEffect(() => {

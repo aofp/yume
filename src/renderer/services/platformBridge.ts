@@ -156,10 +156,8 @@ class PlatformBridge {
       // Check if user is scrolled to bottom before zoom
       const chatMessages = document.querySelector('.chat-messages') as HTMLElement;
       let wasAtBottom = false;
-      let savedScrollTop = 0;
       if (chatMessages) {
         const threshold = 1; // Match the main scroll logic threshold
-        savedScrollTop = chatMessages.scrollTop;
         wasAtBottom = chatMessages.scrollHeight - chatMessages.scrollTop - chatMessages.clientHeight < threshold;
       }
       
@@ -175,10 +173,6 @@ class PlatformBridge {
           if (wasAtBottom) {
             // If was at bottom, scroll back to bottom
             chatMessages.scrollTop = chatMessages.scrollHeight;
-          } else {
-            // Otherwise, try to maintain relative position
-            const zoomRatio = newZoom / currentZoom;
-            chatMessages.scrollTop = savedScrollTop * zoomRatio;
           }
         });
       }
