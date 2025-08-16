@@ -2379,28 +2379,21 @@ export const ClaudeChat: React.FC = () => {
                   <h4>token breakdown</h4>
                   <div className="stat-row">
                     <div className="stat-keys">
-                      <IconArrowsUpDown size={14} />
-                      <span className="stat-name">in/out</span>
+                      <IconClock size={14} />
+                      <span className="stat-name">thinking</span>
                     </div>
                     <span className="stat-dots"></span>
                     <span className="stat-desc">
                       {(() => {
-                        const formatTokens = (num: number) => {
-                          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
-                          if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
-                          return num.toString();
-                        };
-                        const inPercent = (currentSession.analytics.tokens.total > 0 ? (currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100 : 0).toFixed(0);
-                        const outPercent = (currentSession.analytics.tokens.total > 0 ? (currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100 : 0).toFixed(0);
-                        return `${formatTokens(currentSession.analytics.tokens.input)} (${inPercent}%) / ${formatTokens(currentSession.analytics.tokens.output)} (${outPercent}%)`;
+                        const thinkingSeconds = currentSession.analytics.thinkingTime || 0;
+                        const minutes = Math.floor(thinkingSeconds / 60);
+                        const seconds = thinkingSeconds % 60;
+                        if (minutes > 0) {
+                          return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+                        }
+                        return `${seconds}s`;
                       })()}
                     </span>
-                  </div>
-                  <div className="breakdown-bar">
-                    <div 
-                      className="input-bar" 
-                      style={{ width: `${currentSession.analytics.tokens.total > 0 ? (currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100 : 0}%` }}
-                    />
                   </div>
                   <div className="stat-row opus-stat-row">
                     <div className="stat-keys">

@@ -48,6 +48,7 @@ export interface SessionAnalytics {
   };
   duration: number; // in milliseconds
   lastActivity: Date;
+  thinkingTime: number; // total thinking time in seconds
 }
 
 export interface Session {
@@ -72,6 +73,7 @@ export interface Session {
   bashProcessId?: string; // Current bash process ID for cancellation
   watermarkImage?: string; // Base64 or URL for watermark image
   pendingToolIds?: Set<string>; // Track pending tool operations by ID
+  thinkingStartTime?: number; // Track when thinking started for this session
 }
 
 interface ClaudeCodeStore {
@@ -282,7 +284,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           },
           cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
           duration: 0,
-          lastActivity: new Date()
+          lastActivity: new Date(),
+          thinkingTime: 0
         }
       };
       
@@ -571,7 +574,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   }
                 },
                 duration: 0,
-                lastActivity: new Date()
+                lastActivity: new Date(),
+                thinkingTime: 0
               };
               
               console.log(`🔍 [ANALYTICS DEBUG] Session ${s.id}: Before processing, analytics tokens: ${analytics.tokens.total}`);
@@ -826,7 +830,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // Update streaming state based on the message's streaming flag
               if (message.streaming === true) {
                 sessions = sessions.map(s => 
-                  s.id === sessionId ? { ...s, streaming: true } : s
+                  s.id === sessionId ? { ...s, streaming: true, thinkingStartTime: Date.now() } : s
                 );
               } else if (message.streaming === false) {
                 // Check if we have pending tool operations
@@ -845,9 +849,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 } else {
                   // Assistant message explicitly marked as not streaming and no tools pending
                   console.log('Assistant message finished with no pending tools, clearing streaming state');
-                  sessions = sessions.map(s => 
-                    s.id === sessionId ? { ...s, streaming: false } : s
-                  );
+                  sessions = sessions.map(s => {
+                    if (s.id === sessionId) {
+                      // Calculate thinking time if we have a start time
+                      let updatedAnalytics = s.analytics;
+                      if (s.thinkingStartTime && updatedAnalytics) {
+                        const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                        updatedAnalytics = {
+                          ...updatedAnalytics,
+                          thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                        };
+                        console.log(`📊 [THINKING TIME] Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                      }
+                      return { ...s, streaming: false, thinkingStartTime: undefined, analytics: updatedAnalytics };
+                    }
+                    return s;
+                  });
                 }
               }
               // If streaming is undefined, don't change the state
@@ -856,6 +873,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               console.log('[Store] Error message received:', message.error);
               sessions = sessions.map(s => {
                 if (s.id === sessionId) {
+                  // Calculate thinking time on error
+                  let updatedAnalytics = s.analytics;
+                  if (s.thinkingStartTime && updatedAnalytics) {
+                    const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                    updatedAnalytics = {
+                      ...updatedAnalytics,
+                      thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                    };
+                  }
                   // Add error as a system message so user sees it
                   const errorMessage = {
                     id: `error-${Date.now()}`,
@@ -867,8 +893,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   return { 
                     ...s, 
                     streaming: false,
+                    thinkingStartTime: undefined,
                     pendingToolIds: new Set(), // Clear pending tools on error
-                    messages: [...s.messages, errorMessage]
+                    messages: [...s.messages, errorMessage],
+                    analytics: updatedAnalytics
                   };
                 }
                 return s;
@@ -923,17 +951,30 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 
                 // Never clear claudeSessionId - keep it for session resumption
                 // Claude CLI handles session management, we just track the ID
-                sessions = sessions.map(s => 
-                  s.id === sessionId 
-                    ? { 
-                        ...s, 
-                        streaming: false,
-                        runningBash: false,
-                        userBashRunning: false
-                        // Keep claudeSessionId for resumption
-                      } 
-                    : s
-                );
+                sessions = sessions.map(s => {
+                  if (s.id === sessionId) {
+                    // Calculate thinking time on result
+                    let updatedAnalytics = s.analytics;
+                    if (s.thinkingStartTime && updatedAnalytics) {
+                      const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                      updatedAnalytics = {
+                        ...updatedAnalytics,
+                        thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                      };
+                      console.log(`📊 [THINKING TIME] Result - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                    }
+                    return { 
+                      ...s, 
+                      streaming: false,
+                      thinkingStartTime: undefined,
+                      runningBash: false,
+                      userBashRunning: false,
+                      analytics: updatedAnalytics
+                      // Keep claudeSessionId for resumption
+                    };
+                  }
+                  return s;
+                });
               }
               
               return { sessions };
@@ -963,9 +1004,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               } else {
                 // Clear streaming and bash running on interruption or error
                 console.log('System message received, clearing streaming and bash state');
-                sessions = sessions.map(s => 
-                  s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
-                );
+                sessions = sessions.map(s => {
+                  if (s.id === sessionId) {
+                    // Calculate thinking time on stream end
+                    let updatedAnalytics = s.analytics;
+                    if (s.thinkingStartTime && updatedAnalytics) {
+                      const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                      updatedAnalytics = {
+                        ...updatedAnalytics,
+                        thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                      };
+                      console.log(`📊 [THINKING TIME] Stream end - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                    }
+                    return { ...s, streaming: false, thinkingStartTime: undefined, runningBash: false, userBashRunning: false, analytics: updatedAnalytics };
+                  }
+                  return s;
+                });
               }
               return { sessions };
             } else if (message.type === 'tool_use') {
@@ -1271,7 +1325,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           },
           cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
           duration: 0,
-          lastActivity: new Date()
+          lastActivity: new Date(),
+          thinkingTime: 0
         }
       };
       
