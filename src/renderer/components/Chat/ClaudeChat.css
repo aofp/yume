@@ -631,7 +631,7 @@
 
 .stop-streaming-btn {
   position: absolute;
-  right: 4px;
+  right: 5px;
   bottom: 3px;
   background: transparent;
   border: 1px solid rgba(var(--accent-rgb), 0.3);
@@ -643,7 +643,7 @@
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  animation: pulse 2s infinite;
+  animation: streaming-pulse 2s infinite;
   z-index: 20;
 }
 
@@ -660,7 +660,16 @@
     opacity: 1;
   }
   50% {
-    opacity: 0.6;
+    opacity: 0.8;
+  }
+}
+
+@keyframes streaming-pulse {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
   }
 }
 
@@ -921,7 +930,7 @@
 }
 
 @keyframes pulse {
-  0%, 100% { opacity: 0.5; }
+  0%, 100% { opacity: 0.8; }
   50% { opacity: 1; }
 }
 

@@ -8,7 +8,7 @@
   z-index: 100000;
   -webkit-app-region: no-drag;
   background: #000000;
-  padding: 0 4px;
+  padding: 0;
 }
 
 /* macOS window controls wrapper */
@@ -122,7 +122,7 @@
 }
 
 .window-control.settings, .window-control.help {
-  width: 28px;
+  width: 24px;
   height: 21px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.15);

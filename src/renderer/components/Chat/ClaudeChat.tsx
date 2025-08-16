@@ -28,6 +28,7 @@ import {
   IconChevronDown,
   IconArrowUp,
   IconArrowDown,
+  IconArrowsUpDown,
   IconBrain,
   IconChartDots,
   IconClock
@@ -2357,21 +2358,24 @@ export const ClaudeChat: React.FC = () => {
               <div className="stats-column">
                 <div className="stats-section">
                   <h4>token breakdown</h4>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <IconArrowUp size={14} />
-                      <span className="stat-name">in</span>
-                      <span style={{ marginLeft: 'auto', color: '#999', fontSize: '12px' }}>
-                        {currentSession.analytics.tokens.input.toLocaleString()} ({currentSession.analytics.tokens.total > 0 ? Math.round((currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100) : 0}%)
-                      </span>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconArrowsUpDown size={14} />
+                      <span className="stat-name">in/out</span>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                      <IconArrowDown size={14} />
-                      <span className="stat-name">out</span>
-                      <span style={{ marginLeft: 'auto', color: '#999', fontSize: '12px' }}>
-                        {currentSession.analytics.tokens.output.toLocaleString()} ({currentSession.analytics.tokens.total > 0 ? Math.round((currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100) : 0}%)
-                      </span>
-                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      {(() => {
+                        const formatTokens = (num: number) => {
+                          if (num >= 1000000) return `${(num / 1000000).toFixed(1)}M`;
+                          if (num >= 1000) return `${(num / 1000).toFixed(1)}k`;
+                          return num.toString();
+                        };
+                        const inPercent = (currentSession.analytics.tokens.total > 0 ? (currentSession.analytics.tokens.input / currentSession.analytics.tokens.total) * 100 : 0).toFixed(0);
+                        const outPercent = (currentSession.analytics.tokens.total > 0 ? (currentSession.analytics.tokens.output / currentSession.analytics.tokens.total) * 100 : 0).toFixed(0);
+                        return `${formatTokens(currentSession.analytics.tokens.input)} (${inPercent}%) / ${formatTokens(currentSession.analytics.tokens.output)} (${outPercent}%)`;
+                      })()}
+                    </span>
                   </div>
                   <div className="breakdown-bar">
                     <div 

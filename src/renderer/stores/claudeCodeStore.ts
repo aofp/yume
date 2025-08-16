@@ -253,6 +253,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       
       // STEP 1: Create tab immediately with pending status
       const tempSessionId = `temp-${hexId}`;
+      // Get the current number of sessions to determine tab number
+      const currentState = get();
+      const tabNumber = currentState.sessions.length + 1;
       const pendingSession: Session = {
         id: tempSessionId,
         name: sessionName,
@@ -261,7 +264,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         workingDirectory,
         createdAt: new Date(),
         updatedAt: new Date(),
-        claudeTitle: 'new session', // Default title
+        claudeTitle: `tab ${tabNumber}`, // Default title as 'tab x'
         pendingToolIds: new Set(),
         analytics: {
           totalMessages: 0,
@@ -337,7 +340,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           createdAt: pendingSession.createdAt,
           updatedAt: new Date(),
           claudeSessionId,
-          claudeTitle: 'new session', // Default title
+          claudeTitle: pendingSession.claudeTitle, // Keep the 'tab x' title
           pendingToolIds: new Set(),
           // Initialize fresh analytics for new session (even if resuming)
           analytics: {
@@ -1559,6 +1562,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         console.log(`🧹 [Store] Current claudeSessionId: ${session.claudeSessionId}`);
       }
       
+      // Find the session index to maintain tab number
+      const sessionIndex = state.sessions.findIndex(s => s.id === sessionId);
+      const tabNumber = sessionIndex !== -1 ? sessionIndex + 1 : 1;
+      
       return {
         sessions: state.sessions.map(s => 
           s.id === sessionId 
@@ -1566,7 +1573,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 ...s, 
                 messages: [], // Clear ALL messages - don't keep any
                 claudeSessionId: undefined, // Clear Claude session to start fresh
-                claudeTitle: 'new session', // Reset title to default
+                claudeTitle: `tab ${tabNumber}`, // Reset title to 'tab x' format
                 pendingToolIds: new Set(), // Clear pending tools
               analytics: {
                 totalMessages: 0,

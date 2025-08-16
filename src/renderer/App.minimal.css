@@ -21,7 +21,7 @@ body {
   height: 100vh;
   max-height: 100vh;
   background: #000000;
-  padding-top: 60px; /* Account for fixed titlebar (28px) + tabs (32px) */
+  padding-top: 0; /* No padding needed - controls are positioned absolutely */
   overflow: hidden;
 }
 

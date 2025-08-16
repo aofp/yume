@@ -1528,6 +1528,13 @@ const MessageRendererBase: React.FC<{
       // Standalone tool result message
       const resultContent = message.message?.content || message.message || '';
       
+      // Debug logging for tool results
+      console.log('[MessageRenderer] Processing tool_result content:', {
+        type: typeof resultContent,
+        isArray: Array.isArray(resultContent),
+        content: resultContent
+      });
+      
       // Extract plain text from JSON if it's a tool result with output
       let contentStr = '';
       if (typeof resultContent === 'string') {
@@ -1575,6 +1582,8 @@ const MessageRendererBase: React.FC<{
       } else {
         contentStr = typeof resultContent === 'string' ? resultContent : JSON.stringify(resultContent, null, 2);
       }
+      
+      console.log('[MessageRenderer] Extracted contentStr:', contentStr);
       
       // Check if content is empty and display placeholder
       if (contentStr === '' || contentStr === null || contentStr === undefined || 
@@ -1632,6 +1641,15 @@ const MessageRendererBase: React.FC<{
       // Check if this is an Edit result - they contain "has been updated" or "Applied" for MultiEdit
       const isEditResult = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
                           (contentStr.includes('Applied') && contentStr.includes('edits to'));
+      
+      console.log('[MessageRenderer] Edit result check:', {
+        isEditResult,
+        hasUpdated: contentStr.includes('has been updated'),
+        hasArrow: contentStr.includes('→'),
+        hasApplied: contentStr.includes('Applied'),
+        hasEditsTo: contentStr.includes('edits to'),
+        contentPreview: contentStr.substring(0, 200)
+      });
       
       if (isEditResult) {
         // Parse the Edit result to extract the diff

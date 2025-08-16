@@ -388,6 +388,12 @@ io.on('connection', (socket) => {
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
       const args = ['--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
       
+      // Add model flag if specified
+      if (model) {
+        args.push('--model', model);
+        console.log(`🤖 Using model: ${model}`);
+      }
+      
       // Use --resume if we have a claudeSessionId (for continuing conversations)
       if (session.claudeSessionId) {
         args.push('--resume', session.claudeSessionId);

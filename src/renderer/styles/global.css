@@ -139,7 +139,7 @@ body {
   width: 100%;
   height: 100%;
   background: var(--color-bg-primary);
-  padding-top: var(--titlebar-height);
+  padding-top: 0;
 }
 
 /* Windows: Keep space for custom titlebar in frameless window */
@@ -337,7 +337,7 @@ pre {
 
 @keyframes pulse {
   0%, 100% { opacity: 1; }
-  50% { opacity: 0.5; }
+  50% { opacity: 0.8; }
 }
 
 @keyframes spin {
