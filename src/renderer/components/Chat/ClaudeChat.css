@@ -631,7 +631,7 @@
 
 .stop-streaming-btn {
   position: absolute;
-  right: 4px;
+  right: 3px;
   bottom: 3px;
   background: transparent;
   border: 1px solid rgba(var(--accent-rgb), 0.8);

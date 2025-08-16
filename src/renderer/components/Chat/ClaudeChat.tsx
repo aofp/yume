@@ -1309,6 +1309,25 @@ export const ClaudeChat: React.FC = () => {
     const textarea = e.currentTarget;
     const cursorPos = textarea.selectionStart;
     
+    // Handle Ctrl+W to close current tab (with interrupt if streaming)
+    if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
+      e.preventDefault();
+      e.stopPropagation();
+      
+      if (currentSessionId) {
+        // If streaming, interrupt first then close
+        if (currentSession?.streaming) {
+          console.log('[ClaudeChat] Interrupting stream before closing tab');
+          interruptSession().then(() => {
+            deleteSession(currentSessionId);
+          });
+        } else {
+          deleteSession(currentSessionId);
+        }
+      }
+      return;
+    }
+    
     // If mention or command autocomplete is open, let it handle arrow keys and tab
     if ((mentionTrigger !== null || commandTrigger) && (e.key === 'ArrowUp' || e.key === 'ArrowDown' || e.key === 'Tab')) {
       return; // Let the autocomplete component handle these

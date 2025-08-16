@@ -16,7 +16,8 @@ export const SessionTabs: React.FC = () => {
     resumeSession,
     reorderSessions,
     renameSession,
-    clearContext
+    clearContext,
+    interruptSession
   } = useClaudeCodeStore();
 
   const [showNewMenu, setShowNewMenu] = useState(false);
@@ -622,8 +623,12 @@ export const SessionTabs: React.FC = () => {
             ) : (
               <button
                 className="tab-close"
-                onClick={(e) => {
+                onClick={async (e) => {
                   e.stopPropagation();
+                  // If streaming, interrupt first then close
+                  if (session.streaming) {
+                    await interruptSession();
+                  }
                   deleteSession(session.id);
                 }}
                 onDoubleClick={(e) => {
@@ -875,36 +880,64 @@ export const SessionTabs: React.FC = () => {
           
           <div className="separator" />
           
-          <button onClick={() => {
+          <button onClick={async () => {
             const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
             if (targetSession) {
               // First switch to the target session
               resumeSession(targetSession.id);
-              // Then delete all others
-              sessions.forEach(s => {
-                if (s.id !== targetSession.id) deleteSession(s.id);
-              });
+              // Then delete all others (interrupt streaming ones first)
+              for (const s of sessions) {
+                if (s.id !== targetSession.id) {
+                  if (s.streaming) {
+                    // Switch to the streaming session to interrupt it
+                    resumeSession(s.id);
+                    await interruptSession();
+                  }
+                  deleteSession(s.id);
+                }
+              }
             }
             setContextMenu(null);
           }}>close others</button>
           
-          <button onClick={() => {
+          <button onClick={async () => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
-            sessions.forEach((s, idx) => {
-              if (idx > sessionIndex) deleteSession(s.id);
-            });
+            for (let idx = 0; idx < sessions.length; idx++) {
+              if (idx > sessionIndex) {
+                const s = sessions[idx];
+                if (s.streaming) {
+                  resumeSession(s.id);
+                  await interruptSession();
+                }
+                deleteSession(s.id);
+              }
+            }
             setContextMenu(null);
           }}>close all to right</button>
           
-          <button onClick={() => {
+          <button onClick={async () => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
-            sessions.forEach((s, idx) => {
-              if (idx < sessionIndex) deleteSession(s.id);
-            });
+            for (let idx = 0; idx < sessions.length; idx++) {
+              if (idx < sessionIndex) {
+                const s = sessions[idx];
+                if (s.streaming) {
+                  resumeSession(s.id);
+                  await interruptSession();
+                }
+                deleteSession(s.id);
+              }
+            }
             setContextMenu(null);
           }}>close all to left</button>
           
-          <button onClick={() => {
+          <button onClick={async () => {
+            // Interrupt any streaming sessions first
+            for (const s of sessions) {
+              if (s.streaming) {
+                resumeSession(s.id);
+                await interruptSession();
+              }
+            }
             deleteAllSessions();
             setContextMenu(null);
           }}>close all</button>
