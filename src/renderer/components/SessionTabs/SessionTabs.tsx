@@ -49,7 +49,6 @@ export const SessionTabs: React.FC = () => {
   const [dragOverRecent, setDragOverRecent] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
-  const [activeRipples, setActiveRipples] = useState<{ [key: string]: { x: string; y: string } }>({});
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
@@ -282,22 +281,6 @@ export const SessionTabs: React.FC = () => {
     return parts[parts.length - 1] || '';
   };
 
-  const handleRipple = (e: React.MouseEvent<HTMLElement>) => {
-    const target = e.currentTarget;
-    const rect = target.getBoundingClientRect();
-    const x = ((e.clientX - rect.left) / rect.width) * 100;
-    const y = ((e.clientY - rect.top) / rect.height) * 100;
-    target.style.setProperty('--ripple-x', `${x}%`);
-    target.style.setProperty('--ripple-y', `${y}%`);
-    
-    // Add a class to trigger the ripple animation
-    target.classList.add('ripple-active');
-    
-    // Remove the class after animation completes (increased duration)
-    setTimeout(() => {
-      target.classList.remove('ripple-active');
-    }, 1200);
-  };
 
   return (
     <div className="session-tabs">
@@ -307,18 +290,7 @@ export const SessionTabs: React.FC = () => {
           <div
             key={session.id}
             data-session-id={session.id}
-            className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''} ${Object.keys(activeRipples).some(id => id.startsWith(session.id + '-')) ? 'ripple-active' : ''}`}
-            style={(() => {
-              // Find active ripple for this session
-              const rippleKey = Object.keys(activeRipples).find(id => id.startsWith(session.id + '-'));
-              if (rippleKey && activeRipples[rippleKey]) {
-                return {
-                  '--ripple-x': activeRipples[rippleKey].x,
-                  '--ripple-y': activeRipples[rippleKey].y
-                } as React.CSSProperties;
-              }
-              return {};
-            })()}
+            className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
             onClick={(e) => {
               if (!isDragging) {
                 resumeSession(session.id);
@@ -353,29 +325,10 @@ export const SessionTabs: React.FC = () => {
                 target.style.setProperty('--ripple-y', `${y}px`);
                 target.classList.add('ripple-active');
                 
-                // Track this ripple in state to persist through re-renders
-                const rippleId = `${session.id}-${Date.now()}`;
-                setActiveRipples(prev => ({
-                  ...prev,
-                  [rippleId]: { x: `${x}px`, y: `${y}px` }
-                }));
-                
-                // Remove ripple after 1.5 seconds
-                // This ensures the animation (1s) completes fully even with re-renders
+                // Remove ripple after animation completes (1s)
                 setTimeout(() => {
-                  // Remove from state
-                  setActiveRipples(prev => {
-                    const next = { ...prev };
-                    delete next[rippleId];
-                    return next;
-                  });
-                  
-                  // Also remove class from DOM element if it still exists
-                  const tabElement = document.querySelector(`[data-session-id="${session.id}"]`);
-                  if (tabElement) {
-                    tabElement.classList.remove('ripple-active');
-                  }
-                }, 1500); // 1.5 seconds to ensure animation completes
+                  target.classList.remove('ripple-active');
+                }, 1000);
               }
               
               if (e.button === 0) { // Left click only
@@ -615,8 +568,8 @@ export const SessionTabs: React.FC = () => {
                 )
               )}
             </div>
-            {/* Show loading icon for pending sessions or streaming */}
-            {(session.status === 'pending' || session.streaming) ? (
+            {/* Show loading icon for pending sessions, streaming, or bash running */}
+            {(session.status === 'pending' || session.streaming || (session as any).runningBash || (session as any).userBashRunning) ? (
               <div className="tab-progress">
                 <LoadingIndicator size="small" color="red" />
               </div>
@@ -650,7 +603,20 @@ export const SessionTabs: React.FC = () => {
             className={`tab-new ${dragOverNewTab ? 'drag-over-duplicate' : ''}`}
             onClick={handleOpenFolder} 
             onMouseDown={(e) => {
-              handleRipple(e);
+              if (e.button === 0) { // Left click only
+                const target = e.currentTarget;
+                const rect = target.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                target.style.setProperty('--ripple-x', `${x}px`);
+                target.style.setProperty('--ripple-y', `${y}px`);
+                target.classList.add('ripple-active');
+                
+                setTimeout(() => {
+                  target.classList.remove('ripple-active');
+                }, 1000);
+              }
               e.currentTarget.classList.add('ripple-held');
             }}
             onMouseUp={(e) => {
@@ -698,7 +664,20 @@ export const SessionTabs: React.FC = () => {
                 console.log('[SessionTabs] Event dispatched');
               }}
               onMouseDown={(e) => {
-                handleRipple(e);
+                if (e.button === 0) { // Left click only
+                  const target = e.currentTarget;
+                  const rect = target.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const y = e.clientY - rect.top;
+                  
+                  target.style.setProperty('--ripple-x', `${x}px`);
+                  target.style.setProperty('--ripple-y', `${y}px`);
+                  target.classList.add('ripple-active');
+                  
+                  setTimeout(() => {
+                    target.classList.remove('ripple-active');
+                  }, 1000);
+                }
                 e.currentTarget.classList.add('ripple-held');
               }}
               onMouseUp={(e) => {

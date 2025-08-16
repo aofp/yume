@@ -85,6 +85,33 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     }
   };
 
+  const formatFolderPath = (fullPath: string): string => {
+    // Remove the last folder (project folder) from the path
+    const pathParts = fullPath.split('/').filter(part => part.length > 0);
+    if (pathParts.length <= 1) return '/';
+    
+    // Remove last part (project folder)
+    pathParts.pop();
+    
+    // Reconstruct path with leading slash
+    const folderPath = '/' + pathParts.join('/') + '/';
+    
+    // If path is 80 chars or less, return as-is
+    if (folderPath.length <= 80) {
+      return folderPath;
+    }
+    
+    // Truncate in middle with ellipsis
+    const maxLength = 80;
+    const ellipsis = '...';
+    const sideLength = Math.floor((maxLength - ellipsis.length) / 2);
+    
+    const start = folderPath.substring(0, sideLength);
+    const end = folderPath.substring(folderPath.length - sideLength);
+    
+    return start + ellipsis + end;
+  };
+
   const renderProjects = () => {
     const stored = localStorage.getItem('yurucode-recent-projects');
     if (!stored) {
@@ -108,16 +135,8 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
             <div className="recent-item-info">
               <div className="recent-item-name">
                 {project.name}
-                <span 
-                  className="recent-item-path"
-                  ref={(el) => {
-                    // Scroll to end on mount to show rightmost part of path
-                    if (el) {
-                      el.scrollLeft = el.scrollWidth;
-                    }
-                  }}
-                >
-                  {project.path}
+                <span className="recent-item-path">
+                  {formatFolderPath(project.path)}
                 </span>
               </div>
             </div>

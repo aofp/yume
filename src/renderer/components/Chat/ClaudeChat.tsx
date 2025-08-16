@@ -583,12 +583,13 @@ export const ClaudeChat: React.FC = () => {
               invoke('kill_bash_process', { 
                 processId: currentSession.bashProcessId 
               }).then(() => {
-                // Add cancelled message
+                // Add cancelled message with elapsed time
+                const elapsedTime = bashElapsedTimes[currentSessionId || ''] || 0;
                 const cancelMessage = {
                   id: `bash-cancel-${Date.now()}`,
                   type: 'system' as const,
                   subtype: 'interrupted' as const,
-                  message: 'bash command cancelled',
+                  message: `bash command cancelled (${elapsedTime}s)`,
                   timestamp: Date.now()
                 };
                 
@@ -2057,12 +2058,13 @@ export const ClaudeChat: React.FC = () => {
                     processId: currentSession.bashProcessId 
                   });
                   
-                  // Add cancelled message
+                  // Add cancelled message with elapsed time
+                  const elapsedTime = bashElapsedTimes[currentSessionId || ''] || 0;
                   const cancelMessage = {
                     id: `bash-cancel-${Date.now()}`,
                     type: 'system' as const,
                     subtype: 'interrupted' as const,
-                    message: 'bash command cancelled',
+                    message: `bash command cancelled (${elapsedTime}s)`,
                     timestamp: Date.now()
                   };
                   
@@ -2227,7 +2229,7 @@ export const ClaudeChat: React.FC = () => {
                     className={`btn-stats ${usageClass}`} 
                     onClick={() => setShowStatsModal(true)}
                     disabled={false}
-                    title={hasActivity ? `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)` : "0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)"}
+                    title={hasActivity ? `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)` : `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
                   >
                     {percentage}% used
                   </button>
@@ -2283,7 +2285,7 @@ export const ClaudeChat: React.FC = () => {
                   display: 'flex', 
                   justifyContent: 'center', 
                   alignItems: 'center', 
-                  height: '200px',
+                  height: '40px',
                   color: '#666',
                   fontSize: '14px',
                   gridColumn: 'span 2'
