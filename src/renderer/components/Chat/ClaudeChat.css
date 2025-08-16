@@ -238,6 +238,8 @@
   padding: 4px 4px 4px 4px;
   scroll-behavior: auto;
   min-height: 0;
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .message {
