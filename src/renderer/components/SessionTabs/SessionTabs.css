@@ -158,7 +158,7 @@ body.tab-dragging .session-tab {
 }
 
 .session-tab:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: linear-gradient(to right, rgba(255, 255, 255, 0.1), rgba(var(--accent-rgb), 0.1));
 }
 
 .session-tab.active {
@@ -171,7 +171,7 @@ body.tab-dragging .session-tab {
 }
 
 .session-tab.drag-over {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), 0.15);
   cursor: grabbing !important;
 }
 
@@ -298,16 +298,16 @@ body.tab-dragging * {
 /* Removed - using LoadingIndicator component now */
 
 .tab-close {
-  background: transparent !important;
+  background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4); /* Dimmer default color */
+  color: rgba(var(--accent-rgb), 0.4); /* Accent color with lower opacity */
   cursor: default !important;
   padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 3px;
-  transition: color 0.2s ease, opacity 0.2s ease;
+  transition: background 0.2s ease, color 0.2s ease;
   opacity: 1;
   width: 18px;
   height: 18px;
@@ -317,8 +317,8 @@ body.tab-dragging * {
 }
 
 .tab-close:hover {
-  background: transparent !important;
-  color: var(--accent-color) !important; /* Accent color on hover */
+  background: rgba(var(--accent-rgb), 0.1);
+  color: rgba(var(--accent-rgb), 1); /* Keep same color */
   opacity: 1 !important;
 }
 
@@ -366,7 +366,7 @@ body.tab-dragging * {
 }
 
 .tab-new.drag-over-duplicate {
-  background: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.25);
 }
 
 /* Recent button - gray style */
@@ -414,7 +414,7 @@ body.tab-dragging * {
 }
 
 .tab-recent.drag-over-save {
-  background: rgba(var(--accent-rgb), 0.45);
+  background: rgba(var(--accent-rgb), 0.25);
   color: var(--accent-color);
 }
 

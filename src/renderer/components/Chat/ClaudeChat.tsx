@@ -49,22 +49,22 @@ const getToolDisplay = (name: string, input: any) => {
     'Read': (i) => ({ 
       icon: <IconBook size={14} stroke={1.5} />, 
       name: 'reading', 
-      detail: i?.file_path || 'file' 
+      detail: i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file' 
     }),
     'Write': (i) => ({ 
       icon: <IconPencil size={14} stroke={1.5} />, 
       name: 'writing', 
-      detail: i?.file_path || 'file' 
+      detail: i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file' 
     }),
     'Edit': (i) => ({ 
       icon: <IconScissors size={14} stroke={1.5} />, 
       name: 'editing', 
-      detail: `${i?.file_path || 'file'}${i?.old_string ? ` (${i.old_string.substring(0, 20)}...)` : ''}` 
+      detail: `${i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file'}${i?.old_string ? ` (${i.old_string.substring(0, 20)}...)` : ''}` 
     }),
     'MultiEdit': (i) => ({ 
       icon: <IconScissors size={14} stroke={1.5} />, 
       name: 'multi-edit', 
-      detail: `${i?.file_path || 'file'} (${i?.edits?.length || 0} changes)` 
+      detail: `${i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file'} (${i?.edits?.length || 0} changes)` 
     }),
     'Bash': (i) => ({ 
       icon: <IconTerminal size={14} stroke={1.5} />, 
@@ -89,7 +89,7 @@ const getToolDisplay = (name: string, input: any) => {
     'Grep': (i) => ({ 
       icon: <IconFileSearch size={14} stroke={1.5} />, 
       name: 'searching', 
-      detail: `"${i?.pattern || ''}" in ${i?.path || '.'}` 
+      detail: `"${i?.pattern || ''}" in ${i?.path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || '.'}` 
     }),
     'Glob': (i) => ({ 
       icon: <IconFolder size={14} stroke={1.5} />, 
@@ -99,7 +99,7 @@ const getToolDisplay = (name: string, input: any) => {
     'LS': (i) => ({ 
       icon: <IconFolderOpen2 size={14} stroke={1.5} />, 
       name: 'listing', 
-      detail: i?.path || 'directory' 
+      detail: i?.path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'directory' 
     }),
     'Task': (i) => ({ 
       icon: <IconRobot size={14} stroke={1.5} />, 
@@ -681,6 +681,39 @@ export const ClaudeChat: React.FC = () => {
 
   // Track the previous session ID to know when we're actually switching sessions
   const prevSessionIdRef = useRef<string | null>(null);
+  
+  // Add effect to handle Ctrl+Arrow shortcuts at capture phase
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      // Only handle if textarea is focused
+      if (document.activeElement !== inputRef.current) return;
+      
+      if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+        if (e.key === 'ArrowLeft') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (inputRef.current) {
+            inputRef.current.selectionStart = 0;
+            inputRef.current.selectionEnd = 0;
+          }
+          return false;
+        } else if (e.key === 'ArrowRight') {
+          e.preventDefault();
+          e.stopPropagation();
+          if (inputRef.current) {
+            const length = inputRef.current.value.length;
+            inputRef.current.selectionStart = length;
+            inputRef.current.selectionEnd = length;
+          }
+          return false;
+        }
+      }
+    };
+    
+    // Use capture phase to intercept before browser default
+    document.addEventListener('keydown', handleGlobalKeyDown, true);
+    return () => document.removeEventListener('keydown', handleGlobalKeyDown, true);
+  }, []);
   
   // Clean up pending followup if session changes
   useEffect(() => {
@@ -1298,6 +1331,18 @@ export const ClaudeChat: React.FC = () => {
       // Clear entire input when textarea is focused
       e.preventDefault();
       setInput('');
+    } else if (e.ctrlKey && e.key === 'ArrowLeft') {
+      // Override default word navigation - go to start
+      e.preventDefault();
+      textarea.selectionStart = 0;
+      textarea.selectionEnd = 0;
+      return false;
+    } else if (e.ctrlKey && e.key === 'ArrowRight') {
+      // Override default word navigation - go to end
+      e.preventDefault();
+      textarea.selectionStart = textarea.value.length;
+      textarea.selectionEnd = textarea.value.length;
+      return false;
     } else if (e.key === 'ArrowUp') {
       // Only navigate history if cursor is at the beginning of the text
       if (cursorPos === 0 && textarea.selectionEnd === 0 && currentSessionId) {

@@ -71,6 +71,7 @@ export interface Session {
   userBashRunning?: boolean; // Track if user's bash command (!) is running
   bashProcessId?: string; // Current bash process ID for cancellation
   watermarkImage?: string; // Base64 or URL for watermark image
+  pendingToolIds?: Set<string>; // Track pending tool operations by ID
 }
 
 interface ClaudeCodeStore {
@@ -261,6 +262,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         createdAt: new Date(),
         updatedAt: new Date(),
         claudeTitle: 'new session', // Default title
+        pendingToolIds: new Set(),
         analytics: {
           totalMessages: 0,
           userMessages: 0,
@@ -336,6 +338,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           updatedAt: new Date(),
           claudeSessionId,
           claudeTitle: 'new session', // Default title
+          pendingToolIds: new Set(),
           // Initialize fresh analytics for new session (even if resuming)
           analytics: {
             totalMessages: 0,
@@ -823,18 +826,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   s.id === sessionId ? { ...s, streaming: true } : s
                 );
               } else if (message.streaming === false) {
+                // Check if we have pending tool operations
+                const session = sessions.find(s => s.id === sessionId);
+                const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+                
                 // Check if this assistant message contains tool_use blocks
                 let hasToolUse = false;
                 if (message.message?.content && Array.isArray(message.message.content)) {
                   hasToolUse = message.message.content.some(block => block.type === 'tool_use');
                 }
                 
-                if (hasToolUse) {
+                if (hasToolUse || hasPendingTools) {
                   // Keep streaming active while waiting for tool results
-                  console.log('Assistant message has tool_use, keeping streaming state active');
+                  console.log(`Assistant message finished but keeping streaming active - hasToolUse: ${hasToolUse}, pendingTools: ${session?.pendingToolIds?.size || 0}`);
                 } else {
-                  // Assistant message explicitly marked as not streaming and no tools
-                  console.log('Assistant message finished, clearing streaming state');
+                  // Assistant message explicitly marked as not streaming and no tools pending
+                  console.log('Assistant message finished with no pending tools, clearing streaming state');
                   sessions = sessions.map(s => 
                     s.id === sessionId ? { ...s, streaming: false } : s
                   );
@@ -857,6 +864,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   return { 
                     ...s, 
                     streaming: false,
+                    pendingToolIds: new Set(), // Clear pending tools on error
                     messages: [...s.messages, errorMessage]
                   };
                 }
@@ -864,43 +872,88 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               });
               return { sessions };
             } else if (message.type === 'result') {
-              // Always clear streaming when we get a result message
-              console.log('Received result message, clearing streaming state. Result details:', {
-                subtype: message.subtype,
-                is_error: message.is_error,
-                result: message.result,
-                sessionMessages: sessions.find(s => s.id === sessionId)?.messages.length || 0
-              });
-              
-              // Never clear claudeSessionId - keep it for session resumption
-              // Claude CLI handles session management, we just track the ID
-              sessions = sessions.map(s => 
-                s.id === sessionId 
-                  ? { 
-                      ...s, 
-                      streaming: false,
-                      runningBash: false,
-                      userBashRunning: false
-                      // Keep claudeSessionId for resumption
-                    } 
-                  : s
-              );
-              
-              return { sessions };
-            } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
-              // Check if we have a recent user message (within last 2 seconds)
+              // Check if we have a recent user message (within last 3 seconds)
               // If so, this is likely a followup during streaming, so keep streaming state
               const session = sessions.find(s => s.id === sessionId);
               const recentUserMessage = session?.messages.findLast(m => 
                 m.type === 'user' && 
                 m.timestamp && 
-                Date.now() - m.timestamp < 2000
+                Date.now() - m.timestamp < 3000
+              );
+              
+              if (recentUserMessage) {
+                // This is a result from killing the process for a followup
+                // Keep streaming state active
+                console.log('Result message received but recent user message found - keeping streaming state for followup');
+                sessions = sessions.map(s => 
+                  s.id === sessionId 
+                    ? { 
+                        ...s, 
+                        // Keep streaming true for followup
+                        runningBash: false,
+                        userBashRunning: false
+                        // Keep claudeSessionId for resumption
+                      } 
+                    : s
+                );
+              } else if (session?.pendingToolIds && session.pendingToolIds.size > 0) {
+                // Still have pending tools - keep streaming active
+                console.log(`Result message received but ${session.pendingToolIds.size} tools still pending - keeping streaming state`);
+                sessions = sessions.map(s => 
+                  s.id === sessionId 
+                    ? { 
+                        ...s, 
+                        // Keep streaming true while tools pending
+                        runningBash: false,
+                        userBashRunning: false
+                      } 
+                    : s
+                );
+              } else {
+                // Normal result - clear streaming
+                console.log('Received result message, clearing streaming state. Result details:', {
+                  subtype: message.subtype,
+                  is_error: message.is_error,
+                  result: message.result,
+                  sessionMessages: session?.messages.length || 0
+                });
+                
+                // Never clear claudeSessionId - keep it for session resumption
+                // Claude CLI handles session management, we just track the ID
+                sessions = sessions.map(s => 
+                  s.id === sessionId 
+                    ? { 
+                        ...s, 
+                        streaming: false,
+                        runningBash: false,
+                        userBashRunning: false
+                        // Keep claudeSessionId for resumption
+                      } 
+                    : s
+                );
+              }
+              
+              return { sessions };
+            } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
+              // Check if we have a recent user message (within last 3 seconds)
+              // If so, this is likely a followup during streaming, so keep streaming state
+              const session = sessions.find(s => s.id === sessionId);
+              const recentUserMessage = session?.messages.findLast(m => 
+                m.type === 'user' && 
+                m.timestamp && 
+                Date.now() - m.timestamp < 3000
               );
               
               if (recentUserMessage && message.subtype === 'stream_end') {
                 // This is a stream_end from killing the process for a followup
                 // Keep streaming state active
                 console.log('Stream end detected but recent user message found - keeping streaming state for followup');
+                sessions = sessions.map(s => 
+                  s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
+                );
+              } else if (session?.pendingToolIds && session.pendingToolIds.size > 0) {
+                // Still have pending tools - keep streaming active
+                console.log(`Stream end but ${session.pendingToolIds.size} tools still pending - keeping streaming state`);
                 sessions = sessions.map(s => 
                   s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
                 );
@@ -923,21 +976,45 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 console.log('🖥️ Bash command started');
               }
               
-              sessions = sessions.map(s => 
-                s.id === sessionId ? { 
-                  ...s, 
-                  streaming: true,
-                  runningBash: isBash ? true : s.runningBash 
-                } : s
-              );
+              // Add tool ID to pending set
+              const toolId = message.message?.id;
+              sessions = sessions.map(s => {
+                if (s.id === sessionId) {
+                  const pendingTools = new Set(s.pendingToolIds || []);
+                  if (toolId) {
+                    pendingTools.add(toolId);
+                    console.log(`[Store] Added tool ${toolId} to pending. Total pending: ${pendingTools.size}`);
+                  }
+                  return { 
+                    ...s, 
+                    streaming: true,
+                    runningBash: isBash ? true : s.runningBash,
+                    pendingToolIds: pendingTools
+                  };
+                }
+                return s;
+              });
             } else if (message.type === 'tool_result') {
               // Keep streaming active for tool results as more tools may follow
               // The streaming state will be cleared by the result message
               
-              // Clear bash running state when we get the result
-              sessions = sessions.map(s => 
-                s.id === sessionId ? { ...s, runningBash: false } : s
-              );
+              // Remove tool ID from pending set
+              const toolUseId = message.message?.tool_use_id;
+              sessions = sessions.map(s => {
+                if (s.id === sessionId) {
+                  const pendingTools = new Set(s.pendingToolIds || []);
+                  if (toolUseId && pendingTools.has(toolUseId)) {
+                    pendingTools.delete(toolUseId);
+                    console.log(`[Store] Removed tool ${toolUseId} from pending. Remaining: ${pendingTools.size}`);
+                  }
+                  return { 
+                    ...s, 
+                    runningBash: false,
+                    pendingToolIds: pendingTools
+                  };
+                }
+                return s;
+              });
             }
             
             return { sessions };
@@ -1433,7 +1510,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // Immediately set streaming and runningBash to false to prevent double calls
       set(state => ({
         sessions: state.sessions.map(s => 
-          s.id === currentSessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
+          s.id === currentSessionId ? { 
+            ...s, 
+            streaming: false, 
+            runningBash: false, 
+            userBashRunning: false,
+            pendingToolIds: new Set() // Clear pending tools on interrupt
+          } : s
         )
       }));
       
@@ -1484,6 +1567,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 messages: [], // Clear ALL messages - don't keep any
                 claudeSessionId: undefined, // Clear Claude session to start fresh
                 claudeTitle: 'new session', // Reset title to default
+                pendingToolIds: new Set(), // Clear pending tools
               analytics: {
                 totalMessages: 0,
                 userMessages: 0,

@@ -27,6 +27,21 @@ export const SessionTabs: React.FC = () => {
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
+  const [renameInputWidth, setRenameInputWidth] = useState(16);
+  
+  // Helper function to measure text width
+  const measureTextWidth = (text: string): number => {
+    const canvas = document.createElement('canvas');
+    const context = canvas.getContext('2d');
+    if (!context) return text.length * 5.8;
+    
+    // Match the input's font style
+    context.font = '10px Helvetica, "Helvetica Neue", Arial, sans-serif';
+    const metrics = context.measureText(text);
+    
+    // Add padding (12px total: 6px each side)
+    return Math.ceil(metrics.width) + 12;
+  };
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
   const [dragOverNewTab, setDragOverNewTab] = useState(false);
@@ -308,6 +323,13 @@ export const SessionTabs: React.FC = () => {
                 resumeSession(session.id);
               }
             }}
+            onDoubleClick={(e) => {
+              e.stopPropagation();
+              const title = (session as any).claudeTitle || 'new session';
+              setRenameValue(title);
+              setRenameInputWidth(measureTextWidth(title));
+              setRenamingTab(session.id);
+            }}
             onContextMenu={(e) => {
               e.preventDefault();
               setContextMenu({ x: e.clientX, y: e.clientY, sessionId: session.id });
@@ -558,7 +580,10 @@ export const SessionTabs: React.FC = () => {
                   type="text"
                   className="tab-rename-input"
                   value={renameValue}
-                  onChange={(e) => setRenameValue(e.target.value)}
+                  onChange={(e) => {
+                    setRenameValue(e.target.value);
+                    setRenameInputWidth(measureTextWidth(e.target.value));
+                  }}
                   onFocus={(e) => e.target.select()}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
@@ -578,17 +603,12 @@ export const SessionTabs: React.FC = () => {
                   }}
                   autoFocus
                   onClick={(e) => e.stopPropagation()}
+                  onDoubleClick={(e) => e.stopPropagation()}
+                  style={{ width: `${renameInputWidth}px` }}
                 />
               ) : (
                 (session as any).claudeTitle && (
-                  <span 
-                    className="tab-title"
-                    onDoubleClick={(e) => {
-                      e.stopPropagation();
-                      setRenameValue((session as any).claudeTitle || 'new session');
-                      setRenamingTab(session.id);
-                    }}
-                  >
+                  <span className="tab-title">
                     {(session as any).claudeTitle}
                   </span>
                 )
@@ -606,14 +626,11 @@ export const SessionTabs: React.FC = () => {
                   e.stopPropagation();
                   deleteSession(session.id);
                 }}
+                onDoubleClick={(e) => {
+                  e.stopPropagation(); // Prevent rename on double-click close button
+                }}
                 onMouseDown={(e) => {
                   e.stopPropagation(); // Prevent tab drag when clicking close
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = 'var(--accent-color)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = '';
                 }}
               >
                 <IconX size={14} stroke={1.5} />
@@ -788,7 +805,9 @@ export const SessionTabs: React.FC = () => {
           <button onClick={() => {
             const session = sessions.find(s => s.id === contextMenu.sessionId);
             if (session) {
-              setRenameValue((session as any).claudeTitle || 'new session');
+              const title = (session as any).claudeTitle || 'new session';
+              setRenameValue(title);
+              setRenameInputWidth(measureTextWidth(title));
               setRenamingTab(contextMenu.sessionId);
               setContextMenu(null);
             }
