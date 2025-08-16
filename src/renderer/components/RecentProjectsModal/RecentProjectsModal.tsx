@@ -40,11 +40,12 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     if (stored) {
       try {
         const projects = JSON.parse(stored);
-        const updated = projects.map((p: RecentProject) => {
+        const updated = projects.map((p: any) => {
           if (p.path === project.path) {
             return {
               ...p,
-              lastOpened: Date.now()
+              lastOpened: Date.now(),
+              accessCount: (p.accessCount || 0) + 1
             };
           }
           return p;
@@ -130,6 +131,9 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   }, []);
   
   const formatTimeAgo = React.useCallback((timestamp: number): string => {
+    // handle undefined/invalid timestamps
+    if (!timestamp || isNaN(timestamp)) return 'never';
+    
     const seconds = Math.floor((Date.now() - timestamp) / 1000);
     
     if (seconds < 60) return 'just now';

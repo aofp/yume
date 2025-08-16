@@ -269,7 +269,7 @@
   border-radius: 4px;
   transition: background 0.15s ease;
   cursor: default;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .recent-item:hover {
