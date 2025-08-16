@@ -99,7 +99,7 @@ export const WelcomeScreen: React.FC = () => {
   const openProject = (path: string) => {
     // Update recent projects
     const name = path.split(/[/\\]/).pop() || path;
-    const newProject = { path, name, lastOpened: new Date() };
+    const newProject = { path, name, lastOpened: Date.now(), accessCount: 1 };
     
     const updated = [
       newProject,

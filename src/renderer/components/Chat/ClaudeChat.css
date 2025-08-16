@@ -407,6 +407,9 @@
 }
 
 /* Hover removed */
+.tool-use:hover {
+  background: transparent;
+}
 
 .tool-icon {
   font-size: 14px;
@@ -1656,6 +1659,7 @@
   text-align: left;
   cursor: default;
   transition: all 0.15s ease;
+  border-radius: 4px;
 }
 
 .recent-item:hover {
@@ -1663,10 +1667,41 @@
   color: var(--accent-color);
 }
 
+.recent-item-container.selected .recent-item {
+  color: var(--accent-color);
+}
+
 .recent-item-info {
   flex: 1;
   min-width: 0; /* Important for flex child overflow */
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.recent-item-meta {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.25);
+  margin-top: 1px;
+}
+
+.recent-item-time {
+  font-size: 7pt;
+  color: rgba(255, 255, 255, 0.3);
+  white-space: nowrap;
+  margin-left: 8px;
+  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+}
+
+.recent-item-count {
+  background: rgba(var(--accent-rgb), 0.15);
+  padding: 0 4px;
+  border-radius: 3px;
+  font-weight: 500;
 }
 
 .recent-item-name {
@@ -1678,6 +1713,12 @@
   gap: 2px;
   overflow: hidden;
   font-family: 'Fira Code', monospace;
+}
+
+.recent-item-name-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
 }
 
 .recent-item-path {
@@ -1706,13 +1747,18 @@
   width: 20px;
   height: 20px;
   padding: 0;
-  margin-right: 0;
+  margin-right: 4px;
   background: none;
   border: none;
   color: rgba(255, 255, 255, 0.3);
   cursor: default;
   transition: all 0.15s ease;
   border-radius: 4px;
+  opacity: 0;
+}
+
+.recent-item-container:hover .recent-item-remove {
+  opacity: 1;
 }
 
 .recent-item-remove:hover {
@@ -1724,8 +1770,15 @@
   font-family: 'Fira Code', monospace;
   font-size: 10px;
   color: rgba(255, 255, 255, 0.3);
-  min-width: 12px;
-  text-align: center;
+  width: 18px;
+  text-align: right;
+  transition: color 0.15s ease;
+}
+
+.recent-item-container.selected .recent-item-number,
+.recent-item-container.hovered .recent-item-number {
+  color: var(--accent-color);
+  opacity: 0.7;
 }
 
 /* Bash running indicator - ultra minimal with accent colors */

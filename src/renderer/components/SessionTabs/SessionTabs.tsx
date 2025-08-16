@@ -241,7 +241,7 @@ export const SessionTabs: React.FC = () => {
     // Save to recent projects if it's not the root directory
     if (directory && directory !== '/') {
       const name = directory.split(/[/\\]/).pop() || directory;
-      const newProject = { path: directory, name, lastOpened: new Date() };
+      const newProject = { path: directory, name, lastOpened: Date.now(), accessCount: 1 };
       
       // Get existing recent projects
       const stored = localStorage.getItem('yurucode-recent-projects');
@@ -738,7 +738,7 @@ export const SessionTabs: React.FC = () => {
                     // Only save if it's a full path (contains directory separators)
                     if (workingDir && workingDir !== '/' && workingDir !== '.' && (workingDir.includes('/') || workingDir.includes('\\'))) {
                       const name = workingDir.split(/[/\\]/).pop() || workingDir;
-                      const newProject = { path: workingDir, name, lastOpened: new Date() };
+                      const newProject = { path: workingDir, name, lastOpened: Date.now(), accessCount: 1 };
                       
                       // Get existing recent projects
                       const stored = localStorage.getItem('yurucode-recent-projects');
@@ -806,7 +806,7 @@ export const SessionTabs: React.FC = () => {
               // Save to recent projects if it's not the root directory
               if (workingDir !== '/') {
                 const name = workingDir.split(/[/\\]/).pop() || workingDir;
-                const newProject = { path: workingDir, name, lastOpened: new Date() };
+                const newProject = { path: workingDir, name, lastOpened: Date.now(), accessCount: 1 };
                 
                 // Get existing recent projects
                 const stored = localStorage.getItem('yurucode-recent-projects');

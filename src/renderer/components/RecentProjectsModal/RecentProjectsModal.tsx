@@ -1,10 +1,11 @@
 import React from 'react';
-import { IconFolderOpen, IconTrash, IconX, IconChevronDown } from '@tabler/icons-react';
+import { IconFolderOpen, IconTrash, IconX } from '@tabler/icons-react';
 
 interface RecentProject {
   path: string;
   name: string;
-  lastOpened?: Date;
+  lastOpened: number; // timestamp for sorting
+  accessCount?: number; // track usage frequency
 }
 
 interface RecentProjectsModalProps {
@@ -20,6 +21,8 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
 }) => {
   // State to prevent duplicate selections
   const [isSelecting, setIsSelecting] = React.useState(false);
+  const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
+  const [selectedIndex, setSelectedIndex] = React.useState<number>(0);
   // Ref to track current open state in event handlers
   const isOpenRef = React.useRef(isOpen);
   
@@ -28,28 +31,43 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     isOpenRef.current = isOpen;
   }, [isOpen]);
 
-  const handleProjectClick = (project: RecentProject, index: number, e: React.KeyboardEvent | React.MouseEvent) => {
-    // Prevent duplicate selections
-    if (isSelecting) {
-      console.log('[RecentProjectsModal] Already selecting a project, ignoring click');
-      return;
-    }
+  const selectProject = React.useCallback((project: RecentProject) => {
+    if (isSelecting) return;
     
-    // Handle keyboard shortcut (1-9)
-    if ('key' in e && e.key >= '1' && e.key <= '9') {
-      const keyIndex = parseInt(e.key) - 1;
-      if (keyIndex === index) {
-        setIsSelecting(true);
-        onProjectSelect(project.path);
-        onClose();
-      }
-      return;
-    }
-    
-    // Handle mouse click
     setIsSelecting(true);
+    
+    // update last opened and access count
+    const stored = localStorage.getItem('yurucode-recent-projects');
+    if (stored) {
+      try {
+        const projects = JSON.parse(stored);
+        const updated = projects.map((p: RecentProject) => {
+          if (p.path === project.path) {
+            return {
+              ...p,
+              lastOpened: Date.now(),
+              accessCount: (p.accessCount || 0) + 1
+            };
+          }
+          return p;
+        });
+        // sort by last opened (most recent first)
+        updated.sort((a: RecentProject, b: RecentProject) => 
+          (b.lastOpened || 0) - (a.lastOpened || 0)
+        );
+        localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+      } catch (err) {
+        console.error('Failed to update project timestamps:', err);
+      }
+    }
+    
     onProjectSelect(project.path);
     onClose();
+  }, [isSelecting, onProjectSelect, onClose]);
+  
+  const handleProjectClick = (project: RecentProject, index: number, e: React.MouseEvent) => {
+    e.preventDefault();
+    selectProject(project);
   };
 
   const removeProject = (projectPath: string, e: React.MouseEvent) => {
@@ -86,45 +104,42 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     // don't close modal if user cancels
   };
 
-  const formatFolderPath = (fullPath: string): string => {
-    // Handle Windows paths (C:\Users\...) and WSL paths (/mnt/c/...)
-    const separator = fullPath.includes('\\') ? '\\' : '/';
-    const pathParts = fullPath.split(separator).filter(part => part.length > 0);
+  const formatFolderPath = React.useCallback((fullPath: string): string => {
+    // normalize path separators
+    const normalizedPath = fullPath.replace(/\\/g, '/');
     
-    // If path has no separators or only one part, it's just a folder name
-    // In this case, return the current working directory indicator
-    if (pathParts.length <= 1) {
-      // Check if it's the current directory
-      if (fullPath === '.' || fullPath === './' || fullPath === '.\\') {
-        return './';
-      }
-      // It's just a folder name without path - likely current directory
+    // handle special cases
+    if (normalizedPath === '.' || normalizedPath === './' || normalizedPath === '') {
       return './';
     }
     
-    // Remove last part (project folder)
-    pathParts.pop();
+    // extract parent directory
+    const lastSlash = normalizedPath.lastIndexOf('/');
+    if (lastSlash === -1) return './';
     
-    // Reconstruct path with appropriate separator
-    const folderPath = separator === '\\' 
-      ? pathParts.join('\\') + '\\'
-      : '/' + pathParts.join('/') + '/';
+    const parentPath = normalizedPath.substring(0, lastSlash + 1);
     
-    // If path is 80 chars or less, return as-is
-    if (folderPath.length <= 80) {
-      return folderPath;
-    }
+    // smart truncation with priority on end of path
+    const maxLength = 60;
+    if (parentPath.length <= maxLength) return parentPath;
     
-    // Truncate in middle with ellipsis
-    const maxLength = 80;
-    const ellipsis = '...';
-    const sideLength = Math.floor((maxLength - ellipsis.length) / 2);
+    // keep more of the end (more relevant)
+    const startLength = Math.floor(maxLength * 0.3);
+    const endLength = maxLength - startLength - 3; // 3 for ellipsis
     
-    const start = folderPath.substring(0, sideLength);
-    const end = folderPath.substring(folderPath.length - sideLength);
+    return parentPath.substring(0, startLength) + '...' + 
+           parentPath.substring(parentPath.length - endLength);
+  }, []);
+  
+  const formatTimeAgo = React.useCallback((timestamp: number): string => {
+    const seconds = Math.floor((Date.now() - timestamp) / 1000);
     
-    return start + ellipsis + end;
-  };
+    if (seconds < 60) return 'just now';
+    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
+    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
+    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
+    return `${Math.floor(seconds / 604800)}w ago`;
+  }, []);
 
   const renderProjects = () => {
     const stored = localStorage.getItem('yurucode-recent-projects');
@@ -139,20 +154,36 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       }
       
       return projects.slice(0, 10).map((project: RecentProject, idx: number) => (
-        <div key={project.path} className="recent-item-container">
+        <div 
+          key={project.path} 
+          className={`recent-item-container ${
+            hoveredIndex === idx ? 'hovered' : ''
+          } ${selectedIndex === idx ? 'selected' : ''}`}
+          onMouseEnter={() => setHoveredIndex(idx)}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
           <button
             className="recent-item"
             onClick={(e) => handleProjectClick(project, idx, e)}
           >
             <span className="recent-item-number">{idx < 9 ? idx + 1 : ''}</span>
-            <IconFolderOpen size={14} />
             <div className="recent-item-info">
               <div className="recent-item-name">
-                {project.name}
+                <div className="recent-item-name-row">
+                  <span>{project.name}</span>
+                  {project.lastOpened && (
+                    <span className="recent-item-time">{formatTimeAgo(project.lastOpened)}</span>
+                  )}
+                </div>
                 <span className="recent-item-path">
                   {formatFolderPath(project.path)}
                 </span>
               </div>
+              {project.accessCount && project.accessCount > 1 && (
+                <div className="recent-item-meta">
+                  <span className="recent-item-count">×{project.accessCount}</span>
+                </div>
+              )}
             </div>
           </button>
           <button
@@ -175,6 +206,8 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     if (isOpen) {
       // @ts-ignore - adding global flag
       window.__recentModalOpen = true;
+      setSelectedIndex(0); // reset selection
+      setHoveredIndex(null);
     } else {
       // @ts-ignore - adding global flag
       window.__recentModalOpen = false;
@@ -217,6 +250,39 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         return;
       }
       
+      const stored = localStorage.getItem('yurucode-recent-projects');
+      if (!stored) return;
+      
+      let projects: RecentProject[];
+      try {
+        projects = JSON.parse(stored);
+      } catch (err) {
+        console.error('Failed to parse recent projects:', err);
+        return;
+      }
+      
+      // arrow key navigation
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        setSelectedIndex(prev => Math.min(prev + 1, Math.min(projects.length - 1, 9)));
+        return;
+      }
+      
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        setSelectedIndex(prev => Math.max(prev - 1, 0));
+        return;
+      }
+      
+      // enter to select current
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        if (selectedIndex < projects.length) {
+          selectProject(projects[selectedIndex]);
+        }
+        return;
+      }
+      
       // Handle number keys (1-9) for project selection - only when no modifiers
       if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
         // Double-check modal is still open
@@ -234,23 +300,8 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         e.preventDefault();
         e.stopPropagation();
         const index = parseInt(e.key) - 1;
-        const stored = localStorage.getItem('yurucode-recent-projects');
-        if (stored) {
-          try {
-            const projects = JSON.parse(stored);
-            if (index < projects.length) {
-              console.log(`[RecentProjectsModal] Selecting project ${index + 1}: ${projects[index].path}`);
-              setIsSelecting(true);
-              // Close modal BEFORE calling onProjectSelect to prevent any race conditions
-              onClose();
-              // Small delay to ensure modal is fully closed
-              setTimeout(() => {
-                onProjectSelect(projects[index].path);
-              }, 0);
-            }
-          } catch (err) {
-            console.error('Failed to parse recent projects:', err);
-          }
+        if (index < projects.length) {
+          selectProject(projects[index]);
         }
       }
     };
@@ -262,7 +313,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       console.log('[RecentProjectsModal] Removing keydown listener');
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose, onProjectSelect, isSelecting]);
+  }, [isOpen, onClose, isSelecting, selectedIndex, selectProject]);
 
   // Early return when not open to prevent rendering
   if (!isOpen) return null;
@@ -282,7 +333,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       >
         <div className="modal-header">
           <span className="modal-title">
-            <IconChevronDown size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+            <IconFolderOpen size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
             recent projects
           </span>
           <button 
