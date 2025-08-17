@@ -748,12 +748,38 @@ export const App: React.FC = () => {
             // Generate a new session ID for the tab
             const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             
-            // Create the session with loaded messages
+            // Filter out completely empty user messages when loading
+            const filteredMessages = (data.messages || []).filter((msg: any) => {
+              // Keep all assistant messages
+              if (msg.role === 'assistant') return true;
+              
+              // For user messages, check if they have actual content
+              if (msg.role === 'user') {
+                // Check for string content
+                if (typeof msg.content === 'string' && msg.content.trim()) return true;
+                
+                // Check for array content with text
+                if (Array.isArray(msg.content)) {
+                  const hasContent = msg.content.some((item: any) => 
+                    (item.type === 'text' && item.text && item.text.trim()) ||
+                    item.type === 'image'
+                  );
+                  if (hasContent) return true;
+                }
+                
+                // Skip empty user messages
+                return false;
+              }
+              
+              return true; // Keep any other message types
+            });
+            
+            // Create the session with filtered messages
             const newSession = {
               id: newSessionId,
               name: sessionName,
               status: 'active' as const,
-              messages: data.messages || [],
+              messages: filteredMessages,
               workingDirectory: data.projectPath,
               createdAt: new Date(),
               updatedAt: new Date(),

@@ -410,34 +410,12 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       const content = await readFile(sessionPath, 'utf8');
       const lines = content.split('\n').filter(line => line.trim());
       const messages = [];
-      let lastWasAssistantWithToolUse = false;
       
-      for (let i = 0; i < lines.length; i++) {
+      for (const line of lines) {
         try {
-          const data = JSON.parse(lines[i]);
-          
-          // Track if the last assistant message had tool use
-          if (data.role === 'assistant' && data.content) {
-            // Check if this assistant message contains tool use
-            if (Array.isArray(data.content)) {
-              lastWasAssistantWithToolUse = data.content.some(item => 
-                item.type === 'tool_use' || item.tool_use || item.toolUse
-              );
-            } else {
-              lastWasAssistantWithToolUse = false;
-            }
-            messages.push(data);
-          } else if (data.role === 'user') {
-            // Skip empty user messages that come right after assistant tool uses
-            if (lastWasAssistantWithToolUse && (!data.content || 
-                (typeof data.content === 'string' && data.content.trim() === '') ||
-                (Array.isArray(data.content) && data.content.length === 0))) {
-              console.log('Skipping empty user message after tool use');
-              continue;
-            }
-            messages.push(data);
-            lastWasAssistantWithToolUse = false;
-          }
+          const data = JSON.parse(line);
+          // Include all messages - filtering will happen on frontend
+          messages.push(data);
         } catch (err) {
           console.error('Error parsing line:', err);
         }
@@ -448,7 +426,7 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         .replace(/^-/, '/')
         .replace(/-/g, '/');
       
-      console.log(`Loaded session with ${messages.length} messages (filtered from ${lines.length} total lines)`);
+      console.log(`Loaded session with ${messages.length} messages`);
       
       res.json({ 
         sessionId,
