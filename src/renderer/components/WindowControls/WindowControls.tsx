@@ -1,13 +1,14 @@
 import React from 'react';
-import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp } from '@tabler/icons-react';
+import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder } from '@tabler/icons-react';
 import './WindowControls.css';
 
 interface WindowControlsProps {
   onSettingsClick?: () => void;
   onHelpClick?: () => void;
+  onProjectsClick?: () => void;
 }
 
-export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick, onHelpClick }) => {
+export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick, onHelpClick, onProjectsClick }) => {
   // Show on all platforms when using frameless window
   const isMac = navigator.platform.toLowerCase().includes('mac');
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
@@ -107,6 +108,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
             <span style={{ fontSize: '10px' }}>?</span>
           </button>
+          {onProjectsClick && (
+            <button className="window-control projects" onClick={onProjectsClick} title="projects (cmd+p)">
+              <IconFolder size={10} stroke={2} />
+            </button>
+          )}
           {onSettingsClick && (
             <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
               <IconSettingsFilled size={10} />
@@ -123,6 +129,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
       <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
         <span style={{ fontSize: '10px' }}>?</span>
       </button>
+      {onProjectsClick && (
+        <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
+          <IconFolder size={10} stroke={2} />
+        </button>
+      )}
       {onSettingsClick && (
         <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
           <IconSettingsFilled size={10} />

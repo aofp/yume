@@ -469,6 +469,61 @@ ol {
   opacity: 0.8;
 }
 
+/* Animated thinking text */
+.thinking-text {
+  display: inline-flex;
+  animation: thinkingPulse 3s ease-in-out infinite;
+}
+
+.thinking-letter {
+  display: inline-block;
+  opacity: 0.9;
+  animation: letterWave 2s ease-in-out infinite;
+}
+
+/* Stagger the animation for each letter */
+.thinking-letter:nth-child(1) { animation-delay: 0s; }
+.thinking-letter:nth-child(2) { animation-delay: 0.1s; }
+.thinking-letter:nth-child(3) { animation-delay: 0.2s; }
+.thinking-letter:nth-child(4) { animation-delay: 0.3s; }
+.thinking-letter:nth-child(5) { animation-delay: 0.4s; }
+.thinking-letter:nth-child(6) { animation-delay: 0.5s; }
+.thinking-letter:nth-child(7) { animation-delay: 0.6s; }
+.thinking-letter:nth-child(8) { animation-delay: 0.7s; }
+.thinking-letter:nth-child(9) { animation-delay: 0.8s; }
+.thinking-letter:nth-child(10) { animation-delay: 0.9s; }
+.thinking-letter:nth-child(11) { animation-delay: 1.0s; }
+
+/* Subtle pulse animation for the whole text */
+@keyframes thinkingPulse {
+  0%, 100% {
+    opacity: 0.9;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Wave animation for individual letters */
+@keyframes letterWave {
+  0%, 100% {
+    opacity: 0.9;
+    transform: translateY(0);
+  }
+  25% {
+    opacity: 1;
+    transform: translateY(-1px);
+  }
+  50% {
+    opacity: 0.95;
+    transform: translateY(0);
+  }
+  75% {
+    opacity: 1;
+    transform: translateY(-0.5px);
+  }
+}
+
 .thinking-content {
   color: rgba(255, 255, 255, 0.5);
   font-family: 'Fira Code', monospace;
@@ -739,6 +794,15 @@ pre.edit-diff {
 .edit-diff .diff-line.added .diff-marker,
 .edit-diff .diff-line.added .diff-text {
   color: var(--color-cyan) !important;
+}
+
+.diff-separator {
+  color: #999;
+  font-size: 11px;
+  margin: 4px 0;
+  padding: 2px 0;
+  border-top: 1px solid #333;
+  text-transform: lowercase;
 }
 
 @keyframes fadeIn {

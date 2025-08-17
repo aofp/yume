@@ -1,0 +1,586 @@
+import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
+import { IconFolder, IconFolderOpen, IconClock, IconHash, IconChevronRight, IconSearch, IconX, IconRefresh, IconArrowLeft, IconMessages } from '@tabler/icons-react';
+import { claudeCodeClient } from '../../services/claudeCodeClient';
+import './ProjectsModal.css';
+
+interface ClaudeSession {
+  id: string;
+  summary: string;
+  timestamp: number;
+  path: string;
+  messageCount?: number;
+}
+
+interface ClaudeProject {
+  path: string;
+  name: string;
+  sessions: ClaudeSession[];
+  lastModified: number;
+  sessionCount: number;
+}
+
+interface ProjectsModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSelectSession: (projectPath: string, sessionId: string) => void;
+}
+
+export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, onSelectSession }) => {
+  const [projects, setProjects] = useState<ClaudeProject[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [showSearch, setShowSearch] = useState(false);
+  const [sessionSearchQuery, setSessionSearchQuery] = useState('');
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  const [selectedProject, setSelectedProject] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [hasLoaded, setHasLoaded] = useState(false);
+  const [lastLoadTime, setLastLoadTime] = useState<number>(0);
+  const [contextMenu, setContextMenu] = useState<{
+    x: number;
+    y: number;
+    type: 'project' | 'session';
+    path: string;
+    sessionId?: string;
+  } | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+
+  // load projects function  
+  const loadProjects = useCallback(async (forceRefresh = false) => {
+    // prevent loading if already loading or recently loaded (within 1 second)
+    const now = Date.now();
+    if (loading || (!forceRefresh && hasLoaded && now - lastLoadTime < 1000)) return;
+    
+    setLoading(true);
+    setError(null);
+    try {
+      const serverPort = claudeCodeClient.getServerPort();
+      if (!serverPort) {
+        throw new Error('server port not available');
+      }
+      const response = await fetch(`http://localhost:${serverPort}/claude-projects`);
+      if (!response.ok) throw new Error('failed to load projects');
+      const data = await response.json();
+      setProjects(data.projects || []);
+      setHasLoaded(true);
+      setLastLoadTime(now);
+    } catch (err) {
+      console.error('error loading projects:', err);
+      setError('failed to load projects');
+      setProjects([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [loading, hasLoaded, lastLoadTime]);
+
+  // load projects from server only when opened and not already loaded
+  useEffect(() => {
+    if (!isOpen || hasLoaded) return;
+    loadProjects();
+  }, [isOpen, hasLoaded, loadProjects]);
+
+  // Auto-focus first item when modal opens or view changes
+  useEffect(() => {
+    if (isOpen && focusedIndex === -1) {
+      setFocusedIndex(0);
+    }
+  }, [isOpen, selectedProject]);
+
+  // filter projects based on search
+  const filteredProjects = useMemo(() => {
+    if (!searchQuery) return projects;
+    const query = searchQuery.toLowerCase();
+    return projects.filter(p => 
+      p.name.toLowerCase().includes(query) ||
+      p.sessions.some(s => s.summary?.toLowerCase().includes(query))
+    );
+  }, [projects, searchQuery]);
+
+  // get sessions for selected project
+  const selectedProjectData = useMemo(() => {
+    if (!selectedProject) return null;
+    return filteredProjects.find(p => p.path === selectedProject);
+  }, [filteredProjects, selectedProject]);
+
+  // filter sessions based on search
+  const filteredSessions = useMemo(() => {
+    if (!selectedProjectData) return [];
+    if (!sessionSearchQuery) return selectedProjectData.sessions;
+    const query = sessionSearchQuery.toLowerCase();
+    return selectedProjectData.sessions.filter(s => 
+      s.summary?.toLowerCase().includes(query) ||
+      s.id?.toLowerCase().includes(query)
+    );
+  }, [selectedProjectData, sessionSearchQuery]);
+
+  const handleSelectSession = useCallback((projectPath: string, sessionId: string) => {
+    onSelectSession(projectPath, sessionId);
+    onClose();
+  }, [onSelectSession, onClose]);
+
+  const handleContextMenu = useCallback((e: React.MouseEvent, type: 'project' | 'session', path: string, sessionId?: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
+    // If ANY context menu is open, close it immediately!
+    if (contextMenu) {
+      setContextMenu(null);
+      return;
+    }
+    
+    // Otherwise open a new context menu
+    const newMenu = {
+      x: e.clientX,
+      y: e.clientY,
+      type,
+      path,
+      sessionId
+    };
+    setContextMenu(newMenu);
+  }, [contextMenu]);
+
+  // keyboard navigation
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't navigate if search input is focused
+      const isSearchFocused = document.activeElement === searchInputRef.current;
+      
+      if (e.key === 'Escape') {
+        if (isSearchFocused) {
+          setShowSearch(false);
+          setSearchQuery('');
+          setSessionSearchQuery('');
+        } else if (selectedProject) {
+          setSelectedProject(null);
+          setFocusedIndex(-1);
+        } else {
+          onClose();
+        }
+      }
+      
+      // Ctrl+P to close modal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        onClose();
+      }
+      
+      // Ctrl+F to show/focus search
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+        e.preventDefault();
+        setShowSearch(true);
+        // Clear appropriate search based on current view
+        if (selectedProject) {
+          setSessionSearchQuery('');
+        } else {
+          setSearchQuery('');
+        }
+        setTimeout(() => searchInputRef.current?.focus(), 10);
+      }
+      
+      // F5 or Ctrl/Cmd+R to refresh
+      if (e.key === 'F5' || ((e.ctrlKey || e.metaKey) && e.key === 'r')) {
+        e.preventDefault();
+        loadProjects(true);
+      }
+      
+      // Arrow navigation (when search is not focused)
+      if (!isSearchFocused) {
+        const items = selectedProject ? filteredSessions : filteredProjects;
+        const maxIndex = items.length - 1;
+        
+        if (e.key === 'ArrowDown') {
+          e.preventDefault();
+          if (focusedIndex < maxIndex) {
+            setFocusedIndex(focusedIndex + 1);
+          } else {
+            setFocusedIndex(0); // Wrap to start
+          }
+        } else if (e.key === 'ArrowUp') {
+          e.preventDefault();
+          if (focusedIndex > 0) {
+            setFocusedIndex(focusedIndex - 1);
+          } else if (focusedIndex === -1) {
+            setFocusedIndex(maxIndex); // Start from end if not focused
+          } else {
+            setFocusedIndex(maxIndex); // Wrap to end
+          }
+        } else if (e.key === 'Enter' || e.key === 'ArrowRight') {
+          if (focusedIndex >= 0 && focusedIndex <= maxIndex) {
+            e.preventDefault();
+            if (selectedProject) {
+              // In sessions view - select the session
+              const session = filteredSessions[focusedIndex];
+              if (session) {
+                handleSelectSession(selectedProject, session.id);
+              }
+            } else {
+              // In projects view - enter the project
+              const project = filteredProjects[focusedIndex];
+              if (project) {
+                setSelectedProject(project.path);
+                setFocusedIndex(0); // Reset focus for sessions list
+              }
+            }
+          }
+        } else if (e.key === 'ArrowLeft' || e.key === 'Backspace') {
+          if (selectedProject && !isSearchFocused) {
+            e.preventDefault();
+            setSelectedProject(null);
+            setSessionSearchQuery('');
+            setShowSearch(false);
+            setFocusedIndex(0); // Reset focus for projects list
+          }
+        } else if (e.key === 'Home') {
+          e.preventDefault();
+          setFocusedIndex(0);
+        } else if (e.key === 'End') {
+          e.preventDefault();
+          setFocusedIndex(maxIndex);
+        } else if (e.key === 'Delete' && focusedIndex >= 0) {
+          // Open context menu for focused item
+          e.preventDefault();
+          const item = items[focusedIndex];
+          if (item) {
+            if (selectedProject) {
+              // Session item
+              const session = item as ClaudeSession;
+              handleContextMenu(
+                { preventDefault: () => {}, stopPropagation: () => {}, clientX: 100, clientY: 100 } as React.MouseEvent,
+                'session',
+                selectedProject,
+                session.id
+              );
+            } else {
+              // Project item
+              const project = item as ClaudeProject;
+              handleContextMenu(
+                { preventDefault: () => {}, stopPropagation: () => {}, clientX: 100, clientY: 100 } as React.MouseEvent,
+                'project',
+                project.path
+              );
+            }
+          }
+        }
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedProject, onClose, loadProjects, focusedIndex, filteredProjects, filteredSessions, handleSelectSession, handleContextMenu]);
+
+  const handleClearHistory = useCallback((e: React.MouseEvent) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    if (!contextMenu) return;
+    
+    // Store context info before clearing
+    const contextType = contextMenu.type;
+    const contextPath = contextMenu.path;
+    const contextSessionId = contextMenu.sessionId;
+    // Format project name inline to avoid dependency issues
+    const projectName = contextPath
+      .replace(/^-/, '/')
+      .replace(/-/g, '/')
+      .split('/')
+      .pop() || contextPath;
+    
+    // Close context menu FIRST
+    setContextMenu(null);
+    
+    // Show confirmation dialog
+    const confirmMessage = contextType === 'project' 
+      ? `clear all history for "${projectName}"?`
+      : `clear this session history?`;
+    
+    // Use setTimeout to ensure dialog shows after context menu is closed
+    setTimeout(async () => {
+      const userConfirmed = window.confirm(confirmMessage);
+      
+      // Only proceed if user confirmed
+      if (!userConfirmed) {
+        return;
+      }
+
+      try {
+        const serverPort = claudeCodeClient.getServerPort();
+      if (!serverPort) {
+        throw new Error('server port not available');
+      }
+
+        const endpoint = contextType === 'project'
+          ? `/claude-project/${encodeURIComponent(contextPath)}`
+          : `/claude-session/${encodeURIComponent(contextPath)}/${encodeURIComponent(contextSessionId!)}`;
+
+        const response = await fetch(`http://localhost:${serverPort}${endpoint}`, {
+          method: 'DELETE'
+        });
+
+        if (!response.ok) throw new Error('failed to clear history');
+
+        // Refresh the projects list
+        await loadProjects(true);
+        
+        // If we cleared the currently selected project, clear selection
+        if (contextType === 'project' && contextPath === selectedProject) {
+          setSelectedProject(null);
+        }
+      } catch (error) {
+        console.error('failed to clear history:', error);
+        alert('failed to clear history');
+      }
+    }, 0);
+  }, [contextMenu, loadProjects, selectedProject]);
+
+  // Close context menu on any click or scroll
+  useEffect(() => {
+    if (!contextMenu) return;
+    
+    const handleClick = (e: MouseEvent) => {
+      // Don't close if clicking inside the context menu itself
+      const target = e.target as HTMLElement;
+      if (target.closest('.projects-context-menu')) {
+        return;
+      }
+      setContextMenu(null);
+    };
+    
+    const handleScroll = () => {
+      setContextMenu(null);
+    };
+    
+    // Use setTimeout to avoid immediately closing on the same click that opened it
+    setTimeout(() => {
+      document.addEventListener('mousedown', handleClick);
+      // Add scroll listener to window and any scrollable element
+      window.addEventListener('scroll', handleScroll, true); // true for capture phase to catch all scroll events
+    }, 0);
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClick);
+      window.removeEventListener('scroll', handleScroll, true);
+    };
+  }, [contextMenu]);
+
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) return 'today';
+    if (days === 1) return 'yesterday';
+    if (days < 7) return `${days} days ago`;
+    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
+    return date.toLocaleDateString();
+  };
+
+  const formatProjectName = (path: string) => {
+    // convert escaped path back to readable format - just the folder name
+    return path
+      .replace(/^-/, '/')
+      .replace(/-/g, '/')
+      .split('/')
+      .pop() || path;
+  };
+
+  const formatProjectPath = (path: string) => {
+    // convert escaped path back to full readable format
+    return path
+      .replace(/^-/, '/')
+      .replace(/-/g, '/');
+  };
+
+  if (!isOpen) return null;
+
+  return (
+    <div className="projects-modal-overlay" onClick={onClose}>
+      <div className="projects-modal" onClick={e => e.stopPropagation()}>
+        <div className="projects-header" data-tauri-drag-region>
+          <div className="projects-title" data-tauri-drag-region>
+            {selectedProject && selectedProjectData ? (
+              <>
+                <button 
+                  className="sessions-back-btn"
+                  onClick={() => {
+                    setSelectedProject(null);
+                    setSessionSearchQuery('');
+                    setShowSearch(false);
+                  }}
+                  title="back to projects"
+                >
+                  <IconArrowLeft size={14} />
+                  <span>back</span>
+                </button>
+                <IconFolderOpen size={16} />
+                <span>{formatProjectName(selectedProjectData.name)}</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '12px', marginLeft: '8px' }}>
+                  {selectedProjectData.sessions.length} sessions
+                </span>
+              </>
+            ) : (
+              <>
+                <IconFolder size={16} />
+                <span>claude projects</span>
+              </>
+            )}
+          </div>
+          <div className="projects-header-actions">
+            <button 
+              className="projects-refresh" 
+              onClick={() => loadProjects(true)}
+              disabled={loading}
+              title="refresh (F5)"
+            >
+              <IconRefresh size={16} className={loading ? 'spinning' : ''} />
+            </button>
+            <button className="projects-close" onClick={onClose}>
+              <IconX size={16} />
+            </button>
+          </div>
+        </div>
+
+        {showSearch && (
+          <div className="projects-search">
+            <IconSearch size={14} />
+            <input
+              ref={searchInputRef}
+              type="text"
+              placeholder={selectedProject ? "search sessions..." : "search projects..."}
+              value={selectedProject ? sessionSearchQuery : searchQuery}
+              onChange={e => selectedProject ? setSessionSearchQuery(e.target.value) : setSearchQuery(e.target.value)}
+              autoFocus
+            />
+          </div>
+        )}
+
+        <div className="projects-content">
+          {loading && (
+            <div className="projects-loading">
+              <div className="loading-spinner"></div>
+              <span>loading projects...</span>
+            </div>
+          )}
+
+          {error && (
+            <div className="projects-error">{error}</div>
+          )}
+
+          {!loading && !error && filteredProjects.length === 0 && (
+            <div className="projects-empty">
+              {searchQuery ? 'no projects match your search' : 'no projects found'}
+            </div>
+          )}
+
+          {!loading && !error && !selectedProject && filteredProjects.length > 0 && (
+            <div className="projects-list">
+              {filteredProjects.map((project, index) => (
+                <div
+                  key={project.path}
+                  className={`project-item ${focusedIndex === index ? 'focused' : ''}`}
+                  onClick={() => {
+                    setSelectedProject(project.path);
+                    setFocusedIndex(0);
+                  }}
+                  onContextMenu={(e) => handleContextMenu(e, 'project', project.path)}
+                  onMouseEnter={() => setFocusedIndex(index)}
+                >
+                  <div className="project-main">
+                    <div className="project-name">
+                      <div className="project-name-text">
+                        <span className="project-folder-name">{formatProjectName(project.name)}</span>
+                        <span className="project-full-path">{formatProjectPath(project.path)}</span>
+                      </div>
+                    </div>
+                    <IconChevronRight size={14} className="project-arrow" />
+                  </div>
+                  <div className="project-meta">
+                    <span>
+                      <IconHash size={12} />
+                      {project.sessionCount} {project.sessionCount === 1 ? 'session' : 'sessions'}
+                    </span>
+                    <span>
+                      <IconClock size={12} />
+                      {formatDate(project.lastModified)}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {!loading && !error && selectedProject && selectedProjectData && (
+            <div className="sessions-view">
+              <div className="sessions-list">
+                {filteredSessions.length === 0 && sessionSearchQuery && (
+                  <div className="sessions-empty">no sessions match your search</div>
+                )}
+                {filteredSessions.map((session, index) => (
+                  <div
+                    key={session.id}
+                    className={`session-item ${focusedIndex === index ? 'focused' : ''}`}
+                    onClick={() => handleSelectSession(selectedProjectData.path, session.id)}
+                    onContextMenu={(e) => handleContextMenu(e, 'session', selectedProjectData.path, session.id)}
+                    onMouseEnter={() => setFocusedIndex(index)}
+                  >
+                    <div className="session-main">
+                      <span className="session-summary">
+                        {session.summary || 'untitled session'}
+                      </span>
+                    </div>
+                    <div className="session-meta">
+                      {session.messageCount && (
+                        <span>
+                          <IconMessages size={12} />
+                          {session.messageCount}
+                        </span>
+                      )}
+                      <span>
+                        <IconClock size={12} />
+                        {formatDate(session.timestamp)}
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Context Menu */}
+        {contextMenu && (
+          <div 
+            className="projects-context-menu" 
+            style={{ 
+              left: (() => {
+                const menuWidth = 180; // Approximate width of context menu
+                const rightEdge = contextMenu.x + menuWidth;
+                if (rightEdge > window.innerWidth) {
+                  return window.innerWidth - menuWidth - 10;
+                }
+                return contextMenu.x;
+              })(),
+              top: (() => {
+                const menuHeight = 80; // Approximate height for 2-item context menu
+                const bottomEdge = contextMenu.y + menuHeight;
+                if (bottomEdge > window.innerHeight) {
+                  return window.innerHeight - menuHeight - 10;
+                }
+                return contextMenu.y;
+              })()
+            }}
+          >
+            <button onClick={handleClearHistory}>
+              clear {contextMenu.type === 'project' ? 'project history' : 'session'}
+            </button>
+            <button onClick={() => setContextMenu(null)}>
+              nevermind
+            </button>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};

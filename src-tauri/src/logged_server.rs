@@ -179,6 +179,24 @@ const server = http.createServer((req, res) => {
     if (req.url === '/health') {
         res.writeHead(200, { 'Content-Type': 'text/plain' });
         res.end('OK');
+    } else if (req.url === '/claude-projects') {
+        // Handle projects endpoint
+        handleProjectsRequest(req, res);
+    } else if (req.url && req.url.startsWith('/claude-session/')) {
+        // Handle session loading or deletion
+        if (req.method === 'DELETE') {
+            handleDeleteSessionRequest(req, res);
+        } else {
+            handleSessionRequest(req, res);
+        }
+    } else if (req.url && req.url.startsWith('/claude-project/')) {
+        // Handle project deletion
+        if (req.method === 'DELETE') {
+            handleDeleteProjectRequest(req, res);
+        } else {
+            res.writeHead(404);
+            res.end();
+        }
     } else {
         res.writeHead(404);
         res.end();
@@ -297,6 +315,265 @@ async function initializeClaude() {
 
 // Start Claude detection asynchronously - doesn't block server startup
 initializeClaude();
+
+// Handle projects endpoint request
+async function handleProjectsRequest(req, res) {
+    const os = require('os');
+    const path = require('path');
+    const fs = require('fs').promises;
+    
+    try {
+        const claudeDir = path.join(os.homedir(), '.claude', 'projects');
+        
+        // Check if projects directory exists
+        if (!require('fs').existsSync(claudeDir)) {
+            log('Claude projects directory not found: ' + claudeDir);
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ projects: [] }));
+            return;
+        }
+        
+        const projectDirs = await fs.readdir(claudeDir);
+        log('Found ' + projectDirs.length + ' project directories');
+        
+        // Process projects in parallel
+        const projectPromises = projectDirs
+            .filter(dir => !dir.startsWith('.'))
+            .map(async (projectDir) => {
+                try {
+                    const projectPath = path.join(claudeDir, projectDir);
+                    const stats = await fs.stat(projectPath);
+                    
+                    if (!stats.isDirectory()) return null;
+                    
+                    // Load sessions for this project
+                    const sessionFiles = await fs.readdir(projectPath);
+                    const sessionPromises = sessionFiles
+                        .filter(file => file.endsWith('.jsonl'))
+                        .map(async (sessionFile) => {
+                            try {
+                                const sessionPath = path.join(projectPath, sessionFile);
+                                const sessionStats = await fs.stat(sessionPath);
+                                const sessionId = sessionFile.replace('.jsonl', '');
+                                
+                                // Read first few lines to get summary
+                                let summary = 'untitled session';
+                                let messageCount = 0;
+                                let firstUserMessage = '';
+                                
+                                try {
+                                    const content = await fs.readFile(sessionPath, 'utf8');
+                                    const lines = content.split('\\n').filter(line => line.trim());
+                                    messageCount = lines.length;
+                                    
+                                    // Try to find summary from first few lines
+                                    for (let i = 0; i < Math.min(5, lines.length); i++) {
+                                        try {
+                                            const data = JSON.parse(lines[i]);
+                                            if (data.summary) {
+                                                summary = data.summary;
+                                                break;
+                                            }
+                                            // Fallback to first user message
+                                            if (data.role === 'user' && data.content && !firstUserMessage) {
+                                                firstUserMessage = data.content.slice(0, 100);
+                                            }
+                                        } catch {}
+                                    }
+                                    
+                                    // Use first user message as summary if no official summary
+                                    if (summary === 'untitled session' && firstUserMessage) {
+                                        summary = firstUserMessage + (firstUserMessage.length >= 100 ? '...' : '');
+                                    }
+                                } catch (err) {
+                                    log('Error reading session file: ' + sessionPath);
+                                }
+                                
+                                return {
+                                    id: sessionId,
+                                    summary,
+                                    timestamp: sessionStats.mtime.getTime(),
+                                    createdAt: sessionStats.birthtime ? sessionStats.birthtime.getTime() : sessionStats.mtime.getTime(),
+                                    path: sessionPath,
+                                    messageCount
+                                };
+                            } catch (err) {
+                                log('Error processing session: ' + sessionFile);
+                                return null;
+                            }
+                        });
+                    
+                    const sessions = (await Promise.all(sessionPromises)).filter(Boolean);
+                    
+                    if (sessions.length === 0) return null;
+                    
+                    // Sort sessions by timestamp (newest first)
+                    sessions.sort((a, b) => b.timestamp - a.timestamp);
+                    
+                    // Get project creation time
+                    const projectCreatedAt = Math.min(...sessions.map(s => s.createdAt || s.timestamp));
+                    
+                    return {
+                        path: projectDir,
+                        name: projectDir,
+                        sessions,
+                        lastModified: sessions[0]?.timestamp || stats.mtime.getTime(),
+                        createdAt: projectCreatedAt,
+                        sessionCount: sessions.length,
+                        totalMessages: sessions.reduce((sum, s) => sum + (s.messageCount || 0), 0)
+                    };
+                } catch (err) {
+                    log('Error processing project: ' + projectDir);
+                    return null;
+                }
+            });
+        
+        const projects = (await Promise.all(projectPromises)).filter(Boolean);
+        
+        // Sort projects by last modified date (most recently opened first)
+        projects.sort((a, b) => b.lastModified - a.lastModified);
+        
+        log('Returning ' + projects.length + ' projects');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ projects }));
+    } catch (error) {
+        log('Error loading projects: ' + error.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to load projects', details: error.message }));
+    }
+}
+
+// Handle session loading request
+async function handleSessionRequest(req, res) {
+    const os = require('os');
+    const path = require('path');
+    const fs = require('fs').promises;
+    
+    try {
+        // Extract projectPath and sessionId from URL
+        const urlParts = req.url.split('/');
+        const projectPath = decodeURIComponent(urlParts[2]);
+        const sessionId = decodeURIComponent(urlParts[3]);
+        
+        const sessionPath = path.join(os.homedir(), '.claude', 'projects', projectPath, sessionId + '.jsonl');
+        
+        log('Loading session: ' + sessionPath);
+        
+        if (!require('fs').existsSync(sessionPath)) {
+            log('Session not found: ' + sessionPath);
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'session not found' }));
+            return;
+        }
+        
+        try {
+            const content = await fs.readFile(sessionPath, 'utf8');
+            const lines = content.split('\\n').filter(line => line.trim());
+            const messages = [];
+            
+            for (const line of lines) {
+                try {
+                    const data = JSON.parse(line);
+                    messages.push(data);
+                } catch (err) {
+                    log('Error parsing line: ' + err.message);
+                }
+            }
+            
+            // Extract project path to actual directory
+            const actualPath = projectPath
+                .replace(/^-/, '/')
+                .replace(/-/g, '/');
+            
+            log('Loaded session with ' + messages.length + ' messages');
+            
+            res.writeHead(200, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ 
+                sessionId,
+                projectPath: actualPath,
+                messages,
+                sessionCount: messages.length
+            }));
+        } catch (readError) {
+            log('Error reading session file: ' + readError.message);
+            res.writeHead(500, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'Failed to read session', details: readError.message }));
+        }
+    } catch (error) {
+        log('Error in session handler: ' + error.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to load session', details: error.message }));
+    }
+}
+
+// Handle delete project request
+async function handleDeleteProjectRequest(req, res) {
+    const fs = require('fs').promises;
+    const path = require('path');
+    const os = require('os');
+    
+    try {
+        // Extract projectPath from URL
+        const urlParts = req.url.split('/');
+        const projectPath = decodeURIComponent(urlParts[2]);
+        const projectDir = path.join(os.homedir(), '.claude', 'projects', projectPath);
+        
+        log('Deleting project: ' + projectDir);
+        
+        // Check if project exists
+        if (!require('fs').existsSync(projectDir)) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'project not found' }));
+            return;
+        }
+        
+        // Delete the entire project directory
+        await fs.rm(projectDir, { recursive: true, force: true });
+        
+        log('Project deleted successfully');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+    } catch (error) {
+        log('Error deleting project: ' + error.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to delete project', details: error.message }));
+    }
+}
+
+// Handle delete session request
+async function handleDeleteSessionRequest(req, res) {
+    const fs = require('fs').promises;
+    const path = require('path');
+    const os = require('os');
+    
+    try {
+        // Extract projectPath and sessionId from URL
+        const urlParts = req.url.split('/');
+        const projectPath = decodeURIComponent(urlParts[2]);
+        const sessionId = decodeURIComponent(urlParts[3]);
+        const sessionPath = path.join(os.homedir(), '.claude', 'projects', projectPath, sessionId + '.jsonl');
+        
+        log('Deleting session: ' + sessionPath);
+        
+        // Check if session exists
+        if (!require('fs').existsSync(sessionPath)) {
+            res.writeHead(404, { 'Content-Type': 'application/json' });
+            res.end(JSON.stringify({ error: 'session not found' }));
+            return;
+        }
+        
+        // Delete the session file
+        await fs.unlink(sessionPath);
+        
+        log('Session deleted successfully');
+        res.writeHead(200, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ success: true }));
+    } catch (error) {
+        log('Error deleting session: ' + error.message);
+        res.writeHead(500, { 'Content-Type': 'application/json' });
+        res.end(JSON.stringify({ error: 'Failed to delete session', details: error.message }));
+    }
+}
 
 // Helper function to generate title with Sonnet
 async function generateTitle(sessionId, userMessage, socket) {

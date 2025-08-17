@@ -9,8 +9,10 @@ import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortc
 import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 import { ServerLogs } from './components/ServerLogs/ServerLogs';
 import { RecentProjectsModal } from './components/RecentProjectsModal/RecentProjectsModal';
+import { ProjectsModal } from './components/ProjectsModal/ProjectsModal';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { platformBridge } from './services/platformBridge';
+import { claudeCodeClient } from './services/claudeCodeClient';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
@@ -20,6 +22,7 @@ export const App: React.FC = () => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showServerLogs, setShowServerLogs] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
+  const [showProjectsModal, setShowProjectsModal] = useState(false);
   // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -53,17 +56,26 @@ export const App: React.FC = () => {
     setContextMenu({ x: e.clientX, y: e.clientY, isTextInput, target, isMessageBubble, messageElement, hasSelection, selectedText });
   };
   
-  // Close context menu when clicking outside
+  // Close context menu when clicking outside or scrolling
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (contextMenuRef.current && !contextMenuRef.current.contains(e.target as Node)) {
         setContextMenu(null);
       }
     };
+    
+    const handleScroll = () => {
+      setContextMenu(null);
+    };
 
     if (contextMenu) {
       document.addEventListener('mousedown', handleClickOutside);
-      return () => document.removeEventListener('mousedown', handleClickOutside);
+      // Add scroll listener to catch all scroll events anywhere
+      window.addEventListener('scroll', handleScroll, true); // true for capture phase
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        window.removeEventListener('scroll', handleScroll, true);
+      };
     }
   }, [contextMenu]);
   
@@ -349,7 +361,7 @@ export const App: React.FC = () => {
       }
       
       // Ctrl+R for recent projects
-      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+      if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !e.shiftKey) {
         e.preventDefault();
         const stored = localStorage.getItem('yurucode-recent-projects');
         if (stored) {
@@ -362,6 +374,12 @@ export const App: React.FC = () => {
             console.error('Failed to parse recent projects:', err);
           }
         }
+      }
+      
+      // Ctrl+P for claude sessions browser
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        setShowProjectsModal(true);
       }
       
       // Ctrl+, for settings
@@ -495,7 +513,7 @@ export const App: React.FC = () => {
       onDragLeave={handleGlobalDragLeave}
       onContextMenu={handleGlobalContextMenu}
     >
-      <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} />
+      <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} />
       <TitleBar onSettingsClick={() => setShowSettings(true)} />
       <SessionTabs />
       <ConnectionStatus />
@@ -673,6 +691,107 @@ export const App: React.FC = () => {
         onProjectSelect={(path) => {
           const name = path.split(/[/\\]/).pop() || path;
           createSession(name, path);
+        }}
+      />
+      <ProjectsModal
+        isOpen={showProjectsModal}
+        onClose={() => setShowProjectsModal(false)}
+        onSelectSession={async (projectPath, sessionId) => {
+          // load the session from server
+          try {
+            console.log('Loading session:', projectPath, sessionId);
+            const serverPort = claudeCodeClient.getServerPort();
+            if (!serverPort) {
+              throw new Error('server port not available');
+            }
+            const response = await fetch(`http://localhost:${serverPort}/claude-session/${encodeURIComponent(projectPath)}/${encodeURIComponent(sessionId)}`);
+            if (!response.ok) throw new Error('failed to load session');
+            const data = await response.json();
+            console.log('Session data loaded:', data);
+            
+            // Use the store's method to create a restored session
+            const store = useClaudeCodeStore.getState();
+            
+            // Extract a meaningful name from the first user message or session summary
+            let sessionName = 'resumed session';
+            if (data.messages && data.messages.length > 0) {
+              // Find the first user message
+              const firstUserMessage = data.messages.find((m: any) => m.role === 'user');
+              if (firstUserMessage && firstUserMessage.content) {
+                let content = '';
+                if (typeof firstUserMessage.content === 'string') {
+                  content = firstUserMessage.content;
+                } else if (Array.isArray(firstUserMessage.content)) {
+                  // Find text content in array
+                  const textBlock = firstUserMessage.content.find((c: any) => c.type === 'text');
+                  if (textBlock && textBlock.text) {
+                    content = textBlock.text;
+                  }
+                }
+                
+                // Extract first 2 words for the tab name
+                if (content) {
+                  const words = content.trim().split(/\s+/);
+                  if (words.length >= 2) {
+                    sessionName = words.slice(0, 2).join(' ').toLowerCase();
+                  } else if (words.length === 1) {
+                    sessionName = words[0].toLowerCase();
+                  }
+                  // Limit length to prevent overly long tab names
+                  if (sessionName.length > 20) {
+                    sessionName = sessionName.substring(0, 20) + '...';
+                  }
+                }
+              }
+            }
+            
+            // Generate a new session ID for the tab
+            const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+            
+            // Create the session with loaded messages
+            const newSession = {
+              id: newSessionId,
+              name: sessionName,
+              status: 'active' as const,
+              messages: data.messages || [],
+              workingDirectory: data.projectPath,
+              createdAt: new Date(),
+              updatedAt: new Date(),
+              claudeSessionId: sessionId, // Store the original Claude session ID for resumption
+              analytics: {
+                totalMessages: data.messages?.length || 0,
+                userMessages: 0,
+                assistantMessages: 0,
+                toolUses: 0,
+                tokens: { input: 0, output: 0, total: 0, byModel: { opus: { input: 0, output: 0, total: 0 }, sonnet: { input: 0, output: 0, total: 0 } } },
+                cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+                modelUsage: {}
+              },
+              draft: { input: '', attachments: [] },
+              permissionMode: 'default' as const,
+              allowedTools: ['Read', 'Write', 'Edit', 'MultiEdit', 'LS', 'Glob', 'Grep', 'Bash', 'WebFetch', 'WebSearch', 'TodoWrite'],
+              restorePoints: [],
+              modifiedFiles: []
+            };
+            
+            // Add session to store and set as current
+            store.sessions.push(newSession);
+            store.currentSessionId = newSessionId;
+            useClaudeCodeStore.setState({ 
+              sessions: [...store.sessions],
+              currentSessionId: newSessionId
+            });
+            
+            // Register the session with the server for resumption
+            await claudeCodeClient.createSession(sessionName, data.projectPath, {
+              sessionId: newSessionId,
+              claudeSessionId: sessionId // Pass the original Claude session ID
+            });
+            
+            console.log('Session restored with', data.messages?.length || 0, 'messages');
+          } catch (error) {
+            console.error('failed to load session:', error);
+          }
         }}
       />
     </div>

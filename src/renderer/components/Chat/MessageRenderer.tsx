@@ -612,7 +612,19 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             <div key={idx} className="thinking-block">
               <div className="thinking-header">
                 <IconBolt size={12} stroke={1.5} />
-                <span>thinking...</span>
+                <span className="thinking-text">
+                  <span className="thinking-letter">t</span>
+                  <span className="thinking-letter">h</span>
+                  <span className="thinking-letter">i</span>
+                  <span className="thinking-letter">n</span>
+                  <span className="thinking-letter">k</span>
+                  <span className="thinking-letter">i</span>
+                  <span className="thinking-letter">n</span>
+                  <span className="thinking-letter">g</span>
+                  <span className="thinking-letter">.</span>
+                  <span className="thinking-letter">.</span>
+                  <span className="thinking-letter">.</span>
+                </span>
               </div>
               <div className="thinking-content">
                 {block.thinking || block.text || ''}
@@ -1413,7 +1425,7 @@ const MessageRendererBase: React.FC<{
       }
       
       // For Edit tool, show a proper diff
-      if (toolName === 'Edit' || toolName === 'MultiEdit') {
+      if (toolName === 'Edit') {
         // Use formatPath to convert to relative path
         const filePath = formatPath(toolInput.file_path || 'file');
         
@@ -1456,6 +1468,60 @@ const MessageRendererBase: React.FC<{
                 </div>
               ))}
             </div>
+          </div>
+        );
+      }
+      
+      // For MultiEdit tool, show multiple diffs
+      if (toolName === 'MultiEdit') {
+        // Use formatPath to convert to relative path
+        const filePath = formatPath(toolInput.file_path || 'file');
+        const edits = toolInput.edits || [];
+        
+        return (
+          <div className="message tool-message">
+            <div className="tool-use standalone">
+              <IconEditCircle size={14} stroke={1.5} className="tool-icon" />
+              <span className="tool-action">editing</span>
+              <span className="tool-detail">{filePath} ({edits.length} edits)</span>
+            </div>
+            {edits.map((edit: any, editIdx: number) => {
+              const oldString = edit.old_string || '';
+              const newString = edit.new_string || '';
+              
+              // Split into lines for diff display
+              const oldLines = oldString.split('\n');
+              const newLines = newString.split('\n');
+              
+              // Find which lines actually changed
+              const changedLines: { type: 'removed' | 'added', line: string, lineNum: number }[] = [];
+              
+              // Add removed lines
+              oldLines.forEach((line, idx) => {
+                if (!newLines.includes(line)) {
+                  changedLines.push({ type: 'removed', line, lineNum: idx + 1 });
+                }
+              });
+              
+              // Add new lines
+              newLines.forEach((line, idx) => {
+                if (!oldLines.includes(line)) {
+                  changedLines.push({ type: 'added', line, lineNum: idx + 1 });
+                }
+              });
+              
+              return (
+                <div key={editIdx} className="edit-diff" style={{ marginTop: editIdx > 0 ? '8px' : '0' }}>
+                  {editIdx > 0 && <div className="diff-separator">edit {editIdx + 1}</div>}
+                  {changedLines.map((change, idx) => (
+                    <div key={idx} className={`diff-line ${change.type}`}>
+                      <span className="diff-marker">{change.type === 'removed' ? '-' : '+'}</span>
+                      <span className="diff-text">{change.line}</span>
+                    </div>
+                  ))}
+                </div>
+              );
+            })}
           </div>
         );
       }

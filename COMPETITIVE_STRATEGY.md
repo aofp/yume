@@ -1,4 +1,4 @@
-# yurucode competitive strategy - realistic assessment v3.1
+# yurucode competitive strategy - realistic assessment v4.0
 
 ## executive summary
 
@@ -90,140 +90,195 @@ yurucode is a **minimalist tauri-based claude code interface** targeting develop
 - customization options
 - community features
 
+## current feature status (january 2025)
+
+### ✅ completed features
+
+#### core functionality
+- **multi-tab sessions** - parallel conversations with tab management
+- **session persistence** - auto-save and restore on restart
+- **working directory support** - per-session project paths
+- **claude session resumption** - continue previous conversations with --resume
+- **token analytics** - detailed usage tracking per model (opus/sonnet)
+- **cost tracking** - real-time cost calculation and display
+- **model switching** - quick toggle between opus and sonnet (ctrl+o)
+- **streaming responses** - real-time response display with thinking indicators
+- **tool use rendering** - proper display of read, write, edit, multiedit, bash, etc.
+- **image attachments** - drag-drop image support for vision tasks
+- **custom server architecture** - separate node.js process for claude cli management
+
+#### ui/ux polish
+- **oled black theme** - true black (#000000) for oled displays
+- **pastel accent colors** - customizable cyan/magenta accents
+- **custom scrollbars** - accent-colored minimal scrollbars
+- **keyboard navigation** - comprehensive shortcuts for all features
+- **context menus** - right-click menus throughout
+- **drag-drop support** - folders create sessions, files insert paths
+- **window persistence** - remembers size/position between sessions
+- **zoom controls** - ctrl+0/+/- for accessibility
+- **focus mode** - minimal ui for distraction-free coding
+
+#### project management 
+- **claude projects browser** (ctrl+p) - browse all claude cli sessions
+- **session browser** - view and resume past sessions by project
+- **recent projects modal** (ctrl+r) - quick access to recent work
+- **clear history** - remove project/session history
+- **search functionality** - find projects and sessions (ctrl+f)
+- **keyboard navigation** - arrow keys, enter, escape support
+- **session loading** - restore full conversation history
+- **smart session naming** - extracts name from first message
+
+#### developer features
+- **git integration** - shows branch, modified files
+- **file watcher** - tracks changes to opened files
+- **compact mode detection** - warns about context limits
+- **server logs viewer** (ctrl+shift+l) - debug claude cli
+- **devtools access** (f12) - full chromium devtools
+- **keyboard shortcuts modal** (?) - comprehensive help
+- **about modal** - version and system info
+
 ## essential features roadmap (justifying $21)
 
-### phase 1: core parity features (must have)
+### phase 1: immediate priorities (mvp completion)
 
-#### 1. project management system
-**implementation:**
-```
-~/.yurucode/projects/
-├── project-hash-1/
-│   ├── sessions/
-│   ├── metadata.json
-│   └── claude.md
-└── project-hash-2/
-```
+#### 1. enhanced project management
+**what we need to add:**
+- **claude.md support** - read/write project instructions
+- **auto-detect directory changes** - update session context
+- **project templates** - common setups (react, python, etc.)
+- **bulk operations** - clear multiple sessions at once
+- **project statistics** - total tokens, costs, sessions count
 
-**features:**
-- auto-detect working directory changes
-- remember sessions per project
-- quick project switcher (ctrl+p)
-- recent projects list
-- project metadata (name, path, last accessed)
+#### 2. session improvements
+**missing pieces:**
+- **session branching** - fork conversations at any point
+- **export/import** - json format for portability
+- **session templates** - reusable conversation starters
+- **checkpoint system** - manual save points (ctrl+s)
+- **session search** - find messages across all sessions
 
-#### 2. session persistence
-**what we need:**
-- auto-save session state
-- resume on crash/restart
-- session branching (simple version)
-- export/import sessions
-- session templates
-
-#### 3. basic analytics view
+#### 3. analytics dashboard
 **minimal implementation:**
-- token usage per session
-- cost calculator (local only)
-- daily/weekly/monthly views
-- export to csv
-- no tracking/telemetry
+- **dedicated analytics view** - separate tab/modal
+- **daily/weekly/monthly views** - time-based grouping
+- **per-project analytics** - costs by project
+- **export to csv** - for expense tracking
+- **usage patterns** - peak hours, common tools
 
-### phase 2: professional features
+### phase 2: catch-up features (vs claudia)
 
-#### 4. view switcher system
-**navigation model:**
-```
-[chat] [analytics] [projects] [settings]
-```
-
+#### 4. @mention autocomplete (critical)
+**why essential:** claudia has this, users expect it
 **implementation:**
-- clean tab interface in titlebar
-- keyboard shortcuts (alt+1,2,3,4)
-- remember last view
-- smooth transitions
-- minimal visual noise
-
-#### 5. intelligent autocomplete (@mentions)
-**context-aware suggestions:**
 - **@filename** - fuzzy file search in project
-- **@folder** - include entire directories
+- **@folder** - include entire directories  
 - **@recent** - recently edited files
 - **@changed** - git modified files
-- **@symbol** - function/class names
-- **@doc** - documentation files
-- **@test** - test files
-- **@config** - config files
-
-**implementation:**
 - trigger on @ character
-- fuzzy matching algorithm
-- preview on hover
+- fuzzy matching with preview
 - tab to complete
-- multi-select with checkboxes
-- smart ranking by relevance
+- visual file tree browser
 
-#### 6. smart file context
-**automatic inclusion:**
+#### 5. smart context management
+**auto-include logic:**
 - detect imports/dependencies
 - include related test files
-- add relevant configs
+- respect .gitignore patterns
 - smart truncation for large files
-- visual indicator of included files
-- one-click exclude
+- visual indicator of included context
+- one-click exclude from context
 
-#### 7. simplified agents
-**practical templates:**
-- code review template
-- bug fix template
-- refactor template
-- documentation template
-- test writing template
-- no complex sandboxing
-- quick access via slash commands
+#### 6. slash commands (power users)
+**essential commands:**
+- **/clear** - clear context (already have ctrl+l)
+- **/model** - switch model (already have ctrl+o)
+- **/copy** - copy last response
+- **/export** - export session
+- **/stats** - show token usage inline
+- **/branch** - create conversation branch
+- **/restore** - go to checkpoint
 
-### phase 3: polish features
+#### 7. simplified agents/templates
+**practical presets (not complex agents):**
+- **review mode** - code review focused prompts
+- **debug mode** - step-by-step debugging
+- **refactor mode** - clean code suggestions
+- **test mode** - test writing assistance
+- **docs mode** - documentation generation
+- quick access via dropdown or /mode command
 
-#### 8. checkpoint system (simplified)
-**basic version:**
-- one-click save state
-- simple restore
-- no complex timeline
-- keyboard shortcut (ctrl+s)
+### phase 3: differentiation features
 
-#### 9. slash commands
-**quick actions:**
-- /clear - clear context
-- /model - switch model
-- /copy - copy last response
-- /export - export session
-- /stats - show token usage
+#### 8. local llm support (unique)
+**competitive advantage:**
+- ollama integration
+- codellama/deepseek support
+- hybrid mode (local + claude)
+- privacy-first option
+- cost savings for simple tasks
 
-#### 10. git integration
-**context awareness:**
-- show current branch
-- include changed files
-- diff viewer
-- commit message helper
-- ignore patterns respect
+#### 9. vim keybindings (niche appeal)
+**for hardcore users:**
+- modal editing in chat input
+- j/k navigation in messages
+- search with /
+- visual mode for selection
+- optional, off by default
+
+#### 10. workspace system
+**advanced project management:**
+- save window layouts
+- multiple projects per workspace
+- quick workspace switcher
+- workspace templates
+- sync across devices (local)
+
+## feature comparison: yurucode vs claudia (january 2025)
+
+### what we have that claudia doesn't
+- **oled black theme** - true #000000 (they use dark grey)
+- **pastel accent system** - customizable colors
+- **compact mode detection** - context limit warnings
+- **server logs viewer** - debug visibility
+- **simpler ui** - less visual noise
+- **smaller footprint** - 78mb vs 150mb+ ram
+
+### what claudia has that we need
+- **@mention autocomplete** ⚠️ critical gap
+- **slash commands** ⚠️ expected feature
+- **conversation branching** ⚠️ power user need
+- **export/import sessions** ⚠️ data portability
+- **analytics dashboard** ⚠️ cost tracking
+- **agents/templates** ⚠️ productivity boost
+- **checkpoint system** ⚠️ safety feature
+
+### what claudia has that we should skip
+- **complex timeline view** - over-engineered
+- **detailed telemetry** - privacy concern
+- **team collaboration** - scope creep
+- **cloud sync** - complexity/cost
+- **custom themes** - distraction
+- **plugin system** - maintenance burden
 
 ## implementation priorities
 
-### immediate (mvp for $10 justification)
-1. **project management** - essential for pro use
-2. **session persistence** - table stakes
-3. **@mention autocomplete** - killer feature
-4. **basic analytics** - justify cost savings
+### 🔴 immediate (catch up to claudia)
+1. **@mention autocomplete** - most requested feature
+2. **slash commands** - power user essential
+3. **session export/import** - data portability
+4. **analytics dashboard** - justify roi
 
-### short-term (differentiation)
-5. **smart file context** - productivity boost
-6. **view switcher** - professional feel
-7. **slash commands** - power user appeal
-8. **simple agents** - templates for common tasks
+### 🟡 short-term (differentiation)
+5. **local llm support** - unique value prop
+6. **conversation branching** - advanced feature
+7. **checkpoint system** - safety net
+8. **smart context** - auto-include files
 
-### medium-term (polish)
-9. **git integration** - developer necessity
-10. **checkpoint system** - safety net
-11. **export/import** - data portability
+### 🟢 medium-term (polish)
+9. **vim keybindings** - niche appeal
+10. **workspace system** - pro feature
+11. **templates/modes** - productivity
+12. **claude.md support** - project instructions
 
 ## feature complexity analysis
 
@@ -368,10 +423,39 @@ yurucode: $21 once = immediate roi
 - user metrics
 - regression tests
 
-## conclusion
+## conclusion & action plan
 
-yurucode needs selective feature adoption to justify $21 while maintaining minimalist principles. focus on high-value, low-complexity features first, particularly project management, session persistence, and basic analytics.
+### current position
+yurucode has achieved solid foundation with core features (sessions, projects, analytics) but lacks critical catch-up features that users expect from a $21 tool. we're approximately **70% feature-complete** for mvp.
 
-the view switcher and focus modes provide differentiation without bloat. local llm support could be a unique selling point. avoid complex features like visual timelines and detailed analytics that claudia already owns.
+### critical gaps to address
+1. **@mention autocomplete** - #1 priority, users expect this
+2. **slash commands** - power user essential
+3. **session export** - data portability requirement
+4. **analytics view** - roi justification
 
-success means implementing just enough features to be professional while staying simple enough to be fast and maintainable.
+### competitive strategy
+- **don't compete on features** - claudia will always have more
+- **compete on simplicity** - our ui is cleaner, faster
+- **compete on philosophy** - minimalism, privacy, ownership
+- **compete on value** - $21 once vs subscriptions
+
+### unique selling propositions
+1. **true minimalism** - not just marketing speak
+2. **oled optimized** - only true black interface
+3. **lifetime ownership** - no subscriptions ever
+4. **privacy first** - no telemetry, local only
+5. **keyboard zen** - everything via shortcuts
+
+### 90-day roadmap
+**month 1:** @mentions, slash commands, export
+**month 2:** analytics dashboard, branching
+**month 3:** local llm support, templates
+
+### success metrics
+- implement 4 critical features without degrading performance
+- maintain <100mb ram usage with all features
+- keep cold start under 500ms
+- preserve minimalist aesthetic
+
+the path forward is clear: selective feature parity where essential, radical simplicity everywhere else, and unique features (local llm) that bigger competitors won't prioritize.

@@ -228,6 +228,10 @@ export class ClaudeCodeClient {
     return this.connected;
   }
 
+  getServerPort(): number | null {
+    return this.serverPort;
+  }
+
   async createSession(name: string, workingDirectory: string, options?: any): Promise<any> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {

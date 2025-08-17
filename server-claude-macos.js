@@ -342,6 +342,252 @@ app.get('/health', (req, res) => {
   });
 });
 
+// Delete a project and all its sessions
+app.delete('/claude-project/:projectPath', async (req, res) => {
+  try {
+    const { projectPath } = req.params;
+    const projectDir = join(homedir(), '.claude', 'projects', projectPath);
+    
+    console.log('Deleting project:', projectDir);
+    
+    if (!existsSync(projectDir)) {
+      return res.status(404).json({ error: 'project not found' });
+    }
+    
+    // Delete the entire project directory
+    const { rm } = await import('fs/promises');
+    await rm(projectDir, { recursive: true, force: true });
+    
+    console.log('Project deleted successfully');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    res.status(500).json({ error: 'Failed to delete project', details: error.message });
+  }
+});
+
+// Delete a specific session
+app.delete('/claude-session/:projectPath/:sessionId', async (req, res) => {
+  try {
+    const { projectPath, sessionId } = req.params;
+    const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
+    
+    console.log('Deleting session:', sessionPath);
+    
+    if (!existsSync(sessionPath)) {
+      return res.status(404).json({ error: 'session not found' });
+    }
+    
+    // Delete the session file
+    const { unlink } = await import('fs/promises');
+    await unlink(sessionPath);
+    
+    console.log('Session deleted successfully');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    res.status(500).json({ error: 'Failed to delete session', details: error.message });
+  }
+});
+
+// Load a specific claude session with better error handling
+app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
+  try {
+    const { projectPath, sessionId } = req.params;
+    const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
+    
+    console.log('Loading session:', sessionPath);
+    
+    if (!existsSync(sessionPath)) {
+      console.error('Session not found:', sessionPath);
+      return res.status(404).json({ error: 'session not found' });
+    }
+    
+    // Read the session file using promises for better error handling
+    const { readFile } = await import('fs/promises');
+    
+    try {
+      const content = await readFile(sessionPath, 'utf8');
+      const lines = content.split('\n').filter(line => line.trim());
+      const messages = [];
+      let lastWasAssistantWithToolUse = false;
+      
+      for (let i = 0; i < lines.length; i++) {
+        try {
+          const data = JSON.parse(lines[i]);
+          
+          // Track if the last assistant message had tool use
+          if (data.role === 'assistant' && data.content) {
+            // Check if this assistant message contains tool use
+            if (Array.isArray(data.content)) {
+              lastWasAssistantWithToolUse = data.content.some(item => 
+                item.type === 'tool_use' || item.tool_use || item.toolUse
+              );
+            } else {
+              lastWasAssistantWithToolUse = false;
+            }
+            messages.push(data);
+          } else if (data.role === 'user') {
+            // Skip empty user messages that come right after assistant tool uses
+            if (lastWasAssistantWithToolUse && (!data.content || 
+                (typeof data.content === 'string' && data.content.trim() === '') ||
+                (Array.isArray(data.content) && data.content.length === 0))) {
+              console.log('Skipping empty user message after tool use');
+              continue;
+            }
+            messages.push(data);
+            lastWasAssistantWithToolUse = false;
+          }
+        } catch (err) {
+          console.error('Error parsing line:', err);
+        }
+      }
+      
+      // Extract project path to actual directory
+      const actualPath = projectPath
+        .replace(/^-/, '/')
+        .replace(/-/g, '/');
+      
+      console.log(`Loaded session with ${messages.length} messages (filtered from ${lines.length} total lines)`);
+      
+      res.json({ 
+        sessionId,
+        projectPath: actualPath,
+        messages,
+        sessionCount: messages.length
+      });
+    } catch (readError) {
+      console.error('Error reading session file:', readError);
+      res.status(500).json({ error: 'Failed to read session', details: readError.message });
+    }
+  } catch (error) {
+    console.error('Error loading session:', error);
+    res.status(500).json({ error: 'Failed to load session', details: error.message });
+  }
+});
+
+// Projects endpoint - loads claude projects asynchronously with enhanced error handling
+app.get('/claude-projects', async (req, res) => {
+  try {
+    const claudeDir = join(homedir(), '.claude', 'projects');
+    
+    // Check if projects directory exists
+    if (!existsSync(claudeDir)) {
+      console.log('Claude projects directory not found:', claudeDir);
+      return res.json({ projects: [] });
+    }
+    
+    // Load projects asynchronously using promises
+    const { readdir, stat, readFile } = await import('fs/promises');
+    
+    const projectDirs = await readdir(claudeDir);
+    console.log(`Found ${projectDirs.length} project directories`);
+    
+    // Filter out system files and process projects in parallel
+    const projectPromises = projectDirs
+      .filter(dir => !dir.startsWith('.'))
+      .map(async (projectDir) => {
+        try {
+          const projectPath = join(claudeDir, projectDir);
+          const stats = await stat(projectPath);
+          
+          if (!stats.isDirectory()) return null;
+          
+          // Load sessions for this project
+          const sessionFiles = await readdir(projectPath);
+          const sessionPromises = sessionFiles
+            .filter(file => file.endsWith('.jsonl'))
+            .map(async (sessionFile) => {
+              try {
+                const sessionPath = join(projectPath, sessionFile);
+                const sessionStats = await stat(sessionPath);
+                const sessionId = sessionFile.replace('.jsonl', '');
+                
+                // Read first few lines to get summary and message count
+                let summary = 'untitled session';
+                let messageCount = 0;
+                let firstUserMessage = '';
+                
+                try {
+                  const content = await readFile(sessionPath, 'utf8');
+                  const lines = content.split('\n').filter(line => line.trim());
+                  messageCount = lines.length;
+                  
+                  // Try to find summary from first few lines
+                  for (let i = 0; i < Math.min(5, lines.length); i++) {
+                    try {
+                      const data = JSON.parse(lines[i]);
+                      if (data.summary) {
+                        summary = data.summary;
+                        break;
+                      }
+                      // Fallback to first user message if no summary
+                      if (data.role === 'user' && data.content && !firstUserMessage) {
+                        firstUserMessage = data.content.slice(0, 100);
+                      }
+                    } catch {}
+                  }
+                  
+                  // Use first user message as summary if no official summary found
+                  if (summary === 'untitled session' && firstUserMessage) {
+                    summary = firstUserMessage + (firstUserMessage.length >= 100 ? '...' : '');
+                  }
+                } catch (err) {
+                  console.error('Error reading session file:', sessionPath, err);
+                }
+                
+                return {
+                  id: sessionId,
+                  summary,
+                  timestamp: sessionStats.mtime.getTime(),
+                  createdAt: sessionStats.birthtime?.getTime() || sessionStats.ctime?.getTime() || sessionStats.mtime.getTime(),
+                  path: sessionPath,
+                  messageCount
+                };
+              } catch (err) {
+                console.error('Error processing session:', sessionFile, err);
+                return null;
+              }
+            });
+          
+          const sessions = (await Promise.all(sessionPromises)).filter(Boolean);
+          
+          if (sessions.length === 0) return null;
+          
+          // Sort sessions by timestamp (newest first)
+          sessions.sort((a, b) => b.timestamp - a.timestamp);
+          
+          // Get project creation time (oldest session creation time)
+          const projectCreatedAt = Math.min(...sessions.map(s => s.createdAt || s.timestamp));
+          
+          return {
+            path: projectDir,
+            name: projectDir,
+            sessions,
+            lastModified: sessions[0]?.timestamp || stats.mtime.getTime(),
+            createdAt: projectCreatedAt,
+            sessionCount: sessions.length,
+            totalMessages: sessions.reduce((sum, s) => sum + (s.messageCount || 0), 0)
+          };
+        } catch (err) {
+          console.error('Error processing project:', projectDir, err);
+          return null;
+        }
+      });
+    
+    const projects = (await Promise.all(projectPromises)).filter(Boolean);
+    
+    // Sort projects by last modified date (most recently opened first)
+    projects.sort((a, b) => b.lastModified - a.lastModified);
+    
+    console.log(`Returning ${projects.length} projects`);
+    res.json({ projects });
+  } catch (error) {
+    console.error('Error loading projects:', error);
+    res.status(500).json({ error: 'Failed to load projects', details: error.message });
+  }
+});
+
 // PID file management - use temp directory for production
 // Each server instance gets a unique PID file based on its port
 const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 

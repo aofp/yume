@@ -121,7 +121,7 @@
   background-color: rgba(255, 255, 255, 0.15);
 }
 
-.window-control.settings, .window-control.help {
+.window-control.settings, .window-control.help, .window-control.projects, .window-control.refresh {
   width: 24px;
   height: 21px;
   background: transparent;
@@ -137,7 +137,7 @@
   justify-content: center;
 }
 
-.window-control.settings:hover, .window-control.help:hover {
+.window-control.settings:hover, .window-control.help:hover, .window-control.projects:hover, .window-control.refresh:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
