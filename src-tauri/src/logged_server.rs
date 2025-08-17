@@ -363,7 +363,7 @@ async function handleProjectsRequest(req, res) {
                                 
                                 try {
                                     const content = await fs.readFile(sessionPath, 'utf8');
-                                    const lines = content.split('\\n').filter(line => line.trim());
+                                    const lines = content.split(/\\r?\\n/).filter(line => line.trim());
                                     messageCount = lines.length;
                                     
                                     // Try to find summary from first few lines
@@ -457,7 +457,11 @@ async function handleSessionRequest(req, res) {
         
         const sessionPath = path.join(os.homedir(), '.claude', 'projects', projectPath, sessionId + '.jsonl');
         
-        log('Loading session: ' + sessionPath);
+        log('Loading session request:');
+        log('  - Raw projectPath: ' + projectPath);
+        log('  - SessionId: ' + sessionId);
+        log('  - Full path: ' + sessionPath);
+        log('  - Platform: ' + process.platform);
         
         if (!require('fs').existsSync(sessionPath)) {
             log('Session not found: ' + sessionPath);
@@ -468,24 +472,150 @@ async function handleSessionRequest(req, res) {
         
         try {
             const content = await fs.readFile(sessionPath, 'utf8');
-            const lines = content.split('\\n').filter(line => line.trim());
+            log('Raw file content preview (first 200 chars): ' + content.substring(0, 200).replace(/\\n/g, '\\\\n').replace(/\\r/g, '\\\\r'));
+            log('Total file size: ' + content.length + ' characters');
+            
+            // Check if file ends with newline or $
+            const lastChar = content[content.length - 1];
+            log('File ends with: ' + (lastChar === '\\n' ? 'newline' : lastChar === '$' ? 'dollar' : 'char: ' + lastChar));
+            
             const messages = [];
             
-            for (const line of lines) {
+            // Claude session files are JSONL with $ as line terminator
+            // BUT $ can also appear within JSON strings, so we need to be careful
+            // Each line starts with { and ends with }$ (or }\n for the last line)
+            
+            let currentPos = 0;
+            let validMessages = 0;
+            let errorCount = 0;
+            let lineNumber = 0;
+            
+            while (currentPos < content.length) {
+                lineNumber++;
+                
+                // Skip whitespace
+                while (currentPos < content.length && /\\s/.test(content[currentPos])) {
+                    currentPos++;
+                }
+                
+                if (currentPos >= content.length) break;
+                
+                // Find the start of a JSON object
+                if (content[currentPos] !== '{') {
+                    log('Warning: Expected { at position ' + currentPos + ' but found: ' + content[currentPos]);
+                    // Skip to next line
+                    const nextLine = content.indexOf('\\n', currentPos);
+                    if (nextLine === -1) break;
+                    currentPos = nextLine + 1;
+                    continue;
+                }
+                
+                // Find the end of this JSON object by looking for }$ or }\\n
+                let braceCount = 0;
+                let inString = false;
+                let escapeNext = false;
+                let jsonEnd = -1;
+                
+                for (let i = currentPos; i < content.length; i++) {
+                    const char = content[i];
+                    
+                    if (escapeNext) {
+                        escapeNext = false;
+                        continue;
+                    }
+                    
+                    if (char === '\\\\') {
+                        escapeNext = true;
+                        continue;
+                    }
+                    
+                    if (char === '"' && !escapeNext) {
+                        inString = !inString;
+                        continue;
+                    }
+                    
+                    if (!inString) {
+                        if (char === '{') {
+                            braceCount++;
+                        } else if (char === '}') {
+                            braceCount--;
+                            if (braceCount === 0) {
+                                // Check if next char is $ or newline
+                                if (i + 1 < content.length) {
+                                    const nextChar = content[i + 1];
+                                    if (nextChar === '$' || nextChar === '\\n' || nextChar === '\\r') {
+                                        jsonEnd = i + 1;
+                                        break;
+                                    }
+                                } else {
+                                    // End of file
+                                    jsonEnd = i + 1;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                }
+                
+                if (jsonEnd === -1) {
+                    log('Warning: Could not find end of JSON object starting at position ' + currentPos);
+                    break;
+                }
+                
+                // Extract and parse the JSON
+                const jsonStr = content.substring(currentPos, jsonEnd);
+                
                 try {
-                    const data = JSON.parse(line);
+                    const data = JSON.parse(jsonStr);
+                    
+                    // Add all valid session data
                     messages.push(data);
+                    validMessages++;
+                    
+                    if (validMessages <= 5) {
+                        // Log first few for debugging
+                        if (data.type === 'summary') {
+                            log('Line ' + lineNumber + ': Added summary: ' + (data.summary || '').substring(0, 50));
+                        } else if (data.type === 'user') {
+                            log('Line ' + lineNumber + ': Added user message');
+                        } else if (data.type === 'assistant') {
+                            log('Line ' + lineNumber + ': Added assistant message');
+                        } else if (data.sessionId) {
+                            log('Line ' + lineNumber + ': Added session metadata');
+                        }
+                    }
                 } catch (err) {
-                    log('Error parsing line: ' + err.message);
+                    errorCount++;
+                    if (errorCount <= 5) {
+                        log('Failed to parse JSON at line ' + lineNumber + ', position ' + currentPos + ': ' + err.message);
+                        log('JSON preview: ' + jsonStr.substring(0, 100));
+                    }
+                }
+                
+                // Move past the $ or newline
+                currentPos = jsonEnd;
+                if (currentPos < content.length && content[currentPos] === '$') {
+                    currentPos++;
+                }
+                if (currentPos < content.length && content[currentPos] === '\\n') {
+                    currentPos++;
+                }
+                if (currentPos < content.length && content[currentPos] === '\\r') {
+                    currentPos++;
                 }
             }
             
+            log('Processed ' + lineNumber + ' lines, successfully parsed ' + validMessages + ' JSON objects from session file');
+            
             // Extract project path to actual directory
+            // Handle Windows drive letter properly (C--Users becomes C:/Users)
             const actualPath = projectPath
-                .replace(/^-/, '/')
+                .replace(/^([A-Z])--/, '$1:/')  // C-- becomes C:/
+                .replace(/^-/, '/')  // Handle Unix absolute paths
                 .replace(/-/g, '/');
             
             log('Loaded session with ' + messages.length + ' messages');
+            log('Converted project path: ' + projectPath + ' -> ' + actualPath);
             
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify({ 
@@ -1352,6 +1482,37 @@ const PORT = process.env.PORT || (() => {
 })();
 server.listen(PORT, '0.0.0.0', () => {
     log('✅ SOCKET.IO SERVER RUNNING ON PORT ' + PORT);
+    log('📂 Working directory: ' + process.cwd());
+    log('🖥️ Platform: ' + process.platform);
+    log('🏠 Home directory: ' + require('os').homedir());
+    log('📁 Claude projects: ' + require('path').join(require('os').homedir(), '.claude', 'projects'));
+    
+    // Check if Claude projects directory exists
+    const projectsDir = require('path').join(require('os').homedir(), '.claude', 'projects');
+    if (require('fs').existsSync(projectsDir)) {
+        log('✅ Claude projects directory exists');
+        try {
+            const projects = require('fs').readdirSync(projectsDir);
+            log('📊 Found ' + projects.length + ' project directory(s)');
+            if (projects.length > 0 && process.platform === 'win32') {
+                log('🔍 Sample project paths (first 3):');
+                projects.slice(0, 3).forEach(p => {
+                    log('  - ' + p);
+                    // Check if it looks like a Windows path that needs conversion
+                    if (p.match(/^[A-Z]--/)) {
+                        const converted = p.replace(/^([A-Z])--/, '$1:/').replace(/-/g, '/');
+                        log('    → Would convert to: ' + converted);
+                    }
+                });
+            }
+        } catch (e) {
+            log('⚠️ Could not list projects: ' + e.message);
+        }
+    } else {
+        log('⚠️ Claude projects directory not found at: ' + projectsDir);
+    }
+    
+    log('✅ Server configured for ' + (process.platform === 'win32' ? 'Windows' : process.platform));
 });
 "#;
 

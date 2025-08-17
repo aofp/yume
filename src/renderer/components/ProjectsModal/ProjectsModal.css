@@ -256,7 +256,9 @@
   color: rgba(255, 255, 255, 0.5);
   font-size: 12px;
   cursor: default;
-  padding: 0 8px;
+  margin: 0;
+  margin-right: 8px;
+  padding: 0;
   transition: color 0.2s;
   font-family: inherit;
   display: flex;

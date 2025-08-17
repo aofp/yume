@@ -928,6 +928,15 @@ export const SessionTabs: React.FC = () => {
           }}>close others</button>
           
           <button onClick={async () => {
+            const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
+            if (targetSession?.streaming) {
+              await interruptSession();
+            }
+            deleteSession(contextMenu.sessionId);
+            setContextMenu(null);
+          }}>close</button>
+          
+          <button onClick={async () => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
             for (let idx = 0; idx < sessions.length; idx++) {
               if (idx > sessionIndex) {
