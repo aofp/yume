@@ -44,6 +44,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     sessionId?: string;
   } | null>(null);
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
+  const [loadingSessions, setLoadingSessions] = useState(false);
+  const [sessionsByProject, setSessionsByProject] = useState<{ [key: string]: ClaudeSession[] }>({});
 
   // load projects function  
   const loadProjects = useCallback(async (forceRefresh = false) => {
@@ -53,6 +55,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     
     setLoading(true);
     setError(null);
+    // Clear sessions cache on refresh
+    if (forceRefresh) {
+      setSessionsByProject({});
+    }
     try {
       const serverPort = claudeCodeClient.getServerPort();
       if (!serverPort) {
@@ -72,6 +78,53 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
       setLoading(false);
     }
   }, [loading, hasLoaded, lastLoadTime]);
+
+  // load sessions for a specific project
+  const loadProjectSessions = useCallback(async (projectPath: string) => {
+    console.log('🔍 [FRONTEND] Loading sessions for project:', projectPath);
+    
+    // Check if already loaded
+    if (sessionsByProject[projectPath]) {
+      console.log('✅ [FRONTEND] Sessions already loaded for:', projectPath);
+      return;
+    }
+    
+    setLoadingSessions(true);
+    try {
+      const serverPort = claudeCodeClient.getServerPort();
+      console.log('🔌 [FRONTEND] Server port:', serverPort);
+      
+      if (!serverPort) {
+        throw new Error('server port not available');
+      }
+      
+      const url = `http://localhost:${serverPort}/claude-project-sessions/${encodeURIComponent(projectPath)}`;
+      console.log('📡 [FRONTEND] Fetching sessions from:', url);
+      
+      const response = await fetch(url);
+      if (!response.ok) {
+        console.error('❌ [FRONTEND] Failed response:', response.status, response.statusText);
+        throw new Error('failed to load sessions');
+      }
+      
+      const data = await response.json();
+      console.log('📊 [FRONTEND] Received data:', data);
+      console.log(`✅ [FRONTEND] Got ${data.sessions?.length || 0} sessions for project`);
+      
+      setSessionsByProject(prev => ({
+        ...prev,
+        [projectPath]: data.sessions || []
+      }));
+    } catch (err) {
+      console.error('❌ [FRONTEND] Error loading project sessions:', err);
+      setSessionsByProject(prev => ({
+        ...prev,
+        [projectPath]: []
+      }));
+    } finally {
+      setLoadingSessions(false);
+    }
+  }, [sessionsByProject]);
 
   // load projects from server only when opened and not already loaded
   useEffect(() => {
@@ -102,16 +155,35 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     return filteredProjects.find(p => p.path === selectedProject);
   }, [filteredProjects, selectedProject]);
 
+  // Load sessions when project is selected
+  useEffect(() => {
+    console.log('🎯 [FRONTEND] useEffect triggered - selectedProject:', selectedProject);
+    console.log('🎯 [FRONTEND] Sessions already loaded?', !!sessionsByProject[selectedProject]);
+    
+    if (selectedProject && !sessionsByProject[selectedProject]) {
+      console.log('🚀 [FRONTEND] Loading sessions for selected project:', selectedProject);
+      loadProjectSessions(selectedProject);
+    }
+  }, [selectedProject, sessionsByProject, loadProjectSessions]);
+
   // filter sessions based on search
   const filteredSessions = useMemo(() => {
+    console.log('📋 [FRONTEND] Computing filtered sessions');
+    console.log('  - selectedProject:', selectedProject);
+    console.log('  - selectedProjectData:', selectedProjectData);
+    console.log('  - sessionsByProject[selectedProject]:', sessionsByProject[selectedProject]);
+    
     if (!selectedProjectData) return [];
-    if (!sessionSearchQuery) return selectedProjectData.sessions;
+    const sessions = sessionsByProject[selectedProject] || selectedProjectData.sessions || [];
+    console.log('  - Final sessions array:', sessions);
+    
+    if (!sessionSearchQuery) return sessions;
     const query = sessionSearchQuery.toLowerCase();
-    return selectedProjectData.sessions.filter(s => 
+    return sessions.filter(s => 
       s.summary?.toLowerCase().includes(query) ||
       s.id?.toLowerCase().includes(query)
     );
-  }, [selectedProjectData, sessionSearchQuery]);
+  }, [selectedProjectData, selectedProject, sessionsByProject, sessionSearchQuery]);
 
   const handleSelectSession = useCallback((projectPath: string, sessionId: string) => {
     onSelectSession(projectPath, sessionId);
@@ -368,13 +440,49 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     const date = new Date(timestamp);
     const now = new Date();
     const diff = now.getTime() - date.getTime();
-    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    const seconds = Math.floor(diff / 1000);
+    const minutes = Math.floor(seconds / 60);
+    const hours = Math.floor(minutes / 60);
+    const days = Math.floor(hours / 24);
     
-    if (days === 0) return 'today';
-    if (days === 1) return 'yesterday';
-    if (days < 7) return `${days} days ago`;
-    if (days < 30) return `${Math.floor(days / 7)} weeks ago`;
-    return date.toLocaleDateString();
+    if (days === 0) {
+      if (hours === 0) {
+        if (minutes === 0) {
+          return 'just now';
+        } else if (minutes === 1) {
+          return '1 minute ago';
+        } else {
+          return `${minutes} minutes ago`;
+        }
+      } else if (hours === 1) {
+        return '1 hour ago';
+      } else {
+        return `${hours} hours ago`;
+      }
+    } else if (days === 1) {
+      return 'yesterday';
+    } else if (days < 7) {
+      return `${days} days ago`;
+    } else if (days < 14) {
+      return '1 week ago';
+    } else if (days < 30) {
+      const weeks = Math.floor(days / 7);
+      return `${weeks} weeks ago`;
+    } else if (days < 365) {
+      const months = Math.floor(days / 30);
+      if (months === 1) {
+        return '1 month ago';
+      } else {
+        return `${months} months ago`;
+      }
+    } else {
+      const years = Math.floor(days / 365);
+      if (years === 1) {
+        return '1 year ago';
+      } else {
+        return `${years} years ago`;
+      }
+    }
   };
 
   const formatProjectName = (path: string) => {
@@ -417,7 +525,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 <IconFolderOpen size={16} />
                 <span>{formatProjectName(selectedProjectData.name)}</span>
                 <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '12px', marginLeft: '8px' }}>
-                  {selectedProjectData.sessions.length} sessions
+                  {selectedProjectData.sessionCount || (sessionsByProject[selectedProject]?.length || 0)} sessions
                 </span>
               </>
             ) : (
@@ -481,6 +589,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                   key={project.path}
                   className={`project-item ${focusedIndex === index ? 'focused' : ''}`}
                   onClick={() => {
+                    console.log('👆 [FRONTEND] Project clicked:', project.path);
                     setSelectedProject(project.path);
                     setFocusedIndex(0);
                   }}
@@ -513,9 +622,18 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
 
           {!loading && !error && selectedProject && selectedProjectData && (
             <div className="sessions-view">
+              {loadingSessions ? (
+                <div className="projects-loading">
+                  <div className="loading-spinner"></div>
+                  <span>loading sessions...</span>
+                </div>
+              ) : (
               <div className="sessions-list">
                 {filteredSessions.length === 0 && sessionSearchQuery && (
                   <div className="sessions-empty">no sessions match your search</div>
+                )}
+                {filteredSessions.length === 0 && !sessionSearchQuery && !loadingSessions && (
+                  <div className="sessions-empty">no sessions found</div>
                 )}
                 {filteredSessions.map((session, index) => (
                   <div
@@ -545,6 +663,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                   </div>
                 ))}
               </div>
+              )}
             </div>
           )}
         </div>

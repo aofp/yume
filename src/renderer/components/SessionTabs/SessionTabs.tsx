@@ -909,6 +909,15 @@ export const SessionTabs: React.FC = () => {
           
           <button onClick={async () => {
             const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
+            if (targetSession?.streaming) {
+              await interruptSession();
+            }
+            deleteSession(contextMenu.sessionId);
+            setContextMenu(null);
+          }}>close</button>
+          
+          <button onClick={async () => {
+            const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
             if (targetSession) {
               // First switch to the target session
               resumeSession(targetSession.id);
@@ -926,15 +935,6 @@ export const SessionTabs: React.FC = () => {
             }
             setContextMenu(null);
           }}>close others</button>
-          
-          <button onClick={async () => {
-            const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
-            if (targetSession?.streaming) {
-              await interruptSession();
-            }
-            deleteSession(contextMenu.sessionId);
-            setContextMenu(null);
-          }}>close</button>
           
           <button onClick={async () => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);

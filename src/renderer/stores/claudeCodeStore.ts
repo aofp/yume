@@ -81,6 +81,7 @@ interface ClaudeCodeStore {
   sessions: Session[];
   currentSessionId: string | null;
   persistedSessionId: string | null; // Track the sessionId for persistence
+  sessionMappings: Record<string, any>; // Map yurucode sessionIds to Claude sessionIds
   
   // Model
   selectedModel: string;
@@ -116,6 +117,9 @@ interface ClaudeCodeStore {
   loadSessionHistory: (sessionId: string) => Promise<void>;
   listAvailableSessions: () => Promise<void>;
   loadPersistedSession: (sessionId: string) => Promise<void>;
+  updateSessionMapping: (sessionId: string, claudeSessionId: string, metadata?: any) => void;
+  loadSessionMappings: () => void;
+  saveSessionMappings: () => void;
   
   // Model management
   toggleModel: () => void;
@@ -208,6 +212,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   sessions: [],
   currentSessionId: null,
   persistedSessionId: null,
+  sessionMappings: {},
   selectedModel: 'claude-opus-4-1-20250805',
   globalWatermarkImage: null,
   streamingMessage: '',
@@ -449,6 +454,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               if (message.session_id && !s.claudeSessionId) {
                 console.log(`[Store] Updating claudeSessionId for session ${sessionId}: ${message.session_id}`);
                 s = { ...s, claudeSessionId: message.session_id };
+                
+                // Also update the session mapping
+                get().updateSessionMapping(sessionId, message.session_id, {
+                  name: s.claudeTitle || s.name,
+                  projectPath: s.workingDirectory
+                });
               }
               
               const existingMessages = [...s.messages];
@@ -1572,6 +1583,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           : s
       )
     }));
+    
+    // Update the session mapping with new name
+    const state = get();
+    const session = state.sessions.find(s => s.id === sessionId);
+    if (session && session.claudeSessionId) {
+      state.updateSessionMapping(sessionId, session.claudeSessionId, {
+        name: newTitle.trim().toLowerCase(),
+        projectPath: session.workingDirectory
+      });
+    }
+    
     console.log('[Store] Session renamed:', sessionId, newTitle);
   },
   
@@ -1820,6 +1842,51 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   
   setGlobalWatermark: (image: string | null) => {
     set({ globalWatermarkImage: image });
+  },
+
+  updateSessionMapping: (sessionId: string, claudeSessionId: string, metadata?: any) => {
+    const state = get();
+    const mappings = { ...state.sessionMappings };
+    
+    mappings[sessionId] = {
+      claudeSessionId,
+      ...metadata,
+      updatedAt: Date.now()
+    };
+    
+    set({ sessionMappings: mappings });
+    
+    // Save to localStorage
+    localStorage.setItem('yurucode-session-mappings', JSON.stringify(mappings));
+    
+    // Update server with the mapping
+    claudeCodeClient.updateSessionMetadata(sessionId, { 
+      claudeSessionId,
+      ...metadata 
+    }).catch(err => {
+      console.error('Failed to update session metadata on server:', err);
+    });
+    
+    console.log('[Store] Updated session mapping:', sessionId, '->', claudeSessionId);
+  },
+
+  loadSessionMappings: () => {
+    try {
+      const stored = localStorage.getItem('yurucode-session-mappings');
+      if (stored) {
+        const mappings = JSON.parse(stored);
+        set({ sessionMappings: mappings });
+        console.log('[Store] Loaded session mappings:', Object.keys(mappings).length);
+      }
+    } catch (err) {
+      console.error('Failed to load session mappings:', err);
+    }
+  },
+
+  saveSessionMappings: () => {
+    const state = get();
+    localStorage.setItem('yurucode-session-mappings', JSON.stringify(state.sessionMappings));
+    console.log('[Store] Saved session mappings:', Object.keys(state.sessionMappings).length);
   }
 }),
     {

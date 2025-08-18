@@ -69,69 +69,39 @@ let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 // Try to find Claude CLI in common locations
 const isWindows = platform() === 'win32';
 
-// Helper function to create WSL command for claude with comprehensive path checking
-function createWslClaudeCommand(args, workingDir) {
-  // Escape args for bash
+// Helper function to create WSL command for claude
+function createWslClaudeCommand(args, workingDir, message) {
+  // Only quote arguments that actually need it - don't quote simple flags
   const escapedArgs = args.map(arg => {
-    // Use strong quoting for args with special characters
-    if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('$') || arg.includes('\\') || arg.includes('\n')) {
+    // Only quote if the arg contains special characters
+    if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('$') || arg.includes('\\') || arg.includes('\n') || arg.includes('(') || arg.includes(')') || arg.includes('|') || arg.includes('&') || arg.includes(';')) {
       return "'" + arg.replace(/'/g, "'\\''") + "'";
     }
+    // Don't quote simple arguments like --print, --output-format, etc.
     return arg;
   }).join(' ');
   
-  // Build a simpler, more robust detection script
-  const findClaudeScript = `
-    claude_paths=(
-      "/usr/local/bin/claude"
-      "/usr/bin/claude"
-      "$HOME/.local/bin/claude"
-      "$HOME/.npm-global/bin/claude"
-      "$HOME/node_modules/.bin/claude"
-      "$HOME/.claude/local/claude"
-      "/opt/claude/bin/claude"
-    )
-    
-    # Check each user's .npm-global
-    for user_home in /home/*; do
-      if [ -d "$user_home" ]; then
-        claude_paths+=("$user_home/.npm-global/bin/claude")
-        claude_paths+=("$user_home/node_modules/.bin/claude")
-        claude_paths+=("$user_home/.local/bin/claude")
-      fi
-    done
-    
-    # Check nvm installations
-    if [ -d "$HOME/.nvm" ]; then
-      for nvm_path in $HOME/.nvm/versions/node/*/bin/claude; do
-        [ -x "$nvm_path" ] && claude_paths+=("$nvm_path")
-      done
-    fi
-    
-    # Try to find claude in PATH first
-    if command -v claude &>/dev/null; then
-      claude_cmd="claude"
-    else
-      # Check all known paths
-      claude_cmd=""
-      for path in "\${claude_paths[@]}"; do
-        if [ -x "$path" ]; then
-          claude_cmd="$path"
-          break
-        fi
-      done
-    fi
-    
-    if [ -z "$claude_cmd" ]; then
-      echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2
-      exit 127
-    fi
-    
-    ${workingDir ? `cd '${workingDir.replace(/'/g, "'\\''")}'` : ':'}
-    exec "$claude_cmd" ${escapedArgs}
-  `.trim();
+  const wslPath = 'C:\\Windows\\System32\\wsl.exe';
   
-  return ['wsl.exe', ['-e', 'bash', '-c', findClaudeScript]];
+  // If we have a message, pipe it directly to claude
+  if (message) {
+    const escapedMessage = message.replace(/'/g, "'\\''");
+    // Simpler script - always capture stderr to see errors
+    const script = workingDir 
+      ? `cd '${workingDir.replace(/'/g, "'\\''")}'` + ` 2>/dev/null; echo '${escapedMessage}' | /home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`
+      : `echo '${escapedMessage}' | /home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`;
+    
+    console.log(`🔍 WSL script to execute: ${script}`);
+    return [wslPath, ['-e', 'bash', '-c', script], true]; // true = input already handled
+  }
+  
+  // No message - claude will wait for stdin
+  const script = workingDir
+    ? `cd '${workingDir.replace(/'/g, "'\\''")}'` + ` 2>/dev/null; /home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`
+    : `/home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`;
+  
+  console.log(`🔍 WSL script to execute: ${script}`);
+  return [wslPath, ['-e', 'bash', '-c', script], false]; // false = need to send stdin
 }
 
 if (isWindows) {
@@ -289,7 +259,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
       (() => {
-        const [wslCommand, wslArgs] = createWslClaudeCommand(titleArgs, null);
+        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(titleArgs, null, null);
         return spawn(wslCommand, wslArgs, {
           cwd: process.cwd(),
           env: enhancedEnv,
@@ -387,6 +357,362 @@ app.get('/health', (req, res) => {
     service: 'yurucode-claude',
     claudeCodeLoaded: true
   });
+});
+
+// Delete a project and all its sessions
+app.delete('/claude-project/:projectPath', async (req, res) => {
+  try {
+    const { projectPath } = req.params;
+    const projectDir = join(homedir(), '.claude', 'projects', projectPath);
+    
+    console.log('Deleting project:', projectDir);
+    
+    if (!existsSync(projectDir)) {
+      return res.status(404).json({ error: 'project not found' });
+    }
+    
+    // Delete the entire project directory
+    const { rm } = await import('fs/promises');
+    await rm(projectDir, { recursive: true, force: true });
+    
+    console.log('Project deleted successfully');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting project:', error);
+    res.status(500).json({ error: 'Failed to delete project', details: error.message });
+  }
+});
+
+// Delete a specific session
+app.delete('/claude-session/:projectPath/:sessionId', async (req, res) => {
+  try {
+    const { projectPath, sessionId } = req.params;
+    const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
+    
+    console.log('Deleting session:', sessionPath);
+    
+    if (!existsSync(sessionPath)) {
+      return res.status(404).json({ error: 'session not found' });
+    }
+    
+    // Delete the session file
+    const { unlink } = await import('fs/promises');
+    await unlink(sessionPath);
+    
+    console.log('Session deleted successfully');
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Error deleting session:', error);
+    res.status(500).json({ error: 'Failed to delete session', details: error.message });
+  }
+});
+
+// Load a specific claude session with better error handling
+app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
+  try {
+    const { projectPath, sessionId } = req.params;
+    const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
+    
+    console.log('Loading session request:');
+    console.log('  - Raw projectPath:', projectPath);
+    console.log('  - SessionId:', sessionId);
+    console.log('  - Full path:', sessionPath);
+    console.log('  - Platform:', platform());
+    
+    if (!existsSync(sessionPath)) {
+      console.error('Session not found:', sessionPath);
+      return res.status(404).json({ error: 'session not found' });
+    }
+    
+    // Read the session file using promises for better error handling
+    const { readFile } = await import('fs/promises');
+    
+    try {
+      const content = await readFile(sessionPath, 'utf8');
+      console.log('Raw file content preview (first 200 chars):', content.substring(0, 200).replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
+      console.log('Total file size:', content.length, 'characters');
+      
+      // Check if file ends with newline or $
+      const lastChar = content[content.length - 1];
+      console.log('File ends with:', lastChar === '\n' ? 'newline' : lastChar === '$' ? 'dollar' : 'char: ' + lastChar);
+      
+      const messages = [];
+      
+      // Claude session files are JSONL with $ as line terminator
+      // BUT $ can also appear within JSON strings, so we need to be careful
+      // Each line starts with { and ends with }$ (or }\n for the last line)
+      
+      let currentPos = 0;
+      let validMessages = 0;
+      let errorCount = 0;
+      let lineNumber = 0;
+      
+      while (currentPos < content.length) {
+        lineNumber++;
+        
+        // Skip whitespace
+        while (currentPos < content.length && /\s/.test(content[currentPos])) {
+          currentPos++;
+        }
+        
+        if (currentPos >= content.length) break;
+        
+        // Find the start of a JSON object
+        if (content[currentPos] !== '{') {
+          console.log('Warning: Expected { at position', currentPos, 'but found:', content[currentPos]);
+          // Skip to next line
+          const nextLine = content.indexOf('\n', currentPos);
+          if (nextLine === -1) break;
+          currentPos = nextLine + 1;
+          continue;
+        }
+        
+        // Find the end of this JSON object by looking for }$ or }\n
+        let braceCount = 0;
+        let inString = false;
+        let escapeNext = false;
+        let jsonEnd = -1;
+        
+        for (let i = currentPos; i < content.length; i++) {
+          const char = content[i];
+          
+          if (escapeNext) {
+            escapeNext = false;
+            continue;
+          }
+          
+          if (char === '\\') {
+            escapeNext = true;
+            continue;
+          }
+          
+          if (char === '"' && !escapeNext) {
+            inString = !inString;
+            continue;
+          }
+          
+          if (!inString) {
+            if (char === '{') {
+              braceCount++;
+            } else if (char === '}') {
+              braceCount--;
+              if (braceCount === 0) {
+                // Check if next char is $ or newline
+                if (i + 1 < content.length) {
+                  const nextChar = content[i + 1];
+                  if (nextChar === '$' || nextChar === '\n' || nextChar === '\r') {
+                    jsonEnd = i + 1;
+                    break;
+                  }
+                } else {
+                  // End of file
+                  jsonEnd = i + 1;
+                  break;
+                }
+              }
+            }
+          }
+        }
+        
+        if (jsonEnd === -1) {
+          console.log('Warning: Could not find end of JSON object starting at position', currentPos);
+          break;
+        }
+        
+        // Extract and parse the JSON
+        const jsonStr = content.substring(currentPos, jsonEnd);
+        
+        try {
+          const data = JSON.parse(jsonStr);
+          
+          // Add all valid session data
+          messages.push(data);
+          validMessages++;
+          
+          if (validMessages <= 5) {
+            // Log first few for debugging
+            if (data.type === 'summary') {
+              console.log(`Line ${lineNumber}: Added summary:`, (data.summary || '').substring(0, 50));
+            } else if (data.type === 'user') {
+              console.log(`Line ${lineNumber}: Added user message`);
+            } else if (data.type === 'assistant') {
+              console.log(`Line ${lineNumber}: Added assistant message`);
+            } else if (data.sessionId) {
+              console.log(`Line ${lineNumber}: Added session metadata`);
+            }
+          }
+        } catch (err) {
+          errorCount++;
+          if (errorCount <= 5) {
+            console.log(`Failed to parse JSON at line ${lineNumber}, position ${currentPos}:`, err.message);
+            console.log('JSON preview:', jsonStr.substring(0, 100));
+          }
+        }
+        
+        // Move past the $ or newline
+        currentPos = jsonEnd;
+        if (currentPos < content.length && content[currentPos] === '$') {
+          currentPos++;
+        }
+        if (currentPos < content.length && content[currentPos] === '\n') {
+          currentPos++;
+        }
+        if (currentPos < content.length && content[currentPos] === '\r') {
+          currentPos++;
+        }
+      }
+      
+      console.log(`Processed ${lineNumber} lines, successfully parsed ${validMessages} JSON objects from session file`);
+      
+      // Extract project path to actual directory
+      // Handle Windows drive letter properly (C--Users becomes C:/Users)
+      const actualPath = projectPath
+        .replace(/^([A-Z])--/, '$1:/')  // C-- becomes C:/
+        .replace(/^-/, '/')
+        .replace(/-/g, '/');
+      
+      console.log(`Loaded session with ${messages.length} messages`);
+      console.log(`Converted project path: ${projectPath} -> ${actualPath}`);
+      
+      res.json({ 
+        sessionId,
+        projectPath: actualPath,
+        messages,
+        sessionCount: messages.length
+      });
+    } catch (readError) {
+      console.error('Error reading session file:', readError);
+      res.status(500).json({ error: 'Failed to read session', details: readError.message });
+    }
+  } catch (error) {
+    console.error('Error loading session:', error);
+    res.status(500).json({ error: 'Failed to load session', details: error.message });
+  }
+});
+
+// Projects endpoint - loads claude projects asynchronously with enhanced error handling
+app.get('/claude-projects', async (req, res) => {
+  try {
+    const claudeDir = join(homedir(), '.claude', 'projects');
+    
+    console.log('Loading projects from:', claudeDir);
+    console.log('Platform:', platform());
+    
+    // Check if projects directory exists
+    if (!existsSync(claudeDir)) {
+      console.log('Claude projects directory not found:', claudeDir);
+      return res.json({ projects: [] });
+    }
+    
+    // Load projects asynchronously using promises
+    const { readdir, stat, readFile } = await import('fs/promises');
+    
+    const projectDirs = await readdir(claudeDir);
+    console.log(`Found ${projectDirs.length} project directories`);
+    
+    // Filter out system files and process projects in parallel
+    const projectPromises = projectDirs
+      .filter(dir => !dir.startsWith('.'))
+      .map(async (projectDir) => {
+        try {
+          const projectPath = join(claudeDir, projectDir);
+          const stats = await stat(projectPath);
+          
+          if (!stats.isDirectory()) return null;
+          
+          // Load sessions for this project
+          const sessionFiles = await readdir(projectPath);
+          const sessionPromises = sessionFiles
+            .filter(file => file.endsWith('.jsonl'))
+            .map(async (sessionFile) => {
+              try {
+                const sessionPath = join(projectPath, sessionFile);
+                const sessionStats = await stat(sessionPath);
+                const sessionId = sessionFile.replace('.jsonl', '');
+                
+                // Read first few lines to get summary and message count
+                let summary = 'untitled session';
+                let messageCount = 0;
+                let firstUserMessage = '';
+                
+                try {
+                  const content = await readFile(sessionPath, 'utf8');
+                  const lines = content.split(/\r?\n/).filter(line => line.trim());
+                  messageCount = lines.length;
+                  
+                  // Try to find summary from first few lines
+                  for (let i = 0; i < Math.min(5, lines.length); i++) {
+                    try {
+                      const data = JSON.parse(lines[i]);
+                      if (data.summary) {
+                        summary = data.summary;
+                        break;
+                      }
+                      // Fallback to first user message if no summary
+                      if (data.role === 'user' && data.content && !firstUserMessage) {
+                        firstUserMessage = data.content.slice(0, 100);
+                      }
+                    } catch {}
+                  }
+                  
+                  // Use first user message as summary if no official summary found
+                  if (summary === 'untitled session' && firstUserMessage) {
+                    summary = firstUserMessage + (firstUserMessage.length >= 100 ? '...' : '');
+                  }
+                } catch (err) {
+                  console.error('Error reading session file:', sessionPath, err);
+                }
+                
+                return {
+                  id: sessionId,
+                  summary,
+                  timestamp: sessionStats.mtime.getTime(),
+                  createdAt: sessionStats.birthtime?.getTime() || sessionStats.ctime?.getTime() || sessionStats.mtime.getTime(),
+                  path: sessionPath,
+                  messageCount
+                };
+              } catch (err) {
+                console.error('Error processing session:', sessionFile, err);
+                return null;
+              }
+            });
+          
+          const sessions = (await Promise.all(sessionPromises)).filter(Boolean);
+          
+          if (sessions.length === 0) return null;
+          
+          // Sort sessions by timestamp (newest first)
+          sessions.sort((a, b) => b.timestamp - a.timestamp);
+          
+          // Get project creation time (oldest session creation time)
+          const projectCreatedAt = Math.min(...sessions.map(s => s.createdAt || s.timestamp));
+          
+          return {
+            path: projectDir,
+            name: projectDir,
+            sessions,
+            lastModified: sessions[0]?.timestamp || stats.mtime.getTime(),
+            createdAt: projectCreatedAt,
+            sessionCount: sessions.length,
+            totalMessages: sessions.reduce((sum, s) => sum + (s.messageCount || 0), 0)
+          };
+        } catch (err) {
+          console.error('Error processing project:', projectDir, err);
+          return null;
+        }
+      });
+    
+    const projects = (await Promise.all(projectPromises)).filter(Boolean);
+    
+    // Sort projects by last modified date (most recently opened first)
+    projects.sort((a, b) => b.lastModified - a.lastModified);
+    
+    console.log(`Returning ${projects.length} projects`);
+    res.json({ projects });
+  } catch (error) {
+    console.error('Error loading projects:', error);
+    res.status(500).json({ error: 'Failed to load projects', details: error.message });
+  }
 });
 
 // PID file management - use temp directory for production
@@ -667,11 +993,14 @@ io.on('connection', (socket) => {
             console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
           }
           
-          const [wslCommand, wslArgs] = createWslClaudeCommand(args, wslWorkingDir);
-          console.log(`🚀 Running WSL command: wsl.exe -e bash -c`);
-          console.log(`🚀 WSL bash command (first 500 chars):`, wslArgs[2].substring(0, 500));
+          const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, message);
+          console.log(`🚀 Running WSL command: ${wslCommand}`);
+          console.log(`🚀 WSL args:`, wslArgs);
+          console.log(`🚀 Input handled in script: ${inputHandled}`);
           
-          return spawn(wslCommand, wslArgs, spawnOptions);
+          const process = spawn(wslCommand, wslArgs, spawnOptions);
+          process.inputHandled = inputHandled;
+          return process;
         })() :
         spawn(CLAUDE_PATH, args, spawnOptions);
       
@@ -689,42 +1018,23 @@ io.on('connection', (socket) => {
         claudeProcess.unref(); // Allow parent to exit independently
       }
 
-      // Send input if not resuming - handle WSL differently
-      if (message) {
+      // Send input if not resuming and not already handled
+      if (message && !claudeProcess.inputHandled) {
         const messageToSend = message + '\n';
         console.log(`📝 Sending message to claude (${message.length} chars)`);
         
-        // For WSL, we need to be more careful with stdin
-        if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
-          // Write in chunks to avoid buffer issues with WSL
-          const chunkSize = 4096;
-          let offset = 0;
-          
-          const writeNextChunk = () => {
-            if (offset < messageToSend.length) {
-              const chunk = messageToSend.substring(offset, offset + chunkSize);
-              claudeProcess.stdin.write(chunk, (err) => {
-                if (err) {
-                  console.error(`❌ Error writing to stdin:`, err);
-                  claudeProcess.stdin.end();
-                } else {
-                  offset += chunkSize;
-                  // Small delay between chunks for WSL
-                  setTimeout(writeNextChunk, 10);
-                }
-              });
-            } else {
-              claudeProcess.stdin.end();
-            }
-          };
-          
-          // Add delay for WSL to ensure bash script starts
-          setTimeout(writeNextChunk, 500);
-        } else {
-          // Normal operation for macOS/Linux
-          claudeProcess.stdin.write(messageToSend);
+        // Write immediately - Claude with --print needs input right away
+        claudeProcess.stdin.write(messageToSend, (err) => {
+          if (err) {
+            console.error(`❌ Error writing to stdin:`, err);
+          } else {
+            console.log(`✅ Successfully wrote to stdin`);
+          }
           claudeProcess.stdin.end();
-        }
+          console.log(`📝 Stdin closed`);
+        });
+      } else if (claudeProcess.inputHandled) {
+        console.log(`📝 Input already handled in WSL script via echo pipe`);
       }
       
       // Generate title with Sonnet (fire and forget) - only for first message
@@ -1356,11 +1666,39 @@ io.on('connection', (socket) => {
 // Start server with error handling
 httpServer.listen(PORT, () => {
   writePidFile();
-  console.log(`🚀 macOS Claude CLI server running on port ${PORT}`);
+  console.log(`🚀 yurucode server running on port ${PORT}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🖥️ Platform: ${platform()}`);
   console.log(`🏠 Home directory: ${homedir()}`);
-  console.log(`✅ Server configured EXACTLY like Windows server`);
+  console.log(`📁 Claude projects: ${join(homedir(), '.claude', 'projects')}`);
+  
+  // Check if Claude projects directory exists and is accessible
+  const projectsDir = join(homedir(), '.claude', 'projects');
+  if (existsSync(projectsDir)) {
+    console.log('✅ Claude projects directory exists');
+    try {
+      const { readdirSync } = require('fs');
+      const projects = readdirSync(projectsDir);
+      console.log(`📊 Found ${projects.length} project directory(s)`);
+      if (projects.length > 0 && platform() === 'win32') {
+        console.log('🔍 Sample project paths (first 3):');
+        projects.slice(0, 3).forEach(p => {
+          console.log(`  - ${p}`);
+          // Check if it looks like a Windows path that needs conversion
+          if (p.match(/^[A-Z]--/)) {
+            const converted = p.replace(/^([A-Z])--/, '$1:/').replace(/-/g, '/');
+            console.log(`    → Would convert to: ${converted}`);
+          }
+        });
+      }
+    } catch (e) {
+      console.log('⚠️ Could not list projects:', e.message);
+    }
+  } else {
+    console.log('⚠️ Claude projects directory not found at:', projectsDir);
+  }
+  
+  console.log(`✅ Server configured for ${platform() === 'win32' ? 'Windows' : platform()}`);
   
   // Warmup bash command to prevent focus loss on first run
   console.log('🔥 Warming up bash execution...');

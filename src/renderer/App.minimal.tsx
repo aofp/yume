@@ -16,7 +16,7 @@ import { claudeCodeClient } from './services/claudeCodeClient';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession, setCurrentSession /* , restoreToMessage */ } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -29,6 +29,11 @@ export const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
+  
+  // Load session mappings on startup
+  useEffect(() => {
+    loadSessionMappings();
+  }, [loadSessionMappings]);
   
   // Handle global right-click for context menu
   const handleGlobalContextMenu = (e: React.MouseEvent) => {

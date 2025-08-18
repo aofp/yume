@@ -452,6 +452,40 @@ export class ClaudeCodeClient {
     });
   }
 
+  async updateSessionMetadata(sessionId: string, metadata: any): Promise<void> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+
+      this.socket.emit('updateSessionMetadata', { sessionId, metadata }, (response: any) => {
+        if (response.success) {
+          resolve();
+        } else {
+          reject(new Error(response.error));
+        }
+      });
+    });
+  }
+
+  async getSessionMappings(): Promise<Record<string, any>> {
+    return new Promise((resolve, reject) => {
+      if (!this.socket) {
+        reject(new Error('Not connected to server'));
+        return;
+      }
+
+      this.socket.emit('getSessionMappings', {}, (response: any) => {
+        if (response.success) {
+          resolve(response.mappings);
+        } else {
+          reject(new Error(response.error));
+        }
+      });
+    });
+  }
+
   async clearSession(sessionId: string): Promise<void> {
     return new Promise((resolve, reject) => {
       if (!this.socket) {

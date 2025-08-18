@@ -19,6 +19,12 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 - ANY build command - NEVER run any build commands
 - Only fix code, the user will build and test
 
+**NEVER REMOVE --print FLAG** - The Claude CLI MUST ALWAYS have the `--print` flag:
+- `--print` is REQUIRED for yurucode to work properly
+- NEVER remove or comment out `--print`
+- It must be used with `--output-format stream-json`
+- This is NON-NEGOTIABLE
+
 ## Project Overview
 
 yurucode is a cross-platform desktop application providing a minimal UI for the Claude CLI. Built with Tauri v2 (Rust + React), it features an ultra-minimal black OLED theme with pastel cyan, magenta, and grey accents. The app spawns the Claude CLI binary directly and parses its stream-json output.
