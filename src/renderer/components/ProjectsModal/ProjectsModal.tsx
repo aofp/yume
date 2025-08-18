@@ -87,10 +87,11 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
           setHasLoaded(true);
           setLastLoadTime(Date.now());
           
-          // Now load session counts progressively for each project
+          // Now load session counts and dates progressively for each project
           if (quickData.projects && quickData.projects.length > 0) {
             quickData.projects.forEach(async (project: ClaudeProject) => {
               try {
+                // Load session count
                 const countResponse = await fetch(`http://localhost:${serverPort}/claude-project-session-count/${encodeURIComponent(project.path)}`);
                 if (countResponse.ok) {
                   const countData = await countResponse.json();
@@ -101,8 +102,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                       : p
                   ));
                 }
+                
+                // No need to load dates anymore - we get them immediately from the server!
               } catch (err) {
-                console.log(`Failed to load count for ${project.name}`);
+                console.error(`Failed to load data for ${project.name}:`, err);
               }
             });
           }
@@ -123,7 +126,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     }
   }, [loading, hasLoaded, lastLoadTime]);
 
-  // load sessions for a specific project
+  // load sessions for a specific project - stream them one by one
   const loadProjectSessions = useCallback(async (projectPath: string) => {
     console.log('🔍 [FRONTEND] Loading sessions for project:', projectPath);
     
@@ -134,6 +137,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     }
     
     setLoadingSessions(true);
+    const sessions: ClaudeSession[] = [];
+    
     try {
       const serverPort = claudeCodeClient.getServerPort();
       console.log('🔌 [FRONTEND] Server port:', serverPort);
@@ -143,7 +148,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
       }
       
       const url = `http://localhost:${serverPort}/claude-project-sessions/${encodeURIComponent(projectPath)}`;
-      console.log('📡 [FRONTEND] Fetching sessions from:', url);
+      console.log('📡 [FRONTEND] Streaming sessions from:', url);
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -151,14 +156,52 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
         throw new Error('failed to load sessions');
       }
       
-      const data = await response.json();
-      console.log('📊 [FRONTEND] Received data:', data);
-      console.log(`✅ [FRONTEND] Got ${data.sessions?.length || 0} sessions for project`);
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
       
-      setSessionsByProject(prev => ({
-        ...prev,
-        [projectPath]: data.sessions || []
-      }));
+      if (!reader) {
+        throw new Error('No response body');
+      }
+      
+      let buffer = '';
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const dataStr = line.slice(6);
+            if (dataStr.trim()) {
+              try {
+                const data = JSON.parse(dataStr);
+                if (data.session) {
+                  sessions.push(data.session);
+                  console.log(`📄 [FRONTEND] Received session ${data.index + 1}/${data.total}`);
+                  // Update immediately as each session arrives
+                  setSessionsByProject(prev => ({
+                    ...prev,
+                    [projectPath]: [...sessions]
+                  }));
+                } else if (data.done) {
+                  console.log('✅ [FRONTEND] All sessions loaded');
+                } else if (data.error) {
+                  console.error('❌ [FRONTEND] Server error:', data.message);
+                }
+              } catch (e) {
+                console.error('Failed to parse SSE data:', e);
+              }
+            }
+          }
+        }
+      }
+      
+      console.log(`✅ [FRONTEND] Got ${sessions.length} sessions for project`);
+      
     } catch (err) {
       console.error('❌ [FRONTEND] Error loading project sessions:', err);
       setSessionsByProject(prev => ({
@@ -183,14 +226,18 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     }
   }, [isOpen, selectedProject]);
 
-  // filter projects based on search
+  // filter projects based on search and sort by most recent first
   const filteredProjects = useMemo(() => {
-    if (!searchQuery) return projects;
-    const query = searchQuery.toLowerCase();
-    return projects.filter(p => 
-      p.name.toLowerCase().includes(query) ||
-      p.sessions.some(s => s.summary?.toLowerCase().includes(query))
-    );
+    let filtered = projects;
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase();
+      filtered = projects.filter(p => 
+        p.name.toLowerCase().includes(query) ||
+        p.sessions.some(s => s.summary?.toLowerCase().includes(query))
+      );
+    }
+    // Sort by lastModified date (most recent first)
+    return [...filtered].sort((a, b) => b.lastModified - a.lastModified);
   }, [projects, searchQuery]);
 
   // get sessions for selected project
@@ -333,7 +380,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
               // In sessions view - select the session
               const session = filteredSessions[focusedIndex];
               if (session) {
-                handleSelectSession(selectedProject, session.id);
+                // Get title from localStorage or use session title/summary
+                const storedTitle = localStorage.getItem(`session-title-${session.id}`);
+                const title = storedTitle || session.title || session.summary;
+                handleSelectSession(selectedProject, session.id, title);
               }
             } else {
               // In projects view - enter the project

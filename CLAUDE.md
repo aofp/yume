@@ -100,12 +100,18 @@ npm run tauri:build:linux      # Build for Linux x64
 
 ### Important Files & Patterns
 
-- `server-claude-macos.js` - Server tracking `lastAssistantMessageIds` for streaming
+- **⚠️⚠️⚠️ CRITICAL: THE SERVER IS EMBEDDED IN logged_server.rs!!!** 
+  - The Node.js server code is EMBEDDED as a string constant `EMBEDDED_SERVER` in `src-tauri/src/logged_server.rs`
+  - On Windows/Linux, this embedded code is extracted to `/tmp/yurucode-server/server.cjs` at runtime
+  - **YOU MUST EDIT THE JAVASCRIPT CODE INSIDE logged_server.rs** - editing other .cjs files has NO EFFECT
+  - The embedded server starts around line 124 with `const EMBEDDED_SERVER: &str = r#"`
+  - This is why changes to .cjs files don't work - the REAL server is embedded in the Rust file!
+- `server-claude-macos.cjs` - Server tracking `lastAssistantMessageIds` for streaming (macOS only)
 - `src/renderer/stores/claudeCodeStore.ts` - Use `let sessions` not `const sessions` in setState
 - `src/renderer/services/claudeCodeClient.ts` - Socket.IO connection management
 - `src/renderer/components/Chat/MessageRenderer.tsx` - Message rendering logic
 - `src-tauri/tauri.conf.json` - Tauri configuration and window settings
-- `src-tauri/src/logged_server.rs` - Server process management in Rust
+- `src-tauri/src/logged_server.rs` - **CONTAINS THE ACTUAL SERVER CODE AS EMBEDDED STRING**
 - `scripts/inject-version.cjs` - Version injection during build
 - `scripts/bundle-macos-server.js` - Bundle server for macOS distribution
 

@@ -760,8 +760,9 @@ export const App: React.FC = () => {
             // Generate a new session ID for the tab
             const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             
-            // Filter out completely empty user messages when loading
-            const filteredMessages = (data.messages || []).filter((msg: any) => {
+            // Filter out completely empty user messages and limit to last 50 messages
+            const allMessages = data.messages || [];
+            const filteredMessages = allMessages.filter((msg: any) => {
               // Keep all assistant messages
               if (msg.role === 'assistant') return true;
               
@@ -786,12 +787,16 @@ export const App: React.FC = () => {
               return true; // Keep any other message types
             });
             
+            // Take only the last 50 messages
+            const messagesToLoad = filteredMessages.slice(-50);
+            console.log(`Loading ${messagesToLoad.length} messages (from ${allMessages.length} total, ${filteredMessages.length} after filtering blanks)`);
+            
             // Create the session with filtered messages
             const newSession = {
               id: newSessionId,
               name: sessionName,
               status: 'active' as const,
-              messages: filteredMessages,
+              messages: messagesToLoad,
               workingDirectory: data.projectPath,
               createdAt: new Date(),
               updatedAt: new Date(),

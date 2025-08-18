@@ -195,37 +195,54 @@ const isWindows = platform() === 'win32';
 
 // Helper function to create WSL command for claude
 function createWslClaudeCommand(args, workingDir, message) {
-  // Only quote arguments that actually need it - don't quote simple flags
-  const escapedArgs = args.map(arg => {
-    // Only quote if the arg contains special characters
-    if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('$') || arg.includes('\\') || arg.includes('\n') || arg.includes('(') || arg.includes(')') || arg.includes('|') || arg.includes('&') || arg.includes(';')) {
-      return "'" + arg.replace(/'/g, "'\\''") + "'";
-    }
-    // Don't quote simple arguments like --print, --output-format, etc.
-    return arg;
-  }).join(' ');
-  
+  // Use full path to WSL.exe - Node in temp directory needs this
   const wslPath = 'C:\\Windows\\System32\\wsl.exe';
   
-  // If we have a message, pipe it directly to claude
+  // The workingDir is already in WSL format (e.g., /mnt/c/Users/...)
+  // It was converted before calling this function
+  const wslWorkingDir = workingDir || '/mnt/c/Users/muuko/Desktop/yurucode';
+  
+  // For the main message, run Claude with the args
   if (message) {
-    const escapedMessage = message.replace(/'/g, "'\\''");
-    // Simpler script - always capture stderr to see errors
-    const script = workingDir 
-      ? `cd '${workingDir.replace(/'/g, "'\\''")}'` + ` 2>/dev/null; echo '${escapedMessage}' | /home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`
-      : `echo '${escapedMessage}' | /home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`;
+    // Detect WSL username dynamically - use yuru as default since that's the actual user
+    const wslUser = 'yuru'; // This is correct for this machine
+    const claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
     
-    console.log(`🔍 WSL script to execute: ${script}`);
-    return [wslPath, ['-e', 'bash', '-c', script], true]; // true = input already handled
+    // Build the command with all the args - quote ones that need it
+    const argsStr = args.map(arg => {
+      // Only quote args that contain spaces or special characters
+      if (arg.includes(' ') || arg.includes(':') || arg.includes('(') || arg.includes(')') || arg.includes(',')) {
+        // Escape single quotes properly for bash
+        return `'${arg.replace(/'/g, "'\\''")}'`;
+      }
+      return arg;
+    }).join(' ');
+    
+    // Message escaping for bash - escape single quotes
+    const messageEscaped = message.replace(/'/g, "'\\''");
+    
+    // Build the WSL command
+    const script = `cd ${wslWorkingDir} && echo '${messageEscaped}' | ${claudePath} ${argsStr} 2>&1`;
+    
+    console.log(`🔍 WSL script (main message):`);
+    console.log(`  Working dir: ${wslWorkingDir}`);
+    console.log(`  Claude path: ${claudePath}`);
+    console.log(`  Args: ${argsStr}`);
+    console.log(`  Full script: ${script.substring(0, 500)}...`);
+    
+    return [wslPath, ['-e', 'bash', '-c', script], true];
+  } else {
+    // Title generation - keep using direct WSL for stdin piping
+    const wslUser = 'yuru'; // This is correct for this machine
+    const claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
+    
+    // For title generation, use direct WSL with full path
+    const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+    const script = `cat | ${claudePath} --print --output-format json --model claude-3-5-sonnet-20241022 2>&1`;
+    
+    console.log(`🔍 WSL script (title gen)`);
+    return [wslPath, ['-e', 'bash', '-c', script], false];
   }
-  
-  // No message - claude will wait for stdin
-  const script = workingDir
-    ? `cd '${workingDir.replace(/'/g, "'\\''")}'` + ` 2>/dev/null; /home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`
-    : `/home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`;
-  
-  console.log(`🔍 WSL script to execute: ${script}`);
-  return [wslPath, ['-e', 'bash', '-c', script], false]; // false = need to send stdin
 }
 
 if (isWindows) {
@@ -801,19 +818,20 @@ app.get('/claude-projects-quick', async (req, res) => {
         console.log('📂 WSL projects directory:', wslProjectsDir);
         console.log('🔍 WSL user detected:', wslUser);
         
-        // Get project list from WSL using PowerShell
+        // Get project list WITH MODIFICATION TIMES from WSL using PowerShell
         const { execSync } = require('child_process');
-        console.log('🔧 Executing WSL command via PowerShell to list projects...');
-        const psListCommand = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'if [ -d ${wslProjectsDir} ]; then ls -1 ${wslProjectsDir}; else echo NO_PROJECTS_DIR; fi'}"`;
+        console.log('🔧 Executing WSL command via PowerShell to list projects WITH DATES...');
+        // Use stat to get modification time for each directory
+        const psListCommand = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'if [ -d ${wslProjectsDir} ]; then cd ${wslProjectsDir} && for dir in *; do if [ -d \\"\\\$dir\\" ]; then stat -c \\"%Y:%n\\" \\"\\\$dir\\"; fi; done; else echo NO_PROJECTS_DIR; fi'}"`;
         console.log('💻 PowerShell command:', psListCommand);
         const dirList = execSync(psListCommand, {
           encoding: 'utf8',
           windowsHide: true
         }).trim();
         
-        console.log('📝 Raw PowerShell/WSL output:', JSON.stringify(dirList));
+        console.log('📝 Raw PowerShell/WSL output with timestamps:', JSON.stringify(dirList));
         
-        let projectDirs = [];
+        let projectsWithDates = [];
         
         if (!dirList || dirList === 'NO_PROJECTS_DIR' || dirList === 'ECHO is on.' || dirList.includes('system cannot find')) {
           console.log('❌ WSL command failed or no projects directory found');
@@ -854,28 +872,35 @@ app.get('/claude-projects-quick', async (req, res) => {
             return res.json({ projects: [], count: 0 });
           }
         } else {
-          projectDirs = dirList.split('\n').filter(dir => dir && !dir.startsWith('.'));
+          // Parse the timestamp:name format from stat output
+          const lines = dirList.split('\n').filter(line => line && !line.startsWith('.'));
+          projectsWithDates = lines.map(line => {
+            const colonIndex = line.indexOf(':');
+            if (colonIndex > 0) {
+              const timestamp = line.substring(0, colonIndex);
+              const name = line.substring(colonIndex + 1);
+              return {
+                name: name,
+                timestamp: parseInt(timestamp) * 1000 // Convert Unix timestamp to milliseconds
+              };
+            }
+            // Fallback for lines without timestamp
+            return {
+              name: line,
+              timestamp: Date.now()
+            };
+          });
         }
         
-        console.log(`✅ Found ${projectDirs.length} projects in WSL:`, projectDirs);
+        console.log(`✅ Found ${projectsWithDates.length} projects in WSL with REAL DATES`);
         
-        // Get LATEST SESSION modification time for each project (not directory time)
-        // SKIP DATES - RETURN INSTANTLY!
-        let modTimes = {};
-        projectDirs.forEach(name => {
-          modTimes[name] = Date.now(); // Just use now for instant loading
-        });
-        
-        // Build project list with real dates
-        const quickProjects = projectDirs.map(projectName => ({
-          path: projectName,
-          name: projectName,
+        // Build project list with REAL DIRECTORY MODIFICATION TIMES
+        const quickProjects = projectsWithDates.map(project => ({
+          path: project.name,
+          name: project.name,
           sessionCount: null, // Will be loaded async
-          lastModified: modTimes[projectName] || Date.now()
+          lastModified: project.timestamp // Use REAL directory modification time from ls!
         }));
-        
-        // Sort by last modified
-        quickProjects.sort((a, b) => b.lastModified - a.lastModified);
         
         console.log(`✅ Returning ${quickProjects.length} projects INSTANTLY`);
         
@@ -972,11 +997,18 @@ app.get('/claude-projects-quick', async (req, res) => {
   }
 });
 
-// Get sessions for a specific project (limit to 30 for performance)
+// Get sessions for a specific project - stream them one by one
 app.get('/claude-project-sessions/:projectName', async (req, res) => {
   try {
     const projectName = decodeURIComponent(req.params.projectName);
     console.log('📂 Loading sessions for project:', projectName);
+    
+    // Set up Server-Sent Events
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    });
     
     if (isWindows) {
       // Get WSL user
@@ -994,9 +1026,8 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
       const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
       
       try {
-        // Get ALL session data in ONE command for speed
-        console.log('🚀 Loading all session data in one batch...');
-        // Simplified approach - get file list first, then process each
+        // Get file list first
+        console.log('🚀 Getting session list...');
         const filesCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && ls -1t *.jsonl 2>/dev/null | head -10'}"`;
         const { execSync } = require('child_process');
         const fileList = execSync(filesCmd, {
@@ -1007,59 +1038,93 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         
         if (!fileList) {
           console.log('No sessions found');
-          return res.json({ sessions: [] });
+          res.write('data: {"done": true, "sessions": []}\n\n');
+          res.end();
+          return;
         }
         
         const files = fileList.split('\n').filter(f => f);
-        const sessions = [];
         
-        // Process each file individually
-        for (const filename of files) {
+        // Process each file and stream it immediately
+        for (let i = 0; i < files.length; i++) {
+          const filename = files[i];
           try {
-            const dataCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && head -n1 ${filename} 2>/dev/null'}"`;
-            const metaCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && stat -c %Y ${filename} 2>/dev/null'}"`;
-            const lineCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && wc -l < ${filename} 2>/dev/null'}"`;
+            // Get all data for this file in one command to reduce overhead
+            const allDataCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && echo \\"DATA:\\" && head -n1 ${filename} 2>/dev/null && echo \\"META:\\" && stat -c %Y ${filename} 2>/dev/null && echo \\"LINES:\\" && wc -l < ${filename} 2>/dev/null'}"`;
             
-            const firstLine = execSync(dataCmd, { encoding: 'utf8', windowsHide: true }).trim();
-            const modTime = execSync(metaCmd, { encoding: 'utf8', windowsHide: true }).trim();
-            const lineCount = execSync(lineCmd, { encoding: 'utf8', windowsHide: true }).trim();
+            const output = execSync(allDataCmd, { encoding: 'utf8', windowsHide: true }).trim();
+            const parts = output.split(/DATA:|META:|LINES:/).filter(p => p.trim());
+            
+            const firstLine = parts[0]?.trim() || '';
+            const modTime = parts[1]?.trim() || '';
+            const lineCount = parts[2]?.trim() || '0';
             
             const sessionId = filename.replace('.jsonl', '');
-            const timestamp = parseInt(modTime) * 1000;
+            const timestamp = parseInt(modTime) * 1000 || Date.now();
             
             let summary = 'Untitled session';
             let title = null;
             try {
               const data = JSON.parse(firstLine);
+              // Check for different possible title fields
               if (data.summary) {
                 summary = data.summary;
-              } else if (data.role === 'user' && data.content) {
-                summary = data.content.substring(0, 100);
+                title = data.summary;
               }
-              title = data.title || data.summary || summary;
+              if (data.title) {
+                title = data.title;
+              }
+              // If it's a user message, use the content as summary
+              if (!title && data.role === 'user' && data.content) {
+                if (typeof data.content === 'string') {
+                  summary = data.content.substring(0, 100);
+                  title = summary;
+                } else if (Array.isArray(data.content)) {
+                  // Handle array content (with text blocks)
+                  const textBlock = data.content.find(c => c.type === 'text');
+                  if (textBlock && textBlock.text) {
+                    summary = textBlock.text.substring(0, 100);
+                    title = summary;
+                  }
+                }
+              }
+              // If it's session metadata with a type field
+              if (data.type === 'summary' && data.summary) {
+                title = data.summary;
+                summary = data.summary;
+              }
             } catch (e) {
               // Parse error, use default
+              console.log(`Could not parse session title from: ${firstLine.substring(0, 100)}`);
             }
             
-            sessions.push({
+            const session = {
               id: sessionId,
               summary: summary,
               title: title,
               timestamp: timestamp,
               path: filename,
               messageCount: parseInt(lineCount) || 0
-            });
+            };
+            
+            // Stream this session immediately
+            res.write(`data: ${JSON.stringify({ session, index: i, total: files.length })}\n\n`);
+            console.log(`  📄 Sent session ${i + 1}/${files.length}: ${sessionId}`);
+            
           } catch (e) {
             console.log(`Error processing ${filename}:`, e.message);
           }
         }
         
-        console.log(`✅ Loaded ${sessions.length} sessions`);
-        return res.json({ sessions });
+        // Send completion event
+        res.write('data: {"done": true}\n\n');
+        console.log(`✅ Streamed all sessions`);
+        res.end();
         
       } catch (e) {
         console.error('Error loading sessions:', e.message);
-        res.json({ sessions: [] });
+        res.write('data: {"error": true, "message": "' + e.message + '"}\n\n');
+        res.end();
       }
     } else {
       // Non-Windows implementation
@@ -1068,6 +1133,55 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
   } catch (error) {
     console.error('Error loading project sessions:', error);
     res.status(500).json({ error: 'Failed to load sessions' });
+  }
+});
+
+// Get last modified date for a specific project
+app.get('/claude-project-date/:projectName', async (req, res) => {
+  try {
+    const projectName = decodeURIComponent(req.params.projectName);
+    console.log(`📅 Getting date for project: ${projectName}`);
+    
+    if (isWindows) {
+      // Get WSL user
+      let wslUser = 'yuru';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync('powershell.exe -NoProfile -Command "& {wsl.exe whoami}"', {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        // Use default
+      }
+      
+      const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
+      
+      // Get the modification time of the MOST RECENT session file
+      const recentCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && ls -t *.jsonl 2>/dev/null | head -1 | xargs -r stat -c %Y 2>/dev/null'}"`;
+      const { execSync } = require('child_process');
+      const recentTime = execSync(recentCmd, {
+        encoding: 'utf8',
+        windowsHide: true
+      }).trim();
+      
+      let lastModified = Date.now();
+      if (recentTime && !isNaN(recentTime)) {
+        lastModified = parseInt(recentTime) * 1000;
+        const date = new Date(lastModified);
+        console.log(`  ✅ ${projectName}: ${date.toLocaleString()} (${recentTime})`);
+      } else {
+        console.log(`  ⚠️ ${projectName}: No sessions found, using current time`);
+      }
+      
+      res.json({ projectName, lastModified });
+    } else {
+      // Non-Windows implementation
+      res.json({ projectName, lastModified: Date.now() });
+    }
+  } catch (error) {
+    console.error('Error getting project date:', error);
+    res.json({ projectName: req.params.projectName, lastModified: Date.now() });
   }
 });
 
@@ -1592,7 +1706,8 @@ io.on('connection', (socket) => {
       }
       
       // Use --resume if we have a claudeSessionId AND the last conversation wasn't interrupted
-      if (session.claudeSessionId && !session.wasInterrupted) {
+      const isResuming = session.claudeSessionId && !session.wasInterrupted;
+      if (isResuming) {
         args.push('--resume', session.claudeSessionId);
         console.log('🔄 Using --resume flag with session:', session.claudeSessionId);
       } else {
@@ -1644,8 +1759,9 @@ io.on('connection', (socket) => {
         cwd: processWorkingDir,
         env: enhancedEnv,
         shell: false,
-        windowsHide: true,  // Always hide windows
-        detached: true,  // Run in separate process group for better isolation
+        windowsHide: true,  // Always hide windows - prevents black console
+        // IMPORTANT: Do NOT use windowsVerbatimArguments with WSL - it breaks argument passing!
+        detached: false,  // Don't detach on Windows to avoid console window
         stdio: ['pipe', 'pipe', 'pipe']  // Explicit stdio configuration
       };
       
@@ -1691,10 +1807,10 @@ io.on('connection', (socket) => {
         claudeProcess.unref(); // Allow parent to exit independently
       }
 
-      // Send input if not resuming and not already handled
-      if (message && !claudeProcess.inputHandled) {
+      // Send input if not resuming and not already handled in script
+      if (message && !isResuming && !claudeProcess.inputHandled) {
         const messageToSend = message + '\n';
-        console.log(`📝 Sending message to claude (${message.length} chars)`);
+        console.log(`📝 Sending message to claude via stdin (${message.length} chars)`);
         
         // Write immediately - Claude with --print needs input right away
         claudeProcess.stdin.write(messageToSend, (err) => {
@@ -1707,7 +1823,9 @@ io.on('connection', (socket) => {
           console.log(`📝 Stdin closed`);
         });
       } else if (claudeProcess.inputHandled) {
-        console.log(`📝 Input already handled in WSL script via echo pipe`);
+        console.log(`📝 Message already embedded in WSL script`);
+      } else if (isResuming) {
+        console.log(`📝 Resuming session - no input needed`);
       }
       
       // Generate title with Sonnet (fire and forget) - only for first message
@@ -1968,6 +2086,27 @@ io.on('connection', (socket) => {
         }
       };
 
+      // Add debugging for the spawned process
+      console.log(`🔍 [${sessionId}] Process spawned with PID: ${claudeProcess.pid}`);
+      console.log(`🔍 [${sessionId}] Process connected: ${claudeProcess.connected}`);
+      
+      // Capture stderr for debugging
+      let stderrBuffer = '';
+      claudeProcess.stderr.on('data', (chunk) => {
+        const str = chunk.toString();
+        stderrBuffer += str;
+        console.error(`❌ [${sessionId}] STDERR output: ${str}`);
+        
+        // Check for common WSL errors
+        if (str.includes('command not found') || str.includes('No such file')) {
+          console.error(`❌ [${sessionId}] WSL PATH ERROR - Claude CLI not found!`);
+          console.error(`❌ [${sessionId}] Full stderr: ${stderrBuffer}`);
+        }
+        if (str.includes('bash:') || str.includes('sh:')) {
+          console.error(`❌ [${sessionId}] WSL BASH ERROR detected`);
+        }
+      });
+      
       // Handle stdout
       claudeProcess.stdout.on('data', (data) => {
         const str = data.toString();
@@ -1975,6 +2114,7 @@ io.on('connection', (socket) => {
         lastDataTime = Date.now();
         
         console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
+        console.log(`📥 [${sessionId}] Raw bytes: [${Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ')}]`);
         console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200).replace(/\n/g, '\\n')}...`);
         
         // Prevent memory overflow from excessive buffering
@@ -2052,7 +2192,19 @@ io.on('connection', (socket) => {
         console.log(`   ├─ Total duration: ${streamDuration}ms`);
         console.log(`   ├─ Total bytes: ${bytesReceived}`);
         console.log(`   ├─ Messages: ${messageCount}`);
-        console.log(`   └─ Exit code: ${code}`);
+        console.log(`   ├─ Exit code: ${code}`);
+        console.log(`   ├─ Stderr: ${stderrBuffer || '(empty)'}`);
+        console.log(`   └─ Line buffer: ${lineBuffer || '(empty)'}`);
+        
+        // Log if we got no output at all
+        if (bytesReceived === 0) {
+          console.error(`❌ [${sessionId}] NO OUTPUT RECEIVED FROM CLAUDE!`);
+          console.error(`❌ [${sessionId}] This usually means:`);
+          console.error(`   1. Claude CLI is not installed in WSL`);
+          console.error(`   2. The path is incorrect: /home/yuru/.claude/local/node_modules/.bin/claude`);
+          console.error(`   3. WSL is not running properly`);
+          console.error(`   4. The command syntax is wrong`);
+        }
         activeProcesses.delete(sessionId);
         activeProcessStartTimes.delete(sessionId);
         
