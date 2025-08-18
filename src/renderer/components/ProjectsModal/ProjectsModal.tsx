@@ -1,6 +1,7 @@
 import React, { useEffect, useState, useCallback, useMemo, useRef } from 'react';
 import { IconFolder, IconFolderOpen, IconClock, IconHash, IconChevronRight, IconSearch, IconX, IconRefresh, IconArrowLeft, IconMessages } from '@tabler/icons-react';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
+import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import './ProjectsModal.css';
 
 interface ClaudeSession {
@@ -29,6 +30,8 @@ interface ProjectsModalProps {
 export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, onSelectSession }) => {
   const [projects, setProjects] = useState<ClaudeProject[]>([]);
   const [loading, setLoading] = useState(false);
+  const [projectCount, setProjectCount] = useState<number | null>(null);
+  const [quickLoaded, setQuickLoaded] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [showSearch, setShowSearch] = useState(false);
   const [sessionSearchQuery, setSessionSearchQuery] = useState('');
@@ -54,8 +57,9 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     const now = Date.now();
     if (loading || (!forceRefresh && hasLoaded && now - lastLoadTime < 1000)) return;
     
-    setLoading(true);
     setError(null);
+    setProjectCount(null);
+    setQuickLoaded(false);
     // Clear sessions cache on refresh
     if (forceRefresh) {
       setSessionsByProject({});
@@ -65,17 +69,56 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
       if (!serverPort) {
         throw new Error('server port not available');
       }
-      const response = await fetch(`http://localhost:${serverPort}/claude-projects`);
-      if (!response.ok) throw new Error('failed to load projects');
-      const data = await response.json();
-      setProjects(data.projects || []);
-      setHasLoaded(true);
-      setLastLoadTime(now);
+      
+      // Load quick data IMMEDIATELY without waiting
+      setLoading(true);
+      fetch(`http://localhost:${serverPort}/claude-projects-quick`)
+        .then(quickResponse => {
+          if (quickResponse.ok) {
+            return quickResponse.json();
+          }
+          throw new Error('Quick load failed');
+        })
+        .then(quickData => {
+          setProjectCount(quickData.count);
+          setProjects(quickData.projects || []);
+          setQuickLoaded(true);
+          setLoading(false); // Stop showing loading IMMEDIATELY
+          setHasLoaded(true);
+          setLastLoadTime(Date.now());
+          
+          // Now load session counts progressively for each project
+          if (quickData.projects && quickData.projects.length > 0) {
+            quickData.projects.forEach(async (project: ClaudeProject) => {
+              try {
+                const countResponse = await fetch(`http://localhost:${serverPort}/claude-project-session-count/${encodeURIComponent(project.path)}`);
+                if (countResponse.ok) {
+                  const countData = await countResponse.json();
+                  // Update the specific project's session count
+                  setProjects(prev => prev.map(p => 
+                    p.path === countData.projectName 
+                      ? { ...p, sessionCount: countData.sessionCount }
+                      : p
+                  ));
+                }
+              } catch (err) {
+                console.log(`Failed to load count for ${project.name}`);
+              }
+            });
+          }
+        })
+        .catch(quickErr => {
+          console.log('Quick load failed:', quickErr);
+          setLoading(false);
+          setError('Failed to load projects');
+        });
+      
+      // Don't await, return immediately
+      return;
     } catch (err) {
       console.error('error loading projects:', err);
       setError('failed to load projects');
       setProjects([]);
-    } finally {
       setLoading(false);
     }
   }, [loading, hasLoaded, lastLoadTime]);
@@ -530,7 +573,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 <IconFolderOpen size={16} />
                 <span>{formatProjectName(selectedProjectData.name)}</span>
                 <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '12px', marginLeft: '8px' }}>
-                  {selectedProjectData.sessionCount || (sessionsByProject[selectedProject]?.length || 0)} sessions
+                  {sessionsByProject[selectedProject]?.length || selectedProjectData.sessionCount || 0} sessions
                 </span>
               </>
             ) : (
@@ -547,7 +590,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
               disabled={loading}
               title="refresh (F5)"
             >
-              <IconRefresh size={16} className={loading ? 'spinning' : ''} />
+              {loading ? <LoadingIndicator size="small" /> : <IconRefresh size={16} />}
             </button>
             <button className="projects-close" onClick={onClose}>
               <IconX size={16} />
@@ -570,10 +613,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
         )}
 
         <div className="projects-content">
-          {loading && (
+          {loading && !quickLoaded && (
             <div className="projects-loading">
-              <div className="loading-spinner"></div>
-              <span>loading projects...</span>
+              <LoadingIndicator size="medium" />
+              <span>loading {projectCount !== null ? `${projectCount} ` : ''}projects...</span>
             </div>
           )}
 
@@ -611,9 +654,13 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                     <IconChevronRight size={14} className="project-arrow" />
                   </div>
                   <div className="project-meta">
-                    <span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                       <IconHash size={12} />
-                      {project.sessionCount} {project.sessionCount === 1 ? 'session' : 'sessions'}
+                      {project.sessionCount !== null ? (
+                        <>{project.sessionCount} {typeof project.sessionCount === 'string' || project.sessionCount !== 1 ? 'sessions' : 'session'}</>
+                      ) : (
+                        <LoadingIndicator size="small" />
+                      )}
                     </span>
                     <span>
                       <IconClock size={12} />
@@ -629,7 +676,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
             <div className="sessions-view">
               {loadingSessions ? (
                 <div className="projects-loading">
-                  <div className="loading-spinner"></div>
+                  <LoadingIndicator size="medium" />
                   <span>loading sessions...</span>
                 </div>
               ) : (

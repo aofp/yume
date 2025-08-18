@@ -68,10 +68,6 @@
   cursor: default;
 }
 
-.projects-refresh .spinning {
-  animation: spin 1s linear infinite;
-}
-
 .projects-close:hover {
   color: var(--accent-color);
 }
@@ -113,21 +109,6 @@
   color: #666;
   padding: 20px;
   font-size: 12px;
-}
-
-.loading-spinner {
-  width: 14px;
-  height: 14px;
-  border: 2px solid #333;
-  border-top-color: var(--accent-color);
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
 }
 
 .projects-error {
