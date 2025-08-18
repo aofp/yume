@@ -670,7 +670,33 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         try {
           const data = JSON.parse(jsonStr);
           
-          // Add all valid session data
+          // Filter out empty user messages (these are often just placeholders after tool use)
+          if (data.role === 'user') {
+            // Check if content is missing, undefined, or empty
+            if (!data.content) {
+              // Skip user messages without content
+              currentPos = jsonEnd;
+              if (currentPos < content.length && content[currentPos] === '$') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\n') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\r') currentPos++;
+              continue;
+            }
+            
+            // Check if content is empty or just whitespace
+            const contentStr = typeof data.content === 'string' ? data.content : 
+                             Array.isArray(data.content) && data.content.length > 0 ? 
+                             data.content.map(c => c.text || '').join('') : '';
+            if (!contentStr.trim()) {
+              // Skip empty user messages
+              currentPos = jsonEnd;
+              if (currentPos < content.length && content[currentPos] === '$') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\n') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\r') currentPos++;
+              continue;
+            }
+          }
+          
+          // Add valid session data
           messages.push(data);
           validMessages++;
           
@@ -719,11 +745,53 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       console.log(`Loaded session with ${messages.length} messages`);
       console.log(`Converted project path: ${projectPath} -> ${actualPath}`);
       
+      // Extract title from messages
+      let title = null;
+      
+      // Check for title in last message (often metadata/title is stored there)
+      if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.type === 'title' && lastMsg.title) {
+          title = lastMsg.title;
+        } else if (lastMsg.type === 'metadata' && lastMsg.title) {
+          title = lastMsg.title;
+        } else if (lastMsg.title && !lastMsg.role) {
+          title = lastMsg.title;
+        }
+      }
+      
+      // If no title found, check for summary type messages
+      if (!title) {
+        const summaryMsg = messages.find(m => m.type === 'summary' && m.summary);
+        if (summaryMsg) {
+          title = summaryMsg.summary;
+        }
+      }
+      
+      // If still no title, use first user message
+      if (!title) {
+        const firstUserMsg = messages.find(m => m.role === 'user' && m.content);
+        if (firstUserMsg) {
+          const content = typeof firstUserMsg.content === 'string' ? firstUserMsg.content :
+                         Array.isArray(firstUserMsg.content) ? 
+                         firstUserMsg.content.find(c => c.type === 'text')?.text || '' : '';
+          if (content) {
+            title = content.substring(0, 100);
+          }
+        }
+      }
+      
+      // Default title if none found
+      if (!title) {
+        title = 'Untitled session';
+      }
+      
         res.json({ 
           sessionId,
           projectPath: actualPath,
           messages,
-          sessionCount: messages.length
+          sessionCount: messages.length,
+          title
         });
       } catch (readError) {
         console.error('Error reading session file from WSL:', readError.message);
@@ -752,10 +820,67 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         for (const line of lines) {
           try {
             const data = JSON.parse(line);
+            
+            // Filter out empty user messages (these are often just placeholders after tool use)
+            if (data.role === 'user') {
+              // Check if content is missing, undefined, or empty
+              if (!data.content) {
+                continue; // Skip user messages without content
+              }
+              
+              const contentStr = typeof data.content === 'string' ? data.content : 
+                               Array.isArray(data.content) && data.content.length > 0 ? 
+                               data.content.map(c => c.text || '').join('') : '';
+              if (!contentStr.trim()) {
+                continue; // Skip empty user messages
+              }
+            }
+            
             messages.push(data);
           } catch (err) {
             // Skip invalid lines
           }
+        }
+        
+        // Extract title from messages
+        let title = null;
+        
+        // Check for title in last message
+        if (messages.length > 0) {
+          const lastMsg = messages[messages.length - 1];
+          if (lastMsg.type === 'title' && lastMsg.title) {
+            title = lastMsg.title;
+          } else if (lastMsg.type === 'metadata' && lastMsg.title) {
+            title = lastMsg.title;
+          } else if (lastMsg.title && !lastMsg.role) {
+            title = lastMsg.title;
+          }
+        }
+        
+        // If no title found, check for summary type messages
+        if (!title) {
+          const summaryMsg = messages.find(m => m.type === 'summary' && m.summary);
+          if (summaryMsg) {
+            title = summaryMsg.summary;
+          }
+        }
+        
+        // If still no title, use first user message
+        if (!title) {
+          const firstUserMsg = messages.find(m => m.role === 'user' && m.content);
+          if (firstUserMsg) {
+            const content = typeof firstUserMsg.content === 'string' ? firstUserMsg.content :
+                           Array.isArray(firstUserMsg.content) ? 
+                           firstUserMsg.content.find(c => c.type === 'text')?.text || '' : '';
+            if (content) {
+              title = content.substring(0, 100);
+            }
+          }
+        }
+        
+        // Default title if none found
+        if (!title) {
+          title = 'Untitled session';
         }
         
         const actualPath = projectPath
@@ -767,7 +892,8 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
           sessionId,
           projectPath: actualPath,
           messages,
-          sessionCount: messages.length
+          sessionCount: messages.length,
+          title
         });
       } catch (readError) {
         console.error('Error reading session file:', readError);
@@ -793,10 +919,11 @@ app.get('/claude-projects-quick', async (req, res) => {
       try {
         const { execFileSync } = require('child_process');
         
-        // Get list of projects with their modification times from WSL
+        // Get list of projects - we'll get their real last-used time from sessions
         // Use wsl.exe directly with execFileSync to avoid shell interpretation
         const wslPath = 'C:\\Windows\\System32\\wsl.exe';
-        const bashCmd = `cd ${wslProjectsDir} && for d in *; do [ -d "$d" ] && stat -c "%Y:%n" -- "$d"; done`;
+        // Get all directories including "-"
+        const bashCmd = `cd ${wslProjectsDir} && for d in *; do [ -d "$d" ] && echo "$d"; done`;
         console.log('📂 Getting projects from WSL:', wslProjectsDir);
         
         const output = execFileSync(wslPath, ['-e', 'bash', '-c', bashCmd], {
@@ -809,17 +936,34 @@ app.get('/claude-projects-quick', async (req, res) => {
           return res.json({ projects: [], count: 0 });
         }
         
-        // Parse the output (timestamp:dirname/)
-        const projects = output.split('\n')
-          .filter(line => line.trim())
-          .map(line => {
-            const [timestamp, name] = line.split(':');
-            const projectName = name.replace(/\/$/, ''); // Remove trailing slash
+        // Parse the output (just directory names now)
+        const projectDirs = output.split('\n')
+          .filter(line => line.trim());
+        
+        const projects = [];
+        
+        for (const projectName of projectDirs) {
+            // Get the most recent session's timestamp for sorting
+            let lastModified = 0;
+            try {
+              // Get the most recent .jsonl file's timestamp
+              const timestampCmd = `cd ${wslProjectsDir}/${projectName} && ls -t *.jsonl 2>/dev/null | head -1 | xargs -r stat -c %Y 2>/dev/null`;
+              const timestamp = execFileSync(wslPath, ['-e', 'bash', '-c', timestampCmd], {
+                encoding: 'utf8',
+                windowsHide: true
+              }).trim();
+              
+              if (timestamp && !isNaN(timestamp)) {
+                lastModified = parseInt(timestamp) * 1000;
+              }
+            } catch (e) {
+              // No sessions or error - use 0 timestamp
+              lastModified = 0;
+            }
             
             // Count sessions for this project
             let sessionCount = 0;
             try {
-              const wslPath = 'C:\\Windows\\System32\\wsl.exe';
               const countBashCmd = `ls -1 ${wslProjectsDir}/"${projectName}"/*.jsonl 2>/dev/null | wc -l`;
               const count = execFileSync(wslPath, ['-e', 'bash', '-c', countBashCmd], {
                 encoding: 'utf8',
@@ -830,15 +974,22 @@ app.get('/claude-projects-quick', async (req, res) => {
               // Ignore count errors
             }
             
-            return {
+            // Skip projects with no sessions and no recent activity
+            if (sessionCount === 0 && lastModified === 0) {
+              continue;
+            }
+            
+            projects.push({
               name: projectName,
               path: projectName,
-              lastModified: parseInt(timestamp) * 1000, // Convert Unix timestamp to milliseconds
+              lastModified: lastModified,
               sessionCount: sessionCount,
               sessions: []
-            };
-          })
-          .sort((a, b) => b.lastModified - a.lastModified); // Sort by most recent first
+            });
+          }
+          
+        // Sort by most recently used (based on session timestamps)
+        projects.sort((a, b) => b.lastModified - a.lastModified);
         
         console.log(`✅ Found ${projects.length} projects in WSL`);
         
@@ -933,9 +1084,9 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         console.log('🚀 Getting session list from WSL:', projectPath);
         const { execFileSync } = require('child_process');
         
-        // Get list of .jsonl files with modification times
+        // Get list of .jsonl files with modification times, sorted by most recent first
         const wslPath = 'C:\\Windows\\System32\\wsl.exe';
-        const bashCmd = `cd ${projectPath} 2>/dev/null && for f in *.jsonl; do [ -f "$f" ] && stat -c "%Y:%n" -- "$f"; done | head -10`;
+        const bashCmd = `cd ${projectPath} 2>/dev/null && for f in *.jsonl; do [ -f "$f" ] && stat -c "%Y:%n" -- "$f"; done | sort -rn | head -50`;
         
         const output = execFileSync(wslPath, ['-e', 'bash', '-c', bashCmd], {
           encoding: 'utf8',
@@ -973,6 +1124,11 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         for (let i = 0; i < files.length; i++) {
           const { filename, timestamp } = files[i];
           try {
+            // Stop after 50 sessions for performance
+            if (i >= 50) {
+              break;
+            }
+            
             // Read first line from WSL
             const wslPath = 'C:\\Windows\\System32\\wsl.exe';
             const firstLine = execFileSync(wslPath, ['-e', 'bash', '-c', `head -n1 ${projectPath}/${filename} 2>/dev/null`], {
@@ -980,8 +1136,14 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
               windowsHide: true
             }).trim();
             
-            // Get line count
-            const lineCount = execFileSync(wslPath, ['-e', 'bash', '-c', `wc -l < ${projectPath}/${filename} 2>/dev/null`], {
+            // Read last line to check for metadata/title
+            const lastLine = execFileSync(wslPath, ['-e', 'bash', '-c', `tail -n1 ${projectPath}/${filename} 2>/dev/null`], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            
+            // Get line count (but limit counting to first 50 lines for performance)
+            const lineCount = execFileSync(wslPath, ['-e', 'bash', '-c', `head -n50 ${projectPath}/${filename} 2>/dev/null | wc -l`], {
               encoding: 'utf8',
               windowsHide: true
             }).trim();
@@ -990,38 +1152,57 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
             
             let summary = 'Untitled session';
             let title = null;
+            
+            // Check last line for metadata/title (Claude often stores this at the end)
             try {
-              const data = JSON.parse(firstLine);
-              // Check for different possible title fields
-              if (data.summary) {
-                summary = data.summary;
-                title = data.summary;
-              }
-              if (data.title) {
-                title = data.title;
-              }
-              // If it's a user message, use the content as summary
-              if (!title && data.role === 'user' && data.content) {
-                if (typeof data.content === 'string') {
-                  summary = data.content.substring(0, 100);
-                  title = summary;
-                } else if (Array.isArray(data.content)) {
-                  // Handle array content (with text blocks)
-                  const textBlock = data.content.find(c => c.type === 'text');
-                  if (textBlock && textBlock.text) {
-                    summary = textBlock.text.substring(0, 100);
-                    title = summary;
-                  }
-                }
-              }
-              // If it's session metadata with a type field
-              if (data.type === 'summary' && data.summary) {
-                title = data.summary;
-                summary = data.summary;
+              const lastData = JSON.parse(lastLine);
+              if (lastData.type === 'title' && lastData.title) {
+                title = lastData.title;
+              } else if (lastData.type === 'metadata' && lastData.title) {
+                title = lastData.title;
+              } else if (lastData.title && !lastData.role) {
+                // Standalone title object
+                title = lastData.title;
               }
             } catch (e) {
-              // Parse error, use default
-              console.log(`Could not parse session title from: ${firstLine.substring(0, 100)}`);
+              // Not valid JSON or no title in last line
+            }
+            
+            // If no title found in metadata, check first line
+            if (!title) {
+              try {
+                const data = JSON.parse(firstLine);
+                // Check for different possible title fields
+                if (data.summary) {
+                  summary = data.summary;
+                  if (!title) title = data.summary;
+                }
+                if (data.title) {
+                  title = data.title;
+                }
+                // If it's a user message, use the content as summary
+                if (!title && data.role === 'user' && data.content) {
+                  if (typeof data.content === 'string') {
+                    summary = data.content.substring(0, 100);
+                    title = summary;
+                  } else if (Array.isArray(data.content)) {
+                    // Handle array content (with text blocks)
+                    const textBlock = data.content.find(c => c.type === 'text');
+                    if (textBlock && textBlock.text) {
+                      summary = textBlock.text.substring(0, 100);
+                      title = summary;
+                    }
+                  }
+                }
+                // If it's session metadata with a type field
+                if (data.type === 'summary' && data.summary) {
+                  title = data.summary;
+                  summary = data.summary;
+                }
+              } catch (e) {
+                // Parse error, use default
+                console.log(`Could not parse session title from: ${firstLine.substring(0, 100)}`);
+              }
             }
             
             const session = {

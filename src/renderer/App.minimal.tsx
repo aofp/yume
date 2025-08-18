@@ -717,16 +717,16 @@ export const App: React.FC = () => {
             // Use the store's method to create a restored session
             const store = useClaudeCodeStore.getState();
             
-            // Use the provided title, or extract from messages as fallback
-            let sessionName = sessionTitle || 'resumed session';
+            // Use the provided title from modal, or the title from server response, or extract from messages as fallback
+            let sessionName = sessionTitle || data.title || 'resumed session';
             
             // Store title in localStorage if provided
-            if (sessionTitle) {
-              localStorage.setItem(`session-title-${sessionId}`, sessionTitle);
+            if (sessionTitle || data.title) {
+              localStorage.setItem(`session-title-${sessionId}`, sessionTitle || data.title);
             }
             
-            // Only extract from messages if no title was provided
-            if (!sessionTitle && data.messages && data.messages.length > 0) {
+            // Only extract from messages if no title was provided from either source
+            if (!sessionTitle && !data.title && data.messages && data.messages.length > 0) {
               // Find the first user message
               const firstUserMessage = data.messages.find((m: any) => m.role === 'user');
               if (firstUserMessage && firstUserMessage.content) {
@@ -795,6 +795,7 @@ export const App: React.FC = () => {
             const newSession = {
               id: newSessionId,
               name: sessionName,
+              claudeTitle: sessionName, // Set claudeTitle so it shows in the tab
               status: 'active' as const,
               messages: messagesToLoad,
               workingDirectory: data.projectPath,

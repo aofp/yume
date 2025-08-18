@@ -50,6 +50,18 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
   const [focusedIndex, setFocusedIndex] = useState<number>(-1);
   const [loadingSessions, setLoadingSessions] = useState(false);
   const [sessionsByProject, setSessionsByProject] = useState<{ [key: string]: ClaudeSession[] }>({});
+  
+  // Pagination state
+  const [projectsOffset, setProjectsOffset] = useState(0);
+  const [hasMoreProjects, setHasMoreProjects] = useState(true);
+  const [loadingMoreProjects, setLoadingMoreProjects] = useState(false);
+  const [sessionsOffset, setSessionsOffset] = useState<Record<string, number>>({});
+  const [hasMoreSessions, setHasMoreSessions] = useState<Record<string, boolean>>({});
+  const [loadingMoreSessions, setLoadingMoreSessions] = useState(false);
+  
+  // Refs for scroll containers
+  const projectsListRef = useRef<HTMLDivElement>(null);
+  const sessionsListRef = useRef<HTMLDivElement>(null);
 
   // load projects function  
   const loadProjects = useCallback(async (forceRefresh = false) => {
@@ -72,7 +84,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
       
       // Load quick data IMMEDIATELY without waiting
       setLoading(true);
-      fetch(`http://localhost:${serverPort}/claude-projects-quick`)
+      fetch(`http://localhost:${serverPort}/claude-projects-quick?limit=20&offset=0`)
         .then(quickResponse => {
           if (quickResponse.ok) {
             return quickResponse.json();
@@ -82,6 +94,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
         .then(quickData => {
           setProjectCount(quickData.count);
           setProjects(quickData.projects || []);
+          setProjectsOffset(20);
+          setHasMoreProjects((quickData.projects || []).length === 20 && quickData.count > 20);
           setQuickLoaded(true);
           setLoading(false); // Stop showing loading IMMEDIATELY
           setHasLoaded(true);
@@ -125,6 +139,49 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
       setLoading(false);
     }
   }, [loading, hasLoaded, lastLoadTime]);
+
+  // Load more projects when scrolling to bottom
+  const loadMoreProjects = useCallback(async () => {
+    if (loadingMoreProjects || !hasMoreProjects) return;
+    
+    try {
+      const serverPort = claudeCodeClient.getServerPort();
+      if (!serverPort) return;
+      
+      setLoadingMoreProjects(true);
+      const response = await fetch(`http://localhost:${serverPort}/claude-projects-quick?limit=20&offset=${projectsOffset}`);
+      
+      if (response.ok) {
+        const data = await response.json();
+        const newProjects = data.projects || [];
+        
+        setProjects(prev => [...prev, ...newProjects]);
+        setProjectsOffset(prev => prev + newProjects.length);
+        setHasMoreProjects(newProjects.length === 20);
+        
+        // Load session counts for new projects
+        newProjects.forEach(async (project: ClaudeProject) => {
+          try {
+            const countResponse = await fetch(`http://localhost:${serverPort}/claude-project-session-count/${encodeURIComponent(project.path)}`);
+            if (countResponse.ok) {
+              const countData = await countResponse.json();
+              setProjects(prev => prev.map(p => 
+                p.path === countData.projectName 
+                  ? { ...p, sessionCount: countData.sessionCount }
+                  : p
+              ));
+            }
+          } catch (err) {
+            console.error(`Failed to load data for ${project.name}:`, err);
+          }
+        });
+      }
+    } catch (err) {
+      console.error('Error loading more projects:', err);
+    } finally {
+      setLoadingMoreProjects(false);
+    }
+  }, [loadingMoreProjects, hasMoreProjects, projectsOffset]);
 
   // load sessions for a specific project - stream them one by one
   const loadProjectSessions = useCallback(async (projectPath: string) => {
