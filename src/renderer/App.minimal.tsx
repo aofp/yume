@@ -701,10 +701,10 @@ export const App: React.FC = () => {
       <ProjectsModal
         isOpen={showProjectsModal}
         onClose={() => setShowProjectsModal(false)}
-        onSelectSession={async (projectPath, sessionId) => {
+        onSelectSession={async (projectPath, sessionId, sessionTitle) => {
           // load the session from server
           try {
-            console.log('Loading session:', projectPath, sessionId);
+            console.log('Loading session:', projectPath, sessionId, 'with title:', sessionTitle);
             const serverPort = claudeCodeClient.getServerPort();
             if (!serverPort) {
               throw new Error('server port not available');
@@ -717,9 +717,16 @@ export const App: React.FC = () => {
             // Use the store's method to create a restored session
             const store = useClaudeCodeStore.getState();
             
-            // Extract a meaningful name from the first user message or session summary
-            let sessionName = 'resumed session';
-            if (data.messages && data.messages.length > 0) {
+            // Use the provided title, or extract from messages as fallback
+            let sessionName = sessionTitle || 'resumed session';
+            
+            // Store title in localStorage if provided
+            if (sessionTitle) {
+              localStorage.setItem(`session-title-${sessionId}`, sessionTitle);
+            }
+            
+            // Only extract from messages if no title was provided
+            if (!sessionTitle && data.messages && data.messages.length > 0) {
               // Find the first user message
               const firstUserMessage = data.messages.find((m: any) => m.role === 'user');
               if (firstUserMessage && firstUserMessage.content) {

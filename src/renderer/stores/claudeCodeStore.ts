@@ -1584,9 +1584,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       )
     }));
     
-    // Update the session mapping with new name
+    // Save title to localStorage for persistence
     const state = get();
     const session = state.sessions.find(s => s.id === sessionId);
+    if (session && session.claudeSessionId) {
+      localStorage.setItem(`session-title-${session.claudeSessionId}`, newTitle.trim().toLowerCase());
+    }
+    
+    // Update the session mapping with new name
     if (session && session.claudeSessionId) {
       state.updateSessionMapping(sessionId, session.claudeSessionId, {
         name: newTitle.trim().toLowerCase(),

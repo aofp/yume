@@ -6,6 +6,7 @@ import './ProjectsModal.css';
 interface ClaudeSession {
   id: string;
   summary: string;
+  title?: string; // Added title field
   timestamp: number;
   path: string;
   messageCount?: number;
@@ -22,7 +23,7 @@ interface ClaudeProject {
 interface ProjectsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectSession: (projectPath: string, sessionId: string) => void;
+  onSelectSession: (projectPath: string, sessionId: string, title?: string) => void;
 }
 
 export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, onSelectSession }) => {
@@ -185,8 +186,12 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     );
   }, [selectedProjectData, selectedProject, sessionsByProject, sessionSearchQuery]);
 
-  const handleSelectSession = useCallback((projectPath: string, sessionId: string) => {
-    onSelectSession(projectPath, sessionId);
+  const handleSelectSession = useCallback((projectPath: string, sessionId: string, title?: string) => {
+    // Store title in localStorage
+    if (title) {
+      localStorage.setItem(`session-title-${sessionId}`, title);
+    }
+    onSelectSession(projectPath, sessionId, title);
     onClose();
   }, [onSelectSession, onClose]);
 
@@ -639,13 +644,18 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                   <div
                     key={session.id}
                     className={`session-item ${focusedIndex === index ? 'focused' : ''}`}
-                    onClick={() => handleSelectSession(selectedProjectData.path, session.id)}
+                    onClick={() => {
+                      // Get title from localStorage or use session title/summary
+                      const storedTitle = localStorage.getItem(`session-title-${session.id}`);
+                      const title = storedTitle || session.title || session.summary;
+                      handleSelectSession(selectedProjectData.path, session.id, title);
+                    }}
                     onContextMenu={(e) => handleContextMenu(e, 'session', selectedProjectData.path, session.id)}
                     onMouseEnter={() => setFocusedIndex(index)}
                   >
                     <div className="session-main">
                       <span className="session-summary">
-                        {session.summary || 'untitled session'}
+                        {localStorage.getItem(`session-title-${session.id}`) || session.title || session.summary || 'untitled session'}
                       </span>
                     </div>
                     <div className="session-meta">

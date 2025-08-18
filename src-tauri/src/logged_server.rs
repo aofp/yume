@@ -532,28 +532,217 @@ app.delete('/claude-session/:projectPath/:sessionId', async (req, res) => {
   }
 });
 
+// Load sessions for a specific project
+app.get('/claude-project-sessions/:projectPath', async (req, res) => {
+  try {
+    const { projectPath } = req.params;
+    const decodedPath = decodeURIComponent(projectPath);
+    
+    console.log('Loading sessions for project:', decodedPath);
+    
+    // On Windows, load from WSL
+    if (platform() === 'win32') {
+      const { execSync } = require('child_process');
+      
+      const projectPath = `/home/yuru/.claude/projects/${decodedPath}`;
+      
+      try {
+        // Get session list from WSL (limit to 10 most recent)
+        const sessionList = execSync(
+          `wsl.exe -e bash -c "cd ${projectPath} && ls -t *.jsonl 2>/dev/null | head -10"`,
+          { encoding: 'utf8', windowsHide: true, timeout: 5000 }
+        ).trim().split('\n').filter(f => f);
+        
+        console.log(`Found ${sessionList.length} session files`);
+        
+        const sessions = [];
+        for (const sessionFile of sessionList) {
+          const sessionId = sessionFile.replace('.jsonl', '');
+          
+          try {
+            // Get file content from WSL
+            const content = execSync(
+              `wsl.exe -e cat ${projectPath}/${sessionFile}`,
+              { encoding: 'utf8', windowsHide: true, timeout: 5000, maxBuffer: 10 * 1024 * 1024 }
+            );
+            const lines = content.split('\n').filter(l => l.trim());
+            const messageCount = lines.length;
+            
+            let summary = 'untitled session';
+            let title = null;
+            let foundValidContent = false;
+            
+            if (lines.length > 0) {
+              // Check all lines for title/summary - scan more lines for better chance
+              for (const line of lines.slice(0, Math.min(lines.length, 20))) { // Check first 20 lines
+                try {
+                  const data = JSON.parse(line);
+                  
+                  // Skip error messages
+                  if (data.error || (data.message && data.message.includes('Invalid API key'))) {
+                    continue;
+                  }
+                  
+                  // Priority 1: User renamed title
+                  if (data.userRenamed && data.claudeTitle) {
+                    title = data.claudeTitle;
+                    summary = title;
+                    foundValidContent = true;
+                    break;
+                  }
+                  
+                  // Priority 2: Generated title
+                  if (data.claudeTitle && data.claudeTitle !== 'untitled session') {
+                    title = data.claudeTitle;
+                    summary = title;
+                    foundValidContent = true;
+                  }
+                  
+                  // Priority 3: Summary field (from first line)
+                  if (!title && data.type === 'summary' && data.summary && data.summary !== 'untitled session') {
+                    summary = data.summary;
+                    foundValidContent = true;
+                  }
+                  
+                  // Priority 4: User message content (new structure)
+                  if (!foundValidContent && data.type === 'user' && data.message && data.message.content) {
+                    const messageContent = data.message.content;
+                    const content = typeof messageContent === 'string' ? 
+                      messageContent : 
+                      (Array.isArray(messageContent) && messageContent[0]?.text) ? 
+                        messageContent[0].text : '';
+                    
+                    // Clean and extract meaningful content
+                    if (content && content.trim() && !content.includes('Invalid API key')) {
+                      // Remove leading command characters like !, /, etc
+                      let cleanContent = content.replace(/^[!\/\\#>]+\s*/, '').trim();
+                      
+                      // Take first line or sentence
+                      const firstLine = cleanContent.split('\n')[0];
+                      const firstSentence = firstLine.split(/[.!?]/)[0];
+                      
+                      summary = (firstSentence || firstLine).slice(0, 80);
+                      if ((firstSentence || firstLine).length > 80) summary += '...';
+                      foundValidContent = true;
+                    }
+                  }
+                  
+                  // Priority 5: Assistant message (if no user message found)
+                  if (!foundValidContent && data.type === 'assistant' && data.message && data.message.content) {
+                    const messageContent = data.message.content;
+                    const content = typeof messageContent === 'string' ? messageContent : 
+                                   (Array.isArray(messageContent) && messageContent[0]?.text) ? 
+                                     messageContent[0].text : '';
+                    if (content && content.trim() && !content.includes('Invalid API key')) {
+                      const firstLine = content.split('\n')[0]
+                        .replace(/^#+\s*/, '') // Remove markdown headers
+                        .replace(/[*_`]/g, '') // Remove markdown formatting
+                        .trim();
+                      
+                      if (firstLine) {
+                        summary = firstLine.slice(0, 80);
+                        if (firstLine.length > 80) summary += '...';
+                        foundValidContent = true;
+                      }
+                    }
+                  }
+                } catch (e) {
+                  // Could not parse JSON - skip this line
+                }
+              }
+              
+            }
+            
+            // Get timestamp from WSL
+            let timestamp = Date.now();
+            try {
+              const statResult = execSync(
+                `wsl.exe -e stat -c %Y ${projectPath}/${sessionFile}`,
+                { encoding: 'utf8', windowsHide: true, timeout: 1000 }
+              ).trim();
+              timestamp = parseInt(statResult) * 1000;
+            } catch (e) {}
+            
+            sessions.push({
+              id: sessionId,
+              summary,
+              title: title || summary, // Include title field
+              messageCount,
+              timestamp,
+              path: `${projectPath}/${sessionFile}`
+            });
+          } catch (e) {
+            console.log(`Error reading session ${sessionFile}:`, e.message);
+          }
+        }
+        
+        // Sort by timestamp (newest first)
+        sessions.sort((a, b) => b.timestamp - a.timestamp);
+        
+        console.log(`Returning ${sessions.length} sessions`);
+        res.json({ sessions });
+      } catch (e) {
+        console.error('Error loading sessions:', e.message);
+        res.json({ sessions: [] });
+      }
+    } else {
+      // For non-Windows platforms
+      res.json({ sessions: [] });
+    }
+  } catch (error) {
+    console.error('Error in project sessions endpoint:', error);
+    res.status(500).json({ error: 'Failed to load sessions' });
+  }
+});
+
 // Load a specific claude session with better error handling
 app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   try {
     const { projectPath, sessionId } = req.params;
-    const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
+    
+    // Handle the project path properly
+    let sessionPath;
+    const decodedProjectPath = decodeURIComponent(projectPath);
+    
+    if (platform() === 'win32') {
+      // On Windows, load from WSL
+      sessionPath = `/home/yuru/.claude/projects/${decodedProjectPath}/${sessionId}.jsonl`;
+    } else {
+      sessionPath = join(homedir(), '.claude', 'projects', decodedProjectPath, `${sessionId}.jsonl`);
+    }
     
     console.log('Loading session request:');
     console.log('  - Raw projectPath:', projectPath);
+    console.log('  - Decoded projectPath:', platform() === 'win32' ? decodeURIComponent(projectPath) : projectPath);
     console.log('  - SessionId:', sessionId);
     console.log('  - Full path:', sessionPath);
     console.log('  - Platform:', platform());
     
-    if (!existsSync(sessionPath)) {
-      console.error('Session not found:', sessionPath);
-      return res.status(404).json({ error: 'session not found' });
+    // Read the session file
+    let content;
+    if (platform() === 'win32') {
+      // On Windows, read from WSL
+      const { execSync } = require('child_process');
+      try {
+        content = execSync(
+          `wsl.exe -e cat ${sessionPath}`,
+          { encoding: 'utf8', windowsHide: true, timeout: 10000, maxBuffer: 50 * 1024 * 1024 }
+        );
+      } catch (err) {
+        console.error('Session not found in WSL:', sessionPath);
+        return res.status(404).json({ error: 'session not found' });
+      }
+    } else {
+      // On other platforms, read normally
+      if (!existsSync(sessionPath)) {
+        console.error('Session not found:', sessionPath);
+        return res.status(404).json({ error: 'session not found' });
+      }
+      const { readFile } = await import('fs/promises');
+      content = await readFile(sessionPath, 'utf8');
     }
     
-    // Read the session file using promises for better error handling
-    const { readFile } = await import('fs/promises');
-    
     try {
-      const content = await readFile(sessionPath, 'utf8');
       console.log('Raw file content preview (first 200 chars):', content.substring(0, 200).replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
       console.log('Total file size:', content.length, 'characters');
       
@@ -718,8 +907,220 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
 // Projects endpoint - loads claude projects asynchronously with enhanced error handling
 app.get('/claude-projects', async (req, res) => {
   try {
-    const claudeDir = join(homedir(), '.claude', 'projects');
+    // On Windows, check both Windows and WSL projects
+    if (platform() === 'win32') {
+      console.log('Loading projects on Windows...');
+      
+      const projects = [];
+      const { execSync } = require('child_process');
+      
+      // First check if WSL is available and has projects
+      let hasWsl = false;
+      let wslUser = 'yuru';
+      
+      try {
+        wslUser = execSync('wsl.exe whoami', {
+          encoding: 'utf8',
+          windowsHide: true,
+          timeout: 2000
+        }).trim();
+        hasWsl = true;
+        console.log(`WSL available with user: ${wslUser}`);
+      } catch (e) {
+        console.log('WSL not available or not configured');
+      }
+      
+      if (hasWsl) {
+        try {
+          // First check if Claude projects exist in WSL
+          const testOutput = execSync(
+            `wsl.exe -e bash -c "if [ -d $HOME/.claude/projects ]; then echo EXISTS; ls -1 $HOME/.claude/projects | head -5; else echo NOTFOUND; fi"`,
+            { encoding: 'utf8', windowsHide: true, timeout: 2000 }
+          ).trim();
+          
+          console.log('WSL Claude projects test:', testOutput);
+          
+          if (!testOutput.includes('EXISTS')) {
+            console.log('Claude projects directory not found in WSL ~/.claude/projects');
+            console.log('This likely means Claude CLI is not installed or configured in WSL');
+            // No projects available if Claude is not in WSL
+            return res.json({ projects: [] });
+          } else {
+            // Get projects directly from WSL using a simple approach
+            console.log(`Loading projects from WSL...`);
+            
+            let output = '';
+            try {
+              // First get list of projects
+              const projectList = execSync(
+                `wsl.exe -e ls /home/yuru/.claude/projects`,
+                { encoding: 'utf8', windowsHide: true, timeout: 5000 }
+              ).trim().split('\n').filter(p => p && p !== '-');
+              
+              console.log(`Found ${projectList.length} projects in WSL`);
+              
+              // Process each project
+              for (const projectName of projectList.slice(0, 10)) { // Limit to 10 projects
+                try {
+                  const projectPath = `/home/yuru/.claude/projects/${projectName}`;
+                  
+                  // Get session list for this project
+                  const sessionList = execSync(
+                    `wsl.exe -e bash -c "cd ${projectPath} && ls -t *.jsonl 2>/dev/null | head -10"`,
+                    { encoding: 'utf8', windowsHide: true, timeout: 2000 }
+                  ).trim().split('\n').filter(s => s);
+                  
+                  if (sessionList.length === 0) continue;
+                  
+                  output += `PROJECT:${projectName}\n`;
+                  
+                  // Get details for each session
+                  for (const sessionFile of sessionList) {
+                    const sessionId = sessionFile.replace('.jsonl', '');
+                    let lineCount = '0';
+                    let timestamp = Math.floor(Date.now() / 1000).toString();
+                    let firstLine = '{}';
+                    
+                    try {
+                      lineCount = execSync(
+                        `wsl.exe -e bash -c "wc -l < ${projectPath}/${sessionFile}"`,
+                        { encoding: 'utf8', windowsHide: true, timeout: 1000 }
+                      ).trim();
+                    } catch (e) {}
+                    
+                    try {
+                      timestamp = execSync(
+                        `wsl.exe -e stat -c %Y ${projectPath}/${sessionFile}`,
+                        { encoding: 'utf8', windowsHide: true, timeout: 1000 }
+                      ).trim();
+                    } catch (e) {}
+                    
+                    try {
+                      firstLine = execSync(
+                        `wsl.exe -e head -n1 ${projectPath}/${sessionFile}`,
+                        { encoding: 'utf8', windowsHide: true, timeout: 1000, maxBuffer: 1024 * 1024 }
+                      ).trim();
+                    } catch (e) {}
+                    
+                    output += `SESSION:${sessionId}|${lineCount}|${timestamp}|${firstLine}\n`;
+                  }
+                } catch (e) {
+                  console.log(`Error processing project ${projectName}:`, e.message);
+                }
+              }
+            } catch (err) {
+              console.error('WSL command error:', err.message);
+              output = '';
+            }
+          
+          console.log(`WSL output length: ${output.length} bytes`);
+          if (output.length < 500) {
+            console.log(`WSL output: ${output}`);
+          }
+          
+          // Parse the output
+          const lines = output.split('\n').filter(line => line);
+          let currentProject = null;
+          
+          for (const line of lines) {
+            if (line.startsWith('PROJECT:')) {
+              // Save previous project if exists
+              if (currentProject && currentProject.sessions.length > 0) {
+                currentProject.sessions.sort((a, b) => b.timestamp - a.timestamp);
+                currentProject.lastModified = currentProject.sessions[0].timestamp;
+                currentProject.createdAt = Math.min(...currentProject.sessions.map(s => s.timestamp));
+                currentProject.sessionCount = currentProject.sessions.length;
+                currentProject.totalMessages = currentProject.sessions.reduce((sum, s) => sum + s.messageCount, 0);
+                
+                // Convert project name if it's a Windows path
+                let displayName = currentProject.name;
+                if (currentProject.name.startsWith('-mnt-')) {
+                  displayName = currentProject.name.substring(1).replace(/-/g, '/').replace(/^mnt\//, '');
+                  if (displayName.length > 2 && displayName[1] === '/') {
+                    displayName = displayName.charAt(0).toUpperCase() + ':' + displayName.substring(1);
+                  }
+                }
+                currentProject.name = displayName;
+                
+                projects.push(currentProject);
+              }
+              
+              // Start new project
+              const projectName = line.substring(8);
+              currentProject = {
+                name: projectName,
+                path: projectName,
+                sessions: []
+              };
+            } else if (line.startsWith('SESSION:') && currentProject) {
+              const sessionData = line.substring(8);
+              const parts = sessionData.split('|');
+              if (parts.length >= 4) {
+                const [sessionId, msgCount, modTime, ...jsonParts] = parts;
+                const firstLine = jsonParts.join('|');
+                
+                let summary = 'untitled session';
+                try {
+                  const data = JSON.parse(firstLine);
+                  if (data.summary) {
+                    summary = data.summary;
+                  } else if (data.role === 'user' && data.content) {
+                    const content = typeof data.content === 'string' ? data.content : 
+                                   Array.isArray(data.content) && data.content[0]?.text ? data.content[0].text : '';
+                    summary = content.slice(0, 100);
+                    if (content.length > 100) summary += '...';
+                  }
+                } catch (e) {
+                  // Could not parse JSON
+                }
+                
+                currentProject.sessions.push({
+                  id: sessionId,
+                  summary,
+                  messageCount: parseInt(msgCount) || 0,
+                  timestamp: parseInt(modTime) * 1000 || Date.now(),
+                  createdAt: parseInt(modTime) * 1000 || Date.now()
+                });
+              }
+            }
+          }
+          
+          // Don't forget the last project
+          if (currentProject && currentProject.sessions.length > 0) {
+            currentProject.sessions.sort((a, b) => b.timestamp - a.timestamp);
+            currentProject.lastModified = currentProject.sessions[0].timestamp;
+            currentProject.createdAt = Math.min(...currentProject.sessions.map(s => s.timestamp));
+            currentProject.sessionCount = currentProject.sessions.length;
+            currentProject.totalMessages = currentProject.sessions.reduce((sum, s) => sum + s.messageCount, 0);
+            
+            // Convert project name if it's a Windows path
+            let displayName = currentProject.name;
+            if (currentProject.name.startsWith('-mnt-')) {
+              displayName = currentProject.name.substring(1).replace(/-/g, '/').replace(/^mnt\//, '');
+              if (displayName.length > 2 && displayName[1] === '/') {
+                displayName = displayName.charAt(0).toUpperCase() + ':' + displayName.substring(1);
+              }
+            }
+            currentProject.name = displayName;
+            
+            projects.push(currentProject);
+          }
+          
+            console.log(`Loaded ${projects.length} projects from WSL`);
+          }
+        } catch (e) {
+          console.log('Error loading WSL projects:', e.message);
+        }
+      }
+      
+      // Sort projects by last modified
+      projects.sort((a, b) => b.lastModified - a.lastModified);
+      
+      console.log(`Loaded ${projects.length} projects total`);
+      return res.json({ projects });
+    }
     
+    const claudeDir = join(homedir(), '.claude', 'projects');
     console.log('Loading projects from:', claudeDir);
     console.log('Platform:', platform());
     
@@ -1806,32 +2207,11 @@ httpServer.listen(PORT, () => {
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🖥️ Platform: ${platform()}`);
   console.log(`🏠 Home directory: ${homedir()}`);
-  console.log(`📁 Claude projects: ${join(homedir(), '.claude', 'projects')}`);
-  
-  // Check if Claude projects directory exists and is accessible
-  const projectsDir = join(homedir(), '.claude', 'projects');
-  if (existsSync(projectsDir)) {
-    console.log('✅ Claude projects directory exists');
-    try {
-      const { readdirSync } = require('fs');
-      const projects = readdirSync(projectsDir);
-      console.log(`📊 Found ${projects.length} project directory(s)`);
-      if (projects.length > 0 && platform() === 'win32') {
-        console.log('🔍 Sample project paths (first 3):');
-        projects.slice(0, 3).forEach(p => {
-          console.log(`  - ${p}`);
-          // Check if it looks like a Windows path that needs conversion
-          if (p.match(/^[A-Z]--/)) {
-            const converted = p.replace(/^([A-Z])--/, '$1:/').replace(/-/g, '/');
-            console.log(`    → Would convert to: ${converted}`);
-          }
-        });
-      }
-    } catch (e) {
-      console.log('⚠️ Could not list projects:', e.message);
-    }
+  // On Windows, Claude projects are in WSL, not Windows filesystem
+  if (platform() === 'win32') {
+    console.log(`📁 Claude projects: WSL ~/.claude/projects (accessed via wsl.exe)`);
   } else {
-    console.log('⚠️ Claude projects directory not found at:', projectsDir);
+    console.log(`📁 Claude projects: ${join(homedir(), '.claude', 'projects')}`);
   }
   
   console.log(`✅ Server configured for ${platform() === 'win32' ? 'Windows' : platform()}`);

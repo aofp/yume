@@ -8,7 +8,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100000; /* Higher than connection overlay */
+  z-index: 2000000; /* Highest z-index - above all other elements */
   backdrop-filter: blur(4px);
 }
 
