@@ -1708,20 +1708,7 @@ io.on('connection', (socket) => {
 
       // Send input if not resuming - handle WSL differently
       if (message) {
-        // Check for ultrathink command
-        let messageToSend = message;
-        if (message.trim().toLowerCase() === 'ultrathink' || message.trim().toLowerCase() === 'ultrathink.') {
-          // Transform ultrathink into a prompt that triggers extended thinking
-          messageToSend = `I need you to engage in deep, extended thinking about a complex problem. Show your complete thought process.
-
-Think step by step through this problem:
-"What are the most interesting and non-obvious connections between quantum mechanics, consciousness, and information theory? Explore multiple perspectives and challenge conventional assumptions."
-
-Use <thinking> tags extensively to show your reasoning process.`;
-          console.log(`🧠 ULTRATHINK mode activated - triggering extended thinking demonstration`);
-        }
-        
-        messageToSend = messageToSend + '\n';
+        const messageToSend = message + '\n';
         console.log(`📝 Sending message to claude (${messageToSend.length} chars)`);
         
         // For WSL, we need to be more careful with stdin
@@ -1878,9 +1865,23 @@ Use <thinking> tags extensively to show your reasoning process.`;
               
               // Check what content we have and preserve all blocks
               for (const block of jsonData.message.content) {
-                if (block.type === 'text' || block.type === 'thinking') {
+                if (block.type === 'text') {
                   hasContent = true;
                   contentBlocks.push(block);
+                } else if (block.type === 'thinking') {
+                  hasContent = true;
+                  // Log thinking block for debugging
+                  console.log(`🧠 [${sessionId}] Thinking block detected:`, {
+                    hasThinking: !!block.thinking,
+                    hasText: !!block.text,
+                    length: (block.thinking || block.text || '').length
+                  });
+                  // Ensure thinking blocks have the correct structure
+                  contentBlocks.push({
+                    type: 'thinking',
+                    thinking: block.thinking || block.text || '',
+                    text: block.thinking || block.text || ''  // Add text field as fallback
+                  });
                 } else if (block.type === 'tool_use') {
                   hasToolUse = true;
                   // Send tool use as separate message immediately
