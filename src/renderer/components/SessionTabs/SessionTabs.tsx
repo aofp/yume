@@ -205,71 +205,75 @@ export const SessionTabs: React.FC = () => {
 
   const handleOpenFolder = async () => {
     setShowNewMenu(false);
-    let directory = null;
     
-    // Debug log
-    console.log('handleOpenFolder called');
-    console.log('window.__TAURI__:', !!(window as any).__TAURI__);
-    console.log('electronAPI available?', !!window.electronAPI);
-    console.log('electronAPI.folder?', !!window.electronAPI?.folder);
-    console.log('electronAPI.folder.select?', !!window.electronAPI?.folder?.select);
-    
-    // Try using the platform bridge
-    if (window.electronAPI?.folder?.select) {
-      console.log('Calling folder.select() via electronAPI...');
-      try {
-        directory = await window.electronAPI.folder.select();
-        console.log('Folder select returned:', directory);
-        if (!directory) {
-          // User cancelled folder selection
-          console.log('User cancelled folder selection');
+    // Wrap in a setTimeout to ensure UI updates before the blocking dialog
+    setTimeout(async () => {
+      let directory = null;
+      
+      // Debug log
+      console.log('handleOpenFolder called');
+      console.log('window.__TAURI__:', !!(window as any).__TAURI__);
+      console.log('electronAPI available?', !!window.electronAPI);
+      console.log('electronAPI.folder?', !!window.electronAPI?.folder);
+      console.log('electronAPI.folder.select?', !!window.electronAPI?.folder?.select);
+      
+      // Try using the platform bridge
+      if (window.electronAPI?.folder?.select) {
+        console.log('Calling folder.select() via electronAPI...');
+        try {
+          directory = await window.electronAPI.folder.select();
+          console.log('Folder select returned:', directory);
+          if (!directory) {
+            // User cancelled folder selection
+            console.log('User cancelled folder selection');
+            return;
+          }
+        } catch (error) {
+          console.error('Folder selection failed:', error);
+          // Don't fall back to /, just return
           return;
         }
-      } catch (error) {
-        console.error('Folder selection failed:', error);
-        // Don't fall back to /, just return
+      } 
+      
+      if (!directory) {
+        // No folder selection method available, don't create a session
+        console.log('No folder selection method available');
         return;
       }
-    } 
-    
-    if (!directory) {
-      // No folder selection method available, don't create a session
-      console.log('No folder selection method available');
-      return;
-    }
-    
-    // Save to recent projects if it's not the root directory
-    if (directory && directory !== '/') {
-      const name = directory.split(/[/\\]/).pop() || directory;
-      const newProject = { path: directory, name, lastOpened: Date.now() };
       
-      // Get existing recent projects
-      const stored = localStorage.getItem('yurucode-recent-projects');
-      let recentProjects = [];
-      try {
-        if (stored) {
-          recentProjects = JSON.parse(stored);
+      // Save to recent projects if it's not the root directory
+      if (directory && directory !== '/') {
+        const name = directory.split(/[/\\]/).pop() || directory;
+        const newProject = { path: directory, name, lastOpened: Date.now() };
+        
+        // Get existing recent projects
+        const stored = localStorage.getItem('yurucode-recent-projects');
+        let recentProjects = [];
+        try {
+          if (stored) {
+            recentProjects = JSON.parse(stored);
+          }
+        } catch (err) {
+          console.error('Failed to parse recent projects:', err);
         }
-      } catch (err) {
-        console.error('Failed to parse recent projects:', err);
+        
+        // Update recent projects list
+        const updated = [
+          newProject,
+          ...recentProjects.filter((p: any) => p.path !== directory)
+        ].slice(0, 8);
+        
+        localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+        
+        // Update hasRecentProjects state
+        setHasRecentProjects(true);
       }
       
-      // Update recent projects list
-      const updated = [
-        newProject,
-        ...recentProjects.filter((p: any) => p.path !== directory)
-      ].slice(0, 8);
-      
-      localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
-      
-      // Update hasRecentProjects state
-      setHasRecentProjects(true);
-    }
-    
-    // Always create a new session when clicking the new tab button
-    // This ensures sessions are properly persisted to disk
-    console.log('Creating new session with directory:', directory);
-    await createSession(undefined, directory);
+      // Always create a new session when clicking the new tab button
+      // This ensures sessions are properly persisted to disk
+      console.log('Creating new session with directory:', directory);
+      await createSession(undefined, directory);
+    }, 0);
   };
 
 
@@ -662,6 +666,10 @@ export const SessionTabs: React.FC = () => {
               e.currentTarget.classList.remove('ripple-held');
               
               if (isDragging && draggedTab) {
+                // Prevent the onClick from firing when dropping a tab
+                e.preventDefault();
+                e.stopPropagation();
+                
                 // Find the dragged session and duplicate it
                 const sessionToDuplicate = sessions.find(s => s.id === draggedTab);
                 if (sessionToDuplicate) {

@@ -16,6 +16,7 @@ export class ClaudeCodeClient {
   public connectionAttempts = 0;
   public debugLog: string[] = [];
   private connectionStartTime = Date.now();
+  private sessionCreatedCallback: ((data: any) => void) | null = null;
 
   constructor() {
     console.log('[ClaudeCodeClient] Initializing...');
@@ -161,16 +162,17 @@ export class ClaudeCodeClient {
     const serverUrl = `http://localhost:${this.serverPort}`;
     console.log(`[ClaudeCodeClient] Connecting to ${serverUrl}`);
     
-    // Connect to the Claude Code server with balanced retry settings
+    // Connect to the Claude Code server with ultra-reliable settings
     this.socket = io(serverUrl, {
       reconnection: true,
       reconnectionAttempts: Infinity, // Keep trying forever
-      reconnectionDelay: 2000,
-      reconnectionDelayMax: 10000,
-      timeout: 60000, // 60 second connection timeout for long operations
+      reconnectionDelay: 1000, // Start reconnecting faster
+      reconnectionDelayMax: 5000, // Don't wait too long between attempts
+      timeout: 120000, // 2 minute connection timeout for very long operations
       transports: ['websocket', 'polling'], // Try both transports
       autoConnect: true,
-      forceNew: false // Reuse connection if possible
+      forceNew: false, // Reuse connection if possible
+      perMessageDeflate: true // Enable compression
     });
 
     this.socket.on('connect', () => {
@@ -182,6 +184,15 @@ export class ClaudeCodeClient {
       this.connected = true;
     });
 
+    // Handle sessionCreated events from server when it auto-creates a session
+    this.socket.on('sessionCreated', (data) => {
+      console.log('[Client] 📝 Session auto-created by server:', data);
+      // Notify any listeners about the session creation
+      if (this.sessionCreatedCallback) {
+        this.sessionCreatedCallback(data);
+      }
+    });
+
     this.socket.on('disconnect', (reason) => {
       const timestamp = new Date().toISOString();
       console.log(`[Client] ❌ [${timestamp}] Disconnected from Claude Code server`);
@@ -189,15 +200,14 @@ export class ClaudeCodeClient {
       console.log('  Was connected:', this.connected);
       this.connected = false;
       
-      // Auto-reconnect on unexpected disconnects
-      if (reason === 'io server disconnect' || reason === 'transport close') {
-        console.log('[Client] 🔄 Attempting to reconnect...');
-        setTimeout(() => {
-          if (this.socket && !this.connected) {
-            this.socket.connect();
-          }
-        }, 1000);
-      }
+      // Auto-reconnect on ANY disconnect (more aggressive)
+      console.log('[Client] 🔄 Will attempt to reconnect...');
+      setTimeout(() => {
+        if (this.socket && !this.connected) {
+          console.log('[Client] 🔄 Forcing reconnection attempt...');
+          this.socket.connect();
+        }
+      }, 500); // Faster reconnect
     });
 
     this.socket.on('connect_error', (error) => {
@@ -221,6 +231,14 @@ export class ClaudeCodeClient {
     
     this.socket.io.on('reconnect_failed', () => {
       console.error('❌ All reconnection attempts failed');
+    });
+    
+    // Handle keepalive messages to maintain connection
+    this.socket.onAny((eventName: string, ...args: any[]) => {
+      if (eventName.startsWith('keepalive:')) {
+        const timestamp = new Date().toISOString();
+        console.log(`[Client] 💓 [${timestamp}] Keepalive received`);
+      }
     });
   }
 
@@ -528,6 +546,10 @@ export class ClaudeCodeClient {
       this.socket.disconnect();
       this.socket = null;
     }
+  }
+  
+  onSessionCreated(handler: (data: any) => void): void {
+    this.sessionCreatedCallback = handler;
   }
   
   onTitle(sessionId: string, handler: (title: string) => void): () => void {

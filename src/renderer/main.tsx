@@ -7,11 +7,13 @@ import './App.minimal.css';
 
 // Initialize platform bridge for Tauri/Electron compatibility
 import './services/platformBridge';
+import { claudeCodeClient } from './services/claudeCodeClient';
 
 console.log('main.tsx loading...');
 
-// Variables for sleep/wake detection
+// Variables for sleep/wake detection and session persistence
 let lastActiveTime = Date.now();
+let persistenceInterval: NodeJS.Timer | null = null;
 
 // Add platform class to body for platform-specific styling
 const platform = navigator.platform.toLowerCase();
@@ -23,10 +25,76 @@ if (platform.includes('mac')) {
   document.body.classList.add('platform-linux');
 }
 
-// Clear all sessions on startup
+// Restore sessions from localStorage on startup
 const store = useClaudeCodeStore.getState();
-store.deleteAllSessions();
-console.log('Cleared all sessions on startup');
+// Load any persisted session mappings
+store.loadSessionMappings();
+console.log('Restored sessions from localStorage on startup');
+
+// Set up listener for auto-created sessions from server
+claudeCodeClient.onSessionCreated((data) => {
+  console.log('[App] Server auto-created session:', data);
+  // Update the session in the store to mark it as active
+  const state = store;
+  const sessions = state.sessions.map(s => {
+    if (s.id === data.sessionId) {
+      return {
+        ...s,
+        status: 'active' as const,
+        claudeSessionId: data.claudeSessionId || null,
+        workingDirectory: data.workingDirectory || s.workingDirectory
+      };
+    }
+    return s;
+  });
+  // Update the store with the activated session
+  useClaudeCodeStore.setState({ sessions });
+});
+
+// Auto-reconnect restored sessions after app starts
+setTimeout(() => {
+  const { sessions, currentSessionId } = store;
+  console.log(`[App] Checking ${sessions.length} restored sessions for reconnection`);
+  
+  sessions.forEach(async (session) => {
+    // Only reconnect sessions that have a claudeSessionId (were active before)
+    if (session.claudeSessionId) {
+      console.log(`[App] Reconnecting session ${session.id} with claudeSessionId ${session.claudeSessionId}`);
+      try {
+        // Reconnect the session - server will use --resume flag
+        await store.createSession(session.name, session.workingDirectory, session.id);
+        console.log(`[App] Successfully reconnected session ${session.id}`);
+      } catch (err) {
+        console.error(`[App] Failed to reconnect session ${session.id}:`, err);
+      }
+    } else {
+      console.log(`[App] Session ${session.id} has no claudeSessionId, will create fresh on first message`);
+    }
+  });
+  
+  // Restore the current session if it exists
+  if (currentSessionId && sessions.find(s => s.id === currentSessionId)) {
+    console.log(`[App] Restoring current session: ${currentSessionId}`);
+    store.setCurrentSession(currentSessionId);
+  }
+}, 2000); // Wait 2 seconds for socket connection to establish
+
+// Set up periodic session persistence (every 30 seconds)
+persistenceInterval = setInterval(() => {
+  const store = useClaudeCodeStore.getState();
+  const { sessions } = store;
+  if (sessions.length > 0) {
+    // Trigger persistence by updating timestamps
+    sessions.forEach(s => {
+      useClaudeCodeStore.setState(state => ({
+        sessions: state.sessions.map(session => 
+          session.id === s.id ? { ...session, updatedAt: new Date() } : session
+        )
+      }));
+    });
+    console.log('[App] Periodic session persistence triggered');
+  }
+}, 30000);
 
 // Wait for DOM to be ready
 function initApp() {
@@ -54,38 +122,189 @@ if (document.readyState === 'loading') {
   initApp();
 }
 
-// Clean up sessions when window is about to close
+// Save sessions when window is about to close
 window.addEventListener('beforeunload', () => {
-  console.log('Window closing, clearing all sessions...');
+  console.log('Window closing, persisting sessions...');
   const store = useClaudeCodeStore.getState();
-  store.deleteAllSessions();
+  // Clear the persistence interval
+  if (persistenceInterval) {
+    clearInterval(persistenceInterval);
+  }
+  // Force persist all sessions one more time
+  const { sessions } = store;
+  if (sessions.length > 0) {
+    sessions.forEach(s => {
+      useClaudeCodeStore.setState(state => ({
+        sessions: state.sessions.map(session => 
+          session.id === s.id ? { ...session, updatedAt: new Date() } : session
+        )
+      }));
+    });
+  }
+  // Save the mappings
+  store.saveSessionMappings();
 });
 
 // Listen for app quit event from Electron main process
 if (window.electronAPI && window.electronAPI.ipcRenderer) {
   window.electronAPI.ipcRenderer.on('app-before-quit', () => {
-    console.log('App quitting, clearing all sessions...');
+    console.log('App quitting, persisting sessions...');
     const store = useClaudeCodeStore.getState();
-    store.deleteAllSessions();
+    // Clear the persistence interval
+    if (persistenceInterval) {
+      clearInterval(persistenceInterval);
+    }
+    // Force persist all sessions one more time
+    const { sessions } = store;
+    if (sessions.length > 0) {
+      sessions.forEach(s => {
+        useClaudeCodeStore.setState(state => ({
+          sessions: state.sessions.map(session => 
+            session.id === s.id ? { ...session, updatedAt: new Date() } : session
+          )
+        }));
+      });
+    }
+    // Save the mappings
+    store.saveSessionMappings();
   });
 }
 
+// Handle window focus/blur for better session management
+window.addEventListener('focus', () => {
+  console.log('[App] Window focused');
+  const store = useClaudeCodeStore.getState();
+  const { sessions, currentSessionId } = store;
+  
+  // Check if current session needs refresh
+  const currentSession = sessions.find(s => s.id === currentSessionId);
+  if (currentSession && currentSession.status === 'paused') {
+    console.log('[App] Current session is paused, attempting to reactivate');
+    if (currentSession.claudeSessionId) {
+      store.createSession(currentSession.name, currentSession.workingDirectory, currentSession.id)
+        .then(() => console.log('[App] Reactivated current session'))
+        .catch(err => console.log('[App] Session already active or reconnection not needed'));
+    }
+  }
+});
+
+window.addEventListener('blur', () => {
+  console.log('[App] Window blurred, persisting sessions');
+  const store = useClaudeCodeStore.getState();
+  const { sessions } = store;
+  
+  // Persist sessions when window loses focus
+  if (sessions.length > 0) {
+    sessions.forEach(s => {
+      useClaudeCodeStore.setState(state => ({
+        sessions: state.sessions.map(session => 
+          session.id === s.id ? { ...session, updatedAt: new Date() } : session
+        )
+      }));
+    });
+  }
+  store.saveSessionMappings();
+});
+
 // Detect system wake from sleep and recover
-// Only reload if the system was actually asleep for a long time
+// Also handle session persistence when window becomes inactive
 document.addEventListener('visibilitychange', () => {
   const now = Date.now();
+  const store = useClaudeCodeStore.getState();
   
   if (document.hidden) {
-    // Page is being hidden, record the time
+    // Page is being hidden, record the time and persist sessions
     lastActiveTime = now;
+    console.log('[App] Window hidden, persisting sessions');
+    // Force persist sessions when window becomes hidden
+    const { sessions } = store;
+    if (sessions.length > 0) {
+      // Trigger persistence by updating a dummy field
+      sessions.forEach(s => {
+        useClaudeCodeStore.setState(state => ({
+          sessions: state.sessions.map(session => 
+            session.id === s.id ? { ...session, updatedAt: new Date() } : session
+          )
+        }));
+      });
+    }
+    store.saveSessionMappings();
   } else {
-    // Page is becoming visible, check if we slept
+    // Page is becoming visible, check if we need to restore
     const timeDiff = now - lastActiveTime;
     
-    // Only reload if hidden for more than 5 minutes (likely computer sleep)
-    if (timeDiff > 300000) {
-      console.log(`⚠️ Page visible after ${Math.round(timeDiff/1000)}s gap, reloading to recover from sleep`);
-      window.location.reload();
+    if (timeDiff > 600000) { // 10 minutes
+      console.log(`⚠️ Page visible after ${Math.round(timeDiff/1000)}s gap, restoring sessions`);
+      
+      // Restore sessions from localStorage instead of reloading
+      const restoredSessions = localStorage.getItem('yurucode-sessions');
+      if (restoredSessions) {
+        try {
+          const sessionData = JSON.parse(restoredSessions);
+          const { currentSessionId } = store;
+          
+          // Update existing sessions with restored data
+          sessionData.forEach(async (restoredSession: any) => {
+            const existingSession = store.sessions.find(s => s.id === restoredSession.id);
+            
+            if (!existingSession || existingSession.messages.length === 0) {
+              // Session was cleared or doesn't exist, restore it
+              console.log(`[App] Restoring session ${restoredSession.id}`);
+              
+              // Restore the session with its messages and state
+              useClaudeCodeStore.setState(state => ({
+                sessions: state.sessions.map(s => 
+                  s.id === restoredSession.id ? {
+                    ...s,
+                    messages: restoredSession.messages || [],
+                    claudeTitle: restoredSession.claudeTitle || s.claudeTitle,
+                    analytics: restoredSession.analytics || s.analytics,
+                    draftInput: restoredSession.draftInput || '',
+                    draftAttachments: restoredSession.draftAttachments || [],
+                    claudeSessionId: restoredSession.claudeSessionId,
+                    status: 'paused' as const
+                  } : s
+                )
+              }));
+              
+              // Reconnect if it had a claudeSessionId
+              if (restoredSession.claudeSessionId) {
+                try {
+                  await store.createSession(
+                    restoredSession.name, 
+                    restoredSession.workingDirectory, 
+                    restoredSession.id
+                  );
+                  console.log(`[App] Reconnected session ${restoredSession.id}`);
+                } catch (err) {
+                  console.error(`[App] Failed to reconnect session ${restoredSession.id}:`, err);
+                }
+              }
+            }
+          });
+          
+          // Restore current session
+          if (currentSessionId && store.sessions.find(s => s.id === currentSessionId)) {
+            store.setCurrentSession(currentSessionId);
+          }
+        } catch (err) {
+          console.error('[App] Failed to restore sessions:', err);
+        }
+      }
+    } else if (timeDiff > 60000) { // 1 minute - just refresh connections
+      console.log(`[App] Page visible after ${Math.round(timeDiff/1000)}s, refreshing connections`);
+      
+      // Just ensure sessions are still connected
+      store.sessions.forEach(async (session) => {
+        if (session.claudeSessionId && session.status === 'paused') {
+          try {
+            await store.createSession(session.name, session.workingDirectory, session.id);
+            console.log(`[App] Refreshed connection for session ${session.id}`);
+          } catch (err) {
+            console.log(`[App] Session ${session.id} connection refresh not needed`);
+          }
+        }
+      });
     }
   }
 });

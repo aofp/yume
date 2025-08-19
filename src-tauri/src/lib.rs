@@ -79,9 +79,9 @@ pub fn run() {
             #[cfg(debug_assertions)]
             {
                 info!("Waiting for Vite dev server to be ready...");
-                // On Windows, just wait a fixed time - connection checks fail due to Windows networking
-                std::thread::sleep(std::time::Duration::from_secs(5));
-                info!("Proceeding to open window after 5 second wait...");
+                // Reduced wait time for faster startup
+                std::thread::sleep(std::time::Duration::from_millis(500));
+                info!("Proceeding to open window after 0.5 second wait...");
             }
 
             // Get reference to the main application window for configuration
@@ -114,8 +114,8 @@ pub fn run() {
             {
                 let window_clone = window.clone();
                 std::thread::spawn(move || {
-                    // Wait a bit for the webview to load and apply styles
-                    std::thread::sleep(std::time::Duration::from_millis(300));
+                    // Minimal delay for webview to load and apply styles
+                    std::thread::sleep(std::time::Duration::from_millis(50));
                     let _ = window_clone.show();
                     info!("Window shown after initialization");
                 });

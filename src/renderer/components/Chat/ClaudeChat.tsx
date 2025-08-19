@@ -194,6 +194,11 @@ export const ClaudeChat: React.FC = () => {
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
+  
+  // DEBUG: Log current session messages length
+  React.useEffect(() => {
+    console.log(`[DEBUG] Current session ${currentSessionId} has ${currentSession?.messages?.length || 0} messages`);
+  }, [currentSessionId, currentSession?.messages?.length]);
 
   // NO AUTO-CREATION and NO AUTO-RESUME
   // Sessions are ephemeral - they don't survive app restarts
@@ -2029,7 +2034,12 @@ export const ClaudeChat: React.FC = () => {
           });
         })()}
         {/* Show thinking indicator only when actually streaming */}
-        {currentSession?.streaming && (
+        {(() => {
+          if (currentSession?.streaming) {
+            console.log(`🔴 [UI] Showing thinking indicator for session ${currentSessionId}, streaming=${currentSession.streaming}`);
+          }
+          return currentSession?.streaming;
+        })() && (
           <div className="message assistant">
             <div className="message-content">
               <div className="thinking-indicator-bottom">

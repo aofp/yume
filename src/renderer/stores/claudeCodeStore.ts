@@ -103,6 +103,7 @@ interface ClaudeCodeStore {
   setCurrentSession: (sessionId: string) => void;
   sendMessage: (content: string, bashMode?: boolean) => Promise<void>;
   resumeSession: (sessionId: string) => Promise<void>;
+  reconnectSession: (sessionId: string, claudeSessionId: string) => void;
   pauseSession: (sessionId: string) => void;
   deleteSession: (sessionId: string) => void;
   deleteAllSessions: () => void;
@@ -207,11 +208,118 @@ const trackFileChange = (session: Session, message: any, messageIndex: number): 
   return null;
 };
 
+// Helper to persist sessions to localStorage
+const persistSessions = (sessions: Session[]) => {
+  try {
+    // Store essential session data for recovery
+    const sessionData = sessions.map(s => ({
+      id: s.id,
+      name: s.name,
+      claudeTitle: s.claudeTitle,
+      claudeSessionId: s.claudeSessionId,
+      workingDirectory: s.workingDirectory,
+      messages: s.messages, // Keep messages for context
+      analytics: s.analytics,
+      createdAt: s.createdAt,
+      updatedAt: s.updatedAt,
+      userRenamed: s.userRenamed,
+      draftInput: s.draftInput, // Preserve draft input
+      draftAttachments: s.draftAttachments, // Preserve draft attachments
+      restorePoints: s.restorePoints,
+      modifiedFiles: s.modifiedFiles ? Array.from(s.modifiedFiles) : [] // Convert Set to Array for storage
+    }));
+    localStorage.setItem('yurucode-sessions', JSON.stringify(sessionData));
+    localStorage.setItem('yurucode-sessions-timestamp', Date.now().toString()); // Add timestamp for validation
+    console.log('[Store] Persisted', sessions.length, 'sessions to localStorage with', 
+      sessionData.reduce((acc, s) => acc + s.messages.length, 0), 'total messages');
+  } catch (err) {
+    console.error('[Store] Failed to persist sessions:', err);
+  }
+};
+
+// Helper to restore sessions from localStorage
+const restoreSessions = (): Session[] => {
+  try {
+    const stored = localStorage.getItem('yurucode-sessions');
+    const timestamp = localStorage.getItem('yurucode-sessions-timestamp');
+    
+    if (stored) {
+      // Check if sessions are stale (older than 24 hours)
+      if (timestamp) {
+        const age = Date.now() - parseInt(timestamp);
+        if (age > 24 * 60 * 60 * 1000) {
+          console.log('[Store] Sessions are older than 24 hours, clearing');
+          localStorage.removeItem('yurucode-sessions');
+          localStorage.removeItem('yurucode-sessions-timestamp');
+          return [];
+        }
+      }
+      
+      const sessionData = JSON.parse(stored);
+      const sessions = sessionData.map((s: any) => ({
+        ...s,
+        status: 'paused' as const, // Mark as paused until reconnected
+        streaming: false,
+        pendingToolIds: new Set(),
+        modifiedFiles: new Set(s.modifiedFiles || []),
+        createdAt: new Date(s.createdAt),
+        updatedAt: new Date(s.updatedAt),
+        // Preserve claudeSessionId for session resumption with --resume flag
+        claudeSessionId: s.claudeSessionId, // KEEP this for --resume
+        workingDirectory: s.workingDirectory,
+        messages: s.messages || [],
+        analytics: s.analytics || {
+          totalMessages: 0,
+          userMessages: 0,
+          assistantMessages: 0,
+          toolUses: 0,
+          tokens: { 
+            input: 0, 
+            output: 0, 
+            total: 0,
+            byModel: {
+              opus: { input: 0, output: 0, total: 0 },
+              sonnet: { input: 0, output: 0, total: 0 }
+            }
+          },
+          duration: 0,
+          lastActivity: new Date(),
+          thinkingTime: 0
+        },
+        claudeTitle: s.claudeTitle,
+        userRenamed: s.userRenamed,
+        draftInput: s.draftInput,
+        draftAttachments: s.draftAttachments,
+        restorePoints: s.restorePoints || [],
+        // Mark that we need to reconnect this session
+        needsReconnect: !!s.claudeSessionId
+      }));
+      
+      console.log('[Store] Restored', sessions.length, 'sessions from localStorage with',
+        sessions.reduce((acc, s) => acc + s.messages.length, 0), 'total messages');
+      
+      // Sessions with claudeSessionId will be reconnected from main.tsx after socket is ready
+      sessions.forEach(s => {
+        if (s.claudeSessionId) {
+          console.log(`[Store] Session ${s.id} has claudeSessionId ${s.claudeSessionId} - will reconnect with --resume`);
+        } else {
+          console.log(`[Store] Session ${s.id} has no claudeSessionId - will create fresh on first message`);
+        }
+      });
+      
+      return sessions;
+    }
+  } catch (err) {
+    console.error('[Store] Failed to restore sessions:', err);
+  }
+  return [];
+};
+
 export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   persist(
     (set, get) => ({
-  sessions: [],
-  currentSessionId: null,
+  sessions: restoreSessions(), // Restore sessions on startup
+  currentSessionId: localStorage.getItem('yurucode-current-session') || null,
   persistedSessionId: null,
   sessionMappings: {},
   selectedModel: 'claude-opus-4-1-20250805',
@@ -259,12 +367,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         workingDirectory = isWindows ? 'C:\\Users\\' : '/Users';
       }
       
-      // STEP 1: Create tab immediately with pending status
-      const tempSessionId = `temp-${hexId}`;
-      // Get the current number of sessions to determine tab number
+      // Check if we're resuming an existing session (reconnecting after app restart)
       const currentState = get();
-      const tabNumber = currentState.sessions.length + 1;
-      const pendingSession: Session = {
+      const existingSession = existingSessionId ? 
+        currentState.sessions.find(s => s.id === existingSessionId) : 
+        null;
+      
+      // STEP 1: Create tab immediately with pending status (or update existing)
+      const tempSessionId = existingSessionId || `temp-${hexId}`;
+      // Get the current number of sessions to determine tab number
+      const tabNumber = existingSession ? 
+        currentState.sessions.findIndex(s => s.id === existingSessionId) + 1 :
+        currentState.sessions.length + 1;
+      
+      const pendingSession: Session = existingSession || {
         id: tempSessionId,
         name: sessionName,
         status: 'pending' as const,
@@ -295,12 +411,23 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         }
       };
       
-      // Add pending session to store immediately so tab appears
-      console.log('[Store] Adding pending session:', tempSessionId);
-      set(state => ({
-        sessions: [...state.sessions, pendingSession],
-        currentSessionId: tempSessionId
-      }));
+      // Add pending session to store immediately so tab appears (or update existing)
+      console.log('[Store] Adding/updating session:', tempSessionId);
+      if (existingSession) {
+        // Update existing session to pending while reconnecting
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === existingSessionId ? { ...s, status: 'pending' as const } : s
+          ),
+          currentSessionId: existingSessionId
+        }));
+      } else {
+        // Add new pending session
+        set(state => ({
+          sessions: [...state.sessions, pendingSession],
+          currentSessionId: tempSessionId
+        }));
+      }
       
       // STEP 2: Initialize Claude SDK session in background
       try {
@@ -312,6 +439,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         };
         
         // Create or resume session using Claude Code Client
+        // Get the claudeSessionId from existing session if reconnecting
+        const claudeSessionIdToResume = existingSession?.claudeSessionId;
+        
         const result = await claudeCodeClient.createSession(sessionName, workingDirectory, {
           allowedTools: [
             'Read', 'Write', 'Edit', 'MultiEdit',
@@ -323,10 +453,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           permissionMode: 'default',
           maxTurns: 30,
           model: modelMap[selectedModel] || 'claude-opus-4-1-20250805',
-          sessionId: existingSessionId // Pass existing sessionId if resuming
+          sessionId: existingSessionId || tempSessionId, // Pass the sessionId for consistency
+          claudeSessionId: claudeSessionIdToResume, // Pass claudeSessionId if resuming
+          messages: existingSession?.messages || [] // Pass existing messages if resuming
         });
         
-        const sessionId = result.sessionId || result;
+        const sessionId = result.sessionId || tempSessionId;
         const existingMessages = result.messages || [];
         // Store claudeSessionId from server response - server decides if this is a resume
         // The server returns claudeSessionId when resuming, undefined when starting fresh
@@ -373,14 +505,30 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           }
         };
         
-        // Replace pending session with active one
-        console.log('[Store] Replacing pending session with active:', { tempSessionId, sessionId });
-        set(state => ({
-          sessions: state.sessions.map(s => 
-            s.id === tempSessionId ? activeSession : s
-          ),
-          currentSessionId: sessionId
-        }));
+        // Replace pending session with active one (handle both new and reconnected sessions)
+        console.log('[Store] Updating session to active:', { 
+          tempSessionId, 
+          sessionId, 
+          existingSessionId,
+          isReconnecting: !!existingSession 
+        });
+        set(state => {
+          const newSessions = existingSession ?
+            // If reconnecting, update the existing session
+            state.sessions.map(s => 
+              s.id === existingSessionId ? activeSession : s
+            ) :
+            // If new session, replace the temp session
+            state.sessions.map(s => 
+              s.id === tempSessionId ? activeSession : s
+            );
+          persistSessions(newSessions); // Persist after update
+          localStorage.setItem('yurucode-current-session', sessionId);
+          return {
+            sessions: newSessions,
+            currentSessionId: sessionId
+          };
+        });
       
       // Don't add initial system message here - Claude Code SDK sends it automatically
       
@@ -835,42 +983,32 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   s.id === sessionId ? { ...s, streaming: true } : s
                 );
               } else if (message.streaming === false) {
-                // Check if we have pending tool operations
-                const session = sessions.find(s => s.id === sessionId);
-                const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
-                
-                // Check if this assistant message contains tool_use blocks
-                let hasToolUse = false;
-                if (message.message?.content && Array.isArray(message.message.content)) {
-                  hasToolUse = message.message.content.some(block => block.type === 'tool_use');
-                }
-                
-                if (hasToolUse || hasPendingTools) {
-                  // Keep streaming active while waiting for tool results
-                  console.log(`Assistant message finished but keeping streaming active - hasToolUse: ${hasToolUse}, pendingTools: ${session?.pendingToolIds?.size || 0}`);
-                } else {
-                  // Assistant message explicitly marked as not streaming and no tools pending
-                  console.log('Assistant message finished with no pending tools, clearing streaming state');
-                  sessions = sessions.map(s => {
-                    if (s.id === sessionId) {
-                      // Calculate thinking time if we have a start time
-                      let updatedAnalytics = s.analytics;
-                      if (s.thinkingStartTime && updatedAnalytics) {
-                        const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
-                        updatedAnalytics = {
-                          ...updatedAnalytics,
-                          thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
-                        };
-                        console.log(`📊 [THINKING TIME] Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
-                      }
-                      return { ...s, streaming: false, thinkingStartTime: undefined, analytics: updatedAnalytics };
+                // When explicitly marked as streaming=false, always clear streaming
+                // The server marks assistant messages as streaming=false when complete
+                console.log(`🔴 [STREAMING] Assistant message ${message.id} marked as streaming=false, clearing streaming state for session ${sessionId}`);
+                sessions = sessions.map(s => {
+                  if (s.id === sessionId) {
+                    // Calculate thinking time if we have a start time
+                    let updatedAnalytics = s.analytics;
+                    if (s.thinkingStartTime && updatedAnalytics) {
+                      const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                      updatedAnalytics = {
+                        ...updatedAnalytics,
+                        thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                      };
+                      console.log(`📊 [THINKING TIME] Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
                     }
-                    return s;
-                  });
-                }
+                    console.log(`🔴 [STREAMING] Session ${sessionId} streaming state changed: ${s.streaming} -> false`);
+                    return { ...s, streaming: false, thinkingStartTime: undefined, analytics: updatedAnalytics };
+                  }
+                  return s;
+                });
+                console.log(`🔴 [STREAMING] Successfully cleared streaming state for session ${sessionId}`);
               }
-              // If streaming is undefined, don't change the state
-            } else if (message.type === 'error') {
+            }
+            // If streaming is undefined, don't change the state
+          
+        if (message.type === 'error') {
               // Handle error messages - ALWAYS clear streaming and show to user
               console.log('[Store] Error message received:', message.error);
               sessions = sessions.map(s => {
@@ -1117,6 +1255,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               });
             }
             
+            persistSessions(sessions); // Persist after any message update
             return { sessions };
           });
       });
@@ -1149,8 +1288,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     }
   },
   
-  setCurrentSession: (sessionId: string) => {
-    const { currentSessionId: oldSessionId } = get();
+  setCurrentSession: async (sessionId: string) => {
+    const state = get();
+    const { currentSessionId: oldSessionId } = state;
     
     // Don't do anything if we're already on this session
     if (oldSessionId === sessionId) {
@@ -1160,11 +1300,53 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     
     console.log('[Store] Switching session from', oldSessionId, 'to', sessionId);
     
+    // Check if this session needs to be resumed (has claudeSessionId but not connected)
+    const session = state.sessions.find(s => s.id === sessionId);
+    if (session) {
+      const mapping = state.sessionMappings[sessionId];
+      const claudeSessionId = session.claudeSessionId || mapping?.claudeSessionId;
+      
+      if (claudeSessionId) {
+        console.log(`[Store] Session ${sessionId} has claudeSessionId ${claudeSessionId}, checking if needs resumption`);
+        
+        // Try to resume the session with the server
+        try {
+          const result = await claudeCodeClient.createSession(
+            session.name,
+            session.workingDirectory || '/',
+            {
+              sessionId: sessionId,
+              claudeSessionId: claudeSessionId,
+              messages: session.messages || [],
+              hasGeneratedTitle: session.claudeTitle ? true : false
+            }
+          );
+          
+          console.log(`[Store] Session ${sessionId} resumed successfully`);
+          
+          // Update session with claudeSessionId if it wasn't already set
+          if (!session.claudeSessionId) {
+            set(state => ({
+              sessions: state.sessions.map(s => 
+                s.id === sessionId 
+                  ? { ...s, claudeSessionId: claudeSessionId }
+                  : s
+              )
+            }));
+          }
+        } catch (error) {
+          console.error(`[Store] Failed to resume session ${sessionId}:`, error);
+          // Continue anyway, session exists locally
+        }
+      }
+    }
+    
     // Don't clear streaming state when switching tabs - let it persist
     // The streaming state will be cleared when the actual response finishes
     
     // Update the current session
     set({ currentSessionId: sessionId });
+    localStorage.setItem('yurucode-current-session', sessionId);
   },
   
   sendMessage: async (content: string, bashMode?: boolean) => {
@@ -1301,11 +1483,49 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   },
   
   resumeSession: async (sessionId: string) => {
-    const session = get().sessions.find(s => s.id === sessionId);
+    const state = get();
+    const session = state.sessions.find(s => s.id === sessionId);
     if (!session) {
       // Try to load from server if not in local state
       await get().loadPersistedSession(sessionId);
       return;
+    }
+    
+    // Check if we need to reconnect to server (after app restart)
+    // Look for claudeSessionId in session mappings or in session itself
+    const mapping = state.sessionMappings[sessionId];
+    const claudeSessionId = session.claudeSessionId || mapping?.claudeSessionId;
+    
+    if (claudeSessionId && !session.claudeSessionId) {
+      console.log(`[Store] Reconnecting session ${sessionId} with claudeSessionId ${claudeSessionId}`);
+      
+      // Need to call createSession with the claudeSessionId to resume
+      try {
+        const result = await claudeCodeClient.createSession(
+          session.name, 
+          session.workingDirectory || '/',
+          {
+            sessionId: sessionId,
+            claudeSessionId: claudeSessionId,
+            messages: session.messages || [],
+            hasGeneratedTitle: session.claudeTitle ? true : false
+          }
+        );
+        
+        // Update session with claudeSessionId
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === sessionId 
+              ? { ...s, claudeSessionId: mapping.claudeSessionId }
+              : s
+          )
+        }));
+        
+        console.log(`[Store] Successfully reconnected session ${sessionId}`);
+      } catch (error) {
+        console.error(`[Store] Failed to reconnect session ${sessionId}:`, error);
+        // Continue anyway, will create new session on first message
+      }
     }
     
     // Use setCurrentSession to properly handle session switching
@@ -1315,6 +1535,95 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     // Notify server of directory change if needed
     if (session.workingDirectory) {
       await claudeCodeClient.setWorkingDirectory(sessionId, session.workingDirectory);
+    }
+  },
+  
+  reconnectSession: (sessionId: string, claudeSessionId: string) => {
+    // Set up message listeners for a restored session
+    // This doesn't create a new claude process, just reconnects the message handlers
+    console.log(`[Store] Reconnecting session ${sessionId} with claudeSessionId ${claudeSessionId}`);
+    
+    // Listen for title updates
+    const titleCleanup = claudeCodeClient.onTitle(sessionId, (title: string) => {
+      console.log('[Store] Received title for reconnected session:', sessionId, title);
+      set(state => ({
+        sessions: state.sessions.map(s => 
+          s.id === sessionId && !s.userRenamed
+            ? { ...s, claudeTitle: title } 
+            : s
+        )
+      }));
+    });
+    
+    // Listen for messages
+    const messageCleanup = claudeCodeClient.onMessage(sessionId, (message) => {
+      // Use the same message handler logic as createSession
+      set(state => {
+        let sessions = state.sessions.map(s => {
+          if (s.id !== sessionId) return s;
+          
+          // Update status to active once we receive a message
+          if (s.status === 'paused') {
+            s = { ...s, status: 'active' as const };
+          }
+          
+          const existingMessages = [...s.messages];
+          
+          // Skip user messages from server
+          if (message.type === 'user') {
+            console.warn('[Store] Ignoring user message from server');
+            return s;
+          }
+          
+          // Handle message updates
+          if (message.id) {
+            const existingIndex = existingMessages.findIndex(m => m.id === message.id);
+            if (existingIndex >= 0) {
+              existingMessages[existingIndex] = message;
+            } else {
+              existingMessages.push(message);
+            }
+          } else {
+            const isDuplicate = existingMessages.some(m => 
+              m.type === message.type && 
+              JSON.stringify(m.message) === JSON.stringify(message.message)
+            );
+            if (!isDuplicate) {
+              existingMessages.push(message);
+            }
+          }
+          
+          return { 
+            ...s, 
+            messages: existingMessages, 
+            updatedAt: new Date()
+          };
+        });
+        
+        // Handle streaming state
+        if (message.type === 'assistant') {
+          sessions = sessions.map(s => 
+            s.id === sessionId ? { ...s, streaming: message.streaming || false } : s
+          );
+        } else if (message.type === 'result' || 
+                   (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error'))) {
+          sessions = sessions.map(s => 
+            s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
+          );
+        }
+        
+        persistSessions(sessions); // Persist any changes
+        return { sessions };
+      });
+    });
+    
+    // Store cleanup function
+    const session = get().sessions.find(s => s.id === sessionId);
+    if (session) {
+      (session as any).cleanup = () => {
+        messageCleanup();
+        titleCleanup();
+      };
     }
   },
   
@@ -1362,9 +1671,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         }
       }
       
-      // Create/resume session with existing ID
+      // CRITICAL FIX: Check for stored claudeSessionId in mappings
+      const state = get();
+      const mapping = state.sessionMappings[sessionId];
+      const claudeSessionId = mapping?.claudeSessionId || null;
+      
+      if (claudeSessionId) {
+        console.log(`[Store] Resuming session ${sessionId} with stored claudeSessionId: ${claudeSessionId}`);
+      }
+      
+      // Create/resume session with existing ID and claudeSessionId
       const result = await claudeCodeClient.createSession('resumed session', workingDirectory, {
-        sessionId
+        sessionId,
+        claudeSessionId,
+        messages: [] // Will be populated from server if session exists
       });
       
       const messages = result.messages || [];
@@ -1583,6 +1903,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         }
       }
       
+      persistSessions(newSessions); // Persist after deletion
+      if (newCurrentId) {
+        localStorage.setItem('yurucode-current-session', newCurrentId);
+      } else {
+        localStorage.removeItem('yurucode-current-session');
+      }
       return {
         sessions: newSessions,
         currentSessionId: newCurrentId
@@ -1603,6 +1929,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       currentSessionId: null,
       streamingMessage: ''
     });
+    localStorage.removeItem('yurucode-sessions');
+    localStorage.removeItem('yurucode-current-session');
   },
   
   reorderSessions: (fromIndex: number, toIndex: number) => {
