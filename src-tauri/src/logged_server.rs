@@ -200,7 +200,11 @@ function createWslClaudeCommand(args, workingDir, message) {
   
   // The workingDir is already in WSL format (e.g., /mnt/c/Users/...)
   // It was converted before calling this function
-  const wslWorkingDir = workingDir || '/mnt/c/Users/muuko/Desktop/yurucode';
+  // CRITICAL: Require a valid working directory - no defaults to avoid temp directory
+  if (!workingDir) {
+    throw new Error('Working directory is required for WSL Claude command');
+  }
+  const wslWorkingDir = workingDir;
   
   // For the main message, run Claude with the args
   if (message) {
@@ -398,11 +402,39 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
     }
     
+    // Use a dedicated yurucode-title-gen directory for title generation
+    // This keeps title generation sessions separate from main project sessions
+    const titleGenDir = join(homedir(), '.yurucode-title-gen');
+    
+    // Create the directory if it doesn't exist
+    try {
+      if (!existsSync(titleGenDir)) {
+        const { mkdirSync } = require('fs');
+        mkdirSync(titleGenDir, { recursive: true });
+        console.log('📁 Created title generation directory:', titleGenDir);
+      }
+    } catch (e) {
+      console.log('⚠️ Could not create title gen directory, using home:', e.message);
+    }
+    
     const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
       (() => {
-        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(titleArgs, null, null);
+        // For WSL, use a dedicated directory in WSL home
+        const wslTitleGenDir = '/home/yuru/.yurucode-title-gen';
+        
+        // Create the WSL directory if needed
+        const { execSync } = require('child_process');
+        try {
+          execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "mkdir -p ${wslTitleGenDir}"`, {
+            windowsHide: true
+          });
+        } catch (e) {
+          console.log('⚠️ Could not create WSL title gen directory:', e.message);
+        }
+        
+        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(titleArgs, wslTitleGenDir, null);
         return spawn(wslCommand, wslArgs, {
-          cwd: process.cwd(),
+          cwd: titleGenDir,
           env: enhancedEnv,
           stdio: ['pipe', 'pipe', 'pipe'],
           windowsHide: true,
@@ -410,7 +442,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
         });
       })() :
       spawn(CLAUDE_PATH, titleArgs, {
-      cwd: process.cwd(),
+      cwd: titleGenDir,
       env: enhancedEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,  // Always hide windows
@@ -909,6 +941,9 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
 // Quick projects endpoint - returns just project count and names quickly
 app.get('/claude-projects-quick', async (req, res) => {
   try {
+    // Get pagination params from query string
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
     // On Windows, load from WSL where Claude actually stores projects
     if (isWindows) {
       console.log('🔍 Windows detected - loading projects from WSL');
@@ -938,7 +973,22 @@ app.get('/claude-projects-quick', async (req, res) => {
         
         // Parse the output (just directory names now)
         const projectDirs = output.split('\n')
-          .filter(line => line.trim());
+          .filter(line => line.trim())
+          .filter(projectName => {
+            // CRITICAL: Filter out temp directories, server directories, and title gen directories
+            const lowerName = projectName.toLowerCase();
+            if (lowerName.includes('temp') || 
+                lowerName.includes('tmp') || 
+                lowerName.includes('yurucode-server') ||
+                lowerName.includes('yurucode-title-gen') ||
+                lowerName === '-yurucode-title-gen' ||
+                lowerName.includes('appdata') ||
+                lowerName.includes('-mnt-c-users-') && lowerName.includes('-appdata-local-temp')) {
+              console.log(`🚫 Filtering out temp/server/title-gen directory: ${projectName}`);
+              return false;
+            }
+            return true;
+          });
         
         const projects = [];
         
@@ -993,10 +1043,16 @@ app.get('/claude-projects-quick', async (req, res) => {
         
         console.log(`✅ Found ${projects.length} projects in WSL`);
         
+        // Apply pagination
+        const totalCount = projects.length;
+        const paginatedProjects = projects.slice(offset, offset + limit);
+        
+        console.log(`📄 Returning ${paginatedProjects.length} projects (offset: ${offset}, limit: ${limit}, total: ${totalCount})`);
+        
         // Send response immediately
         res.json({ 
-          projects: projects, 
-          count: projects.length 
+          projects: paginatedProjects, 
+          count: totalCount 
         });
         
         return;
@@ -1053,8 +1109,12 @@ app.get('/claude-projects-quick', async (req, res) => {
     const projects = (await Promise.all(projectPromises)).filter(Boolean);
     projects.sort((a, b) => b.lastModified - a.lastModified);
     
-    console.log(`Quick loaded ${projects.length} project names`);
-    res.json({ projects, count: projects.length });
+    // Apply pagination
+    const totalCount = projects.length;
+    const paginatedProjects = projects.slice(offset, offset + limit);
+    
+    console.log(`Quick loaded ${paginatedProjects.length} of ${totalCount} project names (offset: ${offset}, limit: ${limit})`);
+    res.json({ projects: paginatedProjects, count: totalCount });
   } catch (error) {
     console.error('Error quick loading projects:', error);
     res.status(500).json({ error: 'Failed to load projects', details: error.message });
@@ -1371,8 +1431,24 @@ app.get('/claude-projects', async (req, res) => {
           return res.json({ projects: [] });
         }
         
-        const projectDirs = dirList.split('\n').filter(dir => dir && !dir.startsWith('.') && dir !== 'NO_DIR');
-        console.log(`✅ Found ${projectDirs.length} projects in WSL:`, projectDirs);
+        const projectDirs = dirList.split('\n')
+          .filter(dir => dir && !dir.startsWith('.') && dir !== 'NO_DIR')
+          .filter(projectName => {
+            // CRITICAL: Filter out temp directories, server directories, and title gen directories
+            const lowerName = projectName.toLowerCase();
+            if (lowerName.includes('temp') || 
+                lowerName.includes('tmp') || 
+                lowerName.includes('yurucode-server') ||
+                lowerName.includes('yurucode-title-gen') ||
+                lowerName === '-yurucode-title-gen' ||
+                lowerName.includes('appdata') ||
+                lowerName.includes('-mnt-c-users-') && lowerName.includes('-appdata-local-temp')) {
+              console.log(`🚫 Filtering out temp/server/title-gen directory: ${projectName}`);
+              return false;
+            }
+            return true;
+          });
+        console.log(`✅ Found ${projectDirs.length} projects in WSL (after filtering):`, projectDirs);
         
         // Load full project details
         const projects = [];
@@ -1663,21 +1739,56 @@ io.on('connection', (socket) => {
 
   socket.on('createSession', async (data, callback) => {
     try {
-      const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      console.log(`✨ Creating new session: ${sessionId}`);
+      // Check if this is loading an existing session
+      let sessionId;
+      let existingClaudeSessionId = null;
+      let existingMessages = [];
       
-      // Use provided directory, or home directory as fallback (NOT process.cwd() which would be the app bundle)
-      const workingDirectory = data.workingDirectory || homedir();
+      if (data.existingSessionId && data.messages) {
+        // Loading an existing session - preserve the session ID and messages
+        sessionId = data.existingSessionId;
+        existingClaudeSessionId = data.claudeSessionId || null;
+        existingMessages = data.messages || [];
+        console.log(`📂 Loading existing session: ${sessionId} with Claude ID: ${existingClaudeSessionId}`);
+        console.log(`📝 Loaded ${existingMessages.length} existing messages`);
+      } else {
+        // Creating a brand new session
+        sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        console.log(`✨ Creating new session: ${sessionId}`);
+      }
+      
+      // Validate working directory - NEVER use temp directories
+      let workingDirectory = data.workingDirectory;
+      
+      // Check if this is a temp directory
+      if (workingDirectory) {
+        const lowerPath = workingDirectory.toLowerCase();
+        if (lowerPath.includes('\\temp\\') || 
+            lowerPath.includes('/temp/') ||
+            lowerPath.includes('\\tmp\\') ||
+            lowerPath.includes('/tmp/') ||
+            lowerPath.includes('appdata\\local\\temp') ||
+            lowerPath.includes('yurucode-server')) {
+          console.log(`🚫 Rejecting temp directory as working directory: ${workingDirectory}`);
+          workingDirectory = null; // Reset to force using home
+        }
+      }
+      
+      // Use provided directory, or home directory as fallback (NOT temp directory)
+      if (!workingDirectory) {
+        workingDirectory = homedir();
+        console.log(`📂 Using home directory as fallback: ${workingDirectory}`);
+      }
       
       const sessionData = {
         id: sessionId,
         name: data.name || 'new session',
         socketId: socket.id,
         workingDirectory: workingDirectory,
-        messages: [],
+        messages: existingMessages,  // Use loaded messages if available
         createdAt: Date.now(),
-        claudeSessionId: null,
-        hasGeneratedTitle: false,
+        claudeSessionId: existingClaudeSessionId,  // Preserve Claude session ID
+        hasGeneratedTitle: existingMessages.length > 0,  // If we have messages, we likely have a title
         wasInterrupted: false  // Track if last conversation was interrupted vs completed
       };
       
@@ -1785,9 +1896,30 @@ io.on('connection', (socket) => {
         // Don't modify streaming state here - let the UI continue showing streaming
         // The process exit handler will properly clean up when the old process dies
 
-        // Use session's working directory, fallback to home directory (NOT process.cwd() in bundled app)
-        const processWorkingDir = session.workingDirectory || homedir();
-        console.log(`📂 Using working directory: ${processWorkingDir}`);
+        // Validate session's working directory - NEVER use temp directories
+        let processWorkingDir = session.workingDirectory;
+        
+        // Check if this is a temp directory
+        if (processWorkingDir) {
+          const lowerPath = processWorkingDir.toLowerCase();
+          if (lowerPath.includes('\\temp\\') || 
+              lowerPath.includes('/temp/') ||
+              lowerPath.includes('\\tmp\\') ||
+              lowerPath.includes('/tmp/') ||
+              lowerPath.includes('appdata\\local\\temp') ||
+              lowerPath.includes('yurucode-server')) {
+            console.log(`🚫 Session has temp directory, using home instead: ${processWorkingDir}`);
+            processWorkingDir = null;
+          }
+        }
+        
+        // Use session's working directory, fallback to home directory (NOT temp directory)
+        if (!processWorkingDir) {
+          processWorkingDir = homedir();
+          console.log(`📂 Using home directory as fallback: ${processWorkingDir}`);
+        } else {
+          console.log(`📂 Using working directory: ${processWorkingDir}`);
+        }
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
       const args = [
@@ -1804,8 +1936,11 @@ io.on('connection', (socket) => {
         console.log(`🤖 Using model: ${model}`);
       }
       
+      // Determine if we're resuming or recreating
+      let isResuming = false;
+      
       // Use --resume if we have a claudeSessionId AND the last conversation wasn't interrupted
-      const isResuming = session.claudeSessionId && !session.wasInterrupted;
+      isResuming = session.claudeSessionId && !session.wasInterrupted;
       if (isResuming) {
         args.push('--resume', session.claudeSessionId);
         console.log('🔄 Using --resume flag with session:', session.claudeSessionId);
@@ -1881,7 +2016,42 @@ io.on('connection', (socket) => {
             console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
           }
           
-          const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, message);
+          // Build the message with context if needed
+          let messageToSend = message;
+          if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
+            console.log(`🔄 Building context for WSL command`);
+            let contextSummary = "Here's our previous conversation context:\\n\\n";
+            
+            const recentMessages = session.messages.slice(-10);
+            for (const msg of recentMessages) {
+              if (msg.type === 'user') {
+                const content = msg.message?.content || '';
+                // Handle both string and array content
+                let textContent = '';
+                if (typeof content === 'string') {
+                  textContent = content;
+                } else if (Array.isArray(content)) {
+                  textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
+                }
+                contextSummary += `User: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\\n\\n`;
+              } else if (msg.type === 'assistant') {
+                const content = msg.message?.content || '';
+                let textContent = '';
+                if (typeof content === 'string') {
+                  textContent = content;
+                } else if (Array.isArray(content)) {
+                  textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
+                }
+                contextSummary += `Assistant: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\\n\\n`;
+              }
+            }
+            
+            contextSummary += `---\\nNow, continuing our conversation: ${message}`;
+            messageToSend = contextSummary;
+            session.pendingContextRestore = false;
+          }
+          
+          const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, messageToSend);
           console.log(`🚀 Running WSL command: ${wslCommand}`);
           console.log(`🚀 WSL args:`, wslArgs);
           console.log(`🚀 Input handled in script: ${inputHandled}`);
@@ -1906,8 +2076,59 @@ io.on('connection', (socket) => {
         claudeProcess.unref(); // Allow parent to exit independently
       }
 
-      // Send input if not resuming and not already handled in script
-      if (message && !isResuming && !claudeProcess.inputHandled) {
+      // Send input based on session state
+      if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
+        // Restore context by sending previous messages as a summary
+        console.log(`🔄 Restoring context with ${session.messages.length} previous messages`);
+        
+        // Build context summary from previous messages
+        let contextSummary = "Here's our previous conversation context:\n\n";
+        
+        // Include last few messages for context (limit to prevent overwhelming)
+        const recentMessages = session.messages.slice(-10); // Last 10 messages
+        for (const msg of recentMessages) {
+          if (msg.type === 'user') {
+            const content = msg.message?.content || '';
+            // Handle both string and array content
+            let textContent = '';
+            if (typeof content === 'string') {
+              textContent = content;
+            } else if (Array.isArray(content)) {
+              textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
+            }
+            contextSummary += `User: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\n\n`;
+          } else if (msg.type === 'assistant') {
+            const content = msg.message?.content || '';
+            // Handle both string and array content
+            let textContent = '';
+            if (typeof content === 'string') {
+              textContent = content;
+            } else if (Array.isArray(content)) {
+              textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
+            }
+            contextSummary += `Assistant: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\n\n`;
+          }
+        }
+        
+        contextSummary += `---\nNow, continuing our conversation: ${message}`;
+        
+        const messageToSend = contextSummary + '\n';
+        console.log(`📝 Sending context + message to claude (${messageToSend.length} chars)`);
+        
+        if (!claudeProcess.inputHandled) {
+          claudeProcess.stdin.write(messageToSend, (err) => {
+            if (err) {
+              console.error(`❌ Error writing to stdin:`, err);
+            } else {
+              console.log(`✅ Successfully sent context restoration`);
+            }
+            claudeProcess.stdin.end();
+            console.log(`📝 Stdin closed`);
+          });
+        }
+        
+        session.pendingContextRestore = false; // Reset flag
+      } else if (message && !isResuming && !claudeProcess.inputHandled) {
         const messageToSend = message + '\n';
         console.log(`📝 Sending message to claude via stdin (${message.length} chars)`);
         
@@ -2030,6 +2251,53 @@ io.on('connection', (socket) => {
         
         console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line.substring(0, 100)}...`);
         
+        // Check for "No conversation found" error message
+        if (line.includes('No conversation found with session ID')) {
+          console.log(`🔄 [${sessionId}] Resume failed - session not found in Claude storage`);
+          console.log(`🔄 [${sessionId}] Will create new session with existing context on next message`);
+          
+          // Clear the invalid session ID so next attempt doesn't use --resume
+          const session = sessions.get(sessionId);
+          if (session) {
+            // Clear the invalid session ID
+            session.claudeSessionId = null;
+            
+            // Send a result message with checkpoint restore flag
+            const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+            const errorResultMessage = {
+              id: errorResultId,
+              type: 'result',
+              subtype: 'error',
+              is_error: true,
+              error: 'Session not found - restoring from checkpoint',
+              requiresCheckpointRestore: true, // Signal frontend to restore from checkpoint
+              streaming: false,
+              timestamp: Date.now()
+            };
+            const channel = `message:${sessionId}`;
+            console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore flag`);
+            socket.emit(channel, errorResultMessage);
+            console.log(`📤 [${sessionId}] Sent checkpoint restore signal`);
+            
+            // Send info message to explain what happened
+            const infoMessageId = `system-info-${Date.now()}-${Math.random()}`;
+            socket.emit(`message:${sessionId}`, {
+              id: infoMessageId,
+              type: 'system',
+              subtype: 'info',
+              message: { content: 'session history not found - send message again to continue' },
+              timestamp: Date.now(),
+              streaming: false
+            });
+            console.log(`📤 [${sessionId}] Sent info message ${infoMessageId} about session not found`);
+            
+            // Mark session as ready for new messages
+            session.isReady = true;
+            console.log(`✅ [${sessionId}] Session marked as ready after resume failure`);
+          }
+          return; // Don't try to parse as JSON
+        }
+        
         try {
           const jsonData = JSON.parse(line);
           console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
@@ -2133,9 +2401,95 @@ io.on('connection', (socket) => {
               }
             }
             
+          } else if (jsonData.type === 'content_block_start') {
+            // Handle content block start events
+            console.log(`📝 [${sessionId}] Content block starting:`, jsonData.content_block?.type);
+            socket.emit(`message:${sessionId}`, {
+              type: 'content_block_start',
+              content_block: jsonData.content_block,
+              index: jsonData.index,
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'content_block_stop') {
+            // Handle content block stop events
+            console.log(`📝 [${sessionId}] Content block stopped:`, jsonData.index);
+            socket.emit(`message:${sessionId}`, {
+              type: 'content_block_stop',
+              index: jsonData.index,
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'rate_limit') {
+            // Handle rate limit events
+            console.log(`⚠️ [${sessionId}] Rate limit:`, jsonData.rate_limit);
+            socket.emit(`message:${sessionId}`, {
+              type: 'rate_limit',
+              rate_limit: jsonData.rate_limit,
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'progress') {
+            // Handle progress events for long operations
+            console.log(`⏳ [${sessionId}] Progress:`, jsonData.progress);
+            socket.emit(`message:${sessionId}`, {
+              type: 'progress',
+              progress: jsonData.progress,
+              message: jsonData.message,
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'compact' || (jsonData.type === 'system' && jsonData.subtype === 'compact')) {
+            // Handle explicit compact events
+            console.log(`🗜️ [${sessionId}] Context compacted`);
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'compact',
+              message: { content: 'context compacted to save tokens' },
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'ping' || jsonData.type === 'pong') {
+            // Handle ping/pong for keep-alive
+            console.log(`🏓 [${sessionId}] ${jsonData.type} received`);
+            // Don't emit to frontend, just acknowledge
+            
+          } else if (jsonData.type === 'metadata') {
+            // Handle metadata events
+            console.log(`📋 [${sessionId}] Metadata:`, jsonData);
+            if (jsonData.title) {
+              // Send title update
+              socket.emit(`title:${sessionId}`, jsonData.title);
+            }
+            
+          } else if (jsonData.type === 'summary') {
+            // Handle summary events
+            console.log(`📝 [${sessionId}] Summary:`, jsonData.summary);
+            if (jsonData.summary) {
+              socket.emit(`title:${sessionId}`, jsonData.summary);
+            }
+            
           } else if (jsonData.type === 'result') {
             console.log(`📦 Message type: result`);
             console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
+            
+            // Check if this is a compact result
+            const isCompactResult = jsonData.usage && 
+                                   jsonData.usage.input_tokens === 0 && 
+                                   jsonData.usage.output_tokens === 0 &&
+                                   jsonData.usage.cache_creation_input_tokens === 0 &&
+                                   jsonData.usage.cache_read_input_tokens === 0;
+            
+            if (isCompactResult) {
+              console.log(`🗜️ [${sessionId}] Detected /compact command completion`);
+              // Send compact notification
+              socket.emit(`message:${sessionId}`, {
+                type: 'system',
+                subtype: 'compact',
+                message: { content: 'context compacted - token count reset' },
+                timestamp: Date.now()
+              });
+            }
             
             // Log usage/cost information if present
             if (jsonData.usage) {
@@ -2254,14 +2608,28 @@ io.on('connection', (socket) => {
         
         // Check if this is a "No conversation found" error
         if (error.includes('No conversation found with session ID')) {
-          console.log(`🔄 Resume failed - clearing invalid session ID and retrying with fresh conversation`);
+          console.log(`🔄 Resume failed - will recreate session with existing context`);
           
           // Clear the invalid session ID
           session.claudeSessionId = null;
           session.wasInterrupted = false;
           
-          // Don't emit the error to client, just log it
-          console.log(`🔄 Will start fresh on next message`);
+          // Send result message with checkpoint restore flag
+          const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+          const errorResultMessage = {
+            id: errorResultId,
+            type: 'result',
+            subtype: 'error',
+            is_error: true,
+            error: 'Session not found - restoring from checkpoint',
+            requiresCheckpointRestore: true,
+            streaming: false,
+            timestamp: Date.now()
+          };
+          const channel = `message:${sessionId}`;
+          console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore (stderr)`);
+          socket.emit(channel, errorResultMessage);
+          console.log(`📤 [${sessionId}] Sent checkpoint restore signal (stderr)`);
         } else {
           // Emit other errors to client
           socket.emit(`message:${sessionId}`, { 
@@ -2315,12 +2683,48 @@ io.on('connection', (socket) => {
             console.log(`✅ Marked session ${sessionId} as completed normally`);
           }
         } else if (code === 1) {
-          // Exit code 1 often means --resume failed
+          // Exit code 1 might mean --resume failed OR other errors
           const session = sessions.get(sessionId);
-          if (session && session.claudeSessionId) {
-            console.log(`⚠️ Process exited with code 1 - likely resume failed, clearing session ID`);
+          
+          // Check if stderr contains "No conversation found" - mark for recreation
+          if (session && session.claudeSessionId && stderrBuffer.includes('No conversation found')) {
+            console.log(`⚠️ Resume failed - session not found in Claude storage`);
+            console.log(`🔄 Will recreate session with existing context on next attempt`);
+            // Clear the invalid session ID
             session.claudeSessionId = null;
-            session.wasInterrupted = false;
+            
+            // Send result message with checkpoint restore flag
+            const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+            const errorResultMessage = {
+              id: errorResultId,
+              type: 'result',
+              subtype: 'error',
+              is_error: true,
+              error: 'Session not found - restoring from checkpoint',
+              requiresCheckpointRestore: true,
+              streaming: false,
+              timestamp: Date.now()
+            };
+            const channel = `message:${sessionId}`;
+            console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore (exit code 1)`);
+            socket.emit(channel, errorResultMessage);
+            console.log(`📤 [${sessionId}] Sent checkpoint restore signal (exit code 1)`);
+            
+            // Clear the assistant message ID tracking
+            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+            if (lastAssistantMessageId) {
+              console.log(`🔴 Clearing assistant message ID ${lastAssistantMessageId} after resume failure`);
+              lastAssistantMessageIds.delete(sessionId);
+            }
+            
+            // Send a subtle notification that we'll continue without resume
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'info',
+              message: { content: 'continuing conversation (session history not found in claude)' },
+              timestamp: Date.now(),
+              streaming: false
+            });
           }
         }
         

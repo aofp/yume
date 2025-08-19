@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { IconRefresh, IconCopy, IconX, IconTrash } from '@tabler/icons-react';
+import { IconRefresh, IconCopy, IconX, IconTrash, IconTerminal } from '@tabler/icons-react';
 import './ServerLogs.css';
 
 interface ServerLogsProps {
@@ -59,19 +59,22 @@ export const ServerLogs: React.FC<ServerLogsProps> = ({ isOpen, onClose }) => {
   return (
     <div className="server-logs-overlay">
       <div className="server-logs-modal">
-        <div className="server-logs-header">
-          <h3>server logs</h3>
+        <div className="server-logs-header" data-tauri-drag-region>
+          <div className="server-logs-title" data-tauri-drag-region>
+            <IconTerminal size={16} />
+            <span>server logs</span>
+          </div>
           <div className="server-logs-actions">
-            <button onClick={fetchLogs} disabled={isLoading} title="refresh">
+            <button className="server-logs-refresh" onClick={fetchLogs} disabled={isLoading} title="refresh (F5)">
               <IconRefresh size={16} />
             </button>
-            <button onClick={clearLogs} title="clear logs">
+            <button className="server-logs-clear" onClick={clearLogs} title="clear logs">
               <IconTrash size={16} />
             </button>
-            <button onClick={copyLogs} title="copy all">
+            <button className="server-logs-copy" onClick={copyLogs} title="copy all">
               <IconCopy size={16} />
             </button>
-            <button onClick={onClose} title="close">
+            <button className="server-logs-close" onClick={onClose} title="close (Esc)">
               <IconX size={16} />
             </button>
           </div>

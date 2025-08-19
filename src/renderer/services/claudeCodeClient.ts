@@ -249,7 +249,15 @@ export class ClaudeCodeClient {
         socketId: this.socket?.id 
       });
       
-      this.socket.emit('createSession', { name, workingDirectory, sessionId, options }, (response: any) => {
+      // Pass all options including loaded session data
+      const sessionData = {
+        name,
+        workingDirectory,
+        sessionId,
+        ...options  // Spread all options including existingSessionId, claudeSessionId, messages
+      };
+      
+      this.socket.emit('createSession', sessionData, (response: any) => {
         console.log('[Client] Session creation response:', response);
         if (response.success) {
           console.log(`[Client] ✅ Session ready: ${response.sessionId}`);

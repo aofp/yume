@@ -74,6 +74,7 @@ export interface Session {
   watermarkImage?: string; // Base64 or URL for watermark image
   pendingToolIds?: Set<string>; // Track pending tool operations by ID
   thinkingStartTime?: number; // Track when thinking started for this session
+  readOnly?: boolean; // Mark sessions loaded from projects as read-only
 }
 
 interface ClaudeCodeStore {
@@ -904,6 +905,47 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               });
               return { sessions };
             } else if (message.type === 'result') {
+              // CRITICAL: Check for error result FIRST - handle session resume failures
+              if (message.is_error || message.requiresCheckpointRestore) {
+                console.log('[Store] ❌ ERROR RESULT - Session resume failed, clearing streaming state', {
+                  is_error: message.is_error,
+                  requiresCheckpointRestore: message.requiresCheckpointRestore,
+                  error: message.error
+                });
+                
+                sessions = sessions.map(s => {
+                  if (s.id === sessionId) {
+                    return {
+                      ...s,
+                      streaming: false,
+                      thinkingStartTime: undefined,
+                      runningBash: false,
+                      userBashRunning: false,
+                      claudeSessionId: undefined // Clear invalid session ID so next message creates new session
+                    };
+                  }
+                  return s;
+                });
+                
+                // Add info message about the error
+                if (message.error) {
+                  const infoMessage = {
+                    id: `info-${Date.now()}`,
+                    type: 'system' as const,
+                    subtype: 'info' as const,
+                    message: { content: 'session not found - will create new session' },
+                    timestamp: Date.now()
+                  };
+                  sessions = sessions.map(s => 
+                    s.id === sessionId 
+                      ? { ...s, messages: [...s.messages, infoMessage] }
+                      : s
+                  );
+                }
+                
+                return { sessions };
+              }
+              
               // Check if we have a recent user message (within last 3 seconds)
               // If so, this is likely a followup during streaming, so keep streaming state
               const session = sessions.find(s => s.id === sessionId);

@@ -183,6 +183,29 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     }
   }, [loadingMoreProjects, hasMoreProjects, projectsOffset]);
 
+  // Load more sessions for a project  
+  const loadMoreSessions = useCallback(async (projectPath: string) => {
+    if (loadingMoreSessions || !hasMoreSessions[projectPath]) return;
+    
+    const currentOffset = sessionsOffset[projectPath] || 0;
+    
+    try {
+      const serverPort = claudeCodeClient.getServerPort();
+      if (!serverPort) return;
+      
+      setLoadingMoreSessions(true);
+      
+      // Note: This would need server-side support for pagination
+      // For now, sessions are loaded all at once in loadProjectSessions
+      console.log('Session pagination not yet implemented server-side');
+      
+    } catch (err) {
+      console.error('Error loading more sessions:', err);
+    } finally {
+      setLoadingMoreSessions(false);
+    }
+  }, [loadingMoreSessions, hasMoreSessions, sessionsOffset]);
+
   // load sessions for a specific project - stream them one by one
   const loadProjectSessions = useCallback(async (projectPath: string) => {
     console.log('🔍 [FRONTEND] Loading sessions for project:', projectPath);
@@ -591,6 +614,49 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     };
   }, [contextMenu]);
 
+  // Handle scroll events for infinite loading
+  useEffect(() => {
+    const handleProjectsScroll = () => {
+      if (!projectsListRef.current) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = projectsListRef.current;
+      // Load more when within 100px of bottom
+      if (scrollHeight - scrollTop - clientHeight < 100 && !loadingMoreProjects && hasMoreProjects) {
+        loadMoreProjects();
+      }
+    };
+
+    const handleSessionsScroll = () => {
+      if (!sessionsListRef.current || !selectedProject) return;
+      
+      const { scrollTop, scrollHeight, clientHeight } = sessionsListRef.current;
+      // Load more when within 100px of bottom
+      if (scrollHeight - scrollTop - clientHeight < 100 && !loadingMoreSessions && hasMoreSessions[selectedProject]) {
+        loadMoreSessions(selectedProject);
+      }
+    };
+
+    const projectsList = projectsListRef.current;
+    const sessionsList = sessionsListRef.current;
+
+    if (projectsList && !selectedProject) {
+      projectsList.addEventListener('scroll', handleProjectsScroll);
+    }
+
+    if (sessionsList && selectedProject) {
+      sessionsList.addEventListener('scroll', handleSessionsScroll);
+    }
+
+    return () => {
+      if (projectsList) {
+        projectsList.removeEventListener('scroll', handleProjectsScroll);
+      }
+      if (sessionsList) {
+        sessionsList.removeEventListener('scroll', handleSessionsScroll);
+      }
+    };
+  }, [selectedProject, loadMoreProjects, loadMoreSessions, loadingMoreProjects, loadingMoreSessions, hasMoreProjects, hasMoreSessions]);
+
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     const now = new Date();
@@ -738,7 +804,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
           )}
 
           {!loading && !error && !selectedProject && filteredProjects.length > 0 && (
-            <div className="projects-list">
+            <div className="projects-list" ref={projectsListRef}>
               {filteredProjects.map((project, index) => (
                 <div
                   key={project.path}
@@ -776,6 +842,17 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                   </div>
                 </div>
               ))}
+              {loadingMoreProjects && (
+                <div className="projects-loading-more">
+                  <LoadingIndicator size="small" />
+                  <span>loading more projects...</span>
+                </div>
+              )}
+              {!loadingMoreProjects && hasMoreProjects && (
+                <div className="projects-load-more-hint">
+                  <span>scroll down for more...</span>
+                </div>
+              )}
             </div>
           )}
 
@@ -787,7 +864,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                   <span>loading sessions...</span>
                 </div>
               ) : (
-              <div className="sessions-list">
+              <div className="sessions-list" ref={sessionsListRef}>
                 {filteredSessions.length === 0 && sessionSearchQuery && (
                   <div className="sessions-empty">no sessions match your search</div>
                 )}

@@ -1016,6 +1016,46 @@ const MessageRendererBase: React.FC<{
   };
   switch (message.type) {
     case 'system':
+      // Handle compact notification
+      if (message.subtype === 'compact') {
+        const compactText = typeof message.message === 'string' 
+          ? message.message 
+          : (typeof message.message === 'object' && message.message?.content) 
+            ? message.message.content 
+            : 'context compacted to save tokens';
+        
+        return (
+          <div className="message system-compact">
+            <div className="message-content">
+              <div className="compact-message">
+                <span className="compact-icon">🗜️</span>
+                <span>{compactText}</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
+      // Handle rate limit notification
+      if (message.subtype === 'rate_limit') {
+        const rateLimitText = typeof message.message === 'string' 
+          ? message.message 
+          : (typeof message.message === 'object' && message.message?.content) 
+            ? message.message.content 
+            : 'rate limited';
+        
+        return (
+          <div className="message system-rate-limit">
+            <div className="message-content">
+              <div className="rate-limit-message">
+                <IconAlertTriangle size={14} stroke={1.5} />
+                <span>{rateLimitText}</span>
+              </div>
+            </div>
+          </div>
+        );
+      }
+      
       // Show error messages and interruption messages
       if (message.subtype === 'error') {
         const errorText = typeof message.message === 'string' 
@@ -1155,6 +1195,11 @@ const MessageRendererBase: React.FC<{
         
         // Join all regular user texts
         displayText = userTexts.join(' ').trim();
+      }
+      
+      // Skip rendering if there's no content and no attachments
+      if (!displayText && pastedCount === 0) {
+        return null;
       }
       
       // Add attachment indicator if present with cleaner formatting

@@ -397,3 +397,21 @@
 .projects-content::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--accent-rgb), 0.7);
 }
+
+/* Infinite scroll indicators */
+.projects-loading-more,
+.projects-load-more-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.projects-load-more-hint {
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+}

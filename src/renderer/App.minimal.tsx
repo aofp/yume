@@ -791,7 +791,7 @@ export const App: React.FC = () => {
             const messagesToLoad = filteredMessages.slice(-50);
             console.log(`Loading ${messagesToLoad.length} messages (from ${allMessages.length} total, ${filteredMessages.length} after filtering blanks)`);
             
-            // Create the session with filtered messages
+            // Create the session with filtered messages - mark as read-only
             const newSession = {
               id: newSessionId,
               name: sessionName,
@@ -802,6 +802,7 @@ export const App: React.FC = () => {
               createdAt: new Date(),
               updatedAt: new Date(),
               claudeSessionId: sessionId, // Store the original Claude session ID for resumption
+              readOnly: true, // Mark as read-only since loaded from projects
               analytics: {
                 totalMessages: data.messages?.length || 0,
                 userMessages: 0,
@@ -826,10 +827,12 @@ export const App: React.FC = () => {
               currentSessionId: newSessionId
             });
             
-            // Register the session with the server for resumption
+            // Register the session with the server for resumption - pass all loaded data
             await claudeCodeClient.createSession(sessionName, data.projectPath, {
               sessionId: newSessionId,
-              claudeSessionId: sessionId // Pass the original Claude session ID
+              existingSessionId: newSessionId,  // Tell server this is a loaded session
+              claudeSessionId: sessionId,       // Pass the original Claude session ID
+              messages: messagesToLoad           // Pass the loaded messages
             });
             
             console.log('Session restored with', data.messages?.length || 0, 'messages');

@@ -540,7 +540,7 @@ export const ClaudeChat: React.FC = () => {
         setSearchVisible(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
         e.preventDefault();
-        if (currentSessionId) {
+        if (currentSessionId && !currentSession?.readOnly) {
           clearContext(currentSessionId);
           // Reset to stick to bottom for this session
           setIsAtBottom(prev => ({
@@ -769,6 +769,13 @@ export const ClaudeChat: React.FC = () => {
 
   // Helper function to handle delayed sends
   const handleDelayedSend = async (content: string, attachments: Attachment[], sessionId: string) => {
+    // Check if session is read-only before sending
+    const targetSession = sessions.find(s => s.id === sessionId);
+    if (targetSession?.readOnly) {
+      console.log('[ClaudeChat] Cannot send delayed message - session is read-only');
+      return;
+    }
+    
     // Build message content with attachments
     let messageContent = content;
     if (attachments.length > 0) {
@@ -837,8 +844,15 @@ export const ClaudeChat: React.FC = () => {
       streaming: currentSession?.streaming,
       sessionId: currentSessionId,
       bashCommandMode,
-      streamingStartTime: streamingStartTimeRef.current[currentSessionId || ''] 
+      streamingStartTime: streamingStartTimeRef.current[currentSessionId || ''],
+      readOnly: currentSession?.readOnly
     });
+    
+    // Prevent sending messages if session is read-only
+    if (currentSession?.readOnly) {
+      console.log('[ClaudeChat] Cannot send message - session is read-only');
+      return;
+    }
     
     // Allow sending messages during streaming (they'll be queued)
     if (!input.trim() && attachments.length === 0) return;
@@ -1181,7 +1195,7 @@ export const ClaudeChat: React.FC = () => {
     const trimmedInput = input.trim();
     if (trimmedInput === '/clear') {
       console.log('[ClaudeChat] Clearing context for session:', currentSessionId);
-      if (currentSessionId) {
+      if (currentSessionId && !currentSession?.readOnly) {
         clearContext(currentSessionId);
         setInput('');
         // Reset textarea height when clearing context
@@ -1640,7 +1654,7 @@ export const ClaudeChat: React.FC = () => {
       // Handle clear command locally
       setInput('');
       setCommandTrigger(null);
-      if (currentSessionId) {
+      if (currentSessionId && !currentSession?.readOnly) {
         clearContext(currentSessionId);
         // Reset to stick to bottom for this session
         setIsAtBottom(prev => ({
@@ -2130,12 +2144,13 @@ export const ClaudeChat: React.FC = () => {
           <textarea
             ref={inputRef}
             className={`chat-input ${bashCommandMode ? 'bash-mode' : ''}`}
-            placeholder={bashCommandMode ? "bash command..." : currentSession?.streaming ? "append message..." : "code prompt..."}
-            value={input}
+            placeholder={currentSession?.readOnly ? "read-only session" : bashCommandMode ? "bash command..." : currentSession?.streaming ? "append message..." : "code prompt..."}
+            value={currentSession?.readOnly ? '' : input}
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
             style={{ height: '44px' }}
+            disabled={currentSession?.readOnly}
             onFocus={() => setIsTextareaFocused(true)}
             onBlur={() => {
               // Close autocomplete when textarea loses focus
@@ -2147,7 +2162,6 @@ export const ClaudeChat: React.FC = () => {
               // Allow default context menu for right-click paste
               e.stopPropagation();
             }}
-            disabled={false}
           />
           <Watermark inputLength={input.length} isFocused={isTextareaFocused} isStreaming={currentSession?.streaming} />
           {currentSession?.streaming && (
@@ -2202,7 +2216,7 @@ export const ClaudeChat: React.FC = () => {
                     className="btn-clear-context" 
                     onClick={() => {
                       // Clear messages but keep session
-                      if (currentSessionId && hasActivity) {
+                      if (currentSessionId && hasActivity && !currentSession?.readOnly) {
                         clearContext(currentSessionId);
                         // Reset to stick to bottom for this session
                         setIsAtBottom(prev => ({
@@ -2216,7 +2230,7 @@ export const ClaudeChat: React.FC = () => {
                         });
                       }
                     }}
-                    disabled={false}
+                    disabled={currentSession?.readOnly}
                     title={hasActivity ? "clear context (ctrl+l)" : "clear context (ctrl+l)"}
                     style={{
                       opacity: 1,
