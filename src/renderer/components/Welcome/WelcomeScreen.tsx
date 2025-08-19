@@ -164,11 +164,6 @@ export const WelcomeScreen: React.FC = () => {
   return (
     <div className="welcome-screen">
       <div className="welcome-content">
-        <div className="welcome-header">
-          <span className="welcome-title">
-            <span className="yuru">y</span><span className="code">&gt;</span>
-          </span>
-        </div>
         
         <div className="welcome-buttons">
           <button 

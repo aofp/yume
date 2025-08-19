@@ -65,17 +65,29 @@
 
 .about-logo {
   font-size: 24px;
-  font-weight: 200;
+  font-weight: bold;
   letter-spacing: 0.1em;
   margin-bottom: 12px;
 }
 
-.about-yuru, .about-code {
+.about-logo .yuru {
   color: rgba(255, 255, 255, 0.6);
 }
 
+.about-logo .code {
+  color: var(--accent-color);
+}
+
+.about-name {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  text-transform: lowercase;
+  font-family: 'Fira Code', monospace;
+  font-weight: bold;
+}
+
 .about-version {
-  font-size: 11px;
+  font-size: 9px;
   color: rgba(255, 255, 255, 0.5);
   text-transform: lowercase;
   margin-bottom: 16px;

@@ -60,6 +60,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
   const [loadingMoreSessions, setLoadingMoreSessions] = useState(false);
   
   // Refs for scroll containers
+  const projectsContentRef = useRef<HTMLDivElement>(null);
   const projectsListRef = useRef<HTMLDivElement>(null);
   const sessionsListRef = useRef<HTMLDivElement>(null);
 
@@ -77,6 +78,20 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
       setSessionsByProject({});
     }
     try {
+      // wait for socket connection if not connected
+      if (!claudeCodeClient.isConnected()) {
+        console.log('[ProjectsModal] waiting for socket connection...');
+        // wait up to 5 seconds for connection
+        let attempts = 0;
+        while (!claudeCodeClient.isConnected() && attempts < 50) {
+          await new Promise(resolve => setTimeout(resolve, 100));
+          attempts++;
+        }
+        if (!claudeCodeClient.isConnected()) {
+          throw new Error('socket not connected');
+        }
+      }
+      
       const serverPort = claudeCodeClient.getServerPort();
       if (!serverPort) {
         throw new Error('server port not available');
@@ -140,7 +155,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     }
   }, [loading, hasLoaded, lastLoadTime]);
 
-  // Load more projects when scrolling to bottom
+  // Forward declare loadMoreProjects to fix circular dependency
   const loadMoreProjects = useCallback(async () => {
     if (loadingMoreProjects || !hasMoreProjects) return;
     
@@ -183,41 +198,30 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     }
   }, [loadingMoreProjects, hasMoreProjects, projectsOffset]);
 
-  // Load more sessions for a project  
-  const loadMoreSessions = useCallback(async (projectPath: string) => {
-    if (loadingMoreSessions || !hasMoreSessions[projectPath]) return;
-    
-    const currentOffset = sessionsOffset[projectPath] || 0;
-    
-    try {
-      const serverPort = claudeCodeClient.getServerPort();
-      if (!serverPort) return;
-      
-      setLoadingMoreSessions(true);
-      
-      // Note: This would need server-side support for pagination
-      // For now, sessions are loaded all at once in loadProjectSessions
-      console.log('Session pagination not yet implemented server-side');
-      
-    } catch (err) {
-      console.error('Error loading more sessions:', err);
-    } finally {
-      setLoadingMoreSessions(false);
-    }
-  }, [loadingMoreSessions, hasMoreSessions, sessionsOffset]);
-
   // load sessions for a specific project - stream them one by one
-  const loadProjectSessions = useCallback(async (projectPath: string) => {
-    console.log('🔍 [FRONTEND] Loading sessions for project:', projectPath);
+  const loadProjectSessions = useCallback(async (projectPath: string, append = false) => {
+    console.log('🔍 [FRONTEND] Loading sessions for project:', projectPath, 'append:', append);
     
-    // Check if already loaded
-    if (sessionsByProject[projectPath]) {
+    // Skip if already loading
+    if (loadingSessions && !append) {
+      console.log('⏳ [FRONTEND] Already loading sessions');
+      return;
+    }
+    
+    // Check if already loaded (for initial load only)
+    if (!append && sessionsByProject[projectPath]) {
       console.log('✅ [FRONTEND] Sessions already loaded for:', projectPath);
       return;
     }
     
-    setLoadingSessions(true);
-    const sessions: ClaudeSession[] = [];
+    if (!append) {
+      setLoadingSessions(true);
+    } else {
+      setLoadingMoreSessions(true);
+    }
+    
+    const currentOffset = append ? (sessionsOffset[projectPath] || 10) : 0;
+    const sessions: ClaudeSession[] = append ? (sessionsByProject[projectPath] || []) : [];
     
     try {
       const serverPort = claudeCodeClient.getServerPort();
@@ -227,8 +231,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
         throw new Error('server port not available');
       }
       
-      const url = `http://localhost:${serverPort}/claude-project-sessions/${encodeURIComponent(projectPath)}`;
-      console.log('📡 [FRONTEND] Streaming sessions from:', url);
+      const url = `http://localhost:${serverPort}/claude-project-sessions/${encodeURIComponent(projectPath)}?offset=${currentOffset}&limit=10`;
+      console.log('📡 [FRONTEND] Streaming sessions from:', url, 'offset:', currentOffset);
       
       const response = await fetch(url);
       if (!response.ok) {
@@ -267,8 +271,34 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                     ...prev,
                     [projectPath]: [...sessions]
                   }));
+                  // Update hasMore flag if provided
+                  if (data.hasMore !== undefined) {
+                    setHasMoreSessions(prev => ({
+                      ...prev,
+                      [projectPath]: data.hasMore
+                    }));
+                  }
                 } else if (data.done) {
-                  console.log('✅ [FRONTEND] All sessions loaded');
+                  console.log('✅ [FRONTEND] All sessions loaded, hasMore:', data.hasMore);
+                  // Get the project to check total session count
+                  const project = projects.find(p => p.path === projectPath);
+                  const totalSessionCount = project?.sessionCount || 0;
+                  const loadedSessionCount = sessions.length;
+                  
+                  // Determine if there are more sessions based on total count
+                  const actuallyHasMore = totalSessionCount > loadedSessionCount;
+                  
+                  console.log(`📊 Loaded ${loadedSessionCount}/${totalSessionCount} sessions, hasMore: ${actuallyHasMore}`);
+                  
+                  // Update pagination state
+                  setHasMoreSessions(prev => ({
+                    ...prev,
+                    [projectPath]: actuallyHasMore
+                  }));
+                  setSessionsOffset(prev => ({
+                    ...prev,
+                    [projectPath]: currentOffset + 10
+                  }));
                 } else if (data.error) {
                   console.error('❌ [FRONTEND] Server error:', data.message);
                 }
@@ -289,9 +319,24 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
         [projectPath]: []
       }));
     } finally {
-      setLoadingSessions(false);
+      if (!append) {
+        setLoadingSessions(false);
+      } else {
+        setLoadingMoreSessions(false);
+      }
     }
-  }, [sessionsByProject]);
+  }, [loadingSessions, sessionsByProject, sessionsOffset, loadingMoreSessions]);
+
+  // Load more sessions for a project  
+  const loadMoreSessions = useCallback(async (projectPath: string) => {
+    if (loadingMoreSessions || !hasMoreSessions[projectPath]) {
+      console.log('Skip loading more sessions. Loading:', loadingMoreSessions, 'HasMore:', hasMoreSessions[projectPath]);
+      return;
+    }
+    
+    console.log('Loading more sessions for:', projectPath, 'current offset:', sessionsOffset[projectPath]);
+    await loadProjectSessions(projectPath, true);
+  }, [loadingMoreSessions, hasMoreSessions, sessionsOffset, loadProjectSessions]);
 
   // load projects from server only when opened and not already loaded
   useEffect(() => {
@@ -333,7 +378,10 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     
     if (selectedProject && !sessionsByProject[selectedProject]) {
       console.log('🚀 [FRONTEND] Loading sessions for selected project:', selectedProject);
-      loadProjectSessions(selectedProject);
+      // Initialize pagination state
+      setSessionsOffset(prev => ({ ...prev, [selectedProject]: 0 }));
+      setHasMoreSessions(prev => ({ ...prev, [selectedProject]: true }));
+      loadProjectSessions(selectedProject, false);
     }
   }, [selectedProject, sessionsByProject, loadProjectSessions]);
 
@@ -376,9 +424,14 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     }
     
     // Otherwise open a new context menu
+    // Adjust for zoom level
+    const zoomLevel = parseFloat(document.body.style.zoom || '1');
+    const adjustedX = e.clientX / zoomLevel;
+    const adjustedY = e.clientY / zoomLevel;
+    
     const newMenu = {
-      x: e.clientX,
-      y: e.clientY,
+      x: adjustedX,
+      y: adjustedY,
       type,
       path,
       sessionId
@@ -520,7 +573,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, selectedProject, onClose, loadProjects, focusedIndex, filteredProjects, filteredSessions, handleSelectSession, handleContextMenu]);
 
-  const handleClearHistory = useCallback((e: React.MouseEvent) => {
+  const handleClearHistory = useCallback(async (e: React.MouseEvent) => {
     e.stopPropagation();
     e.preventDefault();
     
@@ -537,51 +590,52 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
       .split('/')
       .pop() || contextPath;
     
-    // Close context menu FIRST
+    // Show confirmation dialog BEFORE closing context menu
+    const confirmMessage = contextType === 'project' 
+      ? `Delete all sessions in project "${projectName}"? This cannot be undone.`
+      : `Delete this session? This cannot be undone.`;
+    
+    console.log('[DELETE] Showing confirmation dialog:', confirmMessage);
+    const userConfirmed = window.confirm(confirmMessage);
+    console.log('[DELETE] User confirmed:', userConfirmed);
+    
+    // Close context menu after confirmation
     setContextMenu(null);
     
-    // Show confirmation dialog
-    const confirmMessage = contextType === 'project' 
-      ? `clear all history for "${projectName}"?`
-      : `clear this session history?`;
-    
-    // Use setTimeout to ensure dialog shows after context menu is closed
-    setTimeout(async () => {
-      const userConfirmed = window.confirm(confirmMessage);
-      
-      // Only proceed if user confirmed
-      if (!userConfirmed) {
-        return;
-      }
+    // Only proceed if user confirmed
+    if (!userConfirmed) {
+      console.log('[DELETE] User cancelled deletion');
+      return;
+    }
 
-      try {
-        const serverPort = claudeCodeClient.getServerPort();
+    console.log('[DELETE] Proceeding with deletion...');
+    try {
+      const serverPort = claudeCodeClient.getServerPort();
       if (!serverPort) {
         throw new Error('server port not available');
       }
 
-        const endpoint = contextType === 'project'
-          ? `/claude-project/${encodeURIComponent(contextPath)}`
-          : `/claude-session/${encodeURIComponent(contextPath)}/${encodeURIComponent(contextSessionId!)}`;
+      const endpoint = contextType === 'project'
+        ? `/claude-project/${encodeURIComponent(contextPath)}`
+        : `/claude-session/${encodeURIComponent(contextPath)}/${encodeURIComponent(contextSessionId!)}`;
 
-        const response = await fetch(`http://localhost:${serverPort}${endpoint}`, {
-          method: 'DELETE'
-        });
+      const response = await fetch(`http://localhost:${serverPort}${endpoint}`, {
+        method: 'DELETE'
+      });
 
-        if (!response.ok) throw new Error('failed to clear history');
+      if (!response.ok) throw new Error('failed to clear history');
 
-        // Refresh the projects list
-        await loadProjects(true);
-        
-        // If we cleared the currently selected project, clear selection
-        if (contextType === 'project' && contextPath === selectedProject) {
-          setSelectedProject(null);
-        }
-      } catch (error) {
-        console.error('failed to clear history:', error);
-        alert('failed to clear history');
+      // Refresh the projects list
+      await loadProjects(true);
+      
+      // If we cleared the currently selected project, clear selection
+      if (contextType === 'project' && contextPath === selectedProject) {
+        setSelectedProject(null);
       }
-    }, 0);
+    } catch (error) {
+      console.error('failed to clear history:', error);
+      alert('failed to clear history');
+    }
   }, [contextMenu, loadProjects, selectedProject]);
 
   // Close context menu on any click or scroll
@@ -591,7 +645,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     const handleClick = (e: MouseEvent) => {
       // Don't close if clicking inside the context menu itself
       const target = e.target as HTMLElement;
-      if (target.closest('.projects-context-menu')) {
+      if (target.closest('.global-context-menu')) {
         return;
       }
       setContextMenu(null);
@@ -616,45 +670,31 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
 
   // Handle scroll events for infinite loading
   useEffect(() => {
-    const handleProjectsScroll = () => {
-      if (!projectsListRef.current) return;
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      const { scrollTop, scrollHeight, clientHeight } = target;
       
-      const { scrollTop, scrollHeight, clientHeight } = projectsListRef.current;
       // Load more when within 100px of bottom
-      if (scrollHeight - scrollTop - clientHeight < 100 && !loadingMoreProjects && hasMoreProjects) {
-        loadMoreProjects();
+      if (scrollHeight - scrollTop - clientHeight < 100) {
+        if (!selectedProject && !loadingMoreProjects && hasMoreProjects) {
+          console.log('Loading more projects - scroll detected');
+          loadMoreProjects();
+        } else if (selectedProject && !loadingMoreSessions && hasMoreSessions[selectedProject]) {
+          console.log('Loading more sessions - scroll detected');
+          loadMoreSessions(selectedProject);
+        }
       }
     };
 
-    const handleSessionsScroll = () => {
-      if (!sessionsListRef.current || !selectedProject) return;
-      
-      const { scrollTop, scrollHeight, clientHeight } = sessionsListRef.current;
-      // Load more when within 100px of bottom
-      if (scrollHeight - scrollTop - clientHeight < 100 && !loadingMoreSessions && hasMoreSessions[selectedProject]) {
-        loadMoreSessions(selectedProject);
-      }
-    };
-
-    const projectsList = projectsListRef.current;
-    const sessionsList = sessionsListRef.current;
-
-    if (projectsList && !selectedProject) {
-      projectsList.addEventListener('scroll', handleProjectsScroll);
+    // Always use projects-content as the scroll container
+    const scrollElement = projectsContentRef.current;
+    
+    if (scrollElement) {
+      scrollElement.addEventListener('scroll', handleScroll);
+      return () => {
+        scrollElement.removeEventListener('scroll', handleScroll);
+      };
     }
-
-    if (sessionsList && selectedProject) {
-      sessionsList.addEventListener('scroll', handleSessionsScroll);
-    }
-
-    return () => {
-      if (projectsList) {
-        projectsList.removeEventListener('scroll', handleProjectsScroll);
-      }
-      if (sessionsList) {
-        sessionsList.removeEventListener('scroll', handleSessionsScroll);
-      }
-    };
   }, [selectedProject, loadMoreProjects, loadMoreSessions, loadingMoreProjects, loadingMoreSessions, hasMoreProjects, hasMoreSessions]);
 
   const formatDate = (timestamp: number) => {
@@ -716,10 +756,14 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
   };
 
   const formatProjectPath = (path: string) => {
-    // convert escaped path back to full readable format
-    return path
+    // convert escaped path back to parent directory path (without project name)
+    const fullPath = path
       .replace(/^-/, '/')
       .replace(/-/g, '/');
+    // Remove the last part (project name) to get parent directory
+    const parts = fullPath.split('/');
+    parts.pop(); // Remove project name
+    return parts.join('/') || '/';
   };
 
   if (!isOpen) return null;
@@ -727,16 +771,18 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
   return (
     <div className="projects-modal-overlay" onClick={onClose}>
       <div className="projects-modal" onClick={e => e.stopPropagation()}>
-        <div className="projects-header" data-tauri-drag-region>
+        <div className="projects-header" data-tauri-drag-region onClick={() => setContextMenu(null)}>
           <div className="projects-title" data-tauri-drag-region>
             {selectedProject && selectedProjectData ? (
               <>
                 <button 
                   className="sessions-back-btn"
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     setSelectedProject(null);
                     setSessionSearchQuery('');
                     setShowSearch(false);
+                    setContextMenu(null);
                   }}
                   title="back to projects"
                 >
@@ -746,26 +792,37 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 <IconFolderOpen size={16} />
                 <span>{formatProjectName(selectedProjectData.name)}</span>
                 <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '12px', marginLeft: '8px' }}>
-                  {sessionsByProject[selectedProject]?.length || selectedProjectData.sessionCount || 0} sessions
+                  {sessionsByProject[selectedProject]?.length || 0} / {selectedProjectData.sessionCount || 0} sessions
                 </span>
               </>
             ) : (
               <>
                 <IconFolder size={16} />
                 <span>claude projects</span>
+                <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '11px', marginLeft: '8px' }}>
+                  {projectCount !== null ? `${projectCount} total` : 'loading...'}
+                </span>
               </>
             )}
           </div>
           <div className="projects-header-actions">
             <button 
               className="projects-refresh" 
-              onClick={() => loadProjects(true)}
+              onClick={(e) => {
+                e.stopPropagation();
+                setContextMenu(null);
+                loadProjects(true);
+              }}
               disabled={loading}
               title="refresh (F5)"
             >
               {loading ? <LoadingIndicator size="small" /> : <IconRefresh size={16} />}
             </button>
-            <button className="projects-close" onClick={onClose}>
+            <button className="projects-close" onClick={(e) => {
+              e.stopPropagation();
+              setContextMenu(null);
+              onClose();
+            }}>
               <IconX size={16} />
             </button>
           </div>
@@ -785,7 +842,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
           </div>
         )}
 
-        <div className="projects-content">
+        <div className="projects-content" ref={projectsContentRef}>
           {loading && !quickLoaded && (
             <div className="projects-loading">
               <LoadingIndicator size="medium" />
@@ -824,21 +881,21 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                         <span className="project-full-path">{formatProjectPath(project.path)}</span>
                       </div>
                     </div>
+                    <div className="project-meta">
+                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                        <IconHash size={12} />
+                        {project.sessionCount !== null ? (
+                          <>{project.sessionCount} {typeof project.sessionCount === 'string' || project.sessionCount !== 1 ? 'sessions' : 'session'}</>
+                        ) : (
+                          <LoadingIndicator size="small" />
+                        )}
+                      </span>
+                      <span>
+                        <IconClock size={12} />
+                        {formatDate(project.lastModified)}
+                      </span>
+                    </div>
                     <IconChevronRight size={14} className="project-arrow" />
-                  </div>
-                  <div className="project-meta">
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <IconHash size={12} />
-                      {project.sessionCount !== null ? (
-                        <>{project.sessionCount} {typeof project.sessionCount === 'string' || project.sessionCount !== 1 ? 'sessions' : 'session'}</>
-                      ) : (
-                        <LoadingIndicator size="small" />
-                      )}
-                    </span>
-                    <span>
-                      <IconClock size={12} />
-                      {formatDate(project.lastModified)}
-                    </span>
                   </div>
                 </div>
               ))}
@@ -864,6 +921,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                   <span>loading sessions...</span>
                 </div>
               ) : (
+              <>
               <div className="sessions-list" ref={sessionsListRef}>
                 {filteredSessions.length === 0 && sessionSearchQuery && (
                   <div className="sessions-empty">no sessions match your search</div>
@@ -888,22 +946,33 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                       <span className="session-summary">
                         {localStorage.getItem(`session-title-${session.id}`) || session.title || session.summary || 'untitled session'}
                       </span>
-                    </div>
-                    <div className="session-meta">
-                      {session.messageCount && (
+                      <div className="session-meta">
+                        {session.messageCount && (
+                          <span>
+                            <IconMessages size={12} />
+                            {session.messageCount}
+                          </span>
+                        )}
                         <span>
-                          <IconMessages size={12} />
-                          {session.messageCount}
+                          <IconClock size={12} />
+                          {formatDate(session.timestamp)}
                         </span>
-                      )}
-                      <span>
-                        <IconClock size={12} />
-                        {formatDate(session.timestamp)}
-                      </span>
+                      </div>
                     </div>
                   </div>
                 ))}
+                {/* Loading more indicator */}
+                {loadingMoreSessions && (
+                  <div className="loading-more">
+                    <LoadingIndicator size="small" />
+                    <span>loading more sessions...</span>
+                  </div>
+                )}
+                {!loadingMoreSessions && hasMoreSessions[selectedProject] && (
+                  <div className="load-more-hint">scroll for more...</div>
+                )}
               </div>
+              </>
               )}
             </div>
           )}
@@ -912,21 +981,26 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
         {/* Context Menu */}
         {contextMenu && (
           <div 
-            className="projects-context-menu" 
+            className="global-context-menu" 
             style={{ 
+              position: 'fixed',
               left: (() => {
+                const zoomLevel = parseFloat(document.body.style.zoom || '1');
+                const adjustedInnerWidth = window.innerWidth / zoomLevel;
                 const menuWidth = 180; // Approximate width of context menu
                 const rightEdge = contextMenu.x + menuWidth;
-                if (rightEdge > window.innerWidth) {
-                  return window.innerWidth - menuWidth - 10;
+                if (rightEdge > adjustedInnerWidth) {
+                  return adjustedInnerWidth - menuWidth - 10;
                 }
                 return contextMenu.x;
               })(),
               top: (() => {
+                const zoomLevel = parseFloat(document.body.style.zoom || '1');
+                const adjustedInnerHeight = window.innerHeight / zoomLevel;
                 const menuHeight = contextMenu.type === 'project' ? 160 : 80; // Adjust height based on menu items (3 buttons for project)
                 const bottomEdge = contextMenu.y + menuHeight;
-                if (bottomEdge > window.innerHeight) {
-                  return window.innerHeight - menuHeight - 10;
+                if (bottomEdge > adjustedInnerHeight) {
+                  return adjustedInnerHeight - menuHeight - 10;
                 }
                 return contextMenu.y;
               })()
@@ -934,7 +1008,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
           >
             {contextMenu.type === 'project' && (
               <>
-                <button onClick={() => {
+                <button className="context-menu-item" onClick={() => {
                   // Close modal and context menu
                   setContextMenu(null);
                   onClose();
@@ -943,7 +1017,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 }}>
                   new session
                 </button>
-                <button onClick={() => {
+                <button className="context-menu-item" onClick={() => {
                   // Browse sessions for this project
                   setSelectedProject(contextMenu.path);
                   setContextMenu(null);
@@ -953,10 +1027,24 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 </button>
               </>
             )}
-            <button onClick={handleClearHistory}>
-              clear {contextMenu.type === 'project' ? 'project history' : 'session'}
+            {contextMenu.type === 'session' && (
+              <button className="context-menu-item" onClick={() => {
+                // View/load this session
+                const session = sessionsByProject[contextMenu.path]?.find(s => s.id === contextMenu.sessionId);
+                if (session) {
+                  const storedTitle = localStorage.getItem(`session-title-${session.id}`);
+                  const title = storedTitle || session.title || session.summary;
+                  handleSelectSession(contextMenu.path, session.id, title);
+                }
+                setContextMenu(null);
+              }}>
+                view session
+              </button>
+            )}
+            <button className="context-menu-item" onClick={handleClearHistory}>
+              {contextMenu.type === 'project' ? 'clear project history' : 'delete session'}
             </button>
-            <button onClick={() => setContextMenu(null)}>
+            <button className="context-menu-item" onClick={() => setContextMenu(null)}>
               nevermind
             </button>
           </div>

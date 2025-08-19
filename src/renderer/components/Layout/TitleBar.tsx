@@ -85,10 +85,13 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
             className="titlebar-logo centered" 
             onContextMenu={(e) => {
               e.preventDefault();
-              setShowAboutModal(true);
+              e.stopPropagation();
+              if (!showAboutModal) {
+                setShowAboutModal(true);
+              }
             }}
           >
-            <span className="titlebar-text" onContextMenu={(e) => e.preventDefault()}>
+            <span className="titlebar-text">
               yuru&gt;code
             </span>
           </div>

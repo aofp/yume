@@ -2115,6 +2115,7 @@ export const ClaudeChat: React.FC = () => {
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
         onDrop={handleDrop}
+        style={{ display: currentSession?.readOnly ? 'none' : 'block' }}
       >
         {/* Attachment preview area */}
         {attachments.length > 0 && (

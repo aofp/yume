@@ -698,6 +698,280 @@ app.get('/claude-projects', async (req, res) => {
   }
 });
 
+// Quick projects endpoint - returns just project names and session counts for fast loading
+app.get('/claude-projects-quick', async (req, res) => {
+  try {
+    // Get pagination params from query string
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    
+    const claudeDir = join(homedir(), '.claude', 'projects');
+    
+    console.log('Quick loading project list from:', claudeDir);
+    
+    // Check if projects directory exists
+    if (!existsSync(claudeDir)) {
+      console.log('Claude projects directory not found:', claudeDir);
+      return res.json({ projects: [], count: 0 });
+    }
+    
+    const { readdir, stat } = await import('fs/promises');
+    const projectDirs = await readdir(claudeDir);
+    
+    // Quick filter for directories only
+    const projectPromises = projectDirs
+      .filter(dir => !dir.startsWith('.'))
+      .map(async (projectDir) => {
+        try {
+          const projectPath = join(claudeDir, projectDir);
+          const stats = await stat(projectPath);
+          if (!stats.isDirectory()) return null;
+          
+          // Count session files without reading them
+          const sessionFiles = await readdir(projectPath);
+          const sessionCount = sessionFiles.filter(f => f.endsWith('.jsonl')).length;
+          
+          // Just return name, path, and count for quick loading
+          return {
+            path: projectDir,
+            name: projectDir,
+            sessionCount: sessionCount,
+            lastModified: stats.mtime.getTime()
+          };
+        } catch {
+          return null;
+        }
+      });
+    
+    const projects = (await Promise.all(projectPromises)).filter(Boolean);
+    projects.sort((a, b) => b.lastModified - a.lastModified);
+    
+    // Apply pagination
+    const totalCount = projects.length;
+    const paginatedProjects = projects.slice(offset, offset + limit);
+    
+    console.log(`Quick loaded ${paginatedProjects.length} of ${totalCount} project names (offset: ${offset}, limit: ${limit})`);
+    res.json({ projects: paginatedProjects, count: totalCount });
+  } catch (error) {
+    console.error('Error quick loading projects:', error);
+    res.status(500).json({ error: 'Failed to load projects', details: error.message });
+  }
+});
+
+// Get sessions for a specific project using Server-Sent Events for streaming
+app.get('/claude-project-sessions/:projectName', async (req, res) => {
+  // Support pagination with offset and limit query params
+  const offset = parseInt(req.query.offset) || 0;
+  const limit = parseInt(req.query.limit) || 10;
+  try {
+    const projectName = decodeURIComponent(req.params.projectName);
+    console.log('📂 Loading sessions for project:', projectName);
+    
+    // Set up Server-Sent Events
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    });
+    
+    const claudeDir = join(homedir(), '.claude', 'projects');
+    const projectPath = join(claudeDir, projectName);
+    
+    // Check if project directory exists
+    if (!existsSync(projectPath)) {
+      res.write('data: {"done": true, "sessions": []}\n\n');
+      res.end();
+      return;
+    }
+    
+    const { readdir, stat, readFile } = await import('fs/promises');
+    
+    // Get all session files
+    const sessionFiles = await readdir(projectPath);
+    const jsonlFiles = sessionFiles
+      .filter(f => f.endsWith('.jsonl'))
+      .slice(0, 50); // Limit to 50 sessions for performance
+    
+    if (jsonlFiles.length === 0) {
+      res.write('data: {"done": true, "sessions": []}\n\n');
+      res.end();
+      return;
+    }
+    
+    // Get file stats and sort by modification time
+    const fileStats = await Promise.all(
+      jsonlFiles.map(async (file) => {
+        const filePath = join(projectPath, file);
+        const stats = await stat(filePath);
+        return {
+          filename: file,
+          path: filePath,
+          timestamp: stats.mtime.getTime()
+        };
+      })
+    );
+    
+    fileStats.sort((a, b) => b.timestamp - a.timestamp);
+    
+    // Apply pagination
+    const paginatedFiles = fileStats.slice(offset, offset + limit);
+    
+    // Process each file and stream it
+    for (let i = 0; i < paginatedFiles.length; i++) {
+      const { filename, path: filePath, timestamp } = paginatedFiles[i];
+      
+      try {
+        const sessionId = filename.replace('.jsonl', '');
+        let summary = 'Untitled session';
+        let title = null;
+        let messageCount = 0;
+        
+        // Read first few lines to get summary
+        const content = await readFile(filePath, 'utf8');
+        const lines = content.split(/\r?\n/).filter(line => line.trim());
+        messageCount = lines.length;
+        
+        // Try to find summary or title from first few lines
+        for (let j = 0; j < Math.min(5, lines.length); j++) {
+          try {
+            const data = JSON.parse(lines[j]);
+            if (data.summary) {
+              summary = data.summary;
+              break;
+            }
+            if (data.title) {
+              title = data.title;
+            }
+            // Use first user message as fallback
+            if (data.role === 'user' && data.content && summary === 'Untitled session') {
+              summary = data.content.slice(0, 100);
+              if (data.content.length > 100) summary += '...';
+            }
+          } catch {}
+        }
+        
+        // Check last line for metadata
+        if (lines.length > 0) {
+          try {
+            const lastData = JSON.parse(lines[lines.length - 1]);
+            if (lastData.title) {
+              title = lastData.title;
+            }
+          } catch {}
+        }
+        
+        const session = {
+          id: sessionId,
+          summary: summary,
+          title: title,
+          timestamp: timestamp,
+          path: filename,
+          messageCount: Math.min(messageCount, 50) // Cap reported count at 50
+        };
+        
+        // Stream this session immediately with pagination info
+        res.write(`data: ${JSON.stringify({ 
+          session, 
+          index: offset + i, 
+          total: fileStats.length,
+          hasMore: (offset + limit) < fileStats.length 
+        })}\n\n`);
+        console.log(`  📄 Sent session ${offset + i + 1}/${fileStats.length}: ${sessionId}`);
+        
+      } catch (e) {
+        console.log(`Error processing ${filename}:`, e.message);
+      }
+    }
+    
+    // Send completion event with pagination info
+    res.write(`data: ${JSON.stringify({ 
+      done: true, 
+      totalCount: fileStats.length,
+      hasMore: (offset + limit) < fileStats.length 
+    })}\n\n`);
+    console.log(`✅ Streamed ${paginatedFiles.length} sessions (offset: ${offset}, total: ${fileStats.length})`);
+    res.end();
+    
+  } catch (error) {
+    console.error('Error loading project sessions:', error);
+    res.write(`data: {"error": true, "message": "${error.message}"}\n\n`);
+    res.end();
+  }
+});
+
+// Get last modified date for a specific project
+app.get('/claude-project-date/:projectName', async (req, res) => {
+  try {
+    const projectName = decodeURIComponent(req.params.projectName);
+    console.log(`📅 Getting date for project: ${projectName}`);
+    
+    const claudeDir = join(homedir(), '.claude', 'projects');
+    const projectPath = join(claudeDir, projectName);
+    
+    // Check if project exists
+    if (!existsSync(projectPath)) {
+      return res.json({ projectName, lastModified: Date.now() });
+    }
+    
+    const { readdir, stat } = await import('fs/promises');
+    
+    // Get the most recent session file
+    const sessionFiles = await readdir(projectPath);
+    const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
+    
+    if (jsonlFiles.length === 0) {
+      // No sessions, use directory modification time
+      const dirStats = await stat(projectPath);
+      return res.json({ projectName, lastModified: dirStats.mtime.getTime() });
+    }
+    
+    // Get modification times of all session files
+    const fileTimes = await Promise.all(
+      jsonlFiles.map(async (file) => {
+        const filePath = join(projectPath, file);
+        const stats = await stat(filePath);
+        return stats.mtime.getTime();
+      })
+    );
+    
+    // Return the most recent modification time
+    const lastModified = Math.max(...fileTimes);
+    const date = new Date(lastModified);
+    console.log(`  ✅ ${projectName}: ${date.toLocaleString()}`);
+    
+    res.json({ projectName, lastModified });
+  } catch (error) {
+    console.error('Error getting project date:', error);
+    res.json({ projectName: req.params.projectName, lastModified: Date.now() });
+  }
+});
+
+// Get session count for a specific project
+app.get('/claude-project-session-count/:projectName', async (req, res) => {
+  try {
+    const projectName = decodeURIComponent(req.params.projectName);
+    
+    const claudeDir = join(homedir(), '.claude', 'projects');
+    const projectPath = join(claudeDir, projectName);
+    
+    // Check if project exists
+    if (!existsSync(projectPath)) {
+      return res.json({ projectName, sessionCount: 0 });
+    }
+    
+    const { readdir } = await import('fs/promises');
+    
+    // Count .jsonl files
+    const sessionFiles = await readdir(projectPath);
+    const sessionCount = sessionFiles.filter(f => f.endsWith('.jsonl')).length;
+    
+    res.json({ projectName, sessionCount });
+  } catch (error) {
+    console.error('Error getting session count:', error);
+    res.json({ projectName: req.params.projectName, sessionCount: 0 });
+  }
+});
+
 // PID file management - use temp directory for production
 // Each server instance gets a unique PID file based on its port
 const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 
@@ -883,7 +1157,7 @@ io.on('connection', (socket) => {
         // The process exit handler will properly clean up when the old process dies
 
         // Use session's working directory, fallback to home directory (NOT process.cwd() in bundled app)
-        const processWorkingDir = session.workingDirectory || homedir();
+        let processWorkingDir = session.workingDirectory || homedir();
         console.log(`📂 Using working directory: ${processWorkingDir}`);
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS

@@ -161,7 +161,6 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 4px;
 }
 
 .project-name {
@@ -210,15 +209,22 @@
 
 .project-meta {
   display: flex;
-  gap: 12px;
+  flex-direction: column;
+  gap: 2px;
   color: rgba(255, 255, 255, 0.5);
   font-size: 7pt;
+  margin-left: auto;
+  margin-right: 4px;
+  padding-left: 12px;
+  flex-shrink: 0;
+  align-items: flex-end;
 }
 
 .project-meta span {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
 }
 
 .project-item:hover .project-meta {
@@ -305,8 +311,7 @@
 .session-main {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+  justify-content: space-between;
 }
 
 .session-index {
@@ -327,55 +332,30 @@
 
 .session-meta {
   display: flex;
-  align-items: center;
-  gap: 12px;
+  flex-direction: column;
+  gap: 2px;
   color: rgba(255, 255, 255, 0.5);
   font-size: 10px;
   transition: color 0.2s;
+  margin-left: auto;
+  margin-right: 4px;
+  padding-left: 12px;
+  flex-shrink: 0;
+  align-items: flex-end;
 }
 
 .session-meta span {
   display: flex;
   align-items: center;
   gap: 4px;
+  white-space: nowrap;
 }
 
 .session-item:hover .session-meta {
   color: rgba(255, 255, 255, 0.7);
 }
 
-/* Context menu - matching global-context-menu style */
-.projects-context-menu {
-  position: fixed;
-  background: #1a1a1a;
-  padding: 4px;
-  z-index: 1000000;
-  min-width: 150px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
-}
-
-.projects-context-menu button {
-  display: flex;
-  align-items: center;
-  justify-content: flex-start;
-  gap: 8px;
-  width: 100%;
-  padding: 6px 12px;
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 11px;
-  cursor: default;
-  transition: background 0.2s ease;
-  text-transform: lowercase;
-  text-align: left;
-  font-family: inherit;
-}
-
-.projects-context-menu button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: var(--accent-color);
-}
+/* Context menu uses global-context-menu styles from index.css */
 
 /* Scrollbar styling - matching chat window */
 .projects-content::-webkit-scrollbar {
@@ -411,4 +391,30 @@
 .projects-load-more-hint {
   color: rgba(255, 255, 255, 0.3);
   font-style: italic;
+}
+
+/* Sessions loading indicators */
+.loading-more,
+.load-more-hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+}
+
+.load-more-hint {
+  color: rgba(255, 255, 255, 0.3);
+  font-style: italic;
+}
+
+/* Session count info */
+.sessions-count-info {
+  padding: 6px 12px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 10px;
+  text-align: right;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

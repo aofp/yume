@@ -305,7 +305,11 @@ export const SessionTabs: React.FC = () => {
             }}
             onContextMenu={(e) => {
               e.preventDefault();
-              setContextMenu({ x: e.clientX, y: e.clientY, sessionId: session.id });
+              // Adjust for zoom level
+              const zoomLevel = parseFloat(document.body.style.zoom || '1');
+              const adjustedX = e.clientX / zoomLevel;
+              const adjustedY = e.clientY / zoomLevel;
+              setContextMenu({ x: adjustedX, y: adjustedY, sessionId: session.id });
             }}
             onMouseDown={(e) => {
               // Prevent dragging when renaming
@@ -799,8 +803,16 @@ export const SessionTabs: React.FC = () => {
           ref={contextMenuRef}
           className="tab-context-menu" 
           style={{ 
-            left: contextMenu.x > window.innerWidth - 200 ? contextMenu.x - 150 : contextMenu.x, 
-            top: contextMenu.y > window.innerHeight - 250 ? contextMenu.y - 200 : contextMenu.y 
+            left: (() => {
+              const zoomLevel = parseFloat(document.body.style.zoom || '1');
+              const adjustedInnerWidth = window.innerWidth / zoomLevel;
+              return contextMenu.x > adjustedInnerWidth - 200 ? contextMenu.x - 150 : contextMenu.x;
+            })(),
+            top: (() => {
+              const zoomLevel = parseFloat(document.body.style.zoom || '1');
+              const adjustedInnerHeight = window.innerHeight / zoomLevel;
+              return contextMenu.y > adjustedInnerHeight - 250 ? contextMenu.y - 200 : contextMenu.y;
+            })()
           }}
         >
           <button onClick={() => {

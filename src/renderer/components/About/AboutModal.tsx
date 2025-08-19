@@ -48,13 +48,14 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         
         <div className="about-content">
           <div className="about-logo" style={{ fontFamily: "'Fira Code', monospace" }}>
-            <span className="about-yuru">yuru</span>
-            <span style={{ color: 'var(--accent-color)' }}>&gt;</span>
-            <span className="about-code">code</span>
+            <span className="yuru">y</span><span className="code">&gt;</span>
           </div>
           
+          <div className="about-name">yuru code</div>
+          
           <div className="about-version">
-            version {versionInfo.version} <span style={{ color: 'var(--accent-color)' }}>[{versionInfo.isDemo ? 'try' : 'pro'}]</span>
+            version {versionInfo.version}<br />
+            <span style={{ color: 'var(--accent-color)' }}>[{versionInfo.isDemo ? 'try' : 'pro'}]</span>
           </div>
           
           {versionInfo.isDemo && (
@@ -72,11 +73,8 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           )}
           
           <div className="about-credits">
-            <div className="about-author">
-              by <span>yurufrog</span>
-            </div>
             <div className="about-site">
-              site: <a 
+              <a 
                 href="https://yuru.be" 
                 onClick={async (e) => {
                   e.preventDefault();

@@ -43,6 +43,12 @@ export const App: React.FC = () => {
       return;
     }
     
+    // Don't show context menu if About modal is open
+    if (showAbout) {
+      e.preventDefault();
+      return;
+    }
+    
     e.preventDefault();
     
     // Check if there's selected text
@@ -58,7 +64,12 @@ export const App: React.FC = () => {
     const isMessageBubble = !!messageBubble;
     const messageElement = messageBubble as HTMLElement;
     
-    setContextMenu({ x: e.clientX, y: e.clientY, isTextInput, target, isMessageBubble, messageElement, hasSelection, selectedText });
+    // Adjust for zoom level
+    const zoomLevel = parseFloat(document.body.style.zoom || '1');
+    const adjustedX = e.clientX / zoomLevel;
+    const adjustedY = e.clientY / zoomLevel;
+    
+    setContextMenu({ x: adjustedX, y: adjustedY, isTextInput, target, isMessageBubble, messageElement, hasSelection, selectedText });
   };
   
   // Close context menu when clicking outside or scrolling
@@ -404,15 +415,27 @@ export const App: React.FC = () => {
         e.preventDefault();
         setShowHelpModal(prev => !prev);
       }
-      // Escape to close help modal or server logs
-      if (e.key === 'Escape') {
+      // Escape or Backspace to close modals (when not typing)
+      if (e.key === 'Escape' || (e.key === 'Backspace' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName))) {
+        // Close modals in priority order
         if (showHelpModal) {
           e.preventDefault();
           setShowHelpModal(false);
-        }
-        if (showServerLogs) {
+        } else if (showServerLogs) {
           e.preventDefault();
           setShowServerLogs(false);
+        } else if (showAbout) {
+          e.preventDefault();
+          setShowAbout(false);
+        } else if (showSettings) {
+          e.preventDefault();
+          setShowSettings(false);
+        } else if (showRecentModal) {
+          e.preventDefault();
+          setShowRecentModal(false);
+        } else if (showProjectsModal) {
+          e.preventDefault();
+          setShowProjectsModal(false);
         }
       }
       
@@ -444,7 +467,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showHelpModal, showServerLogs, sessions, setCurrentSession]);
+  }, [showHelpModal, showServerLogs, showAbout, showSettings, showRecentModal, showProjectsModal, sessions, setCurrentSession]);
 
   // Apply accent color, zoom level, and window state from localStorage on mount
   useEffect(() => {
@@ -556,8 +579,15 @@ export const App: React.FC = () => {
           className="global-context-menu"
           style={{ 
             position: 'fixed',
-            left: contextMenu.x > window.innerWidth - 180 ? window.innerWidth - 180 : contextMenu.x,
+            left: (() => {
+              const zoomLevel = parseFloat(document.body.style.zoom || '1');
+              const adjustedInnerWidth = window.innerWidth / zoomLevel;
+              const menuWidth = 180;
+              return contextMenu.x > adjustedInnerWidth - menuWidth ? adjustedInnerWidth - menuWidth : contextMenu.x;
+            })(),
             top: (() => {
+              const zoomLevel = parseFloat(document.body.style.zoom || '1');
+              const adjustedInnerHeight = window.innerHeight / zoomLevel;
               // Calculate menu height based on items
               const hasSelection = contextMenu.hasSelection;
               const hasTextInput = contextMenu.isTextInput;
@@ -565,8 +595,8 @@ export const App: React.FC = () => {
               const itemCount = (hasSelection ? 1 : 0) + (hasTextInput ? 3 : 0) + (hasMessageBubble ? 2 : 0) + 1; // +1 for about
               const menuHeight = itemCount * 32 + 20; // Approximate height
               
-              if (contextMenu.y > window.innerHeight - menuHeight) {
-                return window.innerHeight - menuHeight - 10;
+              if (contextMenu.y > adjustedInnerHeight - menuHeight) {
+                return adjustedInnerHeight - menuHeight - 10;
               }
               return contextMenu.y;
             })(),
@@ -701,7 +731,22 @@ export const App: React.FC = () => {
       <ProjectsModal
         isOpen={showProjectsModal}
         onClose={() => setShowProjectsModal(false)}
-        onSelectSession={async (projectPath, sessionId, sessionTitle) => {
+        onSelectSession={async (projectPath, sessionId, sessionTitle, sessionMessageCount?) => {
+          // If no sessionId, create a new session in the project
+          if (!sessionId) {
+            // Format project name from path
+            const projectName = projectPath
+              .replace(/^-/, '/')
+              .replace(/-/g, '/')
+              .split('/')
+              .pop() || projectPath;
+            // Create new session with project path
+            const fullPath = projectPath.replace(/^-/, '/').replace(/-/g, '/');
+            createSession(projectName, fullPath);
+            setShowProjectsModal(false);
+            return;
+          }
+          
           // load the session from server
           try {
             console.log('Loading session:', projectPath, sessionId, 'with title:', sessionTitle);
@@ -760,7 +805,7 @@ export const App: React.FC = () => {
             // Generate a new session ID for the tab
             const newSessionId = `session-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
             
-            // Filter out completely empty user messages and limit to last 50 messages
+            // Filter out completely empty user messages
             const allMessages = data.messages || [];
             const filteredMessages = allMessages.filter((msg: any) => {
               // Keep all assistant messages
@@ -787,9 +832,9 @@ export const App: React.FC = () => {
               return true; // Keep any other message types
             });
             
-            // Take only the last 50 messages
-            const messagesToLoad = filteredMessages.slice(-50);
-            console.log(`Loading ${messagesToLoad.length} messages (from ${allMessages.length} total, ${filteredMessages.length} after filtering blanks)`);
+            // Load all messages - no limit since we have infinite scrolling now
+            const messagesToLoad = filteredMessages;
+            console.log(`Loading ${messagesToLoad.length} messages (from ${allMessages.length} total after filtering blanks)`);
             
             // Create the session with filtered messages - mark as read-only
             const newSession = {
@@ -835,7 +880,7 @@ export const App: React.FC = () => {
               messages: messagesToLoad           // Pass the loaded messages
             });
             
-            console.log('Session restored with', data.messages?.length || 0, 'messages');
+            console.log('Session restored with', messagesToLoad.length, 'messages (total in session:', data.messages?.length || 0, ')');
           } catch (error) {
             console.error('failed to load session:', error);
           }

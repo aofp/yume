@@ -1726,8 +1726,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     }
   },
   
-  clearContext: (sessionId: string) => {
+  clearContext: async (sessionId: string) => {
     console.log(`🧹 [Store] clearContext called for session ${sessionId}`);
+    
+    // First interrupt streaming if active
+    const state = get();
+    const session = state.sessions.find(s => s.id === sessionId);
+    if (session?.streaming) {
+      console.log(`🧹 [Store] Session is streaming, interrupting first`);
+      await state.interruptSession();
+    }
+    
     // Clear local messages and reset analytics
     set(state => {
       const session = state.sessions.find(s => s.id === sessionId);
@@ -1750,6 +1759,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 claudeSessionId: undefined, // Clear Claude session to start fresh
                 claudeTitle: `tab ${tabNumber}`, // Reset title to 'tab x' format
                 pendingToolIds: new Set(), // Clear pending tools
+                streaming: false, // Stop streaming
               analytics: {
                 totalMessages: 0,
                 userMessages: 0,
