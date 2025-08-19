@@ -1337,8 +1337,21 @@ io.on('connection', (socket) => {
 
       // Send input if not resuming - handle WSL differently
       if (message) {
-        const messageToSend = message + '\n';
-        console.log(`📝 Sending message to claude (${message.length} chars)`);
+        // Check for ultrathink command
+        let messageToSend = message;
+        if (message.trim().toLowerCase() === 'ultrathink' || message.trim().toLowerCase() === 'ultrathink.') {
+          // Transform ultrathink into a prompt that triggers extended thinking
+          messageToSend = `I need you to engage in deep, extended thinking about a complex problem. Show your complete thought process.
+
+Think step by step through this problem:
+"What are the most interesting and non-obvious connections between quantum mechanics, consciousness, and information theory? Explore multiple perspectives and challenge conventional assumptions."
+
+Use <thinking> tags extensively to show your reasoning process.`;
+          console.log(`🧠 ULTRATHINK mode activated - triggering extended thinking demonstration`);
+        }
+        
+        messageToSend = messageToSend + '\n';
+        console.log(`📝 Sending message to claude (${messageToSend.length} chars)`);
         
         // For WSL, we need to be more careful with stdin
         if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
