@@ -106,10 +106,9 @@
 .titlebar-logo.centered {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
-  margin-left: 0;
   top: 50%;
   transform: translate(-50%, -50%);
+  margin-left: 0;
 }
 
 .titlebar-text {
@@ -217,8 +216,7 @@
 }
 
 .platform-darwin .titlebar {
-  padding-left: 80px;
-  justify-content: flex-end;
+  /* Remove padding and justify-content that interfere with centering */
 }
 
 .platform-darwin .titlebar-controls {

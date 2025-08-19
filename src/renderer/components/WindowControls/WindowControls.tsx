@@ -93,7 +93,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   if (isMac) {
     return (
       <div className="mac-window-controls-wrapper">
-        <div className={`window-controls mac-controls ${!isWindowFocused ? 'inactive' : ''}`}>
+        <div className={`mac-controls ${!isWindowFocused ? 'inactive' : ''}`}>
           <button className="mac-control close" onClick={handleClose}>
             <span className="mac-control-icon">×</span>
           </button>
@@ -105,7 +105,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           </button>
         </div>
         {/* Mac: Menu items to the right of title - help, projects, settings */}
-        <div className="window-controls mac-right-controls">
+        <div className="mac-right-controls">
           <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
             <span style={{ fontSize: '10px' }}>?</span>
           </button>

@@ -34,8 +34,8 @@
 /* macOS right side controls (help, projects, settings - to right of title) */
 .mac-right-controls {
   position: fixed;
-  top: 3px;
-  left: calc(50% + 60px); /* Position to the right of centered title */
+  top: 4px;
+  right: 4px;
   display: flex;
   align-items: center;
   gap: 4px;

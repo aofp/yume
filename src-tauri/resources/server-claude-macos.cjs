@@ -69,32 +69,69 @@ let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 // Try to find Claude CLI in common locations
 const isWindows = platform() === 'win32';
 
-// Helper function to create WSL command for claude
-function createWslClaudeCommand(args, workingDir, message) {
-  // Only quote arguments that actually need it - don't quote simple flags
+// Helper function to create WSL command for claude with comprehensive path checking
+function createWslClaudeCommand(args, workingDir) {
+  // Escape args for bash
   const escapedArgs = args.map(arg => {
-    // Only quote if the arg contains special characters
-    if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('$') || arg.includes('\\') || arg.includes('\n') || arg.includes('(') || arg.includes(')') || arg.includes('|') || arg.includes('&') || arg.includes(';')) {
+    // Use strong quoting for args with special characters
+    if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('$') || arg.includes('\\') || arg.includes('\n')) {
       return "'" + arg.replace(/'/g, "'\\''") + "'";
     }
-    // Don't quote simple arguments like --print, --output-format, etc.
     return arg;
   }).join(' ');
   
-  const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+  // Build a simpler, more robust detection script
+  const findClaudeScript = `
+    claude_paths=(
+      "/usr/local/bin/claude"
+      "/usr/bin/claude"
+      "$HOME/.local/bin/claude"
+      "$HOME/.npm-global/bin/claude"
+      "$HOME/node_modules/.bin/claude"
+      "$HOME/.claude/local/claude"
+      "/opt/claude/bin/claude"
+    )
+    
+    # Check each user's .npm-global
+    for user_home in /home/*; do
+      if [ -d "$user_home" ]; then
+        claude_paths+=("$user_home/.npm-global/bin/claude")
+        claude_paths+=("$user_home/node_modules/.bin/claude")
+        claude_paths+=("$user_home/.local/bin/claude")
+      fi
+    done
+    
+    # Check nvm installations
+    if [ -d "$HOME/.nvm" ]; then
+      for nvm_path in $HOME/.nvm/versions/node/*/bin/claude; do
+        [ -x "$nvm_path" ] && claude_paths+=("$nvm_path")
+      done
+    fi
+    
+    # Try to find claude in PATH first
+    if command -v claude &>/dev/null; then
+      claude_cmd="claude"
+    else
+      # Check all known paths
+      claude_cmd=""
+      for path in "\${claude_paths[@]}"; do
+        if [ -x "$path" ]; then
+          claude_cmd="$path"
+          break
+        fi
+      done
+    fi
+    
+    if [ -z "$claude_cmd" ]; then
+      echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2
+      exit 127
+    fi
+    
+    ${workingDir ? `cd '${workingDir.replace(/'/g, "'\\''")}'` : ':'}
+    exec "$claude_cmd" ${escapedArgs}
+  `.trim();
   
-  // If we have a message, we need to send it via stdin, not echo
-  // The echo approach doesn't work properly with Claude
-  const script = workingDir
-    ? `cd '${workingDir.replace(/'/g, "'\\''")}'` + ` 2>/dev/null; /home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`
-    : `/home/yuru/node_modules/.bin/claude ${escapedArgs} 2>&1`;
-  
-  console.log(`🔍 WSL script to execute: ${script}`);
-  console.log(`🔍 Message will be sent via stdin: ${message ? 'YES' : 'NO'}`);
-  
-  // Always return false to indicate we need to send stdin
-  // The message will be sent through child.stdin.write()
-  return [wslPath, ['-e', 'bash', '-c', script], false]; // false = need to send stdin
+  return ['wsl.exe', ['-e', 'bash', '-c', findClaudeScript]];
 }
 
 if (isWindows) {
@@ -252,13 +289,12 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
       (() => {
-        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(titleArgs, null, null);
+        const [wslCommand, wslArgs] = createWslClaudeCommand(titleArgs, null);
         return spawn(wslCommand, wslArgs, {
           cwd: process.cwd(),
           env: enhancedEnv,
           stdio: ['pipe', 'pipe', 'pipe'],
-          windowsHide: true,  // Hide console window
-          windowsVerbatimArguments: true,
+          windowsHide: true,
           detached: false
         });
       })() :
@@ -405,38 +441,24 @@ app.delete('/claude-session/:projectPath/:sessionId', async (req, res) => {
 app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   try {
     const { projectPath, sessionId } = req.params;
+    const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
     
     console.log('Loading session request:');
     console.log('  - Raw projectPath:', projectPath);
     console.log('  - SessionId:', sessionId);
+    console.log('  - Full path:', sessionPath);
     console.log('  - Platform:', platform());
     
-    if (isWindows) {
-      // Use WSL to load the session
-      const { execSync } = require('child_process');
-      
-      // Detect WSL user
-      let wslUser = 'yuru';
-      try {
-        wslUser = execSync('powershell.exe -NoProfile -Command "& {wsl.exe whoami}"', {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-      } catch (e) {
-        // Use default
-      }
-      
-      const wslSessionPath = `/home/${wslUser}/.claude/projects/${projectPath}/${sessionId}.jsonl`;
-      console.log('  - WSL path:', wslSessionPath);
-      
-      // Read the file from WSL
-      const readCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cat ${wslSessionPath} 2>/dev/null'}"`;
-      try {
-        const content = execSync(readCmd, {
-          encoding: 'utf8',
-          windowsHide: true,
-          maxBuffer: 50 * 1024 * 1024 // 50MB buffer for large sessions
-        });
+    if (!existsSync(sessionPath)) {
+      console.error('Session not found:', sessionPath);
+      return res.status(404).json({ error: 'session not found' });
+    }
+    
+    // Read the session file using promises for better error handling
+    const { readFile } = await import('fs/promises');
+    
+    try {
+      const content = await readFile(sessionPath, 'utf8');
       console.log('Raw file content preview (first 200 chars):', content.substring(0, 200).replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
       console.log('Total file size:', content.length, 'characters');
       
@@ -582,60 +604,15 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       console.log(`Loaded session with ${messages.length} messages`);
       console.log(`Converted project path: ${projectPath} -> ${actualPath}`);
       
-        res.json({ 
-          sessionId,
-          projectPath: actualPath,
-          messages,
-          sessionCount: messages.length
-        });
-      } catch (readError) {
-        console.error('Error reading session file from WSL:', readError.message);
-        res.status(404).json({ error: 'Session not found' });
-      }
-    } else {
-      // Non-Windows: read directly from filesystem
-      const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
-      console.log('  - Full path:', sessionPath);
-      
-      if (!existsSync(sessionPath)) {
-        console.error('Session not found:', sessionPath);
-        return res.status(404).json({ error: 'session not found' });
-      }
-      
-      // Read the session file using promises for better error handling
-      const { readFile } = await import('fs/promises');
-      
-      try {
-        const content = await readFile(sessionPath, 'utf8');
-        
-        // Use the same parsing logic as Windows
-        const messages = [];
-        const lines = content.split(/\$|\n/).filter(line => line.trim());
-        
-        for (const line of lines) {
-          try {
-            const data = JSON.parse(line);
-            messages.push(data);
-          } catch (err) {
-            // Skip invalid lines
-          }
-        }
-        
-        const actualPath = projectPath
-          .replace(/^([A-Z])--/, '$1:/')
-          .replace(/^-/, '/')
-          .replace(/-/g, '/');
-        
-        res.json({ 
-          sessionId,
-          projectPath: actualPath,
-          messages,
-          sessionCount: messages.length
-        });
-      } catch (readError) {
-        console.error('Error reading session file:', readError);
-        res.status(500).json({ error: 'Failed to read session', details: readError.message });
-      }
+      res.json({ 
+        sessionId,
+        projectPath: actualPath,
+        messages,
+        sessionCount: messages.length
+      });
+    } catch (readError) {
+      console.error('Error reading session file:', readError);
+      res.status(500).json({ error: 'Failed to read session', details: readError.message });
     }
   } catch (error) {
     console.error('Error loading session:', error);
@@ -643,596 +620,9 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   }
 });
 
-// Quick projects endpoint - returns just project count and names quickly
-app.get('/claude-projects-quick', async (req, res) => {
-  try {
-    // On Windows, ALWAYS load from WSL, NEVER from Windows filesystem
-    if (isWindows) {
-      console.log('🚨 WINDOWS DETECTED - LOADING FROM WSL ONLY!');
-      try {
-        // Get WSL user using PowerShell
-        let wslUser = 'yuru'; // default
-        try {
-          const { execSync } = require('child_process');
-          console.log('🔍 Detecting WSL user via PowerShell...');
-          const psCommand = 'powershell.exe -NoProfile -Command "& {wsl.exe whoami}"';
-          console.log('💻 PowerShell command:', psCommand);
-          wslUser = execSync(psCommand, {
-            encoding: 'utf8',
-            windowsHide: true
-          }).trim();
-          console.log('✅ WSL user found:', wslUser);
-        } catch (e) {
-          console.log('⚠️ Could not detect WSL user, using default:', wslUser);
-          console.log('  Error:', e.message);
-        }
-        
-        const wslProjectsDir = `/home/${wslUser}/.claude/projects`;
-        console.log('📂 WSL projects directory:', wslProjectsDir);
-        console.log('🔍 WSL user detected:', wslUser);
-        
-        // Get project list WITH MODIFICATION TIMES from WSL using PowerShell
-        const { execSync } = require('child_process');
-        console.log('🔧 Executing WSL command via PowerShell to list projects WITH DATES...');
-        // Use stat to get modification time for each directory
-        const psListCommand = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'if [ -d ${wslProjectsDir} ]; then cd ${wslProjectsDir} && for dir in *; do if [ -d \\"\\\$dir\\" ]; then stat -c \\"%Y:%n\\" \\"\\\$dir\\"; fi; done; else echo NO_PROJECTS_DIR; fi'}"`;
-        console.log('💻 PowerShell command:', psListCommand);
-        const dirList = execSync(psListCommand, {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-        
-        console.log('📝 Raw PowerShell/WSL output with timestamps:', JSON.stringify(dirList));
-        
-        let projectsWithDates = [];
-        
-        if (!dirList || dirList === 'NO_PROJECTS_DIR' || dirList === 'ECHO is on.' || dirList.includes('system cannot find')) {
-          console.log('❌ WSL command failed or no projects directory found');
-          console.log('🔍 Testing WSL availability...');
-          
-          // Try a simpler command to test WSL using PowerShell
-          try {
-            const testWSL = execSync('powershell.exe -NoProfile -Command "& {wsl.exe echo WSL_TEST}"', {
-              encoding: 'utf8',
-              windowsHide: true
-            }).trim();
-            console.log('🧪 WSL test result:', testWSL);
-            
-            if (testWSL !== 'WSL_TEST') {
-              console.log('❌ WSL is not working properly');
-              return res.json({ projects: [], count: 0 });
-            }
-            
-            // WSL works, try creating the projects directory if it doesn't exist
-            console.log('🔨 Creating Claude projects directory in WSL if needed...');
-            const createDirCommand = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'mkdir -p /home/${wslUser}/.claude/projects && ls -1 /home/${wslUser}/.claude/projects'}"`;
-            console.log('💻 Create dir command:', createDirCommand);
-            const altDirList = execSync(createDirCommand, {
-              encoding: 'utf8',
-              windowsHide: true
-            }).trim();
-            console.log('📝 Directory creation result:', altDirList);
-            
-            if (altDirList === 'NO_DIR' || !altDirList) {
-              console.log('❌ Claude projects directory does not exist in WSL');
-              return res.json({ projects: [], count: 0 });
-            }
-            
-            projectDirs = altDirList.split('\n').filter(dir => dir && !dir.startsWith('.') && dir !== 'NO_DIR');
-            console.log(`✅ Found ${projectDirs.length} projects in WSL (alternative method):`, projectDirs);
-          } catch (altError) {
-            console.log('❌ Alternative WSL detection also failed:', altError.message);
-            return res.json({ projects: [], count: 0 });
-          }
-        } else {
-          // Parse the timestamp:name format from stat output
-          const lines = dirList.split('\n').filter(line => line && !line.startsWith('.'));
-          projectsWithDates = lines.map(line => {
-            const colonIndex = line.indexOf(':');
-            if (colonIndex > 0) {
-              const timestamp = line.substring(0, colonIndex);
-              const name = line.substring(colonIndex + 1);
-              return {
-                name: name,
-                timestamp: parseInt(timestamp) * 1000 // Convert Unix timestamp to milliseconds
-              };
-            }
-            // Fallback for lines without timestamp
-            return {
-              name: line,
-              timestamp: Date.now()
-            };
-          });
-        }
-        
-        console.log(`✅ Found ${projectsWithDates.length} projects in WSL with REAL DATES`);
-        
-        // Build project list with REAL DIRECTORY MODIFICATION TIMES
-        const quickProjects = projectsWithDates.map(project => ({
-          path: project.name,
-          name: project.name,
-          sessionCount: null, // Will be loaded async
-          lastModified: project.timestamp // Use REAL directory modification time from ls!
-        }));
-        
-        console.log(`✅ Returning ${quickProjects.length} projects INSTANTLY`);
-        
-        // Send response immediately with project names
-        res.json({ projects: quickProjects, count: quickProjects.length });
-        
-        // Now load session counts in parallel (fire and forget)
-        console.log('🚀 Starting parallel session count loading...');
-        Promise.all(projectDirs.map(async (projectName) => {
-          const projectPath = `${wslProjectsDir}/${projectName}`;
-          try {
-            // Count up to 50, then just show 50+ (much faster)
-            const countCommand = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'ls -1 ${projectPath}/*.jsonl 2>/dev/null | head -51 | wc -l'}"`;
-            const { execSync } = require('child_process');
-            const sessionList = execSync(countCommand, {
-              encoding: 'utf8',
-              windowsHide: true,
-              shell: true
-            }).trim();
-            let counted = parseInt(sessionList) || 0;
-            const sessionCount = counted > 50 ? '50+' : counted;
-            console.log(`  ✅ ${projectName}: ${sessionCount} sessions`);
-            return { name: projectName, sessionCount };
-          } catch (e) {
-            console.log(`  ⚠️ ${projectName}: error counting`);
-            return { name: projectName, sessionCount: 0 };
-          }
-        })).then(results => {
-          console.log('✅ All session counts loaded:', results.map(r => `${r.name}(${r.sessionCount})`).join(', '));
-        }).catch(err => {
-          console.log('❌ Error loading session counts:', err);
-        });
-        
-        return; // Already sent response
-        
-      } catch (error) {
-        console.error('❌ ERROR loading WSL projects:', error.message);
-        console.error('Stack:', error.stack);
-        // NEVER fall back to Windows filesystem - return empty if WSL fails
-        return res.json({ projects: [], count: 0 });
-      }
-    }
-    
-    const claudeDir = join(homedir(), '.claude', 'projects');
-    
-    console.log('Quick loading project list from:', claudeDir);
-    
-    // Check if projects directory exists
-    if (!existsSync(claudeDir)) {
-      console.log('Claude projects directory not found:', claudeDir);
-      return res.json({ projects: [], count: 0 });
-    }
-    
-    const { readdir, stat } = await import('fs/promises');
-    const projectDirs = await readdir(claudeDir);
-    
-    // Quick filter for directories only
-    const projectPromises = projectDirs
-      .filter(dir => !dir.startsWith('.'))
-      .map(async (projectDir) => {
-        try {
-          const projectPath = join(claudeDir, projectDir);
-          const stats = await stat(projectPath);
-          if (!stats.isDirectory()) return null;
-          
-          // Count session files without reading them
-          const sessionFiles = await readdir(projectPath);
-          const sessionCount = sessionFiles.filter(f => f.endsWith('.jsonl')).length;
-          
-          // On Windows, if sessionCount is 0, don't report it as 0 - sessions might be in WSL
-          // Return null to indicate unknown count rather than wrong count
-          const effectiveSessionCount = (isWindows && sessionCount === 0) ? null : sessionCount;
-          
-          // Just return name, path, and count for quick loading
-          return {
-            path: projectDir,
-            name: projectDir,
-            sessionCount: effectiveSessionCount,
-            lastModified: stats.mtime.getTime()
-          };
-        } catch {
-          return null;
-        }
-      });
-    
-    const projects = (await Promise.all(projectPromises)).filter(Boolean);
-    projects.sort((a, b) => b.lastModified - a.lastModified);
-    
-    console.log(`Quick loaded ${projects.length} project names`);
-    res.json({ projects, count: projects.length });
-  } catch (error) {
-    console.error('Error quick loading projects:', error);
-    res.status(500).json({ error: 'Failed to load projects', details: error.message });
-  }
-});
-
-// Get sessions for a specific project - stream them one by one
-app.get('/claude-project-sessions/:projectName', async (req, res) => {
-  try {
-    const projectName = decodeURIComponent(req.params.projectName);
-    console.log('📂 Loading sessions for project:', projectName);
-    
-    // Set up Server-Sent Events
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
-    });
-    
-    if (isWindows) {
-      // Get WSL user
-      let wslUser = 'yuru';
-      try {
-        const { execSync } = require('child_process');
-        wslUser = execSync('powershell.exe -NoProfile -Command "& {wsl.exe whoami}"', {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-      } catch (e) {
-        // Use default
-      }
-      
-      const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
-      
-      try {
-        // Get file list first
-        console.log('🚀 Getting session list...');
-        const filesCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && ls -1t *.jsonl 2>/dev/null | head -10'}"`;
-        const { execSync } = require('child_process');
-        const fileList = execSync(filesCmd, {
-          encoding: 'utf8',
-          windowsHide: true,
-          shell: true
-        }).trim();
-        
-        if (!fileList) {
-          console.log('No sessions found');
-          res.write('data: {"done": true, "sessions": []}\n\n');
-          res.end();
-          return;
-        }
-        
-        const files = fileList.split('\n').filter(f => f);
-        
-        // Process each file and stream it immediately
-        for (let i = 0; i < files.length; i++) {
-          const filename = files[i];
-          try {
-            // Get all data for this file in one command to reduce overhead
-            const allDataCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && echo \\"DATA:\\" && head -n1 ${filename} 2>/dev/null && echo \\"META:\\" && stat -c %Y ${filename} 2>/dev/null && echo \\"LINES:\\" && wc -l < ${filename} 2>/dev/null'}"`;
-            
-            const output = execSync(allDataCmd, { encoding: 'utf8', windowsHide: true }).trim();
-            const parts = output.split(/DATA:|META:|LINES:/).filter(p => p.trim());
-            
-            const firstLine = parts[0]?.trim() || '';
-            const modTime = parts[1]?.trim() || '';
-            const lineCount = parts[2]?.trim() || '0';
-            
-            const sessionId = filename.replace('.jsonl', '');
-            const timestamp = parseInt(modTime) * 1000 || Date.now();
-            
-            let summary = 'Untitled session';
-            let title = null;
-            try {
-              const data = JSON.parse(firstLine);
-              // Check for different possible title fields
-              if (data.summary) {
-                summary = data.summary;
-                title = data.summary;
-              }
-              if (data.title) {
-                title = data.title;
-              }
-              // If it's a user message, use the content as summary
-              if (!title && data.role === 'user' && data.content) {
-                if (typeof data.content === 'string') {
-                  summary = data.content.substring(0, 100);
-                  title = summary;
-                } else if (Array.isArray(data.content)) {
-                  // Handle array content (with text blocks)
-                  const textBlock = data.content.find(c => c.type === 'text');
-                  if (textBlock && textBlock.text) {
-                    summary = textBlock.text.substring(0, 100);
-                    title = summary;
-                  }
-                }
-              }
-              // If it's session metadata with a type field
-              if (data.type === 'summary' && data.summary) {
-                title = data.summary;
-                summary = data.summary;
-              }
-            } catch (e) {
-              // Parse error, use default
-              console.log(`Could not parse session title from: ${firstLine.substring(0, 100)}`);
-            }
-            
-            const session = {
-              id: sessionId,
-              summary: summary,
-              title: title,
-              timestamp: timestamp,
-              path: filename,
-              messageCount: parseInt(lineCount) || 0
-            };
-            
-            // Stream this session immediately
-            res.write(`data: ${JSON.stringify({ session, index: i, total: files.length })}\n\n`);
-            console.log(`  📄 Sent session ${i + 1}/${files.length}: ${sessionId}`);
-            
-          } catch (e) {
-            console.log(`Error processing ${filename}:`, e.message);
-          }
-        }
-        
-        // Send completion event
-        res.write('data: {"done": true}\n\n');
-        console.log(`✅ Streamed all sessions`);
-        res.end();
-        
-      } catch (e) {
-        console.error('Error loading sessions:', e.message);
-        res.write('data: {"error": true, "message": "' + e.message + '"}\n\n');
-        res.end();
-      }
-    } else {
-      // Non-Windows implementation
-      res.json({ sessions: [] });
-    }
-  } catch (error) {
-    console.error('Error loading project sessions:', error);
-    res.status(500).json({ error: 'Failed to load sessions' });
-  }
-});
-
-// Get last modified date for a specific project
-app.get('/claude-project-date/:projectName', async (req, res) => {
-  try {
-    const projectName = decodeURIComponent(req.params.projectName);
-    console.log(`📅 Getting date for project: ${projectName}`);
-    
-    if (isWindows) {
-      // Get WSL user
-      let wslUser = 'yuru';
-      try {
-        const { execSync } = require('child_process');
-        wslUser = execSync('powershell.exe -NoProfile -Command "& {wsl.exe whoami}"', {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-      } catch (e) {
-        // Use default
-      }
-      
-      const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
-      
-      // Get the modification time of the MOST RECENT session file
-      const recentCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && ls -t *.jsonl 2>/dev/null | head -1 | xargs -r stat -c %Y 2>/dev/null'}"`;
-      const { execSync } = require('child_process');
-      const recentTime = execSync(recentCmd, {
-        encoding: 'utf8',
-        windowsHide: true
-      }).trim();
-      
-      let lastModified = Date.now();
-      if (recentTime && !isNaN(recentTime)) {
-        lastModified = parseInt(recentTime) * 1000;
-        const date = new Date(lastModified);
-        console.log(`  ✅ ${projectName}: ${date.toLocaleString()} (${recentTime})`);
-      } else {
-        console.log(`  ⚠️ ${projectName}: No sessions found, using current time`);
-      }
-      
-      res.json({ projectName, lastModified });
-    } else {
-      // Non-Windows implementation
-      res.json({ projectName, lastModified: Date.now() });
-    }
-  } catch (error) {
-    console.error('Error getting project date:', error);
-    res.json({ projectName: req.params.projectName, lastModified: Date.now() });
-  }
-});
-
-// Get session count for a specific project
-app.get('/claude-project-session-count/:projectName', async (req, res) => {
-  try {
-    const projectName = decodeURIComponent(req.params.projectName);
-    
-    if (isWindows) {
-      // Get WSL user
-      let wslUser = 'yuru';
-      try {
-        const { execSync } = require('child_process');
-        wslUser = execSync('powershell.exe -NoProfile -Command "& {wsl.exe whoami}"', {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-      } catch (e) {
-        // Use default
-      }
-      
-      const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
-      
-      try {
-        const countCommand = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'find ${projectPath} -name *.jsonl -type f 2>/dev/null | wc -l'}"`;
-        const { execSync } = require('child_process');
-        const sessionList = execSync(countCommand, {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-        const sessionCount = parseInt(sessionList) || 0;
-        
-        res.json({ projectName, sessionCount });
-      } catch (e) {
-        res.json({ projectName, sessionCount: 0 });
-      }
-    } else {
-      // Non-Windows implementation
-      res.json({ projectName, sessionCount: 0 });
-    }
-  } catch (error) {
-    res.status(500).json({ error: 'Failed to get session count' });
-  }
-});
-
 // Projects endpoint - loads claude projects asynchronously with enhanced error handling
 app.get('/claude-projects', async (req, res) => {
   try {
-    // On Windows, ALWAYS load from WSL, NEVER from Windows filesystem
-    if (isWindows) {
-      console.log('🚨 WINDOWS DETECTED - LOADING FROM WSL ONLY!');
-      try {
-        // Get WSL user using PowerShell
-        let wslUser = 'yuru'; // default
-        try {
-          const { execSync } = require('child_process');
-          console.log('🔍 Detecting WSL user via PowerShell...');
-          const psCommand = 'powershell.exe -NoProfile -Command "& {wsl.exe whoami}"';
-          console.log('💻 PowerShell command:', psCommand);
-          wslUser = execSync(psCommand, {
-            encoding: 'utf8',
-            windowsHide: true
-          }).trim();
-          console.log('✅ WSL user found:', wslUser);
-        } catch (e) {
-          console.log('⚠️ Could not detect WSL user, using default:', wslUser);
-          console.log('  Error:', e.message);
-        }
-        
-        const wslProjectsDir = `/home/${wslUser}/.claude/projects`;
-        console.log('📂 WSL projects directory:', wslProjectsDir);
-        console.log('🔍 WSL user detected:', wslUser);
-        
-        // Get project list from WSL using PowerShell
-        const { execSync } = require('child_process');
-        console.log('🔧 Executing WSL command via PowerShell to list projects...');
-        const psListCommand = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'if [ -d ${wslProjectsDir} ]; then ls -1 ${wslProjectsDir}; else echo NO_PROJECTS_DIR; fi'}"`;
-        console.log('💻 PowerShell command:', psListCommand);
-        const dirList = execSync(psListCommand, {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-        
-        console.log('📝 Raw PowerShell/WSL output:', JSON.stringify(dirList));
-        
-        if (!dirList || dirList === 'NO_PROJECTS_DIR' || dirList === 'ECHO is on.' || dirList.includes('system cannot find')) {
-          console.log('❌ No projects found or WSL error');
-          return res.json({ projects: [] });
-        }
-        
-        const projectDirs = dirList.split('\n').filter(dir => dir && !dir.startsWith('.') && dir !== 'NO_DIR');
-        console.log(`✅ Found ${projectDirs.length} projects in WSL:`, projectDirs);
-        
-        // Load full project details
-        const projects = [];
-        for (const projectName of projectDirs) {
-          const projectPath = `${wslProjectsDir}/${projectName}`;
-          
-          // Get session files
-          const sessions = [];
-          try {
-            const sessionList = execSync(`powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'find ${projectPath} -name *.jsonl -type f -exec basename {} .jsonl \\\\; 2>/dev/null'}"`, {
-              encoding: 'utf8',
-              windowsHide: true,
-              shell: true
-            }).trim();
-            
-            if (sessionList) {
-              const sessionIds = sessionList.split('\n').filter(id => id);
-              
-              for (const sessionId of sessionIds.slice(0, 5)) { // Limit to first 5 sessions for performance
-                const sessionPath = `${projectPath}/${sessionId}.jsonl`;
-                
-                let summary = 'untitled session';
-                let messageCount = 0;
-                let timestamp = Date.now();
-                
-                try {
-                  // Get line count
-                  const lineCount = execSync(`powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'wc -l < ${sessionPath}'}"`, {
-                    encoding: 'utf8',
-                    windowsHide: true
-                  }).trim();
-                  messageCount = parseInt(lineCount) || 0;
-                  
-                  // Get first line for summary
-                  const firstLine = execSync(`powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'head -n1 ${sessionPath}'}"`, {
-                    encoding: 'utf8',
-                    windowsHide: true
-                  }).trim();
-                  
-                  if (firstLine) {
-                    try {
-                      const data = JSON.parse(firstLine);
-                      if (data.summary) {
-                        summary = data.summary;
-                      } else if (data.role === 'user' && data.content) {
-                        summary = data.content.slice(0, 100);
-                        if (data.content.length > 100) summary += '...';
-                      }
-                    } catch (e) {
-                      // Ignore JSON parse errors
-                    }
-                  }
-                  
-                  // Get modification time
-                  const modTime = execSync(`powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'stat -c %Y ${sessionPath}'}"`, {
-                    encoding: 'utf8',
-                    windowsHide: true
-                  }).trim();
-                  timestamp = parseInt(modTime) * 1000 || Date.now();
-                  
-                } catch (e) {
-                  // Ignore errors for individual sessions
-                }
-                
-                sessions.push({
-                  id: sessionId,
-                  summary,
-                  timestamp,
-                  createdAt: timestamp,
-                  path: sessionPath,
-                  messageCount
-                });
-              }
-            }
-          } catch (e) {
-            console.log(`Error loading sessions for ${projectName}:`, e.message);
-          }
-          
-          if (sessions.length > 0) {
-            sessions.sort((a, b) => b.timestamp - a.timestamp);
-            
-            projects.push({
-              path: projectName,
-              name: projectName,
-              sessions,
-              lastModified: sessions[0].timestamp,
-              createdAt: Math.min(...sessions.map(s => s.timestamp)),
-              sessionCount: sessions.length,
-              totalMessages: sessions.reduce((sum, s) => sum + s.messageCount, 0)
-            });
-          }
-        }
-        
-        projects.sort((a, b) => b.lastModified - a.lastModified);
-        console.log(`✅ Returning ${projects.length} projects from WSL`);
-        console.log('📊 Full projects data:', JSON.stringify(projects, null, 2).slice(0, 500));
-        return res.json({ projects });
-        
-      } catch (error) {
-        console.error('❌ ERROR loading WSL projects:', error.message);
-        console.error('Stack:', error.stack);
-        // NEVER fall back to Windows filesystem - return empty if WSL fails
-        return res.json({ projects: [], count: 0 });
-      }
-    }
-    
     const claudeDir = join(homedir(), '.claude', 'projects');
     
     console.log('Loading projects from:', claudeDir);
@@ -1611,9 +1001,8 @@ io.on('connection', (socket) => {
         cwd: processWorkingDir,
         env: enhancedEnv,
         shell: false,
-        windowsHide: true,  // Always hide windows - prevents black console
-        windowsVerbatimArguments: true,  // Don't escape arguments on Windows
-        detached: false,  // Don't detach on Windows to avoid console window
+        windowsHide: true,  // Always hide windows
+        detached: true,  // Run in separate process group for better isolation
         stdio: ['pipe', 'pipe', 'pipe']  // Explicit stdio configuration
       };
       
@@ -1634,14 +1023,11 @@ io.on('connection', (socket) => {
             console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
           }
           
-          const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, message);
-          console.log(`🚀 Running WSL command: ${wslCommand}`);
-          console.log(`🚀 WSL args:`, wslArgs);
-          console.log(`🚀 Input handled in script: ${inputHandled}`);
+          const [wslCommand, wslArgs] = createWslClaudeCommand(args, wslWorkingDir);
+          console.log(`🚀 Running WSL command: wsl.exe -e bash -c`);
+          console.log(`🚀 WSL bash command (first 500 chars):`, wslArgs[2].substring(0, 500));
           
-          const process = spawn(wslCommand, wslArgs, spawnOptions);
-          process.inputHandled = inputHandled;
-          return process;
+          return spawn(wslCommand, wslArgs, spawnOptions);
         })() :
         spawn(CLAUDE_PATH, args, spawnOptions);
       
@@ -1659,24 +1045,42 @@ io.on('connection', (socket) => {
         claudeProcess.unref(); // Allow parent to exit independently
       }
 
-      // Send input if not resuming
-      // For WSL, we always need to send via stdin (inputHandled is always false now)
-      if (message && !isResuming) {
+      // Send input if not resuming - handle WSL differently
+      if (message) {
         const messageToSend = message + '\n';
         console.log(`📝 Sending message to claude (${message.length} chars)`);
         
-        // Write immediately - Claude with --print needs input right away
-        claudeProcess.stdin.write(messageToSend, (err) => {
-          if (err) {
-            console.error(`❌ Error writing to stdin:`, err);
-          } else {
-            console.log(`✅ Successfully wrote to stdin`);
-          }
+        // For WSL, we need to be more careful with stdin
+        if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
+          // Write in chunks to avoid buffer issues with WSL
+          const chunkSize = 4096;
+          let offset = 0;
+          
+          const writeNextChunk = () => {
+            if (offset < messageToSend.length) {
+              const chunk = messageToSend.substring(offset, offset + chunkSize);
+              claudeProcess.stdin.write(chunk, (err) => {
+                if (err) {
+                  console.error(`❌ Error writing to stdin:`, err);
+                  claudeProcess.stdin.end();
+                } else {
+                  offset += chunkSize;
+                  // Small delay between chunks for WSL
+                  setTimeout(writeNextChunk, 10);
+                }
+              });
+            } else {
+              claudeProcess.stdin.end();
+            }
+          };
+          
+          // Add delay for WSL to ensure bash script starts
+          setTimeout(writeNextChunk, 500);
+        } else {
+          // Normal operation for macOS/Linux
+          claudeProcess.stdin.write(messageToSend);
           claudeProcess.stdin.end();
-          console.log(`📝 Stdin closed`);
-        });
-      } else if (isResuming) {
-        console.log(`📝 Resuming session - no input needed`);
+        }
       }
       
       // Generate title with Sonnet (fire and forget) - only for first message

@@ -1762,19 +1762,19 @@ const MessageRendererBase: React.FC<{
         );
       }
       
-      // Check if this is a Read operation result (already have prevMessage from above)
+      // Check if this is a Read operation result (already have associatedToolUse from above)
       const isReadResult = isReadOperation;
       
       // Check if this is a search operation result
-      const isSearchResult = prevMessage?.type === 'tool_use' && 
-        (prevMessage?.message?.name === 'Grep' || 
-         prevMessage?.message?.name === 'Glob' || 
-         prevMessage?.message?.name === 'LS' || 
-         prevMessage?.message?.name === 'WebSearch');
+      const isSearchResult = associatedToolUse?.type === 'tool_use' && 
+        (associatedToolUse?.message?.name === 'Grep' || 
+         associatedToolUse?.message?.name === 'Glob' || 
+         associatedToolUse?.message?.name === 'LS' || 
+         associatedToolUse?.message?.name === 'WebSearch');
       
       // Check if this is a TodoWrite result and hide success messages
-      const isTodoWriteResult = prevMessage?.type === 'tool_use' && 
-        prevMessage?.message?.name === 'TodoWrite';
+      const isTodoWriteResult = associatedToolUse?.type === 'tool_use' && 
+        associatedToolUse?.message?.name === 'TodoWrite';
       
       if (isTodoWriteResult && (
         contentStr.includes('Todos have been modified successfully') ||
