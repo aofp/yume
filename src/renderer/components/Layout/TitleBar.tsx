@@ -9,6 +9,7 @@ interface TitleBarProps {
 
 export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
   const [showAboutModal, setShowAboutModal] = useState(false);
+  const [isWindowActive, setIsWindowActive] = useState(true);
   const titlebarRef = useRef<HTMLDivElement>(null);
   
   // Platform detection
@@ -76,6 +77,23 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
     }
   }, []);
 
+  // Track window focus state
+  useEffect(() => {
+    const handleFocus = () => setIsWindowActive(true);
+    const handleBlur = () => setIsWindowActive(false);
+    
+    window.addEventListener('focus', handleFocus);
+    window.addEventListener('blur', handleBlur);
+    
+    // Check if window is currently focused
+    setIsWindowActive(document.hasFocus());
+    
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      window.removeEventListener('blur', handleBlur);
+    };
+  }, []);
+
   return (
     <div className="titlebar-wrapper" ref={titlebarRef}>
       <div className="titlebar">
@@ -92,7 +110,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
             }}
           >
             <span className="titlebar-text">
-              yuru&gt;code
+              yuru<span style={{ color: isWindowActive ? 'var(--accent-color)' : undefined }}>&gt;</span>code
             </span>
           </div>
         </div>
