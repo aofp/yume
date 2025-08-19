@@ -208,9 +208,89 @@ function createWslClaudeCommand(args, workingDir, message) {
   
   // For the main message, run Claude with the args
   if (message) {
-    // Detect WSL username dynamically - use yuru as default since that's the actual user
-    const wslUser = 'yuru'; // This is correct for this machine
-    const claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
+    // Try multiple possible Claude paths in WSL
+    // First check which paths exist
+    const { execFileSync } = require('child_process');
+    let claudePath = null;
+    
+    // First, get the actual WSL username dynamically
+    let wslUser = 'user'; // fallback default
+    try {
+      wslUser = execFileSync(wslPath, ['-e', 'bash', '-c', 'whoami'], {
+        encoding: 'utf8',
+        windowsHide: true
+      }).trim();
+      console.log(`🔍 WSL user detected: ${wslUser}`);
+    } catch (e) {
+      console.warn('⚠️ Could not detect WSL user, using default');
+    }
+    
+    // Potential paths to check (in order of preference) - using dynamic user
+    const possiblePaths = [
+      `/home/${wslUser}/.claude/local/node_modules/.bin/claude`,  // User-specific claude install
+      `~/.npm-global/bin/claude`,  // npm global install
+      `~/node_modules/.bin/claude`,  // Local install in home
+      `/usr/local/bin/claude`,  // System-wide install
+      `/usr/bin/claude`,  // System binary
+      `~/.local/bin/claude`  // User local bin
+    ];
+    
+    // Find the first working Claude path
+    for (const path of possiblePaths) {
+      try {
+        // Expand ~ to $HOME and check if file exists
+        const checkCmd = path.startsWith('~') 
+          ? `[ -f "${path.replace('~', '$HOME')}" ] && echo "exists"`
+          : `[ -f "${path}" ] && echo "exists"`;
+        
+        const result = execFileSync(wslPath, ['-e', 'bash', '-c', checkCmd], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (result === 'exists') {
+          // For paths with ~, we need to expand to actual home path
+          if (path.startsWith('~')) {
+            // Get actual home directory
+            const homeDir = execFileSync(wslPath, ['-e', 'bash', '-c', 'echo $HOME'], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            claudePath = path.replace('~', homeDir);
+          } else {
+            claudePath = path;
+          }
+          console.log(`✅ Found Claude at: ${claudePath}`);
+          break;
+        }
+      } catch (e) {
+        // Path doesn't exist, continue checking
+      }
+    }
+    
+    // If still not found, try 'which claude'
+    if (!claudePath) {
+      try {
+        const whichResult = execFileSync(wslPath, ['-e', 'bash', '-c', 'which claude'], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (whichResult) {
+          claudePath = whichResult;
+          console.log(`✅ Found Claude via 'which': ${claudePath}`);
+        }
+      } catch (e) {
+        // Claude not in PATH
+      }
+    }
+    
+    // Default to a dynamic path if nothing found (will fail but with clear error)
+    if (!claudePath) {
+      claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
+      console.log(`⚠️ Claude not found in WSL, using default path: ${claudePath}`);
+      console.log('⚠️ Please install Claude CLI in WSL: npm install -g @anthropic-ai/claude-cli');
+    }
     
     // Build the command with all the args - quote ones that need it
     const argsStr = args.map(arg => {
@@ -225,8 +305,8 @@ function createWslClaudeCommand(args, workingDir, message) {
     // Message escaping for bash - escape single quotes
     const messageEscaped = message.replace(/'/g, "'\\''");
     
-    // Build the WSL command
-    const script = `cd ${wslWorkingDir} && echo '${messageEscaped}' | ${claudePath} ${argsStr} 2>&1`;
+    // Build the WSL command - quote the working directory to handle spaces
+    const script = `cd "${wslWorkingDir}" && echo '${messageEscaped}' | ${claudePath} ${argsStr} 2>&1`;
     
     console.log(`🔍 WSL script (main message):`);
     console.log(`  Working dir: ${wslWorkingDir}`);
@@ -236,12 +316,84 @@ function createWslClaudeCommand(args, workingDir, message) {
     
     return [wslPath, ['-e', 'bash', '-c', script], true];
   } else {
-    // Title generation - keep using direct WSL for stdin piping
-    const wslUser = 'yuru'; // This is correct for this machine
-    const claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
+    // Title generation - use same path detection
+    const { execFileSync } = require('child_process');
+    const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+    let claudePath = null;
+    
+    // Get WSL username dynamically
+    let wslUser = 'user';
+    try {
+      wslUser = execFileSync(wslPath, ['-e', 'bash', '-c', 'whoami'], {
+        encoding: 'utf8',
+        windowsHide: true
+      }).trim();
+      console.log(`🔍 WSL user detected for title gen: ${wslUser}`);
+    } catch (e) {
+      console.warn('⚠️ Could not detect WSL user for title gen, using default');
+    }
+    
+    // Use same paths as main message with dynamic user
+    const possiblePaths = [
+      `/home/${wslUser}/.claude/local/node_modules/.bin/claude`,
+      `~/.npm-global/bin/claude`,
+      `~/node_modules/.bin/claude`,
+      `/usr/local/bin/claude`,
+      `/usr/bin/claude`,
+      `~/.local/bin/claude`
+    ];
+    
+    for (const path of possiblePaths) {
+      try {
+        const checkCmd = path.startsWith('~') 
+          ? `[ -f "${path.replace('~', '$HOME')}" ] && echo "exists"`
+          : `[ -f "${path}" ] && echo "exists"`;
+        
+        const result = execFileSync(wslPath, ['-e', 'bash', '-c', checkCmd], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (result === 'exists') {
+          // For paths with ~, we need to expand to actual home path
+          if (path.startsWith('~')) {
+            // Get actual home directory
+            const homeDir = execFileSync(wslPath, ['-e', 'bash', '-c', 'echo $HOME'], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            claudePath = path.replace('~', homeDir);
+          } else {
+            claudePath = path;
+          }
+          break;
+        }
+      } catch (e) {
+        // Continue checking
+      }
+    }
+    
+    if (!claudePath) {
+      try {
+        const whichResult = execFileSync(wslPath, ['-e', 'bash', '-c', 'which claude'], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (whichResult) {
+          claudePath = whichResult;
+        }
+      } catch (e) {
+        // Not in PATH
+      }
+    }
+    
+    if (!claudePath) {
+      claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
+      console.log(`⚠️ Claude not found for title gen, using default: ${claudePath}`);
+    }
     
     // For title generation, use direct WSL with full path
-    const wslPath = 'C:\\Windows\\System32\\wsl.exe';
     const script = `cat | ${claudePath} --print --output-format json --model claude-3-5-sonnet-20241022 2>&1`;
     
     console.log(`🔍 WSL script (title gen)`);
@@ -419,11 +571,22 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
       (() => {
-        // For WSL, use a dedicated directory in WSL home
-        const wslTitleGenDir = '/home/yuru/.yurucode-title-gen';
+        // Get WSL username dynamically for title gen dir
+        const { execSync } = require('child_process');
+        let wslUser = 'user';
+        try {
+          wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+            encoding: 'utf8',
+            windowsHide: true
+          }).trim();
+        } catch (e) {
+          // Use default
+        }
+        
+        // For WSL, use a dedicated directory in WSL home with dynamic user
+        const wslTitleGenDir = `/home/${wslUser}/.yurucode-title-gen`;
         
         // Create the WSL directory if needed
-        const { execSync } = require('child_process');
         try {
           execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "mkdir -p ${wslTitleGenDir}"`, {
             windowsHide: true
@@ -592,7 +755,17 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
     
     if (isWindows) {
       // Load from WSL
-      const wslUser = 'yuru';
+      // Get WSL username dynamically
+      let wslUser = 'user';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        console.warn('Could not detect WSL user, using default');
+      }
       const sessionPath = `/home/${wslUser}/.claude/projects/${projectPath}/${sessionId}.jsonl`;
       console.log('  - WSL path:', sessionPath);
       
@@ -600,7 +773,7 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       try {
         const { execSync } = require('child_process');
         
-        const readCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cat ${sessionPath} 2>/dev/null'}"`;
+        const readCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cat \\"${sessionPath}\\" 2>/dev/null'}"`;
         const content = execSync(readCmd, {
           encoding: 'utf8',
           windowsHide: true,
@@ -948,7 +1121,17 @@ app.get('/claude-projects-quick', async (req, res) => {
     if (isWindows) {
       console.log('🔍 Windows detected - loading projects from WSL');
       
-      const wslUser = 'yuru'; // This is correct for this machine
+      // Get WSL username dynamically
+      let wslUser = 'user';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        console.warn('Could not detect WSL user, using default');
+      }
       const wslProjectsDir = `/home/${wslUser}/.claude/projects`;
       
       try {
@@ -957,8 +1140,8 @@ app.get('/claude-projects-quick', async (req, res) => {
         // Get list of projects - we'll get their real last-used time from sessions
         // Use wsl.exe directly with execFileSync to avoid shell interpretation
         const wslPath = 'C:\\Windows\\System32\\wsl.exe';
-        // Get all directories including "-"
-        const bashCmd = `cd ${wslProjectsDir} && for d in *; do [ -d "$d" ] && echo "$d"; done`;
+        // Get all directories including "-" - quote the path to handle spaces
+        const bashCmd = `cd "${wslProjectsDir}" && for d in *; do [ -d "$d" ] && echo "$d"; done`;
         console.log('📂 Getting projects from WSL:', wslProjectsDir);
         
         const output = execFileSync(wslPath, ['-e', 'bash', '-c', bashCmd], {
@@ -1136,7 +1319,17 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
     
     if (isWindows) {
       // Load from WSL where Claude stores projects
-      const wslUser = 'yuru';
+      // Get WSL username dynamically
+      let wslUser = 'user';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        console.warn('Could not detect WSL user, using default');
+      }
       const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
       
       try {
@@ -1146,7 +1339,7 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         
         // Get list of .jsonl files with modification times, sorted by most recent first
         const wslPath = 'C:\\Windows\\System32\\wsl.exe';
-        const bashCmd = `cd ${projectPath} 2>/dev/null && for f in *.jsonl; do [ -f "$f" ] && stat -c "%Y:%n" -- "$f"; done | sort -rn | head -50`;
+        const bashCmd = `cd "${projectPath}" 2>/dev/null && for f in *.jsonl; do [ -f "$f" ] && stat -c "%Y:%n" -- "$f"; done | sort -rn | head -50`;
         
         const output = execFileSync(wslPath, ['-e', 'bash', '-c', bashCmd], {
           encoding: 'utf8',
@@ -1191,19 +1384,19 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
             
             // Read first line from WSL
             const wslPath = 'C:\\Windows\\System32\\wsl.exe';
-            const firstLine = execFileSync(wslPath, ['-e', 'bash', '-c', `head -n1 ${projectPath}/${filename} 2>/dev/null`], {
+            const firstLine = execFileSync(wslPath, ['-e', 'bash', '-c', `head -n1 "${projectPath}/${filename}" 2>/dev/null`], {
               encoding: 'utf8',
               windowsHide: true
             }).trim();
             
             // Read last line to check for metadata/title
-            const lastLine = execFileSync(wslPath, ['-e', 'bash', '-c', `tail -n1 ${projectPath}/${filename} 2>/dev/null`], {
+            const lastLine = execFileSync(wslPath, ['-e', 'bash', '-c', `tail -n1 "${projectPath}/${filename}" 2>/dev/null`], {
               encoding: 'utf8',
               windowsHide: true
             }).trim();
             
             // Get line count (but limit counting to first 50 lines for performance)
-            const lineCount = execFileSync(wslPath, ['-e', 'bash', '-c', `head -n50 ${projectPath}/${filename} 2>/dev/null | wc -l`], {
+            const lineCount = execFileSync(wslPath, ['-e', 'bash', '-c', `head -n50 "${projectPath}/${filename}" 2>/dev/null | wc -l`], {
               encoding: 'utf8',
               windowsHide: true
             }).trim();
@@ -1359,7 +1552,17 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
     
     if (isWindows) {
       // Load from WSL
-      const wslUser = 'yuru';
+      // Get WSL username dynamically
+      let wslUser = 'user';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        console.warn('Could not detect WSL user, using default');
+      }
       const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
       
       try {
@@ -2668,7 +2871,7 @@ io.on('connection', (socket) => {
           console.error(`❌ [${sessionId}] NO OUTPUT RECEIVED FROM CLAUDE!`);
           console.error(`❌ [${sessionId}] This usually means:`);
           console.error(`   1. Claude CLI is not installed in WSL`);
-          console.error(`   2. The path is incorrect: /home/yuru/.claude/local/node_modules/.bin/claude`);
+          console.error(`   2. Claude is not in any of the expected paths`);
           console.error(`   3. WSL is not running properly`);
           console.error(`   4. The command syntax is wrong`);
         }
