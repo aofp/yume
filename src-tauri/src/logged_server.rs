@@ -214,15 +214,20 @@ function createWslClaudeCommand(args, workingDir) {
       "$HOME/.npm-global/bin/claude"
       "$HOME/node_modules/.bin/claude"
       "$HOME/.claude/local/claude"
+      "$HOME/.claude/local/node_modules/.bin/claude"
       "/opt/claude/bin/claude"
+      "$HOME/AppData/Local/npm/claude"
+      "$HOME/AppData/Roaming/npm/claude"
     )
     
-    # Check each user's .npm-global
+    # Check each user's .npm-global and .claude paths
     for user_home in /home/*; do
       if [ -d "$user_home" ]; then
         claude_paths+=("$user_home/.npm-global/bin/claude")
         claude_paths+=("$user_home/node_modules/.bin/claude")
         claude_paths+=("$user_home/.local/bin/claude")
+        claude_paths+=("$user_home/.claude/local/claude")
+        claude_paths+=("$user_home/.claude/local/node_modules/.bin/claude")
       fi
     done
     
@@ -232,6 +237,11 @@ function createWslClaudeCommand(args, workingDir) {
         [ -x "$nvm_path" ] && claude_paths+=("$nvm_path")
       done
     fi
+    
+    # Also check for Windows-style npm installations in WSL
+    for npm_prefix in "$HOME/.npm" "/usr/local" "/usr"; do
+      [ -x "$npm_prefix/bin/claude" ] && claude_paths+=("$npm_prefix/bin/claude")
+    done
     
     # Try to find claude in PATH first
     if command -v claude &>/dev/null; then
@@ -248,9 +258,16 @@ function createWslClaudeCommand(args, workingDir) {
     fi
     
     if [ -z "$claude_cmd" ]; then
-      echo "Claude CLI not found in WSL. Searched all common paths including npm global installations." >&2
+      echo "ERROR: Claude CLI not found in WSL" >&2
+      echo "Searched paths:" >&2
+      for path in "\${claude_paths[@]}"; do
+        echo "  - $path" >&2
+      done
+      echo "Please install Claude CLI in WSL using: npm install -g @anthropic/claude-cli" >&2
       exit 127
     fi
+    
+    echo "DEBUG: Found Claude at: $claude_cmd" >&2
     
     ${workingDir ? `cd '${workingDir.replace(/'/g, "'\\''")}'` : ':'}
     exec "$claude_cmd" ${escapedArgs}
@@ -2611,8 +2628,11 @@ pub fn start_logged_server(port: u16) {
                     .and_then(|p| p.parent().map(|p| p.to_path_buf()))
                     .map(|p| p.join("resources").join("node_modules")),
                 // User's project directory (fallback)
-                PathBuf::from(r"C:\Users\muuko\Desktop\yurucode\node_modules").exists()
-                    .then(|| PathBuf::from(r"C:\Users\muuko\Desktop\yurucode\node_modules")),
+                dirs::home_dir()
+                    .and_then(|home| {
+                        let path = home.join("Desktop").join("yurucode").join("node_modules");
+                        path.exists().then(|| path)
+                    }),
             ];
             
             for modules_path in possible_modules.into_iter().flatten() {
@@ -2627,7 +2647,9 @@ pub fn start_logged_server(port: u16) {
         // Determine where to find node_modules - try multiple locations
         let node_path = vec![
             // User's project directory (most reliable on Windows)
-            PathBuf::from(r"C:\Users\muuko\Desktop\yurucode\node_modules"),
+            dirs::home_dir()
+                .map(|home| home.join("Desktop").join("yurucode").join("node_modules"))
+                .unwrap_or_default(),
             // Development: project root
             std::env::current_exe()
                 .ok()
@@ -2644,13 +2666,45 @@ pub fn start_logged_server(port: u16) {
         .into_iter()
         .find(|p| p.exists());
         
-        // Try to start server with Node.js
-        let node_paths = vec!["node", "node.exe"];
+        // Try to start server with Node.js - try various paths
+        let mut node_paths: Vec<String> = if cfg!(target_os = "windows") {
+            vec![
+                "node.exe".to_string(),
+                "node".to_string(),
+                r"C:\Program Files\nodejs\node.exe".to_string(),
+                r"C:\Program Files (x86)\nodejs\node.exe".to_string(),
+            ]
+        } else {
+            vec![
+                "node".to_string(),
+                "/usr/local/bin/node".to_string(),
+                "/usr/bin/node".to_string(),
+            ]
+        };
+        
+        // Add user-specific Node.js paths on Windows
+        #[cfg(target_os = "windows")]
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            node_paths.push(format!("{}\\npm\\node.exe", appdata));
+        }
+        
+        // Check if Node.js is in a custom location via NODE_HOME
+        if let Ok(node_home) = std::env::var("NODE_HOME") {
+            let node_exe = if cfg!(target_os = "windows") {
+                format!("{}\\node.exe", node_home)
+            } else {
+                format!("{}/bin/node", node_home)
+            };
+            node_paths.insert(0, node_exe);
+        }
+        
+        write_log(&format!("Looking for Node.js in {} locations", node_paths.len()));
         
         for node_cmd in node_paths {
-            info!("Trying: {}", node_cmd);
+            info!("Trying Node.js at: {}", node_cmd);
+            write_log(&format!("Trying Node.js at: {}", node_cmd));
             
-            let mut cmd = Command::new(node_cmd);
+            let mut cmd = Command::new(&node_cmd);
             cmd.arg(&server_path)
                .current_dir(&server_dir)
                .env("PORT", port.to_string());
@@ -2731,7 +2785,14 @@ pub fn start_logged_server(port: u16) {
                     return;
                 }
                 Err(e) => {
-                    info!("Failed: {}", e);
+                    info!("Failed to start with {}: {}", node_cmd, e);
+                    write_log(&format!("Failed to start with {}: {}", node_cmd, e));
+                    
+                    // Try to provide more helpful error messages
+                    if e.kind() == std::io::ErrorKind::NotFound {
+                        write_log("Node.js not found. Please ensure Node.js is installed.");
+                        info!("Node.js not found. Checking PATH: {:?}", std::env::var("PATH"));
+                    }
                 }
             }
         }
