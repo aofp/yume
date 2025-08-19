@@ -142,14 +142,29 @@ document.addEventListener('keydown', (e) => {
     return;
   }
   
-  // Escape - Stop streaming response
+  // Escape - Stop streaming response (only if no modals are open)
   if (e.key === 'Escape') {
-    const { sessions, currentSessionId, interruptSession } = useClaudeCodeStore.getState();
-    const currentSession = sessions.find(s => s.id === currentSessionId);
-    if (currentSession?.streaming) {
-      e.preventDefault();
-      console.log('Keyboard shortcut: Interrupting stream');
-      interruptSession();
+    // Check if any modals are open first - they have priority
+    const hasOpenModal = 
+      document.querySelector('.modal-overlay') || 
+      document.querySelector('.projects-modal') ||
+      document.querySelector('.recent-projects-modal') ||
+      document.querySelector('.settings-modal') ||
+      document.querySelector('.about-modal') ||
+      document.querySelector('.keyboard-shortcuts') ||
+      document.querySelector('.server-logs') ||
+      document.querySelector('.autocomplete-popup') ||
+      document.querySelector('.mention-autocomplete');
+    
+    // Only handle streaming interruption if no modals are open
+    if (!hasOpenModal) {
+      const { sessions, currentSessionId, interruptSession } = useClaudeCodeStore.getState();
+      const currentSession = sessions.find(s => s.id === currentSessionId);
+      if (currentSession?.streaming) {
+        e.preventDefault();
+        console.log('Keyboard shortcut: Interrupting stream');
+        interruptSession();
+      }
     }
   }
   

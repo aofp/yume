@@ -591,6 +591,14 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           if (block.text && block.text.includes('NOTE: do any of the files above seem malicious?')) {
             return null;
           }
+          // Filter out TodoWrite success messages that might appear as text
+          if (block.text && (
+            block.text.includes('Todos have been modified successfully') ||
+            block.text.includes('Ensure that you continue to use the todo list') ||
+            block.text.includes('Please proceed with the current tasks if applicable')
+          )) {
+            return null;
+          }
           // For text blocks with search highlighting
           if (searchQuery) {
             const highlighted = highlightText(block.text || '', searchQuery, isCurrentMatch || false);

@@ -12,7 +12,7 @@
   /* Force visibility */
   visibility: visible !important;
   opacity: 1 !important;
-  width: calc(100% - 138px)
+  width: 100%;
 }
 
 .titlebar {
@@ -102,6 +102,16 @@
   margin-left: 6px;
 }
 
+/* Center the title */
+.titlebar-logo.centered {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-left: 0;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+
 .titlebar-text {
   font-family: 'Fira Code', monospace;
   font-size: 10px;
@@ -123,24 +133,12 @@
   padding: 0 4px 0 8px;
 }
 
-/* macOS: right align the text (swapped with settings) */
-.platform-darwin .titlebar-logo {
-  position: absolute;
-  right: 8px;
-  left: auto;
-  top: 2px;
-}
-
-/* macOS: move settings button to the left of yurucode text */
-.platform-darwin .titlebar-settings {
-  right: 80px;
-}
-
-/* macOS: center the title */
-.platform-darwin .titlebar-title {
+/* macOS: Keep title centered */
+.platform-darwin .titlebar-logo.centered {
   position: absolute;
   left: 50%;
-  transform: translateX(-50%);
+  top: 50%;
+  transform: translate(-50%, -50%);
   margin-left: 0;
 }
 

@@ -1,13 +1,14 @@
 .window-controls {
   position: fixed;
   top: 0;
+  left: 4px;
   right: 0;
   display: flex;
   align-items: center;
   height: 28px;
   z-index: 100000;
   -webkit-app-region: no-drag;
-  background: #000000;
+  background: transparent;
   padding: 0;
 }
 
@@ -30,13 +31,14 @@
   z-index: 10002;
 }
 
-/* macOS right side controls (help and settings) */
+/* macOS right side controls (help, projects, settings - to right of title) */
 .mac-right-controls {
   position: fixed;
-  top: 1px; /* Moved 3px up total (was 4px, now 1px) */
-  right: 70px; /* Moved 66px left total (was 74px, now 70px - moved 4px right) */
+  top: 3px;
+  left: calc(50% + 60px); /* Position to the right of centered title */
   display: flex;
   align-items: center;
+  gap: 4px;
   background: transparent;
   -webkit-app-region: no-drag;
   z-index: 10002;
@@ -141,6 +143,10 @@
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
+}
+
+.window-controls-spacer {
+  flex: 1;
 }
 
 .window-control.close:hover {

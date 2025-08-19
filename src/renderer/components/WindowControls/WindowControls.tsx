@@ -104,6 +104,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             <span className="mac-control-icon">+</span>
           </button>
         </div>
+        {/* Mac: Menu items to the right of title - help, projects, settings */}
         <div className="window-controls mac-right-controls">
           <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
             <span style={{ fontSize: '10px' }}>?</span>
@@ -126,19 +127,22 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   // Windows style controls
   return (
     <div className="window-controls">
-      <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
-        <span style={{ fontSize: '10px' }}>?</span>
-      </button>
-      {onProjectsClick && (
-        <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
-          <IconFolder size={10} stroke={2} />
-        </button>
-      )}
+      {/* Windows: Menu items on the left - settings, projects, help */}
       {onSettingsClick && (
         <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
           <IconSettingsFilled size={10} />
         </button>
       )}
+      {onProjectsClick && (
+        <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
+          <IconFolder size={10} stroke={2} />
+        </button>
+      )}
+      <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+        <span style={{ fontSize: '10px' }}>?</span>
+      </button>
+      {/* Spacer to push window controls to the right */}
+      <div className="window-controls-spacer" />
       <button className="window-control minimize" onClick={handleMinimize}>
         <IconMinus size={14} stroke={1.5} />
       </button>

@@ -11,9 +11,10 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
   const [showAboutModal, setShowAboutModal] = useState(false);
   const titlebarRef = useRef<HTMLDivElement>(null);
   
-  // Check if we're on Windows (where WindowControls already has the settings button)
+  // Platform detection
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
                    navigator.userAgent.toLowerCase().includes('windows');
+  const isMac = navigator.platform.toLowerCase().includes('mac');
 
   useEffect(() => {
     // Simple drag implementation using onMouseDown
@@ -79,8 +80,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
     <div className="titlebar-wrapper" ref={titlebarRef}>
       <div className="titlebar">
         <div className="titlebar-content">
+          {/* Center the title */}
           <div 
-            className="titlebar-logo" 
+            className="titlebar-logo centered" 
             onContextMenu={(e) => {
               e.preventDefault();
               setShowAboutModal(true);
@@ -91,7 +93,6 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
             </span>
           </div>
         </div>
-        {/* Settings button removed - now in WindowControls */}
       </div>
       <AboutModal isOpen={showAboutModal} onClose={() => setShowAboutModal(false)} />
     </div>
