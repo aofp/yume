@@ -208,8 +208,62 @@ let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let activeProcessStartTimes = new Map();  // Map of sessionId -> process start time
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
+let allAssistantMessageIds = new Map();  // Map of sessionId -> Array of all assistant message IDs
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
+
+// Session persistence to disk for recovery after restart
+class SessionPersistence {
+  constructor() {
+    this.sessionDir = join(homedir(), '.yurucode', 'sessions');
+    this.ensureDirectory();
+  }
+  
+  ensureDirectory() {
+    if (!existsSync(this.sessionDir)) {
+      mkdirSync(this.sessionDir, { recursive: true });
+      console.log(`📁 Created session directory: ${this.sessionDir}`);
+    }
+  }
+  
+  saveSession(sessionId, sessionData) {
+    try {
+      const filePath = join(this.sessionDir, `${sessionId}.json`);
+      writeFileSync(filePath, JSON.stringify(sessionData, null, 2));
+      console.log(`💾 Saved session to disk: ${sessionId}`);
+    } catch (error) {
+      console.error(`❌ Failed to save session ${sessionId}:`, error.message);
+    }
+  }
+  
+  loadSession(sessionId) {
+    try {
+      const filePath = join(this.sessionDir, `${sessionId}.json`);
+      if (existsSync(filePath)) {
+        const data = JSON.parse(readFileSync(filePath, 'utf8'));
+        console.log(`📂 Loaded session from disk: ${sessionId}`);
+        return data;
+      }
+    } catch (error) {
+      console.error(`❌ Failed to load session ${sessionId}:`, error.message);
+    }
+    return null;
+  }
+  
+  deleteSession(sessionId) {
+    try {
+      const filePath = join(this.sessionDir, `${sessionId}.json`);
+      if (existsSync(filePath)) {
+        unlinkSync(filePath);
+        console.log(`🗑️ Deleted session file: ${sessionId}`);
+      }
+    } catch (error) {
+      console.error(`❌ Failed to delete session ${sessionId}:`, error.message);
+    }
+  }
+}
+
+const sessionPersistence = new SessionPersistence();
 
 // Add process spawn mutex to prevent race conditions
 let isSpawningProcess = false;
@@ -1037,8 +1091,11 @@ io.on('connection', (socket) => {
       const sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       console.log(`✨ Creating new session: ${sessionId}`);
       
-      // Use provided directory, or home directory as fallback (NOT process.cwd() which would be the app bundle)
-      const workingDirectory = data.workingDirectory || homedir();
+      // Use provided directory, or create a safe sandbox directory
+      // NEVER use homedir() as it gives access to all user files
+      const safeDir = join(homedir(), '.yurucode', 'sandbox', sessionId);
+      mkdirSync(safeDir, { recursive: true });
+      const workingDirectory = data.workingDirectory || safeDir;
       
       const sessionData = {
         id: sessionId,
@@ -1077,7 +1134,11 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', async (data, callback) => {
     const { sessionId, content: message, model } = data;
-    const session = sessions.get(sessionId);
+    console.log(`📨 sendMessage called for session: ${sessionId}`);
+    console.log(`📊 Current sessions in memory: ${sessions.size}`);
+    console.log(`🔍 Available session IDs:`, Array.from(sessions.keys()));
+    
+    let session = sessions.get(sessionId);
     
     if (!session) {
       console.error(`❌ Session not found: ${sessionId}`);
@@ -1156,8 +1217,8 @@ io.on('connection', (socket) => {
         // Don't modify streaming state here - let the UI continue showing streaming
         // The process exit handler will properly clean up when the old process dies
 
-        // Use session's working directory, fallback to home directory (NOT process.cwd() in bundled app)
-        let processWorkingDir = session.workingDirectory || homedir();
+        // Use session's working directory, fallback to safe sandbox (NEVER homedir())
+        let processWorkingDir = session.workingDirectory || join(homedir(), '.yurucode', 'sandbox', sessionId);
         console.log(`📂 Using working directory: ${processWorkingDir}`);
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
@@ -1220,8 +1281,10 @@ io.on('connection', (socket) => {
       
       // Ensure the directory exists before spawning
       if (!existsSync(processWorkingDir)) {
-        console.warn(`⚠️ Working directory does not exist: ${processWorkingDir}, using home directory`);
-        processWorkingDir = homedir();
+        console.warn(`⚠️ Working directory does not exist: ${processWorkingDir}, creating safe sandbox`);
+        const safeFallback = join(homedir(), '.yurucode', 'sandbox', sessionId);
+        mkdirSync(safeFallback, { recursive: true });
+        processWorkingDir = safeFallback;
       }
       
       const spawnOptions = {
@@ -1467,6 +1530,12 @@ io.on('connection', (socket) => {
               // Send assistant message with all non-tool content blocks (text + thinking)
               if (hasContent && contentBlocks.length > 0) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
+                
+                // Track all assistant message IDs for this session
+                if (!allAssistantMessageIds.has(sessionId)) {
+                  allAssistantMessageIds.set(sessionId, []);
+                }
+                allAssistantMessageIds.get(sessionId).push(messageId);
                 console.log(`📝 [${sessionId}] Emitting assistant message ${messageId} with streaming=true`);
                 console.log(`📝 [${sessionId}] Content blocks: ${contentBlocks.length} (types: ${contentBlocks.map(b => b.type).join(', ')})`);
                 socket.emit(`message:${sessionId}`, {
@@ -1529,21 +1598,29 @@ io.on('connection', (socket) => {
               console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0}`);
             }
             
-            // If we have a last assistant message, send an update to mark it as done streaming
-            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-            if (lastAssistantMessageId) {
-              console.log(`✅ Marking assistant message ${lastAssistantMessageId} as streaming=false (result received)`);
+            // Mark ALL assistant messages for this session as done streaming
+            const assistantMessageIds = allAssistantMessageIds.get(sessionId) || [];
+            if (assistantMessageIds.length > 0) {
+              console.log(`✅ Marking ${assistantMessageIds.length} assistant messages as streaming=false (result received)`);
               const session = sessions.get(sessionId);
-              const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
               
-              socket.emit(`message:${sessionId}`, {
-                type: 'assistant',
-                id: lastAssistantMessageId,
-                message: lastAssistantMsg?.message || { content: '' },
-                streaming: false,
-                timestamp: Date.now()
+              assistantMessageIds.forEach(messageId => {
+                const assistantMsg = session?.messages.find(m => m.id === messageId);
+                console.log(`✅ Marking assistant message ${messageId} as streaming=false`);
+                
+                socket.emit(`message:${sessionId}`, {
+                  type: 'assistant',
+                  id: messageId,
+                  message: assistantMsg?.message || { content: '' },
+                  streaming: false,
+                  timestamp: Date.now()
+                });
               });
-              lastAssistantMessageIds.delete(sessionId); // Reset
+              
+              // Clear the tracking arrays since they're all done
+              allAssistantMessageIds.delete(sessionId);
+              lastAssistantMessageIds.delete(sessionId);
+          allAssistantMessageIds.delete(sessionId);
             }
             
             // Just send the result message with model info
@@ -1698,6 +1775,7 @@ io.on('connection', (socket) => {
             timestamp: Date.now()
           });
           lastAssistantMessageIds.delete(sessionId);
+          allAssistantMessageIds.delete(sessionId);
         }
         
         // Always ensure streaming is marked as false for all messages

@@ -318,8 +318,8 @@ const restoreSessions = (): Session[] => {
 export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   persist(
     (set, get) => ({
-  sessions: restoreSessions(), // Restore sessions on startup
-  currentSessionId: localStorage.getItem('yurucode-current-session') || null,
+  sessions: [], // Don't restore sessions on startup - start fresh
+  currentSessionId: null, // No current session on startup
   persistedSessionId: null,
   sessionMappings: {},
   selectedModel: 'claude-opus-4-1-20250805',

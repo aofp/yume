@@ -615,27 +615,29 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           );
           
         case 'thinking':
-          // Render thinking blocks with special styling
+          // Render thinking blocks with enhanced styling - always fully visible
+          const thinkingContent = block.thinking || block.text || '';
+          const lines = thinkingContent.split('\n');
+          const lineCount = lines.length;
+          const charCount = thinkingContent.length;
+          const isStreaming = message?.streaming || false;
+          
+          if (!thinkingContent.trim()) {
+            return null;
+          }
+          
           return (
-            <div key={idx} className="thinking-block">
+            <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
-                <IconBolt size={12} stroke={1.5} />
-                <span className="thinking-text">
-                  <span className="thinking-letter">t</span>
-                  <span className="thinking-letter">h</span>
-                  <span className="thinking-letter">i</span>
-                  <span className="thinking-letter">n</span>
-                  <span className="thinking-letter">k</span>
-                  <span className="thinking-letter">i</span>
-                  <span className="thinking-letter">n</span>
-                  <span className="thinking-letter">g</span>
-                  <span className="thinking-letter">.</span>
-                  <span className="thinking-letter">.</span>
-                  <span className="thinking-letter">.</span>
+                <IconBolt size={14} stroke={1.5} className="thinking-icon" />
+                <span className="thinking-label">thinking</span>
+                {isStreaming && <span className="thinking-dots">...</span>}
+                <span className="thinking-stats">
+                  {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
                 </span>
               </div>
               <div className="thinking-content">
-                {block.thinking || block.text || ''}
+                <pre className="thinking-text">{thinkingContent}</pre>
               </div>
             </div>
           );
@@ -1335,16 +1337,19 @@ const MessageRendererBase: React.FC<{
         }
       }
       
-      // Separate text content from tool uses
+      // Separate text content, thinking blocks, and tool uses
       let textContent = contentToRender;
+      let thinkingBlocks: ContentBlock[] = [];
       let toolUses: ContentBlock[] = [];
       
       if (Array.isArray(contentToRender)) {
         textContent = contentToRender.filter(b => b.type === 'text');
+        thinkingBlocks = contentToRender.filter(b => b.type === 'thinking');
         toolUses = contentToRender.filter(b => b.type === 'tool_use');
       } else if (typeof contentToRender === 'string') {
         // If it's a string, treat it as text content
         textContent = contentToRender;
+        thinkingBlocks = [];
         toolUses = [];
       } else {
       }
@@ -1358,6 +1363,15 @@ const MessageRendererBase: React.FC<{
       
       return (
         <>
+          {/* Render thinking blocks first, outside any message bubble */}
+          {thinkingBlocks && thinkingBlocks.length > 0 && (
+            <div className="message thinking-message">
+              {thinkingBlocks.map((block, idx) => 
+                renderContent([block], message, searchQuery, isCurrentMatch)
+              )}
+            </div>
+          )}
+          
           {/* Render text content in message bubble if there is any */}
           {hasTextContent && (
             <div className="message assistant">

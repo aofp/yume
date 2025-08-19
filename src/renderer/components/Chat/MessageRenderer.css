@@ -431,6 +431,20 @@ ol {
 }
 
 .thinking-text {
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.55);
+  font-style: italic;
+  letter-spacing: 0.2px;
+}
+
+/* Original thinking text for headers and labels */
+.thinking-label {
   opacity: 1;
   color: var(--accent-color);
   font-weight: bold;
@@ -446,55 +460,106 @@ ol {
   text-align: left;
 }
 
-/* Thinking block for extended thinking */
-.thinking-block {
-  background: rgba(255, 153, 204, 0.05);
-  border: 1px solid rgba(255, 153, 204, 0.2);
-  border-radius: 4px;
+/* Thinking message container */
+.message.thinking-message {
   margin: 8px 0;
-  padding: 8px 12px;
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.6);
+  padding: 0;
+}
+
+/* Simple thinking block - always fully visible */
+.thinking-block {
+  background: rgba(255, 204, 255, 0.03);
+  border: 1px solid rgba(255, 153, 204, 0.3);
+  border-radius: 6px;
+  margin: 8px 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.7);
   animation: fadeIn 0.3s ease;
+}
+
+.thinking-block.streaming {
+  border-color: rgba(255, 153, 204, 0.5);
+  animation: thinkingBlockPulse 2s ease-in-out infinite;
+}
+
+@keyframes thinkingBlockPulse {
+  0%, 100% {
+    border-color: rgba(255, 153, 204, 0.3);
+    background: rgba(255, 204, 255, 0.03);
+  }
+  50% {
+    border-color: rgba(255, 153, 204, 0.6);
+    background: rgba(255, 204, 255, 0.06);
+  }
 }
 
 .thinking-header {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   color: var(--color-magenta);
-  margin-bottom: 6px;
-  font-size: 10px;
+  font-size: 11px;
   text-transform: lowercase;
+  opacity: 0.9;
+  padding: 10px 14px;
+  background: rgba(255, 153, 204, 0.05);
+  border-bottom: 1px solid rgba(255, 153, 204, 0.1);
+}
+
+.thinking-icon {
+  color: var(--color-magenta);
   opacity: 0.8;
 }
 
-/* Animated thinking text */
+.thinking-label {
+  font-weight: 600;
+  color: var(--color-magenta);
+  letter-spacing: 0.5px;
+}
+
+.thinking-stats {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
 .thinking-text {
-  display: inline-flex;
-  animation: thinkingPulse 3s ease-in-out infinite;
+  font-family: 'Fira Code', monospace;
+  font-size: 10px;
+  line-height: 1.5;
+  white-space: pre-wrap;
+  word-break: break-word;
+  margin: 0;
+  padding: 0;
+  color: rgba(255, 255, 255, 0.6);
 }
 
-.thinking-letter {
-  display: inline-block;
-  opacity: 0.9;
-  animation: letterWave 2s ease-in-out infinite;
+.thinking-content {
+  padding: 12px 14px;
+  max-height: 400px;
+  overflow-y: auto;
 }
 
-/* Stagger the animation for each letter */
-.thinking-letter:nth-child(1) { animation-delay: 0s; }
-.thinking-letter:nth-child(2) { animation-delay: 0.1s; }
-.thinking-letter:nth-child(3) { animation-delay: 0.2s; }
-.thinking-letter:nth-child(4) { animation-delay: 0.3s; }
-.thinking-letter:nth-child(5) { animation-delay: 0.4s; }
-.thinking-letter:nth-child(6) { animation-delay: 0.5s; }
-.thinking-letter:nth-child(7) { animation-delay: 0.6s; }
-.thinking-letter:nth-child(8) { animation-delay: 0.7s; }
-.thinking-letter:nth-child(9) { animation-delay: 0.8s; }
-.thinking-letter:nth-child(10) { animation-delay: 0.9s; }
-.thinking-letter:nth-child(11) { animation-delay: 1.0s; }
+/* Scrollbar styling for thinking content */
+.thinking-content::-webkit-scrollbar {
+  width: 4px;
+}
 
-/* Subtle pulse animation for the whole text */
+.thinking-content::-webkit-scrollbar-track {
+  background: rgba(255, 153, 204, 0.05);
+}
+
+.thinking-content::-webkit-scrollbar-thumb {
+  background: rgba(255, 153, 204, 0.3);
+  border-radius: 2px;
+}
+
+.thinking-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 153, 204, 0.5);
+}
+
+
+/* Remove old animations that are no longer used */
 @keyframes thinkingPulse {
   0%, 100% {
     opacity: 0.9;
@@ -504,7 +569,6 @@ ol {
   }
 }
 
-/* Wave animation for individual letters */
 @keyframes letterWave {
   0%, 100% {
     opacity: 0.9;
@@ -524,17 +588,6 @@ ol {
   }
 }
 
-.thinking-content {
-  color: rgba(255, 255, 255, 0.5);
-  font-family: 'Fira Code', monospace;
-  font-size: 10px;
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 100px;
-  overflow-y: auto;
-  opacity: 0.7;
-}
 
 @keyframes dots {
   0%, 20% {
