@@ -136,6 +136,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
+  margin-right: 2px;
 }
 
 .window-control.settings:hover, .window-control.help:hover, .window-control.projects:hover, .window-control.refresh:hover {
