@@ -2770,7 +2770,6 @@ io.on('connection', (socket) => {
         lastDataTime = Date.now();
         
         console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
-        console.log(`📥 [${sessionId}] Raw bytes: [${Array.from(data).map(b => b.toString(16).padStart(2, '0')).join(' ')}]`);
         console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200).replace(/\n/g, '\\n')}...`);
         
         // Prevent memory overflow from excessive buffering

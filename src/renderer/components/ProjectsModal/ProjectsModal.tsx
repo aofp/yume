@@ -810,9 +810,9 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                   key={project.path}
                   className={`project-item ${focusedIndex === index ? 'focused' : ''}`}
                   onClick={() => {
-                    console.log('👆 [FRONTEND] Project clicked:', project.path);
-                    setSelectedProject(project.path);
-                    setFocusedIndex(0);
+                    // Left click creates new session in this project
+                    onSelectSession(project.path, '', '');
+                    onClose();
                   }}
                   onContextMenu={(e) => handleContextMenu(e, 'project', project.path)}
                   onMouseEnter={() => setFocusedIndex(index)}
@@ -923,7 +923,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 return contextMenu.x;
               })(),
               top: (() => {
-                const menuHeight = 80; // Approximate height for 2-item context menu
+                const menuHeight = contextMenu.type === 'project' ? 160 : 80; // Adjust height based on menu items (3 buttons for project)
                 const bottomEdge = contextMenu.y + menuHeight;
                 if (bottomEdge > window.innerHeight) {
                   return window.innerHeight - menuHeight - 10;
@@ -932,6 +932,27 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
               })()
             }}
           >
+            {contextMenu.type === 'project' && (
+              <>
+                <button onClick={() => {
+                  // Close modal and context menu
+                  setContextMenu(null);
+                  onClose();
+                  // Create new session in this project
+                  onSelectSession(contextMenu.path, '', '');
+                }}>
+                  new session
+                </button>
+                <button onClick={() => {
+                  // Browse sessions for this project
+                  setSelectedProject(contextMenu.path);
+                  setContextMenu(null);
+                  setFocusedIndex(0);
+                }}>
+                  browse sessions
+                </button>
+              </>
+            )}
             <button onClick={handleClearHistory}>
               clear {contextMenu.type === 'project' ? 'project history' : 'session'}
             </button>

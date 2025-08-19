@@ -348,8 +348,6 @@
 .projects-context-menu {
   position: fixed;
   background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 6px;
   padding: 4px;
   z-index: 1000000;
   min-width: 150px;
@@ -368,7 +366,6 @@
   color: rgba(255, 255, 255, 0.7);
   font-size: 11px;
   cursor: default;
-  border-radius: 4px;
   transition: background 0.2s ease;
   text-transform: lowercase;
   text-align: left;
