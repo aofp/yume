@@ -821,7 +821,7 @@ export const ClaudeChat: React.FC = () => {
       console.log('[ClaudeChat] Recording streaming start time for delayed send (first message):', sessionId);
     }
     
-    await sendMessage(messageContent);
+    await sendMessage(messageContent, bashCommandMode);
     
     // Mark as at bottom and force scroll after sending message
     setIsAtBottom(prev => ({
@@ -1295,7 +1295,7 @@ export const ClaudeChat: React.FC = () => {
         console.log('[ClaudeChat] Recording streaming start time for session (first message):', currentSessionId);
       }
       
-      await sendMessage(messageContent);
+      await sendMessage(messageContent, bashCommandMode);
       
       // Mark as at bottom and force scroll after sending message
       if (currentSessionId) {

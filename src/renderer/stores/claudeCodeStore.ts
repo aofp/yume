@@ -101,7 +101,7 @@ interface ClaudeCodeStore {
   setSelectedModel: (modelId: string) => void;
   createSession: (name?: string, directory?: string, existingSessionId?: string) => Promise<string>;
   setCurrentSession: (sessionId: string) => void;
-  sendMessage: (content: string) => Promise<void>;
+  sendMessage: (content: string, bashMode?: boolean) => Promise<void>;
   resumeSession: (sessionId: string) => Promise<void>;
   pauseSession: (sessionId: string) => void;
   deleteSession: (sessionId: string) => void;
@@ -1167,7 +1167,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     set({ currentSessionId: sessionId });
   },
   
-  sendMessage: async (content: string) => {
+  sendMessage: async (content: string, bashMode?: boolean) => {
     const { currentSessionId } = get();
     console.log('[Store] sendMessage called:', { 
       sessionId: currentSessionId,
@@ -1218,7 +1218,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       id: `user-${Date.now()}-${Math.random()}`,
       type: 'user',
       message: { content },
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      bashMode: bashMode || false
     };
     
     console.log('[Store] Adding user message to session:', userMessage.id);

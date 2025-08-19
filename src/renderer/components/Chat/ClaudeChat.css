@@ -408,6 +408,15 @@
   transition: all 0.2s ease;
 }
 
+/* Multi-edit label styling */
+.multi-edit-label {
+  font-size: 8pt;
+  border-left: none;
+  border-right: none;
+  border-top: none;
+  border-bottom: none;
+}
+
 /* Hover removed */
 .tool-use:hover {
   background: transparent;
@@ -942,6 +951,7 @@
 
 .chat-input.bash-mode {
   padding-left: 4px;
+  font-family: 'Fira Code', monospace;
 }
 
 /* Context bar - stats section */

@@ -1675,16 +1675,24 @@ const MessageRendererBase: React.FC<{
       contentStr = contentStr.replace(/\n+$/, '');
       
       // Check if we should preserve formatting (for Read and Search operations)
-      const prevMessage = index > 0 ? sessionMessages[index - 1] : null;
-      const isReadOperation = prevMessage?.type === 'tool_use' && prevMessage?.message?.name === 'Read';
-      const isSearchOperation = prevMessage?.type === 'tool_use' && 
-        (prevMessage?.message?.name === 'Grep' || 
-         prevMessage?.message?.name === 'Glob' ||
-         prevMessage?.message?.name === 'LS' ||
-         prevMessage?.message?.name === 'WebSearch');
+      // Look for the most recent tool_use message before this tool_result
+      let associatedToolUse = null;
+      for (let i = index - 1; i >= 0; i--) {
+        if (sessionMessages[i]?.type === 'tool_use') {
+          associatedToolUse = sessionMessages[i];
+          break;
+        }
+      }
       
-      // Only trim if not a Read or Search operation to preserve formatting
-      if (!isReadOperation && !isSearchOperation) {
+      const isReadOperation = associatedToolUse?.message?.name === 'Read';
+      const isSearchOperation = associatedToolUse?.message?.name === 'Grep' || 
+         associatedToolUse?.message?.name === 'Glob' ||
+         associatedToolUse?.message?.name === 'LS' ||
+         associatedToolUse?.message?.name === 'WebSearch';
+      const isBashOperation = associatedToolUse?.message?.name === 'Bash';
+      
+      // Never trim for Read, Search, or Bash operations to preserve formatting
+      if (!isReadOperation && !isSearchOperation && !isBashOperation) {
         contentStr = contentStr.trim();
       }
       
