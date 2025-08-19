@@ -274,6 +274,9 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       // enter to select current
       if (e.key === 'Enter') {
         e.preventDefault();
+        if (selectedIndex < projects.length) {
+          selectProject(projects[selectedIndex]);
+        }
         return;
       }
       

@@ -2088,9 +2088,9 @@ io.on('connection', (socket) => {
           
           // Mark session as interrupted since we killed the process
           session.wasInterrupted = true;
-          // Clear the session ID since the conversation was interrupted
-          session.claudeSessionId = null;
-          console.log(`🔄 Marked session ${sessionId} as interrupted and cleared claudeSessionId`);
+          // Keep the claudeSessionId so we can resume the conversation
+          // session.claudeSessionId = null; // DON'T clear this - we want to resume!
+          console.log(`🔄 Marked session ${sessionId} as interrupted but kept claudeSessionId for resume: ${session.claudeSessionId}`);
           
           // Wait a bit for the process to fully terminate
           await new Promise(resolve => setTimeout(resolve, 500));

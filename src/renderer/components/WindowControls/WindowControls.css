@@ -145,6 +145,14 @@
   border-color: rgba(var(--accent-rgb), 1);
 }
 
+/* Remove margin-right on macOS only */
+.mac-right-controls .window-control.settings,
+.mac-right-controls .window-control.help,
+.mac-right-controls .window-control.projects,
+.mac-right-controls .window-control.refresh {
+  margin-right: 0;
+}
+
 .window-controls-spacer {
   flex: 1;
 }

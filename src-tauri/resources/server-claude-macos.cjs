@@ -807,6 +807,9 @@ app.get('/claude-projects-quick', async (req, res) => {
 
 // Get sessions for a specific project using Server-Sent Events for streaming
 app.get('/claude-project-sessions/:projectName', async (req, res) => {
+  // Support pagination with offset and limit query params
+  const offset = parseInt(req.query.offset) || 0;
+  const limit = parseInt(req.query.limit) || 10;
   try {
     const projectName = decodeURIComponent(req.params.projectName);
     console.log('📂 Loading sessions for project:', projectName);
@@ -857,9 +860,12 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
     
     fileStats.sort((a, b) => b.timestamp - a.timestamp);
     
+    // Apply pagination
+    const paginatedFiles = fileStats.slice(offset, offset + limit);
+    
     // Process each file and stream it
-    for (let i = 0; i < Math.min(fileStats.length, 10); i++) {
-      const { filename, path: filePath, timestamp } = fileStats[i];
+    for (let i = 0; i < paginatedFiles.length; i++) {
+      const { filename, path: filePath, timestamp } = paginatedFiles[i];
       
       try {
         const sessionId = filename.replace('.jsonl', '');
@@ -910,18 +916,27 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
           messageCount: Math.min(messageCount, 50) // Cap reported count at 50
         };
         
-        // Stream this session immediately
-        res.write(`data: ${JSON.stringify({ session, index: i, total: fileStats.length })}\n\n`);
-        console.log(`  📄 Sent session ${i + 1}/${fileStats.length}: ${sessionId}`);
+        // Stream this session immediately with pagination info
+        res.write(`data: ${JSON.stringify({ 
+          session, 
+          index: offset + i, 
+          total: fileStats.length,
+          hasMore: (offset + limit) < fileStats.length 
+        })}\n\n`);
+        console.log(`  📄 Sent session ${offset + i + 1}/${fileStats.length}: ${sessionId}`);
         
       } catch (e) {
         console.log(`Error processing ${filename}:`, e.message);
       }
     }
     
-    // Send completion event
-    res.write('data: {"done": true}\n\n');
-    console.log(`✅ Streamed all sessions`);
+    // Send completion event with pagination info
+    res.write(`data: ${JSON.stringify({ 
+      done: true, 
+      totalCount: fileStats.length,
+      hasMore: (offset + limit) < fileStats.length 
+    })}\n\n`);
+    console.log(`✅ Streamed ${paginatedFiles.length} sessions (offset: ${offset}, total: ${fileStats.length})`);
     res.end();
     
   } catch (error) {
@@ -1189,7 +1204,7 @@ io.on('connection', (socket) => {
         // The process exit handler will properly clean up when the old process dies
 
         // Use session's working directory, fallback to home directory (NOT process.cwd() in bundled app)
-        const processWorkingDir = session.workingDirectory || homedir();
+        let processWorkingDir = session.workingDirectory || homedir();
         console.log(`📂 Using working directory: ${processWorkingDir}`);
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
