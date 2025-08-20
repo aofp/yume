@@ -705,10 +705,32 @@ export const SessionTabs: React.FC = () => {
                   const workingDir = (sessionToDuplicate as any)?.workingDirectory;
                   createSession(undefined, workingDir || '/');
                 }
+                
+                // Clean up all drag state and remove cursor styles
+                document.body.classList.remove('tab-dragging');
+                document.body.style.cursor = '';
+                
+                // Remove cursor from all elements to fix stuck cursor bug
+                const allElements = document.querySelectorAll('*');
+                allElements.forEach(el => {
+                  if (el instanceof HTMLElement) {
+                    el.style.cursor = '';
+                  }
+                });
+                
+                // Remove any drag preview that might be lingering
+                const dragPreviews = document.querySelectorAll('[style*="z-index: 9999"]');
+                dragPreviews.forEach(preview => {
+                  if (preview.parentNode) {
+                    preview.parentNode.removeChild(preview);
+                  }
+                });
+                
                 setIsDragging(false);
                 setDraggedTab(null);
                 setDragOverNewTab(false);
                 setDragOverRecent(false);
+                setDragOverTab(null);
               }
             }}
             onMouseLeave={(e) => {
@@ -809,10 +831,32 @@ export const SessionTabs: React.FC = () => {
                       createSession(undefined, workingDir);
                     }
                   }
+                  
+                  // Clean up all drag state and remove cursor styles
+                  document.body.classList.remove('tab-dragging');
+                  document.body.style.cursor = '';
+                  
+                  // Remove cursor from all elements to fix stuck cursor bug
+                  const allElements = document.querySelectorAll('*');
+                  allElements.forEach(el => {
+                    if (el instanceof HTMLElement) {
+                      el.style.cursor = '';
+                    }
+                  });
+                  
+                  // Remove any drag preview that might be lingering
+                  const dragPreviews = document.querySelectorAll('[style*="z-index: 9999"]');
+                  dragPreviews.forEach(preview => {
+                    if (preview.parentNode) {
+                      preview.parentNode.removeChild(preview);
+                    }
+                  });
+                  
                   setIsDragging(false);
                   setDraggedTab(null);
                   setDragOverNewTab(false);
                   setDragOverRecent(false);
+                  setDragOverTab(null);
                 }
               }}
               onMouseLeave={(e) => {
