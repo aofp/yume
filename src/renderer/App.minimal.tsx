@@ -5,7 +5,7 @@ import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
 import { SettingsModal } from './components/Settings/SettingsModal';
 import { AboutModal } from './components/About/AboutModal';
-import { AnalyticsModal } from './components/Analytics/AnalyticsModal';
+// import { AnalyticsModal } from './components/Analytics/AnalyticsModal';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
 import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 import { ServerLogs } from './components/ServerLogs/ServerLogs';
@@ -24,8 +24,8 @@ export const App: React.FC = () => {
   const [showServerLogs, setShowServerLogs] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
-  const [showAnalytics, setShowAnalytics] = useState(false);
-  const [analyticsProject, setAnalyticsProject] = useState<string | undefined>(undefined);
+  // const [showAnalytics, setShowAnalytics] = useState(false);
+  // const [analyticsProject, setAnalyticsProject] = useState<string | undefined>(undefined);
   // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -408,11 +408,11 @@ export const App: React.FC = () => {
       }
       
       // Ctrl+Y for analytics
-      if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
-        e.preventDefault();
-        setAnalyticsProject(undefined); // Reset to all analytics
-        setShowAnalytics(true);
-      }
+      // if ((e.ctrlKey || e.metaKey) && e.key === 'y') {
+      //   e.preventDefault();
+      //   setAnalyticsProject(undefined); // Reset to all analytics
+      //   setShowAnalytics(true);
+      // }
       
       // Ctrl+Shift+L for server logs
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'L') {
@@ -551,10 +551,10 @@ export const App: React.FC = () => {
       onDragLeave={handleGlobalDragLeave}
       onContextMenu={handleGlobalContextMenu}
     >
-      <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} onAnalyticsClick={() => {
+      <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} /* onAnalyticsClick={() => {
         setAnalyticsProject(undefined);
         setShowAnalytics(true);
-      }} />
+      }} */ />
       <TitleBar onSettingsClick={() => setShowSettings(true)} />
       <SessionTabs />
       <ConnectionStatus />
@@ -903,18 +903,18 @@ export const App: React.FC = () => {
           const projectName = projectPath
             .replace(/^-/, '/')
             .replace(/-/g, '/');
-          setAnalyticsProject(projectName);
-          setShowAnalytics(true);
+          // setAnalyticsProject(projectName);
+          // setShowAnalytics(true);
         }}
       />
-      <AnalyticsModal
+      {/* <AnalyticsModal
         isOpen={showAnalytics}
         onClose={() => {
           setShowAnalytics(false);
           setAnalyticsProject(undefined);
         }}
         initialProject={analyticsProject}
-      />
+      /> */}
     </div>
   );
 };
