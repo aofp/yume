@@ -422,12 +422,12 @@ export const SessionTabs: React.FC = () => {
                   if (moved) {
                     // Update drag preview position - offset more to avoid cursor interference
                     if (dragPreview) {
-                      // Account for zoom level by calculating zoom from viewport dimensions
-                      const zoomFactor = window.outerWidth / window.innerWidth;
-                      const offsetX = 15 / zoomFactor;
-                      const offsetY = 15 / zoomFactor;
-                      dragPreview.style.left = `${moveEvent.clientX + offsetX}px`;
-                      dragPreview.style.top = `${moveEvent.clientY + offsetY}px`;
+                      // Get zoom level from body style or default to 1
+                      const zoomLevel = parseFloat(document.body.style.zoom || '1');
+                      const offsetX = 15;
+                      const offsetY = 15;
+                      dragPreview.style.left = `${moveEvent.clientX / zoomLevel + offsetX}px`;
+                      dragPreview.style.top = `${moveEvent.clientY / zoomLevel + offsetY}px`;
                     }
                     
                     // Ensure cursor stays as grabbing

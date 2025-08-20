@@ -334,7 +334,7 @@ body.tab-dragging * {
   align-items: center;
   justify-content: center;
   border-radius: 6px; /* Uniform radius */
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -382,7 +382,7 @@ body.tab-dragging * {
   align-items: center;
   justify-content: center;
   border-radius: 6px;
-  transition: all 0.2s ease;
+  transition: all 0.1s ease;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;

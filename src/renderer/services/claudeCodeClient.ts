@@ -354,7 +354,15 @@ export class ClaudeCodeClient {
       }
       
       console.log(`⛔ Interrupting session ${sessionId}`);
+      
+      // Add timeout in case server doesn't respond
+      const timeoutId = setTimeout(() => {
+        console.warn(`⚠️ Interrupt timeout for session ${sessionId} - resolving anyway`);
+        resolve();
+      }, 5000); // 5 second timeout
+      
       this.socket.emit('interrupt', { sessionId }, (response: any) => {
+        clearTimeout(timeoutId);
         if (response?.success) {
           console.log(`✅ Interrupted session ${sessionId}`);
           resolve();

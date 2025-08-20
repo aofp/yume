@@ -827,6 +827,25 @@ pre.edit-diff {
   color: var(--color-cyan) !important;
 }
 
+/* Enhanced diff with context lines */
+.edit-diff .diff-line-changed {
+  color: var(--color-cyan);
+  display: block;
+  font-weight: bold;
+}
+
+.edit-diff .diff-line-context {
+  color: rgba(255, 255, 255, 0.4);
+  display: block;
+}
+
+.edit-diff .diff-line-separator {
+  color: rgba(255, 255, 255, 0.3);
+  display: block;
+  text-align: center;
+  margin: 2px 0;
+}
+
 .diff-separator {
   color: #999;
   font-size: 11px;

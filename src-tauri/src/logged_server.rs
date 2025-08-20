@@ -2618,19 +2618,18 @@ io.on('connection', (socket) => {
       // Determine if we're resuming or recreating
       let isResuming = false;
       
-      // Use --resume if we have a claudeSessionId AND the last conversation wasn't interrupted
-      isResuming = session.claudeSessionId && !session.wasInterrupted;
+      // Use --resume if we have a claudeSessionId (even after interrupt)
+      isResuming = session.claudeSessionId;
       if (isResuming) {
         args.push('--resume', session.claudeSessionId);
         console.log('🔄 Using --resume flag with session:', session.claudeSessionId);
-      } else {
+        // Reset interrupt flag after resuming
         if (session.wasInterrupted) {
-          console.log('📝 Starting fresh conversation (last conversation was interrupted)');
-          session.wasInterrupted = false; // Reset the flag
-          session.claudeSessionId = null; // Clear the invalid session ID
-        } else {
-          console.log('📝 Starting fresh conversation (no previous session)');
+          console.log('📝 Resuming after interrupt');
+          session.wasInterrupted = false;
         }
+      } else {
+        console.log('📝 Starting fresh conversation (no previous session)');
       }
 
       // Spawn claude process with proper PATH for Node.js
@@ -2807,9 +2806,11 @@ io.on('connection', (socket) => {
         }
         
         session.pendingContextRestore = false; // Reset flag
-      } else if (message && !isResuming && !claudeProcess.inputHandled) {
+      } else if (message && !claudeProcess.inputHandled) {
+        // ALWAYS send the message, whether resuming or not
+        // When resuming, --resume restores history but we still need to send the new message
         const messageToSend = message + '\n';
-        console.log(`📝 Sending message to claude via stdin (${message.length} chars)`);
+        console.log(`📝 Sending message to claude via stdin (${message.length} chars) - resuming=${isResuming}`);
         
         // Write immediately - Claude with --print needs input right away
         claudeProcess.stdin.write(messageToSend, (err) => {
@@ -2823,8 +2824,8 @@ io.on('connection', (socket) => {
         });
       } else if (claudeProcess.inputHandled) {
         console.log(`📝 Message already embedded in WSL script`);
-      } else if (isResuming) {
-        console.log(`📝 Resuming session - no input needed`);
+      } else if (!message) {
+        console.log(`📝 No message to send`);
       }
       
       // Generate title with Sonnet (fire and forget) - only for first message
@@ -2854,15 +2855,6 @@ io.on('connection', (socket) => {
             console.log(`🏷️ Title successfully generated for session ${sessionId}`);
             session.hasGeneratedTitle = true;
           });
-          // Add retry logic if title generation fails
-          setTimeout(() => {
-            if (!session.hasGeneratedTitle) {
-              console.log(`🏷️ Retrying title generation for session ${sessionId}`);
-              generateTitle(sessionId, textContent, socket, () => {
-                session.hasGeneratedTitle = true;
-              });
-            }
-          }, 5000); // Retry after 5 seconds if first attempt fails
         } else {
           console.log(`🏷️ Skipping title generation - text too short: "${textContent}"`);
         }
@@ -3067,11 +3059,114 @@ io.on('connection', (socket) => {
             // Handle tool results from user messages
             for (const block of jsonData.message.content) {
               if (block.type === 'tool_result') {
+                // Check if this is an Edit/MultiEdit tool result and enhance with context lines
+                let enhancedContent = block.content;
+                
+                if (typeof block.content === 'string' && 
+                    (block.content.includes('has been updated') || block.content.includes('Applied') && block.content.includes('edits to'))) {
+                  
+                  // Extract file path from the content
+                  const filePathMatch = block.content.match(/The file (.+?) has been updated/) || 
+                                        block.content.match(/Applied \d+ edits? to (.+?):/);
+                  
+                  if (filePathMatch) {
+                    const filePath = filePathMatch[1];
+                    const fullPath = join(session.workingDirectory || process.cwd(), filePath);
+                    
+                    // Try to read the file and add context lines
+                    try {
+                      if (existsSync(fullPath)) {
+                        const fileContent = readFileSync(fullPath, 'utf8');
+                        const fileLines = fileContent.split('\n');
+                        
+                        // Parse the diff lines to find changed line numbers
+                        const diffLines = block.content.split('\n');
+                        const lineNumberRegex = /^\s*(\d+)→/;
+                        const changedLineNumbers = new Set();
+                        
+                        diffLines.forEach(line => {
+                          const match = line.match(lineNumberRegex);
+                          if (match) {
+                            changedLineNumbers.add(parseInt(match[1]));
+                          }
+                        });
+                        
+                        // If we found changed lines, enhance the output with context
+                        if (changedLineNumbers.size > 0) {
+                          const contextLines = 3; // Number of context lines to show
+                          const enhancedDiffLines = [];
+                          
+                          // Add the header from original content
+                          const headerEndIdx = diffLines.findIndex(line => line.includes("Here's the result of running"));
+                          if (headerEndIdx >= 0) {
+                            enhancedDiffLines.push(...diffLines.slice(0, headerEndIdx + 1));
+                          }
+                          
+                          // Process each changed line number
+                          const sortedLineNumbers = Array.from(changedLineNumbers).sort((a, b) => a - b);
+                          let lastPrintedLine = -999; // Track last printed line to avoid duplicates
+                          
+                          sortedLineNumbers.forEach(lineNum => {
+                            const startLine = Math.max(1, lineNum - contextLines);
+                            const endLine = Math.min(fileLines.length, lineNum + contextLines);
+                            
+                            // Add context before
+                            for (let i = startLine; i < lineNum; i++) {
+                              if (i > lastPrintedLine) {
+                                const paddedLineNum = String(i).padStart(6, ' ');
+                                if (!changedLineNumbers.has(i)) {
+                                  enhancedDiffLines.push(`${paddedLineNum} ${fileLines[i - 1]}`);
+                                } else {
+                                  // This is a changed line, show with arrow
+                                  enhancedDiffLines.push(`${paddedLineNum}→${fileLines[i - 1]}`);
+                                }
+                                lastPrintedLine = i;
+                              }
+                            }
+                            
+                            // Add the changed line (it's already in the diff)
+                            const paddedLineNum = String(lineNum).padStart(6, ' ');
+                            if (lineNum > lastPrintedLine) {
+                              enhancedDiffLines.push(`${paddedLineNum}→${fileLines[lineNum - 1]}`);
+                              lastPrintedLine = lineNum;
+                            }
+                            
+                            // Add context after
+                            for (let i = lineNum + 1; i <= endLine; i++) {
+                              if (i > lastPrintedLine) {
+                                const paddedLineNum = String(i).padStart(6, ' ');
+                                if (!changedLineNumbers.has(i)) {
+                                  enhancedDiffLines.push(`${paddedLineNum} ${fileLines[i - 1]}`);
+                                } else {
+                                  // This is a changed line, show with arrow
+                                  enhancedDiffLines.push(`${paddedLineNum}→${fileLines[i - 1]}`);
+                                }
+                                lastPrintedLine = i;
+                              }
+                            }
+                            
+                            // Add separator if there's a gap to next change
+                            const nextLineNum = sortedLineNumbers[sortedLineNumbers.indexOf(lineNum) + 1];
+                            if (nextLineNum && nextLineNum > endLine + 1) {
+                              enhancedDiffLines.push('   ...');
+                            }
+                          });
+                          
+                          enhancedContent = enhancedDiffLines.join('\n');
+                        }
+                      }
+                    } catch (err) {
+                      console.log(`Could not enhance Edit output with context lines: ${err.message}`);
+                      // Keep original content if file reading fails
+                    }
+                  }
+                }
+                
                 socket.emit(`message:${sessionId}`, {
                   type: 'tool_result',
                   message: {
                     tool_use_id: block.tool_use_id,
-                    content: block.content,
+                    content: enhancedContent,
                     is_error: block.is_error
                   },
                   timestamp: Date.now(),
@@ -3207,6 +3302,8 @@ io.on('connection', (socket) => {
               model: model || 'unknown' // Use model from outer scope directly
             };
             console.log(`   - Model in result message: ${resultMessage.model}`);
+            console.log(`   - Usage in result message:`, resultMessage.usage);
+            console.log(`   - Full result message:`, JSON.stringify(resultMessage, null, 2));
             socket.emit(`message:${sessionId}`, resultMessage);
             messageCount++;
           }
@@ -3547,9 +3644,18 @@ io.on('connection', (socket) => {
     }
   }
 
-  socket.on('interrupt', ({ sessionId }) => {
+  socket.on('interrupt', ({ sessionId }, callback) => {
     const process = activeProcesses.get(sessionId);
     const session = sessions.get(sessionId);
+    
+    // Clear the spawn queue on interrupt to prevent stale messages from being sent
+    // This is important when user interrupts and immediately sends a new message
+    const queueLengthBefore = processSpawnQueue.length;
+    if (queueLengthBefore > 0) {
+      processSpawnQueue.length = 0; // Clear the entire queue
+      console.log(`🧹 Cleared ${queueLengthBefore} queued messages after interrupt`);
+    }
+    
     if (process) {
       console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${process.pid})`);
       
@@ -3568,10 +3674,10 @@ io.on('connection', (socket) => {
       activeProcesses.delete(sessionId);
       activeProcessStartTimes.delete(sessionId);
       
-      // Mark session as interrupted but keep the session ID for potential resume
+      // Mark session as interrupted for proper resume handling
       if (session) {
         session.wasInterrupted = true;
-        console.log(`🔄 Marked session ${sessionId} as interrupted`);
+        console.log(`🔄 Session ${sessionId} interrupted - marked wasInterrupted=true for followup`);
       }
       
       // If we have a last assistant message, mark it as done streaming
@@ -3592,6 +3698,16 @@ io.on('connection', (socket) => {
         message: 'task interrupted by user',
         timestamp: Date.now()
       });
+      
+      // Send callback response so client knows interrupt completed
+      if (callback) {
+        callback({ success: true });
+      }
+    } else {
+      // No active process to interrupt
+      if (callback) {
+        callback({ success: true });
+      }
     }
   });
   

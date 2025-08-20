@@ -1777,35 +1777,47 @@ const MessageRendererBase: React.FC<{
         const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
         
         // Extract line numbers from the diff output
-        // Look for lines like "   473→/* macOS-specific..." 
-        const lineNumberRegex = /^\s*(\d+)→/;
-        let lineNumbers: number[] = [];
-        diffLines.forEach(line => {
-          const match = line.match(lineNumberRegex);
-          if (match) {
-            lineNumbers.push(parseInt(match[1]));
+        // Look for lines like "   473→/* macOS-specific..." for changed lines
+        // or "   473 /* context */" for context lines
+        const changedLineRegex = /^\s*(\d+)→/;
+        const contextLineRegex = /^\s*(\d+)\s/;
+        let changedLineNumbers: number[] = [];
+        
+        // Process diff lines to identify changed vs context lines and format them
+        const processedDiffLines = diffLines.map(line => {
+          const changedMatch = line.match(changedLineRegex);
+          const contextMatch = line.match(contextLineRegex);
+          
+          if (changedMatch) {
+            const lineNum = parseInt(changedMatch[1]);
+            changedLineNumbers.push(lineNum);
+            // This is a changed line - highlight it
+            return `<span class="diff-line-changed">${line}</span>`;
+          } else if (contextMatch && !line.trim().startsWith('...')) {
+            // This is a context line - show in dimmed color
+            return `<span class="diff-line-context">${line}</span>`;
+          } else if (line.trim() === '...') {
+            // Separator between non-contiguous sections
+            return `<span class="diff-line-separator">${line}</span>`;
+          } else {
+            return line;
           }
         });
         
-        // Get unique line numbers and create a range
-        lineNumbers = [...new Set(lineNumbers)].sort((a, b) => a - b);
-        const lineRange = lineNumbers.length > 0 
-          ? lineNumbers.length === 1 
-            ? `line ${lineNumbers[0]}` 
-            : `lines ${lineNumbers[0]}-${lineNumbers[lineNumbers.length - 1]}`
-          : '';
+        // Get unique changed line numbers for the header
+        changedLineNumbers = [...new Set(changedLineNumbers)].sort((a, b) => a - b);
         
-        // Display the edit result with line numbers AND the diff
+        // Display the edit result with line numbers AND the enhanced diff
         return (
           <div className="message tool-message">
             <div className="tool-use standalone">
               <IconEdit size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">edited</span>
-              <span className="tool-detail">{filePath}{lineNumbers.length > 0 ? `:${lineNumbers[0]}` : ''}</span>
+              <span className="tool-detail">{filePath}{changedLineNumbers.length > 0 ? `:${changedLineNumbers[0]}` : ''}</span>
             </div>
-            {diffLines.length > 0 && (
+            {processedDiffLines.length > 0 && (
               <div className="tool-result file-edit">
-                <pre className="edit-diff">{diffLines.join('\n')}</pre>
+                <pre className="edit-diff" dangerouslySetInnerHTML={{ __html: processedDiffLines.join('\n') }} />
               </div>
             )}
           </div>

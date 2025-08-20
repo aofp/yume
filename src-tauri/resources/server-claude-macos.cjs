@@ -258,6 +258,7 @@ let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMe
 let allAssistantMessageIds = new Map();  // Map of sessionId -> Array of all assistant message IDs
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
+let activeFileOperations = new Map(); // Map of sessionId -> Set of active tool_use IDs for file operations
 
 // Session persistence to disk for recovery after restart
 class SessionPersistence {
@@ -1407,9 +1408,9 @@ io.on('connection', (socket) => {
           
           // Mark session as interrupted since we killed the process
           session.wasInterrupted = true;
-          // Clear the session ID since the conversation was interrupted
-          session.claudeSessionId = null;
-          console.log(`🔄 Marked session ${sessionId} as interrupted and cleared claudeSessionId`);
+          // DON'T clear the session ID - we want to resume the conversation with the new message
+          // session.claudeSessionId = null; // REMOVED - keep session ID for resume
+          console.log(`🔄 Marked session ${sessionId} as interrupted but keeping claudeSessionId=${session.claudeSessionId} for resume`);
           
           // Wait a bit for the process to fully terminate
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -1437,18 +1438,18 @@ io.on('connection', (socket) => {
         console.log(`🤖 Using model: ${model}`);
       }
       
-      // Use --resume if we have a claudeSessionId AND the last conversation wasn't interrupted
-      if (session.claudeSessionId && !session.wasInterrupted) {
+      // Use --resume if we have a claudeSessionId (even after interrupt)
+      console.log(`🔍 Session state check: claudeSessionId=${session.claudeSessionId}, wasInterrupted=${session.wasInterrupted}`);
+      if (session.claudeSessionId) {
         args.push('--resume', session.claudeSessionId);
         console.log('🔄 Using --resume flag with session:', session.claudeSessionId);
-      } else {
+        // Reset interrupt flag after resuming
         if (session.wasInterrupted) {
-          console.log('📝 Starting fresh conversation (last conversation was interrupted)');
-          session.wasInterrupted = false; // Reset the flag
-          session.claudeSessionId = null; // Clear the invalid session ID
-        } else {
-          console.log('📝 Starting fresh conversation (no previous session)');
+          console.log('📝 Resuming after interrupt');
+          session.wasInterrupted = false;
         }
+      } else {
+        console.log('📝 Starting fresh conversation (no previous session)');
       }
 
       // Spawn claude process with proper PATH for Node.js
@@ -1671,6 +1672,9 @@ Use <thinking> tags extensively to show your reasoning process.`;
       // Store health check interval for cleanup
       streamHealthChecks.set(sessionId, streamHealthInterval);
       
+      // Flag to prevent duplicate processing after retry
+      let isRetrying = false;
+      
       // Set overall stream timeout (10 minutes max per stream)
       const streamTimeout = setTimeout(() => {
         console.warn(`⏰ Stream timeout reached for session ${sessionId} after 10 minutes`);
@@ -1683,6 +1687,12 @@ Use <thinking> tags extensively to show your reasoning process.`;
       streamTimeouts.set(sessionId, streamTimeout);
       
       const processStreamLine = (line) => {
+        // Don't process any more lines if we're retrying
+        if (isRetrying) {
+          console.log(`🔸 [${sessionId}] Skipping line processing - retry in progress`);
+          return;
+        }
+        
         if (!line.trim()) {
           console.log(`🔸 [${sessionId}] Empty line received`);
           return;
@@ -1727,6 +1737,17 @@ Use <thinking> tags extensively to show your reasoning process.`;
                   contentBlocks.push(block);
                 } else if (block.type === 'tool_use') {
                   hasToolUse = true;
+                  
+                  // Track file operations to prevent interrupting during writes
+                  const fileOperationTools = ['Edit', 'Write', 'MultiEdit', 'NotebookEdit'];
+                  if (fileOperationTools.includes(block.name)) {
+                    if (!activeFileOperations.has(sessionId)) {
+                      activeFileOperations.set(sessionId, new Set());
+                    }
+                    activeFileOperations.get(sessionId).add(block.id);
+                    console.log(`📝 [${sessionId}] Started file operation: ${block.name} (${block.id})`);
+                  }
+                  
                   // Send tool use as separate message immediately
                   socket.emit(`message:${sessionId}`, {
                     type: 'tool_use',
@@ -1786,6 +1807,18 @@ Use <thinking> tags extensively to show your reasoning process.`;
             // Handle tool results from user messages
             for (const block of jsonData.message.content) {
               if (block.type === 'tool_result') {
+                // Clear completed file operation from tracking
+                if (activeFileOperations.has(sessionId)) {
+                  const fileOps = activeFileOperations.get(sessionId);
+                  if (fileOps.has(block.tool_use_id)) {
+                    fileOps.delete(block.tool_use_id);
+                    console.log(`✅ [${sessionId}] Completed file operation: ${block.tool_use_id}`);
+                    if (fileOps.size === 0) {
+                      activeFileOperations.delete(sessionId);
+                    }
+                  }
+                }
+                
                 socket.emit(`message:${sessionId}`, {
                   type: 'tool_result',
                   message: {
@@ -1905,15 +1938,236 @@ Use <thinking> tags extensively to show your reasoning process.`;
         lastDataTime = Date.now();
         
         // Check if this is a "No conversation found" error
-        if (error.includes('No conversation found with session ID')) {
-          console.log(`🔄 Resume failed - clearing invalid session ID and retrying with fresh conversation`);
+        if (error.includes('No conversation found with session ID') && !isRetrying) {
+          isRetrying = true; // Set flag to prevent duplicate retry
+          console.log(`🔄 Resume failed - session not found in Claude storage`);
+          console.log(`🔄 Clearing invalid session ID - will use fresh conversation on next message`);
           
-          // Clear the invalid session ID
+          // Clear the invalid session ID so next message starts fresh
           session.claudeSessionId = null;
           session.wasInterrupted = false;
           
-          // Don't emit the error to client, just log it
-          console.log(`🔄 Will start fresh on next message`);
+          // Kill the current process 
+          if (claudeProcess && !claudeProcess.killed) {
+            console.log(`🛑 Killing failed resume process (PID: ${claudeProcess.pid})`);
+            // Remove all listeners to prevent duplicate processing
+            claudeProcess.stdout.removeAllListeners();
+            claudeProcess.stderr.removeAllListeners();
+            claudeProcess.removeAllListeners();
+            claudeProcess.kill('SIGINT');
+          }
+          
+          // Remove current process from tracking
+          activeProcesses.delete(sessionId);
+          activeProcessStartTimes.delete(sessionId);
+          
+          // Clear any health checks and timeouts for the failed process
+          if (streamHealthChecks.has(sessionId)) {
+            clearInterval(streamHealthChecks.get(sessionId));
+            streamHealthChecks.delete(sessionId);
+          }
+          if (streamTimeouts.has(sessionId)) {
+            clearTimeout(streamTimeouts.get(sessionId));
+            streamTimeouts.delete(sessionId);
+          }
+          
+          // Send error result to frontend with requiresCheckpointRestore flag
+          const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+          const errorResultMessage = {
+            id: errorResultId,
+            type: 'result',
+            subtype: 'error',
+            is_error: true,
+            error: 'Session not found - please try sending your message again',
+            requiresCheckpointRestore: true,
+            streaming: false,
+            timestamp: Date.now()
+          };
+          const channel = `message:${sessionId}`;
+          console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore flag`);
+          socket.emit(channel, errorResultMessage);
+          
+          // Don't retry automatically - let the frontend handle resending
+          console.log(`📤 [${sessionId}] Sent checkpoint restore signal - frontend should resend message`);
+          return; // Stop processing this request
+          
+          /* BROKEN RETRY CODE - COMMENTED OUT
+            const retryStreamHealthInterval = setInterval(() => {
+              const timeSinceLastData = Date.now() - lastDataTime;
+              const streamDuration = Date.now() - streamStartTime;
+              console.log(`🩺 [${sessionId}] RETRY duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | alive: ${activeProcesses.has(sessionId)}`);
+              
+              if (timeSinceLastData > 30000) {
+                console.error(`⚠️ WARNING: No retry data received for ${timeSinceLastData}ms!`);
+                socket.emit(`keepalive:${sessionId}`, { timestamp: Date.now() });
+              }
+              
+              if (timeSinceLastData > 300000) {
+                console.error(`💀 Retry stream appears dead after ${timeSinceLastData}ms, cleaning up`);
+                if (activeProcesses.has(sessionId)) {
+                  const proc = activeProcesses.get(sessionId);
+                  proc.kill('SIGTERM');
+                  activeProcesses.delete(sessionId);
+                  activeProcessStartTimes.delete(sessionId);
+                }
+                clearInterval(retryStreamHealthInterval);
+              }
+            }, 5000);
+            
+            // Store health check interval for cleanup
+            streamHealthChecks.set(sessionId, retryStreamHealthInterval);
+            
+            // Set overall stream timeout for retry
+            const retryStreamTimeout = setTimeout(() => {
+              console.warn(`⏰ Retry stream timeout reached for session ${sessionId} after 10 minutes`);
+              if (activeProcesses.has(sessionId)) {
+                const proc = activeProcesses.get(sessionId);
+                proc.kill('SIGTERM');
+                activeProcesses.delete(sessionId);
+                activeProcessStartTimes.delete(sessionId);
+              }
+            }, 600000); // 10 minutes
+            
+            streamTimeouts.set(sessionId, retryStreamTimeout);
+            
+            // Store the message before any async operations - capture it from outer scope
+            const retryMessage = message;
+            console.log(`📝 Captured message for retry: "${retryMessage}"`);
+            
+            // Wait for process to be ready before sending message
+            setTimeout(() => {
+              // Send the same message to new process
+              if (retryMessage && retryProcess && !retryProcess.killed) {
+                let messageToSend = retryMessage;
+                if (retryMessage.trim().toLowerCase() === 'ultrathink' || retryMessage.trim().toLowerCase() === 'ultrathink.') {
+                  messageToSend = 'Please think deeply and thoroughly about this request, exploring multiple angles and considering edge cases before providing your response.';
+                }
+                
+                console.log(`📝 About to send retry message to claude (${messageToSend.length} chars)`);
+                console.log(`📝 Full retry message content: "${messageToSend}"`);
+                console.log(`📝 Process alive: ${!retryProcess.killed}, PID: ${retryProcess.pid}`);
+                try {
+                  retryProcess.stdin.write(messageToSend + '\n');
+                  retryProcess.stdin.end();
+                  console.log(`✅ Retry message sent successfully`);
+                } catch (e) {
+                  console.error(`❌ Failed to send message to retry process:`, e);
+                  socket.emit(`message:${sessionId}`, { 
+                    type: 'error',
+                    error: 'Failed to send message after retry', 
+                    streaming: false 
+                  });
+                }
+              } else {
+                console.log(`⚠️ No message to retry or process killed`);
+              }
+            }, 200); // Slightly longer delay to ensure process is ready
+            
+            // Re-attach same handlers to new process but don't use the old processStreamLine
+            // since it checks isRetrying flag which would prevent processing
+            retryProcess.stdout.on('data', (data) => {
+              const str = data.toString();
+              bytesReceived += data.length;
+              lastDataTime = Date.now();
+              
+              lineBuffer += str;
+              const lines = lineBuffer.split('\n');
+              lineBuffer = lines.pop() || '';
+              
+              for (let i = 0; i < lines.length; i++) {
+                // Process line directly without checking isRetrying since this IS the retry
+                const line = lines[i];
+                if (!line.trim()) continue;
+                
+                // Call the original processStreamLine logic but skip the isRetrying check
+                // by temporarily setting it to false for this processing
+                const wasRetrying = isRetrying;
+                isRetrying = false;
+                processStreamLine(line);
+                isRetrying = wasRetrying;
+              }
+            });
+            
+            // Handle stderr for retry process 
+            retryProcess.stderr.on('data', (data) => {
+              const error = data.toString();
+              console.error(`⚠️ [${sessionId}] Retry Claude stderr (${data.length} bytes):`, error);
+              
+              // Don't retry again if retry also fails - emit error this time
+              socket.emit(`message:${sessionId}`, { 
+                type: 'error',
+                error, 
+                claudeSessionId: session.claudeSessionId,
+                streaming: false 
+              });
+            });
+            
+            // Handle process exit for retry
+            retryProcess.on('close', (code) => {
+              // Same cleanup logic as original process
+              if (streamHealthChecks.has(sessionId)) {
+                clearInterval(streamHealthChecks.get(sessionId));
+                streamHealthChecks.delete(sessionId);
+              }
+              if (streamTimeouts.has(sessionId)) {
+                clearTimeout(streamTimeouts.get(sessionId));
+                streamTimeouts.delete(sessionId);
+              }
+              clearInterval(retryStreamHealthInterval);
+              
+              console.log(`👋 [${sessionId}] Retry Claude process exited with code ${code}`);
+              
+              // Clean up tracking
+              activeProcesses.delete(sessionId);
+              activeProcessStartTimes.delete(sessionId);
+              
+              // Send completion message
+              const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+              if (lastAssistantMessageId) {
+                socket.emit(`message:${sessionId}`, {
+                  type: 'assistant',
+                  id: lastAssistantMessageId,
+                  message: { content: '' },
+                  streaming: false,
+                  timestamp: Date.now()
+                });
+                lastAssistantMessageIds.delete(sessionId);
+              }
+              
+              isSpawningProcess = false;
+            });
+            
+            // Handle spawn error for retry
+            retryProcess.on('error', (err) => {
+              console.error(`❌ [${sessionId}] Failed to spawn retry claude:`, err);
+              // Clean up health monitoring
+              if (streamHealthChecks.has(sessionId)) {
+                clearInterval(streamHealthChecks.get(sessionId));
+                streamHealthChecks.delete(sessionId);
+              }
+              if (streamTimeouts.has(sessionId)) {
+                clearTimeout(streamTimeouts.get(sessionId));
+                streamTimeouts.delete(sessionId);
+              }
+              clearInterval(retryStreamHealthInterval);
+              
+              activeProcesses.delete(sessionId);
+              activeProcessStartTimes.delete(sessionId);
+              isSpawningProcess = false;
+              
+              socket.emit(`message:${sessionId}`, { 
+                type: 'error',
+                error: `Failed to retry after resume failure: ${err.message}`, 
+                claudeSessionId: session.claudeSessionId,
+                streaming: false 
+              });
+            });
+            
+          }, 100);
+          
+          // Don't emit the resume failure error to client since we're retrying
+          return;
+          END OF BROKEN RETRY CODE */
         } else {
           // Emit other errors to client
           socket.emit(`message:${sessionId}`, { 
@@ -1937,6 +2191,12 @@ Use <thinking> tags extensively to show your reasoning process.`;
           streamTimeouts.delete(sessionId);
         }
         clearInterval(streamHealthInterval);
+        
+        // Clean up file operations tracking
+        if (activeFileOperations.has(sessionId)) {
+          activeFileOperations.delete(sessionId);
+          console.log(`🧹 Cleared file operations tracking for session ${sessionId} on process close`);
+        }
         const streamDuration = Date.now() - streamStartTime;
         console.log(`👋 [${sessionId}] Claude process exited with code ${code}`);
         console.log(`📊 [${sessionId}] STREAM SUMMARY:`);
@@ -1948,11 +2208,15 @@ Use <thinking> tags extensively to show your reasoning process.`;
         activeProcessStartTimes.delete(sessionId);
         
         // Mark session as completed (not interrupted) when process exits normally
+        // BUT only if it wasn't already marked as interrupted (interrupt handler sets this)
         if (code === 0) {
           const session = sessions.get(sessionId);
-          if (session) {
+          if (session && !session.wasInterrupted) {
+            // Only mark as completed if it wasn't interrupted
             session.wasInterrupted = false;
             console.log(`✅ Marked session ${sessionId} as completed normally`);
+          } else if (session && session.wasInterrupted) {
+            console.log(`⚠️ Session ${sessionId} exited with code 0 but was interrupted - keeping wasInterrupted=true`);
           }
         } else if (code === 1) {
           // Exit code 1 often means --resume failed
@@ -2106,51 +2370,118 @@ Use <thinking> tags extensively to show your reasoning process.`;
     }
   }
 
-  socket.on('interrupt', ({ sessionId }) => {
+  socket.on('interrupt', ({ sessionId }, callback) => {
+    console.log(`🛑 INTERRUPT received for session ${sessionId}`);
     const process = activeProcesses.get(sessionId);
     const session = sessions.get(sessionId);
-    if (process) {
-      console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${process.pid})`);
+    
+    // Check if there are active file operations
+    const fileOps = activeFileOperations.get(sessionId);
+    if (fileOps && fileOps.size > 0) {
+      console.log(`⏳ [${sessionId}] Waiting for ${fileOps.size} file operation(s) to complete before interrupting...`);
       
-      // Kill the entire process group if on Unix
-      if (process.platform !== 'win32' && process.pid) {
-        try {
-          process.kill(-process.pid, 'SIGINT'); // Negative PID kills process group
-        } catch (e) {
-          // Fallback to regular kill
-          process.kill('SIGINT');
+      // Wait for file operations to complete (max 5 seconds)
+      const maxWaitTime = 5000;
+      const checkInterval = 100;
+      let waitTime = 0;
+      
+      const waitForFileOps = setInterval(() => {
+        waitTime += checkInterval;
+        const currentFileOps = activeFileOperations.get(sessionId);
+        
+        if (!currentFileOps || currentFileOps.size === 0 || waitTime >= maxWaitTime) {
+          clearInterval(waitForFileOps);
+          
+          if (waitTime >= maxWaitTime) {
+            console.log(`⚠️ [${sessionId}] Timeout waiting for file operations, interrupting anyway`);
+          } else {
+            console.log(`✅ [${sessionId}] File operations completed, proceeding with interrupt`);
+          }
+          
+          // Proceed with interrupt
+          performInterrupt();
         }
-      } else {
-        process.kill('SIGINT');  // Use SIGINT for graceful interrupt
+      }, checkInterval);
+      
+      return; // Exit early, performInterrupt will be called when ready
+    }
+    
+    // No file operations, proceed immediately
+    performInterrupt();
+    
+    function performInterrupt() {
+      // Clear the spawn queue on interrupt to prevent stale messages from being sent
+      // This is important when user interrupts and immediately sends a new message
+      const queueLengthBefore = processSpawnQueue.length;
+      if (queueLengthBefore > 0) {
+        processSpawnQueue.length = 0; // Clear the entire queue
+        console.log(`🧹 Cleared ${queueLengthBefore} queued messages after interrupt`);
       }
       
-      activeProcesses.delete(sessionId);
-      activeProcessStartTimes.delete(sessionId);
-      
-      // Mark session as interrupted but keep the session ID for potential resume
-      if (session) {
-        session.wasInterrupted = true;
-        console.log(`🔄 Marked session ${sessionId} as interrupted`);
-      }
-      
-      // If we have a last assistant message, mark it as done streaming
-      const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-      if (lastAssistantMessageId) {
+      if (process) {
+        console.log(`🛑 Found active process for session ${sessionId} (PID: ${process.pid})`);
+        
+        // Kill the entire process group if on Unix
+        if (process.platform !== 'win32' && process.pid) {
+          try {
+            process.kill(-process.pid, 'SIGINT'); // Negative PID kills process group
+          } catch (e) {
+            // Fallback to regular kill
+            process.kill('SIGINT');
+          }
+        } else {
+          process.kill('SIGINT');  // Use SIGINT for graceful interrupt
+        }
+        
+        activeProcesses.delete(sessionId);
+        activeProcessStartTimes.delete(sessionId);
+        
+        // Mark session as interrupted for proper resume handling
+        if (session) {
+          console.log(`🔄 Marking session ${sessionId} as interrupted (claudeSessionId: ${session.claudeSessionId})`);
+          session.wasInterrupted = true;
+          // Don't clear claudeSessionId here - keep it for potential resume
+          console.log(`🔄 Session ${sessionId} interrupted - marked wasInterrupted=true for followup`);
+        } else {
+          console.log(`⚠️ No session found for ${sessionId} during interrupt`);
+        }
+        
+        // If we have a last assistant message, mark it as done streaming
+        const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+        if (lastAssistantMessageId) {
+          socket.emit(`message:${sessionId}`, {
+            type: 'assistant',
+            id: lastAssistantMessageId,
+            streaming: false,
+            timestamp: Date.now()
+          });
+          lastAssistantMessageIds.delete(sessionId);
+        }
+        
         socket.emit(`message:${sessionId}`, {
-          type: 'assistant',
-          id: lastAssistantMessageId,
-          streaming: false,
+          type: 'system',
+          subtype: 'interrupted',
+          message: 'task interrupted by user',
           timestamp: Date.now()
         });
-        lastAssistantMessageIds.delete(sessionId);
+        
+        // Send callback response so client knows interrupt completed
+        if (callback) {
+          callback({ success: true });
+        }
+      } else {
+        console.log(`⚠️ No active process found for session ${sessionId} during interrupt`);
+        // No active process to interrupt
+        if (callback) {
+          callback({ success: true });
+        }
       }
       
-      socket.emit(`message:${sessionId}`, {
-        type: 'system',
-        subtype: 'interrupted',
-        message: 'task interrupted by user',
-        timestamp: Date.now()
-      });
+      // Clear any remaining file operations tracking for this session
+      if (activeFileOperations.has(sessionId)) {
+        activeFileOperations.delete(sessionId);
+        console.log(`🧹 Cleared file operations tracking for session ${sessionId}`);
+      }
     }
   });
   

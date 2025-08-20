@@ -774,72 +774,85 @@ export const ClaudeChat: React.FC = () => {
 
   // Helper function to handle delayed sends
   const handleDelayedSend = async (content: string, attachments: Attachment[], sessionId: string) => {
-    // Check if session is read-only before sending
-    const targetSession = sessions.find(s => s.id === sessionId);
-    if (targetSession?.readOnly) {
-      console.log('[ClaudeChat] Cannot send delayed message - session is read-only');
-      return;
-    }
-    
-    // Build message content with attachments
-    let messageContent = content;
-    if (attachments.length > 0) {
-      const contentBlocks = [];
+    try {
+      // Check if session is read-only before sending
+      const targetSession = sessions.find(s => s.id === sessionId);
+      if (targetSession?.readOnly) {
+        console.log('[ClaudeChat] Cannot send delayed message - session is read-only');
+        setPendingFollowupMessage(null);
+        return;
+      }
       
-      // Add all attachments as content blocks
-      for (const attachment of attachments) {
-        if (attachment.type === 'image') {
-          contentBlocks.push({
-            type: 'image',
-            source: {
-              type: 'base64',
-              media_type: attachment.content.startsWith('data:image/png') ? 'image/png' : 'image/jpeg',
-              data: attachment.content.split(',')[1]
-            }
-          });
-        } else if (attachment.type === 'text') {
-          // Include text attachments as part of the message
-          contentBlocks.push({
-            type: 'text',
-            text: `[Attached text]:\n${attachment.content}`
-          });
+      // Build message content with attachments
+      let messageContent = content;
+      if (attachments.length > 0) {
+        const contentBlocks = [];
+        
+        // Add all attachments as content blocks
+        for (const attachment of attachments) {
+          if (attachment.type === 'image') {
+            contentBlocks.push({
+              type: 'image',
+              source: {
+                type: 'base64',
+                media_type: attachment.content.startsWith('data:image/png') ? 'image/png' : 'image/jpeg',
+                data: attachment.content.split(',')[1]
+              }
+            });
+          } else if (attachment.type === 'text') {
+            // Include text attachments as part of the message
+            contentBlocks.push({
+              type: 'text',
+              text: `[Attached text]:\n${attachment.content}`
+            });
+          }
         }
+        
+        // Add the main message text
+        if (content.trim()) {
+          contentBlocks.push({ type: 'text', text: content });
+        }
+        
+        messageContent = JSON.stringify(contentBlocks);
       }
       
-      // Add the main message text
-      if (content.trim()) {
-        contentBlocks.push({ type: 'text', text: content });
+      // Clear drafts after sending
+      updateSessionDraft(sessionId, '', []);
+      
+      // Track when streaming starts for this session
+      // Don't clear if already streaming - preserve the tracking
+      const session = sessions.find(s => s.id === sessionId);
+      const isFirstMessage = !session?.messages?.some(m => m.type === 'user');
+      if ((isFirstMessage || !streamingStartTimeRef.current[sessionId]) && !session?.streaming) {
+        streamingStartTimeRef.current[sessionId] = Date.now();
+        console.log('[ClaudeChat] Recording streaming start time for delayed send (first message):', sessionId);
       }
       
-      messageContent = JSON.stringify(contentBlocks);
+      await sendMessage(messageContent, false);
+      
+      // Clear pending message on success
+      setPendingFollowupMessage(null);
+      
+      // Mark as at bottom and force scroll after sending message
+      setIsAtBottom(prev => ({
+        ...prev,
+        [sessionId]: true
+      }));
+      
+      // Force scroll to bottom
+      requestAnimationFrame(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      });
+    } catch (error) {
+      console.error('[ClaudeChat] Failed to send delayed message:', error);
+      setPendingFollowupMessage(null);
+      
+      // Restore the input on error
+      setInput(content);
+      setAttachments(attachments);
     }
-    
-    // Clear drafts after sending
-    updateSessionDraft(sessionId, '', []);
-    
-    // Track when streaming starts for this session
-    // Don't clear if already streaming - preserve the tracking
-    const session = sessions.find(s => s.id === sessionId);
-    const isFirstMessage = !session?.messages?.some(m => m.type === 'user');
-    if ((isFirstMessage || !streamingStartTimeRef.current[sessionId]) && !session?.streaming) {
-      streamingStartTimeRef.current[sessionId] = Date.now();
-      console.log('[ClaudeChat] Recording streaming start time for delayed send (first message):', sessionId);
-    }
-    
-    await sendMessage(messageContent, bashCommandMode);
-    
-    // Mark as at bottom and force scroll after sending message
-    setIsAtBottom(prev => ({
-      ...prev,
-      [sessionId]: true
-    }));
-    
-    // Force scroll to bottom
-    requestAnimationFrame(() => {
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      }
-    });
   };
 
   const handleSend = async () => {
@@ -865,14 +878,22 @@ export const ClaudeChat: React.FC = () => {
     // Check if we need to delay this message (followup sent too soon after streaming started)
     // This prevents session crashes when sending followup messages too quickly
     if (currentSession?.streaming && currentSessionId) {
+      // Check if we have at least one assistant message with content - if not, we can't safely interrupt
+      // The session isn't established until Claude sends at least some response
+      const hasAssistantResponse = currentSession.messages.some(m => 
+        m.type === 'assistant' && m.content && m.content.length > 0
+      );
       const streamingStartTime = streamingStartTimeRef.current[currentSessionId];
-      if (streamingStartTime) {
-        const timeSinceStart = Date.now() - streamingStartTime;
-        const SAFE_DELAY = 5000; // 5 seconds - gives Claude CLI time to fully initialize
+      
+      if (!hasAssistantResponse) {
+        // No assistant response yet - must wait for Claude to establish session
+        const effectiveStartTime = streamingStartTime || Date.now();
+        const timeSinceStart = Date.now() - effectiveStartTime;
+        const SAFE_DELAY = 10000; // 10 seconds - wait for Claude to establish session and respond
         
         if (timeSinceStart < SAFE_DELAY) {
           const remainingDelay = SAFE_DELAY - timeSinceStart;
-          console.log(`[ClaudeChat] Delaying followup message by ${remainingDelay}ms to avoid session crash`);
+          console.log(`[ClaudeChat] Waiting for Claude to establish session - delaying ${remainingDelay}ms`);
           
           // Clear any existing pending followup
           if (pendingFollowupRef.current?.timeoutId) {
@@ -892,7 +913,7 @@ export const ClaudeChat: React.FC = () => {
           }
           
           // Show pending indicator
-          setPendingFollowupMessage(`waiting ${Math.ceil(remainingDelay / 1000)}s to send followup...`)
+          setPendingFollowupMessage(`waiting for claude to respond (${Math.ceil(remainingDelay / 1000)}s)...`)
           
           // Add to message history
           if (input.trim() && currentSessionId) {
@@ -905,9 +926,9 @@ export const ClaudeChat: React.FC = () => {
           
           // Schedule the actual send with countdown
           const updateCountdown = () => {
-            const remaining = SAFE_DELAY - (Date.now() - streamingStartTime);
+            const remaining = SAFE_DELAY - (Date.now() - effectiveStartTime);
             if (remaining > 0) {
-              setPendingFollowupMessage(`waiting ${Math.ceil(remaining / 1000)}s to send followup...`);
+              setPendingFollowupMessage(`waiting for claude to respond (${Math.ceil(remaining / 1000)}s)...`);
               setTimeout(updateCountdown, 500);
             } else {
               setPendingFollowupMessage(null);
@@ -920,9 +941,8 @@ export const ClaudeChat: React.FC = () => {
           // Schedule the actual send
           const timeoutId = setTimeout(() => {
             console.log('[ClaudeChat] Sending delayed followup message now');
-            setPendingFollowupMessage(null);
             pendingFollowupRef.current = null;
-            // Call sendMessage directly with the stored content
+            // Call handleDelayedSend - it will clear the pending message
             handleDelayedSend(messageToSend, attachmentsToSend, currentSessionId);
           }, remainingDelay);
           
@@ -935,6 +955,82 @@ export const ClaudeChat: React.FC = () => {
           
           return;
         }
+      } else if (hasAssistantResponse) {
+        // We have an assistant response - safe to interrupt and send immediately
+        console.log('[ClaudeChat] Interrupting stream to send new message (session established)');
+        
+        // Store the message content before clearing
+        const messageToSend = input;
+        const attachmentsToSend = [...attachments];
+        const bashMode = bashCommandMode;
+        
+        // Store the pending message in ref to preserve it during interrupt
+        pendingFollowupRef.current = {
+          sessionId: currentSessionId,
+          content: messageToSend,
+          attachments: attachmentsToSend
+        };
+        setPendingFollowupMessage('sending followup after interrupt...');
+        
+        // Clear input immediately
+        setInput('');
+        setAttachments([]);
+        setBashCommandMode(false);
+        if (inputRef.current) {
+          inputRef.current.style.height = '44px';
+          inputRef.current.style.overflow = 'hidden';
+        }
+        
+        // Add to message history
+        if (messageToSend.trim() && currentSessionId) {
+          setMessageHistory(prev => ({
+            ...prev,
+            [currentSessionId]: [...(prev[currentSessionId] || []).filter(m => m !== messageToSend), messageToSend].slice(-50)
+          }));
+          setHistoryIndex(-1);
+        }
+        
+        // Interrupt and then send
+        interruptSession().then(async () => {
+          // Small delay to ensure interrupt is processed
+          await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Check if we still have the pending message for this session
+          if (pendingFollowupRef.current && pendingFollowupRef.current.sessionId === currentSessionId) {
+            try {
+              await handleDelayedSend(
+                pendingFollowupRef.current.content, 
+                pendingFollowupRef.current.attachments, 
+                currentSessionId,
+                bashMode
+              );
+              pendingFollowupRef.current = null;
+              setPendingFollowupMessage(null);
+            } catch (error) {
+              console.error('[ClaudeChat] Failed to send followup after interrupt:', error);
+              setPendingFollowupMessage(null);
+              pendingFollowupRef.current = null;
+              
+              // Restore the input if send failed
+              setInput(messageToSend);
+              setAttachments(attachmentsToSend);
+              setBashCommandMode(bashMode);
+            }
+          } else {
+            setPendingFollowupMessage(null);
+          }
+        }).catch(error => {
+          console.error('[ClaudeChat] Failed to interrupt:', error);
+          setPendingFollowupMessage(null);
+          pendingFollowupRef.current = null;
+          
+          // Restore the input if interrupt failed
+          setInput(messageToSend);
+          setAttachments(attachmentsToSend);
+          setBashCommandMode(bashMode);
+        });
+        
+        return;
       }
     }
     

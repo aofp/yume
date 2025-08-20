@@ -75,6 +75,7 @@ export interface Session {
   pendingToolIds?: Set<string>; // Track pending tool operations by ID
   thinkingStartTime?: number; // Track when thinking started for this session
   readOnly?: boolean; // Mark sessions loaded from projects as read-only
+  initialized?: boolean; // Track if session has received first message from Claude (safe to interrupt)
 }
 
 interface ClaudeCodeStore {
@@ -634,6 +635,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   name: s.claudeTitle || s.name,
                   projectPath: s.workingDirectory
                 });
+              }
+              
+              // Mark session as initialized when we receive the first message from Claude
+              // This could be a system init message or any assistant message
+              if (!s.initialized && (message.type === 'system' || message.type === 'assistant')) {
+                console.log(`[Store] Session ${sessionId} initialized - received first message (${message.type})`);
+                s = { ...s, initialized: true };
               }
               
               const existingMessages = [...s.messages];
@@ -2079,6 +2087,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               thinkingStartTime: undefined,
               pendingToolIds: new Set(), // Clear pending tools on interrupt
               analytics: updatedAnalytics
+              // Keep claudeSessionId to maintain conversation context
             };
           }
           return s;
@@ -2089,15 +2098,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         await claudeCodeClient.interrupt(currentSessionId);
         
         // Don't add interrupt message here - server already sends it
+        // IMPORTANT: Keep claudeSessionId intact to allow resume after interrupt
         set(state => ({
-          sessions: state.sessions.map(s => 
-            s.id === currentSessionId 
-              ? { 
-                  ...s, 
-                  claudeSessionId: undefined // Clear Claude session ID after interrupt
-                } 
-              : s
-          ),
+          sessions: state.sessions,  // Don't modify sessions here - keep claudeSessionId for resume
           streamingMessage: ''
         }));
       } catch (error) {
