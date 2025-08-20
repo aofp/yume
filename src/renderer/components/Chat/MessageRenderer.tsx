@@ -1025,6 +1025,43 @@ const MessageRendererBase: React.FC<{
     return '';
   };
   switch (message.type) {
+    case 'error':
+      // Handle error messages from Claude not being installed
+      const errorContent = message.content || message.message || 'An error occurred';
+      const isInstallError = message.errorType === 'claude_not_installed';
+      
+      return (
+        <div className="message system-error">
+          <div className="message-content">
+            <div className="error-message" style={{ 
+              color: '#ff6b6b',
+              backgroundColor: 'rgba(255, 107, 107, 0.1)',
+              padding: '12px',
+              borderRadius: '8px',
+              border: '1px solid rgba(255, 107, 107, 0.2)',
+              fontFamily: 'monospace',
+              fontSize: '12px',
+              whiteSpace: 'pre-wrap'
+            }}>
+              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
+                <span style={{ fontSize: '14px' }}>❌</span>
+                <div style={{ flex: 1 }}>
+                  {isInstallError ? (
+                    <div>
+                      <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>
+                        Claude CLI Not Installed
+                      </div>
+                      <div>{errorContent}</div>
+                    </div>
+                  ) : (
+                    <div>{errorContent}</div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      );
     case 'system':
       // Handle compact notification
       if (message.subtype === 'compact') {
@@ -2015,6 +2052,7 @@ const MessageRendererBase: React.FC<{
               {elapsedSeconds}s
               {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
               {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
+              {message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
               {message.model && ` • ${
                 message.model === 'opus' || message.model === 'claude-opus-4-1-20250805' ? 'opus 4.1' : 
                 message.model === 'sonnet' || message.model === 'claude-sonnet-4-20250514' ? 'sonnet 4.0' : 

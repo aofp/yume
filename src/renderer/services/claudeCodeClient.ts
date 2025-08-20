@@ -398,6 +398,35 @@ export class ClaudeCodeClient {
     });
   }
 
+  onError(sessionId: string, handler: (error: any) => void): () => void {
+    if (!this.socket) {
+      console.warn('[Client] Cannot listen for errors - not connected');
+      return () => {};
+    }
+
+    const channel = `error:${sessionId}`;
+    
+    const errorHandler = (error: any) => {
+      const timestamp = new Date().toISOString();
+      console.error(`[Client] ❌ [${timestamp}] Received error:`, {
+        channel,
+        type: error.type,
+        message: error.message,
+        timestamp: error.timestamp
+      });
+      handler(error);
+    };
+    
+    this.socket.on(channel, errorHandler);
+    console.log(`[Client] 👂 Listening for errors on ${channel}`);
+    
+    return () => {
+      if (this.socket) {
+        this.socket.off(channel, errorHandler);
+      }
+    };
+  }
+
   onMessage(sessionId: string, handler: (message: any) => void): () => void {
     if (!this.socket) {
       console.warn('[Client] Cannot listen for messages - not connected');

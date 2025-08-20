@@ -181,9 +181,8 @@ console.debug = function(...args) {
 
 // Claude CLI path - try multiple locations
 const { execSync, spawn } = require("child_process");
-const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } = require("fs");
-const path = require("path");
-const { dirname, join } = path;
+const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } = require("fs");
+const { dirname, join } = require("path");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
 const { homedir, platform } = require("os");
@@ -194,86 +193,212 @@ let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 // Try to find Claude CLI in common locations
 const isWindows = platform() === 'win32';
 
-// Helper function to create WSL command for claude with comprehensive path checking
-function createWslClaudeCommand(args, workingDir) {
-  // Escape args for bash
-  const escapedArgs = args.map(arg => {
-    // Use strong quoting for args with special characters
-    if (arg.includes(' ') || arg.includes('"') || arg.includes("'") || arg.includes('$') || arg.includes('\\') || arg.includes('\n')) {
-      return "'" + arg.replace(/'/g, "'\\''") + "'";
+// Helper function to create WSL command for claude
+function createWslClaudeCommand(args, workingDir, message) {
+  // Use full path to WSL.exe - Node in temp directory needs this
+  const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+  
+  // The workingDir is already in WSL format (e.g., /mnt/c/Users/...)
+  // It was converted before calling this function
+  // CRITICAL: Require a valid working directory - no defaults to avoid temp directory
+  if (!workingDir) {
+    throw new Error('Working directory is required for WSL Claude command');
+  }
+  const wslWorkingDir = workingDir;
+  
+  // For the main message, run Claude with the args
+  if (message) {
+    // Try multiple possible Claude paths in WSL
+    // First check which paths exist
+    const { execFileSync } = require('child_process');
+    let claudePath = null;
+    
+    // First, get the actual WSL username dynamically
+    let wslUser = 'user'; // fallback default
+    try {
+      wslUser = execFileSync(wslPath, ['-e', 'bash', '-c', 'whoami'], {
+        encoding: 'utf8',
+        windowsHide: true
+      }).trim();
+      console.log(`🔍 WSL user detected: ${wslUser}`);
+    } catch (e) {
+      console.warn('⚠️ Could not detect WSL user, using default');
     }
-    return arg;
-  }).join(' ');
-  
-  // Build a simpler, more robust detection script
-  const findClaudeScript = `
-    claude_paths=(
-      "/usr/local/bin/claude"
-      "/usr/bin/claude"
-      "$HOME/.local/bin/claude"
-      "$HOME/.npm-global/bin/claude"
-      "$HOME/node_modules/.bin/claude"
-      "$HOME/.claude/local/claude"
-      "$HOME/.claude/local/node_modules/.bin/claude"
-      "/opt/claude/bin/claude"
-      "$HOME/AppData/Local/npm/claude"
-      "$HOME/AppData/Roaming/npm/claude"
-    )
     
-    # Check each user's .npm-global and .claude paths
-    for user_home in /home/*; do
-      if [ -d "$user_home" ]; then
-        claude_paths+=("$user_home/.npm-global/bin/claude")
-        claude_paths+=("$user_home/node_modules/.bin/claude")
-        claude_paths+=("$user_home/.local/bin/claude")
-        claude_paths+=("$user_home/.claude/local/claude")
-        claude_paths+=("$user_home/.claude/local/node_modules/.bin/claude")
-      fi
-    done
+    // Potential paths to check (in order of preference) - using dynamic user
+    const possiblePaths = [
+      `/home/${wslUser}/.claude/local/node_modules/.bin/claude`,  // User-specific claude install
+      `~/.npm-global/bin/claude`,  // npm global install
+      `~/node_modules/.bin/claude`,  // Local install in home
+      `/usr/local/bin/claude`,  // System-wide install
+      `/usr/bin/claude`,  // System binary
+      `~/.local/bin/claude`  // User local bin
+    ];
     
-    # Check nvm installations
-    if [ -d "$HOME/.nvm" ]; then
-      for nvm_path in $HOME/.nvm/versions/node/*/bin/claude; do
-        [ -x "$nvm_path" ] && claude_paths+=("$nvm_path")
-      done
-    fi
+    // Find the first working Claude path
+    for (const path of possiblePaths) {
+      try {
+        // Expand ~ to $HOME and check if file exists
+        const checkCmd = path.startsWith('~') 
+          ? `[ -f "${path.replace('~', '$HOME')}" ] && echo "exists"`
+          : `[ -f "${path}" ] && echo "exists"`;
+        
+        const result = execFileSync(wslPath, ['-e', 'bash', '-c', checkCmd], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (result === 'exists') {
+          // For paths with ~, we need to expand to actual home path
+          if (path.startsWith('~')) {
+            // Get actual home directory
+            const homeDir = execFileSync(wslPath, ['-e', 'bash', '-c', 'echo $HOME'], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            claudePath = path.replace('~', homeDir);
+          } else {
+            claudePath = path;
+          }
+          console.log(`✅ Found Claude at: ${claudePath}`);
+          break;
+        }
+      } catch (e) {
+        // Path doesn't exist, continue checking
+      }
+    }
     
-    # Also check for Windows-style npm installations in WSL
-    for npm_prefix in "$HOME/.npm" "/usr/local" "/usr"; do
-      [ -x "$npm_prefix/bin/claude" ] && claude_paths+=("$npm_prefix/bin/claude")
-    done
+    // If still not found, try 'which claude'
+    if (!claudePath) {
+      try {
+        const whichResult = execFileSync(wslPath, ['-e', 'bash', '-c', 'which claude'], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (whichResult) {
+          claudePath = whichResult;
+          console.log(`✅ Found Claude via 'which': ${claudePath}`);
+        }
+      } catch (e) {
+        // Claude not in PATH
+      }
+    }
     
-    # Try to find claude in PATH first
-    if command -v claude &>/dev/null; then
-      claude_cmd="claude"
-    else
-      # Check all known paths
-      claude_cmd=""
-      for path in "\${claude_paths[@]}"; do
-        if [ -x "$path" ]; then
-          claude_cmd="$path"
-          break
-        fi
-      done
-    fi
+    // Default to a dynamic path if nothing found (will fail but with clear error)
+    if (!claudePath) {
+      claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
+      console.log(`⚠️ Claude not found in WSL, using default path: ${claudePath}`);
+      console.log('⚠️ Please install Claude CLI in WSL: npm install -g @anthropic-ai/claude-cli');
+    }
     
-    if [ -z "$claude_cmd" ]; then
-      echo "ERROR: Claude CLI not found in WSL" >&2
-      echo "Searched paths:" >&2
-      for path in "\${claude_paths[@]}"; do
-        echo "  - $path" >&2
-      done
-      echo "Please install Claude CLI in WSL using: npm install -g @anthropic/claude-cli" >&2
-      exit 127
-    fi
+    // Build the command with all the args - quote ones that need it
+    const argsStr = args.map(arg => {
+      // Only quote args that contain spaces or special characters
+      if (arg.includes(' ') || arg.includes(':') || arg.includes('(') || arg.includes(')') || arg.includes(',')) {
+        // Escape single quotes properly for bash
+        return `'${arg.replace(/'/g, "'\\''")}'`;
+      }
+      return arg;
+    }).join(' ');
     
-    echo "DEBUG: Found Claude at: $claude_cmd" >&2
+    // Message escaping for bash - escape single quotes
+    const messageEscaped = message.replace(/'/g, "'\\''");
     
-    ${workingDir ? `cd '${workingDir.replace(/'/g, "'\\''")}'` : ':'}
-    exec "$claude_cmd" ${escapedArgs}
-  `.trim();
-  
-  return ['wsl.exe', ['-e', 'bash', '-c', findClaudeScript]];
+    // Build the WSL command - quote the working directory to handle spaces
+    const script = `cd "${wslWorkingDir}" && echo '${messageEscaped}' | ${claudePath} ${argsStr} 2>&1`;
+    
+    console.log(`🔍 WSL script (main message):`);
+    console.log(`  Working dir: ${wslWorkingDir}`);
+    console.log(`  Claude path: ${claudePath}`);
+    console.log(`  Args: ${argsStr}`);
+    console.log(`  Full script: ${script.substring(0, 500)}...`);
+    
+    return [wslPath, ['-e', 'bash', '-c', script], true];
+  } else {
+    // Title generation - use same path detection
+    const { execFileSync } = require('child_process');
+    const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+    let claudePath = null;
+    
+    // Get WSL username dynamically
+    let wslUser = 'user';
+    try {
+      wslUser = execFileSync(wslPath, ['-e', 'bash', '-c', 'whoami'], {
+        encoding: 'utf8',
+        windowsHide: true
+      }).trim();
+      console.log(`🔍 WSL user detected for title gen: ${wslUser}`);
+    } catch (e) {
+      console.warn('⚠️ Could not detect WSL user for title gen, using default');
+    }
+    
+    // Use same paths as main message with dynamic user
+    const possiblePaths = [
+      `/home/${wslUser}/.claude/local/node_modules/.bin/claude`,
+      `~/.npm-global/bin/claude`,
+      `~/node_modules/.bin/claude`,
+      `/usr/local/bin/claude`,
+      `/usr/bin/claude`,
+      `~/.local/bin/claude`
+    ];
+    
+    for (const path of possiblePaths) {
+      try {
+        const checkCmd = path.startsWith('~') 
+          ? `[ -f "${path.replace('~', '$HOME')}" ] && echo "exists"`
+          : `[ -f "${path}" ] && echo "exists"`;
+        
+        const result = execFileSync(wslPath, ['-e', 'bash', '-c', checkCmd], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (result === 'exists') {
+          // For paths with ~, we need to expand to actual home path
+          if (path.startsWith('~')) {
+            // Get actual home directory
+            const homeDir = execFileSync(wslPath, ['-e', 'bash', '-c', 'echo $HOME'], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            claudePath = path.replace('~', homeDir);
+          } else {
+            claudePath = path;
+          }
+          break;
+        }
+      } catch (e) {
+        // Continue checking
+      }
+    }
+    
+    if (!claudePath) {
+      try {
+        const whichResult = execFileSync(wslPath, ['-e', 'bash', '-c', 'which claude'], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (whichResult) {
+          claudePath = whichResult;
+        }
+      } catch (e) {
+        // Not in PATH
+      }
+    }
+    
+    if (!claudePath) {
+      claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
+      console.log(`⚠️ Claude not found for title gen, using default: ${claudePath}`);
+    }
+    
+    // For title generation, use direct WSL with full path
+    const script = `cat | ${claudePath} --print --output-format json --model claude-3-5-sonnet-20241022 2>&1`;
+    
+    console.log(`🔍 WSL script (title gen)`);
+    return [wslPath, ['-e', 'bash', '-c', script], false];
+  }
 }
 
 if (isWindows) {
@@ -350,8 +475,8 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"]
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 86400000, // 24 hours - essentially infinite
-  pingInterval: 10000, // 10 seconds heartbeat - more frequent
+  pingTimeout: 600000, // 10 minutes - prevent timeout during long operations
+  pingInterval: 30000, // 30 seconds heartbeat
   upgradeTimeout: 60000, // 60 seconds for upgrade
   maxHttpBufferSize: 5e8, // 500mb - handle large contexts
   perMessageDeflate: false, // Disable compression for better streaming performance
@@ -396,106 +521,9 @@ const PORT = (() => {
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let activeProcessStartTimes = new Map();  // Map of sessionId -> process start time
-
-// Session persistence to disk for recovery after restart
-class SessionPersistence {
-  constructor() {
-    this.sessionDir = path.join(homedir(), '.yurucode', 'sessions');
-    this.ensureDirectory();
-    // Don't auto-load on startup to avoid conflicts
-  }
-  
-  ensureDirectory() {
-    if (!existsSync(this.sessionDir)) {
-      mkdirSync(this.sessionDir, { recursive: true });
-      console.log(`📁 Created session directory: ${this.sessionDir}`);
-    }
-  }
-  
-  saveSession(sessionId, sessionData) {
-    try {
-      const filePath = path.join(this.sessionDir, `${sessionId}.json`);
-      const dataToSave = {
-        id: sessionData.id || sessionId,
-        name: sessionData.name,
-        workingDirectory: sessionData.workingDirectory,
-        messages: sessionData.messages || [],
-        claudeSessionId: sessionData.claudeSessionId,
-        hasGeneratedTitle: sessionData.hasGeneratedTitle,
-        createdAt: sessionData.createdAt,
-        savedAt: Date.now()
-      };
-      writeFileSync(filePath, JSON.stringify(dataToSave, null, 2));
-      console.log(`💾 Saved session to disk: ${sessionId}`);
-    } catch (error) {
-      console.error(`❌ Failed to save session ${sessionId}:`, error.message);
-    }
-  }
-  
-  loadSession(sessionId) {
-    try {
-      const filePath = path.join(this.sessionDir, `${sessionId}.json`);
-      if (existsSync(filePath)) {
-        const data = JSON.parse(readFileSync(filePath, 'utf8'));
-        console.log(`📂 Loaded session from disk: ${sessionId}`);
-        return data;
-      }
-    } catch (error) {
-      console.error(`❌ Failed to load session ${sessionId}:`, error.message);
-    }
-    return null;
-  }
-  
-  deleteSession(sessionId) {
-    try {
-      const filePath = path.join(this.sessionDir, `${sessionId}.json`);
-      if (existsSync(filePath)) {
-        unlinkSync(filePath);
-        console.log(`🗑️ Deleted session file: ${sessionId}`);
-      }
-    } catch (error) {
-      console.error(`❌ Failed to delete session ${sessionId}:`, error.message);
-    }
-  }
-}
-
-// Read Claude's native session files directly
-class ClaudeProjectReader {
-  constructor() {
-    this.projectsDir = path.join(homedir(), '.claude', 'projects');
-  }
-  
-  findSessionFile(claudeSessionId) {
-    try {
-      if (!existsSync(this.projectsDir)) return null;
-      
-      const projects = readdirSync(this.projectsDir);
-      for (const project of projects) {
-        const sessionFile = path.join(this.projectsDir, project, `${claudeSessionId}.jsonl`);
-        if (existsSync(sessionFile)) {
-          console.log(`🔍 Found Claude session file: ${project}/${claudeSessionId}.jsonl`);
-          return { projectId: project, sessionFile };
-        }
-      }
-    } catch (error) {
-      console.error('❌ Error searching for Claude session:', error.message);
-    }
-    return null;
-  }
-  
-  verifySessionExists(claudeSessionId) {
-    return this.findSessionFile(claudeSessionId) !== null;
-  }
-}
-
-const sessionPersistence = new SessionPersistence();
-const claudeReader = new ClaudeProjectReader();
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
-let messageDeduplication = new Map(); // Map of sessionId -> Set of message hashes
-let sessionBackupInterval = null; // Interval for periodic session backups
-let processRetryCount = new Map(); // Map of sessionId -> retry count
 
 // Add process spawn mutex to prevent race conditions
 let isSpawningProcess = false;
@@ -526,11 +554,50 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
     }
     
+    // Use a dedicated yurucode-title-gen directory for title generation
+    // This keeps title generation sessions separate from main project sessions
+    const titleGenDir = join(homedir(), '.yurucode-title-gen');
+    
+    // Create the directory if it doesn't exist
+    try {
+      if (!existsSync(titleGenDir)) {
+        const { mkdirSync } = require('fs');
+        mkdirSync(titleGenDir, { recursive: true });
+        console.log('📁 Created title generation directory:', titleGenDir);
+      }
+    } catch (e) {
+      console.log('⚠️ Could not create title gen directory, using home:', e.message);
+    }
+    
     const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
       (() => {
-        const [wslCommand, wslArgs] = createWslClaudeCommand(titleArgs, null);
+        // Get WSL username dynamically for title gen dir
+        const { execSync } = require('child_process');
+        let wslUser = 'user';
+        try {
+          wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+            encoding: 'utf8',
+            windowsHide: true
+          }).trim();
+        } catch (e) {
+          // Use default
+        }
+        
+        // For WSL, use a dedicated directory in WSL home with dynamic user
+        const wslTitleGenDir = `/home/${wslUser}/.yurucode-title-gen`;
+        
+        // Create the WSL directory if needed
+        try {
+          execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "mkdir -p ${wslTitleGenDir}"`, {
+            windowsHide: true
+          });
+        } catch (e) {
+          console.log('⚠️ Could not create WSL title gen directory:', e.message);
+        }
+        
+        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(titleArgs, wslTitleGenDir, null);
         return spawn(wslCommand, wslArgs, {
-          cwd: process.cwd(),
+          cwd: titleGenDir,
           env: enhancedEnv,
           stdio: ['pipe', 'pipe', 'pipe'],
           windowsHide: true,
@@ -538,7 +605,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
         });
       })() :
       spawn(CLAUDE_PATH, titleArgs, {
-      cwd: process.cwd(),
+      cwd: titleGenDir,
       env: enhancedEnv,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,  // Always hide windows
@@ -615,12 +682,8 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
 }
 
 // Memory management - EXACTLY LIKE WINDOWS
-const MAX_MESSAGE_HISTORY = 10000; // Increased limit for long sessions
-const MAX_LINE_BUFFER_SIZE = 500 * 1024 * 1024; // 500MB for very large responses
-const SESSION_BACKUP_INTERVAL = 30000; // Backup sessions every 30 seconds
-const MAX_RETRY_ATTEMPTS = 3; // Retry failed claude spawns
-const COMPRESS_THRESHOLD = 1024 * 1024; // Compress messages > 1MB
-const MESSAGE_CHUNK_SIZE = 64 * 1024; // Send large messages in 64KB chunks
+const MAX_MESSAGE_HISTORY = 1000; // Limit message history per session
+const MAX_LINE_BUFFER_SIZE = 50 * 1024 * 1024; // 50MB max buffer for large responses
 
 // Health check endpoint
 app.get('/health', (req, res) => {
@@ -684,24 +747,38 @@ app.delete('/claude-session/:projectPath/:sessionId', async (req, res) => {
 app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   try {
     const { projectPath, sessionId } = req.params;
-    const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
     
     console.log('Loading session request:');
     console.log('  - Raw projectPath:', projectPath);
     console.log('  - SessionId:', sessionId);
-    console.log('  - Full path:', sessionPath);
     console.log('  - Platform:', platform());
     
-    if (!existsSync(sessionPath)) {
-      console.error('Session not found:', sessionPath);
-      return res.status(404).json({ error: 'session not found' });
-    }
-    
-    // Read the session file using promises for better error handling
-    const { readFile } = await import('fs/promises');
-    
-    try {
-      const content = await readFile(sessionPath, 'utf8');
+    if (isWindows) {
+      // Load from WSL
+      // Get WSL username dynamically
+      let wslUser = 'user';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        console.warn('Could not detect WSL user, using default');
+      }
+      const sessionPath = `/home/${wslUser}/.claude/projects/${projectPath}/${sessionId}.jsonl`;
+      console.log('  - WSL path:', sessionPath);
+      
+      // Read the file from WSL
+      try {
+        const { execSync } = require('child_process');
+        
+        const readCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cat \\"${sessionPath}\\" 2>/dev/null'}"`;
+        const content = execSync(readCmd, {
+          encoding: 'utf8',
+          windowsHide: true,
+          maxBuffer: 50 * 1024 * 1024 // 50MB buffer
+        });
       console.log('Raw file content preview (first 200 chars):', content.substring(0, 200).replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
       console.log('Total file size:', content.length, 'characters');
       
@@ -798,7 +875,33 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         try {
           const data = JSON.parse(jsonStr);
           
-          // Add all valid session data
+          // Filter out empty user messages (these are often just placeholders after tool use)
+          if (data.role === 'user') {
+            // Check if content is missing, undefined, or empty
+            if (!data.content) {
+              // Skip user messages without content
+              currentPos = jsonEnd;
+              if (currentPos < content.length && content[currentPos] === '$') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\n') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\r') currentPos++;
+              continue;
+            }
+            
+            // Check if content is empty or just whitespace
+            const contentStr = typeof data.content === 'string' ? data.content : 
+                             Array.isArray(data.content) && data.content.length > 0 ? 
+                             data.content.map(c => c.text || '').join('') : '';
+            if (!contentStr.trim()) {
+              // Skip empty user messages
+              currentPos = jsonEnd;
+              if (currentPos < content.length && content[currentPos] === '$') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\n') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\r') currentPos++;
+              continue;
+            }
+          }
+          
+          // Add valid session data
           messages.push(data);
           validMessages++;
           
@@ -847,15 +950,160 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       console.log(`Loaded session with ${messages.length} messages`);
       console.log(`Converted project path: ${projectPath} -> ${actualPath}`);
       
-      res.json({ 
-        sessionId,
-        projectPath: actualPath,
-        messages,
-        sessionCount: messages.length
-      });
-    } catch (readError) {
-      console.error('Error reading session file:', readError);
-      res.status(500).json({ error: 'Failed to read session', details: readError.message });
+      // Extract title from messages
+      let title = null;
+      
+      // Check for title in last message (often metadata/title is stored there)
+      if (messages.length > 0) {
+        const lastMsg = messages[messages.length - 1];
+        if (lastMsg.type === 'title' && lastMsg.title) {
+          title = lastMsg.title;
+        } else if (lastMsg.type === 'metadata' && lastMsg.title) {
+          title = lastMsg.title;
+        } else if (lastMsg.title && !lastMsg.role) {
+          title = lastMsg.title;
+        }
+      }
+      
+      // If no title found, check for summary type messages
+      if (!title) {
+        const summaryMsg = messages.find(m => m.type === 'summary' && m.summary);
+        if (summaryMsg) {
+          title = summaryMsg.summary;
+        }
+      }
+      
+      // If still no title, use first user message
+      if (!title) {
+        const firstUserMsg = messages.find(m => m.role === 'user' && m.content);
+        if (firstUserMsg) {
+          const content = typeof firstUserMsg.content === 'string' ? firstUserMsg.content :
+                         Array.isArray(firstUserMsg.content) ? 
+                         firstUserMsg.content.find(c => c.type === 'text')?.text || '' : '';
+          if (content) {
+            title = content.substring(0, 100);
+          }
+        }
+      }
+      
+      // Default title if none found
+      if (!title) {
+        title = 'Untitled session';
+      }
+      
+        res.json({ 
+          sessionId,
+          projectPath: actualPath,
+          messages,
+          sessionCount: messages.length,
+          title
+        });
+      } catch (readError) {
+        console.error('Error reading session file from WSL:', readError.message);
+        res.status(404).json({ error: 'Session not found' });
+      }
+    } else {
+      // Non-Windows: read directly from filesystem
+      const sessionPath = join(homedir(), '.claude', 'projects', projectPath, `${sessionId}.jsonl`);
+      console.log('  - Full path:', sessionPath);
+      
+      if (!existsSync(sessionPath)) {
+        console.error('Session not found:', sessionPath);
+        return res.status(404).json({ error: 'session not found' });
+      }
+      
+      // Read the session file using promises for better error handling
+      const { readFile } = await import('fs/promises');
+      
+      try {
+        const content = await readFile(sessionPath, 'utf8');
+        
+        // Use the same parsing logic as Windows
+        const messages = [];
+        const lines = content.split(/\$|\n/).filter(line => line.trim());
+        
+        for (const line of lines) {
+          try {
+            const data = JSON.parse(line);
+            
+            // Filter out empty user messages (these are often just placeholders after tool use)
+            if (data.role === 'user') {
+              // Check if content is missing, undefined, or empty
+              if (!data.content) {
+                continue; // Skip user messages without content
+              }
+              
+              const contentStr = typeof data.content === 'string' ? data.content : 
+                               Array.isArray(data.content) && data.content.length > 0 ? 
+                               data.content.map(c => c.text || '').join('') : '';
+              if (!contentStr.trim()) {
+                continue; // Skip empty user messages
+              }
+            }
+            
+            messages.push(data);
+          } catch (err) {
+            // Skip invalid lines
+          }
+        }
+        
+        // Extract title from messages
+        let title = null;
+        
+        // Check for title in last message
+        if (messages.length > 0) {
+          const lastMsg = messages[messages.length - 1];
+          if (lastMsg.type === 'title' && lastMsg.title) {
+            title = lastMsg.title;
+          } else if (lastMsg.type === 'metadata' && lastMsg.title) {
+            title = lastMsg.title;
+          } else if (lastMsg.title && !lastMsg.role) {
+            title = lastMsg.title;
+          }
+        }
+        
+        // If no title found, check for summary type messages
+        if (!title) {
+          const summaryMsg = messages.find(m => m.type === 'summary' && m.summary);
+          if (summaryMsg) {
+            title = summaryMsg.summary;
+          }
+        }
+        
+        // If still no title, use first user message
+        if (!title) {
+          const firstUserMsg = messages.find(m => m.role === 'user' && m.content);
+          if (firstUserMsg) {
+            const content = typeof firstUserMsg.content === 'string' ? firstUserMsg.content :
+                           Array.isArray(firstUserMsg.content) ? 
+                           firstUserMsg.content.find(c => c.type === 'text')?.text || '' : '';
+            if (content) {
+              title = content.substring(0, 100);
+            }
+          }
+        }
+        
+        // Default title if none found
+        if (!title) {
+          title = 'Untitled session';
+        }
+        
+        const actualPath = projectPath
+          .replace(/^([A-Z])--/, '$1:/')
+          .replace(/^-/, '/')
+          .replace(/-/g, '/');
+        
+        res.json({ 
+          sessionId,
+          projectPath: actualPath,
+          messages,
+          sessionCount: messages.length,
+          title
+        });
+      } catch (readError) {
+        console.error('Error reading session file:', readError);
+        res.status(500).json({ error: 'Failed to read session', details: readError.message });
+      }
     }
   } catch (error) {
     console.error('Error loading session:', error);
@@ -863,9 +1111,653 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   }
 });
 
+// Quick projects endpoint - returns just project count and names quickly
+app.get('/claude-projects-quick', async (req, res) => {
+  try {
+    // Get pagination params from query string
+    const limit = parseInt(req.query.limit) || 20;
+    const offset = parseInt(req.query.offset) || 0;
+    // On Windows, load from WSL where Claude actually stores projects
+    if (isWindows) {
+      console.log('🔍 Windows detected - loading projects from WSL');
+      
+      // Get WSL username dynamically
+      let wslUser = 'user';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        console.warn('Could not detect WSL user, using default');
+      }
+      const wslProjectsDir = `/home/${wslUser}/.claude/projects`;
+      
+      try {
+        const { execFileSync } = require('child_process');
+        
+        // Get list of projects - we'll get their real last-used time from sessions
+        // Use wsl.exe directly with execFileSync to avoid shell interpretation
+        const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+        // Get all directories including "-" - quote the path to handle spaces
+        const bashCmd = `cd "${wslProjectsDir}" && for d in *; do [ -d "$d" ] && echo "$d"; done`;
+        console.log('📂 Getting projects from WSL:', wslProjectsDir);
+        
+        const output = execFileSync(wslPath, ['-e', 'bash', '-c', bashCmd], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (!output) {
+          console.log('❌ No projects found in WSL');
+          return res.json({ projects: [], count: 0 });
+        }
+        
+        // Parse the output (just directory names now)
+        const projectDirs = output.split('\n')
+          .filter(line => line.trim())
+          .filter(projectName => {
+            // CRITICAL: Filter out temp directories, server directories, and title gen directories
+            const lowerName = projectName.toLowerCase();
+            if (lowerName.includes('temp') || 
+                lowerName.includes('tmp') || 
+                lowerName.includes('yurucode-server') ||
+                lowerName.includes('yurucode-title-gen') ||
+                lowerName === '-yurucode-title-gen' ||
+                lowerName.includes('appdata') ||
+                lowerName.includes('-mnt-c-users-') && lowerName.includes('-appdata-local-temp')) {
+              console.log(`🚫 Filtering out temp/server/title-gen directory: ${projectName}`);
+              return false;
+            }
+            return true;
+          });
+        
+        const projects = [];
+        
+        for (const projectName of projectDirs) {
+            // Get the most recent session's timestamp for sorting
+            let lastModified = 0;
+            try {
+              // Get the most recent .jsonl file's timestamp
+              const timestampCmd = `cd ${wslProjectsDir}/${projectName} && ls -t *.jsonl 2>/dev/null | head -1 | xargs -r stat -c %Y 2>/dev/null`;
+              const timestamp = execFileSync(wslPath, ['-e', 'bash', '-c', timestampCmd], {
+                encoding: 'utf8',
+                windowsHide: true
+              }).trim();
+              
+              if (timestamp && !isNaN(timestamp)) {
+                lastModified = parseInt(timestamp) * 1000;
+              }
+            } catch (e) {
+              // No sessions or error - use 0 timestamp
+              lastModified = 0;
+            }
+            
+            // Count sessions for this project
+            let sessionCount = 0;
+            try {
+              const countBashCmd = `ls -1 ${wslProjectsDir}/"${projectName}"/*.jsonl 2>/dev/null | wc -l`;
+              const count = execFileSync(wslPath, ['-e', 'bash', '-c', countBashCmd], {
+                encoding: 'utf8',
+                windowsHide: true
+              }).trim();
+              sessionCount = parseInt(count) || 0;
+            } catch (e) {
+              // Ignore count errors
+            }
+            
+            // Skip projects with no sessions and no recent activity
+            if (sessionCount === 0 && lastModified === 0) {
+              continue;
+            }
+            
+            projects.push({
+              name: projectName,
+              path: projectName,
+              lastModified: lastModified,
+              sessionCount: sessionCount,
+              sessions: []
+            });
+          }
+          
+        // Sort by most recently used (based on session timestamps)
+        projects.sort((a, b) => b.lastModified - a.lastModified);
+        
+        console.log(`✅ Found ${projects.length} projects in WSL`);
+        
+        // Apply pagination
+        const totalCount = projects.length;
+        const paginatedProjects = projects.slice(offset, offset + limit);
+        
+        console.log(`📄 Returning ${paginatedProjects.length} projects (offset: ${offset}, limit: ${limit}, total: ${totalCount})`);
+        
+        // Send response immediately
+        res.json({ 
+          projects: paginatedProjects, 
+          count: totalCount 
+        });
+        
+        return;
+        
+      } catch (error) {
+        console.error('❌ ERROR loading Windows projects:', error.message);
+        console.error('Stack:', error.stack);
+        return res.json({ projects: [], count: 0 });
+      }
+    }
+    
+    const claudeDir = join(homedir(), '.claude', 'projects');
+    
+    console.log('Quick loading project list from:', claudeDir);
+    
+    // Check if projects directory exists
+    if (!existsSync(claudeDir)) {
+      console.log('Claude projects directory not found:', claudeDir);
+      return res.json({ projects: [], count: 0 });
+    }
+    
+    const { readdir, stat } = await import('fs/promises');
+    const projectDirs = await readdir(claudeDir);
+    
+    // Quick filter for directories only
+    const projectPromises = projectDirs
+      .filter(dir => !dir.startsWith('.'))
+      .map(async (projectDir) => {
+        try {
+          const projectPath = join(claudeDir, projectDir);
+          const stats = await stat(projectPath);
+          if (!stats.isDirectory()) return null;
+          
+          // Count session files without reading them
+          const sessionFiles = await readdir(projectPath);
+          const sessionCount = sessionFiles.filter(f => f.endsWith('.jsonl')).length;
+          
+          // On Windows, if sessionCount is 0, don't report it as 0 - sessions might be in WSL
+          // Return null to indicate unknown count rather than wrong count
+          const effectiveSessionCount = (isWindows && sessionCount === 0) ? null : sessionCount;
+          
+          // Just return name, path, and count for quick loading
+          return {
+            path: projectDir,
+            name: projectDir,
+            sessionCount: effectiveSessionCount,
+            lastModified: stats.mtime.getTime()
+          };
+        } catch {
+          return null;
+        }
+      });
+    
+    const projects = (await Promise.all(projectPromises)).filter(Boolean);
+    projects.sort((a, b) => b.lastModified - a.lastModified);
+    
+    // Apply pagination
+    const totalCount = projects.length;
+    const paginatedProjects = projects.slice(offset, offset + limit);
+    
+    console.log(`Quick loaded ${paginatedProjects.length} of ${totalCount} project names (offset: ${offset}, limit: ${limit})`);
+    res.json({ projects: paginatedProjects, count: totalCount });
+  } catch (error) {
+    console.error('Error quick loading projects:', error);
+    res.status(500).json({ error: 'Failed to load projects', details: error.message });
+  }
+});
+
+// Get sessions for a specific project - stream them one by one
+app.get('/claude-project-sessions/:projectName', async (req, res) => {
+  try {
+    const projectName = decodeURIComponent(req.params.projectName);
+    console.log('📂 Loading sessions for project:', projectName);
+    
+    // Set up Server-Sent Events
+    res.writeHead(200, {
+      'Content-Type': 'text/event-stream',
+      'Cache-Control': 'no-cache',
+      'Connection': 'keep-alive'
+    });
+    
+    if (isWindows) {
+      // Load from WSL where Claude stores projects
+      // Get WSL username dynamically
+      let wslUser = 'user';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        console.warn('Could not detect WSL user, using default');
+      }
+      const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
+      
+      try {
+        // Get file list from WSL
+        console.log('🚀 Getting session list from WSL:', projectPath);
+        const { execFileSync } = require('child_process');
+        
+        // Get list of .jsonl files with modification times, sorted by most recent first
+        const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+        const bashCmd = `cd "${projectPath}" 2>/dev/null && for f in *.jsonl; do [ -f "$f" ] && stat -c "%Y:%n" -- "$f"; done | sort -rn | head -50`;
+        
+        const output = execFileSync(wslPath, ['-e', 'bash', '-c', bashCmd], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        if (!output) {
+          console.log('No sessions found');
+          res.write('data: {"done": true, "sessions": []}\n\n');
+          res.end();
+          return;
+        }
+        
+        // Parse files and sort by timestamp
+        const files = output.split('\n')
+          .filter(line => line.trim())
+          .map(line => {
+            const [timestamp, filename] = line.split(':');
+            return {
+              filename: filename,
+              timestamp: parseInt(timestamp) * 1000
+            };
+          })
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 10);
+        
+        if (files.length === 0) {
+          console.log('No sessions found');
+          res.write('data: {"done": true, "sessions": []}\n\n');
+          res.end();
+          return;
+        }
+        
+        // Process each file and stream it immediately
+        for (let i = 0; i < files.length; i++) {
+          const { filename, timestamp } = files[i];
+          try {
+            // Stop after 50 sessions for performance
+            if (i >= 50) {
+              break;
+            }
+            
+            // Read first line from WSL
+            const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+            const firstLine = execFileSync(wslPath, ['-e', 'bash', '-c', `head -n1 "${projectPath}/${filename}" 2>/dev/null`], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            
+            // Read last line to check for metadata/title
+            const lastLine = execFileSync(wslPath, ['-e', 'bash', '-c', `tail -n1 "${projectPath}/${filename}" 2>/dev/null`], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            
+            // Get line count (but limit counting to first 50 lines for performance)
+            const lineCount = execFileSync(wslPath, ['-e', 'bash', '-c', `head -n50 "${projectPath}/${filename}" 2>/dev/null | wc -l`], {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+            
+            const sessionId = filename.replace('.jsonl', '');
+            
+            let summary = 'Untitled session';
+            let title = null;
+            
+            // Check last line for metadata/title (Claude often stores this at the end)
+            try {
+              const lastData = JSON.parse(lastLine);
+              if (lastData.type === 'title' && lastData.title) {
+                title = lastData.title;
+              } else if (lastData.type === 'metadata' && lastData.title) {
+                title = lastData.title;
+              } else if (lastData.title && !lastData.role) {
+                // Standalone title object
+                title = lastData.title;
+              }
+            } catch (e) {
+              // Not valid JSON or no title in last line
+            }
+            
+            // If no title found in metadata, check first line
+            if (!title) {
+              try {
+                const data = JSON.parse(firstLine);
+                // Check for different possible title fields
+                if (data.summary) {
+                  summary = data.summary;
+                  if (!title) title = data.summary;
+                }
+                if (data.title) {
+                  title = data.title;
+                }
+                // If it's a user message, use the content as summary
+                if (!title && data.role === 'user' && data.content) {
+                  if (typeof data.content === 'string') {
+                    summary = data.content.substring(0, 100);
+                    title = summary;
+                  } else if (Array.isArray(data.content)) {
+                    // Handle array content (with text blocks)
+                    const textBlock = data.content.find(c => c.type === 'text');
+                    if (textBlock && textBlock.text) {
+                      summary = textBlock.text.substring(0, 100);
+                      title = summary;
+                    }
+                  }
+                }
+                // If it's session metadata with a type field
+                if (data.type === 'summary' && data.summary) {
+                  title = data.summary;
+                  summary = data.summary;
+                }
+              } catch (e) {
+                // Parse error, use default
+                console.log(`Could not parse session title from: ${firstLine.substring(0, 100)}`);
+              }
+            }
+            
+            const session = {
+              id: sessionId,
+              summary: summary,
+              title: title,
+              timestamp: timestamp,
+              path: filename,
+              messageCount: parseInt(lineCount) || 0
+            };
+            
+            // Stream this session immediately
+            res.write(`data: ${JSON.stringify({ session, index: i, total: files.length })}\n\n`);
+            console.log(`  📄 Sent session ${i + 1}/${files.length}: ${sessionId}`);
+            
+          } catch (e) {
+            console.log(`Error processing ${filename}:`, e.message);
+          }
+        }
+        
+        // Send completion event
+        res.write('data: {"done": true}\n\n');
+        console.log(`✅ Streamed all sessions`);
+        res.end();
+        
+      } catch (e) {
+        console.error('Error loading sessions:', e.message);
+        res.write('data: {"error": true, "message": "' + e.message + '"}\n\n');
+        res.end();
+      }
+    } else {
+      // Non-Windows implementation
+      res.json({ sessions: [] });
+    }
+  } catch (error) {
+    console.error('Error loading project sessions:', error);
+    res.status(500).json({ error: 'Failed to load sessions' });
+  }
+});
+
+// Get last modified date for a specific project
+app.get('/claude-project-date/:projectName', async (req, res) => {
+  try {
+    const projectName = decodeURIComponent(req.params.projectName);
+    console.log(`📅 Getting date for project: ${projectName}`);
+    
+    if (isWindows) {
+      // Get WSL user
+      let wslUser = 'yuru';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync('powershell.exe -NoProfile -Command "& {wsl.exe whoami}"', {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        // Use default
+      }
+      
+      const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
+      
+      // Get the modification time of the MOST RECENT session file
+      const recentCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'cd ${projectPath} && ls -t *.jsonl 2>/dev/null | head -1 | xargs -r stat -c %Y 2>/dev/null'}"`;
+      const { execSync } = require('child_process');
+      const recentTime = execSync(recentCmd, {
+        encoding: 'utf8',
+        windowsHide: true
+      }).trim();
+      
+      let lastModified = Date.now();
+      if (recentTime && !isNaN(recentTime)) {
+        lastModified = parseInt(recentTime) * 1000;
+        const date = new Date(lastModified);
+        console.log(`  ✅ ${projectName}: ${date.toLocaleString()} (${recentTime})`);
+      } else {
+        console.log(`  ⚠️ ${projectName}: No sessions found, using current time`);
+      }
+      
+      res.json({ projectName, lastModified });
+    } else {
+      // Non-Windows implementation
+      res.json({ projectName, lastModified: Date.now() });
+    }
+  } catch (error) {
+    console.error('Error getting project date:', error);
+    res.json({ projectName: req.params.projectName, lastModified: Date.now() });
+  }
+});
+
+// Get session count for a specific project
+app.get('/claude-project-session-count/:projectName', async (req, res) => {
+  try {
+    const projectName = decodeURIComponent(req.params.projectName);
+    
+    if (isWindows) {
+      // Load from WSL
+      // Get WSL username dynamically
+      let wslUser = 'user';
+      try {
+        const { execSync } = require('child_process');
+        wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+      } catch (e) {
+        console.warn('Could not detect WSL user, using default');
+      }
+      const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
+      
+      try {
+        const { execSync } = require('child_process');
+        
+        // Count sessions in WSL
+        const countCmd = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'ls -1 ${projectPath}/*.jsonl 2>/dev/null | wc -l'}"`;
+        const count = execSync(countCmd, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        const sessionCount = parseInt(count) || 0;
+        res.json({ projectName, sessionCount });
+      } catch (e) {
+        res.json({ projectName, sessionCount: 0 });
+      }
+    } else {
+      // Non-Windows implementation
+      res.json({ projectName, sessionCount: 0 });
+    }
+  } catch (error) {
+    res.status(500).json({ error: 'Failed to get session count' });
+  }
+});
+
 // Projects endpoint - loads claude projects asynchronously with enhanced error handling
 app.get('/claude-projects', async (req, res) => {
   try {
+    // On Windows, ALWAYS load from WSL, NEVER from Windows filesystem
+    if (isWindows) {
+      console.log('🚨 WINDOWS DETECTED - LOADING FROM WSL ONLY!');
+      try {
+        // Get WSL user using PowerShell
+        let wslUser = 'yuru'; // default
+        try {
+          const { execSync } = require('child_process');
+          console.log('🔍 Detecting WSL user via PowerShell...');
+          const psCommand = 'powershell.exe -NoProfile -Command "& {wsl.exe whoami}"';
+          console.log('💻 PowerShell command:', psCommand);
+          wslUser = execSync(psCommand, {
+            encoding: 'utf8',
+            windowsHide: true
+          }).trim();
+          console.log('✅ WSL user found:', wslUser);
+        } catch (e) {
+          console.log('⚠️ Could not detect WSL user, using default:', wslUser);
+          console.log('  Error:', e.message);
+        }
+        
+        const wslProjectsDir = `/home/${wslUser}/.claude/projects`;
+        console.log('📂 WSL projects directory:', wslProjectsDir);
+        console.log('🔍 WSL user detected:', wslUser);
+        
+        // Get project list from WSL using PowerShell
+        const { execSync } = require('child_process');
+        console.log('🔧 Executing WSL command via PowerShell to list projects...');
+        const psListCommand = `powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'if [ -d ${wslProjectsDir} ]; then ls -1 ${wslProjectsDir}; else echo NO_PROJECTS_DIR; fi'}"`;
+        console.log('💻 PowerShell command:', psListCommand);
+        const dirList = execSync(psListCommand, {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        
+        console.log('📝 Raw PowerShell/WSL output:', JSON.stringify(dirList));
+        
+        if (!dirList || dirList === 'NO_PROJECTS_DIR' || dirList === 'ECHO is on.' || dirList.includes('system cannot find')) {
+          console.log('❌ No projects found or WSL error');
+          return res.json({ projects: [] });
+        }
+        
+        const projectDirs = dirList.split('\n')
+          .filter(dir => dir && !dir.startsWith('.') && dir !== 'NO_DIR')
+          .filter(projectName => {
+            // CRITICAL: Filter out temp directories, server directories, and title gen directories
+            const lowerName = projectName.toLowerCase();
+            if (lowerName.includes('temp') || 
+                lowerName.includes('tmp') || 
+                lowerName.includes('yurucode-server') ||
+                lowerName.includes('yurucode-title-gen') ||
+                lowerName === '-yurucode-title-gen' ||
+                lowerName.includes('appdata') ||
+                lowerName.includes('-mnt-c-users-') && lowerName.includes('-appdata-local-temp')) {
+              console.log(`🚫 Filtering out temp/server/title-gen directory: ${projectName}`);
+              return false;
+            }
+            return true;
+          });
+        console.log(`✅ Found ${projectDirs.length} projects in WSL (after filtering):`, projectDirs);
+        
+        // Load full project details
+        const projects = [];
+        for (const projectName of projectDirs) {
+          const projectPath = `${wslProjectsDir}/${projectName}`;
+          
+          // Get session files
+          const sessions = [];
+          try {
+            const sessionList = execSync(`powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'find ${projectPath} -name *.jsonl -type f -exec basename {} .jsonl \\\\; 2>/dev/null'}"`, {
+              encoding: 'utf8',
+              windowsHide: true,
+              shell: true
+            }).trim();
+            
+            if (sessionList) {
+              const sessionIds = sessionList.split('\n').filter(id => id);
+              
+              for (const sessionId of sessionIds.slice(0, 5)) { // Limit to first 5 sessions for performance
+                const sessionPath = `${projectPath}/${sessionId}.jsonl`;
+                
+                let summary = 'untitled session';
+                let messageCount = 0;
+                let timestamp = Date.now();
+                
+                try {
+                  // Get line count
+                  const lineCount = execSync(`powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'wc -l < ${sessionPath}'}"`, {
+                    encoding: 'utf8',
+                    windowsHide: true
+                  }).trim();
+                  messageCount = parseInt(lineCount) || 0;
+                  
+                  // Get first line for summary
+                  const firstLine = execSync(`powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'head -n1 ${sessionPath}'}"`, {
+                    encoding: 'utf8',
+                    windowsHide: true
+                  }).trim();
+                  
+                  if (firstLine) {
+                    try {
+                      const data = JSON.parse(firstLine);
+                      if (data.summary) {
+                        summary = data.summary;
+                      } else if (data.role === 'user' && data.content) {
+                        summary = data.content.slice(0, 100);
+                        if (data.content.length > 100) summary += '...';
+                      }
+                    } catch (e) {
+                      // Ignore JSON parse errors
+                    }
+                  }
+                  
+                  // Get modification time
+                  const modTime = execSync(`powershell.exe -NoProfile -Command "& {wsl.exe -e bash -c 'stat -c %Y ${sessionPath}'}"`, {
+                    encoding: 'utf8',
+                    windowsHide: true
+                  }).trim();
+                  timestamp = parseInt(modTime) * 1000 || Date.now();
+                  
+                } catch (e) {
+                  // Ignore errors for individual sessions
+                }
+                
+                sessions.push({
+                  id: sessionId,
+                  summary,
+                  timestamp,
+                  createdAt: timestamp,
+                  path: sessionPath,
+                  messageCount
+                });
+              }
+            }
+          } catch (e) {
+            console.log(`Error loading sessions for ${projectName}:`, e.message);
+          }
+          
+          if (sessions.length > 0) {
+            sessions.sort((a, b) => b.timestamp - a.timestamp);
+            
+            projects.push({
+              path: projectName,
+              name: projectName,
+              sessions,
+              lastModified: sessions[0].timestamp,
+              createdAt: Math.min(...sessions.map(s => s.timestamp)),
+              sessionCount: sessions.length,
+              totalMessages: sessions.reduce((sum, s) => sum + s.messageCount, 0)
+            });
+          }
+        }
+        
+        projects.sort((a, b) => b.lastModified - a.lastModified);
+        console.log(`✅ Returning ${projects.length} projects from WSL`);
+        console.log('📊 Full projects data:', JSON.stringify(projects, null, 2).slice(0, 500));
+        return res.json({ projects });
+        
+      } catch (error) {
+        console.error('❌ ERROR loading WSL projects:', error.message);
+        console.error('Stack:', error.stack);
+        // NEVER fall back to Windows filesystem - return empty if WSL fails
+        return res.json({ projects: [], count: 0 });
+      }
+    }
+    
     const claudeDir = join(homedir(), '.claude', 'projects');
     
     console.log('Loading projects from:', claudeDir);
@@ -988,280 +1880,6 @@ app.get('/claude-projects', async (req, res) => {
   }
 });
 
-// Quick projects endpoint - returns just project names and session counts for fast loading
-app.get('/claude-projects-quick', async (req, res) => {
-  try {
-    // Get pagination params from query string
-    const limit = parseInt(req.query.limit) || 20;
-    const offset = parseInt(req.query.offset) || 0;
-    
-    const claudeDir = join(homedir(), '.claude', 'projects');
-    
-    console.log('Quick loading project list from:', claudeDir);
-    
-    // Check if projects directory exists
-    if (!existsSync(claudeDir)) {
-      console.log('Claude projects directory not found:', claudeDir);
-      return res.json({ projects: [], count: 0 });
-    }
-    
-    const { readdir, stat } = await import('fs/promises');
-    const projectDirs = await readdir(claudeDir);
-    
-    // Quick filter for directories only
-    const projectPromises = projectDirs
-      .filter(dir => !dir.startsWith('.'))
-      .map(async (projectDir) => {
-        try {
-          const projectPath = join(claudeDir, projectDir);
-          const stats = await stat(projectPath);
-          if (!stats.isDirectory()) return null;
-          
-          // Count session files without reading them
-          const sessionFiles = await readdir(projectPath);
-          const sessionCount = sessionFiles.filter(f => f.endsWith('.jsonl')).length;
-          
-          // Just return name, path, and count for quick loading
-          return {
-            path: projectDir,
-            name: projectDir,
-            sessionCount: sessionCount,
-            lastModified: stats.mtime.getTime()
-          };
-        } catch {
-          return null;
-        }
-      });
-    
-    const projects = (await Promise.all(projectPromises)).filter(Boolean);
-    projects.sort((a, b) => b.lastModified - a.lastModified);
-    
-    // Apply pagination
-    const totalCount = projects.length;
-    const paginatedProjects = projects.slice(offset, offset + limit);
-    
-    console.log(`Quick loaded ${paginatedProjects.length} of ${totalCount} project names (offset: ${offset}, limit: ${limit})`);
-    res.json({ projects: paginatedProjects, count: totalCount });
-  } catch (error) {
-    console.error('Error quick loading projects:', error);
-    res.status(500).json({ error: 'Failed to load projects', details: error.message });
-  }
-});
-
-// Get sessions for a specific project using Server-Sent Events for streaming
-app.get('/claude-project-sessions/:projectName', async (req, res) => {
-  // Support pagination with offset and limit query params
-  const offset = parseInt(req.query.offset) || 0;
-  const limit = parseInt(req.query.limit) || 10;
-  try {
-    const projectName = decodeURIComponent(req.params.projectName);
-    console.log('📂 Loading sessions for project:', projectName);
-    
-    // Set up Server-Sent Events
-    res.writeHead(200, {
-      'Content-Type': 'text/event-stream',
-      'Cache-Control': 'no-cache',
-      'Connection': 'keep-alive'
-    });
-    
-    const claudeDir = join(homedir(), '.claude', 'projects');
-    const projectPath = join(claudeDir, projectName);
-    
-    // Check if project directory exists
-    if (!existsSync(projectPath)) {
-      res.write('data: {"done": true, "sessions": []}\n\n');
-      res.end();
-      return;
-    }
-    
-    const { readdir, stat, readFile } = await import('fs/promises');
-    
-    // Get all session files
-    const sessionFiles = await readdir(projectPath);
-    const jsonlFiles = sessionFiles
-      .filter(f => f.endsWith('.jsonl'))
-      .slice(0, 50); // Limit to 50 sessions for performance
-    
-    if (jsonlFiles.length === 0) {
-      res.write('data: {"done": true, "sessions": []}\n\n');
-      res.end();
-      return;
-    }
-    
-    // Get file stats and sort by modification time
-    const fileStats = await Promise.all(
-      jsonlFiles.map(async (file) => {
-        const filePath = join(projectPath, file);
-        const stats = await stat(filePath);
-        return {
-          filename: file,
-          path: filePath,
-          timestamp: stats.mtime.getTime()
-        };
-      })
-    );
-    
-    fileStats.sort((a, b) => b.timestamp - a.timestamp);
-    
-    // Apply pagination
-    const paginatedFiles = fileStats.slice(offset, offset + limit);
-    
-    // Process each file and stream it
-    for (let i = 0; i < paginatedFiles.length; i++) {
-      const { filename, path: filePath, timestamp } = paginatedFiles[i];
-      
-      try {
-        const sessionId = filename.replace('.jsonl', '');
-        let summary = 'Untitled session';
-        let title = null;
-        let messageCount = 0;
-        
-        // Read first few lines to get summary
-        const content = await readFile(filePath, 'utf8');
-        const lines = content.split(/\r?\n/).filter(line => line.trim());
-        messageCount = lines.length;
-        
-        // Try to find summary or title from first few lines
-        for (let j = 0; j < Math.min(5, lines.length); j++) {
-          try {
-            const data = JSON.parse(lines[j]);
-            if (data.summary) {
-              summary = data.summary;
-              break;
-            }
-            if (data.title) {
-              title = data.title;
-            }
-            // Use first user message as fallback
-            if (data.role === 'user' && data.content && summary === 'Untitled session') {
-              summary = data.content.slice(0, 100);
-              if (data.content.length > 100) summary += '...';
-            }
-          } catch {}
-        }
-        
-        // Check last line for metadata
-        if (lines.length > 0) {
-          try {
-            const lastData = JSON.parse(lines[lines.length - 1]);
-            if (lastData.title) {
-              title = lastData.title;
-            }
-          } catch {}
-        }
-        
-        const session = {
-          id: sessionId,
-          summary: summary,
-          title: title,
-          timestamp: timestamp,
-          path: filename,
-          messageCount: Math.min(messageCount, 50) // Cap reported count at 50
-        };
-        
-        // Stream this session immediately with pagination info
-        res.write(`data: ${JSON.stringify({ 
-          session, 
-          index: offset + i, 
-          total: fileStats.length,
-          hasMore: (offset + limit) < fileStats.length 
-        })}\n\n`);
-        console.log(`  📄 Sent session ${offset + i + 1}/${fileStats.length}: ${sessionId}`);
-        
-      } catch (e) {
-        console.log(`Error processing ${filename}:`, e.message);
-      }
-    }
-    
-    // Send completion event with pagination info
-    res.write(`data: ${JSON.stringify({ 
-      done: true, 
-      totalCount: fileStats.length,
-      hasMore: (offset + limit) < fileStats.length 
-    })}\n\n`);
-    console.log(`✅ Streamed ${paginatedFiles.length} sessions (offset: ${offset}, total: ${fileStats.length})`);
-    res.end();
-    
-  } catch (error) {
-    console.error('Error loading project sessions:', error);
-    res.write(`data: {"error": true, "message": "${error.message}"}\n\n`);
-    res.end();
-  }
-});
-
-// Get last modified date for a specific project
-app.get('/claude-project-date/:projectName', async (req, res) => {
-  try {
-    const projectName = decodeURIComponent(req.params.projectName);
-    console.log(`📅 Getting date for project: ${projectName}`);
-    
-    const claudeDir = join(homedir(), '.claude', 'projects');
-    const projectPath = join(claudeDir, projectName);
-    
-    // Check if project exists
-    if (!existsSync(projectPath)) {
-      return res.json({ projectName, lastModified: Date.now() });
-    }
-    
-    const { readdir, stat } = await import('fs/promises');
-    
-    // Get the most recent session file
-    const sessionFiles = await readdir(projectPath);
-    const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
-    
-    if (jsonlFiles.length === 0) {
-      // No sessions, use directory modification time
-      const dirStats = await stat(projectPath);
-      return res.json({ projectName, lastModified: dirStats.mtime.getTime() });
-    }
-    
-    // Get modification times of all session files
-    const fileTimes = await Promise.all(
-      jsonlFiles.map(async (file) => {
-        const filePath = join(projectPath, file);
-        const stats = await stat(filePath);
-        return stats.mtime.getTime();
-      })
-    );
-    
-    // Return the most recent modification time
-    const lastModified = Math.max(...fileTimes);
-    const date = new Date(lastModified);
-    console.log(`  ✅ ${projectName}: ${date.toLocaleString()}`);
-    
-    res.json({ projectName, lastModified });
-  } catch (error) {
-    console.error('Error getting project date:', error);
-    res.json({ projectName: req.params.projectName, lastModified: Date.now() });
-  }
-});
-
-// Get session count for a specific project
-app.get('/claude-project-session-count/:projectName', async (req, res) => {
-  try {
-    const projectName = decodeURIComponent(req.params.projectName);
-    
-    const claudeDir = join(homedir(), '.claude', 'projects');
-    const projectPath = join(claudeDir, projectName);
-    
-    // Check if project exists
-    if (!existsSync(projectPath)) {
-      return res.json({ projectName, sessionCount: 0 });
-    }
-    
-    const { readdir } = await import('fs/promises');
-    
-    // Count .jsonl files
-    const sessionFiles = await readdir(projectPath);
-    const sessionCount = sessionFiles.filter(f => f.endsWith('.jsonl')).length;
-    
-    res.json({ projectName, sessionCount });
-  } catch (error) {
-    console.error('Error getting session count:', error);
-    res.json({ projectName: req.params.projectName, sessionCount: 0 });
-  }
-});
-
 // PID file management - use temp directory for production
 // Each server instance gets a unique PID file based on its port
 const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 
@@ -1324,101 +1942,45 @@ io.on('connection', (socket) => {
 
   socket.on('createSession', async (data, callback) => {
     try {
-      // Use provided sessionId if resuming, otherwise generate new one
-      const sessionId = data.sessionId || `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      const isResuming = !!data.sessionId;
+      // Check if this is loading an existing session
+      let sessionId;
+      let existingClaudeSessionId = null;
+      let existingMessages = [];
       
-      if (isResuming) {
-        console.log(`🔄 Resuming existing session: ${sessionId}`);
-        
-        // Check if we already have this session in memory
-        if (sessions.has(sessionId)) {
-          const existingSession = sessions.get(sessionId);
-          console.log(`✅ Session ${sessionId} already exists in memory, updating socket`);
-          existingSession.socketId = socket.id;
-          
-          if (callback) {
-            callback({ 
-              success: true, 
-              sessionId,
-              workingDirectory: existingSession.workingDirectory,
-              messages: existingSession.messages,
-              claudeSessionId: existingSession.claudeSessionId
-            });
-          }
-          return;
-        }
-        
-        // Try to load from disk
-        const savedSession = sessionPersistence.loadSession(sessionId);
-        if (savedSession) {
-          console.log(`📂 Loaded session ${sessionId} from disk, claudeSessionId: ${savedSession.claudeSessionId}`);
-          
-          // Verify the Claude session still exists
-          if (savedSession.claudeSessionId && claudeReader.verifySessionExists(savedSession.claudeSessionId)) {
-            console.log(`✅ Claude session ${savedSession.claudeSessionId} verified on disk`);
-            
-            // Restore session to memory
-            const restoredSession = {
-              ...savedSession,
-              socketId: socket.id,
-              wasInterrupted: false
-            };
-            sessions.set(sessionId, restoredSession);
-            
-            if (callback) {
-              callback({ 
-                success: true, 
-                sessionId,
-                workingDirectory: restoredSession.workingDirectory,
-                messages: restoredSession.messages || [],
-                claudeSessionId: restoredSession.claudeSessionId
-              });
-            }
-            return;
-          } else {
-            console.log(`⚠️ Claude session ${savedSession.claudeSessionId} no longer exists, will start fresh`);
-          }
-        } else {
-          console.log(`⚠️ Session ${sessionId} not found on disk`);
-        }
+      if (data.existingSessionId && data.messages) {
+        // Loading an existing session - preserve the session ID and messages
+        sessionId = data.existingSessionId;
+        existingClaudeSessionId = data.claudeSessionId || null;
+        existingMessages = data.messages || [];
+        console.log(`📂 Loading existing session: ${sessionId} with Claude ID: ${existingClaudeSessionId}`);
+        console.log(`📝 Loaded ${existingMessages.length} existing messages`);
       } else {
+        // Creating a brand new session
+        sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         console.log(`✨ Creating new session: ${sessionId}`);
       }
       
-      // Use provided directory, or home directory as fallback (NOT process.cwd() which would be the app bundle)
-      const workingDirectory = data.workingDirectory || homedir();
+      // Validate working directory - NEVER use temp directories
+      let workingDirectory = data.workingDirectory;
       
-      // CRITICAL FIX: Handle both direct claudeSessionId and nested in options
-      let claudeSessionId = null;
-      let messages = [];
-      let hasGeneratedTitle = false;
-      
-      // Check for data in different locations (client sends it differently sometimes)
-      if (data.claudeSessionId) {
-        claudeSessionId = data.claudeSessionId;
-        console.log(`🔄 Using direct claudeSessionId: ${claudeSessionId}`);
-      } else if (data.options && data.options.claudeSessionId) {
-        claudeSessionId = data.options.claudeSessionId;
-        console.log(`🔄 Using claudeSessionId from options: ${claudeSessionId}`);
+      // Check if this is a temp directory
+      if (workingDirectory) {
+        const lowerPath = workingDirectory.toLowerCase();
+        if (lowerPath.includes('\\temp\\') || 
+            lowerPath.includes('/temp/') ||
+            lowerPath.includes('\\tmp\\') ||
+            lowerPath.includes('/tmp/') ||
+            lowerPath.includes('appdata\\local\\temp') ||
+            lowerPath.includes('yurucode-server')) {
+          console.log(`🚫 Rejecting temp directory as working directory: ${workingDirectory}`);
+          workingDirectory = null; // Reset to force using home
+        }
       }
       
-      // If we have a claudeSessionId, verify it exists on disk
-      if (claudeSessionId && !claudeReader.verifySessionExists(claudeSessionId)) {
-        console.log(`⚠️ Claude session ${claudeSessionId} doesn't exist on disk, will start fresh`);
-        claudeSessionId = null; // Clear invalid session ID
-      }
-      
-      if (data.messages) {
-        messages = data.messages;
-      } else if (data.options && data.options.messages) {
-        messages = data.options.messages;
-      }
-      
-      if (data.hasGeneratedTitle) {
-        hasGeneratedTitle = data.hasGeneratedTitle;
-      } else if (data.options && data.options.hasGeneratedTitle) {
-        hasGeneratedTitle = data.options.hasGeneratedTitle;
+      // Use provided directory, or home directory as fallback (NOT temp directory)
+      if (!workingDirectory) {
+        workingDirectory = homedir();
+        console.log(`📂 Using home directory as fallback: ${workingDirectory}`);
       }
       
       const sessionData = {
@@ -1426,33 +1988,23 @@ io.on('connection', (socket) => {
         name: data.name || 'new session',
         socketId: socket.id,
         workingDirectory: workingDirectory,
-        messages: messages,
+        messages: existingMessages,  // Use loaded messages if available
         createdAt: Date.now(),
-        claudeSessionId: claudeSessionId,
-        hasGeneratedTitle: hasGeneratedTitle,
-        wasInterrupted: false  // Reset on new connection
+        claudeSessionId: existingClaudeSessionId,  // Preserve Claude session ID
+        hasGeneratedTitle: existingMessages.length > 0,  // If we have messages, we likely have a title
+        wasInterrupted: false  // Track if last conversation was interrupted vs completed
       };
       
       sessions.set(sessionId, sessionData);
       
-      // Save to disk for persistence
-      sessionPersistence.saveSession(sessionId, sessionData);
-      
-      console.log(`✅ Session created and stored: ${sessionId}`);
+      console.log(`✅ Session ready: ${sessionId}`);
       console.log(`📁 Working directory: ${workingDirectory}`);
-      console.log(`📊 Total sessions in memory: ${sessions.size}`);
-      console.log(`🔍 Session IDs in memory:`, Array.from(sessions.keys()));
-      if (sessionData.claudeSessionId) {
-        console.log(`🔄 Has claudeSessionId for resumption: ${sessionData.claudeSessionId}`);
-      }
       
       if (callback) {
         callback({
           success: true,
           sessionId: sessionId,
-          workingDirectory: workingDirectory,
-          messages: sessionData.messages,
-          claudeSessionId: sessionData.claudeSessionId
+          workingDirectory: workingDirectory
         });
       }
     } catch (error) {
@@ -1468,43 +2020,12 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', async (data, callback) => {
     const { sessionId, content: message, model } = data;
-    console.log(`📨 sendMessage called for session: ${sessionId}`);
-    console.log(`📊 Current sessions in memory: ${sessions.size}`);
-    console.log(`🔍 Available session IDs:`, Array.from(sessions.keys()));
-    
-    let session = sessions.get(sessionId);
+    const session = sessions.get(sessionId);
     
     if (!session) {
-      console.log(`⚠️ Session ${sessionId} not found, creating new session automatically`);
-      
-      // auto-create a new session for this id
-      const workingDirectory = homedir();
-      const sessionData = {
-        id: sessionId,
-        name: 'restored session',
-        socketId: socket.id,
-        workingDirectory: workingDirectory,
-        messages: [],
-        createdAt: Date.now(),
-        claudeSessionId: null,
-        hasGeneratedTitle: false,
-        wasInterrupted: false
-      };
-      
-      sessions.set(sessionId, sessionData);
-      sessionPersistence.saveSession(sessionId, sessionData);
-      session = sessionData;
-      
-      console.log(`✅ Auto-created session ${sessionId}`);
-      console.log(`📁 Working directory: ${workingDirectory}`);
-      
-      // emit sessionCreated event to client so it knows the session exists
-      socket.emit('sessionCreated', {
-        sessionId: sessionId,
-        workingDirectory: workingDirectory,
-        messages: [],
-        claudeSessionId: null
-      });
+      console.error(`❌ Session not found: ${sessionId}`);
+      if (callback) callback({ success: false, error: 'Session not found' });
+      return;
     }
     
     // Log the model being used
@@ -1565,33 +2086,43 @@ io.on('connection', (socket) => {
           activeProcesses.delete(sessionId);
           activeProcessStartTimes.delete(sessionId);
           
-          // Mark session as interrupted since we killed the process - but KEEP claudeSessionId
+          // Mark session as interrupted since we killed the process
           session.wasInterrupted = true;
-          // CRITICAL: Never clear claudeSessionId during interruption - Claude Code preserves sessions
-          console.log(`🔄 Marked session ${sessionId} as interrupted while preserving claudeSessionId for seamless resume: ${session.claudeSessionId}`);
-          
-          // CRITICAL FIX: Clear any streaming assistant messages immediately when killing process
-          const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-          if (lastAssistantMessageId) {
-            console.log(`🔴 Immediately clearing streaming state for assistant message ${lastAssistantMessageId} on process kill`);
-            socket.emit(`message:${sessionId}`, {
-              type: 'assistant',
-              id: lastAssistantMessageId,
-              streaming: false,
-              timestamp: Date.now()
-            });
-            lastAssistantMessageIds.delete(sessionId);
-          }
+          // Clear the session ID since the conversation was interrupted
+          session.claudeSessionId = null;
+          console.log(`🔄 Marked session ${sessionId} as interrupted and cleared claudeSessionId`);
           
           // Wait a bit for the process to fully terminate
           await new Promise(resolve => setTimeout(resolve, 500));
         }
 
-        // The streaming state was cleared above when we killed the process
+        // Don't modify streaming state here - let the UI continue showing streaming
+        // The process exit handler will properly clean up when the old process dies
 
-        // Use session's working directory, fallback to home directory (NOT process.cwd() in bundled app)
-        let processWorkingDir = session.workingDirectory || homedir();
-        console.log(`📂 Using working directory: ${processWorkingDir}`);
+        // Validate session's working directory - NEVER use temp directories
+        let processWorkingDir = session.workingDirectory;
+        
+        // Check if this is a temp directory
+        if (processWorkingDir) {
+          const lowerPath = processWorkingDir.toLowerCase();
+          if (lowerPath.includes('\\temp\\') || 
+              lowerPath.includes('/temp/') ||
+              lowerPath.includes('\\tmp\\') ||
+              lowerPath.includes('/tmp/') ||
+              lowerPath.includes('appdata\\local\\temp') ||
+              lowerPath.includes('yurucode-server')) {
+            console.log(`🚫 Session has temp directory, using home instead: ${processWorkingDir}`);
+            processWorkingDir = null;
+          }
+        }
+        
+        // Use session's working directory, fallback to home directory (NOT temp directory)
+        if (!processWorkingDir) {
+          processWorkingDir = homedir();
+          console.log(`📂 Using home directory as fallback: ${processWorkingDir}`);
+        } else {
+          console.log(`📂 Using working directory: ${processWorkingDir}`);
+        }
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
       const args = [
@@ -1608,20 +2139,22 @@ io.on('connection', (socket) => {
         console.log(`🤖 Using model: ${model}`);
       }
       
-      // CRITICAL FIX: Always try to resume if we have a claudeSessionId
-      // Claude Code maintains sessions across interruptions - only start fresh if session is explicitly cleared
-      if (session.claudeSessionId) {
+      // Determine if we're resuming or recreating
+      let isResuming = false;
+      
+      // Use --resume if we have a claudeSessionId AND the last conversation wasn't interrupted
+      isResuming = session.claudeSessionId && !session.wasInterrupted;
+      if (isResuming) {
         args.push('--resume', session.claudeSessionId);
         console.log('🔄 Using --resume flag with session:', session.claudeSessionId);
-        console.log('🔄 This matches Claude Code behavior - sessions persist across interruptions');
       } else {
-        console.log('📝 Starting fresh conversation (no previous Claude session ID)');
-      }
-      
-      // Reset the interrupted flag regardless - it's only used for user feedback
-      if (session.wasInterrupted) {
-        session.wasInterrupted = false;
-        console.log('🔄 Reset interrupted flag while preserving session for --resume');
+        if (session.wasInterrupted) {
+          console.log('📝 Starting fresh conversation (last conversation was interrupted)');
+          session.wasInterrupted = false; // Reset the flag
+          session.claudeSessionId = null; // Clear the invalid session ID
+        } else {
+          console.log('📝 Starting fresh conversation (no previous session)');
+        }
       }
 
       // Spawn claude process with proper PATH for Node.js
@@ -1645,9 +2178,10 @@ io.on('connection', (socket) => {
       enhancedEnv.HOME = homedir(); // Ensure HOME is set correctly
       console.log(`🔧 Set PWD=${processWorkingDir} and HOME=${homedir()} in environment`);
       
-      // Remove artificial delay - handle race conditions properly instead
+      // Add small delay to prevent race conditions with multiple Claude instances
       if (isSpawningProcess) {
-        console.log(`⏳ Another Claude process is initializing...`);
+        console.log(`⏳ Waiting for previous Claude process to initialize...`);
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
       
       isSpawningProcess = true;
@@ -1662,8 +2196,9 @@ io.on('connection', (socket) => {
         cwd: processWorkingDir,
         env: enhancedEnv,
         shell: false,
-        windowsHide: true,  // Always hide windows
-        detached: true,  // Run in separate process group for better isolation
+        windowsHide: true,  // Always hide windows - prevents black console
+        // IMPORTANT: Do NOT use windowsVerbatimArguments with WSL - it breaks argument passing!
+        detached: false,  // Don't detach on Windows to avoid console window
         stdio: ['pipe', 'pipe', 'pipe']  // Explicit stdio configuration
       };
       
@@ -1684,11 +2219,49 @@ io.on('connection', (socket) => {
             console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
           }
           
-          const [wslCommand, wslArgs] = createWslClaudeCommand(args, wslWorkingDir);
-          console.log(`🚀 Running WSL command: wsl.exe -e bash -c`);
-          console.log(`🚀 WSL bash command (first 500 chars):`, wslArgs[2].substring(0, 500));
+          // Build the message with context if needed
+          let messageToSend = message;
+          if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
+            console.log(`🔄 Building context for WSL command`);
+            let contextSummary = "Here's our previous conversation context:\\n\\n";
+            
+            const recentMessages = session.messages.slice(-10);
+            for (const msg of recentMessages) {
+              if (msg.type === 'user') {
+                const content = msg.message?.content || '';
+                // Handle both string and array content
+                let textContent = '';
+                if (typeof content === 'string') {
+                  textContent = content;
+                } else if (Array.isArray(content)) {
+                  textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
+                }
+                contextSummary += `User: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\\n\\n`;
+              } else if (msg.type === 'assistant') {
+                const content = msg.message?.content || '';
+                let textContent = '';
+                if (typeof content === 'string') {
+                  textContent = content;
+                } else if (Array.isArray(content)) {
+                  textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
+                }
+                contextSummary += `Assistant: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\\n\\n`;
+              }
+            }
+            
+            contextSummary += `---\\nNow, continuing our conversation: ${message}`;
+            messageToSend = contextSummary;
+            session.pendingContextRestore = false;
+          }
           
-          return spawn(wslCommand, wslArgs, spawnOptions);
+          const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, messageToSend);
+          console.log(`🚀 Running WSL command: ${wslCommand}`);
+          console.log(`🚀 WSL args:`, wslArgs);
+          console.log(`🚀 Input handled in script: ${inputHandled}`);
+          
+          const process = spawn(wslCommand, wslArgs, spawnOptions);
+          process.inputHandled = inputHandled;
+          return process;
         })() :
         spawn(CLAUDE_PATH, args, spawnOptions);
       
@@ -1706,42 +2279,76 @@ io.on('connection', (socket) => {
         claudeProcess.unref(); // Allow parent to exit independently
       }
 
-      // Send input if not resuming - handle WSL differently
-      if (message) {
-        const messageToSend = message + '\n';
-        console.log(`📝 Sending message to claude (${messageToSend.length} chars)`);
+      // Send input based on session state
+      if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
+        // Restore context by sending previous messages as a summary
+        console.log(`🔄 Restoring context with ${session.messages.length} previous messages`);
         
-        // For WSL, we need to be more careful with stdin
-        if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
-          // Write in chunks to avoid buffer issues with WSL
-          const chunkSize = 4096;
-          let offset = 0;
-          
-          const writeNextChunk = () => {
-            if (offset < messageToSend.length) {
-              const chunk = messageToSend.substring(offset, offset + chunkSize);
-              claudeProcess.stdin.write(chunk, (err) => {
-                if (err) {
-                  console.error(`❌ Error writing to stdin:`, err);
-                  claudeProcess.stdin.end();
-                } else {
-                  offset += chunkSize;
-                  // Small delay between chunks for WSL
-                  setTimeout(writeNextChunk, 10);
-                }
-              });
-            } else {
-              claudeProcess.stdin.end();
+        // Build context summary from previous messages
+        let contextSummary = "Here's our previous conversation context:\n\n";
+        
+        // Include last few messages for context (limit to prevent overwhelming)
+        const recentMessages = session.messages.slice(-10); // Last 10 messages
+        for (const msg of recentMessages) {
+          if (msg.type === 'user') {
+            const content = msg.message?.content || '';
+            // Handle both string and array content
+            let textContent = '';
+            if (typeof content === 'string') {
+              textContent = content;
+            } else if (Array.isArray(content)) {
+              textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
             }
-          };
-          
-          // Add delay for WSL to ensure bash script starts
-          setTimeout(writeNextChunk, 500);
-        } else {
-          // Normal operation for macOS/Linux
-          claudeProcess.stdin.write(messageToSend);
-          claudeProcess.stdin.end();
+            contextSummary += `User: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\n\n`;
+          } else if (msg.type === 'assistant') {
+            const content = msg.message?.content || '';
+            // Handle both string and array content
+            let textContent = '';
+            if (typeof content === 'string') {
+              textContent = content;
+            } else if (Array.isArray(content)) {
+              textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
+            }
+            contextSummary += `Assistant: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\n\n`;
+          }
         }
+        
+        contextSummary += `---\nNow, continuing our conversation: ${message}`;
+        
+        const messageToSend = contextSummary + '\n';
+        console.log(`📝 Sending context + message to claude (${messageToSend.length} chars)`);
+        
+        if (!claudeProcess.inputHandled) {
+          claudeProcess.stdin.write(messageToSend, (err) => {
+            if (err) {
+              console.error(`❌ Error writing to stdin:`, err);
+            } else {
+              console.log(`✅ Successfully sent context restoration`);
+            }
+            claudeProcess.stdin.end();
+            console.log(`📝 Stdin closed`);
+          });
+        }
+        
+        session.pendingContextRestore = false; // Reset flag
+      } else if (message && !isResuming && !claudeProcess.inputHandled) {
+        const messageToSend = message + '\n';
+        console.log(`📝 Sending message to claude via stdin (${message.length} chars)`);
+        
+        // Write immediately - Claude with --print needs input right away
+        claudeProcess.stdin.write(messageToSend, (err) => {
+          if (err) {
+            console.error(`❌ Error writing to stdin:`, err);
+          } else {
+            console.log(`✅ Successfully wrote to stdin`);
+          }
+          claudeProcess.stdin.end();
+          console.log(`📝 Stdin closed`);
+        });
+      } else if (claudeProcess.inputHandled) {
+        console.log(`📝 Message already embedded in WSL script`);
+      } else if (isResuming) {
+        console.log(`📝 Resuming session - no input needed`);
       }
       
       // Generate title with Sonnet (fire and forget) - only for first message
@@ -1796,7 +2403,9 @@ io.on('connection', (socket) => {
       if (streamHealthChecks.has(sessionId)) {
         clearInterval(streamHealthChecks.get(sessionId));
       }
-      // No timeouts to clear anymore
+      if (streamTimeouts.has(sessionId)) {
+        clearTimeout(streamTimeouts.get(sessionId));
+      }
       
       // Log stream health check every 5 seconds
       const streamHealthInterval = setInterval(() => {
@@ -1804,24 +2413,38 @@ io.on('connection', (socket) => {
         const streamDuration = Date.now() - streamStartTime;
         console.log(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
         
-        if (timeSinceLastData > 15000) {
-          // Send keepalive more frequently to prevent any timeouts
+        if (timeSinceLastData > 30000) {
+          console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
+          // Send keepalive to prevent client timeout
           socket.emit(`keepalive:${sessionId}`, { timestamp: Date.now() });
         }
-        if (timeSinceLastData > 60000) {
-          console.log(`⏳ Long operation in progress - ${timeSinceLastData}ms since last data`);
-        }
+        
+        // If no data for 5 minutes, consider stream dead
         if (timeSinceLastData > 300000) {
-          console.log(`⏳ Very long operation - ${Math.floor(timeSinceLastData/60000)} minutes since last data`);
+          console.error(`💀 Stream appears dead after ${timeSinceLastData}ms, cleaning up`);
+          if (activeProcesses.has(sessionId)) {
+            const proc = activeProcesses.get(sessionId);
+            proc.kill('SIGTERM');
+            activeProcesses.delete(sessionId);
+            activeProcessStartTimes.delete(sessionId);
+          }
+          clearInterval(streamHealthInterval);
         }
-        // NEVER kill process due to timeout - let it run forever if needed
       }, 5000);
       
       // Store health check interval for cleanup
       streamHealthChecks.set(sessionId, streamHealthInterval);
       
-      // NO TIMEOUT AT ALL - sessions run forever
-      // Don't even track timeouts
+      // Set overall stream timeout (10 minutes max per stream)
+      const streamTimeout = setTimeout(() => {
+        console.warn(`⏰ Stream timeout reached for session ${sessionId} after 10 minutes`);
+        if (activeProcesses.has(sessionId)) {
+          const proc = activeProcesses.get(sessionId);
+          console.log(`⏰ Terminating long-running process for ${sessionId}`);
+          proc.kill('SIGTERM');
+        }
+      }, 600000); // 10 minutes
+      streamTimeouts.set(sessionId, streamTimeout);
       
       const processStreamLine = (line) => {
         if (!line.trim()) {
@@ -1831,6 +2454,53 @@ io.on('connection', (socket) => {
         
         console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line.substring(0, 100)}...`);
         
+        // Check for "No conversation found" error message
+        if (line.includes('No conversation found with session ID')) {
+          console.log(`🔄 [${sessionId}] Resume failed - session not found in Claude storage`);
+          console.log(`🔄 [${sessionId}] Will create new session with existing context on next message`);
+          
+          // Clear the invalid session ID so next attempt doesn't use --resume
+          const session = sessions.get(sessionId);
+          if (session) {
+            // Clear the invalid session ID
+            session.claudeSessionId = null;
+            
+            // Send a result message with checkpoint restore flag
+            const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+            const errorResultMessage = {
+              id: errorResultId,
+              type: 'result',
+              subtype: 'error',
+              is_error: true,
+              error: 'Session not found - restoring from checkpoint',
+              requiresCheckpointRestore: true, // Signal frontend to restore from checkpoint
+              streaming: false,
+              timestamp: Date.now()
+            };
+            const channel = `message:${sessionId}`;
+            console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore flag`);
+            socket.emit(channel, errorResultMessage);
+            console.log(`📤 [${sessionId}] Sent checkpoint restore signal`);
+            
+            // Send info message to explain what happened
+            const infoMessageId = `system-info-${Date.now()}-${Math.random()}`;
+            socket.emit(`message:${sessionId}`, {
+              id: infoMessageId,
+              type: 'system',
+              subtype: 'info',
+              message: { content: 'session history not found - send message again to continue' },
+              timestamp: Date.now(),
+              streaming: false
+            });
+            console.log(`📤 [${sessionId}] Sent info message ${infoMessageId} about session not found`);
+            
+            // Mark session as ready for new messages
+            session.isReady = true;
+            console.log(`✅ [${sessionId}] Session marked as ready after resume failure`);
+          }
+          return; // Don't try to parse as JSON
+        }
+        
         try {
           const jsonData = JSON.parse(line);
           console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
@@ -1839,8 +2509,6 @@ io.on('connection', (socket) => {
           if (jsonData.session_id) {
             session.claudeSessionId = jsonData.session_id;
             console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
-            // Save session to disk when we get the Claude session ID
-            sessionPersistence.saveSession(sessionId, session);
           }
           
           // Handle different message types - EXACTLY LIKE WINDOWS
@@ -1865,23 +2533,9 @@ io.on('connection', (socket) => {
               
               // Check what content we have and preserve all blocks
               for (const block of jsonData.message.content) {
-                if (block.type === 'text') {
+                if (block.type === 'text' || block.type === 'thinking') {
                   hasContent = true;
                   contentBlocks.push(block);
-                } else if (block.type === 'thinking') {
-                  hasContent = true;
-                  // Log thinking block for debugging
-                  console.log(`🧠 [${sessionId}] Thinking block detected:`, {
-                    hasThinking: !!block.thinking,
-                    hasText: !!block.text,
-                    length: (block.thinking || block.text || '').length
-                  });
-                  // Ensure thinking blocks have the correct structure
-                  contentBlocks.push({
-                    type: 'thinking',
-                    thinking: block.thinking || block.text || '',
-                    text: block.thinking || block.text || ''  // Add text field as fallback
-                  });
                 } else if (block.type === 'tool_use') {
                   hasToolUse = true;
                   // Send tool use as separate message immediately
@@ -1950,9 +2604,95 @@ io.on('connection', (socket) => {
               }
             }
             
+          } else if (jsonData.type === 'content_block_start') {
+            // Handle content block start events
+            console.log(`📝 [${sessionId}] Content block starting:`, jsonData.content_block?.type);
+            socket.emit(`message:${sessionId}`, {
+              type: 'content_block_start',
+              content_block: jsonData.content_block,
+              index: jsonData.index,
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'content_block_stop') {
+            // Handle content block stop events
+            console.log(`📝 [${sessionId}] Content block stopped:`, jsonData.index);
+            socket.emit(`message:${sessionId}`, {
+              type: 'content_block_stop',
+              index: jsonData.index,
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'rate_limit') {
+            // Handle rate limit events
+            console.log(`⚠️ [${sessionId}] Rate limit:`, jsonData.rate_limit);
+            socket.emit(`message:${sessionId}`, {
+              type: 'rate_limit',
+              rate_limit: jsonData.rate_limit,
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'progress') {
+            // Handle progress events for long operations
+            console.log(`⏳ [${sessionId}] Progress:`, jsonData.progress);
+            socket.emit(`message:${sessionId}`, {
+              type: 'progress',
+              progress: jsonData.progress,
+              message: jsonData.message,
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'compact' || (jsonData.type === 'system' && jsonData.subtype === 'compact')) {
+            // Handle explicit compact events
+            console.log(`🗜️ [${sessionId}] Context compacted`);
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'compact',
+              message: { content: 'context compacted to save tokens' },
+              timestamp: Date.now()
+            });
+            
+          } else if (jsonData.type === 'ping' || jsonData.type === 'pong') {
+            // Handle ping/pong for keep-alive
+            console.log(`🏓 [${sessionId}] ${jsonData.type} received`);
+            // Don't emit to frontend, just acknowledge
+            
+          } else if (jsonData.type === 'metadata') {
+            // Handle metadata events
+            console.log(`📋 [${sessionId}] Metadata:`, jsonData);
+            if (jsonData.title) {
+              // Send title update
+              socket.emit(`title:${sessionId}`, jsonData.title);
+            }
+            
+          } else if (jsonData.type === 'summary') {
+            // Handle summary events
+            console.log(`📝 [${sessionId}] Summary:`, jsonData.summary);
+            if (jsonData.summary) {
+              socket.emit(`title:${sessionId}`, jsonData.summary);
+            }
+            
           } else if (jsonData.type === 'result') {
             console.log(`📦 Message type: result`);
             console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
+            
+            // Check if this is a compact result
+            const isCompactResult = jsonData.usage && 
+                                   jsonData.usage.input_tokens === 0 && 
+                                   jsonData.usage.output_tokens === 0 &&
+                                   jsonData.usage.cache_creation_input_tokens === 0 &&
+                                   jsonData.usage.cache_read_input_tokens === 0;
+            
+            if (isCompactResult) {
+              console.log(`🗜️ [${sessionId}] Detected /compact command completion`);
+              // Send compact notification
+              socket.emit(`message:${sessionId}`, {
+                type: 'system',
+                subtype: 'compact',
+                message: { content: 'context compacted - token count reset' },
+                timestamp: Date.now()
+              });
+            }
             
             // Log usage/cost information if present
             if (jsonData.usage) {
@@ -2002,6 +2742,27 @@ io.on('connection', (socket) => {
         }
       };
 
+      // Add debugging for the spawned process
+      console.log(`🔍 [${sessionId}] Process spawned with PID: ${claudeProcess.pid}`);
+      console.log(`🔍 [${sessionId}] Process connected: ${claudeProcess.connected}`);
+      
+      // Capture stderr for debugging
+      let stderrBuffer = '';
+      claudeProcess.stderr.on('data', (chunk) => {
+        const str = chunk.toString();
+        stderrBuffer += str;
+        console.error(`❌ [${sessionId}] STDERR output: ${str}`);
+        
+        // Check for common WSL errors
+        if (str.includes('command not found') || str.includes('No such file')) {
+          console.error(`❌ [${sessionId}] WSL PATH ERROR - Claude CLI not found!`);
+          console.error(`❌ [${sessionId}] Full stderr: ${stderrBuffer}`);
+        }
+        if (str.includes('bash:') || str.includes('sh:')) {
+          console.error(`❌ [${sessionId}] WSL BASH ERROR detected`);
+        }
+      });
+      
       // Handle stdout
       claudeProcess.stdout.on('data', (data) => {
         const str = data.toString();
@@ -2011,33 +2772,22 @@ io.on('connection', (socket) => {
         console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
         console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200).replace(/\n/g, '\\n')}...`);
         
-        // CIRCULAR BUFFER - keep only recent data to prevent overflow
+        // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {
-          console.warn(`⚠️ [${sessionId}] Buffer approaching limit (${lineBuffer.length} bytes), using circular buffer`);
-          // Keep only the last 80% of the buffer
-          const keepSize = Math.floor(MAX_LINE_BUFFER_SIZE * 0.8);
-          const newlineIndex = lineBuffer.lastIndexOf('\n', lineBuffer.length - keepSize);
-          if (newlineIndex > 0) {
-            // Process everything before the cutoff
-            const toProcess = lineBuffer.substring(0, newlineIndex);
-            const lines = toProcess.split('\n');
-            for (const line of lines) {
-              if (line.trim()) {
-                try {
-                  processStreamLine(line);
-                } catch (e) {
-                  console.error(`[${sessionId}] Failed to process line during rotation:`, e);
-                }
+          console.error(`⚠️ [${sessionId}] Line buffer overflow (${lineBuffer.length} bytes), processing and clearing`);
+          // Try to process what we have
+          const lines = lineBuffer.split('\n');
+          console.log(`⚠️ [${sessionId}] Processing ${lines.length} buffered lines`);
+          for (const line of lines) {
+            if (line.trim()) {
+              try {
+                processStreamLine(line);
+              } catch (e) {
+                console.error(`[${sessionId}] Failed to process line during overflow:`, e);
               }
             }
-            // Keep only recent data
-            lineBuffer = lineBuffer.substring(newlineIndex + 1);
-            console.log(`⚠️ [${sessionId}] Rotated buffer, kept ${lineBuffer.length} bytes`);
-          } else {
-            // Emergency clear if no newline found
-            console.error(`⚠️ [${sessionId}] Emergency buffer clear`);
-            lineBuffer = '';
           }
+          lineBuffer = '';
         }
         
         lineBuffer += str;
@@ -2060,15 +2810,28 @@ io.on('connection', (socket) => {
         
         // Check if this is a "No conversation found" error
         if (error.includes('No conversation found with session ID')) {
-          console.log(`🔄 Resume failed - Claude session ${session.claudeSessionId} no longer exists`);
+          console.log(`🔄 Resume failed - will recreate session with existing context`);
           
-          // IMPORTANT: Only clear session ID if Claude definitively says it doesn't exist
-          // This preserves session resumption for temporary network issues
+          // Clear the invalid session ID
           session.claudeSessionId = null;
           session.wasInterrupted = false;
           
-          // Add a user-friendly info message
-          console.log(`🔄 Will start fresh conversation - previous session expired`);
+          // Send result message with checkpoint restore flag
+          const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+          const errorResultMessage = {
+            id: errorResultId,
+            type: 'result',
+            subtype: 'error',
+            is_error: true,
+            error: 'Session not found - restoring from checkpoint',
+            requiresCheckpointRestore: true,
+            streaming: false,
+            timestamp: Date.now()
+          };
+          const channel = `message:${sessionId}`;
+          console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore (stderr)`);
+          socket.emit(channel, errorResultMessage);
+          console.log(`📤 [${sessionId}] Sent checkpoint restore signal (stderr)`);
         } else {
           // Emit other errors to client
           socket.emit(`message:${sessionId}`, { 
@@ -2087,7 +2850,10 @@ io.on('connection', (socket) => {
           clearInterval(streamHealthChecks.get(sessionId));
           streamHealthChecks.delete(sessionId);
         }
-        // No timeouts to clean up
+        if (streamTimeouts.has(sessionId)) {
+          clearTimeout(streamTimeouts.get(sessionId));
+          streamTimeouts.delete(sessionId);
+        }
         clearInterval(streamHealthInterval);
         const streamDuration = Date.now() - streamStartTime;
         console.log(`👋 [${sessionId}] Claude process exited with code ${code}`);
@@ -2095,7 +2861,19 @@ io.on('connection', (socket) => {
         console.log(`   ├─ Total duration: ${streamDuration}ms`);
         console.log(`   ├─ Total bytes: ${bytesReceived}`);
         console.log(`   ├─ Messages: ${messageCount}`);
-        console.log(`   └─ Exit code: ${code}`);
+        console.log(`   ├─ Exit code: ${code}`);
+        console.log(`   ├─ Stderr: ${stderrBuffer || '(empty)'}`);
+        console.log(`   └─ Line buffer: ${lineBuffer || '(empty)'}`);
+        
+        // Log if we got no output at all
+        if (bytesReceived === 0) {
+          console.error(`❌ [${sessionId}] NO OUTPUT RECEIVED FROM CLAUDE!`);
+          console.error(`❌ [${sessionId}] This usually means:`);
+          console.error(`   1. Claude CLI is not installed in WSL`);
+          console.error(`   2. Claude is not in any of the expected paths`);
+          console.error(`   3. WSL is not running properly`);
+          console.error(`   4. The command syntax is wrong`);
+        }
         activeProcesses.delete(sessionId);
         activeProcessStartTimes.delete(sessionId);
         
@@ -2104,17 +2882,51 @@ io.on('connection', (socket) => {
           const session = sessions.get(sessionId);
           if (session) {
             session.wasInterrupted = false;
-            sessionPersistence.saveSession(sessionId, session);
-            console.log(`✅ Marked session ${sessionId} as completed normally and saved to disk`);
+            console.log(`✅ Marked session ${sessionId} as completed normally`);
           }
         } else if (code === 1) {
-          // Exit code 1 can mean --resume failed, but could also be other issues
+          // Exit code 1 might mean --resume failed OR other errors
           const session = sessions.get(sessionId);
-          if (session && session.claudeSessionId) {
-            console.log(`⚠️ Process exited with code 1 - preserving session ID for retry (${session.claudeSessionId})`);
-            // CONSERVATIVE: Don't clear session ID on exit code 1 - let next attempt decide
-            // session.claudeSessionId = null;
-            session.wasInterrupted = true; // Mark as interrupted for user feedback
+          
+          // Check if stderr contains "No conversation found" - mark for recreation
+          if (session && session.claudeSessionId && stderrBuffer.includes('No conversation found')) {
+            console.log(`⚠️ Resume failed - session not found in Claude storage`);
+            console.log(`🔄 Will recreate session with existing context on next attempt`);
+            // Clear the invalid session ID
+            session.claudeSessionId = null;
+            
+            // Send result message with checkpoint restore flag
+            const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
+            const errorResultMessage = {
+              id: errorResultId,
+              type: 'result',
+              subtype: 'error',
+              is_error: true,
+              error: 'Session not found - restoring from checkpoint',
+              requiresCheckpointRestore: true,
+              streaming: false,
+              timestamp: Date.now()
+            };
+            const channel = `message:${sessionId}`;
+            console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore (exit code 1)`);
+            socket.emit(channel, errorResultMessage);
+            console.log(`📤 [${sessionId}] Sent checkpoint restore signal (exit code 1)`);
+            
+            // Clear the assistant message ID tracking
+            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+            if (lastAssistantMessageId) {
+              console.log(`🔴 Clearing assistant message ID ${lastAssistantMessageId} after resume failure`);
+              lastAssistantMessageIds.delete(sessionId);
+            }
+            
+            // Send a subtle notification that we'll continue without resume
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'info',
+              message: { content: 'continuing conversation (session history not found in claude)' },
+              timestamp: Date.now(),
+              streaming: false
+            });
           }
         }
         
@@ -2180,7 +2992,10 @@ io.on('connection', (socket) => {
           clearInterval(streamHealthChecks.get(sessionId));
           streamHealthChecks.delete(sessionId);
         }
-        // No timeouts to clean up
+        if (streamTimeouts.has(sessionId)) {
+          clearTimeout(streamTimeouts.get(sessionId));
+          streamTimeouts.delete(sessionId);
+        }
         clearInterval(streamHealthInterval);
         console.error(`❌ [${sessionId}] Failed to spawn claude:`, err);
         console.error(`❌ [${sessionId}] Error details:`, {
@@ -2305,28 +3120,10 @@ io.on('connection', (socket) => {
   });
   
   socket.on('clearSession', ({ sessionId }) => {
-    let session = sessions.get(sessionId);
+    const session = sessions.get(sessionId);
     if (!session) {
-      console.log(`⚠️ Session not found: ${sessionId}`);
-      // Instead of returning, create a new session
-      console.log(`⚠️ Creating new session for ${sessionId} on clearSession`);
-      
-      const workingDirectory = homedir();
-      session = {
-        id: sessionId,
-        name: 'cleared session',
-        socketId: socket.id,
-        workingDirectory: workingDirectory,
-        messages: [],
-        createdAt: Date.now(),
-        claudeSessionId: null,
-        hasGeneratedTitle: false,
-        wasInterrupted: false
-      };
-      
-      sessions.set(sessionId, session);
-      sessionPersistence.saveSession(sessionId, session);
-      console.log(`✅ Auto-created session ${sessionId} for clearSession`);
+      console.error(`Session not found: ${sessionId}`);
+      return;
     }
     
     // Kill any active process
@@ -2340,26 +3137,9 @@ io.on('connection', (socket) => {
     
     // Clear the session data but keep the session alive
     session.messages = [];
-    session.claudeSessionId = null;  // ONLY clear claudeSessionId on explicit clear context
+    session.claudeSessionId = null;  // Reset Claude session ID so next message starts fresh
     session.hasGeneratedTitle = false;  // Reset title generation flag so next message gets a new title
     session.wasInterrupted = false;  // Reset interrupted flag
-    
-    console.log(`🧹 [SERVER] Cleared session ${sessionId} - next message will start fresh Claude conversation`);
-    
-    // Update saved session on disk
-    sessionPersistence.saveSession(sessionId, session);
-    
-    // Clear any tracked assistant message IDs and ensure streaming is false
-    const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-    if (lastAssistantMessageId) {
-      console.log(`🔴 Clearing streaming state for assistant message ${lastAssistantMessageId} on session clear`);
-      socket.emit(`message:${sessionId}`, {
-        type: 'assistant',
-        id: lastAssistantMessageId,
-        streaming: false,
-        timestamp: Date.now()
-      });
-    }
     lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
     
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
@@ -2395,7 +3175,10 @@ io.on('connection', (socket) => {
           clearInterval(streamHealthChecks.get(sessionId));
           streamHealthChecks.delete(sessionId);
         }
-        // No timeouts to clean up
+        if (streamTimeouts.has(sessionId)) {
+          clearTimeout(streamTimeouts.get(sessionId));
+          streamTimeouts.delete(sessionId);
+        }
         
         const process = activeProcesses.get(sessionId);
         if (process) {
@@ -2408,37 +3191,6 @@ io.on('connection', (socket) => {
       }
     }
   });
-});
-
-// PERIODIC SESSION BACKUP
-function backupSessions() {
-  try {
-    const sessionData = Array.from(sessions.entries()).map(([id, session]) => ({
-      id,
-      claudeSessionId: session.claudeSessionId,
-      messageCount: session.messages.length,
-      hasGeneratedTitle: session.hasGeneratedTitle,
-      wasInterrupted: session.wasInterrupted,
-      model: session.model
-    }));
-    // In production, write to disk - for now just log
-    if (sessionData.length > 0) {
-      console.log(`💾 Backing up ${sessionData.length} sessions (${sessionData.map(s => s.messageCount).reduce((a,b) => a+b, 0)} total messages)`);
-    }
-  } catch (e) {
-    console.error('Failed to backup sessions:', e);
-  }
-}
-
-// Start periodic backups
-sessionBackupInterval = setInterval(backupSessions, SESSION_BACKUP_INTERVAL);
-
-// Cleanup on exit
-process.on('exit', () => {
-  if (sessionBackupInterval) {
-    clearInterval(sessionBackupInterval);
-  }
-  backupSessions(); // Final backup on exit
 });
 
 // Start server with error handling
@@ -2642,11 +3394,8 @@ pub fn start_logged_server(port: u16) {
                     .and_then(|p| p.parent().map(|p| p.to_path_buf()))
                     .map(|p| p.join("resources").join("node_modules")),
                 // User's project directory (fallback)
-                dirs::home_dir()
-                    .and_then(|home| {
-                        let path = home.join("Desktop").join("yurucode").join("node_modules");
-                        path.exists().then(|| path)
-                    }),
+                PathBuf::from(r"C:\Users\muuko\Desktop\yurucode\node_modules").exists()
+                    .then(|| PathBuf::from(r"C:\Users\muuko\Desktop\yurucode\node_modules")),
             ];
             
             for modules_path in possible_modules.into_iter().flatten() {
@@ -2661,9 +3410,7 @@ pub fn start_logged_server(port: u16) {
         // Determine where to find node_modules - try multiple locations
         let node_path = vec![
             // User's project directory (most reliable on Windows)
-            dirs::home_dir()
-                .map(|home| home.join("Desktop").join("yurucode").join("node_modules"))
-                .unwrap_or_default(),
+            PathBuf::from(r"C:\Users\muuko\Desktop\yurucode\node_modules"),
             // Development: project root
             std::env::current_exe()
                 .ok()
@@ -2680,45 +3427,13 @@ pub fn start_logged_server(port: u16) {
         .into_iter()
         .find(|p| p.exists());
         
-        // Try to start server with Node.js - try various paths
-        let mut node_paths: Vec<String> = if cfg!(target_os = "windows") {
-            vec![
-                "node.exe".to_string(),
-                "node".to_string(),
-                r"C:\Program Files\nodejs\node.exe".to_string(),
-                r"C:\Program Files (x86)\nodejs\node.exe".to_string(),
-            ]
-        } else {
-            vec![
-                "node".to_string(),
-                "/usr/local/bin/node".to_string(),
-                "/usr/bin/node".to_string(),
-            ]
-        };
-        
-        // Add user-specific Node.js paths on Windows
-        #[cfg(target_os = "windows")]
-        if let Ok(appdata) = std::env::var("APPDATA") {
-            node_paths.push(format!("{}\\npm\\node.exe", appdata));
-        }
-        
-        // Check if Node.js is in a custom location via NODE_HOME
-        if let Ok(node_home) = std::env::var("NODE_HOME") {
-            let node_exe = if cfg!(target_os = "windows") {
-                format!("{}\\node.exe", node_home)
-            } else {
-                format!("{}/bin/node", node_home)
-            };
-            node_paths.insert(0, node_exe);
-        }
-        
-        write_log(&format!("Looking for Node.js in {} locations", node_paths.len()));
+        // Try to start server with Node.js
+        let node_paths = vec!["node", "node.exe"];
         
         for node_cmd in node_paths {
-            info!("Trying Node.js at: {}", node_cmd);
-            write_log(&format!("Trying Node.js at: {}", node_cmd));
+            info!("Trying: {}", node_cmd);
             
-            let mut cmd = Command::new(&node_cmd);
+            let mut cmd = Command::new(node_cmd);
             cmd.arg(&server_path)
                .current_dir(&server_dir)
                .env("PORT", port.to_string());
@@ -2799,14 +3514,7 @@ pub fn start_logged_server(port: u16) {
                     return;
                 }
                 Err(e) => {
-                    info!("Failed to start with {}: {}", node_cmd, e);
-                    write_log(&format!("Failed to start with {}: {}", node_cmd, e));
-                    
-                    // Try to provide more helpful error messages
-                    if e.kind() == std::io::ErrorKind::NotFound {
-                        write_log("Node.js not found. Please ensure Node.js is installed.");
-                        info!("Node.js not found. Checking PATH: {:?}", std::env::var("PATH"));
-                    }
+                    info!("Failed: {}", e);
                 }
             }
         }

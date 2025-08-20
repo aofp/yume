@@ -548,6 +548,31 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         }));
       });
       
+      // Set up error handler for this session
+      const errorCleanup = claudeCodeClient.onError(sessionId, (error) => {
+        console.error('[Store] Error received for session:', sessionId, error);
+        
+        // Add error message to the session
+        set(state => ({
+          ...state,
+          sessions: state.sessions.map(s => 
+            s.id === sessionId 
+              ? {
+                  ...s,
+                  messages: [...s.messages, {
+                    id: `error-${Date.now()}`,
+                    type: 'error',
+                    content: error.message,
+                    timestamp: error.timestamp || Date.now(),
+                    errorType: error.type
+                  }],
+                  streaming: false
+                }
+              : s
+          )
+        }));
+      });
+      
       const messageCleanup = claudeCodeClient.onMessage(sessionId, (message) => {
           // CRITICAL: Check if this session is still the current one
           const currentState = get();
@@ -1264,6 +1289,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       const cleanup = () => {
         messageCleanup();
         titleCleanup();
+        errorCleanup();
       };
       
       // Store cleanup function (could be used later)
@@ -1555,6 +1581,31 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       }));
     });
     
+    // Set up error handler for resumed session
+    const errorCleanup = claudeCodeClient.onError(sessionId, (error) => {
+      console.error('[Store] Error received for resumed session:', sessionId, error);
+      
+      set(state => ({
+        ...state,
+        sessions: state.sessions.map(s => 
+          s.id === sessionId 
+            ? {
+                ...s,
+                messages: [...s.messages, {
+                  id: `error-${Date.now()}`,
+                  type: 'error',
+                  content: error.message,
+                  timestamp: error.timestamp || Date.now(),
+                  errorType: error.type
+                }],
+                streaming: false,
+                status: 'active' as const
+              }
+            : s
+        )
+      }));
+    });
+    
     // Listen for messages
     const messageCleanup = claudeCodeClient.onMessage(sessionId, (message) => {
       // Use the same message handler logic as createSession
@@ -1623,6 +1674,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       (session as any).cleanup = () => {
         messageCleanup();
         titleCleanup();
+        errorCleanup();
       };
     }
   },
@@ -1727,6 +1779,30 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           sessions: state.sessions.map(s => 
             // Only update title if user hasn't manually renamed
             s.id === sessionId && !s.userRenamed ? { ...s, claudeTitle: title } : s
+          )
+        }));
+      });
+      
+      // Set up error handler for loaded session
+      const errorCleanup = claudeCodeClient.onError(sessionId, (error) => {
+        console.error('[Store] Error received for loaded session:', sessionId, error);
+        
+        set(state => ({
+          ...state,
+          sessions: state.sessions.map(s => 
+            s.id === sessionId 
+              ? {
+                  ...s,
+                  messages: [...s.messages, {
+                    id: `error-${Date.now()}`,
+                    type: 'error',
+                    content: error.message,
+                    timestamp: error.timestamp || Date.now(),
+                    errorType: error.type
+                  }],
+                  streaming: false
+                }
+              : s
           )
         }));
       });
@@ -1855,6 +1931,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       const cleanup = () => {
         messageCleanup();
         titleCleanup();
+        errorCleanup();
       };
       
       (session as any).cleanup = cleanup;
