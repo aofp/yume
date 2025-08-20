@@ -697,7 +697,6 @@ export const SessionTabs: React.FC = () => {
               if (isDragging && draggedTab) {
                 // Prevent the onClick from firing when dropping a tab
                 e.preventDefault();
-                e.stopPropagation();
                 
                 // Find the dragged session and duplicate it
                 const sessionToDuplicate = sessions.find(s => s.id === draggedTab);
@@ -706,31 +705,16 @@ export const SessionTabs: React.FC = () => {
                   createSession(undefined, workingDir || '/');
                 }
                 
-                // Clean up all drag state and remove cursor styles
-                document.body.classList.remove('tab-dragging');
-                document.body.style.cursor = '';
-                
-                // Remove cursor from all elements to fix stuck cursor bug
-                const allElements = document.querySelectorAll('*');
-                allElements.forEach(el => {
-                  if (el instanceof HTMLElement) {
-                    el.style.cursor = '';
-                  }
+                // Trigger mouseup on document to ensure global handlers clean up
+                // This is needed because we prevented propagation above
+                const mouseUpEvent = new MouseEvent('mouseup', {
+                  bubbles: true,
+                  cancelable: true,
+                  clientX: e.clientX,
+                  clientY: e.clientY,
+                  button: e.button
                 });
-                
-                // Remove any drag preview that might be lingering
-                const dragPreviews = document.querySelectorAll('[style*="z-index: 9999"]');
-                dragPreviews.forEach(preview => {
-                  if (preview.parentNode) {
-                    preview.parentNode.removeChild(preview);
-                  }
-                });
-                
-                setIsDragging(false);
-                setDraggedTab(null);
-                setDragOverNewTab(false);
-                setDragOverRecent(false);
-                setDragOverTab(null);
+                document.dispatchEvent(mouseUpEvent);
               }
             }}
             onMouseLeave={(e) => {
@@ -832,31 +816,15 @@ export const SessionTabs: React.FC = () => {
                     }
                   }
                   
-                  // Clean up all drag state and remove cursor styles
-                  document.body.classList.remove('tab-dragging');
-                  document.body.style.cursor = '';
-                  
-                  // Remove cursor from all elements to fix stuck cursor bug
-                  const allElements = document.querySelectorAll('*');
-                  allElements.forEach(el => {
-                    if (el instanceof HTMLElement) {
-                      el.style.cursor = '';
-                    }
+                  // Trigger mouseup on document to ensure global handlers clean up
+                  const mouseUpEvent = new MouseEvent('mouseup', {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    button: e.button
                   });
-                  
-                  // Remove any drag preview that might be lingering
-                  const dragPreviews = document.querySelectorAll('[style*="z-index: 9999"]');
-                  dragPreviews.forEach(preview => {
-                    if (preview.parentNode) {
-                      preview.parentNode.removeChild(preview);
-                    }
-                  });
-                  
-                  setIsDragging(false);
-                  setDraggedTab(null);
-                  setDragOverNewTab(false);
-                  setDragOverRecent(false);
-                  setDragOverTab(null);
+                  document.dispatchEvent(mouseUpEvent);
                 }
               }}
               onMouseLeave={(e) => {
