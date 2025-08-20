@@ -508,7 +508,7 @@ ol {
 }
 
 .thinking-text {
-  font-family: 'Fira Code', monospace;
+  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
   font-size: 10px;
   line-height: 1.5;
   white-space: pre-wrap;
@@ -519,26 +519,8 @@ ol {
 }
 
 .thinking-content {
-  max-height: 400px;
-  overflow-y: auto;
-}
-
-/* Scrollbar styling for thinking content */
-.thinking-content::-webkit-scrollbar {
-  width: 4px;
-}
-
-.thinking-content::-webkit-scrollbar-track {
-  background: rgba(255, 153, 204, 0.05);
-}
-
-.thinking-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 153, 204, 0.3);
-  border-radius: 2px;
-}
-
-.thinking-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 153, 204, 0.5);
+  /* no max-height - show all thinking content */
+  overflow: visible;
 }
 
 

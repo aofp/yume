@@ -629,7 +629,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
-                <IconBolt size={14} stroke={1.5} className="thinking-icon accent-text" />
+                <IconBolt size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
                 <span className="thinking-label accent-text">thinking</span>
                 <span className="thinking-stats">
                   {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
@@ -751,8 +751,13 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             );
           }
           
-          // Limit Read operation output to 10 lines with expandable option
-          if (isReadOperation && resultContent) {
+          // Hide Read operation output completely
+          if (isReadOperation) {
+            return null;
+          }
+          
+          // OLD CODE - no longer showing Read results
+          if (false && isReadOperation && resultContent) {
             // Strip out system-reminder tags from read operations
             let cleanContent = resultContent;
             const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
@@ -850,24 +855,20 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                                 (resultContent.includes('Applied') && resultContent.includes('edits to'));
             
             if (isEditResult) {
+              // Don't hide MultiEdit results - show them with enhanced display
+              
               // Parse the Edit result to extract the diff
               const lines = resultContent.split('\n');
               
-              // Extract file path from Edit or MultiEdit output
+              // Extract file path from Edit output
               let filePathMatch = resultContent.match(/The file (.+?) has been updated/);
-              if (!filePathMatch) {
-                filePathMatch = resultContent.match(/Applied \d+ edits? to (.+?):/);
-              }
               let filePath = filePathMatch ? filePathMatch[1] : 'file';
               
               // Convert to relative path
               filePath = formatPath(filePath);
               
-              // Find the actual diff part (after "Here's the result of running" or "Applied X edits")
+              // Find the actual diff part (after "Here's the result of running")
               let diffStartIdx = lines.findIndex(line => line.includes("Here's the result of running"));
-              if (diffStartIdx === -1) {
-                diffStartIdx = lines.findIndex(line => line.match(/^\d+\./));
-              }
               const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
               
               // Show edit results with diff formatting
@@ -1452,6 +1453,11 @@ const MessageRendererBase: React.FC<{
           
           {/* Render tool uses separately outside the message bubble */}
           {toolUses && toolUses.map((toolBlock, idx) => {
+            // Hide Read tool displays completely
+            if (toolBlock.name === 'Read') {
+              return null;
+            }
+            
             const tool = TOOL_DISPLAYS[toolBlock.name || ''];
             const mcpDisplay = !tool ? getMCPToolDisplay(toolBlock.name || '', toolBlock.input) : null;
             const display = tool ? tool(toolBlock.input) : mcpDisplay || {
@@ -1509,6 +1515,12 @@ const MessageRendererBase: React.FC<{
       // Standalone tool use message
       const toolName = message.message?.name || 'unknown tool';
       const toolInput = message.message?.input || {};
+      
+      // Hide Read tool displays completely
+      if (toolName === 'Read') {
+        return null;
+      }
+      
       const tool = TOOL_DISPLAYS[toolName];
       const mcpDisplay = !tool ? getMCPToolDisplay(toolName, toolInput) : null;
       const display = tool ? tool(toolInput) : mcpDisplay || {
@@ -1554,6 +1566,8 @@ const MessageRendererBase: React.FC<{
         
         const oldString = toolInput.old_string || '';
         const newString = toolInput.new_string || '';
+        const lineNumber = toolInput.lineNumber || null;
+        const endLineNumber = toolInput.endLineNumber || null;
         
         // Split into lines for diff display
         const oldLines = oldString.split('\n');
@@ -1622,17 +1636,60 @@ const MessageRendererBase: React.FC<{
             <div className="tool-use standalone">
               <IconEdit size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing</span>
-              <span className="tool-detail">{filePath}</span>
+              <span className="tool-detail" style={{ color: '#00ffcc' }}>
+                {lineNumber ? `${filePath}:${lineNumber}${endLineNumber && endLineNumber !== lineNumber ? `-${endLineNumber}` : ''}` : filePath}
+              </span>
             </div>
             <div className="edit-diff">
-              {diffLines.map((change, idx) => (
-                <div key={idx} className={`diff-line ${change.type}`}>
-                  <span className="diff-marker">
-                    {change.type === 'removed' ? '-' : change.type === 'added' ? '+' : ' '}
-                  </span>
-                  <span className="diff-text">{change.line}</span>
-                </div>
-              ))}
+              {diffLines.map((change, idx) => {
+                // Calculate line number for this line - simplified logic
+                let displayLineNum = '';
+                if (lineNumber) {
+                  // Track current line number as we go through the diff
+                  let currentLine = lineNumber;
+                  
+                  // Count removed lines before this one
+                  const removedBefore = diffLines.slice(0, idx).filter(d => d.type === 'removed').length;
+                  
+                  if (change.type === 'context' && idx === 0) {
+                    // Context line before
+                    displayLineNum = String(lineNumber - 1).padStart(4, ' ');
+                  } else if (change.type === 'removed') {
+                    // Removed lines start at lineNumber
+                    displayLineNum = String(lineNumber + removedBefore).padStart(4, ' ');
+                  } else if (change.type === 'added') {
+                    // Added lines get the same line numbers as removed lines they replace
+                    const addedBefore = diffLines.slice(0, idx).filter(d => d.type === 'added').length;
+                    displayLineNum = String(lineNumber + addedBefore).padStart(4, ' ');
+                  } else if (change.type === 'context' && idx > 0) {
+                    // Context line after
+                    displayLineNum = String(endLineNumber ? endLineNumber + 1 : lineNumber + oldLines.length).padStart(4, ' ');
+                  }
+                }
+                
+                return (
+                  <div key={idx} className={`diff-line ${change.type}`}>
+                    <span className="line-number" style={{
+                      opacity: lineNumber ? 0.7 : 0.3,
+                      marginRight: '8px',
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      color: change.type === 'removed' ? '#ff6b6b' : 
+                             change.type === 'added' ? '#00ffcc' : '#666',
+                      userSelect: 'none',
+                      display: 'inline-block',
+                      minWidth: '40px',
+                      textAlign: 'right'
+                    }}>
+                      {displayLineNum || '    '}
+                    </span>
+                    <span className="diff-marker">
+                      {change.type === 'removed' ? '-' : change.type === 'added' ? '+' : ' '}
+                    </span>
+                    <span className="diff-text">{change.line}</span>
+                  </div>
+                );
+              })}
             </div>
           </div>
         );
@@ -1654,6 +1711,8 @@ const MessageRendererBase: React.FC<{
             {edits.map((edit: any, editIdx: number) => {
               const oldString = edit.old_string || '';
               const newString = edit.new_string || '';
+              const lineNumber = edit.lineNumber || null;
+              const endLineNumber = edit.endLineNumber || null;
               
               // Split into lines for diff display
               const oldLines = oldString.split('\n');
@@ -1719,15 +1778,63 @@ const MessageRendererBase: React.FC<{
               
               return (
                 <div key={editIdx} className="edit-diff" style={{ marginTop: editIdx > 0 ? '8px' : '0' }}>
-                  {editIdx > 0 && <div className="diff-separator">edit {editIdx + 1}</div>}
-                  {diffLines.map((change, idx) => (
-                    <div key={idx} className={`diff-line ${change.type}`}>
-                      <span className="diff-marker">
-                        {change.type === 'removed' ? '-' : change.type === 'added' ? '+' : ' '}
-                      </span>
-                      <span className="diff-text">{change.line}</span>
+                  {(editIdx > 0 || lineNumber) && (
+                    <div className="diff-separator" style={{
+                      fontFamily: 'monospace',
+                      fontSize: '12px',
+                      opacity: 0.7,
+                      marginBottom: '4px',
+                      color: '#00ffcc'
+                    }}>
+                      {lineNumber ? `${filePath}:${lineNumber}${endLineNumber && endLineNumber !== lineNumber ? `-${endLineNumber}` : ''}` : `edit ${editIdx + 1}`}
                     </div>
-                  ))}
+                  )}
+                  {diffLines.map((change, idx) => {
+                    // Calculate line number for this line - simplified logic
+                    let displayLineNum = '';
+                    if (lineNumber) {
+                      // Count removed lines before this one
+                      const removedBefore = diffLines.slice(0, idx).filter(d => d.type === 'removed').length;
+                      
+                      if (change.type === 'context' && idx === 0) {
+                        // Context line before
+                        displayLineNum = String(lineNumber - 1).padStart(4, ' ');
+                      } else if (change.type === 'removed') {
+                        // Removed lines start at lineNumber
+                        displayLineNum = String(lineNumber + removedBefore).padStart(4, ' ');
+                      } else if (change.type === 'added') {
+                        // Added lines get the same line numbers as removed lines they replace
+                        const addedBefore = diffLines.slice(0, idx).filter(d => d.type === 'added').length;
+                        displayLineNum = String(lineNumber + addedBefore).padStart(4, ' ');
+                      } else if (change.type === 'context' && idx > 0) {
+                        // Context line after
+                        displayLineNum = String(endLineNumber ? endLineNumber + 1 : lineNumber + oldLines.length).padStart(4, ' ');
+                      }
+                    }
+                    
+                    return (
+                      <div key={idx} className={`diff-line ${change.type}`}>
+                        <span className="line-number" style={{
+                          opacity: lineNumber ? 0.7 : 0.3,
+                          marginRight: '8px',
+                          fontFamily: 'monospace',
+                          fontSize: '12px',
+                          color: change.type === 'removed' ? '#ff6b6b' : 
+                                 change.type === 'added' ? '#00ffcc' : '#666',
+                          userSelect: 'none',
+                          display: 'inline-block',
+                          minWidth: '40px',
+                          textAlign: 'right'
+                        }}>
+                          {displayLineNum || '    '}
+                        </span>
+                        <span className="diff-marker">
+                          {change.type === 'removed' ? '-' : change.type === 'added' ? '+' : ' '}
+                        </span>
+                        <span className="diff-text">{change.line}</span>
+                      </div>
+                    );
+                  })}
                 </div>
               );
             })}
@@ -1864,15 +1971,96 @@ const MessageRendererBase: React.FC<{
       const isEditResult = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
                           (contentStr.includes('Applied') && contentStr.includes('edits to'));
       
+      // Check if this is a Read operation result (already have associatedToolUse from above)
+      const isReadResult = isReadOperation;
       
-      if (isEditResult) {
-        // Hide the edit result display - it's duplicate of the tool_use display
-        // The Edit/MultiEdit tool_use already shows the diff nicely
+      // Hide Read tool results completely
+      if (isReadResult) {
         return null;
       }
       
-      // Check if this is a Read operation result (already have associatedToolUse from above)
-      const isReadResult = isReadOperation;
+      // Enhanced display for Edit/MultiEdit results
+      if (isEditResult) {
+        // Don't hide MultiEdit results - show them with enhanced display
+        
+        // Parse the edit result to extract file path and line numbers
+        const lines = contentStr.split('\n');
+        const enhancedLines: { lineNum: string; content: string; isChanged: boolean }[] = [];
+        
+        // Extract file path from the result message
+        let filePath = '';
+        const isMultiEdit = contentStr.includes('Applied') && contentStr.includes('edits to');
+        const filePathMatch = contentStr.match(/The file (.+?) has been updated/) || 
+                              contentStr.match(/Applied \d+ edits? to (.+?):/);
+        if (filePathMatch) {
+          filePath = formatPath(filePathMatch[1]);
+        }
+        
+        // Process lines with line numbers
+        lines.forEach(line => {
+          const lineMatch = line.match(/^\s*(\d+)([→ ])(.*)/);
+          if (lineMatch) {
+            const lineNum = lineMatch[1].padStart(6, ' ');
+            const isChanged = lineMatch[2] === '→';
+            const content = lineMatch[3];
+            enhancedLines.push({ lineNum, content, isChanged });
+          }
+        });
+        
+        // If we have enhanced lines, display them with proper formatting
+        if (enhancedLines.length > 0) {
+          // Find the range of changed lines
+          const changedLines = enhancedLines.filter(l => l.isChanged).map(l => parseInt(l.lineNum));
+          const minLine = Math.min(...changedLines);
+          const maxLine = Math.max(...changedLines);
+          
+          return (
+            <div className="message tool-result-message">
+              <div className="tool-result standalone edit-output">
+                <div className="edit-header" style={{
+                  fontFamily: 'monospace',
+                  fontSize: '12px',
+                  opacity: 0.7,
+                  marginBottom: '8px'
+                }}>
+                  {filePath}{minLine > 0 ? `:${minLine}` : ''}{maxLine !== minLine && maxLine > 0 ? `-${maxLine}` : ''}
+                  {isMultiEdit && ' (multiple edits)'}
+                </div>
+                <pre className="result-content">
+                  {enhancedLines.map((line, i) => (
+                    <div key={i} className={`edit-line ${line.isChanged ? 'changed' : 'context'}`}>
+                      <span className="line-number" style={{
+                        opacity: line.isChanged ? 0.8 : 0.5,
+                        color: line.isChanged ? '#00ffcc' : 'inherit'
+                      }}>
+                        {line.lineNum}
+                      </span>
+                      <span className="line-marker" style={{
+                        marginLeft: '4px',
+                        marginRight: '4px',
+                        color: line.isChanged ? '#00ffcc' : 'inherit',
+                        opacity: line.isChanged ? 1 : 0.3
+                      }}>
+                        {line.isChanged ? '→' : ' '}
+                      </span>
+                      <span className="line-text">{line.content}</span>
+                    </div>
+                  ))}
+                </pre>
+              </div>
+            </div>
+          );
+        }
+        
+        // Fallback to simple display if no line numbers found
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone edit-output">
+              <pre className="result-content">{contentStr}</pre>
+            </div>
+          </div>
+        );
+      }
       
       // Check if this is a search operation result
       const isSearchResult = associatedToolUse?.type === 'tool_use' && 
@@ -1933,24 +2121,17 @@ const MessageRendererBase: React.FC<{
         const hasMore = hiddenCount > 0;
         
         // Choose appropriate styling based on operation type
-        const className = isReadResult ? 'read-output' : 
-                         isSearchResult ? 'search-output' : 
-                         'generic-output';
+        const className = isSearchResult ? 'search-output' : 'generic-output';
         
-        // Get starting line number for Read operations
-        let startLineNum = 1;
-        if (isReadResult && associatedToolUse?.message?.input?.offset) {
-          startLineNum = associatedToolUse.message.input.offset;
-        }
         
         return (
           <div className="message tool-result-message">
             <div className={`tool-result standalone ${className}`}>
               <pre className="result-content">
                 {visibleLines.map((line, i) => (
-                  <div key={i} className={isReadResult ? 'read-line' : isSearchResult ? 'search-line' : 'result-line'}>
+                  <div key={i} className={isSearchResult ? 'search-line' : 'result-line'}>
                     <span className="line-number">
-                      {isReadResult ? (startLineNum + i).toString().padStart(4, ' ') : (i + 1).toString().padStart(4, ' ')}
+                      {(i + 1).toString().padStart(4, ' ')}
                     </span>
                     <span className="line-text">{line}</span>
                   </div>
