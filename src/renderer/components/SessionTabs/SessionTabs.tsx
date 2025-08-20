@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef, DragEvent } from 'react';
-import { IconX, IconPlus, IconFolder, IconFolderOpen, IconBolt, IconTrash, IconChevronDown, IconClock } from '@tabler/icons-react';
+import { IconX, IconPlus, IconFolder, IconFolderOpen, IconBolt, IconTrash, IconChevronDown, IconClock, IconChartBar } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { AboutModal } from '../About/AboutModal';
+import { AnalyticsModal } from '../Analytics/AnalyticsModal';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 // RecentProjectsModal removed - handled by ClaudeChat component instead
 import './SessionTabs.css';
@@ -25,6 +26,7 @@ export const SessionTabs: React.FC = () => {
   // Recent modal state removed - handled by ClaudeChat component
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
   const [showAbout, setShowAbout] = useState(false);
+  const [showAnalytics, setShowAnalytics] = useState(false);
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');

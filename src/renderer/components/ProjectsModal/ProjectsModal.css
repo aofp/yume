@@ -132,6 +132,8 @@
 }
 
 .project-item {
+  display: flex;
+  flex-direction: column;
   padding: 8px;
   border: 1px solid #222;
   border-radius: 2px;
@@ -161,6 +163,7 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
+  width: 100%;
 }
 
 .project-name {

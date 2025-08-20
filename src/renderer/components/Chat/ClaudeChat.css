@@ -554,6 +554,27 @@
   display: inline;
 }
 
+/* Character by character animation with continuous wave */
+.thinking-char {
+  display: inline-block;
+  animation: charWave 1.6s ease-in-out infinite;
+}
+
+@keyframes charWave {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  25% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.85;
+  }
+  75% {
+    opacity: 0.9;
+  }
+}
+
 .thinking-indicator-bottom .thinking-timer {
   color: var(--accent-color);
   font-weight: bold;
@@ -572,7 +593,7 @@
   content: '.';
   display: inline-block;
   animation: thinkingDots 1.4s infinite;
-  width: 18px;
+  width: 28px;
   text-align: left;
 }
 

@@ -631,7 +631,6 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               <div className="thinking-header">
                 <IconBolt size={14} stroke={1.5} className="thinking-icon" />
                 <span className="thinking-label">thinking</span>
-                {isStreaming && <span className="thinking-dots">...</span>}
                 <span className="thinking-stats">
                   {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
                 </span>

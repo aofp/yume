@@ -2045,7 +2045,20 @@ export const ClaudeChat: React.FC = () => {
               <div className="thinking-indicator-bottom">
                 <LoadingIndicator size="small" color="red" />
                 <span className="thinking-text-wrapper">
-                  <span className="thinking-text">thinking<span className="thinking-dots"></span></span>
+                  <span className="thinking-text">
+                    {'thinking'.split('').map((char, i) => (
+                      <span 
+                        key={i} 
+                        className="thinking-char" 
+                        style={{ 
+                          animationDelay: `${i * 0.05}s`
+                        }}
+                      >
+                        {char}
+                      </span>
+                    ))}
+                    <span className="thinking-dots"></span>
+                  </span>
                   {currentSessionId && thinkingElapsed[currentSessionId] > 0 && (
                     <span className="thinking-timer">{thinkingElapsed[currentSessionId]}s</span>
                   )}

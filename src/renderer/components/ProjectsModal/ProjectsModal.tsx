@@ -25,9 +25,10 @@ interface ProjectsModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSelectSession: (projectPath: string, sessionId: string, title?: string) => void;
+  onProjectAnalytics?: (projectPath: string) => void;
 }
 
-export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, onSelectSession }) => {
+export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, onSelectSession, onProjectAnalytics }) => {
   const [projects, setProjects] = useState<ClaudeProject[]>([]);
   const [loading, setLoading] = useState(false);
   const [projectCount, setProjectCount] = useState<number | null>(null);
@@ -1025,6 +1026,16 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 }}>
                   browse sessions
                 </button>
+                {onProjectAnalytics && (
+                  <button className="context-menu-item" onClick={() => {
+                    // Open analytics for this project
+                    setContextMenu(null);
+                    onClose();
+                    onProjectAnalytics(contextMenu.path);
+                  }}>
+                    project analytics
+                  </button>
+                )}
               </>
             )}
             {contextMenu.type === 'session' && (

@@ -468,29 +468,11 @@ ol {
 
 /* Simple thinking block - always fully visible */
 .thinking-block {
-  background: rgba(255, 204, 255, 0.03);
-  border: 1px solid rgba(255, 153, 204, 0.3);
-  border-radius: 6px;
-  margin: 8px 0;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
-  animation: fadeIn 0.3s ease;
 }
 
 .thinking-block.streaming {
-  border-color: rgba(255, 153, 204, 0.5);
-  animation: thinkingBlockPulse 2s ease-in-out infinite;
-}
-
-@keyframes thinkingBlockPulse {
-  0%, 100% {
-    border-color: rgba(255, 153, 204, 0.3);
-    background: rgba(255, 204, 255, 0.03);
-  }
-  50% {
-    border-color: rgba(255, 153, 204, 0.6);
-    background: rgba(255, 204, 255, 0.06);
-  }
 }
 
 .thinking-header {
@@ -501,9 +483,6 @@ ol {
   font-size: 11px;
   text-transform: lowercase;
   opacity: 0.9;
-  padding: 10px 14px;
-  background: rgba(255, 153, 204, 0.05);
-  border-bottom: 1px solid rgba(255, 153, 204, 0.1);
 }
 
 .thinking-icon {
@@ -535,7 +514,6 @@ ol {
 }
 
 .thinking-content {
-  padding: 12px 14px;
   max-height: 400px;
   overflow-y: auto;
 }

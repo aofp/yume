@@ -1111,6 +1111,482 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   }
 });
 
+// Analytics endpoint - reads all Claude sessions and extracts token usage
+app.get('/claude-analytics', async (req, res) => {
+  console.log('📊 Loading analytics from all Claude sessions...');
+  
+  try {
+    const analytics = {
+      totalSessions: 0,
+      totalMessages: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      byModel: {
+        opus: { sessions: 0, tokens: 0, cost: 0 },
+        sonnet: { sessions: 0, tokens: 0, cost: 0 }
+      },
+      byDate: {},
+      byProject: {}
+    };
+    
+    // Determine the Claude projects directory based on platform
+    let projectsDir;
+    if (isWindows) {
+      // Directly access WSL filesystem through Windows mount - no wsl.exe commands
+      const { readdir, readFile, stat } = await import('fs/promises');
+      const path = await import('path');
+      
+      // Try different WSL mount paths and users
+      const possibleUsers = ['yuru', 'muuko', process.env.USER, process.env.USERNAME].filter(Boolean);
+      const possibleDistros = ['Ubuntu', 'Ubuntu-20.04', 'Ubuntu-22.04', 'Ubuntu-24.04'];
+      const possiblePrefixes = ['\\\\wsl$', '\\\\wsl.localhost'];
+      
+      console.log('📊 Analytics: Searching for WSL Claude projects...');
+      console.log('  Possible users:', possibleUsers);
+      console.log('  Possible distros:', possibleDistros);
+      
+      let wslProjectsPath = null;
+      let attemptCount = 0;
+      
+      for (const prefix of possiblePrefixes) {
+        for (const distro of possibleDistros) {
+          for (const user of possibleUsers) {
+            const testPath = `${prefix}\\${distro}\\home\\${user}\\.claude\\projects`;
+            attemptCount++;
+            try {
+              await stat(testPath);
+              wslProjectsPath = testPath;
+              console.log(`✅ Found WSL Claude projects at: ${testPath} (attempt ${attemptCount})`);
+              break;
+            } catch (e) {
+              // Silent - try next combination
+            }
+          }
+          if (wslProjectsPath) break;
+        }
+        if (wslProjectsPath) break;
+      }
+      
+      if (!wslProjectsPath) {
+        console.log(`❌ WSL Claude projects not found after ${attemptCount} attempts`);
+      }
+      
+      if (wslProjectsPath) {
+        try {
+          const projectDirs = await readdir(wslProjectsPath);
+          console.log(`Found ${projectDirs.length} projects in WSL directory`);
+          
+          // Process projects (limit to prevent memory issues)
+          const maxProjects = 10;
+          for (const projectName of projectDirs.slice(0, maxProjects)) {
+            const projectPath = path.win32.join(wslProjectsPath, projectName);
+            
+            try {
+              const stats = await stat(projectPath);
+              if (!stats.isDirectory()) continue;
+              
+              console.log(`Processing WSL project: ${projectName}`);
+              
+              // Get session files
+              const sessionFiles = await readdir(projectPath);
+              const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
+              console.log(`  Found ${jsonlFiles.length} session files`);
+              
+              // Process sessions (limit to prevent memory issues)
+              const maxSessions = 20;
+              for (const sessionFile of jsonlFiles.slice(0, maxSessions)) {
+                try {
+                  const sessionPath = path.win32.join(projectPath, sessionFile);
+                  const fileStats = await stat(sessionPath);
+                  
+                  // Skip very large files
+                  if (fileStats.size > 10 * 1024 * 1024) {
+                    console.log(`  Skipping large file: ${sessionFile} (${fileStats.size} bytes)`);
+                    continue;
+                  }
+                  
+                  console.log(`  Reading session: ${sessionFile} (${fileStats.size} bytes)`);
+                  const content = await readFile(sessionPath, 'utf8');
+                  
+                  // Parse lines to extract analytics from Claude CLI format
+                  const allLines = content.split('\n').filter(line => line.trim());
+                  console.log(`    Total lines in file: ${allLines.length}`);
+                  
+                  let sessionTokens = 0;
+                  let sessionCost = 0;
+                  let sessionModel = 'sonnet';
+                  let sessionDate = new Date().toISOString().split('T')[0];
+                  let messageCount = 0;
+                  
+                  for (const line of allLines) {
+                    try {
+                      const data = JSON.parse(line);
+                      
+                      // Claude CLI uses type: "assistant" for assistant messages with usage data
+                      if (data.type === 'assistant' && data.message && data.message.usage) {
+                        messageCount++;
+                        const usage = data.message.usage;
+                        
+                        // Include all token types
+                        const inputTokens = (usage.input_tokens || 0) + 
+                                           (usage.cache_read_input_tokens || 0) + 
+                                           (usage.cache_creation_input_tokens || 0);
+                        const outputTokens = usage.output_tokens || 0;
+                        sessionTokens += inputTokens + outputTokens;
+                        
+                        // Detect model from message
+                        if (data.message.model) {
+                          sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                        }
+                        
+                        // Calculate cost based on model
+                        // Claude 3.5 Sonnet: $3/million input, $15/million output
+                        // Claude 3 Opus: $15/million input, $75/million output
+                        const isOpus = sessionModel === 'opus';
+                        const inputRate = isOpus ? 0.000015 : 0.000003;
+                        const outputRate = isOpus ? 0.000075 : 0.000015;
+                        sessionCost += inputTokens * inputRate + outputTokens * outputRate;
+                      }
+                      
+                      // Count user messages too
+                      if (data.type === 'user') {
+                        messageCount++;
+                      }
+                      
+                      // Get timestamp from any message
+                      if (data.timestamp) {
+                        sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
+                      }
+                    } catch (e) {
+                      // Skip invalid JSON
+                    }
+                  }
+                  
+                  console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
+                  
+                  // Update analytics if session has data
+                  if (sessionTokens > 0) {
+                    console.log(`    Session: ${sessionTokens} tokens, $${sessionCost.toFixed(4)}`);
+                    
+                    analytics.totalSessions++;
+                    analytics.totalMessages += messageCount * 2; // Each result ~= 2 messages (user + assistant)
+                    analytics.totalTokens += sessionTokens;
+                    analytics.totalCost += sessionCost;
+                    
+                    // Update model breakdown
+                    const modelKey = sessionModel === 'opus' ? 'opus' : 'sonnet';
+                    analytics.byModel[modelKey].sessions++;
+                    analytics.byModel[modelKey].tokens += sessionTokens;
+                    analytics.byModel[modelKey].cost += sessionCost;
+                    
+                    // Update date breakdown
+                    if (!analytics.byDate[sessionDate]) {
+                      analytics.byDate[sessionDate] = { sessions: 0, messages: 0, tokens: 0, cost: 0 };
+                    }
+                    analytics.byDate[sessionDate].sessions++;
+                    analytics.byDate[sessionDate].messages += messageCount * 2;
+                    analytics.byDate[sessionDate].tokens += sessionTokens;
+                    analytics.byDate[sessionDate].cost += sessionCost;
+                    
+                    // Update project breakdown (clean project name)
+                    const cleanProjectName = projectName.replace(/-/g, '/');
+                    if (!analytics.byProject[cleanProjectName]) {
+                      analytics.byProject[cleanProjectName] = { 
+                        sessions: 0, 
+                        messages: 0, 
+                        tokens: 0, 
+                        cost: 0, 
+                        lastUsed: fileStats.mtime.getTime() 
+                      };
+                    }
+                    analytics.byProject[cleanProjectName].sessions++;
+                    analytics.byProject[cleanProjectName].messages += messageCount * 2;
+                    analytics.byProject[cleanProjectName].tokens += sessionTokens;
+                    analytics.byProject[cleanProjectName].cost += sessionCost;
+                  }
+                } catch (e) {
+                  console.error(`  Error processing session ${sessionFile}:`, e.message);
+                }
+              }
+            } catch (e) {
+              console.error(`Error processing project ${projectName}:`, e.message);
+            }
+          }
+        } catch (e) {
+          console.error('Error reading WSL projects directory:', e.message);
+          // Fall through to Windows fallback
+          wslProjectsPath = null;
+        }
+      }
+      
+      // If WSL mount didn't work, try Windows path as fallback
+      if (!wslProjectsPath) {
+        console.log('WSL mount not accessible, trying Windows path...');
+        const windowsProjectsPath = path.win32.join(homedir(), '.claude', 'projects');
+        
+        try {
+          const projectDirs = await readdir(windowsProjectsPath);
+          console.log(`Found ${projectDirs.length} projects in Windows directory`);
+          
+          // Process limited number of projects
+          for (const projectName of projectDirs.slice(0, 5)) {
+            const projectPath = path.win32.join(windowsProjectsPath, projectName);
+            const stats = await stat(projectPath);
+            
+            if (!stats.isDirectory()) continue;
+            
+            console.log(`Processing Windows project: ${projectName}`);
+            
+            // Get session files
+            const sessionFiles = await readdir(projectPath);
+            const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
+            console.log(`  Found ${jsonlFiles.length} session files`);
+            
+            // Process limited number of sessions
+            for (const sessionFile of jsonlFiles.slice(0, 10)) {
+              try {
+                const sessionPath = path.win32.join(projectPath, sessionFile);
+                const fileStats = await stat(sessionPath);
+                
+                // Skip very large files
+                if (fileStats.size > 10 * 1024 * 1024) {
+                  console.log(`  Skipping large file: ${sessionFile} (${fileStats.size} bytes)`);
+                  continue;
+                }
+                
+                console.log(`  Reading session: ${sessionFile} (${fileStats.size} bytes)`);
+                const content = await readFile(sessionPath, 'utf8');
+                
+                // Parse lines to extract analytics from Claude CLI format
+                const allLines = content.split('\n').filter(line => line.trim());
+                console.log(`    Total lines in file: ${allLines.length}`);
+                
+                let sessionTokens = 0;
+                let sessionCost = 0;
+                let sessionModel = 'sonnet';
+                let sessionDate = new Date().toISOString().split('T')[0];
+                let messageCount = 0;
+                
+                for (const line of allLines) {
+                  try {
+                    const data = JSON.parse(line);
+                    
+                    // Claude CLI uses type: "assistant" for assistant messages with usage data
+                    if (data.type === 'assistant' && data.message && data.message.usage) {
+                      messageCount++;
+                      const usage = data.message.usage;
+                      
+                      // Include all token types
+                      const inputTokens = (usage.input_tokens || 0) + 
+                                         (usage.cache_read_input_tokens || 0) + 
+                                         (usage.cache_creation_input_tokens || 0);
+                      const outputTokens = usage.output_tokens || 0;
+                      sessionTokens += inputTokens + outputTokens;
+                      
+                      // Detect model from message
+                      if (data.message.model) {
+                        sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                      }
+                      
+                      // Calculate cost based on model
+                      const isOpus = sessionModel === 'opus';
+                      const inputRate = isOpus ? 0.000015 : 0.000003;
+                      const outputRate = isOpus ? 0.000075 : 0.000015;
+                      sessionCost += inputTokens * inputRate + outputTokens * outputRate;
+                    }
+                    
+                    // Count user messages too
+                    if (data.type === 'user') {
+                      messageCount++;
+                    }
+                    
+                    // Get timestamp from any message
+                    if (data.timestamp) {
+                      sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
+                    }
+                  } catch (e) {
+                    // Skip invalid JSON
+                  }
+                }
+                
+                console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
+                
+                // Update analytics
+                if (sessionTokens > 0) {
+                  console.log(`    Session: ${sessionTokens} tokens, $${sessionCost.toFixed(4)}`);
+                  
+                  analytics.totalSessions++;
+                  analytics.totalMessages += messageCount * 2;
+                  analytics.totalTokens += sessionTokens;
+                  analytics.totalCost += sessionCost;
+                  
+                  // Update model breakdown
+                  const modelKey = sessionModel === 'opus' ? 'opus' : 'sonnet';
+                  analytics.byModel[modelKey].sessions++;
+                  analytics.byModel[modelKey].tokens += sessionTokens;
+                  analytics.byModel[modelKey].cost += sessionCost;
+                  
+                  // Update date breakdown
+                  if (!analytics.byDate[sessionDate]) {
+                    analytics.byDate[sessionDate] = { sessions: 0, messages: 0, tokens: 0, cost: 0 };
+                  }
+                  analytics.byDate[sessionDate].sessions++;
+                  analytics.byDate[sessionDate].messages += messageCount * 2;
+                  analytics.byDate[sessionDate].tokens += sessionTokens;
+                  analytics.byDate[sessionDate].cost += sessionCost;
+                  
+                  // Update project breakdown
+                  const cleanProjectName = projectName.replace(/-/g, '/');
+                  if (!analytics.byProject[cleanProjectName]) {
+                    analytics.byProject[cleanProjectName] = { 
+                      sessions: 0, 
+                      messages: 0, 
+                      tokens: 0, 
+                      cost: 0, 
+                      lastUsed: fileStats.mtime.getTime() 
+                    };
+                  }
+                  analytics.byProject[cleanProjectName].sessions++;
+                  analytics.byProject[cleanProjectName].messages += messageCount * 2;
+                  analytics.byProject[cleanProjectName].tokens += sessionTokens;
+                  analytics.byProject[cleanProjectName].cost += sessionCost;
+                }
+              } catch (e) {
+                console.error(`  Error processing session ${sessionFile}:`, e.message);
+              }
+            }
+          }
+        } catch (e) {
+          console.error('Error reading Windows projects:', e.message);
+        }
+      }
+    } else {
+      // Non-Windows: read directly from filesystem
+      const { readdir, readFile, stat } = await import('fs/promises');
+      const projectsDir = join(homedir(), '.claude', 'projects');
+      
+      try {
+        const projectDirs = await readdir(projectsDir);
+        
+        for (const projectName of projectDirs) {
+          const projectPath = join(projectsDir, projectName);
+          const stats = await stat(projectPath);
+          
+          if (!stats.isDirectory()) continue;
+          
+          // Get all session files
+          const sessionFiles = await readdir(projectPath);
+          const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
+          
+          for (const sessionFile of jsonlFiles) {
+            try {
+              const sessionPath = join(projectPath, sessionFile);
+              const content = await readFile(sessionPath, 'utf8');
+              
+              // Parse JSONL file - Claude CLI format
+              const lines = content.split('\n').filter(line => line.trim());
+              let sessionTokens = 0;
+              let sessionCost = 0;
+              let sessionModel = 'sonnet';
+              let sessionDate = new Date().toISOString().split('T')[0];
+              let messageCount = 0;
+              
+              for (const line of lines) {
+                try {
+                  const data = JSON.parse(line);
+                  
+                  // Claude CLI uses type: "assistant" for assistant messages with usage data
+                  if (data.type === 'assistant' && data.message && data.message.usage) {
+                    messageCount++;
+                    const usage = data.message.usage;
+                    
+                    // Include all token types
+                    const inputTokens = (usage.input_tokens || 0) + 
+                                       (usage.cache_read_input_tokens || 0) + 
+                                       (usage.cache_creation_input_tokens || 0);
+                    const outputTokens = usage.output_tokens || 0;
+                    sessionTokens += inputTokens + outputTokens;
+                    
+                    // Detect model from message
+                    if (data.message.model) {
+                      sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                    }
+                    
+                    // Calculate cost based on model
+                    const isOpus = sessionModel === 'opus';
+                    const inputRate = isOpus ? 0.000015 : 0.000003;
+                    const outputRate = isOpus ? 0.000075 : 0.000015;
+                    sessionCost += inputTokens * inputRate + outputTokens * outputRate;
+                  }
+                  
+                  // Count user messages too
+                  if (data.type === 'user') {
+                    messageCount++;
+                  }
+                  
+                  // Get timestamp from any message
+                  if (data.timestamp) {
+                    sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
+                  }
+                } catch (e) {
+                  // Skip invalid lines
+                }
+              }
+              
+              // Update analytics
+              if (sessionTokens > 0 || messageCount > 0) {
+                analytics.totalSessions++;
+                analytics.totalMessages += messageCount;
+                analytics.totalTokens += sessionTokens;
+                analytics.totalCost += sessionCost;
+                
+                // Update model breakdown
+                if (sessionModel === 'opus') {
+                  analytics.byModel.opus.sessions++;
+                  analytics.byModel.opus.tokens += sessionTokens;
+                  analytics.byModel.opus.cost += sessionCost;
+                } else {
+                  analytics.byModel.sonnet.sessions++;
+                  analytics.byModel.sonnet.tokens += sessionTokens;
+                  analytics.byModel.sonnet.cost += sessionCost;
+                }
+                
+                // Update date breakdown
+                if (!analytics.byDate[sessionDate]) {
+                  analytics.byDate[sessionDate] = { sessions: 0, messages: 0, tokens: 0, cost: 0 };
+                }
+                analytics.byDate[sessionDate].sessions++;
+                analytics.byDate[sessionDate].messages += lines.length * 2;
+                analytics.byDate[sessionDate].tokens += sessionTokens;
+                analytics.byDate[sessionDate].cost += sessionCost;
+                
+                // Update project breakdown
+                if (!analytics.byProject[projectName]) {
+                  analytics.byProject[projectName] = { sessions: 0, messages: 0, tokens: 0, cost: 0, lastUsed: Date.now() };
+                }
+                analytics.byProject[projectName].sessions++;
+                analytics.byProject[projectName].messages += messageCount;
+                analytics.byProject[projectName].tokens += sessionTokens;
+                analytics.byProject[projectName].cost += sessionCost;
+              }
+            } catch (e) {
+              console.error(`Error processing session ${sessionFile}:`, e.message);
+            }
+          }
+        }
+      } catch (e) {
+        console.error('Error reading projects directory:', e);
+      }
+    }
+    
+    console.log(`📊 Analytics loaded: ${analytics.totalSessions} sessions, ${analytics.totalTokens} tokens`);
+    res.json(analytics);
+  } catch (error) {
+    console.error('Error loading analytics:', error);
+    res.status(500).json({ error: 'Failed to load analytics', details: error.message });
+  }
+});
+
 // Quick projects endpoint - returns just project count and names quickly
 app.get('/claude-projects-quick', async (req, res) => {
   try {
