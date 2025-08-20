@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { claudeCodeClient } from '../services/claudeCodeClient';
+import { useLicenseStore } from '../services/licenseManager';
 
 export type SDKMessage = any; // Type from Claude Code SDK
 
@@ -115,6 +116,7 @@ interface ClaudeCodeStore {
   updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => void;
   restoreToMessage: (sessionId: string, messageIndex: number) => void;
   addMessageToSession: (sessionId: string, message: SDKMessage) => void;
+  setSessionStreaming: (sessionId: string, streaming: boolean) => void;
   
   // Session persistence
   loadSessionHistory: (sessionId: string) => Promise<void>;
@@ -340,6 +342,26 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     console.trace('[Store] Stack trace for createSession');
     
     try {
+      // License check: Enforce tab limit for trial users
+      const currentState = get();
+      const existingSession = existingSessionId ? 
+        currentState.sessions.find(s => s.id === existingSessionId) : 
+        null;
+      
+      const licenseStore = useLicenseStore.getState();
+      const features = licenseStore.getFeatures();
+      const maxTabs = features.maxTabs;
+      
+      // Only enforce for new sessions, not existing ones
+      if (!existingSession && currentState.sessions.length >= maxTabs) {
+        console.log('[Store] Tab limit reached for trial mode:', maxTabs);
+        // Dispatch event to show upgrade modal
+        window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+          detail: { reason: 'tabLimit', currentTabs: currentState.sessions.length, maxTabs } 
+        }));
+        return; // Don't create the session
+      }
+      
       // Generate more entropic session ID with timestamp and random components
       const timestamp = Date.now().toString(36);
       const random1 = Math.random().toString(36).substring(2, 8);
@@ -367,12 +389,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         const isWindows = navigator.platform.toLowerCase().includes('win');
         workingDirectory = isWindows ? 'C:\\Users\\' : '/Users';
       }
-      
-      // Check if we're resuming an existing session (reconnecting after app restart)
-      const currentState = get();
-      const existingSession = existingSessionId ? 
-        currentState.sessions.find(s => s.id === existingSessionId) : 
-        null;
       
       // STEP 1: Create tab immediately with pending status (or update existing)
       const tempSessionId = existingSessionId || `temp-${hexId}`;
@@ -2239,6 +2255,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       sessions: state.sessions.map(s => 
         s.id === sessionId 
           ? { ...s, messages: [...s.messages, message], updatedAt: new Date() }
+          : s
+      )
+    }));
+  },
+
+  setSessionStreaming: (sessionId: string, streaming: boolean) => {
+    console.log(`[Store] Setting session ${sessionId} streaming to ${streaming}`);
+    set(state => ({
+      sessions: state.sessions.map(s => 
+        s.id === sessionId 
+          ? { ...s, streaming, thinkingStartTime: streaming ? Date.now() : undefined }
           : s
       )
     }));

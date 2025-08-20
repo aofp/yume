@@ -502,6 +502,11 @@ ol {
   margin-left: auto;
 }
 
+/* Accent text for thinking blocks */
+.accent-text {
+  color: var(--accent-color) !important;
+}
+
 .thinking-text {
   font-family: 'Fira Code', monospace;
   font-size: 10px;
@@ -793,6 +798,16 @@ pre.edit-diff {
   margin: 0;
 }
 
+.diff-line .line-number {
+  width: 40px;
+  flex-shrink: 0;
+  text-align: right;
+  padding-right: 8px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 7pt;
+  font-family: 'Fira Code', monospace;
+}
+
 .diff-marker {
   width: 16px;
   flex-shrink: 0;
@@ -814,6 +829,15 @@ pre.edit-diff {
 .diff-line.added .diff-marker,
 .diff-line.added .diff-text {
   color: var(--color-cyan) !important;
+}
+
+.diff-line.context .diff-marker,
+.diff-line.context .diff-text {
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.diff-line.context .line-number {
+  color: rgba(255, 255, 255, 0.2);
 }
 
 /* Edit tool diff colors */
@@ -847,12 +871,14 @@ pre.edit-diff {
 }
 
 .diff-separator {
-  color: #999;
-  font-size: 11px;
-  margin: 4px 0;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 7pt;
+  font-family: 'Fira Code', monospace;
+  margin: 8px 0 4px 0;
   padding: 2px 0;
-  border-top: 1px solid #333;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
   text-transform: lowercase;
+  opacity: 0.7;
 }
 
 @keyframes fadeIn {
@@ -992,6 +1018,34 @@ body.platform-win32 .tool-detail {
   font-size: 7pt;
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
+}
+
+.read-line,
+.search-line,
+.result-line {
+  display: flex;
+  line-height: 1.4;
+}
+
+.read-line .line-number,
+.search-line .line-number,
+.result-line .line-number {
+  display: inline-block;
+  width: 40px;
+  text-align: right;
+  padding-right: 8px;
+  color: rgba(255, 255, 255, 0.3);
+  flex-shrink: 0;
+  font-size: 7pt;
+  font-family: 'Fira Code', monospace;
+}
+
+.read-line .line-text,
+.search-line .line-text,
+.result-line .line-text {
+  flex: 1;
+  white-space: pre-wrap;
+  word-break: break-all;
   word-break: break-all;
 }
 

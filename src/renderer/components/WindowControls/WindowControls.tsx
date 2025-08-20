@@ -1,5 +1,6 @@
 import React from 'react';
-import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconChartBar, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconTrendingUp, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { useLicenseStore } from '../../services/licenseManager';
 import './WindowControls.css';
 
 interface WindowControlsProps {
@@ -14,6 +15,8 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   const isMac = navigator.platform.toLowerCase().includes('mac');
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
                    navigator.userAgent.toLowerCase().includes('windows');
+  
+  const { isLicensed } = useLicenseStore();
   
   console.log('WindowControls platform detection:', {
     platform: navigator.platform,
@@ -160,6 +163,32 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             </button>
           ) : (
             <>
+              {!isLicensed && (
+                <button 
+                  className="trial-indicator" 
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                      detail: { reason: 'trial' } 
+                    }));
+                  }}
+                  style={{ 
+                    color: '#666666', 
+                    fontSize: '10px',
+                    fontWeight: 'normal',
+                    padding: '0 6px',
+                    opacity: 0.8,
+                    background: 'transparent',
+                    border: 'none',
+                    cursor: 'default',
+                    transition: 'color 0.2s'
+                  }}
+                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-color)'}
+                  onMouseLeave={(e) => e.currentTarget.style.color = '#666666'}
+                  title="click to upgrade"
+                >
+                  [trial]
+                </button>
+              )}
               {onSettingsClick && (
                 <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
                   <IconSettingsFilled size={10} />
@@ -172,7 +201,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
               )}
               {onAnalyticsClick && (
                 <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (cmd+y)">
-                  <IconChartBar size={10} stroke={2} />
+                  <IconTrendingUp size={10} stroke={2} />
                 </button>
               )}
               <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
@@ -201,6 +230,32 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           </button>
         ) : (
           <>
+            {!isLicensed && (
+              <button 
+                className="trial-indicator" 
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                    detail: { reason: 'trial' } 
+                  }));
+                }}
+                style={{ 
+                  color: '#666666', 
+                  fontSize: '10px',
+                  fontWeight: 'normal',
+                  padding: '0 6px',
+                  opacity: 0.8,
+                  background: 'transparent',
+                  border: 'none',
+                  cursor: 'default',
+                  transition: 'color 0.2s'
+                }}
+                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-color)'}
+                onMouseLeave={(e) => e.currentTarget.style.color = '#666666'}
+                title="click to upgrade"
+              >
+                [trial]
+              </button>
+            )}
             {onSettingsClick && (
               <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
                 <IconSettingsFilled size={10} />
@@ -213,7 +268,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             )}
             {onAnalyticsClick && (
               <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (ctrl+y)">
-                <IconChartBar size={10} stroke={2} />
+                <IconTrendingUp size={10} stroke={2} />
               </button>
             )}
             <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">

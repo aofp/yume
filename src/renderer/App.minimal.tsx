@@ -11,7 +11,9 @@ import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus
 import { ServerLogs } from './components/ServerLogs/ServerLogs';
 import { RecentProjectsModal } from './components/RecentProjectsModal/RecentProjectsModal';
 import { ProjectsModal } from './components/ProjectsModal/ProjectsModal';
+import { UpgradeModal } from './components/Upgrade/UpgradeModal';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
+import { useLicenseStore } from './services/licenseManager';
 import { platformBridge } from './services/platformBridge';
 import { claudeCodeClient } from './services/claudeCodeClient';
 import './App.minimal.css';
@@ -26,6 +28,8 @@ export const App: React.FC = () => {
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [analyticsProject, setAnalyticsProject] = useState<string | undefined>(undefined);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgradeReason, setUpgradeReason] = useState<'tabLimit' | 'feature' | 'trial'>('tabLimit');
   // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
@@ -37,6 +41,19 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadSessionMappings();
   }, [loadSessionMappings]);
+  
+  // Listen for upgrade modal events
+  useEffect(() => {
+    const handleShowUpgrade = (e: CustomEvent) => {
+      setUpgradeReason(e.detail?.reason || 'tabLimit');
+      setShowUpgradeModal(true);
+    };
+    
+    window.addEventListener('showUpgradeModal', handleShowUpgrade as EventListener);
+    return () => {
+      window.removeEventListener('showUpgradeModal', handleShowUpgrade as EventListener);
+    };
+  }, []);
   
   // Handle global right-click for context menu
   const handleGlobalContextMenu = (e: React.MouseEvent) => {
@@ -915,6 +932,13 @@ export const App: React.FC = () => {
         }}
         initialProject={analyticsProject}
       />
+      {showUpgradeModal && (
+        <UpgradeModal
+          isOpen={showUpgradeModal}
+          onClose={() => setShowUpgradeModal(false)}
+          reason={upgradeReason}
+        />
+      )}
     </div>
   );
 };

@@ -1719,6 +1719,58 @@ Use <thinking> tags extensively to show your reasoning process.`;
               if (hasContent && contentBlocks.length > 0) {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
                 
+                // Check if there's a pending interrupt now that Claude has started responding
+                const session = sessions.get(sessionId);
+                if (session?.pendingInterrupt) {
+                  console.log(`🔄 [${sessionId}] Claude started responding - executing queued interrupt`);
+                  const interruptCallback = session.interruptCallback;
+                  session.pendingInterrupt = false;
+                  session.interruptCallback = null;
+                  
+                  // Execute the interrupt immediately
+                  setTimeout(() => {
+                    console.log(`🛑 [${sessionId}] Executing queued interrupt now`);
+                    const process = activeProcesses.get(sessionId);
+                    if (process) {
+                      // Kill the process
+                      if (process.platform !== 'win32' && process.pid) {
+                        try {
+                          process.kill(-process.pid, 'SIGINT');
+                        } catch (e) {
+                          process.kill('SIGINT');
+                        }
+                      } else {
+                        process.kill('SIGINT');
+                      }
+                      
+                      activeProcesses.delete(sessionId);
+                      activeProcessStartTimes.delete(sessionId);
+                      
+                      // Clean up lastAssistantMessageIds
+                      lastAssistantMessageIds.delete(sessionId);
+                      
+                      // Mark session as interrupted
+                      if (session) {
+                        session.wasInterrupted = true;
+                      }
+                      
+                      // Send interrupt message
+                      socket.emit(`message:${sessionId}`, {
+                        type: 'system',
+                        subtype: 'interrupted',
+                        message: 'task interrupted by user',
+                        timestamp: Date.now()
+                      });
+                      
+                      // Callback to client
+                      if (interruptCallback) {
+                        interruptCallback({ success: true });
+                      }
+                    }
+                  }, 100); // Small delay to let the first message send
+                  return; // Don't send more messages after interrupt
+                }
+                
                 // Track all assistant message IDs for this session
                 if (!allAssistantMessageIds.has(sessionId)) {
                   allAssistantMessageIds.set(sessionId, []);
@@ -2139,6 +2191,17 @@ Use <thinking> tags extensively to show your reasoning process.`;
           clearInterval(streamHealthChecks.get(sessionId));
           streamHealthChecks.delete(sessionId);
         }
+        
+        // Clean up any pending interrupt
+        const session = sessions.get(sessionId);
+        if (session?.pendingInterrupt) {
+          console.log(`🧹 [${sessionId}] Cleaning up pending interrupt on process close`);
+          if (session.interruptCallback) {
+            session.interruptCallback({ success: false, error: 'Process ended before interrupt could execute' });
+          }
+          session.pendingInterrupt = false;
+          session.interruptCallback = null;
+        }
         if (streamTimeouts.has(sessionId)) {
           clearTimeout(streamTimeouts.get(sessionId));
           streamTimeouts.delete(sessionId);
@@ -2244,6 +2307,17 @@ Use <thinking> tags extensively to show your reasoning process.`;
           clearInterval(streamHealthChecks.get(sessionId));
           streamHealthChecks.delete(sessionId);
         }
+        
+        // Clean up any pending interrupt
+        const session = sessions.get(sessionId);
+        if (session?.pendingInterrupt) {
+          console.log(`🧹 [${sessionId}] Cleaning up pending interrupt on process error`);
+          if (session.interruptCallback) {
+            session.interruptCallback({ success: false, error: 'Process error occurred before interrupt could execute' });
+          }
+          session.pendingInterrupt = false;
+          session.interruptCallback = null;
+        }
         if (streamTimeouts.has(sessionId)) {
           clearTimeout(streamTimeouts.get(sessionId));
           streamTimeouts.delete(sessionId);
@@ -2328,6 +2402,23 @@ Use <thinking> tags extensively to show your reasoning process.`;
     const process = activeProcesses.get(sessionId);
     const session = sessions.get(sessionId);
     
+    // Check if Claude has started responding yet
+    const hasStartedResponding = lastAssistantMessageIds.has(sessionId);
+    if (process && !hasStartedResponding) {
+      console.log(`⏳ [${sessionId}] Claude hasn't started responding yet, queueing interrupt for when it does...`);
+      
+      // Mark that we want to interrupt as soon as Claude starts responding
+      if (session && !session.pendingInterrupt) {
+        session.pendingInterrupt = true;
+        session.interruptCallback = callback;
+        console.log(`📌 [${sessionId}] Interrupt queued - will trigger when Claude starts responding`);
+      } else if (!session) {
+        console.log(`⚠️ [${sessionId}] No session found, cannot queue interrupt`);
+        if (callback) callback({ success: false, error: 'Session not found' });
+      }
+      return; // Don't interrupt yet, wait for Claude to start
+    }
+    
     // Check if there are active file operations
     const fileOps = activeFileOperations.get(sessionId);
     if (fileOps && fileOps.size > 0) {
@@ -2369,6 +2460,12 @@ Use <thinking> tags extensively to show your reasoning process.`;
       if (queueLengthBefore > 0) {
         processSpawnQueue.length = 0; // Clear the entire queue
         console.log(`🧹 Cleared ${queueLengthBefore} queued messages after interrupt`);
+      }
+      
+      // Clear any pending interrupt flags
+      if (session) {
+        session.pendingInterrupt = false;
+        session.interruptCallback = null;
       }
       
       if (process) {

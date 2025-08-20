@@ -629,14 +629,14 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
-                <IconBolt size={14} stroke={1.5} className="thinking-icon" />
-                <span className="thinking-label">thinking</span>
+                <IconBolt size={14} stroke={1.5} className="thinking-icon accent-text" />
+                <span className="thinking-label accent-text">thinking</span>
                 <span className="thinking-stats">
                   {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
                 </span>
               </div>
               <div className="thinking-content">
-                <pre className="thinking-text">{thinkingContent}</pre>
+                <pre className="thinking-text accent-text">{thinkingContent}</pre>
               </div>
             </div>
           );
@@ -760,6 +760,12 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             // Trim trailing newlines
             cleanContent = cleanContent.replace(/\n+$/, '');
             
+            // Get the starting line number from the Read operation input if available
+            let startLineNum = 1;
+            if (prevBlock?.input?.offset) {
+              startLineNum = prevBlock.input.offset;
+            }
+            
             const allLines = cleanContent.split('\n');
             const visibleLines = allLines.slice(0, 10);
             const hiddenCount = allLines.length - 10;
@@ -767,7 +773,14 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             
             return (
               <div key={idx} className="tool-result read-output">
-                <pre className="read-content">{visibleLines.join('\n')}</pre>
+                <pre className="read-content">
+                  {visibleLines.map((line, i) => (
+                    <div key={i} className="read-line">
+                      <span className="line-number">{(startLineNum + i).toString().padStart(4, ' ')}</span>
+                      <span className="line-text">{line}</span>
+                    </div>
+                  ))}
+                </pre>
                 {hasMore && (
                   <div className="read-more">+ {hiddenCount} more lines</div>
                 )}
@@ -815,7 +828,14 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             
             return (
               <div key={idx} className="tool-result search-output">
-                <pre className="search-content">{visibleLines.join('\n')}</pre>
+                <pre className="search-content">
+                  {visibleLines.map((line, i) => (
+                    <div key={i} className="search-line">
+                      <span className="line-number">{(i + 1).toString().padStart(4, ' ')}</span>
+                      <span className="line-text">{line}</span>
+                    </div>
+                  ))}
+                </pre>
                 {hasMore && (
                   <div className="search-more">+ {hiddenCount} more lines</div>
                 )}
@@ -1527,7 +1547,7 @@ const MessageRendererBase: React.FC<{
         );
       }
       
-      // For Edit tool, show a proper diff
+      // For Edit tool, show a proper diff with context lines
       if (toolName === 'Edit') {
         // Use formatPath to convert to relative path
         const filePath = formatPath(toolInput.file_path || 'file');
@@ -1539,22 +1559,63 @@ const MessageRendererBase: React.FC<{
         const oldLines = oldString.split('\n');
         const newLines = newString.split('\n');
         
+        // Build the diff with context lines
+        const diffLines: { type: 'removed' | 'added' | 'context', line: string }[] = [];
+        
         // Find which lines actually changed
-        const changedLines: { type: 'removed' | 'added', line: string, lineNum: number }[] = [];
+        let firstDiffLine = -1;
+        let lastDiffLine = -1;
         
-        // Add removed lines with their line numbers
-        oldLines.forEach((line, idx) => {
-          if (!newLines.includes(line)) {
-            changedLines.push({ type: 'removed', line, lineNum: idx + 1 });
+        // Find first difference
+        for (let i = 0; i < Math.min(oldLines.length, newLines.length); i++) {
+          if (oldLines[i] !== newLines[i]) {
+            firstDiffLine = i;
+            break;
           }
-        });
+        }
         
-        // Add new lines with their line numbers
-        newLines.forEach((line, idx) => {
-          if (!oldLines.includes(line)) {
-            changedLines.push({ type: 'added', line, lineNum: idx + 1 });
+        // Find last difference (from the end)
+        for (let i = 0; i < Math.min(oldLines.length, newLines.length); i++) {
+          const oldIdx = oldLines.length - 1 - i;
+          const newIdx = newLines.length - 1 - i;
+          if (oldIdx >= firstDiffLine && newIdx >= firstDiffLine && 
+              oldLines[oldIdx] !== newLines[newIdx]) {
+            lastDiffLine = Math.max(oldIdx, newIdx);
+            break;
           }
-        });
+        }
+        
+        // If no differences found but lengths differ, show all lines
+        if (firstDiffLine === -1) {
+          firstDiffLine = Math.min(oldLines.length, newLines.length);
+          lastDiffLine = Math.max(oldLines.length - 1, newLines.length - 1);
+        }
+        
+        // Add context line before (if available)
+        if (firstDiffLine > 0) {
+          diffLines.push({ type: 'context', line: oldLines[firstDiffLine - 1] });
+        }
+        
+        // Add removed lines
+        for (let i = firstDiffLine; i < oldLines.length && (lastDiffLine === -1 || i <= lastDiffLine); i++) {
+          diffLines.push({ type: 'removed', line: oldLines[i] });
+        }
+        
+        // Add added lines
+        for (let i = firstDiffLine; i < newLines.length && (lastDiffLine === -1 || i <= lastDiffLine); i++) {
+          diffLines.push({ type: 'added', line: newLines[i] });
+        }
+        
+        // Add context line after (if available)
+        const contextAfterIdx = Math.max(
+          lastDiffLine + 1,
+          Math.max(oldLines.length, newLines.length) - 1
+        );
+        if (contextAfterIdx < newLines.length) {
+          diffLines.push({ type: 'context', line: newLines[contextAfterIdx] });
+        } else if (contextAfterIdx < oldLines.length) {
+          diffLines.push({ type: 'context', line: oldLines[contextAfterIdx] });
+        }
         
         return (
           <div className="message tool-message">
@@ -1564,9 +1625,11 @@ const MessageRendererBase: React.FC<{
               <span className="tool-detail">{filePath}</span>
             </div>
             <div className="edit-diff">
-              {changedLines.map((change, idx) => (
+              {diffLines.map((change, idx) => (
                 <div key={idx} className={`diff-line ${change.type}`}>
-                  <span className="diff-marker">{change.type === 'removed' ? '-' : '+'}</span>
+                  <span className="diff-marker">
+                    {change.type === 'removed' ? '-' : change.type === 'added' ? '+' : ' '}
+                  </span>
                   <span className="diff-text">{change.line}</span>
                 </div>
               ))}
@@ -1575,7 +1638,7 @@ const MessageRendererBase: React.FC<{
         );
       }
       
-      // For MultiEdit tool, show multiple diffs
+      // For MultiEdit tool, show multiple diffs with context
       if (toolName === 'MultiEdit') {
         // Use formatPath to convert to relative path
         const filePath = formatPath(toolInput.file_path || 'file');
@@ -1596,29 +1659,72 @@ const MessageRendererBase: React.FC<{
               const oldLines = oldString.split('\n');
               const newLines = newString.split('\n');
               
+              // Build the diff with context lines
+              const diffLines: { type: 'removed' | 'added' | 'context', line: string }[] = [];
+              
               // Find which lines actually changed
-              const changedLines: { type: 'removed' | 'added', line: string, lineNum: number }[] = [];
+              let firstDiffLine = -1;
+              let lastDiffLine = -1;
+              
+              // Find first difference
+              for (let i = 0; i < Math.min(oldLines.length, newLines.length); i++) {
+                if (oldLines[i] !== newLines[i]) {
+                  firstDiffLine = i;
+                  break;
+                }
+              }
+              
+              // Find last difference (from the end)
+              for (let i = 0; i < Math.min(oldLines.length, newLines.length); i++) {
+                const oldIdx = oldLines.length - 1 - i;
+                const newIdx = newLines.length - 1 - i;
+                if (oldIdx >= firstDiffLine && newIdx >= firstDiffLine && 
+                    oldLines[oldIdx] !== newLines[newIdx]) {
+                  lastDiffLine = Math.max(oldIdx, newIdx);
+                  break;
+                }
+              }
+              
+              // If no differences found but lengths differ, show all lines
+              if (firstDiffLine === -1) {
+                firstDiffLine = Math.min(oldLines.length, newLines.length);
+                lastDiffLine = Math.max(oldLines.length - 1, newLines.length - 1);
+              }
+              
+              // Add context line before (if available)
+              if (firstDiffLine > 0) {
+                diffLines.push({ type: 'context', line: oldLines[firstDiffLine - 1] });
+              }
               
               // Add removed lines
-              oldLines.forEach((line, idx) => {
-                if (!newLines.includes(line)) {
-                  changedLines.push({ type: 'removed', line, lineNum: idx + 1 });
-                }
-              });
+              for (let i = firstDiffLine; i < oldLines.length && (lastDiffLine === -1 || i <= lastDiffLine); i++) {
+                diffLines.push({ type: 'removed', line: oldLines[i] });
+              }
               
-              // Add new lines
-              newLines.forEach((line, idx) => {
-                if (!oldLines.includes(line)) {
-                  changedLines.push({ type: 'added', line, lineNum: idx + 1 });
-                }
-              });
+              // Add added lines
+              for (let i = firstDiffLine; i < newLines.length && (lastDiffLine === -1 || i <= lastDiffLine); i++) {
+                diffLines.push({ type: 'added', line: newLines[i] });
+              }
+              
+              // Add context line after (if available)
+              const contextAfterIdx = Math.max(
+                lastDiffLine + 1,
+                Math.max(oldLines.length, newLines.length) - 1
+              );
+              if (contextAfterIdx < newLines.length) {
+                diffLines.push({ type: 'context', line: newLines[contextAfterIdx] });
+              } else if (contextAfterIdx < oldLines.length) {
+                diffLines.push({ type: 'context', line: oldLines[contextAfterIdx] });
+              }
               
               return (
                 <div key={editIdx} className="edit-diff" style={{ marginTop: editIdx > 0 ? '8px' : '0' }}>
                   {editIdx > 0 && <div className="diff-separator">edit {editIdx + 1}</div>}
-                  {changedLines.map((change, idx) => (
+                  {diffLines.map((change, idx) => (
                     <div key={idx} className={`diff-line ${change.type}`}>
-                      <span className="diff-marker">{change.type === 'removed' ? '-' : '+'}</span>
+                      <span className="diff-marker">
+                        {change.type === 'removed' ? '-' : change.type === 'added' ? '+' : ' '}
+                      </span>
                       <span className="diff-text">{change.line}</span>
                     </div>
                   ))}
@@ -1760,68 +1866,9 @@ const MessageRendererBase: React.FC<{
       
       
       if (isEditResult) {
-        // Parse the Edit result to extract the diff
-        const lines = contentStr.split('\n');
-        // Extract file path from Edit or MultiEdit output
-        let filePathMatch = contentStr.match(/The file (.+?) has been updated/);
-        if (!filePathMatch) {
-          filePathMatch = contentStr.match(/Applied \d+ edits? to (.+?):/);
-        }
-        let filePath = filePathMatch ? filePathMatch[1] : 'file';
-        
-        // Convert to relative path using formatPath
-        filePath = formatPath(filePath);
-        
-        // Find the actual diff part (after "Here's the result of running")
-        const diffStartIdx = lines.findIndex(line => line.includes("Here's the result of running"));
-        const diffLines = diffStartIdx >= 0 ? lines.slice(diffStartIdx + 1) : [];
-        
-        // Extract line numbers from the diff output
-        // Look for lines like "   473→/* macOS-specific..." for changed lines
-        // or "   473 /* context */" for context lines
-        const changedLineRegex = /^\s*(\d+)→/;
-        const contextLineRegex = /^\s*(\d+)\s/;
-        let changedLineNumbers: number[] = [];
-        
-        // Process diff lines to identify changed vs context lines and format them
-        const processedDiffLines = diffLines.map(line => {
-          const changedMatch = line.match(changedLineRegex);
-          const contextMatch = line.match(contextLineRegex);
-          
-          if (changedMatch) {
-            const lineNum = parseInt(changedMatch[1]);
-            changedLineNumbers.push(lineNum);
-            // This is a changed line - highlight it
-            return `<span class="diff-line-changed">${line}</span>`;
-          } else if (contextMatch && !line.trim().startsWith('...')) {
-            // This is a context line - show in dimmed color
-            return `<span class="diff-line-context">${line}</span>`;
-          } else if (line.trim() === '...') {
-            // Separator between non-contiguous sections
-            return `<span class="diff-line-separator">${line}</span>`;
-          } else {
-            return line;
-          }
-        });
-        
-        // Get unique changed line numbers for the header
-        changedLineNumbers = [...new Set(changedLineNumbers)].sort((a, b) => a - b);
-        
-        // Display the edit result with line numbers AND the enhanced diff
-        return (
-          <div className="message tool-message">
-            <div className="tool-use standalone">
-              <IconEdit size={14} stroke={1.5} className="tool-icon" />
-              <span className="tool-action">edited</span>
-              <span className="tool-detail">{filePath}{changedLineNumbers.length > 0 ? `:${changedLineNumbers[0]}` : ''}</span>
-            </div>
-            {processedDiffLines.length > 0 && (
-              <div className="tool-result file-edit">
-                <pre className="edit-diff" dangerouslySetInnerHTML={{ __html: processedDiffLines.join('\n') }} />
-              </div>
-            )}
-          </div>
-        );
+        // Hide the edit result display - it's duplicate of the tool_use display
+        // The Edit/MultiEdit tool_use already shows the diff nicely
+        return null;
       }
       
       // Check if this is a Read operation result (already have associatedToolUse from above)
@@ -1890,10 +1937,25 @@ const MessageRendererBase: React.FC<{
                          isSearchResult ? 'search-output' : 
                          'generic-output';
         
+        // Get starting line number for Read operations
+        let startLineNum = 1;
+        if (isReadResult && associatedToolUse?.message?.input?.offset) {
+          startLineNum = associatedToolUse.message.input.offset;
+        }
+        
         return (
           <div className="message tool-result-message">
             <div className={`tool-result standalone ${className}`}>
-              <pre className="result-content">{visibleLines.join('\n')}</pre>
+              <pre className="result-content">
+                {visibleLines.map((line, i) => (
+                  <div key={i} className={isReadResult ? 'read-line' : isSearchResult ? 'search-line' : 'result-line'}>
+                    <span className="line-number">
+                      {isReadResult ? (startLineNum + i).toString().padStart(4, ' ') : (i + 1).toString().padStart(4, ' ')}
+                    </span>
+                    <span className="line-text">{line}</span>
+                  </div>
+                ))}
+              </pre>
               {hasMore && (
                 <div className="result-more">+ {hiddenCount} more lines</div>
               )}

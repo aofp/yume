@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette, IconPhoto, IconTrash } from '@tabler/icons-react';
+import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette, IconPhoto, IconTrash, IconKey, IconSparkles } from '@tabler/icons-react';
 import './SettingsModal.css';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { useLicenseStore } from '../../services/licenseManager';
 
 // Access the electron API exposed by preload script
 declare global {
@@ -319,6 +320,43 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               </div>
             </div>
           </div>
+          
+          <div className="settings-section">
+            <h4>license</h4>
+            <div className="license-info">
+              {(() => {
+                const { isLicensed, licenseData } = useLicenseStore();
+                if (isLicensed && licenseData) {
+                  return (
+                    <div className="license-status licensed">
+                      <IconKey size={14} />
+                      <span>licensed to: {licenseData.email || 'user'}</span>
+                      <span className="license-type">{licenseData.type}</span>
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div className="license-status trial">
+                      <span>trial mode - max 2 tabs</span>
+                      <button 
+                        className="upgrade-btn"
+                        onClick={() => {
+                          onClose();
+                          window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                            detail: { reason: 'trial' } 
+                          }));
+                        }}
+                      >
+                        <IconSparkles size={14} />
+                        <span>upgrade</span>
+                      </button>
+                    </div>
+                  );
+                }
+              })()}
+            </div>
+          </div>
+          
           </div>
         </div>
       </div>
