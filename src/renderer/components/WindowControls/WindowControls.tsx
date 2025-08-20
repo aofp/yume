@@ -30,6 +30,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   
   // Track expanded/collapsed state
   const [isExpanded, setIsExpanded] = React.useState(false);
+  const [mousePosition, setMousePosition] = React.useState({ x: 0, y: 0 });
   
   React.useEffect(() => {
     const handleFocus = () => setIsWindowFocused(true);
@@ -43,6 +44,44 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
       window.removeEventListener('blur', handleBlur);
     };
   }, []);
+  
+  // Track mouse position to detect when in trigger zone
+  React.useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      const windowWidth = window.innerWidth;
+      const x = e.clientX;
+      const y = e.clientY;
+      
+      // Check if in trigger zone (top 28px height for title bar area)
+      if (y <= 28) {
+        if (isMac) {
+          // macOS: right 1/3 of window
+          if (x >= windowWidth * 0.67) {
+            setIsExpanded(true);
+          } else {
+            setIsExpanded(false);
+          }
+        } else {
+          // Windows/Linux: left 1/3 of window
+          if (x <= windowWidth * 0.33) {
+            setIsExpanded(true);
+          } else {
+            setIsExpanded(false);
+          }
+        }
+      } else {
+        setIsExpanded(false);
+      }
+      
+      setMousePosition({ x, y });
+    };
+    
+    window.addEventListener('mousemove', handleMouseMove);
+    
+    return () => {
+      window.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isMac]);
   
   // Always show controls for frameless window
   // if (!isWindows) return null;
@@ -111,8 +150,6 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
         {/* Mac: Menu items to the right of title - settings, projects, analytics, keyboard shortcuts */}
         <div 
           className="mac-right-controls"
-          onMouseEnter={() => setIsExpanded(true)}
-          onMouseLeave={() => setIsExpanded(false)}
         >
           {!isExpanded ? (
             <button 
@@ -154,8 +191,6 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
       {/* Windows: Menu items on the left - settings, projects, analytics, keyboard shortcuts */}
       <div 
         className="windows-left-controls"
-        onMouseEnter={() => setIsExpanded(true)}
-        onMouseLeave={() => setIsExpanded(false)}
       >
         {!isExpanded ? (
           <button 

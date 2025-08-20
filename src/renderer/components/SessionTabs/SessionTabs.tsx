@@ -477,6 +477,14 @@ export const SessionTabs: React.FC = () => {
                   document.body.classList.remove('tab-dragging');
                   document.body.style.cursor = '';
                   
+                  // Also remove cursor from all elements to fix stuck cursor bug
+                  const allElements = document.querySelectorAll('*');
+                  allElements.forEach(el => {
+                    if (el instanceof HTMLElement) {
+                      el.style.cursor = '';
+                    }
+                  });
+                  
                   // Remove drag preview
                   if (dragPreview && document.body.contains(dragPreview)) {
                     document.body.removeChild(dragPreview);
