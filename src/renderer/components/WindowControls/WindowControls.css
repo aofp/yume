@@ -42,6 +42,44 @@
   background: transparent;
   -webkit-app-region: no-drag;
   z-index: 10002;
+  transition: all 0.2s ease;
+}
+
+/* Windows left side controls */
+.windows-left-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.2s ease;
+}
+
+/* Toggle button styling */
+.window-control-toggle {
+  width: 24px;
+  height: 21px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.4);
+  padding: 0;
+  border-radius: 4px;
+  font-size: 10px;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: default;
+  margin-right: 3px;
+}
+
+/* Remove margin-right on macOS */
+.mac-right-controls .window-control-toggle {
+  margin-right: 0;
+}
+
+.window-control-toggle:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 1);
 }
 
 .mac-control {

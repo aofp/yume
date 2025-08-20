@@ -1026,6 +1026,160 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
   }
 });
 
+// Analytics endpoint - reads all Claude sessions and extracts token usage
+app.get('/claude-analytics', async (req, res) => {
+  console.log('📊 Loading analytics from all Claude sessions...');
+  
+  try {
+    const analytics = {
+      totalSessions: 0,
+      totalMessages: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      byModel: {
+        opus: { sessions: 0, tokens: 0, cost: 0 },
+        sonnet: { sessions: 0, tokens: 0, cost: 0 }
+      },
+      byDate: {},
+      byProject: {}
+    };
+    
+    const { readdir, readFile, stat } = await import('fs/promises');
+    const projectsDir = join(homedir(), '.claude', 'projects');
+    
+    try {
+      const projectDirs = await readdir(projectsDir);
+      
+      for (const projectName of projectDirs) {
+        const projectPath = join(projectsDir, projectName);
+        const stats = await stat(projectPath);
+        
+        if (!stats.isDirectory()) continue;
+        
+        // Get all session files
+        const sessionFiles = await readdir(projectPath);
+        const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
+        
+        for (const sessionFile of jsonlFiles) {
+          try {
+            const sessionPath = join(projectPath, sessionFile);
+            const content = await readFile(sessionPath, 'utf8');
+            
+            // Parse JSONL file - Claude CLI format
+            const lines = content.split('\n').filter(line => line.trim());
+            let sessionTokens = 0;
+            let sessionCost = 0;
+            let sessionModel = 'sonnet';
+            let sessionDate = new Date().toISOString().split('T')[0];
+            let messageCount = 0;
+            
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+                
+                // Claude CLI uses type: "assistant" for assistant messages with usage data
+                if (data.type === 'assistant' && data.message && data.message.usage) {
+                  messageCount++;
+                  const usage = data.message.usage;
+                  
+                  // Include all token types
+                  const inputTokens = (usage.input_tokens || 0) + 
+                                     (usage.cache_read_input_tokens || 0) + 
+                                     (usage.cache_creation_input_tokens || 0);
+                  const outputTokens = usage.output_tokens || 0;
+                  sessionTokens += inputTokens + outputTokens;
+                  
+                  // Detect model from message
+                  if (data.message.model) {
+                    sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                  }
+                  
+                  // Calculate cost based on model
+                  const isOpus = sessionModel === 'opus';
+                  const inputRate = isOpus ? 0.000015 : 0.000003;
+                  const outputRate = isOpus ? 0.000075 : 0.000015;
+                  sessionCost += inputTokens * inputRate + outputTokens * outputRate;
+                }
+                
+                // Count user messages too
+                if (data.type === 'user') {
+                  messageCount++;
+                }
+                
+                // Get timestamp from any message
+                if (data.timestamp) {
+                  sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
+                }
+              } catch (e) {
+                // Skip invalid lines
+              }
+            }
+            
+            // Update analytics
+            if (sessionTokens > 0 || messageCount > 0) {
+              analytics.totalSessions++;
+              analytics.totalMessages += messageCount;
+              analytics.totalTokens += sessionTokens;
+              analytics.totalCost += sessionCost;
+              
+              // Update model breakdown
+              if (sessionModel === 'opus') {
+                analytics.byModel.opus.sessions++;
+                analytics.byModel.opus.tokens += sessionTokens;
+                analytics.byModel.opus.cost += sessionCost;
+              } else {
+                analytics.byModel.sonnet.sessions++;
+                analytics.byModel.sonnet.tokens += sessionTokens;
+                analytics.byModel.sonnet.cost += sessionCost;
+              }
+              
+              // Update by date
+              if (!analytics.byDate[sessionDate]) {
+                analytics.byDate[sessionDate] = {
+                  sessions: 0,
+                  messages: 0,
+                  tokens: 0,
+                  cost: 0
+                };
+              }
+              analytics.byDate[sessionDate].sessions++;
+              analytics.byDate[sessionDate].messages += messageCount;
+              analytics.byDate[sessionDate].tokens += sessionTokens;
+              analytics.byDate[sessionDate].cost += sessionCost;
+              
+              // Update by project
+              const cleanProjectName = projectName.replace(/-\d{4}-\d{2}-\d{2}.*$/, '');
+              if (!analytics.byProject[cleanProjectName]) {
+                analytics.byProject[cleanProjectName] = {
+                  sessions: 0,
+                  messages: 0,
+                  tokens: 0,
+                  cost: 0,
+                  lastUsed: Date.now()
+                };
+              }
+              analytics.byProject[cleanProjectName].sessions++;
+              analytics.byProject[cleanProjectName].messages += messageCount;
+              analytics.byProject[cleanProjectName].tokens += sessionTokens;
+              analytics.byProject[cleanProjectName].cost += sessionCost;
+            }
+          } catch (e) {
+            console.error(`Error processing session ${sessionFile}:`, e.message);
+          }
+        }
+      }
+    } catch (e) {
+      console.error('Error reading projects directory:', e.message);
+    }
+    
+    console.log(`📊 Analytics loaded: ${analytics.totalSessions} sessions, ${analytics.totalTokens} tokens`);
+    res.json(analytics);
+  } catch (error) {
+    console.error('Error loading analytics:', error);
+    res.status(500).json({ error: 'Failed to load analytics', details: error.message });
+  }
+});
+
 // PID file management - use temp directory for production
 // Each server instance gets a unique PID file based on its port
 const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 

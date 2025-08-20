@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconChartBar } from '@tabler/icons-react';
+import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconChartBar, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import './WindowControls.css';
 
 interface WindowControlsProps {
@@ -27,6 +27,9 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   
   // Track window focus state
   const [isWindowFocused, setIsWindowFocused] = React.useState(true);
+  
+  // Track expanded/collapsed state
+  const [isExpanded, setIsExpanded] = React.useState(false);
   
   React.useEffect(() => {
     const handleFocus = () => setIsWindowFocused(true);
@@ -105,25 +108,40 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             <span className="mac-control-icon">+</span>
           </button>
         </div>
-        {/* Mac: Menu items to the right of title - help, projects, settings */}
-        <div className="mac-right-controls">
-          <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
-            <span style={{ fontSize: '10px' }}>?</span>
-          </button>
-          {onProjectsClick && (
-            <button className="window-control projects" onClick={onProjectsClick} title="projects (cmd+p)">
-              <IconFolder size={10} stroke={2} />
+        {/* Mac: Menu items to the right of title - settings, projects, analytics, keyboard shortcuts */}
+        <div 
+          className="mac-right-controls"
+          onMouseEnter={() => setIsExpanded(true)}
+          onMouseLeave={() => setIsExpanded(false)}
+        >
+          {!isExpanded ? (
+            <button 
+              className="window-control-toggle" 
+              title="expand menu"
+            >
+              <IconChevronLeft size={10} stroke={2} />
             </button>
-          )}
-          {onAnalyticsClick && (
-            <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (cmd+y)">
-              <IconChartBar size={10} stroke={2} />
-            </button>
-          )}
-          {onSettingsClick && (
-            <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
-              <IconSettingsFilled size={10} />
-            </button>
+          ) : (
+            <>
+              {onSettingsClick && (
+                <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
+                  <IconSettingsFilled size={10} />
+                </button>
+              )}
+              {onProjectsClick && (
+                <button className="window-control projects" onClick={onProjectsClick} title="projects (cmd+p)">
+                  <IconFolder size={10} stroke={2} />
+                </button>
+              )}
+              {onAnalyticsClick && (
+                <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (cmd+y)">
+                  <IconChartBar size={10} stroke={2} />
+                </button>
+              )}
+              <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+                <span style={{ fontSize: '10px' }}>?</span>
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -133,25 +151,42 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   // Windows style controls
   return (
     <div className="window-controls">
-      {/* Windows: Menu items on the left - settings, projects, help */}
-      {onSettingsClick && (
-        <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
-          <IconSettingsFilled size={10} />
-        </button>
-      )}
-      {onProjectsClick && (
-        <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
-          <IconFolder size={10} stroke={2} />
-        </button>
-      )}
-      {onAnalyticsClick && (
-        <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (ctrl+y)">
-          <IconChartBar size={10} stroke={2} />
-        </button>
-      )}
-      <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
-        <span style={{ fontSize: '10px' }}>?</span>
-      </button>
+      {/* Windows: Menu items on the left - settings, projects, analytics, keyboard shortcuts */}
+      <div 
+        className="windows-left-controls"
+        onMouseEnter={() => setIsExpanded(true)}
+        onMouseLeave={() => setIsExpanded(false)}
+      >
+        {!isExpanded ? (
+          <button 
+            className="window-control-toggle" 
+            title="expand menu"
+          >
+            <IconChevronRight size={10} stroke={2} />
+          </button>
+        ) : (
+          <>
+            {onSettingsClick && (
+              <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
+                <IconSettingsFilled size={10} />
+              </button>
+            )}
+            {onProjectsClick && (
+              <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
+                <IconFolder size={10} stroke={2} />
+              </button>
+            )}
+            {onAnalyticsClick && (
+              <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (ctrl+y)">
+                <IconChartBar size={10} stroke={2} />
+              </button>
+            )}
+            <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+              <span style={{ fontSize: '10px' }}>?</span>
+            </button>
+          </>
+        )}
+      </div>
       {/* Spacer to push window controls to the right */}
       <div className="window-controls-spacer" />
       <button className="window-control minimize" onClick={handleMinimize}>

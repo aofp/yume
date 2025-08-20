@@ -24,8 +24,8 @@
   justify-content: space-between;
   padding: 8px 12px;
   border-bottom: 1px solid #222;
-  -webkit-app-region: drag;
   user-select: none;
+  cursor: default;
 }
 
 .analytics-title {
@@ -34,7 +34,6 @@
   gap: 6px;
   color: var(--accent-color);
   font-size: 13px;
-  pointer-events: none;
   user-select: none;
 }
 
@@ -50,14 +49,15 @@
   cursor: default;
   margin: 0;
   margin-right: 8px;
-  padding: 0;
+  padding: 2px 4px;
   transition: color 0.2s;
   font-family: inherit;
   display: flex;
   align-items: center;
   gap: 4px;
-  -webkit-app-region: no-drag;
   pointer-events: auto;
+  position: relative;
+  z-index: 1;
 }
 
 .analytics-back-button:hover {
@@ -67,7 +67,6 @@
 .analytics-close {
   background: none;
   border: none;
-  -webkit-app-region: no-drag;
   color: #666;
   cursor: default;
   padding: 2px;
@@ -75,6 +74,8 @@
   align-items: center;
   justify-content: center;
   transition: color 0.2s;
+  position: relative;
+  z-index: 1;
 }
 
 .analytics-close:hover {
