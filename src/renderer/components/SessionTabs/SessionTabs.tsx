@@ -472,10 +472,7 @@ export const SessionTabs: React.FC = () => {
                   }
                 };
                 
-                const handleMouseUp = (upEvent: MouseEvent) => {
-                  document.removeEventListener('mousemove', handleMouseMove);
-                  document.removeEventListener('mouseup', handleMouseUp);
-                  
+                const cleanupDrag = () => {
                   // Remove drag class and cursor from body
                   document.body.classList.remove('tab-dragging');
                   document.body.style.cursor = '';
@@ -483,7 +480,31 @@ export const SessionTabs: React.FC = () => {
                   // Remove drag preview
                   if (dragPreview && document.body.contains(dragPreview)) {
                     document.body.removeChild(dragPreview);
+                    dragPreview = null;
                   }
+                  
+                  // Reset all drag states
+                  setIsDragging(false);
+                  setDraggedTab(null);
+                  setDragOverTab(null);
+                  setDragOverNewTab(false);
+                  setDragOverRecent(false);
+                };
+                
+                const handleMouseLeave = (e: MouseEvent) => {
+                  // Only cleanup if mouse leaves the window entirely
+                  if (e.clientY <= 0 || e.clientX <= 0 || e.clientX >= window.innerWidth || e.clientY >= window.innerHeight) {
+                    cleanupDrag();
+                    document.removeEventListener('mousemove', handleMouseMove);
+                    document.removeEventListener('mouseup', handleMouseUp);
+                    document.removeEventListener('mouseleave', handleMouseLeave);
+                  }
+                };
+                
+                const handleMouseUp = (upEvent: MouseEvent) => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                  document.removeEventListener('mouseleave', handleMouseLeave);
                   
                   console.log('Mouse up, moved:', moved, 'currentDragOver:', currentDragOver);
                   
@@ -512,15 +533,13 @@ export const SessionTabs: React.FC = () => {
                     }
                   }
                   
-                  // Reset drag state
-                  setIsDragging(false);
-                  setDraggedTab(null);
-                  setDragOverTab(null);
-                  setDragOverNewTab(false);
+                  // Use cleanup function to reset state
+                  cleanupDrag();
                 };
                 
                 document.addEventListener('mousemove', handleMouseMove);
                 document.addEventListener('mouseup', handleMouseUp);
+                document.addEventListener('mouseleave', handleMouseLeave);
               }
             }}
           >
