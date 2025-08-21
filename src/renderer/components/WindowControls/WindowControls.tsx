@@ -230,6 +230,24 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           </button>
         ) : (
           <>
+            {onProjectsClick && (
+              <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
+                <IconFolder size={10} stroke={2} />
+              </button>
+            )}
+            {onAnalyticsClick && (
+              <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (ctrl+y)">
+                <IconTrendingUp size={10} stroke={2} />
+              </button>
+            )}
+            {onSettingsClick && (
+              <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
+                <IconSettingsFilled size={10} />
+              </button>
+            )}
+            <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+              <span style={{ fontSize: '10px' }}>?</span>
+            </button>
             {!isLicensed && (
               <button 
                 className="trial-indicator" 
@@ -256,24 +274,6 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                 [trial]
               </button>
             )}
-            {onProjectsClick && (
-              <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
-                <IconFolder size={10} stroke={2} />
-              </button>
-            )}
-            {onAnalyticsClick && (
-              <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (ctrl+y)">
-                <IconTrendingUp size={10} stroke={2} />
-              </button>
-            )}
-            {onSettingsClick && (
-              <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
-                <IconSettingsFilled size={10} />
-              </button>
-            )}
-            <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
-              <span style={{ fontSize: '10px' }}>?</span>
-            </button>
           </>
         )}
       </div>

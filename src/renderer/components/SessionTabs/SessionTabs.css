@@ -162,7 +162,7 @@ body.tab-dragging .session-tab {
 }
 
 .session-tab.active {
-  background: rgba(var(--accent-rgb), 0.15);
+  background: rgba(var(--accent-rgb), 0.25);
 }
 
 .session-tab.dragging {
@@ -324,7 +324,7 @@ body.tab-dragging * {
 }
 
 .tab-new {
-  background: rgba(var(--accent-rgb), 0.15);
+  background: rgba(var(--accent-rgb), 0.25);
   border: none;
   color: var(--accent-color);
   cursor: default;
@@ -362,12 +362,12 @@ body.tab-dragging * {
 
 
 .tab-new:hover {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.35);
   color: var(--accent-color);
 }
 
 .tab-new.drag-over-duplicate {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.35);
 }
 
 /* Recent button - gray style */

@@ -782,6 +782,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   input: 0, 
                   output: 0, 
                   total: 0,
+                  cacheSize: 0,
+                  cacheAdded: false,
                   byModel: {
                     opus: { input: 0, output: 0, total: 0 },
                     sonnet: { input: 0, output: 0, total: 0 }
@@ -806,6 +808,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   opus: { input: 0, output: 0, total: 0 },
                   sonnet: { input: 0, output: 0, total: 0 }
                 };
+              }
+              
+              // Initialize cache tracking if it doesn't exist (for backward compatibility)
+              if (analytics.tokens.cacheAdded === undefined) {
+                analytics.tokens.cacheAdded = false;
+              }
+              if (analytics.tokens.cacheSize === undefined) {
+                analytics.tokens.cacheSize = 0;
               }
               
               // Update tokens if result message - Claude CLI sends cumulative values for this conversation
@@ -2248,6 +2258,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   input: 0, 
                   output: 0, 
                   total: 0,
+                  cacheSize: 0,
+                  cacheAdded: false,
                   byModel: {
                     opus: { input: 0, output: 0, total: 0 },
                     sonnet: { input: 0, output: 0, total: 0 }

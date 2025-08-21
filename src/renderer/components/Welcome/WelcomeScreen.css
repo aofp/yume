@@ -67,7 +67,7 @@
   width: 60px;
   height: 60px;
   border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.15);
+  background: rgba(var(--accent-rgb), 0.25);
   border: none;
   color: var(--accent-color);
   display: flex;
@@ -79,7 +79,7 @@
 }
 
 .welcome-new-button:hover {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.35);
   color: var(--accent-color);
 }
 
@@ -96,7 +96,7 @@
   justify-content: center;
   gap: 6px;
   padding: 0;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(255, 255, 255, 0.12);
   border: none;
   border-radius: 8px;
   color: rgba(255, 255, 255, 0.5);
@@ -111,7 +111,7 @@
 }
 
 .action-button:hover:not(:disabled) {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.35);
   color: var(--accent-color);
 }
 
