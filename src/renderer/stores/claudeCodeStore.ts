@@ -783,7 +783,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   output: 0, 
                   total: 0,
                   cacheSize: 0,
-                  cacheAdded: false,
                   byModel: {
                     opus: { input: 0, output: 0, total: 0 },
                     sonnet: { input: 0, output: 0, total: 0 }
@@ -811,9 +810,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               }
               
               // Initialize cache tracking if it doesn't exist (for backward compatibility)
-              if (analytics.tokens.cacheAdded === undefined) {
-                analytics.tokens.cacheAdded = false;
-              }
               if (analytics.tokens.cacheSize === undefined) {
                 analytics.tokens.cacheSize = 0;
               }
@@ -885,56 +881,52 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     }
                   
                   // Include all input token types
-                  // IMPORTANT: Cache tokens DO count against the 200k context window!
-                  // System prompts (claude.md) consume part of your available context
+                  // IMPORTANT: Cache tokens are system prompts (claude.md) that don't accumulate
+                  // They exist in every request but we only track them separately
                   const regularInputTokens = message.usage.input_tokens || 0;
                   const cacheCreationTokens = message.usage.cache_creation_input_tokens || 0;
                   const cacheReadTokens = message.usage.cache_read_input_tokens || 0;
                   const outputTokens = message.usage.output_tokens || 0;
                   
-                  // For accurate context usage: include cache tokens in total
-                  // Cache tokens DO count toward the 200k limit
+                  // Only count conversation tokens (not cached system prompts)
                   const inputTokens = regularInputTokens;
                   const totalNewTokens = regularInputTokens + outputTokens;
                   const cacheTotal = cacheCreationTokens + cacheReadTokens;
                   
                   console.log(`🔍 [TOKEN DEBUG] Token breakdown:`);
                   console.log(`   Regular input: ${regularInputTokens}`);
-                  console.log(`   Cache creation: ${cacheCreationTokens} (COUNTS toward 200k limit)`);
-                  console.log(`   Cache read: ${cacheReadTokens} (COUNTS toward 200k limit)`);
+                  console.log(`   Cache creation: ${cacheCreationTokens} (system prompts, not in conversation)`);
+                  console.log(`   Cache read: ${cacheReadTokens} (system prompts, not in conversation)`);
                   console.log(`   Output: ${outputTokens}`);
                   console.log(`   --- ACCUMULATION ---`);
                   console.log(`   NEW conversation tokens: ${totalNewTokens} (input: ${regularInputTokens} + output: ${outputTokens})`);
                   console.log(`   Previous total: ${analytics.tokens.total}`);
-                  console.log(`   Will be total: ${analytics.tokens.total + totalNewTokens + (!analytics.tokens.cacheAdded && cacheTotal > 0 ? cacheTotal : 0)}`);
+                  console.log(`   Will be total: ${analytics.tokens.total + totalNewTokens}`);
                   
                   // Check if compactPending flag is set - if so, reset tokens
                   if (analytics.compactPending) {
                     console.log('🗜️ [COMPACT RECOVERY] Post-compact message received, resetting token count');
                     console.log('🗜️ [COMPACT RECOVERY] Old total:', analytics.tokens.total);
-                    // Reset tokens after compact - include cache in total
+                    // Reset tokens after compact - only conversation tokens
                     analytics.tokens.input = inputTokens;
                     analytics.tokens.output = outputTokens;
-                    analytics.tokens.total = totalNewTokens + cacheTotal;
-                    analytics.tokens.cacheSize = cacheTotal;
-                    analytics.tokens.cacheAdded = true; // Cache is included in total
+                    analytics.tokens.total = totalNewTokens;
+                    analytics.tokens.cacheSize = cacheTotal; // Track cache separately
                     analytics.compactPending = false; // Clear the flag
                     console.log('🗜️ [COMPACT RECOVERY] New total after compact:', analytics.tokens.total);
                   } else {
-                    // CRITICAL: Accumulate conversation tokens + cache (once)
-                    // Cache tokens DO count against the 200k context limit
+                    // CRITICAL: Only accumulate conversation tokens (not cache)
+                    // Cache tokens are system prompts that exist outside the conversation
                     const previousTotal = analytics.tokens.total;
                     
                     analytics.tokens.input += inputTokens;
                     analytics.tokens.output += outputTokens;
                     analytics.tokens.total += totalNewTokens;
                     
-                    // Add cache tokens to total ONCE (they count toward 200k limit)
-                    if (cacheTotal > 0 && !analytics.tokens.cacheAdded) {
-                      analytics.tokens.total += cacheTotal;
+                    // Track cache size separately (don't add to total)
+                    if (cacheTotal > 0) {
                       analytics.tokens.cacheSize = cacheTotal;
-                      analytics.tokens.cacheAdded = true;
-                      console.log(`   🚨 Adding cache tokens to total: ${cacheTotal} (one-time addition)`);
+                      console.log(`   📦 Cache size: ${cacheTotal} tokens (system prompts, tracked separately)`);
                     }
                     
                     console.log(`📊 [TOKEN UPDATE] Accumulation:`);
@@ -949,9 +941,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
                   console.log(`   Input: ${analytics.tokens.input}`);
                   console.log(`   Output: ${analytics.tokens.output}`);
-                  console.log(`   Cache: ${analytics.tokens.cacheSize || 0}`);
-                  console.log(`   Total in context: ${analytics.tokens.total}`);
-                  console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}% of 200k (includes cache)`);
+                  console.log(`   Cache: ${analytics.tokens.cacheSize || 0} (system prompts, not in conversation)`);
+                  console.log(`   Total conversation: ${analytics.tokens.total}`);
+                  console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}% of 200k`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;
@@ -2259,7 +2251,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   output: 0, 
                   total: 0,
                   cacheSize: 0,
-                  cacheAdded: false,
                   byModel: {
                     opus: { input: 0, output: 0, total: 0 },
                     sonnet: { input: 0, output: 0, total: 0 }

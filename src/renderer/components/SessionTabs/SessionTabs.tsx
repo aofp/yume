@@ -760,24 +760,33 @@ export const SessionTabs: React.FC = () => {
               if (isDragging && draggedTab) {
                 // Prevent the onClick from firing when dropping a tab
                 e.preventDefault();
+                e.stopPropagation();
                 
                 // Find the dragged session and duplicate it
                 const sessionToDuplicate = sessions.find(s => s.id === draggedTab);
                 if (sessionToDuplicate) {
-                  const workingDir = (sessionToDuplicate as any)?.workingDirectory;
-                  createSession(undefined, workingDir || '/');
+                  const workingDir = sessionToDuplicate.workingDirectory;
+                  // Only duplicate with a working directory if one exists
+                  if (workingDir) {
+                    createSession(undefined, workingDir);
+                  } else {
+                    // Create a new empty session if no working directory
+                    createSession();
+                  }
                 }
                 
                 // Trigger mouseup on document to ensure global handlers clean up
                 // This is needed because we prevented propagation above
-                const mouseUpEvent = new MouseEvent('mouseup', {
-                  bubbles: true,
-                  cancelable: true,
-                  clientX: e.clientX,
-                  clientY: e.clientY,
-                  button: e.button
-                });
-                document.dispatchEvent(mouseUpEvent);
+                setTimeout(() => {
+                  const mouseUpEvent = new MouseEvent('mouseup', {
+                    bubbles: true,
+                    cancelable: true,
+                    clientX: e.clientX,
+                    clientY: e.clientY,
+                    button: e.button
+                  });
+                  document.dispatchEvent(mouseUpEvent);
+                }, 0);
               }
             }}
             onMouseLeave={(e) => {

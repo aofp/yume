@@ -58,6 +58,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [showColorPicker, setShowColorPicker] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { globalWatermarkImage, setGlobalWatermark } = useClaudeCodeStore();
+  const { isLicensed, licenseData, clearLicense } = useLicenseStore();
 
   useEffect(() => {
     // Get current zoom level
@@ -194,6 +195,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     }
   };
 
+  const handleForgetLicense = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Defer the state change to avoid hooks error
+    setTimeout(() => {
+      if (confirm('forget license? this will return to trial mode.')) {
+        clearLicense();
+      }
+    }, 0);
+  };
+
   const getZoomPercentage = () => {
     // Convert zoom level to percentage (0 = 100%, 1 = 110%, -1 = 90%, etc.)
     return 100 + (zoomLevel * 10);
@@ -324,36 +336,33 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           <div className="settings-section">
             <h4>license</h4>
             <div className="license-info">
-              {(() => {
-                const { isLicensed, licenseData } = useLicenseStore();
-                if (isLicensed && licenseData) {
-                  return (
-                    <div className="license-status licensed">
-                      <IconKey size={14} />
-                      <span>licensed</span>
-                      <span className="license-type">{licenseData.type}</span>
-                    </div>
-                  );
-                } else {
-                  return (
-                    <div className="license-status trial">
-                      <span>trial mode - max 2 tabs</span>
-                      <button 
-                        className="upgrade-btn"
-                        onClick={() => {
-                          onClose();
-                          window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-                            detail: { reason: 'trial' } 
-                          }));
-                        }}
-                      >
-                        <IconSparkles size={14} />
-                        <span>upgrade</span>
-                      </button>
-                    </div>
-                  );
-                }
-              })()}
+              {isLicensed && licenseData ? (
+                <div 
+                  className="license-status licensed"
+                  onContextMenu={handleForgetLicense}
+                  title="right-click to forget license"
+                >
+                  <IconKey size={14} />
+                  <span>licensed</span>
+                  <span className="license-type">{licenseData.type}</span>
+                </div>
+              ) : (
+                <div className="license-status trial">
+                  <span>trial mode - max 2 tabs</span>
+                  <button 
+                    className="upgrade-btn"
+                    onClick={() => {
+                      onClose();
+                      window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                        detail: { reason: 'trial' } 
+                      }));
+                    }}
+                  >
+                    <IconSparkles size={14} />
+                    <span>upgrade</span>
+                  </button>
+                </div>
+              )}
             </div>
           </div>
           
