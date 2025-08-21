@@ -2302,10 +2302,13 @@ export const ClaudeChat: React.FC = () => {
           <div className="context-info">
             {(() => {
               // Use the session's analytics tokens instead of recalculating from messages
-              const tokens = currentSession.analytics?.tokens?.total || 0;
+              // Include cache tokens since they count toward context limit
+              const conversationTokens = currentSession.analytics?.tokens?.total || 0;
+              const cacheTokens = currentSession.analytics?.tokens?.cacheSize || 0;
+              const tokens = conversationTokens + cacheTokens;
               
               // Debug log to see actual token values
-              console.log('[TOKEN INDICATOR] Current tokens:', tokens, 'Analytics:', currentSession.analytics?.tokens);
+              console.log('[TOKEN INDICATOR] Conversation tokens:', conversationTokens, 'Cache tokens:', cacheTokens, 'Total:', tokens, 'Analytics:', currentSession.analytics?.tokens);
               
               // Opus 4.1 has 200k context window
               // Sonnet 4.0 has 200k context window 
@@ -2364,7 +2367,11 @@ export const ClaudeChat: React.FC = () => {
                     className={`btn-stats ${usageClass}`} 
                     onClick={() => setShowStatsModal(true)}
                     disabled={false}
-                    title={hasActivity ? `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)` : `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
+                    title={hasActivity ? 
+                      (cacheTokens > 0 ? 
+                        `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (${conversationTokens.toLocaleString()} conversation + ${cacheTokens.toLocaleString()} cache) - click for details (ctrl+.)` :
+                        `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`) : 
+                      `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
                   >
                     {percentage}% used
                   </button>
@@ -2429,7 +2436,10 @@ export const ClaudeChat: React.FC = () => {
                 </div>
               ) : (() => {
                 // Recalculate these values for the modal
-                const tokens = currentSession.analytics?.tokens?.total || 0;
+                // Include cache tokens since they count toward context limit
+                const conversationTokens = currentSession.analytics?.tokens?.total || 0;
+                const cacheTokens = currentSession.analytics?.tokens?.cacheSize || 0;
+                const tokens = conversationTokens + cacheTokens;
                 const contextWindowTokens = 200000;
                 const rawPercentage = (tokens / contextWindowTokens * 100);
                 const percentageNum = Math.min(100, rawPercentage);

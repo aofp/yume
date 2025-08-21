@@ -539,7 +539,7 @@ const processSpawnQueue = [];
 async function generateTitle(sessionId, userMessage, socket, onSuccess) {
   try {
     console.log(`🏷️ Generating title for session ${sessionId}`);
-    console.log(`🏷️ Message preview: "${userMessage.substring(0, 100)}..."`);
+    console.log(`🏷️ Message preview: "${userMessage}"`);
     
     // Spawn a separate claude process just for title generation
     const titleArgs = [
@@ -785,7 +785,7 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
           windowsHide: true,
           maxBuffer: 50 * 1024 * 1024 // 50MB buffer
         });
-      console.log('Raw file content preview (first 200 chars):', content.substring(0, 200).replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
+      console.log('Raw file content:', content.replace(/\n/g, '\\n').replace(/\r/g, '\\r'));
       console.log('Total file size:', content.length, 'characters');
       
       // Check if file ends with newline or $
@@ -914,7 +914,7 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
           if (validMessages <= 5) {
             // Log first few for debugging
             if (data.type === 'summary') {
-              console.log(`Line ${lineNumber}: Added summary:`, (data.summary || '').substring(0, 50));
+              console.log(`Line ${lineNumber}: Added summary:`, data.summary || '');
             } else if (data.type === 'user') {
               console.log(`Line ${lineNumber}: Added user message`);
             } else if (data.type === 'assistant') {
@@ -927,7 +927,7 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
           errorCount++;
           if (errorCount <= 5) {
             console.log(`Failed to parse JSON at line ${lineNumber}, position ${currentPos}:`, err.message);
-            console.log('JSON preview:', jsonStr.substring(0, 100));
+            console.log('JSON output:', jsonStr);
           }
         }
         
@@ -1936,7 +1936,7 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
                 }
               } catch (e) {
                 // Parse error, use default
-                console.log(`Could not parse session title from: ${firstLine.substring(0, 100)}`);
+                console.log(`Could not parse session title from: ${firstLine}`);
               }
             }
             
@@ -2846,11 +2846,11 @@ io.on('connection', (socket) => {
             // Find text blocks only
             const textBlocks = parsed.filter(block => block.type === 'text');
             textContent = textBlocks.map(block => block.text).join(' ');
-            console.log(`🏷️ Extracted text from JSON: "${textContent.substring(0, 50)}..."`);
+            console.log(`🏷️ Extracted text from JSON: "${textContent}"`);
           }
         } catch (e) {
           // Not JSON, use as-is (plain text message)
-          console.log(`🏷️ Using plain text content: "${textContent.substring(0, 50)}..."`);
+          console.log(`🏷️ Using plain text content: "${textContent}"`);
         }
         
         // Only generate title if we have actual text content
@@ -2926,7 +2926,7 @@ io.on('connection', (socket) => {
           return;
         }
         
-        console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line.substring(0, 100)}...`);
+        console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line}`);
         
         // Check for "No conversation found" error message
         if (line.includes('No conversation found with session ID')) {
@@ -3449,7 +3449,9 @@ io.on('connection', (socket) => {
         lastDataTime = Date.now();
         
         console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
-        console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200).replace(/\n/g, '\\n')}...`);
+        
+        // Display full output without truncation
+        console.log(`📥 [${sessionId}] Data:\n${str}`);
         
         // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {

@@ -880,28 +880,29 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       console.log('💰 Result message with cost:', message.cost);
                     }
                   
-                  // Include all input token types
-                  // IMPORTANT: Cache tokens are system prompts (claude.md) that don't accumulate
-                  // They exist in every request but we only track them separately
+                  // Parse token usage from Claude CLI
+                  // IMPORTANT: Cache tokens are pre-computed, not new tokens added to conversation
                   const regularInputTokens = message.usage.input_tokens || 0;
                   const cacheCreationTokens = message.usage.cache_creation_input_tokens || 0;
                   const cacheReadTokens = message.usage.cache_read_input_tokens || 0;
                   const outputTokens = message.usage.output_tokens || 0;
                   
-                  // Only count conversation tokens (not cached system prompts)
+                  // Only count NEW tokens toward total (not cached)
+                  // Cache tokens are previously seen content, pre-computed for efficiency
                   const inputTokens = regularInputTokens;
                   const totalNewTokens = regularInputTokens + outputTokens;
                   const cacheTotal = cacheCreationTokens + cacheReadTokens;
                   
                   console.log(`🔍 [TOKEN DEBUG] Token breakdown:`);
                   console.log(`   Regular input: ${regularInputTokens}`);
-                  console.log(`   Cache creation: ${cacheCreationTokens} (system prompts, not in conversation)`);
-                  console.log(`   Cache read: ${cacheReadTokens} (system prompts, not in conversation)`);
+                  console.log(`   Cache creation: ${cacheCreationTokens} (cached system prompts)`);
+                  console.log(`   Cache read: ${cacheReadTokens} (cached system prompts)`);
                   console.log(`   Output: ${outputTokens}`);
                   console.log(`   --- ACCUMULATION ---`);
                   console.log(`   NEW conversation tokens: ${totalNewTokens} (input: ${regularInputTokens} + output: ${outputTokens})`);
+                  console.log(`   NEW cache tokens: ${cacheTotal} (still count toward context)`);
                   console.log(`   Previous total: ${analytics.tokens.total}`);
-                  console.log(`   Will be total: ${analytics.tokens.total + totalNewTokens}`);
+                  console.log(`   Will be total: ${analytics.tokens.total + totalNewTokens + cacheTotal}`);
                   
                   // Check if compactPending flag is set - if so, reset tokens
                   if (analytics.compactPending) {
@@ -915,34 +916,35 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     analytics.compactPending = false; // Clear the flag
                     console.log('🗜️ [COMPACT RECOVERY] New total after compact:', analytics.tokens.total);
                   } else {
-                    // CRITICAL: Only accumulate conversation tokens (not cache)
-                    // Cache tokens are system prompts that exist outside the conversation
+                    // CRITICAL: Accumulate ALL tokens including cache (they all count toward context)
+                    // Cache tokens are pre-computed but still consume context space
                     const previousTotal = analytics.tokens.total;
                     
                     analytics.tokens.input += inputTokens;
                     analytics.tokens.output += outputTokens;
                     analytics.tokens.total += totalNewTokens;
                     
-                    // Track cache size separately (don't add to total)
+                    // Track cache size separately (NOT added to total)
+                    // Cache tokens are already in context, just pre-computed for efficiency
                     if (cacheTotal > 0) {
                       analytics.tokens.cacheSize = cacheTotal;
-                      console.log(`   📦 Cache size: ${cacheTotal} tokens (system prompts, tracked separately)`);
+                      console.log(`   📦 Cache size: ${cacheTotal} tokens (pre-computed, not new tokens)`);
                     }
                     
                     console.log(`📊 [TOKEN UPDATE] Accumulation:`);
                     console.log(`   Previous total: ${previousTotal}`);
-                    console.log(`   Added this turn: ${totalNewTokens} (input: ${inputTokens} + output: ${outputTokens})`);
+                    console.log(`   Added conversation: ${totalNewTokens} (input: ${inputTokens} + output: ${outputTokens})`);
+                    console.log(`   Cache read: ${cacheTotal} tokens (not added to total)`);
                     console.log(`   New cumulative total: ${analytics.tokens.total}`);
-                    console.log(`   Cache size (included in total): ${analytics.tokens.cacheSize}`);
                     console.log(`   Running totals - Input: ${analytics.tokens.input}, Output: ${analytics.tokens.output}`);
-                    console.log(`📊 [TOKEN UPDATE] Cache size: ${analytics.tokens.cacheSize || 0} (included in total context)`);
+                    console.log(`📊 [TOKEN UPDATE] Total new tokens: ${analytics.tokens.total} (cache: ${analytics.tokens.cacheSize || 0} separate)`);
                   }
                   
                   console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
                   console.log(`   Input: ${analytics.tokens.input}`);
                   console.log(`   Output: ${analytics.tokens.output}`);
-                  console.log(`   Cache: ${analytics.tokens.cacheSize || 0} (system prompts, not in conversation)`);
-                  console.log(`   Total conversation: ${analytics.tokens.total}`);
+                  console.log(`   Cache: ${analytics.tokens.cacheSize || 0} (separate, not in total)`);
+                  console.log(`   Total new tokens: ${analytics.tokens.total}`);
                   console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}% of 200k`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
