@@ -186,7 +186,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                   onMouseLeave={(e) => e.currentTarget.style.color = '#666666'}
                   title="click to upgrade"
                 >
-                  [trial]
+                  trial
                 </button>
               )}
               {onProjectsClick && (
@@ -271,7 +271,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                 onMouseLeave={(e) => e.currentTarget.style.color = '#666666'}
                 title="click to upgrade"
               >
-                [trial]
+                trial
               </button>
             )}
           </>
