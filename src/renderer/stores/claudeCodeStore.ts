@@ -925,16 +925,19 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     analytics.tokens.total += totalNewTokens;
                     
                     // Track cache size separately (NOT added to total)
-                    // Cache tokens are already in context, just pre-computed for efficiency
-                    if (cacheTotal > 0) {
-                      analytics.tokens.cacheSize = cacheTotal;
-                      console.log(`   📦 Cache size: ${cacheTotal} tokens (pre-computed, not new tokens)`);
+                    // Only accumulate NEW cache creation, not cache reads (which reuse existing cache)
+                    if (cacheCreationTokens > 0) {
+                      analytics.tokens.cacheSize = (analytics.tokens.cacheSize || 0) + cacheCreationTokens;
+                      console.log(`   📦 Cache size increased by: ${cacheCreationTokens} tokens (new cache creation)`);
+                    }
+                    if (cacheReadTokens > 0) {
+                      console.log(`   📦 Reused ${cacheReadTokens} cached tokens (not counting again)`);
                     }
                     
                     console.log(`📊 [TOKEN UPDATE] Accumulation:`);
                     console.log(`   Previous total: ${previousTotal}`);
                     console.log(`   Added conversation: ${totalNewTokens} (input: ${inputTokens} + output: ${outputTokens})`);
-                    console.log(`   Cache read: ${cacheTotal} tokens (not added to total)`);
+                    console.log(`   Current cache size: ${analytics.tokens.cacheSize || 0} tokens`);
                     console.log(`   New cumulative total: ${analytics.tokens.total}`);
                     console.log(`   Running totals - Input: ${analytics.tokens.input}, Output: ${analytics.tokens.output}`);
                     console.log(`📊 [TOKEN UPDATE] Total new tokens: ${analytics.tokens.total} (cache: ${analytics.tokens.cacheSize || 0} separate)`);

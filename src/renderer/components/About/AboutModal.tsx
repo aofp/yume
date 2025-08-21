@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { IconX } from '@tabler/icons-react';
+import { useLicenseStore } from '../../services/licenseManager';
 import './AboutModal.css';
 
 // Version info - manually update this when version changes
@@ -7,8 +8,7 @@ import './AboutModal.css';
 const versionInfo = {
   version: '0.1.0',
   author: 'yurufrog',
-  website: 'yuru.be',
-  isDemo: false // Set to true for demo version (limited to 1 session)
+  website: 'yuru.be'
 };
 
 interface AboutModalProps {
@@ -17,6 +17,8 @@ interface AboutModalProps {
 }
 
 export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
+  const { isLicensed } = useLicenseStore();
+  
   // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,10 +57,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           
           <div className="about-version">
             version {versionInfo.version}<br />
-            <span style={{ color: 'var(--accent-color)' }}>[{versionInfo.isDemo ? 'try' : 'pro'}]</span>
+            <span style={{ color: 'var(--accent-color)' }}>[{isLicensed ? 'pro' : 'trial'}]</span>
           </div>
           
-          {versionInfo.isDemo && (
+          {!isLicensed && (
             <div className="about-license">
               <button 
                 className="about-buy-license"
