@@ -415,7 +415,7 @@ body.tab-dragging * {
 }
 
 .tab-recent.drag-over-save {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.35);
   color: var(--accent-color);
 }
 

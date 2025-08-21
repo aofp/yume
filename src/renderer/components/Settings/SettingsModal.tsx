@@ -198,8 +198,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const handleForgetLicense = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    // Defer the state change to avoid hooks error
-    if (confirm('forget license? this will return to trial mode.')) {
+    // Show confirm dialog first, then clear if confirmed
+    const shouldClear = confirm('forget license? this will return to trial mode.');
+    if (shouldClear) {
+      // Defer the state change to avoid potential hooks error
       setTimeout(() => {
         clearLicense();
       }, 0);
