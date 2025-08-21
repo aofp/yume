@@ -330,7 +330,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   return (
                     <div className="license-status licensed">
                       <IconKey size={14} />
-                      <span>licensed to: {licenseData.email || 'user'}</span>
+                      <span>licensed</span>
                       <span className="license-type">{licenseData.type}</span>
                     </div>
                   );

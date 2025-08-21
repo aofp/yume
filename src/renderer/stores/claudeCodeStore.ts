@@ -835,6 +835,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     console.log('🗜️ [COMPACT] Current analytics before compact:', analytics.tokens);
                     console.log('🗜️ [COMPACT] Session claudeSessionId:', s.claudeSessionId);
                     
+                    // Mark that we're waiting for post-compact token count
+                    analytics.compactPending = true;
+                    
                     // After a compact, we need to query Claude for the new context size
                     // For now, log that we detected it - the next message will have the updated counts
                     console.log('🗜️ [COMPACT] Next message from Claude should have updated token counts');
@@ -895,15 +898,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   console.log(`   Previous total: ${analytics.tokens.total}`);
                   console.log(`   Will be total: ${analytics.tokens.total + totalNewTokens + (!analytics.tokens.cacheAdded && cacheTotal > 0 ? cacheTotal : 0)}`);
                   
-                  // Check if previous message was a compact - if so, reset tokens
-                  const previousMessages = s.messages.filter(m => m.type === 'result' && m.usage);
-                  const lastResultMessage = previousMessages[previousMessages.length - 1];
-                  const wasCompact = lastResultMessage?.usage && 
-                                    lastResultMessage.usage.input_tokens === 0 && 
-                                    lastResultMessage.usage.output_tokens === 0;
-                  
-                  if (wasCompact) {
-                    console.log('🗜️ [COMPACT RECOVERY] Previous message was compact, resetting token count');
+                  // Check if compactPending flag is set - if so, reset tokens
+                  if (analytics.compactPending) {
+                    console.log('🗜️ [COMPACT RECOVERY] Post-compact message received, resetting token count');
                     console.log('🗜️ [COMPACT RECOVERY] Old total:', analytics.tokens.total);
                     // Reset tokens after compact - include cache in total
                     analytics.tokens.input = inputTokens;
@@ -911,6 +908,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     analytics.tokens.total = totalNewTokens + cacheTotal;
                     analytics.tokens.cacheSize = cacheTotal;
                     analytics.tokens.cacheAdded = true; // Cache is included in total
+                    analytics.compactPending = false; // Clear the flag
                     console.log('🗜️ [COMPACT RECOVERY] New total after compact:', analytics.tokens.total);
                   } else {
                     // CRITICAL: Accumulate conversation tokens + cache (once)

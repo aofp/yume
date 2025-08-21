@@ -70,11 +70,9 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
                       useLicenseStore.getState().validateLicense(input.value).then(valid => {
                         if (valid) {
                           onClose();
-                          // show success message
-                          console.log('license activated successfully');
+                          alert('thank you for registering yurucode');
                         } else {
-                          // show error
-                          console.log('invalid license key');
+                          alert('invalid license key');
                         }
                       });
                     }
@@ -89,9 +87,9 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
                     useLicenseStore.getState().validateLicense(input.value).then(valid => {
                       if (valid) {
                         onClose();
-                        console.log('license activated successfully');
+                        alert('thank you for registering yurucode');
                       } else {
-                        console.log('invalid license key');
+                        alert('invalid license key');
                       }
                     });
                   }

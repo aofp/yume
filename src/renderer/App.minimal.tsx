@@ -743,6 +743,26 @@ export const App: React.FC = () => {
           >
             about
           </button>
+          {(() => {
+            const { isLicensed } = useLicenseStore();
+            if (isLicensed) {
+              return (
+                <button 
+                  className="context-menu-item"
+                  onClick={() => {
+                    if (confirm('are you sure you want to forget your license key?')) {
+                      useLicenseStore.getState().clearLicense();
+                      window.location.reload();
+                    }
+                    setContextMenu(null);
+                  }}
+                >
+                  forget license
+                </button>
+              );
+            }
+            return null;
+          })()}
         </div>
       )}
       

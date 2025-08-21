@@ -3306,7 +3306,7 @@ io.on('connection', (socket) => {
             socket.emit(`message:${sessionId}`, {
               type: 'system',
               subtype: 'compact',
-              message: { content: 'context compacted to save tokens' },
+              message: { content: 'context compressed - usage will reset on next message' },
               timestamp: Date.now()
             });
             
@@ -3648,13 +3648,19 @@ io.on('connection', (socket) => {
             timestamp: Date.now()
           });
         } else if (code !== 0) {
-          console.error(`Claude process failed with exit code ${code}`);
-          socket.emit(`message:${sessionId}`, {
-            type: 'system',
-            subtype: 'info',
-            message: `process completed with code ${code}`,
-            timestamp: Date.now()
-          });
+          // Don't show error for interrupted sessions (SIGINT typically exits with code 130 or 2)
+          if (session.wasInterrupted) {
+            console.log(`Process exited with code ${code} after interruption - not showing error`);
+            session.wasInterrupted = false; // Reset the flag
+          } else {
+            console.error(`Claude process failed with exit code ${code}`);
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'info',
+              message: `process completed with code ${code}`,
+              timestamp: Date.now()
+            });
+          }
         }
       });
 
