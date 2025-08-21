@@ -1697,7 +1697,7 @@
 }
 
 .recent-item:hover {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), 0.2);
 }
 
 .recent-item:hover .recent-item-name {
@@ -1745,7 +1745,7 @@
 
 .recent-item-name {
   font-size: 12px;
-  font-weight: 500;
+  font-weight: 700;
   color: #ffffff;
   display: flex;
   flex-direction: column;

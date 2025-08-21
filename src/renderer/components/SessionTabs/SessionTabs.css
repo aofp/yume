@@ -410,7 +410,7 @@ body.tab-dragging * {
 
 
 .tab-recent:hover {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.35);
   color: var(--accent-color);
 }
 
