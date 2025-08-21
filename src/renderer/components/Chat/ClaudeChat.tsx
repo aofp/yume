@@ -2411,8 +2411,9 @@ export const ClaudeChat: React.FC = () => {
               // Both models have the same 200k context window
               const contextWindowTokens = 200000;
               
-              // Calculate percentage but show warning if over 100%
-              const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
+              // Calculate percentage using only conversation tokens (not cached)
+              const realContextTokens = conversationTokens;
+              const rawPercentage = (realContextTokens / contextWindowTokens * 100);
               const percentageNum = Math.min(100, rawPercentage);
               // Format: always show 2 decimal places
               const percentage = percentageNum.toFixed(2);
@@ -2561,7 +2562,7 @@ export const ClaudeChat: React.FC = () => {
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {cacheTokens.toLocaleString()} tokens ({Math.round((cacheTokens / totalContextTokens) * 100) || 0}%)
+                            {cacheTokens.toLocaleString()} tokens
                           </span>
                         </div>
                       </div>
@@ -2572,6 +2573,7 @@ export const ClaudeChat: React.FC = () => {
                   <div className="stat-row">
                     <div className="stat-keys">
                       <IconClock size={14} />
+                      <span className="stat-name">thinking</span>
                     </div>
                     <span className="stat-dots"></span>
                     <span className="stat-desc">
