@@ -1,0 +1,198 @@
+/* Upgrade Modal - Matching about modal style exactly */
+
+.upgrade-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.upgrade-modal {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 400px;
+  overflow-y: auto;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.upgrade-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+}
+
+.upgrade-header h3 {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+  user-select: none;
+  -webkit-user-select: none;
+  display: flex;
+  align-items: center;
+}
+
+.upgrade-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+  padding: 2px;
+  transition: all 0.2s ease;
+}
+
+.upgrade-close:hover {
+  color: var(--accent-color);
+}
+
+.upgrade-content {
+  padding: 12px;
+}
+
+.upgrade-reason {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 6px 8px;
+  margin-bottom: 12px;
+}
+
+.upgrade-reason p {
+  margin: 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: lowercase;
+  text-align: center;
+}
+
+.upgrade-price {
+  text-align: center;
+  margin-bottom: 12px;
+}
+
+.upgrade-price p {
+  margin: 0 0 8px 0;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: lowercase;
+}
+
+.upgrade-price .price {
+  font-size: 24px;
+  font-weight: bold;
+  color: var(--accent-color);
+  margin: 0;
+  font-family: 'Fira Code', monospace;
+}
+
+.upgrade-price .price-subtitle {
+  margin: 4px 0 12px 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.upgrade-button {
+  padding: 6px 20px;
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+  border-radius: 4px;
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: lowercase;
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.upgrade-button:hover {
+  background: var(--accent-color);
+  color: #000;
+}
+
+.license-input-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  padding: 10px;
+}
+
+.license-input-section p {
+  margin: 0 0 8px 0;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: lowercase;
+  text-align: center;
+}
+
+.license-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.license-input {
+  flex: 1;
+  padding: 6px 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--accent-color);
+  font-size: 9px;
+  font-family: 'Fira Code', monospace;
+  text-transform: uppercase;
+  border-radius: 4px;
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.license-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: uppercase;
+  font-size: 9px;
+}
+
+.license-input:focus {
+  border-color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.activate-button {
+  padding: 6px 16px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: rgba(255, 255, 255, 0.6);
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 500;
+  text-transform: lowercase;
+  cursor: default;
+  transition: all 0.2s ease;
+}
+
+.activate-button:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
