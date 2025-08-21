@@ -621,8 +621,9 @@ export const SessionTabs: React.FC = () => {
               )}
               <div className="tab-context-bar">
                 {(() => {
-                  const tokens = (session as any).analytics?.tokens?.total || 0;
-                  const actualTokens = tokens + claudeMdTokens;
+                  const conversationTokens = (session as any).analytics?.tokens?.total || 0;
+                  const cacheTokens = (session as any).analytics?.tokens?.cacheSize || 0;
+                  const actualTokens = conversationTokens + cacheTokens + claudeMdTokens;
                   const contextMax = 200000; // 200k context window
                   const percentage = Math.min((actualTokens / contextMax) * 100, 100);
                   

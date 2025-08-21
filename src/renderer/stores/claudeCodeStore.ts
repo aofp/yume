@@ -900,55 +900,60 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   console.log(`   Output: ${outputTokens}`);
                   console.log(`   --- ACCUMULATION ---`);
                   console.log(`   NEW conversation tokens: ${totalNewTokens} (input: ${regularInputTokens} + output: ${outputTokens})`);
-                  console.log(`   NEW cache tokens: ${cacheTotal} (still count toward context)`);
-                  console.log(`   Previous total: ${analytics.tokens.total}`);
-                  console.log(`   Will be total: ${analytics.tokens.total + totalNewTokens + cacheTotal}`);
+                  console.log(`   NEW cache tokens: ${cacheTotal} (creation: ${cacheCreationTokens}, read: ${cacheReadTokens})`);
+                  console.log(`   Previous conversation total: ${analytics.tokens.total}`);
+                  console.log(`   Will be conversation total: ${analytics.tokens.total + totalNewTokens}`);
                   
                   // Check if compactPending flag is set - if so, reset tokens
                   if (analytics.compactPending) {
                     console.log('🗜️ [COMPACT RECOVERY] Post-compact message received, resetting token count');
-                    console.log('🗜️ [COMPACT RECOVERY] Old total:', analytics.tokens.total);
-                    // Reset tokens after compact - only conversation tokens
+                    console.log('🗜️ [COMPACT RECOVERY] Old conversation total:', analytics.tokens.total);
+                    console.log('🗜️ [COMPACT RECOVERY] Old cache size:', analytics.tokens.cacheSize || 0);
+                    // Reset conversation tokens after compact
                     analytics.tokens.input = inputTokens;
                     analytics.tokens.output = outputTokens;
                     analytics.tokens.total = totalNewTokens;
-                    analytics.tokens.cacheSize = cacheTotal; // Track cache separately
+                    // Reset cache size - only count cache creation tokens, not reads
+                    analytics.tokens.cacheSize = cacheCreationTokens; // Only new cache creation
                     analytics.compactPending = false; // Clear the flag
-                    console.log('🗜️ [COMPACT RECOVERY] New total after compact:', analytics.tokens.total);
+                    console.log('🗜️ [COMPACT RECOVERY] New conversation total:', analytics.tokens.total);
+                    console.log('🗜️ [COMPACT RECOVERY] New cache size:', analytics.tokens.cacheSize);
                   } else {
-                    // CRITICAL: Accumulate ALL tokens including cache (they all count toward context)
-                    // Cache tokens are pre-computed but still consume context space
+                    // Accumulate conversation tokens and track cache tokens separately
+                    // Cache tokens are tracked separately to avoid double counting
                     const previousTotal = analytics.tokens.total;
                     
                     analytics.tokens.input += inputTokens;
                     analytics.tokens.output += outputTokens;
                     analytics.tokens.total += totalNewTokens;
                     
-                    // Track cache size separately (NOT added to total)
-                    // Only accumulate NEW cache creation, not cache reads (which reuse existing cache)
+                    // IMPORTANT: cache tokens are tracked separately from conversation tokens
+                    // Cache creation tokens: only count once, track in cacheSize
+                    // Cache read tokens: don't count - they're reusing existing cache
                     if (cacheCreationTokens > 0) {
                       analytics.tokens.cacheSize = (analytics.tokens.cacheSize || 0) + cacheCreationTokens;
-                      console.log(`   📦 Cache size increased by: ${cacheCreationTokens} tokens (new cache creation)`);
+                      console.log(`   📦 Cache created: ${cacheCreationTokens} tokens (tracked separately)`);
                     }
                     if (cacheReadTokens > 0) {
-                      console.log(`   📦 Reused ${cacheReadTokens} cached tokens (not counting again)`);
+                      console.log(`   📦 Cache read: ${cacheReadTokens} tokens (already cached, not counting)`);
                     }
                     
                     console.log(`📊 [TOKEN UPDATE] Accumulation:`);
-                    console.log(`   Previous total: ${previousTotal}`);
+                    console.log(`   Previous conversation total: ${previousTotal}`);
                     console.log(`   Added conversation: ${totalNewTokens} (input: ${inputTokens} + output: ${outputTokens})`);
                     console.log(`   Current cache size: ${analytics.tokens.cacheSize || 0} tokens`);
-                    console.log(`   New cumulative total: ${analytics.tokens.total}`);
+                    console.log(`   New conversation total: ${analytics.tokens.total}`);
                     console.log(`   Running totals - Input: ${analytics.tokens.input}, Output: ${analytics.tokens.output}`);
-                    console.log(`📊 [TOKEN UPDATE] Total new tokens: ${analytics.tokens.total} (cache: ${analytics.tokens.cacheSize || 0} separate)`);
+                    console.log(`📊 [TOKEN UPDATE] Conversation tokens: ${analytics.tokens.total}, Cache tokens: ${analytics.tokens.cacheSize || 0} (separate)`);
                   }
                   
                   console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
                   console.log(`   Input: ${analytics.tokens.input}`);
                   console.log(`   Output: ${analytics.tokens.output}`);
-                  console.log(`   Cache: ${analytics.tokens.cacheSize || 0} (separate, not in total)`);
-                  console.log(`   Total new tokens: ${analytics.tokens.total}`);
-                  console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}% of 200k`);
+                  console.log(`   Conversation total: ${analytics.tokens.total}`);
+                  console.log(`   Cache: ${analytics.tokens.cacheSize || 0} (tracked separately)`);
+                  const totalContext = analytics.tokens.total + (analytics.tokens.cacheSize || 0);
+                  console.log(`   Total context usage: ${totalContext} tokens (${(totalContext / 200000 * 100).toFixed(1)}% of 200k)`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;
@@ -1551,11 +1556,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           updates.thinkingStartTime = now;
           updates.analytics = updatedAnalytics;
           
-          // Only set streaming to true if we're not already streaming
-          // This prevents flickering the thinking indicator during followups
-          if (!wasStreaming) {
-            updates.streaming = true;
-          }
+          // Always set streaming to true when sending a message
+          // This ensures the streaming indicator shows immediately
+          updates.streaming = true;
           
           return { ...s, ...updates };
         }

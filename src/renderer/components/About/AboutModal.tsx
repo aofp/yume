@@ -1,6 +1,7 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { IconX } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
+import { UpgradeModal } from '../Upgrade/UpgradeModal';
 import './AboutModal.css';
 
 // Version info - manually update this when version changes
@@ -18,6 +19,7 @@ interface AboutModalProps {
 
 export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   const { isLicensed } = useLicenseStore();
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Handle Escape key
   useEffect(() => {
@@ -39,6 +41,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
   if (!isOpen) return null;
 
   return (
+    <>
     <div className="about-modal-overlay" onClick={onClose}>
       <div className="about-modal" onClick={(e) => e.stopPropagation()}>
         <div className="about-header">
@@ -57,22 +60,18 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           
           <div className="about-version">
             version {versionInfo.version}<br />
-            <span style={{ color: 'var(--accent-color)' }}>[{isLicensed ? 'pro' : 'trial'}]</span>
+            <span 
+              style={{ 
+                color: 'var(--accent-color)',
+                cursor: !isLicensed ? 'pointer' : 'default'
+              }}
+              onClick={() => {
+                if (!isLicensed) {
+                  setShowUpgradeModal(true);
+                }
+              }}
+            >[{isLicensed ? 'pro' : 'trial'}]</span>
           </div>
-          
-          {!isLicensed && (
-            <div className="about-license">
-              <button 
-                className="about-buy-license"
-                onClick={() => {
-                  console.log('Get pro clicked - placeholder');
-                  // TODO: Implement pro version purchase flow
-                }}
-              >
-                get pro
-              </button>
-            </div>
-          )}
           
           <div className="about-credits">
             <div className="about-site">
@@ -103,5 +102,13 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
       </div>
     </div>
+    {showUpgradeModal && (
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        reason="trial"
+      />
+    )}
+  </>
   );
 };

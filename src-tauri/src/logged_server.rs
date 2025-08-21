@@ -3899,6 +3899,82 @@ io.on('connection', (socket) => {
   });
 });
 
+// Clean up old PID files on startup
+function cleanupOldPidFiles() {
+  try {
+    const pidPattern = /^(\.yurucode-)?server-\d+\.pid$/;
+    
+    // Clean up PID files in home directory
+    const homeDir = homedir();
+    if (fs.existsSync(homeDir)) {
+      const homeFiles = fs.readdirSync(homeDir);
+      homeFiles.forEach(file => {
+        if (pidPattern.test(file)) {
+          const fullPath = join(homeDir, file);
+          // Don't delete our current PID file
+          if (fullPath !== pidFilePath) {
+            try {
+              fs.unlinkSync(fullPath);
+              console.log(`🗑️ Cleaned up old PID file: ${file}`);
+            } catch (err) {
+              // Ignore errors for individual files
+            }
+          }
+        }
+      });
+    }
+    
+    // Clean up PID files in current directory
+    const currentDir = __dirname;
+    if (fs.existsSync(currentDir)) {
+      const dirFiles = fs.readdirSync(currentDir);
+      dirFiles.forEach(file => {
+        if (pidPattern.test(file)) {
+          const fullPath = join(currentDir, file);
+          // Don't delete our current PID file
+          if (fullPath !== pidFilePath) {
+            try {
+              fs.unlinkSync(fullPath);
+              console.log(`🗑️ Cleaned up old PID file: ${file}`);
+            } catch (err) {
+              // Ignore errors for individual files
+            }
+          }
+        }
+      });
+    }
+    
+    // Clean up PID files in temp directory (for extracted server)
+    const tmpDir = process.env.TEMP || process.env.TMP || '/tmp';
+    const yurucodeServerDir = join(tmpDir, 'yurucode-server');
+    if (fs.existsSync(yurucodeServerDir)) {
+      const tmpFiles = fs.readdirSync(yurucodeServerDir);
+      tmpFiles.forEach(file => {
+        if (pidPattern.test(file)) {
+          const fullPath = join(yurucodeServerDir, file);
+          // Don't delete our current PID file
+          if (fullPath !== pidFilePath) {
+            try {
+              fs.unlinkSync(fullPath);
+              console.log(`🗑️ Cleaned up old PID file in temp: ${file}`);
+            } catch (err) {
+              // Ignore errors for individual files
+            }
+          }
+        }
+      });
+    }
+    
+    console.log('✅ PID file cleanup complete');
+  } catch (err) {
+    console.log('⚠️ PID file cleanup error:', err.message);
+    // Don't fail startup if cleanup fails
+  }
+}
+
+// Clean up old PID files before starting
+cleanupOldPidFiles();
+
 // Start server with error handling
 httpServer.listen(PORT, () => {
   writePidFile();

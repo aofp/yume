@@ -199,7 +199,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     e.preventDefault();
     e.stopPropagation();
     // Show confirm dialog first, then clear if confirmed
-    const shouldClear = confirm('forget license? this will return to trial mode.');
+    const shouldClear = true;
     if (shouldClear) {
       // Defer the state change to avoid potential hooks error
       setTimeout(() => {
@@ -342,7 +342,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <div
                     className="license-status licensed"
                     onContextMenu={handleForgetLicense}
-                    title="right-click to forget license"
+                    // title="right-click to forget license"
                   >
                     <IconKey size={14} />
                     <span>licensed</span>

@@ -101,3 +101,5 @@ coverage/
 
 # Optional stylelint cache
 .stylelintcache
+# License system keypair (keep secret!)
+yurucode_keypair.json

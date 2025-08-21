@@ -18,6 +18,7 @@ import {
   IconCheck,
   IconNotebook,
   IconTool,
+  IconMessageCircle,
   IconX,
   IconAlertTriangle,
   IconFileText,
@@ -965,9 +966,11 @@ export const ClaudeChat: React.FC = () => {
           }
           
           // Schedule the actual send with countdown
+          let countdownActive = true;
           const updateCountdown = () => {
+            if (!countdownActive) return; // Stop if countdown was cancelled
             const remaining = SAFE_DELAY - (Date.now() - effectiveStartTime);
-            if (remaining > 0) {
+            if (remaining > 0 && pendingFollowupRef.current) {
               setPendingFollowupMessage(`waiting for claude to respond (${Math.ceil(remaining / 1000)}s)...`);
               setTimeout(updateCountdown, 500);
             } else {
@@ -981,8 +984,10 @@ export const ClaudeChat: React.FC = () => {
           // Schedule the actual send
           const timeoutId = setTimeout(() => {
             console.log('[ClaudeChat] Sending delayed followup message now');
+            countdownActive = false; // Stop countdown updates
             pendingFollowupRef.current = null;
-            // Call handleDelayedSend - it will clear the pending message
+            setPendingFollowupMessage(null); // Clear immediately before sending
+            // Call handleDelayedSend - it will also clear the pending message
             handleDelayedSend(messageToSend, attachmentsToSend, currentSessionId);
           }, remainingDelay);
           
@@ -2309,7 +2314,10 @@ export const ClaudeChat: React.FC = () => {
             onChange={handleTextareaChange}
             onKeyDown={handleKeyDown}
             onPaste={handlePaste}
-            style={{ height: '44px' }}
+            style={{ 
+              height: '44px',
+              paddingRight: currentSession?.streaming ? '48px' : undefined
+            }}
             disabled={currentSession?.readOnly}
             onFocus={() => setIsTextareaFocused(true)}
             onBlur={() => {
@@ -2340,14 +2348,18 @@ export const ClaudeChat: React.FC = () => {
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
           <div className="context-info">
             {(() => {
-              // Use the session's analytics tokens instead of recalculating from messages
-              // Include cache tokens since they count toward context limit
+              // Calculate total context usage including conversation + cache tokens
               const conversationTokens = currentSession.analytics?.tokens?.total || 0;
               const cacheTokens = currentSession.analytics?.tokens?.cacheSize || 0;
-              const tokens = conversationTokens + cacheTokens;
+              const totalContextTokens = conversationTokens + cacheTokens;
               
               // Debug log to see actual token values
-              console.log('[TOKEN INDICATOR] Conversation tokens:', conversationTokens, 'Cache tokens:', cacheTokens, 'Total:', tokens, 'Analytics:', currentSession.analytics?.tokens);
+              console.log('[TOKEN INDICATOR] Context tokens:', {
+                conversation: conversationTokens,
+                cache: cacheTokens, 
+                total: totalContextTokens,
+                analytics: currentSession.analytics?.tokens
+              });
               
               // Opus 4.1 has 200k context window
               // Sonnet 4.0 has 200k context window 
@@ -2355,14 +2367,14 @@ export const ClaudeChat: React.FC = () => {
               const contextWindowTokens = 200000;
               
               // Calculate percentage but show warning if over 100%
-              const rawPercentage = (tokens / contextWindowTokens * 100);
+              const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
               const percentageNum = Math.min(100, rawPercentage);
               // Format: always show 2 decimal places
               const percentage = percentageNum.toFixed(2);
               
               // Log warning if tokens exceed context window
               if (rawPercentage > 100) {
-                console.warn(`[TOKEN WARNING] Tokens (${tokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
+                console.warn(`[TOKEN WARNING] Tokens (${totalContextTokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
               }
               // Color classes: grey until 70%, then yellow/orange/red
               const usageClass = percentageNum >= 90 ? 'high' : 
@@ -2407,9 +2419,7 @@ export const ClaudeChat: React.FC = () => {
                     onClick={() => setShowStatsModal(true)}
                     disabled={false}
                     title={hasActivity ? 
-                      (cacheTokens > 0 ? 
-                        `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (${conversationTokens.toLocaleString()} conversation + ${cacheTokens.toLocaleString()} cache) - click for details (ctrl+.)` :
-                        `${tokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`) : 
+                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (conversation: ${conversationTokens.toLocaleString()}, cached: ${cacheTokens.toLocaleString()}) - click for details (ctrl+.)` : 
                       `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
                   >
                     {percentage}% used
@@ -2474,13 +2484,12 @@ export const ClaudeChat: React.FC = () => {
                   no active session
                 </div>
               ) : (() => {
-                // Recalculate these values for the modal
-                // Include cache tokens since they count toward context limit
+                // Calculate total context usage including conversation + cache tokens
                 const conversationTokens = currentSession.analytics?.tokens?.total || 0;
                 const cacheTokens = currentSession.analytics?.tokens?.cacheSize || 0;
-                const tokens = conversationTokens + cacheTokens;
+                const totalContextTokens = conversationTokens + cacheTokens;
                 const contextWindowTokens = 200000;
-                const rawPercentage = (tokens / contextWindowTokens * 100);
+                const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
                 const percentageNum = Math.min(100, rawPercentage);
                 const percentage = percentageNum.toFixed(2);
                 
@@ -2496,7 +2505,17 @@ export const ClaudeChat: React.FC = () => {
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {tokens.toLocaleString()} / {contextWindowTokens.toLocaleString()} ({percentage}%)
+                            {totalContextTokens.toLocaleString()} / {contextWindowTokens.toLocaleString()} ({percentage}%)
+                          </span>
+                        </div>
+                        <div className="stat-row">
+                          <div className="stat-keys">
+                            <IconMessageCircle size={14} />
+                            <span className="stat-name">cached</span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc">
+                            {cacheTokens.toLocaleString()} tokens
                           </span>
                         </div>
                       </div>

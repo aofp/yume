@@ -60,7 +60,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
             <div className="license-input-row">
               <input 
                 type="text" 
-                placeholder="enter license key (XXXX-XXXX-XXXX-XXXX)"
+                placeholder="enter license key (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)"
                 className="license-input"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {

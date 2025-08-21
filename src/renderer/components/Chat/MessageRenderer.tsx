@@ -4,6 +4,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter';
 import { DiffViewer, DiffDisplay, DiffLine } from './DiffViewer';
 import { 
   IconBolt,
+  IconMessageCircle,
   IconFolder, 
   IconAlertTriangle, 
   IconCheck, 
@@ -694,7 +695,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
-                <IconBolt size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
+                <IconMessageCircle size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
                 <span className="thinking-label accent-text">thinking</span>
                 <span className="thinking-stats">
                   {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
@@ -2233,7 +2234,11 @@ const MessageRendererBase: React.FC<{
         const hasMore = hiddenCount > 0;
         
         // Choose appropriate styling based on operation type
-        const className = isSearchResult ? 'search-output' : 'generic-output';
+        const isWriteOperation = associatedToolUse?.type === 'tool_use' && 
+          associatedToolUse?.message?.name === 'Write';
+        const className = isSearchResult ? 'search-output' : 
+                          isWriteOperation ? 'write-output' : 
+                          'generic-output';
         
         
         return (
