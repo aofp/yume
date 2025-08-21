@@ -89,6 +89,9 @@ interface ClaudeCodeStore {
   // Model
   selectedModel: string;
   
+  // Context tracking
+  claudeMdTokens: number; // Token count for CLAUDE.md file
+  
   // Watermark
   globalWatermarkImage: string | null; // Global watermark for all sessions
   
@@ -136,6 +139,9 @@ interface ClaudeCodeStore {
   
   // Watermark
   setGlobalWatermark: (image: string | null) => void;
+  
+  // Context
+  calculateClaudeMdTokens: () => Promise<void>;
 }
 
 // Helper function to track file changes from tool operations
@@ -326,6 +332,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   persistedSessionId: null,
   sessionMappings: {},
   selectedModel: 'claude-opus-4-1-20250805',
+  claudeMdTokens: 0, // Will be calculated on first use
   globalWatermarkImage: null,
   streamingMessage: '',
   isLoadingHistory: false,
@@ -692,7 +699,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   }
                   
                   // Never update tool_use or tool_result messages - they should be immutable
-                  if (existingMessage.type === 'tool_use' || existingMessage.type === 'tool_result') {
+                  // Result messages should also be immutable - they only come once with final tokens
+                  if (existingMessage.type === 'tool_use' || existingMessage.type === 'tool_result' || existingMessage.type === 'result') {
                     console.log(`Skipping update for ${existingMessage.type} message - preserving original`);
                   } else if (message.type === 'assistant') {
                     // For assistant messages during streaming, handle array or string content
@@ -706,7 +714,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // Just use the new content directly - Claude Code SDK sends full updates
                     let finalContent = message.message?.content || existingMessage.message?.content;
                     
-                    console.log(`[CLIENT] Assistant message update - streaming: ${message.streaming}, content length: ${typeof finalContent === 'string' ? finalContent.length : JSON.stringify(finalContent).length}`);
+                    // Enhanced logging to debug thinking blocks
+                    if (Array.isArray(finalContent)) {
+                      const blockTypes = finalContent.map(b => b?.type || 'unknown');
+                      const hasThinking = blockTypes.includes('thinking');
+                      console.log(`[CLIENT] Assistant message update - streaming: ${message.streaming}, blocks: [${blockTypes.join(', ')}], hasThinking: ${hasThinking}`);
+                      if (hasThinking) {
+                        console.log('[CLIENT] Thinking blocks found in content:', finalContent.filter(b => b?.type === 'thinking'));
+                      }
+                    } else {
+                      console.log(`[CLIENT] Assistant message update - streaming: ${message.streaming}, content length: ${typeof finalContent === 'string' ? finalContent.length : JSON.stringify(finalContent).length}`);
+                    }
                     
                     existingMessages[existingIndex] = {
                       ...message,
@@ -825,38 +843,53 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     return { ...s, messages: existingMessages, analytics, updatedAt: new Date() };
                   }
                   
-                  // Only update tokens if this is a new result message (avoid duplicates)
-                  const isNewResult = !s.messages.find(m => m.id === message.id && m.type === 'result');
-                  const existingResultMessages = s.messages.filter(m => m.type === 'result').map(m => ({ id: m.id, usage: m.usage }));
-                  console.log(`🔍 [TOKEN DEBUG] Processing result message ${message.id}, isNewResult: ${isNewResult}, current analytics tokens: ${analytics.tokens.total}`);
-                  console.log(`🔍 [TOKEN DEBUG] Session ${s.id} claudeSessionId: ${s.claudeSessionId}`);
-                  console.log(`🔍 [TOKEN DEBUG] Existing result messages in session:`, existingResultMessages);
-                  console.log(`🔍 [TOKEN DEBUG] Is compact result: ${isCompactResult}`);
+                  // Check if we've already processed tokens for a result with this ID
+                  // Important: We need to check the messages BEFORE this one was added
+                  // Find all result messages except the current one
+                  const previousResultMessages = existingMessages.filter((m, idx) => {
+                    // Skip the current message if it was just added
+                    if (m === message) return false;
+                    return m.type === 'result' && m.id;
+                  });
                   
-                  if (isNewResult) {
+                  // Check if we already have a result message with this ID that had usage data
+                  const wasAlreadyProcessed = previousResultMessages.some(m => 
+                    m.id === message.id && m.usage
+                  );
+                  
+                  console.log(`🔍 [TOKEN DEBUG] Processing result message ${message.id}`);
+                  console.log(`🔍 [TOKEN DEBUG]   wasAlreadyProcessed: ${wasAlreadyProcessed}`);
+                  console.log(`🔍 [TOKEN DEBUG]   current analytics tokens: ${analytics.tokens.total}`);
+                  console.log(`🔍 [TOKEN DEBUG]   Session ${s.id} claudeSessionId: ${s.claudeSessionId}`);
+                  console.log(`🔍 [TOKEN DEBUG]   Previous result messages:`, previousResultMessages.map(m => ({ id: m.id, hasUsage: !!m.usage })));
+                  console.log(`🔍 [TOKEN DEBUG]   Is compact result: ${isCompactResult}`);
+                  
+                  // Process tokens if this is the first time we're seeing this result message with usage data
+                  if (!wasAlreadyProcessed) {
                     console.log('📊 Result message with usage:', message.usage);
                     if (message.cost) {
                       console.log('💰 Result message with cost:', message.cost);
                     }
                   
                   // Include all input token types
-                  // IMPORTANT: Don't count cache tokens against context window!
-                  // Cache tokens allow Claude to work beyond 200k limit
+                  // IMPORTANT: Cache tokens don't count against context window!
+                  // They're pre-loaded system prompts (claude.md) that don't consume user context
                   const regularInputTokens = message.usage.input_tokens || 0;
                   const cacheCreationTokens = message.usage.cache_creation_input_tokens || 0;
                   const cacheReadTokens = message.usage.cache_read_input_tokens || 0;
                   const outputTokens = message.usage.output_tokens || 0;
                   
-                  // Only count regular tokens for context window calculation
-                  const inputTokens = regularInputTokens; // Exclude cache tokens!
-                  const totalTokens = inputTokens + outputTokens;
+                  // For context window: only count actual conversation tokens
+                  // Cache tokens are system-level, not part of user's context limit
+                  const inputTokens = regularInputTokens;
+                  const totalNewTokens = regularInputTokens + outputTokens;
                   
                   console.log(`🔍 [TOKEN DEBUG] Token breakdown:`);
                   console.log(`   Regular input: ${regularInputTokens}`);
-                  console.log(`   Cache creation: ${cacheCreationTokens} (not counted)`);
-                  console.log(`   Cache read: ${cacheReadTokens} (not counted)`);
+                  console.log(`   Cache creation: ${cacheCreationTokens} (not accumulated)`);
+                  console.log(`   Cache read: ${cacheReadTokens} (not accumulated)`);
                   console.log(`   Output: ${outputTokens}`);
-                  console.log(`   TOTAL for context: ${totalTokens} (cache excluded)`);
+                  console.log(`   NEW tokens added: ${totalNewTokens} (regular input + output only)`);
                   
                   // Check if previous message was a compact - if so, reset tokens
                   const previousMessages = s.messages.filter(m => m.type === 'result' && m.usage);
@@ -868,26 +901,36 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   if (wasCompact) {
                     console.log('🗜️ [COMPACT RECOVERY] Previous message was compact, resetting token count');
                     console.log('🗜️ [COMPACT RECOVERY] Old total:', analytics.tokens.total);
-                    // Reset tokens after compact
+                    // Reset tokens after compact - only count conversation tokens
                     analytics.tokens.input = inputTokens;
                     analytics.tokens.output = outputTokens;
-                    analytics.tokens.total = totalTokens;
+                    analytics.tokens.total = totalNewTokens;
+                    analytics.tokens.cacheSize = cacheReadTokens + cacheCreationTokens;
                     console.log('🗜️ [COMPACT RECOVERY] New total after compact:', analytics.tokens.total);
                   } else {
-                    // CRITICAL: Use accumulation (+=) not assignment (=)
-                    // Claude CLI sends per-message values, not cumulative
+                    // CRITICAL: Only accumulate conversation tokens
+                    // Cache tokens are system-level and don't count against user's context
                     const previousTotal = analytics.tokens.total;
+                    
                     analytics.tokens.input += inputTokens;
                     analytics.tokens.output += outputTokens;
-                    analytics.tokens.total += totalTokens;
-                    console.log(`📊 [TOKEN UPDATE] Normal accumulation - Previous: ${previousTotal}, Added: ${totalTokens}, New: ${analytics.tokens.total}`);
+                    analytics.tokens.total += totalNewTokens;
+                    
+                    // Track cache size separately for informational purposes only
+                    if (cacheCreationTokens > 0 || cacheReadTokens > 0) {
+                      analytics.tokens.cacheSize = cacheReadTokens + cacheCreationTokens;
+                    }
+                    
+                    console.log(`📊 [TOKEN UPDATE] Accumulation - Previous: ${previousTotal}, Added: ${totalNewTokens}, New: ${analytics.tokens.total}`);
+                    console.log(`📊 [TOKEN UPDATE] Cache size: ${analytics.tokens.cacheSize || 0} (system-level, not counted)`);
                   }
                   
                   console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
                   console.log(`   Input: ${analytics.tokens.input}`);
                   console.log(`   Output: ${analytics.tokens.output}`);
-                  console.log(`   Total: ${analytics.tokens.total}`);
-                  console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}%`);
+                  console.log(`   Cache: ${analytics.tokens.cacheSize || 0}`);
+                  console.log(`   Total in context: ${analytics.tokens.total}`);
+                  console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}% of 200k`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;
@@ -896,14 +939,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   
                   // Update model-specific tokens (accumulate per message)
                   // Both models can be used in the same conversation if user switches
+                  // Only count NEW tokens, not cache
                   if (isOpus) {
                     analytics.tokens.byModel.opus.input += inputTokens;
                     analytics.tokens.byModel.opus.output += outputTokens;
-                    analytics.tokens.byModel.opus.total += inputTokens + outputTokens;
+                    analytics.tokens.byModel.opus.total += totalNewTokens;
                   } else {
                     analytics.tokens.byModel.sonnet.input += inputTokens;
                     analytics.tokens.byModel.sonnet.output += outputTokens;
-                    analytics.tokens.byModel.sonnet.total += inputTokens + outputTokens;
+                    analytics.tokens.byModel.sonnet.total += totalNewTokens;
                   }
                   
                   // Store cost information (accumulate per message)
@@ -2335,6 +2379,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   
   setGlobalWatermark: (image: string | null) => {
     set({ globalWatermarkImage: image });
+  },
+  
+  calculateClaudeMdTokens: async () => {
+    // CLAUDE.md is 7059 characters
+    // Rough estimate: 1 token ≈ 3.75 characters (typical for code/markdown)
+    const claudeMdChars = 7059;
+    const tokenEstimate = Math.ceil(claudeMdChars / 3.75);
+    set({ claudeMdTokens: tokenEstimate });
+    console.log(`[CLAUDE.md] Token count: ${tokenEstimate} (${claudeMdChars} chars)`);
   },
 
   updateSessionMapping: (sessionId: string, claudeSessionId: string, metadata?: any) => {

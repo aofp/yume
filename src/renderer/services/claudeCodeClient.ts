@@ -446,14 +446,37 @@ export class ClaudeCodeClient {
     // Wrap handler with extensive logging
     const loggingHandler = (message: any) => {
       const timestamp = new Date().toISOString();
+      // Enhanced logging for thinking blocks
+      let contentInfo: any = {
+        hasContent: !!message.message?.content,
+        contentLength: message.message?.content?.length,
+        contentPreview: message.message?.content?.substring?.(0, 100)
+      };
+      
+      if (Array.isArray(message.message?.content)) {
+        const blockTypes = message.message.content.map((b: any) => b?.type || 'unknown');
+        const hasThinking = blockTypes.includes('thinking');
+        contentInfo = {
+          hasContent: true,
+          isArray: true,
+          blockTypes: blockTypes,
+          blockCount: blockTypes.length,
+          hasThinking: hasThinking
+        };
+        if (hasThinking) {
+          contentInfo.thinkingBlocks = message.message.content.filter((b: any) => b?.type === 'thinking').map((b: any) => ({
+            type: 'thinking',
+            preview: (b.thinking || b.text || '').substring(0, 50) + '...'
+          }));
+        }
+      }
+      
       console.log(`[Client] 📨 [${timestamp}] Received message:`, {
         channel,
         type: message.type,
         subtype: message.subtype,
         streaming: message.streaming,
-        hasContent: !!message.message?.content,
-        contentLength: message.message?.content?.length,
-        contentPreview: message.message?.content?.substring?.(0, 100),
+        ...contentInfo,
         id: message.id,
         hasUsage: !!message.usage,
         usage: message.usage,

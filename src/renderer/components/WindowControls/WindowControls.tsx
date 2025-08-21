@@ -150,7 +150,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             <span className="mac-control-icon">+</span>
           </button>
         </div>
-        {/* Mac: Menu items to the right of title - settings, projects, analytics, keyboard shortcuts */}
+        {/* Mac: Menu items to the right of title - projects, analytics, settings, keyboard shortcuts */}
         <div 
           className="mac-right-controls"
         >
@@ -189,11 +189,6 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                   [trial]
                 </button>
               )}
-              {onSettingsClick && (
-                <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
-                  <IconSettingsFilled size={10} />
-                </button>
-              )}
               {onProjectsClick && (
                 <button className="window-control projects" onClick={onProjectsClick} title="projects (cmd+p)">
                   <IconFolder size={10} stroke={2} />
@@ -202,6 +197,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
               {onAnalyticsClick && (
                 <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (cmd+y)">
                   <IconTrendingUp size={10} stroke={2} />
+                </button>
+              )}
+              {onSettingsClick && (
+                <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
+                  <IconSettingsFilled size={10} />
                 </button>
               )}
               <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
@@ -217,7 +217,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   // Windows style controls
   return (
     <div className="window-controls">
-      {/* Windows: Menu items on the left - settings, projects, analytics, keyboard shortcuts */}
+      {/* Windows: Menu items on the left - projects, analytics, settings, keyboard shortcuts */}
       <div 
         className="windows-left-controls"
       >
@@ -256,11 +256,6 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                 [trial]
               </button>
             )}
-            {onSettingsClick && (
-              <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
-                <IconSettingsFilled size={10} />
-              </button>
-            )}
             {onProjectsClick && (
               <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
                 <IconFolder size={10} stroke={2} />
@@ -269,6 +264,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             {onAnalyticsClick && (
               <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (ctrl+y)">
                 <IconTrendingUp size={10} stroke={2} />
+              </button>
+            )}
+            {onSettingsClick && (
+              <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
+                <IconSettingsFilled size={10} />
               </button>
             )}
             <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">

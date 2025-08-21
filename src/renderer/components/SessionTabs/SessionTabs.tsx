@@ -18,7 +18,9 @@ export const SessionTabs: React.FC = () => {
     reorderSessions,
     renameSession,
     clearContext,
-    interruptSession
+    interruptSession,
+    claudeMdTokens,
+    calculateClaudeMdTokens
   } = useClaudeCodeStore();
 
   const [showNewMenu, setShowNewMenu] = useState(false);
@@ -48,6 +50,13 @@ export const SessionTabs: React.FC = () => {
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
   const [dragOverNewTab, setDragOverNewTab] = useState(false);
+  
+  // Calculate CLAUDE.md tokens on mount if not already done
+  useEffect(() => {
+    if (claudeMdTokens === 0) {
+      calculateClaudeMdTokens();
+    }
+  }, [claudeMdTokens, calculateClaudeMdTokens]);
   const [dragOverRecent, setDragOverRecent] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
@@ -560,8 +569,9 @@ export const SessionTabs: React.FC = () => {
               <div className="tab-context-bar">
                 {(() => {
                   const tokens = (session as any).analytics?.tokens?.total || 0;
+                  const actualTokens = tokens + claudeMdTokens;
                   const contextMax = 200000; // 200k context window
-                  const percentage = Math.min((tokens / contextMax) * 100, 100);
+                  const percentage = Math.min((actualTokens / contextMax) * 100, 100);
                   
                   // Color gradient: grey until 70%, then yellow -> orange -> red
                   const getColor = (pct: number) => {

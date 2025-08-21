@@ -523,6 +523,57 @@ ol {
   overflow: visible;
 }
 
+/* Thinking block code formatting */
+.thinking-text-container {
+  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(255, 255, 255, 0.6);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* Inline code in thinking blocks */
+.thinking-inline-code {
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  background: rgba(255, 255, 255, 0.1);
+  padding: 1px 4px;
+  border-radius: 3px;
+  color: var(--color-cyan);
+}
+
+/* Code blocks in thinking blocks */
+.thinking-code-block {
+  margin: 8px 0;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.thinking-code-lang {
+  font-family: 'Fira Code', monospace;
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.2);
+  text-transform: lowercase;
+}
+
+.thinking-code-pre {
+  margin: 0;
+  padding: 8px;
+  overflow-x: auto;
+}
+
+.thinking-code {
+  font-family: 'Fira Code', monospace;
+  font-size: 9px;
+  line-height: 1.4;
+  color: rgba(255, 255, 255, 0.8);
+  white-space: pre;
+}
+
 
 /* Remove old animations that are no longer used */
 @keyframes thinkingPulse {
@@ -725,6 +776,8 @@ ol {
   align-items: center;
   gap: 6px;
   margin-bottom: 0;
+  color: #666;
+  font-size: 10px;
 }
 
 .edit-action {
@@ -756,9 +809,9 @@ pre.edit-diff {
   font-size: 7pt;
   margin: 0;
   padding: 4px 8px;
-  white-space: pre-wrap;
+  white-space: pre;
   word-break: break-word;
-  color: var(--color-grey);
+  color: #999;
   background: transparent;
   border: none;
   overflow-x: auto;
@@ -1012,7 +1065,7 @@ body.platform-win32 .tool-detail {
 .read-line .line-number,
 .search-line .line-number,
 .result-line .line-number {
-  display: inline-block;
+  display: none; /* Hide line numbers */
   width: 40px;
   text-align: right;
   padding-right: 8px;

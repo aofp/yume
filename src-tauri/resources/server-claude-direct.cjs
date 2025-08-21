@@ -1057,12 +1057,6 @@ io.on('connection', (socket) => {
       
       // Clear the Claude session ID after interrupt and reset state
       const session = sessions.get(sessionId);
-      if (session) {
-        session.claudeSessionId = undefined;
-        sessionStates.set(sessionId, SessionState.IDLE); // Reset to IDLE after interrupt
-        sessionRetryCount.set(sessionId, 0); // Reset retry count
-        console.log(`🔄 Cleared Claude session ID and reset state for ${sessionId} after interrupt`);
-      }
       
       socket.emit(`message:${sessionId}`, {
         type: 'system',

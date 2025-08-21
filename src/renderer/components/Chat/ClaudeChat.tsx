@@ -885,6 +885,7 @@ export const ClaudeChat: React.FC = () => {
       );
       const streamingStartTime = streamingStartTimeRef.current[currentSessionId];
       
+      // If we already have an assistant response, we can send immediately - no need to wait
       if (!hasAssistantResponse) {
         // No assistant response yet - must wait for Claude to establish session
         const effectiveStartTime = streamingStartTime || Date.now();
