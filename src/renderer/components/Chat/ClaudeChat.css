@@ -664,6 +664,78 @@
   position: relative;
 }
 
+/* Context full overlay */
+.context-full-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  z-index: 10;
+  pointer-events: auto;
+}
+
+.context-full-message {
+  font-size: 10pt;
+  color: var(--accent-color);
+  text-transform: lowercase;
+  letter-spacing: 0.3px;
+  opacity: 0.9;
+}
+
+.context-full-actions {
+  display: flex;
+  gap: 12px;
+}
+
+.context-full-actions button {
+  padding: 4px 12px;
+  background: rgba(var(--accent-rgb), 0.08);
+  border: 1px solid rgba(var(--accent-rgb), 0.25);
+  border-radius: 4px;
+  color: var(--accent-color);
+  font-size: 9pt;
+  text-transform: lowercase;
+  cursor: default;
+  transition: all 0.15s ease;
+  opacity: 0.8;
+}
+
+.context-full-actions button:hover {
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent-color);
+  opacity: 1;
+}
+
+.context-full-actions .btn-compact {
+  border-color: rgba(var(--accent-rgb), 0.3);
+}
+
+.context-full-actions .btn-compact:hover {
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+.context-full-actions .btn-clear {
+  border-color: rgba(var(--accent-rgb), 0.2);
+  opacity: 0.6;
+}
+
+.context-full-actions .btn-clear:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  opacity: 0.8;
+}
+
+textarea.context-full {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
 .stop-streaming-btn {
   position: absolute;
   right: 3px;
@@ -1080,7 +1152,7 @@
 .btn-stats.medium:hover {
   background: rgba(255, 255, 100, 0.05);
   color: rgba(255, 255, 100, 1);
-  border-color: rgba(255, 255, 100, 0.4);
+  border-color: rgba(255, 255, 100, 1);
 }
 
 /* Orange at 80-90% */
@@ -1092,7 +1164,7 @@
 .btn-stats.orange:hover {
   background: rgba(255, 200, 100, 0.05);
   color: rgba(255, 200, 100, 1);
-  border-color: rgba(255, 200, 100, 0.4);
+  border-color: rgba(255, 200, 100, 1);
 }
 
 /* Red at 90%+ */
@@ -1104,7 +1176,7 @@
 .btn-stats.high:hover {
   background: rgba(255, 100, 100, 0.05);
   color: rgba(255, 100, 100, 1);
-  border-color: rgba(255, 100, 100, 0.4);
+  border-color: rgba(255, 100, 100, 1);
 }
 
 .btn-stats.disabled {

@@ -1233,10 +1233,9 @@ app.get('/claude-analytics', async (req, res) => {
                         messageCount++;
                         const usage = data.message.usage;
                         
-                        // Include all token types
-                        const inputTokens = (usage.input_tokens || 0) + 
-                                           (usage.cache_read_input_tokens || 0) + 
-                                           (usage.cache_creation_input_tokens || 0);
+                        // Only count NEW tokens for session total, not cached tokens
+                        // Cache tokens represent pre-computed context, not new usage
+                        const inputTokens = usage.input_tokens || 0;
                         const outputTokens = usage.output_tokens || 0;
                         sessionTokens += inputTokens + outputTokens;
                         
@@ -1382,10 +1381,9 @@ app.get('/claude-analytics', async (req, res) => {
                       messageCount++;
                       const usage = data.message.usage;
                       
-                      // Include all token types
-                      const inputTokens = (usage.input_tokens || 0) + 
-                                         (usage.cache_read_input_tokens || 0) + 
-                                         (usage.cache_creation_input_tokens || 0);
+                      // Only count NEW tokens for session total, not cached tokens
+                      // Cache tokens represent pre-computed context, not new usage
+                      const inputTokens = usage.input_tokens || 0;
                       const outputTokens = usage.output_tokens || 0;
                       sessionTokens += inputTokens + outputTokens;
                       
@@ -1506,10 +1504,9 @@ app.get('/claude-analytics', async (req, res) => {
                     messageCount++;
                     const usage = data.message.usage;
                     
-                    // Include all token types
-                    const inputTokens = (usage.input_tokens || 0) + 
-                                       (usage.cache_read_input_tokens || 0) + 
-                                       (usage.cache_creation_input_tokens || 0);
+                    // Only count NEW tokens for session total, not cached tokens
+                    // Cache tokens represent pre-computed context, not new usage
+                    const inputTokens = usage.input_tokens || 0;
                     const outputTokens = usage.output_tokens || 0;
                     sessionTokens += inputTokens + outputTokens;
                     
@@ -2616,7 +2613,11 @@ io.on('connection', (socket) => {
       ];
       
       // Add model flag if specified
-      if (model) {
+      // Force sonnet for /compact command
+      if (message && message.trim() === '/compact') {
+        args.push('--model', 'claude-3-5-sonnet-20241022');
+        console.log(`🤖 Using model: claude-3-5-sonnet-20241022 (forced for /compact)`);
+      } else if (model) {
         args.push('--model', model);
         console.log(`🤖 Using model: ${model}`);
       }
@@ -3349,6 +3350,14 @@ io.on('connection', (socket) => {
             
             if (isCompactResult) {
               console.log(`🗜️ [${sessionId}] Detected /compact command completion`);
+              
+              // Clear the session ID since /compact creates a new session in Claude
+              const session = sessions.get(sessionId);
+              if (session) {
+                console.log(`🔄 Clearing invalid session ID after /compact: ${session.claudeSessionId}`);
+                session.claudeSessionId = null;
+              }
+              
               // Send compact notification
               socket.emit(`message:${sessionId}`, {
                 type: 'system',

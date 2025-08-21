@@ -1544,11 +1544,11 @@ code *::-moz-selection {
 }
 
 .rate-limit-message {
-  color: #ffcc66;
-  border-color: rgba(255, 204, 102, 0.2);
-  background: rgba(255, 204, 102, 0.05);
+  color: var(--color-magenta);
+  border-color: rgba(255, 153, 204, 1);
+  background: rgba(255, 153, 204, 1);
 }
 
 .rate-limit-message svg {
-  color: #ffcc66;
+  color: var(--color-magenta);
 }

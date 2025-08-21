@@ -1130,10 +1130,9 @@ app.get('/claude-analytics', async (req, res) => {
                   messageCount++;
                   const usage = data.message.usage;
                   
-                  // Include all token types
-                  const inputTokens = (usage.input_tokens || 0) + 
-                                     (usage.cache_read_input_tokens || 0) + 
-                                     (usage.cache_creation_input_tokens || 0);
+                  // Only count NEW tokens for session total, not cached tokens
+                  // Cache tokens represent pre-computed context, not new usage
+                  const inputTokens = usage.input_tokens || 0;
                   const outputTokens = usage.output_tokens || 0;
                   sessionTokens += inputTokens + outputTokens;
                   

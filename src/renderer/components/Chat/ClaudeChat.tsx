@@ -2306,31 +2306,76 @@ export const ClaudeChat: React.FC = () => {
               <IconTerminal size={14} stroke={1.5} />
             </div>
           )}
-          <textarea
-            ref={inputRef}
-            className={`chat-input ${bashCommandMode ? 'bash-mode' : ''}`}
-            placeholder={currentSession?.readOnly ? "read-only session" : bashCommandMode ? "bash command..." : currentSession?.streaming ? "append message..." : "code prompt..."}
-            value={currentSession?.readOnly ? '' : input}
-            onChange={handleTextareaChange}
-            onKeyDown={handleKeyDown}
-            onPaste={handlePaste}
-            style={{ 
-              height: '44px',
-              paddingRight: currentSession?.streaming ? '48px' : undefined
-            }}
-            disabled={currentSession?.readOnly}
-            onFocus={() => setIsTextareaFocused(true)}
-            onBlur={() => {
-              // Close autocomplete when textarea loses focus
-              setMentionTrigger(null);
-              setCommandTrigger(null);
-              setIsTextareaFocused(false);
-            }}
-            onContextMenu={(e) => {
-              // Allow default context menu for right-click paste
-              e.stopPropagation();
-            }}
-          />
+          {/* Calculate if context is almost full */}
+          {(() => {
+            const conversationTokens = currentSession?.analytics?.tokens?.conversationTokens || 0;
+            // cache tokens are system prompts, not part of conversation context
+            const totalContextTokens = conversationTokens;
+            const contextWindowTokens = 200000;
+            const percentageNum = (totalContextTokens / contextWindowTokens * 100);
+            const isContextFull = percentageNum > 95;
+            
+            return (
+              <>
+                <textarea
+                  ref={inputRef}
+                  className={`chat-input ${bashCommandMode ? 'bash-mode' : ''} ${isContextFull ? 'context-full' : ''}`}
+                  placeholder={isContextFull ? "context full - compact or clear required" : currentSession?.readOnly ? "read-only session" : bashCommandMode ? "bash command..." : currentSession?.streaming ? "append message..." : "code prompt..."}
+                  value={currentSession?.readOnly || isContextFull ? '' : input}
+                  onChange={handleTextareaChange}
+                  onKeyDown={handleKeyDown}
+                  onPaste={handlePaste}
+                  style={{ 
+                    height: '44px',
+                    paddingRight: currentSession?.streaming ? '48px' : undefined
+                  }}
+                  disabled={currentSession?.readOnly || isContextFull}
+                  onFocus={() => setIsTextareaFocused(true)}
+                  onBlur={() => {
+                    // Close autocomplete when textarea loses focus
+                    setMentionTrigger(null);
+                    setCommandTrigger(null);
+                    setIsTextareaFocused(false);
+                  }}
+                  onContextMenu={(e) => {
+                    // Allow default context menu for right-click paste
+                    e.stopPropagation();
+                  }}
+                />
+                {isContextFull && (
+                  <div className="context-full-overlay">
+                    <div className="context-full-message">
+                      context {percentageNum.toFixed(0)}% full
+                    </div>
+                    <div className="context-full-actions">
+                      <button 
+                        className="btn-compact"
+                        onClick={() => {
+                          setInput('/compact');
+                          handleSend();
+                        }}
+                        title="compress context to continue"
+                      >
+                        compact
+                      </button>
+                      <button 
+                        className="btn-clear"
+                        onClick={() => {
+                          if (currentSessionId) {
+                            clearContext(currentSessionId);
+                            setInput('');
+                          }
+                        }}
+                        title="clear all messages"
+                      >
+                        clear
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
+            );
+          })()}
           <Watermark inputLength={input.length} isFocused={isTextareaFocused} isStreaming={currentSession?.streaming} />
           {currentSession?.streaming && (
             <button 
@@ -2484,10 +2529,11 @@ export const ClaudeChat: React.FC = () => {
                   no active session
                 </div>
               ) : (() => {
-                // Calculate total context usage including conversation + cache tokens
+                // Calculate total context usage - only conversation tokens count
                 const conversationTokens = currentSession.analytics?.tokens?.total || 0;
                 const cacheTokens = currentSession.analytics?.tokens?.cacheSize || 0;
-                const totalContextTokens = conversationTokens + cacheTokens;
+                // cache tokens are system prompts, not part of conversation context
+                const totalContextTokens = conversationTokens;
                 const contextWindowTokens = 200000;
                 const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
                 const percentageNum = Math.min(100, rawPercentage);
@@ -2515,7 +2561,7 @@ export const ClaudeChat: React.FC = () => {
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {cacheTokens.toLocaleString()} tokens
+                            {cacheTokens.toLocaleString()} tokens ({Math.round((cacheTokens / totalContextTokens) * 100) || 0}%)
                           </span>
                         </div>
                       </div>
@@ -2526,7 +2572,6 @@ export const ClaudeChat: React.FC = () => {
                   <div className="stat-row">
                     <div className="stat-keys">
                       <IconClock size={14} />
-                      <span className="stat-name">thinking</span>
                     </div>
                     <span className="stat-dots"></span>
                     <span className="stat-desc">

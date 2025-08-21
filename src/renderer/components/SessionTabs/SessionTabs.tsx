@@ -622,8 +622,8 @@ export const SessionTabs: React.FC = () => {
               <div className="tab-context-bar">
                 {(() => {
                   const conversationTokens = (session as any).analytics?.tokens?.total || 0;
-                  const cacheTokens = (session as any).analytics?.tokens?.cacheSize || 0;
-                  const actualTokens = conversationTokens + cacheTokens + claudeMdTokens;
+                  // cache tokens are system prompts, not part of conversation context
+                  const actualTokens = conversationTokens + claudeMdTokens;
                   const contextMax = 200000; // 200k context window
                   const percentage = Math.min((actualTokens / contextMax) * 100, 100);
                   
@@ -766,7 +766,7 @@ export const SessionTabs: React.FC = () => {
                 // Find the dragged session and duplicate it
                 const sessionToDuplicate = sessions.find(s => s.id === draggedTab);
                 if (sessionToDuplicate) {
-                  const workingDir = sessionToDuplicate.workingDirectory;
+                  const workingDir = (sessionToDuplicate as any).workingDirectory;
                   // Only duplicate with a working directory if one exists
                   if (workingDir) {
                     createSession(undefined, workingDir);

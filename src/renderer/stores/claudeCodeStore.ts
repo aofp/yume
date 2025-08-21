@@ -913,8 +913,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     analytics.tokens.input = inputTokens;
                     analytics.tokens.output = outputTokens;
                     analytics.tokens.total = totalNewTokens;
-                    // Reset cache size - only count cache creation tokens, not reads
-                    analytics.tokens.cacheSize = cacheCreationTokens; // Only new cache creation
+                    // Reset cache size to current total cache state after compact
+                    analytics.tokens.cacheSize = cacheCreationTokens + cacheReadTokens;
                     analytics.compactPending = false; // Clear the flag
                     console.log('🗜️ [COMPACT RECOVERY] New conversation total:', analytics.tokens.total);
                     console.log('🗜️ [COMPACT RECOVERY] New cache size:', analytics.tokens.cacheSize);
@@ -927,15 +927,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     analytics.tokens.output += outputTokens;
                     analytics.tokens.total += totalNewTokens;
                     
-                    // IMPORTANT: cache tokens are tracked separately from conversation tokens
-                    // Cache creation tokens: only count once, track in cacheSize
-                    // Cache read tokens: don't count - they're reusing existing cache
-                    if (cacheCreationTokens > 0) {
-                      analytics.tokens.cacheSize = (analytics.tokens.cacheSize || 0) + cacheCreationTokens;
-                      console.log(`   📦 Cache created: ${cacheCreationTokens} tokens (tracked separately)`);
+                    // IMPORTANT: cache tokens represent TOTAL cache state, not incremental
+                    // Cache creation + read tokens = current total cache size for this conversation
+                    // Do NOT accumulate - set to current total cache state
+                    const currentCacheTotal = cacheCreationTokens + cacheReadTokens;
+                    if (currentCacheTotal > 0) {
+                      analytics.tokens.cacheSize = currentCacheTotal;
+                      console.log(`   📦 Cache total state: ${currentCacheTotal} tokens (creation: ${cacheCreationTokens}, read: ${cacheReadTokens})`);
                     }
-                    if (cacheReadTokens > 0) {
-                      console.log(`   📦 Cache read: ${cacheReadTokens} tokens (already cached, not counting)`);
+                    if (cacheCreationTokens > 0 && cacheReadTokens === 0) {
+                      console.log(`   📦 Cache created: ${cacheCreationTokens} tokens (new cache)`);
+                    } else if (cacheReadTokens > 0) {
+                      console.log(`   📦 Cache read: ${cacheReadTokens} tokens (reusing existing cache)`);
                     }
                     
                     console.log(`📊 [TOKEN UPDATE] Accumulation:`);
