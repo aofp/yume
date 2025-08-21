@@ -729,6 +729,45 @@ export const ClaudeChat: React.FC = () => {
       setPendingFollowupMessage(null);
     }
   }, [currentSessionId]);
+
+  // Cancel pending followup countdown when streaming ends or messages are received
+  useEffect(() => {
+    if (pendingFollowupRef.current && pendingFollowupRef.current.sessionId === currentSessionId) {
+      const session = sessions.find(s => s.id === currentSessionId);
+      
+      // Check if streaming has ended or if we have received messages/results
+      const hasAssistantResponse = session?.messages?.some(m => m.type === 'assistant') || false;
+      const isStreamingEnded = !session?.streaming;
+      const hasRecentResult = session?.messages?.some(m => 
+        m.type === 'result' && 
+        Date.now() - (m.timestamp || 0) < 5000 // Result received within last 5 seconds
+      ) || false;
+      
+      if (isStreamingEnded || hasAssistantResponse || hasRecentResult) {
+        console.log('[ClaudeChat] Streaming ended or messages received - cancelling waiting countdown and sending immediately');
+        console.log(`[ClaudeChat] Debug: isStreamingEnded=${isStreamingEnded}, hasAssistantResponse=${hasAssistantResponse}, hasRecentResult=${hasRecentResult}`);
+        
+        // Cancel the timeout
+        if (pendingFollowupRef.current.timeoutId) {
+          clearTimeout(pendingFollowupRef.current.timeoutId);
+        }
+        
+        // Send the message immediately
+        const pendingMessage = pendingFollowupRef.current;
+        pendingFollowupRef.current = null;
+        setPendingFollowupMessage(null);
+        
+        // Send the delayed message now
+        handleDelayedSend(
+          pendingMessage.content, 
+          pendingMessage.attachments, 
+          pendingMessage.sessionId
+        ).catch(error => {
+          console.error('[ClaudeChat] Failed to send message immediately after streaming ended:', error);
+        });
+      }
+    }
+  }, [currentSessionId, currentSession?.streaming, currentSession?.messages?.length, sessions]);
   
   useEffect(() => {
     // Only load draft when actually switching to a different session

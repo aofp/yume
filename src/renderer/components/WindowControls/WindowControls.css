@@ -42,7 +42,7 @@
   background: transparent;
   -webkit-app-region: no-drag;
   z-index: 10002;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, opacity 0.1s ease-in-out;
 }
 
 /* Windows left side controls */
@@ -50,7 +50,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  transition: all 0.2s ease;
+  transition: all 0.2s ease, opacity 0.1s ease-in-out;
 }
 
 /* Toggle button styling */
