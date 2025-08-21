@@ -181,6 +181,36 @@ export const SessionTabs: React.FC = () => {
     };
   }, [sessions]);
 
+  // Scroll active tab into view when it changes
+  useEffect(() => {
+    if (!currentSessionId) return;
+    
+    const tabElement = tabRefs.current[currentSessionId];
+    const container = tabsContainerRef.current;
+    
+    if (tabElement && container) {
+      // Small delay to ensure DOM is updated
+      setTimeout(() => {
+        const tabRect = tabElement.getBoundingClientRect();
+        const containerRect = container.getBoundingClientRect();
+        
+        // Check if tab is not fully visible
+        const isFullyVisible = 
+          tabRect.left >= containerRect.left && 
+          tabRect.right <= containerRect.right;
+        
+        if (!isFullyVisible) {
+          // Scroll the tab into view smoothly
+          tabElement.scrollIntoView({
+            behavior: 'smooth',
+            block: 'nearest',
+            inline: 'center'
+          });
+        }
+      }, 100);
+    }
+  }, [currentSessionId]);
+
   // Handle close tab event from Electron menu (Cmd+W on macOS)
   useEffect(() => {
     const handleCloseTab = () => {
@@ -304,11 +334,34 @@ export const SessionTabs: React.FC = () => {
           {sessions.map((session) => (
           <div
             key={session.id}
+            ref={(el) => tabRefs.current[session.id] = el}
             data-session-id={session.id}
             className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
             onClick={(e) => {
               if (!isDragging) {
                 resumeSession(session.id);
+                
+                // Scroll tab into view if partially visible
+                const tabElement = tabRefs.current[session.id];
+                const container = tabsContainerRef.current;
+                if (tabElement && container) {
+                  const tabRect = tabElement.getBoundingClientRect();
+                  const containerRect = container.getBoundingClientRect();
+                  
+                  // Check if tab is not fully visible
+                  const isFullyVisible = 
+                    tabRect.left >= containerRect.left && 
+                    tabRect.right <= containerRect.right;
+                  
+                  if (!isFullyVisible) {
+                    // Scroll the tab into view smoothly
+                    tabElement.scrollIntoView({
+                      behavior: 'smooth',
+                      block: 'nearest',
+                      inline: 'center'
+                    });
+                  }
+                }
               }
             }}
             onDoubleClick={(e) => {

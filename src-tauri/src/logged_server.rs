@@ -302,17 +302,23 @@ function createWslClaudeCommand(args, workingDir, message) {
       return arg;
     }).join(' ');
     
-    // Message escaping for bash - escape single quotes
-    const messageEscaped = message.replace(/'/g, "'\\''");
+    // For very long messages, use a temp file to avoid command line length limits
+    // Create temp file in WSL /tmp with unique name
+    const tempFileName = `/tmp/yurucode-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`;
     
-    // Build the WSL command - quote the working directory to handle spaces
-    const script = `cd "${wslWorkingDir}" && echo '${messageEscaped}' | ${claudePath} ${argsStr} 2>&1`;
+    // Write message to temp file, then cat it to Claude, then delete temp file
+    // Use base64 encoding to safely pass the message content to WSL
+    const messageBase64 = Buffer.from(message).toString('base64');
+    
+    // Build the WSL command - decode base64, write to temp, pipe to claude, cleanup
+    const script = `cd "${wslWorkingDir}" && echo "${messageBase64}" | base64 -d > "${tempFileName}" && cat "${tempFileName}" | ${claudePath} ${argsStr} 2>&1; rm -f "${tempFileName}"`;
     
     console.log(`🔍 WSL script (main message):`);
     console.log(`  Working dir: ${wslWorkingDir}`);
     console.log(`  Claude path: ${claudePath}`);
     console.log(`  Args: ${argsStr}`);
-    console.log(`  Full script: ${script.substring(0, 500)}...`);
+    console.log(`  Message length: ${message.length} chars`);
+    console.log(`  Using temp file: ${tempFileName}`);
     
     return [wslPath, ['-e', 'bash', '-c', script], true];
   } else {

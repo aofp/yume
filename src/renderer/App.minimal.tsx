@@ -578,7 +578,11 @@ export const App: React.FC = () => {
       {isDragging && (
         <div className="drag-overlay">
           <div className="drag-overlay-content">
-            <div className="drag-icon">📁</div>
+            <svg className="drag-icon" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="#f92f60" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round">
+              <path d="M13 2h-8c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2v-10"/>
+              <path d="M13 2v9h9"/>
+              <circle cx="12" cy="17" r="1" fill="#f92f60"/>
+            </svg>
             <div className="drag-text">drop files to insert paths • folders to create session</div>
           </div>
         </div>
