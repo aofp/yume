@@ -3359,6 +3359,12 @@ io.on('connection', (socket) => {
               console.log(`   output_tokens: ${jsonData.usage.output_tokens || 0}`);
               console.log(`   cache_creation_input_tokens: ${jsonData.usage.cache_creation_input_tokens || 0}`);
               console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0}`);
+              console.log(`   --- CONVERSATION TOKENS (counted in context) ---`);
+              console.log(`   actual_input (no cache): ${jsonData.usage.input_tokens || 0}`);
+              console.log(`   actual_output: ${jsonData.usage.output_tokens || 0}`);
+              console.log(`   conversation_total: ${(jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0)}`);
+              console.log(`   --- CACHE INFO (not counted in context) ---`);
+              console.log(`   cache_tokens_total: ${(jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0)}`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
@@ -3389,8 +3395,15 @@ io.on('connection', (socket) => {
               model: model || 'unknown' // Use model from outer scope directly
             };
             console.log(`   - Model in result message: ${resultMessage.model}`);
-            console.log(`   - Usage in result message:`, resultMessage.usage);
-            console.log(`   - Full result message:`, JSON.stringify(resultMessage, null, 2));
+            if (resultMessage.usage) {
+              console.log(`   - Usage breakdown:`);
+              console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0}`);
+              console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0}`);
+              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0}`);
+              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0}`);
+              console.log(`     • conversation_total: ${(resultMessage.usage.input_tokens || 0) + (resultMessage.usage.output_tokens || 0)}`);
+              console.log(`     • cumulative_estimate: check frontend for accurate total`);
+            }
             socket.emit(`message:${sessionId}`, resultMessage);
             messageCount++;
           }
