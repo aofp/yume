@@ -21,7 +21,7 @@ const COLOR_ROWS = [
   [
     '#dddddd', '#ffffff'
   ],
-  
+
   // Row 2: Full spectrum starting with blue - 21 unique colors
   [
     '#99bbff', '#99ccff', '#99ddff', '#99eeff', '#99ffff',
@@ -30,7 +30,7 @@ const COLOR_ROWS = [
     '#ff9999', '#ff99bb', '#ff99dd', '#ff99ff', '#dd99ff',
     '#bb99ff'
   ],
-  
+
   // Row 3: Slightly lighter version of row 2 - 21 unique colors  
   [
     '#bfd4ff', '#bfddff', '#bfe8ff', '#bff4ff', '#bfffff',
@@ -39,7 +39,7 @@ const COLOR_ROWS = [
     '#ffbfbf', '#ffbfd4', '#ffbfe8', '#ffbfff', '#e8bfff',
     '#d4bfff'
   ],
-  
+
   // Row 4: Slightly greyer version of row 2 - 21 unique colors
   [
     '#b3c6d9', '#b3ccd9', '#b3d3d9', '#b3d9d9', '#b3d9df',
@@ -100,7 +100,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
   const handleZoomIn = async () => {
     console.log('Zoom in clicked');
-    
+
     if (window.electronAPI?.zoom?.in) {
       try {
         const newZoom = await window.electronAPI.zoom.in();
@@ -118,7 +118,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
   const handleZoomOut = async () => {
     console.log('Zoom out clicked');
-    
+
     if (window.electronAPI?.zoom?.out) {
       try {
         const newZoom = await window.electronAPI.zoom.out();
@@ -136,7 +136,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
   const handleZoomReset = async () => {
     console.log('Zoom reset clicked');
-    
+
     if (window.electronAPI?.zoom?.reset) {
       try {
         const newZoom = await window.electronAPI.zoom.reset();
@@ -154,17 +154,17 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
   const handleColorSelect = (color: string) => {
     setAccentColor(color);
-    
+
     // Apply the color immediately
     document.documentElement.style.setProperty('--accent-color', color);
-    
+
     // Convert hex to RGB for rgba() usage
     const hex = color.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
-    
+
     // Save to localStorage
     localStorage.setItem('accentColor', color);
   };
@@ -199,11 +199,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     e.preventDefault();
     e.stopPropagation();
     // Defer the state change to avoid hooks error
-    setTimeout(() => {
-      if (confirm('forget license? this will return to trial mode.')) {
+    if (confirm('forget license? this will return to trial mode.')) {
+      setTimeout(() => {
         clearLicense();
-      }
-    }, 0);
+      }, 0);
+    }
   };
 
   const getZoomPercentage = () => {
@@ -259,7 +259,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               <IconX size={16} />
             </button>
           </div>
-          
+
           <div className="settings-content">
             <div className="settings-section">
               <h4>zoom</h4>
@@ -271,8 +271,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 <button className="zoom-btn" onClick={handleZoomIn}>
                   <IconPlus size={14} />
                 </button>
-                <button 
-                  className="zoom-btn" 
+                <button
+                  className="zoom-btn"
                   onClick={handleZoomReset}
                   disabled={zoomLevel === 0}
                   title={zoomLevel === 0 ? "already at 100%" : "reset zoom to 100%"}
@@ -286,7 +286,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               <div className="settings-section half-width">
                 <h4>accent color</h4>
                 <div className="color-picker-container">
-                  <button 
+                  <button
                     className="color-preview"
                     onClick={() => setShowColorPicker(!showColorPicker)}
                     title="click to select color"
@@ -300,76 +300,76 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               <div className="settings-section half-width">
                 <h4>watermark</h4>
                 <div className="watermark-controls">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleWatermarkUpload}
-                  style={{ display: 'none' }}
-                  id="watermark-upload"
-                />
-                {globalWatermarkImage ? (
-                  <div className="watermark-preview">
-                    <img 
-                      src={globalWatermarkImage} 
-                      alt="watermark preview" 
-                      className="watermark-thumb"
-                    />
-                    <button 
-                      className="watermark-remove"
-                      onClick={handleRemoveWatermark}
-                      title="remove watermark"
-                    >
-                      <IconTrash size={14} />
-                    </button>
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleWatermarkUpload}
+                    style={{ display: 'none' }}
+                    id="watermark-upload"
+                  />
+                  {globalWatermarkImage ? (
+                    <div className="watermark-preview">
+                      <img
+                        src={globalWatermarkImage}
+                        alt="watermark preview"
+                        className="watermark-thumb"
+                      />
+                      <button
+                        className="watermark-remove"
+                        onClick={handleRemoveWatermark}
+                        title="remove watermark"
+                      >
+                        <IconTrash size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label htmlFor="watermark-upload" className="watermark-upload-btn">
+                      <IconPhoto size={14} />
+                      <span>upload image</span>
+                    </label>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h4>license</h4>
+              <div className="license-info">
+                {isLicensed && licenseData ? (
+                  <div
+                    className="license-status licensed"
+                    onContextMenu={handleForgetLicense}
+                    title="right-click to forget license"
+                  >
+                    <IconKey size={14} />
+                    <span>licensed</span>
+                    <span className="license-type">{licenseData.type}</span>
                   </div>
                 ) : (
-                  <label htmlFor="watermark-upload" className="watermark-upload-btn">
-                    <IconPhoto size={14} />
-                    <span>upload image</span>
-                  </label>
+                  <div className="license-status trial">
+                    <span>trial mode - max 2 tabs</span>
+                    <button
+                      className="upgrade-btn"
+                      onClick={() => {
+                        onClose();
+                        window.dispatchEvent(new CustomEvent('showUpgradeModal', {
+                          detail: { reason: 'trial' }
+                        }));
+                      }}
+                    >
+                      <IconSparkles size={14} />
+                      <span>upgrade</span>
+                    </button>
+                  </div>
                 )}
               </div>
             </div>
-          </div>
-          
-          <div className="settings-section">
-            <h4>license</h4>
-            <div className="license-info">
-              {isLicensed && licenseData ? (
-                <div 
-                  className="license-status licensed"
-                  onContextMenu={handleForgetLicense}
-                  title="right-click to forget license"
-                >
-                  <IconKey size={14} />
-                  <span>licensed</span>
-                  <span className="license-type">{licenseData.type}</span>
-                </div>
-              ) : (
-                <div className="license-status trial">
-                  <span>trial mode - max 2 tabs</span>
-                  <button 
-                    className="upgrade-btn"
-                    onClick={() => {
-                      onClose();
-                      window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-                        detail: { reason: 'trial' } 
-                      }));
-                    }}
-                  >
-                    <IconSparkles size={14} />
-                    <span>upgrade</span>
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-          
+
           </div>
         </div>
       </div>
-      
+
       {showColorPicker && (
         <div className="color-picker-floating">
           <div className="color-picker-dropdown">
