@@ -7,7 +7,7 @@
 
 .model-selector-trigger {
   position: relative;
-  top: -1px;
+  top: -2px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.4);
@@ -35,4 +35,9 @@
 /* Windows-specific positioning on welcome screen */
 .platform-win32 .welcome-screen .model-selector-trigger {
   top: 1px;
+}
+
+/* macOS-specific positioning on welcome screen */
+.platform-darwin .welcome-screen .model-selector-trigger {
+  top: -1px;
 }

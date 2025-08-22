@@ -2870,8 +2870,8 @@ io.on('connection', (socket) => {
             } else {
               console.log(`✅ Successfully sent context restoration`);
             }
-            claudeProcess.stdin.end();
-            console.log(`📝 Stdin closed`);
+            // DON'T CLOSE STDIN - keep it open for claude to continue interaction
+            console.log(`📝 Keeping stdin open for continued interaction`);
           });
         }
         
@@ -2901,8 +2901,8 @@ io.on('connection', (socket) => {
           } else {
             console.log(`✅ Successfully wrote to stdin`);
           }
-          claudeProcess.stdin.end();
-          console.log(`📝 Stdin closed`);
+          // DON'T CLOSE STDIN - keep it open for claude to continue interaction
+          console.log(`📝 Keeping stdin open for continued interaction`);
         });
       } else if (claudeProcess.inputHandled) {
         console.log(`📝 Message already embedded in WSL script`);
@@ -2969,16 +2969,17 @@ io.on('connection', (socket) => {
           socket.emit(`keepalive:${sessionId}`, { timestamp: Date.now() });
         }
         
-        // If no data for 60 seconds, try to recover the stream
-        if (timeSinceLastData > 60000 && timeSinceLastData < 65000) {
+        // If no data for 45 seconds, try to recover the stream
+        if (timeSinceLastData > 45000 && timeSinceLastData < 50000) {
           console.warn(`⚠️ Stream stalled for ${timeSinceLastData}ms, attempting recovery...`);
           // Send a newline to potentially unstick the process
           if (activeProcesses.has(sessionId)) {
             const proc = activeProcesses.get(sessionId);
             if (proc.stdin && !proc.stdin.destroyed) {
               try {
-                proc.stdin.write('\n');
-                console.log(`📝 Sent newline to potentially unstick process`);
+                // Send a few newlines to make sure Claude gets input
+                proc.stdin.write('\n\n');
+                console.log(`📝 Sent newlines to potentially unstick process`);
               } catch (e) {
                 console.error(`Failed to write to stdin: ${e.message}`);
               }
@@ -3696,6 +3697,16 @@ io.on('connection', (socket) => {
 
       // Handle process exit
       claudeProcess.on('close', (code) => {
+        // Clean stdin on exit
+        if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) {
+          try {
+            claudeProcess.stdin.end();
+            console.log(`📝 Closed stdin on process exit`);
+          } catch (e) {
+            // Ignore errors on cleanup
+          }
+        }
+        
         // Clean up all tracking for this session
         if (streamHealthChecks.has(sessionId)) {
           clearInterval(streamHealthChecks.get(sessionId));

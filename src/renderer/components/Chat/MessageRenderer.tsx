@@ -4,8 +4,7 @@ import SyntaxHighlighter from 'react-syntax-highlighter';
 import { DiffViewer, DiffDisplay, DiffLine } from './DiffViewer';
 import { 
   IconBolt,
-  IconMessageCircle,
-  IconChartBubble, 
+  IconBracketsAngle,
   IconAlertTriangle, 
   IconCheck, 
   IconX, 
@@ -29,7 +28,7 @@ import {
   IconServer,
   IconTerminal2,
   IconPlayerStop,
-  IconScissors
+  IconPoint,
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
@@ -694,7 +693,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
-                <IconChartBubble size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
+                <IconPoint size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
                 <span className="thinking-stats">
                   {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
                 </span>
@@ -746,10 +745,10 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             });
           }
           
-          // Check if this is a file operation result (Edit, MultiEdit, Write)
+          // Check if this is a file operation result (Edit, MultiEdit, Write, NotebookEdit)
           const prevBlock = content[idx - 1];
           const isFileOperation = prevBlock?.type === 'tool_use' && 
-            (prevBlock.name === 'Edit' || prevBlock.name === 'MultiEdit' || prevBlock.name === 'Write');
+            (prevBlock.name === 'Edit' || prevBlock.name === 'MultiEdit' || prevBlock.name === 'Write' || prevBlock.name === 'NotebookEdit');
           
           // Check if this is a Read operation
           const isReadOperation = prevBlock?.type === 'tool_use' && prevBlock.name === 'Read';
@@ -914,11 +913,14 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
           // Show formatted diff for file operations
           if (isFileOperation && resultContent) {
-            // Check if this is an Edit/MultiEdit result
-            const isEditResult = (resultContent.includes('has been updated') && resultContent.includes('→')) ||
-                                (resultContent.includes('Applied') && resultContent.includes('edits to'));
+            // Check if this is an Edit/MultiEdit result - be more lenient with detection
+            const isEditResult = prevBlock?.name === 'Edit' || prevBlock?.name === 'MultiEdit' || prevBlock?.name === 'NotebookEdit' ||
+                                (resultContent.includes('has been updated')) ||
+                                (resultContent.includes('Applied') && resultContent.includes('edit')) ||
+                                (resultContent.includes('→')) ||
+                                (resultContent.includes('successfully'));
             
-            if (isEditResult) {
+            if (isEditResult && (prevBlock?.name === 'Edit' || prevBlock?.name === 'MultiEdit' || prevBlock?.name === 'NotebookEdit')) {
               // Extract file path from Edit output
               let filePathMatch = resultContent.match(/The file (.+?) has been updated/) || 
                                  resultContent.match(/Applied \d+ edits? to (.+?):/);
@@ -1078,15 +1080,17 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             }
             
             // For Write operations, just show success message
-            return (
-              <div key={idx} className="tool-result file-write">
-                <span className="result-text">file written successfully</span>
-              </div>
-            );
+            if (prevBlock?.name === 'Write') {
+              return (
+                <div key={idx} className="tool-result file-write">
+                  <span className="result-text">file written successfully</span>
+                </div>
+              );
+            }
           }
           
-          // If we've handled file operations above, don't show them again
-          if (isFileOperation) {
+          // If we've handled edit operations above, don't show them again
+          if (prevBlock?.name === 'Edit' || prevBlock?.name === 'MultiEdit' || prevBlock?.name === 'NotebookEdit') {
             return null;
           }
           
@@ -1699,7 +1703,7 @@ const MessageRendererBase: React.FC<{
                           {todo.status === 'completed' ? (
                             <IconCheck size={12} stroke={2} className="todo-icon completed" />
                           ) : todo.status === 'in_progress' ? (
-                            <IconDots size={12} stroke={2} className="todo-icon progress" />
+                            <IconBracketsAngle size={12} stroke={2} className="todo-icon progress" />
                           ) : (
                             <IconMinus size={12} stroke={2} className="todo-icon pending" />
                           )}
@@ -1798,6 +1802,21 @@ const MessageRendererBase: React.FC<{
               <IconEditCircle size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing</span>
               <span className="tool-detail">{filePath} ({edits.length} edits)</span>
+            </div>
+          </div>
+        );
+      }
+      
+      // For NotebookEdit tool, just show the action (diff will appear in tool_result)
+      if (toolName === 'NotebookEdit') {
+        const filePath = formatPath(toolInput.notebook_path || 'notebook');
+        const editMode = toolInput.edit_mode || 'replace';
+        return (
+          <div className="message tool-message">
+            <div className="tool-use standalone">
+              <IconNotebook size={14} stroke={1.5} className="tool-icon" />
+              <span className="tool-action">editing notebook</span>
+              <span className="tool-detail">{filePath} ({editMode})</span>
             </div>
           </div>
         );
@@ -2168,6 +2187,18 @@ const MessageRendererBase: React.FC<{
           <div className="message tool-result-message">
             <div className="tool-result standalone edit-output">
               <pre className="result-content">{contentStr}</pre>
+            </div>
+          </div>
+        );
+      }
+      
+      // Also check for fallback edit results without tool association
+      if (isEditResult && !isEditTool) {
+        // Try to show as simple text if we couldn't parse it
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result file-edit">
+              <pre className="edit-content">{contentStr}</pre>
             </div>
           </div>
         );
