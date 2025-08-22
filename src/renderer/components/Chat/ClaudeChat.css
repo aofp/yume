@@ -744,7 +744,7 @@ textarea.context-full {
   border: 1px solid rgba(var(--accent-rgb), 0.8);
   color: var(--accent-color);
   padding: 10px;
-  border-radius: 4px;
+  border-radius: 3px;
   cursor: default;
   display: flex;
   align-items: center;

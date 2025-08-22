@@ -24,6 +24,8 @@ import {
   IconFileText,
   IconFile,
   IconChartBar,
+  IconChartBubbleFilled,
+  IconArtboardFilled,
   IconCoin,
   IconChevronUp,
   IconChevronDown,
@@ -2547,7 +2549,7 @@ export const ClaudeChat: React.FC = () => {
                         <h4>context usage</h4>
                         <div className="stat-row">
                           <div className="stat-keys">
-                            <IconChartBar size={14} />
+                            <IconChartBubbleFilled size={14} />
                             <span className="stat-name">tokens</span>
                           </div>
                           <span className="stat-dots"></span>
@@ -2557,8 +2559,8 @@ export const ClaudeChat: React.FC = () => {
                         </div>
                         <div className="stat-row">
                           <div className="stat-keys">
-                            <IconMessageCircle size={14} />
-                            <span className="stat-name">cached</span>
+                            <IconArtboardFilled size={14} />
+                            <span className="stat-name">cached tokens</span>
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
