@@ -191,111 +191,94 @@ async function deriveKeyFingerprint(keyBytes: Uint8Array): Promise<string> {
   return Array.from(hashed).map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
-// Ultra-strict validation with Ed25519-like verification
+// python keygen.py compatible validation
+function cipherTransform(data: Uint8Array, roundNum: number): number {
+  let result = 0;
+  const cipherBytes = new TextEncoder().encode(CIPHER);
+  
+  for (let i = 0; i < data.length; i++) {
+    const cipherByte = cipherBytes[i % cipherBytes.length];
+    const transformed = (data[i] * (cipherByte + roundNum + 1)) ^ (cipherByte << (i % 8));
+    result = (result + transformed) % 0xFFFFFF;
+  }
+  
+  return result;
+}
+
+function generateChecksum(segment: string, position: number): number {
+  let checksum = 0;
+  const cipherBytes = new TextEncoder().encode(CIPHER);
+  
+  for (let i = 0; i < segment.length; i++) {
+    const charValue = CUSTOM_ALPHABET.indexOf(segment[i]);
+    const cipherValue = cipherBytes[(position + i) % cipherBytes.length];
+    checksum = (checksum * 33 + charValue * cipherValue) % 0xFFFF;
+  }
+  
+  return checksum;
+}
+
+// matches python validation exactly
 async function validateLicenseKey(key: string): Promise<boolean> {
   try {
-    // anti-debugging check
-    if (detectDebugger()) {
-      console.warn('debugger detected');
+    // format check
+    if (!key || key.length !== 29) return false;
+    
+    const parts = key.toUpperCase().split('-');
+    if (parts.length !== 5 || parts.some(p => p.length !== 5)) return false;
+    
+    // check alphabet
+    for (const part of parts) {
+      if (![...part].every(c => CUSTOM_ALPHABET.includes(c))) return false;
     }
     
-    // format check: XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
-    const pattern = /^[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}-[A-Z0-9]{5}$/;
-    if (!pattern.test(key.toUpperCase())) return false;
+    const [seg1, seg2, seg3, seg4, seg5] = parts;
     
-    // check custom alphabet
-    const cleanKey = key.replace(/-/g, '').toUpperCase();
-    for (const char of cleanKey) {
-      if (!CUSTOM_ALPHABET.includes(char)) return false;
-    }
+    // checksum validations
+    const check1 = generateChecksum(seg1, 0);
+    const check2 = generateChecksum(seg2, 1);
+    const check3 = generateChecksum(seg3, 2);
+    const check4 = generateChecksum(seg4, 3);
+    const check5 = generateChecksum(seg5, 4);
     
-    // entropy check - must have high entropy
-    const uniqueChars = new Set(cleanKey);
-    if (uniqueChars.size < 12) return false;
+    const cipherSum = new TextEncoder().encode(CIPHER).reduce((a, b) => a + b, 0);
     
-    // decode key
-    const keyBytes = customBase32Decode(key);
-    if (!keyBytes || keyBytes.length < 15) return false;
+    // validation logic from python
+    const val1 = (check1 * cipherSum + check5) % 1000;
+    const val2 = (check2 * cipherSum + check4) % 1000;
+    const val3 = (check3 * cipherSum) % 1000;
     
-    // Generate fingerprint
-    const fingerprint = await deriveKeyFingerprint(keyBytes);
-    
-    // Complex validation algorithm based on Ed25519 signature properties
-    // Real Ed25519 signatures have specific mathematical properties
-    
-    // 1. Check byte distribution matches Ed25519 signatures
-    const byteSum = Array.from(keyBytes).reduce((a, b) => a + b, 0);
-    const byteProd = Array.from(keyBytes.slice(0, 8)).reduce((a, b) => a * b % 65521, 1);
-    
-    // 2. Verify signature structure
-    const highBytes = Array.from(keyBytes).filter(b => b > 127).length;
-    const lowBytes = Array.from(keyBytes).filter(b => b < 32).length;
-    
-    // Ed25519 signatures have specific byte distributions
-    if (highBytes < 3 || highBytes > 12) return false;
-    if (lowBytes > 5) return false;
-    
-    // 3. Check mathematical properties
-    const pubKeyBytes = new Uint8Array(PUBLIC_KEY_HEX.match(/.{2}/g)!.map(byte => parseInt(byte, 16)));
-    const pubKeySum = Array.from(pubKeyBytes.slice(0, 16)).reduce((a, b) => a + b, 0);
-    
-    // Complex validation using modular arithmetic
-    const mod1 = (byteSum * 0x1337) % 65521;
-    const mod2 = (byteProd * pubKeySum) % 65521;
-    const mod3 = parseInt(fingerprint.slice(0, 8), 16) % 65521;
-    
-    // 4. Checksum validation with multiple algorithms
-    let checksum1 = 0;
-    let checksum2 = 1;
-    for (let i = 0; i < keyBytes.length; i++) {
-      checksum1 = (checksum1 + keyBytes[i] * (i + 1)) % 65521;
-      checksum2 = (checksum2 * (keyBytes[i] + 1)) % 65521;
-    }
-    
-    // 5. Pattern matching for Ed25519 signatures
-    // Ed25519 signatures follow specific patterns
-    const pattern1 = (checksum1 ^ checksum2) % 256;
-    const pattern2 = (mod1 ^ mod2 ^ mod3) % 256;
-    
-    // Check if patterns match expected ranges
-    const validPattern1 = pattern1 >= 32 && pattern1 <= 223;
-    const validPattern2 = pattern2 >= 16 && pattern2 <= 239;
-    
-    // 6. Final validation - multiple conditions must be met
     const validations = [
-      byteSum >= 1500 && byteSum <= 5500, // Narrower range
-      byteProd !== 0,
-      validPattern1,
-      validPattern2,
-      highBytes >= 4 && highBytes <= 11,
-      uniqueChars.size >= 14, // Higher entropy requirement
-      checksum1 !== checksum2,
-      (checksum1 + checksum2) % 256 > 64
+      val1 % 17 <= 15,
+      val2 % 19 <= 17,
+      val3 % 23 <= 21,
+      (check1 + check2 + check3 + check4 + check5) % 100 !== 99,
+      new Set(key.replace(/-/g, '')).size >= 10
     ];
     
-    // Require at least 7 out of 8 checks to pass
-    const passedChecks = validations.filter(v => v).length;
+    // validate segment 5
+    const allSegs = seg1 + seg2 + seg3 + seg4;
+    const finalInput = allSegs + CIPHER.repeat(3);
+    const finalHash = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(finalInput));
+    const finalBytes = new Uint8Array(finalHash);
     
-    // Additional verification using cipher-based validation
-    if (passedChecks >= 7) {
-      // Final check: verify against signature algorithm
-      const cipherHash = await crypto.subtle.digest('SHA-256', 
-        new TextEncoder().encode(CIPHER + cleanKey + PUBLIC_KEY_HEX.slice(0, 16)));
-      const hashBytes = new Uint8Array(cipherHash);
-      
-      // Check if hash matches expected pattern
-      const hashCheck = (hashBytes[0] ^ hashBytes[31]) % 128;
-      const keyCheck = (keyBytes[0] ^ keyBytes[keyBytes.length - 1]) % 128;
-      
-      // These should be within a certain range for valid keys
-      if (Math.abs(hashCheck - keyCheck) > 64) {
-        return false;
-      }
-      
-      return true;
+    let finalValue = Array.from(finalBytes.slice(0, 8)).reduce((acc, byte, i) => {
+      return acc + (byte << (i * 8 % 32));
+    }, 0);
+    finalValue = finalValue >>> 0; // ensure unsigned
+    
+    const transformed = cipherTransform(finalBytes.slice(0, 8), 4);
+    
+    let seg5Calculated = '';
+    for (let i = 0; i < 5; i++) {
+      const charVal = (finalValue + transformed + i * cipherSum) % CUSTOM_ALPHABET.length;
+      seg5Calculated += CUSTOM_ALPHABET[charVal];
+      finalValue = (finalValue * 33 + charVal) % 0xFFFFFFF;
     }
     
-    return false;
+    if (seg5 !== seg5Calculated) return false;
+    
+    return validations.every(v => v);
   } catch (e) {
     console.error('validation error:', e);
     return false;

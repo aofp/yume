@@ -814,6 +814,51 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 analytics.tokens.cacheSize = 0;
               }
               
+              // Handle compact system message with token reset
+              if (message.type === 'system' && message.subtype === 'compact') {
+                console.log('🗜️ [COMPACT] Received compact system message');
+                if (message.message?.compactedTokens) {
+                  const compactedTokens = message.message.compactedTokens;
+                  console.log('🗜️ [COMPACT] Resetting token count to compacted values:', compactedTokens);
+                  
+                  // Reset conversation tokens to the compacted values
+                  analytics.tokens.input = compactedTokens.input || 0;
+                  analytics.tokens.output = compactedTokens.output || 0;
+                  analytics.tokens.total = compactedTokens.total || 0;
+                  analytics.tokens.cacheSize = (compactedTokens.cache_creation || 0) + (compactedTokens.cache_read || 0);
+                  
+                  // Also reset model-specific counts (we don't know the breakdown, so reset both)
+                  analytics.tokens.byModel = {
+                    opus: { input: 0, output: 0, total: 0 },
+                    sonnet: { input: 0, output: 0, total: 0 }
+                  };
+                  
+                  // The compacted tokens become the new baseline for the current model
+                  const currentModel = get().selectedModel || 'claude-3-5-sonnet-20241022';
+                  const isOpus = currentModel.includes('opus');
+                  if (isOpus) {
+                    analytics.tokens.byModel.opus = {
+                      input: compactedTokens.input || 0,
+                      output: compactedTokens.output || 0,
+                      total: compactedTokens.total || 0
+                    };
+                  } else {
+                    analytics.tokens.byModel.sonnet = {
+                      input: compactedTokens.input || 0,
+                      output: compactedTokens.output || 0,
+                      total: compactedTokens.total || 0
+                    };
+                  }
+                  
+                  // Clear compactPending flag if it was set
+                  if (analytics.compactPending) {
+                    delete analytics.compactPending;
+                  }
+                  
+                  console.log('🗜️ [COMPACT] Token count reset complete. New totals:', analytics.tokens);
+                }
+              }
+              
               // Update tokens if result message - Claude CLI sends cumulative values for this conversation
               if (message.type === 'result') {
                 console.log('📊 [TOKEN DEBUG] Received result message:', {

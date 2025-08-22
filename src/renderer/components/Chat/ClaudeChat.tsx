@@ -2562,7 +2562,7 @@ export const ClaudeChat: React.FC = () => {
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {cacheTokens.toLocaleString()} tokens
+                            {cacheTokens.toLocaleString()}
                           </span>
                         </div>
                       </div>

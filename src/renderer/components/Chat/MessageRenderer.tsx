@@ -9,7 +9,7 @@ import {
   IconAlertTriangle, 
   IconCheck, 
   IconX, 
-  IconBubble,
+  IconBubbleText,
   IconDots,
   IconMinus,
   IconChecklist,
@@ -695,8 +695,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
-                <IconBubble size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
-                <span className="thinking-label accent-text">thinking</span>
+                <IconBubbleText size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
                 <span className="thinking-stats">
                   {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
                 </span>

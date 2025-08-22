@@ -2981,6 +2981,7 @@ io.on('connection', (socket) => {
           console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
           
           // Extract session ID if present (update it every time to ensure we have the latest)
+          // This includes compact results which return the NEW compacted session ID
           if (jsonData.session_id) {
             session.claudeSessionId = jsonData.session_id;
             console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
@@ -3341,28 +3342,50 @@ io.on('connection', (socket) => {
             console.log(`📦 Message type: result`);
             console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
             
-            // Check if this is a compact result
-            const isCompactResult = jsonData.usage && 
-                                   jsonData.usage.input_tokens === 0 && 
-                                   jsonData.usage.output_tokens === 0 &&
-                                   jsonData.usage.cache_creation_input_tokens === 0 &&
-                                   jsonData.usage.cache_read_input_tokens === 0;
+            // Check if this is a compact result - look for the last user message being /compact
+            const session = sessions.get(sessionId);
+            const lastUserMessage = session?.messages?.filter(m => m.role === 'user').pop();
+            const isCompactCommand = lastUserMessage?.message?.content?.trim() === '/compact';
+            
+            // Compact results have specific patterns in the result text
+            const isCompactResult = isCompactCommand && 
+                                   (jsonData.result?.includes('Compacted') || 
+                                    jsonData.result?.includes('compressed') ||
+                                    jsonData.result === '' ||
+                                    jsonData.result === null);
             
             if (isCompactResult) {
               console.log(`🗜️ [${sessionId}] Detected /compact command completion`);
+              console.log(`🗜️ [${sessionId}] Result text: "${jsonData.result}"`);
+              console.log(`🗜️ [${sessionId}] Usage data:`, jsonData.usage);
               
-              // Clear the session ID since /compact creates a new session in Claude
-              const session = sessions.get(sessionId);
-              if (session) {
-                console.log(`🔄 Clearing invalid session ID after /compact: ${session.claudeSessionId}`);
-                session.claudeSessionId = null;
+              // Keep the new session ID from compact - it's the compacted session we'll resume with
+              if (session && session.claudeSessionId) {
+                console.log(`✅ Using new compacted session ID: ${session.claudeSessionId}`);
               }
               
-              // Send compact notification
+              // Extract the new token count from the compact result
+              // The compact command returns the new compressed token count
+              const compactedTokens = jsonData.usage ? {
+                input: jsonData.usage.input_tokens || 0,
+                output: jsonData.usage.output_tokens || 0,
+                cache_creation: jsonData.usage.cache_creation_input_tokens || 0,
+                cache_read: jsonData.usage.cache_read_input_tokens || 0,
+                total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0)
+              } : null;
+              
+              if (compactedTokens) {
+                console.log(`🗜️ [${sessionId}] Compacted token count: ${compactedTokens.total} (input: ${compactedTokens.input}, output: ${compactedTokens.output})`);
+              }
+              
+              // Send compact notification with token info
               socket.emit(`message:${sessionId}`, {
                 type: 'system',
                 subtype: 'compact',
-                message: { content: 'context compacted - token count reset' },
+                message: { 
+                  content: 'context compacted - token count reset',
+                  compactedTokens: compactedTokens
+                },
                 timestamp: Date.now()
               });
             }
