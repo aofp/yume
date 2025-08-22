@@ -308,7 +308,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
             </div>
           )}
           
-          {filteredAnalytics && !loading && (
+          {!loading && (filteredAnalytics ? (
             <>
               {/* Overview Stats */}
               <div className="analytics-overview">
@@ -382,11 +382,11 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
               </div>
 
               {/* Daily Usage Chart */}
-              {recentDates.length > 0 && (
-                <div className="analytics-section">
-                  <h3>daily usage</h3>
-                  <div className="usage-chart">
-                    {recentDates.map(([date, data], index) => (
+              <div className="analytics-section">
+                <h3>daily usage</h3>
+                <div className="usage-chart">
+                  {recentDates.length > 0 ? (
+                    recentDates.map(([date, data], index) => (
                       <div key={date} className="chart-bar-container">
                         <div className="chart-bar-wrapper">
                           <div 
@@ -406,38 +406,77 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                           }
                         </div>
                       </div>
-                    ))}
-                  </div>
+                    ))
+                  ) : (
+                    <div style={{ 
+                      display: 'flex', 
+                      justifyContent: 'center', 
+                      alignItems: 'center', 
+                      height: '100px',
+                      color: 'rgba(255, 255, 255, 0.3)',
+                      fontSize: '11px'
+                    }}>
+                      no data for selected period
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
 
               {/* Top Projects - only show in all view */}
-              {viewMode === 'all' && topProjects.length > 0 && (
+              {viewMode === 'all' && (
                 <div className="analytics-section">
                   <h3>top projects</h3>
                   <div className="projects-list">
-                    {topProjects.map(([name, data]) => (
-                      <div 
-                        key={name} 
-                        className="analytics-project-item clickable" 
-                        onClick={() => handleProjectClick(name)}
-                        title="view project analytics"
-                      >
-                        <div className="analytics-project-info">
-                          <IconFolder size={12} stroke={1.5} />
-                          <span className="analytics-project-name">{name}</span>
+                    {topProjects.length > 0 ? (
+                      topProjects.map(([name, data]) => (
+                        <div 
+                          key={name} 
+                          className="analytics-project-item clickable" 
+                          onClick={() => handleProjectClick(name)}
+                          title="view project analytics"
+                        >
+                          <div className="analytics-project-info">
+                            <IconFolder size={12} stroke={1.5} />
+                            <span className="analytics-project-name">{name}</span>
+                          </div>
+                          <div className="analytics-project-stats">
+                            <span>{formatNumber(data.tokens)} tokens</span>
+                            <span className="cost">{formatCost(data.cost)}</span>
+                          </div>
                         </div>
-                        <div className="analytics-project-stats">
-                          <span>{formatNumber(data.tokens)} tokens</span>
-                          <span className="cost">{formatCost(data.cost)}</span>
-                        </div>
+                      ))
+                    ) : (
+                      <div style={{ 
+                        display: 'flex', 
+                        justifyContent: 'center', 
+                        alignItems: 'center', 
+                        padding: '20px',
+                        color: 'rgba(255, 255, 255, 0.3)',
+                        fontSize: '11px'
+                      }}>
+                        no projects yet
                       </div>
-                    ))}
+                    )}
                   </div>
                 </div>
               )}
             </>
-          )}
+          ) : (
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'center',
+              alignItems: 'center',
+              padding: '60px 20px',
+              color: 'rgba(255, 255, 255, 0.3)',
+              fontSize: '12px',
+              gap: '20px'
+            }}>
+              <IconChartBar size={32} stroke={1} style={{ opacity: 0.3 }} />
+              <div>no analytics data yet</div>
+              <div style={{ fontSize: '11px' }}>start using claude to see usage statistics</div>
+            </div>
+          ))}
         </div>
       </div>
     </div>

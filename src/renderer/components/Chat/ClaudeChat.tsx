@@ -2517,24 +2517,10 @@ export const ClaudeChat: React.FC = () => {
               </button>
             </div>
             <div className="stats-content">
-              {!currentSession || !currentSession.messages?.some(m => 
-                m.type === 'user' || m.type === 'assistant' || m.type === 'result'
-              ) ? (
-                <div style={{ 
-                  display: 'flex', 
-                  justifyContent: 'center', 
-                  alignItems: 'center', 
-                  height: '40px',
-                  color: '#666',
-                  fontSize: '8pt',
-                  gridColumn: 'span 2'
-                }}>
-                  no active session
-                </div>
-              ) : (() => {
+              {(() => {
                 // Calculate total context usage - only conversation tokens count
-                const conversationTokens = currentSession.analytics?.tokens?.total || 0;
-                const cacheTokens = currentSession.analytics?.tokens?.cacheSize || 0;
+                const conversationTokens = currentSession?.analytics?.tokens?.total || 0;
+                const cacheTokens = currentSession?.analytics?.tokens?.cacheSize || 0;
                 // cache tokens are system prompts, not part of conversation context
                 const totalContextTokens = conversationTokens;
                 const contextWindowTokens = 200000;
@@ -2580,7 +2566,7 @@ export const ClaudeChat: React.FC = () => {
                     <span className="stat-dots"></span>
                     <span className="stat-desc">
                       {(() => {
-                        const thinkingSeconds = currentSession.analytics.thinkingTime || 0;
+                        const thinkingSeconds = currentSession?.analytics?.thinkingTime || 0;
                         const minutes = Math.floor(thinkingSeconds / 60);
                         const seconds = thinkingSeconds % 60;
                         if (minutes > 0) {
@@ -2598,8 +2584,8 @@ export const ClaudeChat: React.FC = () => {
                     <span className="stat-dots"></span>
                     <span className="stat-desc">
                       {(() => {
-                        const inputTokens = currentSession.analytics.tokens.input || 0;
-                        const outputTokens = currentSession.analytics.tokens.output || 0;
+                        const inputTokens = currentSession?.analytics?.tokens?.input || 0;
+                        const outputTokens = currentSession?.analytics?.tokens?.output || 0;
                         const totalTokens = inputTokens + outputTokens || 1;
                         const inputPercent = Math.round((inputTokens / totalTokens) * 100);
                         const outputPercent = Math.round((outputTokens / totalTokens) * 100);
@@ -2615,8 +2601,8 @@ export const ClaudeChat: React.FC = () => {
                     <span className="stat-dots"></span>
                     <span className="stat-desc">
                       {(() => {
-                        const opusTokens = currentSession.analytics.tokens.byModel?.opus?.total || 0;
-                        const totalTokens = currentSession.analytics.tokens.total || 1;
+                        const opusTokens = currentSession?.analytics?.tokens?.byModel?.opus?.total || 0;
+                        const totalTokens = currentSession?.analytics?.tokens?.total || 1;
                         return `${Math.round((opusTokens / totalTokens) * 100)}%`;
                       })()}
                     </span>
@@ -2633,7 +2619,7 @@ export const ClaudeChat: React.FC = () => {
                       <span className="stat-name">messages</span>
                     </div>
                     <span className="stat-dots"></span>
-                    <span className="stat-desc">{currentSession.analytics.totalMessages}</span>
+                    <span className="stat-desc">{currentSession?.analytics?.totalMessages || 0}</span>
                   </div>
                   <div className="stat-row">
                     <div className="stat-keys">
@@ -2641,7 +2627,7 @@ export const ClaudeChat: React.FC = () => {
                       <span className="stat-name">tool uses</span>
                     </div>
                     <span className="stat-dots"></span>
-                    <span className="stat-desc">{currentSession.analytics.toolUses}</span>
+                    <span className="stat-desc">{currentSession?.analytics?.toolUses || 0}</span>
                   </div>
                   <div className="stat-row">
                     <div className="stat-keys">
@@ -2652,16 +2638,16 @@ export const ClaudeChat: React.FC = () => {
                     <span className="stat-desc">
                       ${(() => {
                         // Use actual cost from Claude if available
-                        if (currentSession.analytics.cost?.total) {
+                        if (currentSession?.analytics?.cost?.total) {
                           // Format cost to 2 decimal places for display
                           return currentSession.analytics.cost.total.toFixed(2);
                         }
                         
                         // Otherwise calculate based on token usage
-                        const opusInput = currentSession.analytics.tokens.byModel?.opus?.input || 0;
-                        const opusOutput = currentSession.analytics.tokens.byModel?.opus?.output || 0;
-                        const sonnetInput = currentSession.analytics.tokens.byModel?.sonnet?.input || 0;
-                        const sonnetOutput = currentSession.analytics.tokens.byModel?.sonnet?.output || 0;
+                        const opusInput = currentSession?.analytics?.tokens?.byModel?.opus?.input || 0;
+                        const opusOutput = currentSession?.analytics?.tokens?.byModel?.opus?.output || 0;
+                        const sonnetInput = currentSession?.analytics?.tokens?.byModel?.sonnet?.input || 0;
+                        const sonnetOutput = currentSession?.analytics?.tokens?.byModel?.sonnet?.output || 0;
                         
                         const opusCost = (opusInput / 1000000) * 3.00 + (opusOutput / 1000000) * 15.00;
                         const sonnetCost = (sonnetInput / 1000000) * 2.50 + (sonnetOutput / 1000000) * 12.50;

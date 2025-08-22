@@ -498,15 +498,32 @@ export const App: React.FC = () => {
 
   // Apply accent color, zoom level, and window state from localStorage on mount
   useEffect(() => {
-    const savedColor = localStorage.getItem('accentColor') || '#cccccc';
-    document.documentElement.style.setProperty('--accent-color', savedColor);
+    // Apply accent color
+    const savedAccentColor = localStorage.getItem('accentColor') || '#cccccc';
+    document.documentElement.style.setProperty('--accent-color', savedAccentColor);
+    const accentHex = savedAccentColor.replace('#', '');
+    const accentR = parseInt(accentHex.substr(0, 2), 16);
+    const accentG = parseInt(accentHex.substr(2, 2), 16);
+    const accentB = parseInt(accentHex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--accent-rgb', `${accentR}, ${accentG}, ${accentB}`);
     
-    // Convert hex to RGB for rgba() usage
-    const hex = savedColor.replace('#', '');
-    const r = parseInt(hex.substr(0, 2), 16);
-    const g = parseInt(hex.substr(2, 2), 16);
-    const b = parseInt(hex.substr(4, 2), 16);
-    document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
+    // Apply positive color
+    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99ffff';
+    document.documentElement.style.setProperty('--positive-color', savedPositiveColor);
+    const positiveHex = savedPositiveColor.replace('#', '');
+    const positiveR = parseInt(positiveHex.substr(0, 2), 16);
+    const positiveG = parseInt(positiveHex.substr(2, 2), 16);
+    const positiveB = parseInt(positiveHex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--positive-rgb', `${positiveR}, ${positiveG}, ${positiveB}`);
+    
+    // Apply negative color
+    const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff99ff';
+    document.documentElement.style.setProperty('--negative-color', savedNegativeColor);
+    const negativeHex = savedNegativeColor.replace('#', '');
+    const negativeR = parseInt(negativeHex.substr(0, 2), 16);
+    const negativeG = parseInt(negativeHex.substr(2, 2), 16);
+    const negativeB = parseInt(negativeHex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--negative-rgb', `${negativeR}, ${negativeG}, ${negativeB}`);
     
     // Apply saved zoom level
     const savedZoomPercent = localStorage.getItem('zoomPercent') || '100';

@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette, IconPhoto, IconTrash, IconKey, IconSparkles } from '@tabler/icons-react';
+import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette, IconPhoto, IconTrash, IconRotateClockwise } from '@tabler/icons-react';
 import './SettingsModal.css';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
-import { useLicenseStore } from '../../services/licenseManager';
 
 // Access the electron API exposed by preload script
 declare global {
@@ -55,10 +54,11 @@ const ALL_COLORS = COLOR_ROWS.flat();
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [zoomLevel, setZoomLevel] = useState(0);
   const [accentColor, setAccentColor] = useState('#dddddd');
-  const [showColorPicker, setShowColorPicker] = useState(false);
+  const [positiveColor, setPositiveColor] = useState('#99ffff'); // default cyan
+  const [negativeColor, setNegativeColor] = useState('#ff99ff'); // default magenta
+  const [showColorPicker, setShowColorPicker] = useState<'accent' | 'positive' | 'negative' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { globalWatermarkImage, setGlobalWatermark } = useClaudeCodeStore();
-  const { isLicensed, licenseData, clearLicense } = useLicenseStore();
 
   useEffect(() => {
     // Get current zoom level
@@ -86,9 +86,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     };
     getZoom();
 
-    // Get saved accent color
-    const savedColor = localStorage.getItem('accentColor') || '#dddddd';
-    setAccentColor(savedColor);
+    // Get saved colors and apply them
+    const savedAccentColor = localStorage.getItem('accentColor') || '#dddddd';
+    setAccentColor(savedAccentColor);
+    // Apply accent color
+    document.documentElement.style.setProperty('--accent-color', savedAccentColor);
+    const accentHex = savedAccentColor.replace('#', '');
+    const accentR = parseInt(accentHex.substr(0, 2), 16);
+    const accentG = parseInt(accentHex.substr(2, 2), 16);
+    const accentB = parseInt(accentHex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--accent-rgb', `${accentR}, ${accentG}, ${accentB}`);
+    
+    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99ffff';
+    setPositiveColor(savedPositiveColor);
+    // Apply positive color
+    document.documentElement.style.setProperty('--positive-color', savedPositiveColor);
+    const positiveHex = savedPositiveColor.replace('#', '');
+    const positiveR = parseInt(positiveHex.substr(0, 2), 16);
+    const positiveG = parseInt(positiveHex.substr(2, 2), 16);
+    const positiveB = parseInt(positiveHex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--positive-rgb', `${positiveR}, ${positiveG}, ${positiveB}`);
+    
+    const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff99ff';
+    setNegativeColor(savedNegativeColor);
+    // Apply negative color
+    document.documentElement.style.setProperty('--negative-color', savedNegativeColor);
+    const negativeHex = savedNegativeColor.replace('#', '');
+    const negativeR = parseInt(negativeHex.substr(0, 2), 16);
+    const negativeG = parseInt(negativeHex.substr(2, 2), 16);
+    const negativeB = parseInt(negativeHex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--negative-rgb', `${negativeR}, ${negativeG}, ${negativeB}`);
 
     // Listen for zoom changes from keyboard shortcuts
     const handleZoomChange = (e: any) => {
@@ -152,21 +179,29 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     }
   };
 
-  const handleColorSelect = (color: string) => {
-    setAccentColor(color);
-
-    // Apply the color immediately
-    document.documentElement.style.setProperty('--accent-color', color);
-
+  const handleColorSelect = (color: string, type: 'accent' | 'positive' | 'negative') => {
     // Convert hex to RGB for rgba() usage
     const hex = color.replace('#', '');
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
-    document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
-
-    // Save to localStorage
-    localStorage.setItem('accentColor', color);
+    
+    if (type === 'accent') {
+      setAccentColor(color);
+      document.documentElement.style.setProperty('--accent-color', color);
+      document.documentElement.style.setProperty('--accent-rgb', `${r}, ${g}, ${b}`);
+      localStorage.setItem('accentColor', color);
+    } else if (type === 'positive') {
+      setPositiveColor(color);
+      document.documentElement.style.setProperty('--positive-color', color);
+      document.documentElement.style.setProperty('--positive-rgb', `${r}, ${g}, ${b}`);
+      localStorage.setItem('positiveColor', color);
+    } else if (type === 'negative') {
+      setNegativeColor(color);
+      document.documentElement.style.setProperty('--negative-color', color);
+      document.documentElement.style.setProperty('--negative-rgb', `${r}, ${g}, ${b}`);
+      localStorage.setItem('negativeColor', color);
+    }
   };
 
   const handleWatermarkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -195,18 +230,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     }
   };
 
-  const handleForgetLicense = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    // Show confirm dialog first, then clear if confirmed
-    const shouldClear = true;
-    if (shouldClear) {
-      // Defer the state change to avoid potential hooks error
-      setTimeout(() => {
-        clearLicense();
-      }, 0);
-    }
-  };
 
   const getZoomPercentage = () => {
     // Convert zoom level to percentage (0 = 100%, 1 = 110%, -1 = 90%, etc.)
@@ -218,7 +241,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') {
         if (showColorPicker) {
-          setShowColorPicker(false);
+          setShowColorPicker(null);
         } else {
           onClose();
         }
@@ -239,7 +262,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
       const handleClickOutside = (e: MouseEvent) => {
         const target = e.target as HTMLElement;
         if (!target.closest('.color-picker-floating') && !target.closest('.color-preview')) {
-          setShowColorPicker(false);
+          setShowColorPicker(null);
         }
       };
       document.addEventListener('mousedown', handleClickOutside);
@@ -284,85 +307,107 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="settings-row">
-              <div className="settings-section half-width">
-                <h4>accent color</h4>
-                <div className="color-picker-container">
-                  <button
-                    className="color-preview"
-                    onClick={() => setShowColorPicker(!showColorPicker)}
-                    title="click to select color"
-                  >
-                    <span className="color-square" style={{ backgroundColor: accentColor }} />
-                    <span className="color-value">{accentColor}</span>
-                  </button>
+            <div className="settings-section">
+              <h4>colors</h4>
+              <div className="color-settings-grid">
+                <div className="color-setting">
+                  <span className="color-label">accent</span>
+                  <div className="color-controls">
+                    <button
+                      className="color-preview compact"
+                      onClick={() => setShowColorPicker(showColorPicker === 'accent' ? null : 'accent')}
+                      title="click to select accent color"
+                    >
+                      <span className="color-square" style={{ backgroundColor: accentColor }} />
+                      <span className="color-value">{accentColor}</span>
+                    </button>
+                    <button
+                      className="color-reset"
+                      onClick={() => handleColorSelect('#dddddd', 'accent')}
+                      title="reset to default grey"
+                      disabled={accentColor === '#dddddd'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                  </div>
                 </div>
-              </div>
-
-              <div className="settings-section half-width">
-                <h4>watermark</h4>
-                <div className="watermark-controls">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleWatermarkUpload}
-                    style={{ display: 'none' }}
-                    id="watermark-upload"
-                  />
-                  {globalWatermarkImage ? (
-                    <div className="watermark-preview">
-                      <img
-                        src={globalWatermarkImage}
-                        alt="watermark preview"
-                        className="watermark-thumb"
-                      />
-                      <button
-                        className="watermark-remove"
-                        onClick={handleRemoveWatermark}
-                        title="remove watermark"
-                      >
-                        <IconTrash size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <label htmlFor="watermark-upload" className="watermark-upload-btn">
-                      <IconPhoto size={14} />
-                    </label>
-                  )}
+                
+                <div className="color-setting">
+                  <span className="color-label">positive</span>
+                  <div className="color-controls">
+                    <button
+                      className="color-preview compact"
+                      onClick={() => setShowColorPicker(showColorPicker === 'positive' ? null : 'positive')}
+                      title="click to select positive color"
+                    >
+                      <span className="color-square" style={{ backgroundColor: positiveColor }} />
+                      <span className="color-value">{positiveColor}</span>
+                    </button>
+                    <button
+                      className="color-reset"
+                      onClick={() => handleColorSelect('#99ffff', 'positive')}
+                      title="reset to default cyan"
+                      disabled={positiveColor === '#99ffff'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                  </div>
+                </div>
+                
+                <div className="color-setting">
+                  <span className="color-label">negative</span>
+                  <div className="color-controls">
+                    <button
+                      className="color-preview compact"
+                      onClick={() => setShowColorPicker(showColorPicker === 'negative' ? null : 'negative')}
+                      title="click to select negative color"
+                    >
+                      <span className="color-square" style={{ backgroundColor: negativeColor }} />
+                      <span className="color-value">{negativeColor}</span>
+                    </button>
+                    <button
+                      className="color-reset"
+                      onClick={() => handleColorSelect('#ff99ff', 'negative')}
+                      title="reset to default magenta"
+                      disabled={negativeColor === '#ff99ff'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="settings-section">
-              <h4>license</h4>
-              <div className="license-info">
-                {isLicensed && licenseData ? (
-                  <div
-                    className="license-status licensed"
-                    onContextMenu={handleForgetLicense}
-                    // title="right-click to forget license"
-                  >
-                    <IconKey size={14} />
-                    <span>licensed</span>
-                    <span className="license-type">{licenseData.type}</span>
-                  </div>
-                ) : (
-                  <div className="license-status trial">
-                    <span>trial mode - max 2 tabs</span>
+              <h4>watermark</h4>
+              <div className="watermark-controls">
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  onChange={handleWatermarkUpload}
+                  style={{ display: 'none' }}
+                  id="watermark-upload"
+                />
+                {globalWatermarkImage ? (
+                  <div className="watermark-preview">
+                    <img
+                      src={globalWatermarkImage}
+                      alt="watermark preview"
+                      className="watermark-thumb"
+                    />
                     <button
-                      className="upgrade-btn"
-                      onClick={() => {
-                        onClose();
-                        window.dispatchEvent(new CustomEvent('showUpgradeModal', {
-                          detail: { reason: 'trial' }
-                        }));
-                      }}
+                      className="watermark-remove"
+                      onClick={handleRemoveWatermark}
+                      title="remove watermark"
                     >
-                      <IconSparkles size={14} />
-                      <span>upgrade</span>
+                      <IconTrash size={14} />
                     </button>
                   </div>
+                ) : (
+                  <label htmlFor="watermark-upload" className="watermark-upload-btn">
+                    <IconPhoto size={14} />
+                  </label>
                 )}
               </div>
             </div>
@@ -377,27 +422,32 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             <div className="color-picker-header">
               <h4>
                 <IconPalette size={14} stroke={1.5} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
-                choose accent color
+                choose {showColorPicker} color
               </h4>
-              <button className="color-picker-close" onClick={() => setShowColorPicker(false)}>
+              <button className="color-picker-close" onClick={() => setShowColorPicker(null)}>
                 <IconX size={14} />
               </button>
             </div>
             <div className="color-picker-content">
               {COLOR_ROWS.map((row, rowIndex) => (
                 <div key={rowIndex} className={`color-row color-row-${rowIndex + 1}`}>
-                  {row.map((color) => (
-                    <button
-                      key={color}
-                      className={`color-swatch ${accentColor === color ? 'active' : ''}`}
-                      style={{ backgroundColor: color }}
-                      onClick={() => {
-                        handleColorSelect(color);
-                        setShowColorPicker(false);
-                      }}
-                      title={color}
-                    />
-                  ))}
+                  {row.map((color) => {
+                    const currentColor = showColorPicker === 'accent' ? accentColor :
+                                       showColorPicker === 'positive' ? positiveColor :
+                                       negativeColor;
+                    return (
+                      <button
+                        key={color}
+                        className={`color-swatch ${currentColor === color ? 'active' : ''}`}
+                        style={{ backgroundColor: color }}
+                        onClick={() => {
+                          handleColorSelect(color, showColorPicker);
+                          setShowColorPicker(null);
+                        }}
+                        title={color}
+                      />
+                    );
+                  })}
                 </div>
               ))}
             </div>

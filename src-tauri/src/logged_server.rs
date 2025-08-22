@@ -2639,6 +2639,57 @@ io.on('connection', (socket) => {
         console.log('📝 Starting fresh conversation (no previous session)');
       }
 
+      // Check for simple echo commands first - handle them without Claude
+      const echoMatch = message && message.match(/^echo\s+(.+)$/i);
+      if (echoMatch) {
+        const echoText = echoMatch[1];
+        console.log(`📝 Handling echo command directly: "${echoText}"`);
+        
+        // Send the echo response back to the client
+        const echoMessageId = `assistant-${sessionId}-${Date.now()}-${Math.random()}`;
+        socket.emit(`message:${sessionId}`, {
+          type: 'assistant',
+          id: echoMessageId,
+          message: {
+            id: echoMessageId,
+            type: 'message',
+            role: 'assistant',
+            model: 'echo-handler',
+            content: [{
+              type: 'text',
+              text: echoText
+            }],
+            usage: {
+              input_tokens: 0,
+              output_tokens: 0
+            }
+          },
+          streaming: false,
+          timestamp: Date.now()
+        });
+        
+        // Mark session as completed
+        session.streaming = false;
+        
+        // Trigger title generation for first message
+        if (!session.hasGeneratedTitle && echoText.length > 3) {
+          session.hasGeneratedTitle = true;
+          generateTitle(sessionId, echoText, () => {
+            console.log(`🏷️ Title successfully generated for session ${sessionId}`);
+          });
+        }
+        
+        // Execute the queue callback and process next request
+        if (callback) callback({ success: true });
+        
+        // Process next request in queue
+        setTimeout(() => {
+          processNextInQueue();
+        }, 100);
+        
+        return; // Exit early since we handled the echo
+      }
+
       // Spawn claude process with proper PATH for Node.js
       console.log(`🚀 Spawning claude with args:`, args);
       console.log(`🔍 Active processes count: ${activeProcesses.size}`);

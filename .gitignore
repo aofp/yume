@@ -104,3 +104,9 @@ coverage/
 # License system keypair (keep secret!)
 yurucode_keypair.json
 yurucode.com/
+
+# Secret files - NEVER commit
+.env.secret
+yurucode.com/.env.secret
+yurucode.com/licenses/
+*.log

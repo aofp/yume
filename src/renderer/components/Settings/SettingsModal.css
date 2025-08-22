@@ -134,6 +134,56 @@
   -webkit-user-select: none;
 }
 
+/* Color Settings Grid */
+.color-settings-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.color-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.color-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  min-width: 50px;
+}
+
+.color-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.color-reset {
+  padding: 3px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+  transition: all 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-reset:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.color-reset:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
 /* Color Picker Container */
 .color-picker-container {
   position: relative;
@@ -155,6 +205,16 @@
   transition: all 0.2s ease;
 }
 
+.color-preview.compact {
+  padding: 3px 6px;
+  font-size: 10px;
+  gap: 4px;
+  width: auto;
+  height: auto;
+  background: transparent;
+  border-radius: 4px;
+}
+
 .color-preview:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
@@ -166,6 +226,12 @@
   height: 16px;
   border-radius: 3px;
   border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.color-preview.compact .color-square {
+  width: 12px;
+  height: 12px;
+  border-radius: 2px;
 }
 
 .color-preview .color-value {

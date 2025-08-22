@@ -18,7 +18,7 @@ interface AboutModalProps {
 }
 
 export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
-  const { isLicensed } = useLicenseStore();
+  const { isLicensed, clearLicense } = useLicenseStore();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Handle Escape key
@@ -70,6 +70,13 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
                   setShowUpgradeModal(true);
                 }
               }}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                if (isLicensed) {
+                  clearLicense();
+                }
+              }}
+              title={isLicensed ? 'right-click to forget license' : ''}
             >[{isLicensed ? 'pro' : 'trial'}]</span>
           </div>
           

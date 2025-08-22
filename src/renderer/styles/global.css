@@ -4,11 +4,17 @@
   --accent-color: #ff9999;
   --accent-rgb: 255, 153, 153;
   
-  /* Code diff and status colors */
-  --color-cyan: #99e6ff;  /* pastel cyan for additions/success */
-  --color-magenta: #ff99cc;  /* pastel magenta for removals/changes */
-  --color-cyan-rgb: 153, 230, 255;
-  --color-magenta-rgb: 255, 153, 204;
+  /* Positive/Negative Colors - can be changed via settings */
+  --positive-color: #99ffff;  /* default cyan for additions/success */
+  --positive-rgb: 153, 255, 255;
+  --negative-color: #ff99ff;  /* default magenta for removals/changes */
+  --negative-rgb: 255, 153, 255;
+  
+  /* Legacy aliases for compatibility */
+  --color-cyan: var(--positive-color);
+  --color-magenta: var(--negative-color);
+  --color-cyan-rgb: var(--positive-rgb);
+  --color-magenta-rgb: var(--negative-rgb);
   
   /* Base Colors */
   --color-bg-primary: #000000;

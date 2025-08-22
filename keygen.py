@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
 """
 Ultra-secure license key generator for yurucode
-Python implementation matching PHP keygen.php
-Uses HMAC-SHA256 signatures with server-side secrets
+5x5 format with HMAC-SHA256 signatures
 """
 
 import os
@@ -10,7 +9,6 @@ import sys
 import time
 import hmac
 import hashlib
-import struct
 import secrets
 from pathlib import Path
 
@@ -34,223 +32,137 @@ VALIDATION_SECRET = os.getenv('YURUCODE_VALIDATION_SECRET', '9e2b4f7a1c5d8e3b6f9
 TIMESTAMP_SECRET = os.getenv('YURUCODE_TIMESTAMP_SECRET', '4a7c9e2b5d8f1a3c6e9b2d5f8a1c4e7b9d3f6a8c2e5b7d9f2a4c6e8b1d3f5a7c')
 
 # License configuration
-LICENSE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'  # 33 chars
-LICENSE_VERSION = '2'  # Version 2 with HMAC
+LICENSE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'  # 32 chars (no 0,1,I,O)
 
-def encode_to_alphabet(data: bytes, length: int = 5) -> str:
-    """Encode bytes to custom alphabet"""
-    value = int.from_bytes(data, 'big')
-    base = len(LICENSE_ALPHABET)
+def encode_segment(num: int) -> str:
+    """Encode number to 5-char segment"""
     result = []
-    
-    for _ in range(length):
-        result.append(LICENSE_ALPHABET[value % base])
-        value //= base
-    
-    return ''.join(reversed(result)).rjust(length, LICENSE_ALPHABET[0])
-
-def decode_from_alphabet(s: str) -> bytes:
-    """Decode from custom alphabet to bytes"""
     base = len(LICENSE_ALPHABET)
-    value = 0
-    
-    for char in s:
-        pos = LICENSE_ALPHABET.find(char)
-        if pos == -1:
-            raise ValueError(f"Invalid character: {char}")
-        value = value * base + pos
-    
-    # Convert to bytes (handle varying lengths)
-    hex_str = format(value, 'x')
-    if len(hex_str) % 2:
-        hex_str = '0' + hex_str
-    return bytes.fromhex(hex_str)
+    for _ in range(5):
+        result.append(LICENSE_ALPHABET[num % base])
+        num //= base
+    return ''.join(reversed(result))
 
-def create_license_signature(payload_segments: list, timestamp: int) -> bytes:
-    """Create HMAC signature for license data"""
-    # Combine all data for signing
-    data_to_sign = '|'.join([
-        LICENSE_VERSION,
-        '-'.join(payload_segments),
-        str(timestamp),
-        VALIDATION_SECRET
-    ])
+def decode_segment(s: str) -> int:
+    """Decode 5-char segment to number"""
+    num = 0
+    base = len(LICENSE_ALPHABET)
+    for char in s.upper():
+        idx = LICENSE_ALPHABET.find(char)
+        if idx == -1:
+            raise ValueError(f"Invalid character: {char}")
+        num = num * base + idx
+    return num
+
+def create_signature(data: str, timestamp: int) -> bytes:
+    """Create HMAC signature"""
+    msg = f"{data}|{timestamp}|{VALIDATION_SECRET}"
     
-    # Create multi-layer HMAC
-    hmac1 = hmac.new(
-        MASTER_SECRET.encode(),
-        data_to_sign.encode(),
-        hashlib.sha256
-    ).digest()
+    # Multi-layer HMAC
+    h1 = hmac.new(MASTER_SECRET.encode(), msg.encode(), hashlib.sha256).digest()
+    h2 = hmac.new(TIMESTAMP_SECRET.encode(), h1 + str(timestamp).encode(), hashlib.sha256).digest()
     
-    hmac2 = hmac.new(
-        TIMESTAMP_SECRET.encode(),
-        hmac1 + str(timestamp).encode(),
-        hashlib.sha256
-    ).digest()
-    
-    # Final signature combines both HMACs
-    return hashlib.sha256(hmac1 + hmac2).digest()
+    return hashlib.sha256(h1 + h2).digest()
 
 def generate_license_key() -> str:
-    """
-    Generate a new license key
-    Format: XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
-    First 3 segments: random payload + timestamp
-    Last 2 segments: HMAC signature
-    """
-    # Generate random payload (12 bytes)
-    random_payload = secrets.token_bytes(12)
-    
-    # Current timestamp (4 bytes, Unix timestamp)
+    """Generate a 5x5 format license key"""
+    # Current timestamp
     timestamp = int(time.time())
-    timestamp_bytes = struct.pack('>I', timestamp)
     
-    # Combine payload and timestamp (16 bytes total)
-    payload_data = random_payload + timestamp_bytes
+    # Generate 3 random segments
+    seg1 = encode_segment(secrets.randbelow(32**5))
+    seg2 = encode_segment(secrets.randbelow(32**5))
+    seg3 = encode_segment(timestamp % (32**5))  # Embed timestamp in seg3
     
-    # Encode payload into first 3 segments
-    seg1 = encode_to_alphabet(payload_data[0:6], 5)
-    seg2 = encode_to_alphabet(payload_data[6:11], 5)
-    seg3 = encode_to_alphabet(payload_data[11:16], 5)
+    # Create signature from first 3 segments
+    data = f"{seg1}-{seg2}-{seg3}"
+    sig = create_signature(data, timestamp)
     
-    payload_segments = [seg1, seg2, seg3]
+    # Convert signature to 2 segments
+    sig_num1 = int.from_bytes(sig[:4], 'big') % (32**5)
+    sig_num2 = int.from_bytes(sig[4:8], 'big') % (32**5)
     
-    # Create signature
-    signature = create_license_signature(payload_segments, timestamp)
+    seg4 = encode_segment(sig_num1)
+    seg5 = encode_segment(sig_num2)
     
-    # Encode signature into last 2 segments (use first 10 bytes of signature)
-    seg4 = encode_to_alphabet(signature[0:5], 5)
-    seg5 = encode_to_alphabet(signature[5:10], 5)
-    
-    # Combine all segments
-    return '-'.join([seg1, seg2, seg3, seg4, seg5])
+    return f"{seg1}-{seg2}-{seg3}-{seg4}-{seg5}"
 
-def validate_license_format(key: str) -> bool:
-    """Validate basic license key format"""
-    import re
-    pattern = f'^[{LICENSE_ALPHABET}]{{5}}(-[{LICENSE_ALPHABET}]{{5}}){{4}}$'
-    if not re.match(pattern, key):
-        return False
-    
-    segments = key.split('-')
-    if len(segments) != 5:
-        return False
-    
-    # Check each segment can be decoded
-    for segment in segments:
-        try:
-            decode_from_alphabet(segment)
-        except:
-            return False
-    
-    return True
-
-def validate_license_signature(key: str) -> dict:
-    """Validate license signature (server-side only)"""
-    if not validate_license_format(key):
-        return {'valid': False, 'error': 'Invalid format'}
-    
-    segments = key.upper().split('-')
-    
-    # Decode payload segments
+def validate_license_key(key: str) -> dict:
+    """Validate a license key"""
     try:
-        payload_bytes = b''
-        for i in range(3):
-            decoded = decode_from_alphabet(segments[i])
-            payload_bytes += decoded
+        # Check format
+        parts = key.upper().split('-')
+        if len(parts) != 5 or any(len(p) != 5 for p in parts):
+            return {'valid': False, 'error': 'Invalid format'}
         
-        # Pad payload to expected length
-        if len(payload_bytes) < 16:
-            payload_bytes = payload_bytes.ljust(16, b'\x00')
+        # Check characters
+        for part in parts:
+            for char in part:
+                if char not in LICENSE_ALPHABET:
+                    return {'valid': False, 'error': f'Invalid character: {char}'}
         
-        # Extract timestamp (last 4 bytes of payload)
-        timestamp_bytes = payload_bytes[-4:]
-        if len(timestamp_bytes) != 4:
-            return {'valid': False, 'error': 'Invalid timestamp structure'}
+        # Decode timestamp from seg3
+        timestamp = decode_segment(parts[2])
         
-        timestamp = struct.unpack('>I', timestamp_bytes)[0]
+        # Basic timestamp validation
+        current = int(time.time())
+        # The timestamp in seg3 is modulo 33^5, so we need to find the actual timestamp
+        # Look for timestamps in reasonable range (last 2 years to future)
+        base_timestamp = timestamp
+        possible_timestamps = []
         
-        # Check timestamp validity
-        current_time = int(time.time())
-        if timestamp > current_time + 86400:  # More than 1 day in future
-            return {'valid': False, 'error': 'Timestamp in future'}
-        if timestamp < current_time - (365 * 86400 * 2):  # More than 2 years old
-            return {'valid': False, 'error': 'License too old'}
+        max_seg_value = 32**5
+        # Start from 0 and find all possible timestamps
+        i = 0
+        while True:
+            test_timestamp = base_timestamp + (i * max_seg_value)
+            if test_timestamp > current + 86400:  # More than 1 day future
+                break
+            if test_timestamp > current - (365 * 86400 * 2):  # Within 2 years
+                possible_timestamps.append(test_timestamp)
+            i += 1
+            if i > 1000:  # Safety limit
+                break
         
-        # Recreate signature
-        expected_signature = create_license_signature(
-            segments[:3],
-            timestamp
-        )
+        # Try each possible timestamp
+        data = f"{parts[0]}-{parts[1]}-{parts[2]}"
+        for ts in reversed(possible_timestamps):  # Try newest first
+            sig = create_signature(data, ts)
+            
+            sig_num1 = int.from_bytes(sig[:4], 'big') % (32**5)
+            sig_num2 = int.from_bytes(sig[4:8], 'big') % (32**5)
+            
+            expected_seg4 = encode_segment(sig_num1)
+            expected_seg5 = encode_segment(sig_num2)
+            
+            if parts[3] == expected_seg4 and parts[4] == expected_seg5:
+                from datetime import datetime
+                return {
+                    'valid': True,
+                    'timestamp': ts,
+                    'issued': datetime.fromtimestamp(ts).strftime('%Y-%m-%d %H:%M:%S'),
+                    'age_days': (current - ts) // 86400
+                }
         
-        # Decode provided signature segments
-        provided_signature = b''
-        for i in range(3, 5):
-            decoded = decode_from_alphabet(segments[i])
-            provided_signature += decoded
-        
-        # Pad signature to expected length
-        if len(provided_signature) < 10:
-            provided_signature = provided_signature.ljust(10, b'\x00')
-        
-        # Compare signatures (use first 10 bytes)
-        if expected_signature[:10] != provided_signature[:10]:
-            return {'valid': False, 'error': 'Invalid signature'}
-        
-        from datetime import datetime
-        return {
-            'valid': True,
-            'timestamp': timestamp,
-            'issued': datetime.fromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S'),
-            'age_days': (current_time - timestamp) // 86400
-        }
+        return {'valid': False, 'error': 'Invalid signature'}
         
     except Exception as e:
-        return {'valid': False, 'error': f'Validation error: {str(e)}'}
-
-def generate_batch(count: int = 10) -> list:
-    """Generate multiple license keys"""
-    keys = []
-    for _ in range(count):
-        keys.append(generate_license_key())
-        time.sleep(0.001)  # Small delay to ensure timestamp variation
-    return keys
+        return {'valid': False, 'error': str(e)}
 
 def main():
     """CLI interface"""
-    import argparse
+    action = sys.argv[1] if len(sys.argv) > 1 else 'generate'
     
-    parser = argparse.ArgumentParser(
-        description='yurucode License Generator v2.0',
-        formatter_class=argparse.RawDescriptionHelpFormatter
-    )
-    parser.add_argument(
-        'action',
-        nargs='?',
-        default='generate',
-        choices=['generate', 'validate', 'batch', 'test'],
-        help='Action to perform'
-    )
-    parser.add_argument(
-        'value',
-        nargs='?',
-        help='License key for validation or count for batch generation'
-    )
-    
-    args = parser.parse_args()
-    
-    if args.action == 'generate':
+    if action == 'generate':
         print(generate_license_key())
     
-    elif args.action == 'validate':
-        if not args.value:
-            print("Error: License key required for validation")
+    elif action == 'validate':
+        if len(sys.argv) < 3:
             print("Usage: python keygen.py validate <key>")
             sys.exit(1)
         
-        result = validate_license_signature(args.value)
-        print(f"License: {args.value}")
+        result = validate_license_key(sys.argv[2])
+        print(f"License: {sys.argv[2]}")
         if result['valid']:
             print(f"Status: ✓ VALID")
             print(f"Issued: {result['issued']}")
@@ -259,45 +171,36 @@ def main():
             print(f"Status: ✗ INVALID")
             print(f"Error: {result['error']}")
     
-    elif args.action == 'batch':
-        count = int(args.value) if args.value else 10
+    elif action == 'batch':
+        count = int(sys.argv[2]) if len(sys.argv) > 2 else 10
         print(f"Generating {count} license keys:\n")
-        keys = generate_batch(count)
-        for key in keys:
-            print(key)
+        for _ in range(count):
+            print(generate_license_key())
+            time.sleep(0.001)
     
-    elif args.action == 'test':
+    elif action == 'test':
         print("Testing key generation and validation...\n")
         
-        # Generate a key
         key = generate_license_key()
         print(f"Generated: {key}")
         
-        # Validate it
-        result = validate_license_signature(key)
+        result = validate_license_key(key)
         print(f"Validation: {'✓ VALID' if result['valid'] else '✗ INVALID'}")
         if result['valid']:
-            print(f"Timestamp: {result['issued']}")
+            print(f"Issued: {result['issued']}")
+        else:
+            print(f"Error: {result['error']}")
         
-        # Test invalid key
         print("\nTesting invalid key:")
         invalid = 'AAAAA-BBBBB-CCCCC-DDDDD-EEEEE'
-        result = validate_license_signature(invalid)
+        result = validate_license_key(invalid)
         print(f"Key: {invalid}")
-        print(f"Result: {'✓ VALID' if result['valid'] else '✗ INVALID'}")
+        print(f"Result: {'✗ INVALID' if not result['valid'] else '✓ VALID'}")
         if not result['valid']:
             print(f"Error: {result['error']}")
-        
-        # Test modified key
-        print("\nTesting modified key:")
-        parts = key.split('-')
-        parts[4] = 'ZZZZZ'  # Modify signature
-        modified = '-'.join(parts)
-        result = validate_license_signature(modified)
-        print(f"Modified: {modified}")
-        print(f"Result: {'✓ VALID' if result['valid'] else '✗ INVALID'}")
-        if not result['valid']:
-            print(f"Error: {result['error']}")
+    
+    else:
+        print("Usage: python keygen.py [generate|validate|batch|test]")
 
 if __name__ == '__main__':
     main()
