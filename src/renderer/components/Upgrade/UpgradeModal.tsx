@@ -48,8 +48,8 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
 
           <div className="upgrade-price">
             <p>upgrade to pro</p>
-            <div className="price">$9 USD</div>
-            <p className="price-subtitle">one time</p>
+            <div className="price">$9</div>
+            <p className="price-subtitle">USD, one time</p>
             <button className="upgrade-button">
               upgrade now
             </button>
@@ -60,7 +60,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
             <div className="license-input-row">
               <input 
                 type="text" 
-                placeholder="enter license key (XXXXX-XXXXX-XXXXX-XXXXX-XXXXX)"
+                placeholder="XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
                 className="license-input"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter') {
