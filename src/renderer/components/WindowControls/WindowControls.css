@@ -68,7 +68,7 @@
   align-items: center;
   justify-content: center;
   cursor: default;
-  margin-right: 3px;
+  margin-right: 1px;
 }
 
 /* Remove margin-right on macOS */
@@ -174,7 +174,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 3px;
+  margin-right: 1px;
 }
 
 .window-control.settings:hover, .window-control.help:hover, .window-control.projects:hover, .window-control.analytics:hover, .window-control.refresh:hover {

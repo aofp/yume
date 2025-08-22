@@ -1028,6 +1028,15 @@ export const ClaudeChat: React.FC = () => {
           inputRef.current.style.overflow = 'hidden';
         }
         
+        // Immediately set streaming state to show thinking indicator
+        useClaudeCodeStore.setState(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === currentSessionId 
+              ? { ...s, streaming: true, thinkingStartTime: Date.now() } 
+              : s
+          )
+        }))
+        
         // Add to message history
         if (messageToSend.trim() && currentSessionId) {
           setMessageHistory(prev => ({
