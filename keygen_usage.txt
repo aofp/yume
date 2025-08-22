@@ -1,0 +1,31 @@
+# YuruCode License Key Generator
+
+## Usage
+
+### Generate a single key:
+python3 keygen.py
+
+### Generate multiple keys:
+python3 keygen.py --batch 10
+
+### Validate a key (format check):
+python3 keygen.py --validate XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
+
+### Generate new keypair (WARNING - invalidates all existing keys):
+python3 keygen.py --new-keypair
+
+### Export public key for client:
+python3 keygen.py --export
+
+## Key Features
+- Ed25519 cryptographic signatures
+- Custom base32 alphabet (no confusing chars)
+- No expiry dates
+- One key works for all versions
+- Ultra-secure client-side validation
+- Cipher: 'yuru>code'
+
+## Sample Keys for Testing
+7T3ZY-857UN-VAGKS-G62AH-G7QKR
+H7A9Z-K4LR3-KHAWP-TRU3J-CPJGE
+XDKUR-VVKKB-E9M9T-SC33F-GZE6A
