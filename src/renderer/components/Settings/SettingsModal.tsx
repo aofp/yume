@@ -328,7 +328,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   ) : (
                     <label htmlFor="watermark-upload" className="watermark-upload-btn">
                       <IconPhoto size={14} />
-                      <span>upload image</span>
                     </label>
                   )}
                 </div>
