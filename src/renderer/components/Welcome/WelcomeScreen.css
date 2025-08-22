@@ -67,7 +67,7 @@
   width: 60px;
   height: 60px;
   border-radius: 8px;
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.20);
   border: none;
   color: var(--accent-color);
   display: flex;
@@ -79,7 +79,7 @@
 }
 
 .welcome-new-button:hover {
-  background: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.30);
   color: var(--accent-color);
 }
 
@@ -111,7 +111,7 @@
 }
 
 .action-button:hover:not(:disabled) {
-  background: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.30);
   color: var(--accent-color);
 }
 
@@ -274,7 +274,7 @@
 }
 
 .recent-item:hover {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), 0.05);
   color: var(--accent-color);
 }
 

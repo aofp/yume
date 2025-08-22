@@ -593,11 +593,11 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     
     // Show confirmation dialog BEFORE closing context menu
     const confirmMessage = contextType === 'project' 
-      ? `Delete all sessions in project "${projectName}"? This cannot be undone.`
-      : `Delete this session? This cannot be undone.`;
+      ? `delete all sessions in project "${projectName}"? this cannot be undone.`
+      : `delete this session? this cannot be undone.`;
     
     console.log('[DELETE] Showing confirmation dialog:', confirmMessage);
-    const userConfirmed = window.confirm(confirmMessage);
+    const userConfirmed = await window.confirm(confirmMessage);
     console.log('[DELETE] User confirmed:', userConfirmed);
     
     // Close context menu after confirmation

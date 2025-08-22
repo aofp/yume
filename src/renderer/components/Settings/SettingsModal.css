@@ -265,6 +265,8 @@
   transform: translate(-50%, -50%);
   z-index: 20000;
   animation: fadeInScale 0.2s ease;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Color Picker Dropdown */
@@ -400,7 +402,8 @@
 .watermark-controls {
   display: flex;
   align-items: center;
-  gap: 12px;
+  justify-content: flex-end;
+  gap: 8px;
   margin-top: 6px;
 }
 
@@ -459,6 +462,38 @@
   background: rgba(var(--accent-rgb), 0.2);
   border-color: rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);
+}
+
+/* Upgrade banner at bottom */
+.upgrade-banner-bottom {
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  justify-content: center;
+}
+
+.upgrade-btn-small {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 12px;
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border-radius: 4px;
+  color: var(--accent-color);
+  font-size: 10px;
+  cursor: default;
+  transition: all 0.2s;
+  text-transform: lowercase;
+}
+
+.upgrade-btn-small:hover {
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.4);
+}
+
+.upgrade-btn-small span {
+  font-weight: 500;
 }
 
 /* License section */

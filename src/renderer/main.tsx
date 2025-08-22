@@ -8,6 +8,7 @@ import './App.minimal.css';
 // Initialize platform bridge for Tauri/Electron compatibility
 import './services/platformBridge';
 import { claudeCodeClient } from './services/claudeCodeClient';
+import './services/modalService';
 
 console.log('main.tsx loading...');
 

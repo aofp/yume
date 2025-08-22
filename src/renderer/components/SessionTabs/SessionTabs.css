@@ -158,11 +158,11 @@ body.tab-dragging .session-tab {
 }
 
 .session-tab:hover {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), 0.05);
 }
 
 .session-tab.active {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.20);
 }
 
 .session-tab.dragging {
@@ -324,7 +324,7 @@ body.tab-dragging * {
 }
 
 .tab-new {
-  background: rgba(var(--accent-rgb), 0.25);
+  background: rgba(var(--accent-rgb), 0.20);
   border: none;
   color: var(--accent-color);
   cursor: default;
@@ -362,7 +362,7 @@ body.tab-dragging * {
 
 
 .tab-new:hover {
-  background: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.30);
   color: var(--accent-color);
 }
 
@@ -410,7 +410,7 @@ body.tab-dragging * {
 
 
 .tab-recent:hover {
-  background: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.30);
   color: var(--accent-color);
 }
 

@@ -5,8 +5,8 @@
   --accent-rgb: 255, 153, 153;
   
   /* Positive/Negative Colors - can be changed via settings */
-  --positive-color: #99ffff;  /* default cyan for additions/success */
-  --positive-rgb: 153, 255, 255;
+  --positive-color: #99eeff;  /* default cyan for additions/success */
+  --positive-rgb: 153, 238, 255;
   --negative-color: #ff99ff;  /* default magenta for removals/changes */
   --negative-rgb: 255, 153, 255;
   

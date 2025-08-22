@@ -95,8 +95,8 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     }
   };
 
-  const clearAllProjects = () => {
-    if (confirm('clear all recent projects?')) {
+  const clearAllProjects = async () => {
+    if (await confirm('clear all recent projects?')) {
       localStorage.removeItem('yurucode-recent-projects');
       onClose();
     }

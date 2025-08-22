@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette, IconPhoto, IconTrash, IconRotateClockwise } from '@tabler/icons-react';
+import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette, IconPhoto, IconTrash, IconRotateClockwise, IconCrown } from '@tabler/icons-react';
 import './SettingsModal.css';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { useLicenseStore } from '../../services/licenseManager';
 
 // Access the electron API exposed by preload script
 declare global {
@@ -52,9 +53,10 @@ const COLOR_ROWS = [
 const ALL_COLORS = COLOR_ROWS.flat();
 
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
+  const { isLicensed } = useLicenseStore();
   const [zoomLevel, setZoomLevel] = useState(0);
-  const [accentColor, setAccentColor] = useState('#dddddd');
-  const [positiveColor, setPositiveColor] = useState('#99ffff'); // default cyan
+  const [accentColor, setAccentColor] = useState('#99bbff');
+  const [positiveColor, setPositiveColor] = useState('#99eeff'); // default cyan
   const [negativeColor, setNegativeColor] = useState('#ff99ff'); // default magenta
   const [showColorPicker, setShowColorPicker] = useState<'accent' | 'positive' | 'negative' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -87,7 +89,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     getZoom();
 
     // Get saved colors and apply them
-    const savedAccentColor = localStorage.getItem('accentColor') || '#dddddd';
+    const savedAccentColor = localStorage.getItem('accentColor') || '#99bbff';
     setAccentColor(savedAccentColor);
     // Apply accent color
     document.documentElement.style.setProperty('--accent-color', savedAccentColor);
@@ -97,7 +99,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     const accentB = parseInt(accentHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${accentR}, ${accentG}, ${accentB}`);
     
-    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99ffff';
+    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99eeff';
     setPositiveColor(savedPositiveColor);
     // Apply positive color
     document.documentElement.style.setProperty('--positive-color', savedPositiveColor);
@@ -293,20 +295,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <span className="color-label">accent</span>
                   <div className="color-controls">
                     <button
+                      className="color-reset"
+                      onClick={() => handleColorSelect('#99bbff', 'accent')}
+                      title="reset to default blue"
+                      disabled={accentColor === '#99bbff'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                    <button
                       className="color-preview compact"
                       onClick={() => setShowColorPicker(showColorPicker === 'accent' ? null : 'accent')}
                       title="click to select accent color"
                     >
                       <span className="color-square" style={{ backgroundColor: accentColor }} />
                       <span className="color-value">{accentColor}</span>
-                    </button>
-                    <button
-                      className="color-reset"
-                      onClick={() => handleColorSelect('#dddddd', 'accent')}
-                      title="reset to default grey"
-                      disabled={accentColor === '#dddddd'}
-                    >
-                      <IconRotateClockwise size={12} />
                     </button>
                   </div>
                 </div>
@@ -315,20 +317,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <span className="color-label">positive</span>
                   <div className="color-controls">
                     <button
+                      className="color-reset"
+                      onClick={() => handleColorSelect('#99eeff', 'positive')}
+                      title="reset to default cyan"
+                      disabled={positiveColor === '#99eeff'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                    <button
                       className="color-preview compact"
                       onClick={() => setShowColorPicker(showColorPicker === 'positive' ? null : 'positive')}
                       title="click to select positive color"
                     >
                       <span className="color-square" style={{ backgroundColor: positiveColor }} />
                       <span className="color-value">{positiveColor}</span>
-                    </button>
-                    <button
-                      className="color-reset"
-                      onClick={() => handleColorSelect('#99ffff', 'positive')}
-                      title="reset to default cyan"
-                      disabled={positiveColor === '#99ffff'}
-                    >
-                      <IconRotateClockwise size={12} />
                     </button>
                   </div>
                 </div>
@@ -337,14 +339,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <span className="color-label">negative</span>
                   <div className="color-controls">
                     <button
-                      className="color-preview compact"
-                      onClick={() => setShowColorPicker(showColorPicker === 'negative' ? null : 'negative')}
-                      title="click to select negative color"
-                    >
-                      <span className="color-square" style={{ backgroundColor: negativeColor }} />
-                      <span className="color-value">{negativeColor}</span>
-                    </button>
-                    <button
                       className="color-reset"
                       onClick={() => handleColorSelect('#ff99ff', 'negative')}
                       title="reset to default magenta"
@@ -352,46 +346,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     >
                       <IconRotateClockwise size={12} />
                     </button>
+                    <button
+                      className="color-preview compact"
+                      onClick={() => setShowColorPicker(showColorPicker === 'negative' ? null : 'negative')}
+                      title="click to select negative color"
+                    >
+                      <span className="color-square" style={{ backgroundColor: negativeColor }} />
+                      <span className="color-value">{negativeColor}</span>
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
 
             <div className="settings-row">
-              <div className="settings-section half-width">
-                <h4>watermark</h4>
-                <div className="watermark-controls">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    onChange={handleWatermarkUpload}
-                    style={{ display: 'none' }}
-                    id="watermark-upload"
-                  />
-                  {globalWatermarkImage ? (
-                    <div className="watermark-preview">
-                      <img
-                        src={globalWatermarkImage}
-                        alt="watermark preview"
-                        className="watermark-thumb"
-                      />
-                      <button
-                        className="watermark-remove"
-                        onClick={handleRemoveWatermark}
-                        title="remove watermark"
-                      >
-                        <IconTrash size={14} />
-                      </button>
-                    </div>
-                  ) : (
-                    <label htmlFor="watermark-upload" className="watermark-upload-btn">
-                      <IconPhoto size={14} />
-                    </label>
-                  )}
-                </div>
-              </div>
-
               <div className="settings-section half-width">
                 <h4>zoom</h4>
                 <div className="zoom-controls compact">
@@ -412,9 +380,69 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   </button>
                 </div>
               </div>
+
+              <div className="settings-section half-width">
+                <h4 style={{ textAlign: 'right' }}>watermark</h4>
+                <div className="watermark-controls">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleWatermarkUpload}
+                    style={{ display: 'none' }}
+                    id="watermark-upload"
+                  />
+                  {globalWatermarkImage ? (
+                    <>
+                      <button
+                        className="watermark-remove"
+                        onClick={handleRemoveWatermark}
+                        title="remove watermark"
+                      >
+                        <IconTrash size={14} />
+                      </button>
+                      <img
+                        src={globalWatermarkImage}
+                        alt="watermark preview"
+                        className="watermark-thumb"
+                      />
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        className="watermark-remove"
+                        onClick={handleRemoveWatermark}
+                        title="remove watermark"
+                        style={{ visibility: 'hidden' }}
+                      >
+                        <IconTrash size={14} />
+                      </button>
+                      <label htmlFor="watermark-upload" className="watermark-upload-btn">
+                        <IconPhoto size={14} />
+                      </label>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
 
           </div>
+          
+          {!isLicensed && (
+            <div className="upgrade-banner-bottom">
+              <button
+                className="upgrade-btn-small"
+                onClick={() => {
+                  onClose();
+                  window.dispatchEvent(new CustomEvent('showUpgradeModal', { detail: { reason: 'feature' } }));
+                }}
+                title="upgrade to pro"
+              >
+                <IconCrown size={10} />
+                <span>upgrade to pro</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
 

@@ -1769,7 +1769,7 @@ textarea.context-full {
 }
 
 .recent-item:hover {
-  background: rgba(var(--accent-rgb), 0.2);
+  background: rgba(var(--accent-rgb), 0.15);
 }
 
 .recent-item:hover .recent-item-name {
