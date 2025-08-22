@@ -463,8 +463,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         };
         
         // Create or resume session using Claude Code Client
-        // Get the claudeSessionId from existing session if reconnecting
-        const claudeSessionIdToResume = existingSession?.claudeSessionId;
+        // Only pass claudeSessionId if we're reconnecting an existing session (not creating new)
+        const claudeSessionIdToResume = existingSessionId ? existingSession?.claudeSessionId : undefined;
         
         const result = await claudeCodeClient.createSession(sessionName, workingDirectory, {
           allowedTools: [
@@ -478,8 +478,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           maxTurns: 30,
           model: modelMap[selectedModel] || 'claude-opus-4-1-20250805',
           sessionId: existingSessionId || tempSessionId, // Pass the sessionId for consistency
-          claudeSessionId: claudeSessionIdToResume, // Pass claudeSessionId if resuming
-          messages: existingSession?.messages || [] // Pass existing messages if resuming
+          claudeSessionId: claudeSessionIdToResume, // Pass claudeSessionId only if resuming existing session
+          messages: existingSessionId ? (existingSession?.messages || []) : [] // Pass messages only if resuming
         });
         
         const sessionId = result.sessionId || tempSessionId;

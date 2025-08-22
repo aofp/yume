@@ -5,11 +5,10 @@ import { DiffViewer, DiffDisplay, DiffLine } from './DiffViewer';
 import { 
   IconBolt,
   IconMessageCircle,
-  IconFolder, 
+  IconChartBubble, 
   IconAlertTriangle, 
   IconCheck, 
   IconX, 
-  IconBubbleText,
   IconDots,
   IconMinus,
   IconChecklist,
@@ -695,7 +694,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
-                <IconBubbleText size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
+                <IconChartBubble size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
                 <span className="thinking-stats">
                   {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
                 </span>
