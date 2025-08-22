@@ -48,7 +48,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
 
           <div className="upgrade-price">
             <p>upgrade to pro</p>
-            <div className="price">$9</div>
+            <div className="price">$9 USD</div>
             <p className="price-subtitle">one time</p>
             <button className="upgrade-button">
               upgrade now
