@@ -60,6 +60,10 @@
   z-index: 1;
 }
 
+.analytics-back-button svg {
+  color: inherit;
+}
+
 .analytics-back-button:hover {
   color: var(--accent-color);
 }
@@ -321,8 +325,6 @@
 
 .analytics-project-item.clickable:hover {
   background: #141414;
-  border-left: 2px solid var(--accent-color);
-  padding-left: 8px;
 }
 
 .analytics-project-info {

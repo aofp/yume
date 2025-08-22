@@ -72,7 +72,7 @@
 .settings-row {
   display: flex;
   gap: 8px;
-  margin-bottom: 12px;
+  margin-bottom: 0;
 }
 
 .settings-row .half-width {
@@ -98,6 +98,10 @@
   gap: 12px;
 }
 
+.zoom-controls.compact {
+  gap: 6px;
+}
+
 .zoom-btn {
   width: 32px;
   height: 32px;
@@ -110,6 +114,12 @@
   justify-content: center;
   cursor: default;
   transition: all 0.2s ease;
+}
+
+.zoom-btn.small {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
 }
 
 .zoom-btn:hover:not(:disabled) {
@@ -132,6 +142,11 @@
   color: rgba(255, 255, 255, 0.6);
   user-select: none;
   -webkit-user-select: none;
+}
+
+.zoom-level.compact {
+  min-width: 50px;
+  font-size: 11px;
 }
 
 /* Color Settings Grid */

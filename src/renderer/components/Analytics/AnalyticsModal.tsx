@@ -141,14 +141,18 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
         totalMessages: projectData.messages,
         totalTokens: projectData.tokens,
         totalCost: projectData.cost,
-        byModel: analytics.byModel, // Keep full model data for now
+        byModel: {
+          // We don't have per-project model breakdown, so zero it out for project view
+          opus: { sessions: 0, tokens: 0, cost: 0 },
+          sonnet: { sessions: 0, tokens: 0, cost: 0 }
+        },
         byDate: {}, // Would need session-level data to filter by project
         byProject: { [selectedProject]: projectData }
       };
     }
     
-    // Apply time range filter
-    if (timeRange !== 'all') {
+    // Apply time range filter (skip for project view since we don't have date-level project data)
+    if (timeRange !== 'all' && viewMode !== 'project') {
       const now = Date.now();
       const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
       const fourteenDaysAgo = now - (14 * 24 * 60 * 60 * 1000);
@@ -266,34 +270,36 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
           </button>
         </div>
 
-        <div className="analytics-controls">
-          <div className="time-range-selector">
-            <button 
-              className={timeRange === '7d' ? 'active' : ''} 
-              onClick={() => setTimeRange('7d')}
-            >
-              7 days
-            </button>
-            <button 
-              className={timeRange === '14d' ? 'active' : ''} 
-              onClick={() => setTimeRange('14d')}
-            >
-              14 days
-            </button>
-            <button 
-              className={timeRange === '30d' ? 'active' : ''} 
-              onClick={() => setTimeRange('30d')}
-            >
-              30 days
-            </button>
-            <button 
-              className={timeRange === 'all' ? 'active' : ''} 
-              onClick={() => setTimeRange('all')}
-            >
-              all time
-            </button>
+        {viewMode === 'all' && (
+          <div className="analytics-controls">
+            <div className="time-range-selector">
+              <button 
+                className={timeRange === '7d' ? 'active' : ''} 
+                onClick={() => setTimeRange('7d')}
+              >
+                7 days
+              </button>
+              <button 
+                className={timeRange === '14d' ? 'active' : ''} 
+                onClick={() => setTimeRange('14d')}
+              >
+                14 days
+              </button>
+              <button 
+                className={timeRange === '30d' ? 'active' : ''} 
+                onClick={() => setTimeRange('30d')}
+              >
+                30 days
+              </button>
+              <button 
+                className={timeRange === 'all' ? 'active' : ''} 
+                onClick={() => setTimeRange('all')}
+              >
+                all time
+              </button>
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="analytics-content">
           {loading && (
@@ -342,9 +348,10 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                 </div>
               </div>
 
-              {/* Model Breakdown */}
-              <div className="analytics-section">
-                <h3>model usage</h3>
+              {/* Model Breakdown - only show in all view */}
+              {viewMode === 'all' && (
+                <div className="analytics-section">
+                  <h3>model usage</h3>
                 <div className="model-breakdown">
                   <div className="model-stat opus">
                     <div className="model-name">opus</div>
@@ -380,10 +387,12 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                   </div>
                 </div>
               </div>
+              )}
 
-              {/* Daily Usage Chart */}
-              <div className="analytics-section">
-                <h3>daily usage</h3>
+              {/* Daily Usage Chart - only show in all view */}
+              {viewMode === 'all' && (
+                <div className="analytics-section">
+                  <h3>daily usage</h3>
                 <div className="usage-chart">
                   {recentDates.length > 0 ? (
                     recentDates.map(([date, data], index) => (
@@ -421,6 +430,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                   )}
                 </div>
               </div>
+              )}
 
               {/* Top Projects - only show in all view */}
               {viewMode === 'all' && (

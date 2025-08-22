@@ -287,27 +287,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
           <div className="settings-content">
             <div className="settings-section">
-              <h4>zoom</h4>
-              <div className="zoom-controls">
-                <button className="zoom-btn" onClick={handleZoomOut}>
-                  <IconMinus size={14} />
-                </button>
-                <span className="zoom-level">{getZoomPercentage()}%</span>
-                <button className="zoom-btn" onClick={handleZoomIn}>
-                  <IconPlus size={14} />
-                </button>
-                <button
-                  className="zoom-btn"
-                  onClick={handleZoomReset}
-                  disabled={zoomLevel === 0}
-                  title={zoomLevel === 0 ? "already at 100%" : "reset zoom to 100%"}
-                >
-                  <IconRefresh size={14} />
-                </button>
-              </div>
-            </div>
-
-            <div className="settings-section">
               <h4>colors</h4>
               <div className="color-settings-grid">
                 <div className="color-setting">
@@ -378,37 +357,60 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="settings-section">
-              <h4>watermark</h4>
-              <div className="watermark-controls">
-                <input
-                  ref={fileInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleWatermarkUpload}
-                  style={{ display: 'none' }}
-                  id="watermark-upload"
-                />
-                {globalWatermarkImage ? (
-                  <div className="watermark-preview">
-                    <img
-                      src={globalWatermarkImage}
-                      alt="watermark preview"
-                      className="watermark-thumb"
-                    />
-                    <button
-                      className="watermark-remove"
-                      onClick={handleRemoveWatermark}
-                      title="remove watermark"
-                    >
-                      <IconTrash size={14} />
-                    </button>
-                  </div>
-                ) : (
-                  <label htmlFor="watermark-upload" className="watermark-upload-btn">
-                    <IconPhoto size={14} />
-                  </label>
-                )}
+            <div className="settings-row">
+              <div className="settings-section half-width">
+                <h4>watermark</h4>
+                <div className="watermark-controls">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handleWatermarkUpload}
+                    style={{ display: 'none' }}
+                    id="watermark-upload"
+                  />
+                  {globalWatermarkImage ? (
+                    <div className="watermark-preview">
+                      <img
+                        src={globalWatermarkImage}
+                        alt="watermark preview"
+                        className="watermark-thumb"
+                      />
+                      <button
+                        className="watermark-remove"
+                        onClick={handleRemoveWatermark}
+                        title="remove watermark"
+                      >
+                        <IconTrash size={14} />
+                      </button>
+                    </div>
+                  ) : (
+                    <label htmlFor="watermark-upload" className="watermark-upload-btn">
+                      <IconPhoto size={14} />
+                    </label>
+                  )}
+                </div>
+              </div>
+
+              <div className="settings-section half-width">
+                <h4>zoom</h4>
+                <div className="zoom-controls compact">
+                  <button className="zoom-btn small" onClick={handleZoomOut}>
+                    <IconMinus size={12} />
+                  </button>
+                  <span className="zoom-level compact">{getZoomPercentage()}%</span>
+                  <button className="zoom-btn small" onClick={handleZoomIn}>
+                    <IconPlus size={12} />
+                  </button>
+                  <button
+                    className="zoom-btn small"
+                    onClick={handleZoomReset}
+                    disabled={zoomLevel === 0}
+                    title={zoomLevel === 0 ? "already at 100%" : "reset zoom to 100%"}
+                  >
+                    <IconRefresh size={12} />
+                  </button>
+                </div>
               </div>
             </div>
 
