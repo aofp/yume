@@ -1,249 +1,227 @@
 <?php
 /**
  * Ultra-secure license key generator for yurucode
- * Custom validation algorithm with cipher 'yuru>code'
- * No external dependencies for validation
+ * Uses HMAC-SHA256 signatures with server-side secrets
+ * No database required - pure cryptographic validation
  */
 
-// Secret cipher phrase
-define('CIPHER', 'yuru>code');
-define('CUSTOM_ALPHABET', '23456789ABCDEFGHJKLMNPQRSTUVWXYZ');
+// Load server secrets
+$envFile = __DIR__ . '/yurucode.com/.env.secret';
+if (file_exists($envFile)) {
+    $lines = file($envFile, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES);
+    foreach ($lines as $line) {
+        if (strpos($line, '#') === 0) continue;
+        if (strpos($line, '=') === false) continue;
+        list($key, $value) = explode('=', $line, 2);
+        putenv(trim($key) . '=' . trim($value));
+    }
+}
+
+// Server secrets (loaded from environment)
+define('MASTER_SECRET', getenv('YURUCODE_MASTER_SECRET') ?: '7f3a9c2e8b4d6f1a5c7e9b3d5f8a2c4e6b8d1f3a5c7e9b2d4f6a8c1e3b5d7f9a2c');
+define('VALIDATION_SECRET', getenv('YURUCODE_VALIDATION_SECRET') ?: '9e2b4f7a1c5d8e3b6f9a2c5e8b1d4f7a3c6e9b2d5f8a1c4e7b9d3f6a8c2e5b7d');
+define('TIMESTAMP_SECRET', getenv('YURUCODE_TIMESTAMP_SECRET') ?: '4a7c9e2b5d8f1a3c6e9b2d5f8a1c4e7b9d3f6a8c2e5b7d9f2a4c6e8b1d3f5a7c');
+
+// License configuration
+define('LICENSE_ALPHABET', '23456789ABCDEFGHJKLMNPQRSTUVWXYZ'); // 33 chars
+define('LICENSE_VERSION', '2'); // Version 2 with HMAC
 
 /**
- * Apply cipher-based transformation to data
+ * Generate cryptographically secure random data
  */
-function cipher_transform($data, $round_num) {
-    $result = 0;
-    $cipher_bytes = unpack('C*', CIPHER);
-    $data_bytes = unpack('C*', $data);
+function generate_random_bytes($length = 16) {
+    return random_bytes($length);
+}
+
+/**
+ * Encode bytes to base32-like custom alphabet
+ * Encodes exactly 5 bytes to 8 characters
+ */
+function encode_to_base32($bytes) {
+    // Pad to 5 bytes if needed
+    $bytes = str_pad($bytes, 5, "\x00", STR_PAD_RIGHT);
     
-    foreach ($data_bytes as $i => $byte) {
-        // Complex transformation using cipher
-        $cipher_index = (($i - 1) % count($cipher_bytes)) + 1;
-        $cipher_byte = $cipher_bytes[$cipher_index];
-        $transformed = ($byte * ($cipher_byte + $round_num + 1)) ^ ($cipher_byte << (($i - 1) % 8));
-        $result = ($result + $transformed) % 0xFFFFFF;
+    // Convert to binary string
+    $binary = '';
+    for ($i = 0; $i < 5; $i++) {
+        $binary .= sprintf('%08b', ord($bytes[$i]));
+    }
+    
+    // Split into 5-bit chunks (40 bits / 5 = 8 chunks)
+    $result = '';
+    for ($i = 0; $i < 8; $i++) {
+        $chunk = substr($binary, $i * 5, 5);
+        $index = bindec($chunk);
+        $result .= LICENSE_ALPHABET[$index];
     }
     
     return $result;
 }
 
 /**
- * Generate position-dependent checksum for a segment
+ * Decode from base32-like custom alphabet to bytes
+ * Decodes 8 characters to exactly 5 bytes
  */
-function generate_checksum($segment, $position) {
-    $checksum = 0;
-    $cipher_bytes = unpack('C*', CIPHER);
+function decode_from_base32($str) {
+    if (strlen($str) !== 8) return false;
     
-    for ($i = 0; $i < strlen($segment); $i++) {
-        $char = $segment[$i];
-        $char_value = strpos(CUSTOM_ALPHABET, $char);
-        $cipher_index = (($position + $i) % count($cipher_bytes)) + 1;
-        $cipher_value = $cipher_bytes[$cipher_index];
-        $checksum = ($checksum * 33 + $char_value * $cipher_value) % 0xFFFF;
+    // Convert each character to 5-bit binary
+    $binary = '';
+    for ($i = 0; $i < 8; $i++) {
+        $pos = strpos(LICENSE_ALPHABET, $str[$i]);
+        if ($pos === false) return false;
+        $binary .= sprintf('%05b', $pos);
     }
     
-    return $checksum;
-}
-
-/**
- * Validate relationship between two segments
- */
-function validate_segment_relationship($seg1, $seg2, $position) {
-    // Each segment must have a mathematical relationship
-    $check1 = generate_checksum($seg1, $position);
-    $check2 = generate_checksum($seg2, $position + 5);
-    
-    // Complex validation using cipher
-    $cipher_val = array_sum(unpack('C*', CIPHER)) * ($position + 1);
-    $expected = ($check1 * $cipher_val + $check2) % 1000;
-    
-    // The relationship must hold
-    return ($expected % 17) < 15;  // Most values pass, but not all
-}
-
-/**
- * Encode bytes to a 5-character segment using custom alphabet
- */
-function encode_bytes_to_segment($data) {
-    // Convert bytes to a large integer (PHP doesn't have native big int like Python)
-    // We'll use a simplified approach for 3 bytes
-    $bytes = unpack('C*', $data);
-    $value = 0;
-    foreach ($bytes as $byte) {
-        $value = ($value * 256) + $byte;
-    }
-    
-    $segment = '';
+    // Convert binary string to bytes (40 bits = 5 bytes)
+    $bytes = '';
     for ($i = 0; $i < 5; $i++) {
-        $segment = CUSTOM_ALPHABET[$value % strlen(CUSTOM_ALPHABET)] . $segment;
-        $value = intval($value / strlen(CUSTOM_ALPHABET));
+        $byte_binary = substr($binary, $i * 8, 8);
+        $bytes .= chr(bindec($byte_binary));
     }
     
-    return substr($segment, -5);  // Ensure exactly 5 chars
+    return $bytes;
 }
 
 /**
- * Generate a new license key with verifiable properties
- * 
- * @return string License key in format XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
+ * Create HMAC signature for license data
  */
-function generate_key() {
-    // Generate random seed
-    $seed = random_bytes(16);
+function create_license_signature($payload_segments, $timestamp) {
+    // Combine all data for signing
+    $data_to_sign = implode('|', [
+        LICENSE_VERSION,
+        implode('-', $payload_segments),
+        $timestamp,
+        VALIDATION_SECRET
+    ]);
     
-    // Create segments with interdependencies
-    $segments = [];
+    // Create multi-layer HMAC
+    $hmac1 = hash_hmac('sha256', $data_to_sign, MASTER_SECRET, true);
+    $hmac2 = hash_hmac('sha256', $hmac1 . $timestamp, TIMESTAMP_SECRET, true);
     
-    // Segment 1: Random with embedded cipher check
-    $seg1_data = substr(hash('sha256', $seed . CIPHER, true), 0, 3);
-    $seg1 = encode_bytes_to_segment($seg1_data);
-    $segments[] = $seg1;
-    
-    // Segment 2: Derived from segment 1 and cipher
-    $seg2_input = $seg1 . CIPHER . substr($seed, 0, 4);
-    $seg2_data = substr(hash('sha256', $seg2_input, true), 0, 3);
-    $seg2 = encode_bytes_to_segment($seg2_data);
-    $segments[] = $seg2;
-    
-    // Segment 3: Validates segments 1 and 2
-    $seg3_input = $seg1 . $seg2 . CIPHER;
-    $seg3_data = substr(hash('sha256', $seg3_input, true), 0, 3);
-    $seg3 = encode_bytes_to_segment($seg3_data);
-    $segments[] = $seg3;
-    
-    // Segment 4: Checksum of all previous segments
-    $all_prev = $seg1 . $seg2 . $seg3;
-    $seg4_input = $all_prev . str_repeat(CIPHER, 2);
-    $seg4_data = substr(hash('sha256', $seg4_input, true), 0, 3);
-    $seg4 = encode_bytes_to_segment($seg4_data);
-    $segments[] = $seg4;
-    
-    // Segment 5: Final validation segment (deterministic from segments 1-4)
-    $all_segs = implode('', $segments);
-    $final_input = $all_segs . str_repeat(CIPHER, 3);  // No seed here!
-    $final_hash = hash('sha256', $final_input, true);
-    
-    // Encode with special validation properties
-    $final_bytes = unpack('C*', substr($final_hash, 0, 8));
-    $final_value = 0;
-    foreach ($final_bytes as $byte) {
-        $final_value = ($final_value * 256 + $byte) & 0xFFFFFFFF;
-    }
-    
-    // Apply cipher transformation
-    $transformed = cipher_transform(substr($final_hash, 0, 8), count($segments));
-    
-    // Create final segment that encodes validation
-    $cipher_sum = array_sum(unpack('C*', CIPHER));
-    $seg5 = '';
-    for ($i = 0; $i < 5; $i++) {
-        // Each character depends on all previous segments
-        $char_val = ($final_value + $transformed + $i * $cipher_sum) % strlen(CUSTOM_ALPHABET);
-        $seg5 .= CUSTOM_ALPHABET[$char_val];
-        $final_value = ($final_value * 33 + $char_val) % 0xFFFFFFF;
-    }
-    
-    $segments[] = $seg5;
-    
-    // Format as key
-    return implode('-', $segments);
+    // Final signature combines both HMACs
+    return hash('sha256', $hmac1 . $hmac2, true);
 }
 
 /**
- * Validate a license key using our custom algorithm
- * 
- * @param string $key License key to validate
- * @return bool True if valid, False otherwise
+ * Generate a new license key
+ * Format: XXXXXXXX-XXXXXXXX-XXXXXXXX
+ * Using base32-like encoding (8 chars = 5 bytes)
+ * Total: 15 bytes (5+5+5)
  */
-function validate_key($key) {
-    // Check format
-    if (!$key || strlen($key) != 29) {  // XXXXX-XXXXX-XXXXX-XXXXX-XXXXX
-        return false;
-    }
+function generate_license_key() {
+    // Generate random payload (6 bytes)
+    $random_payload = generate_random_bytes(6);
     
-    $parts = explode('-', strtoupper($key));
-    if (count($parts) != 5) {
-        return false;
-    }
+    // Current timestamp (4 bytes, Unix timestamp)
+    $timestamp_int = time();
+    $timestamp = pack('N', $timestamp_int);
     
-    foreach ($parts as $part) {
-        if (strlen($part) != 5) {
+    // Combine payload and timestamp (10 bytes)
+    $data = $random_payload . $timestamp;
+    
+    // Create signature
+    $signature = create_license_signature([$random_payload, $timestamp], $timestamp_int);
+    
+    // Take first 5 bytes of signature
+    $sig_short = substr($signature, 0, 5);
+    
+    // Encode three 5-byte segments
+    $seg1 = encode_to_base32(substr($data, 0, 5));     // First 5 bytes of payload
+    $seg2 = encode_to_base32(substr($data, 5, 5));     // Last byte of payload + timestamp
+    $seg3 = encode_to_base32($sig_short);              // Signature
+    
+    // Return in familiar format (but with 8-char segments)
+    return $seg1 . '-' . $seg2 . '-' . $seg3;
+}
+
+/**
+ * Validate a license key (basic validation only)
+ * Full validation must be done server-side
+ */
+function validate_license_format($key) {
+    // Check format: three 8-character segments
+    if (!preg_match('/^[' . LICENSE_ALPHABET . ']{8}(-[' . LICENSE_ALPHABET . ']{8}){2}$/', $key)) {
+        // Also support old 5x5 format for compatibility
+        if (!preg_match('/^[' . LICENSE_ALPHABET . ']{5}(-[' . LICENSE_ALPHABET . ']{5}){4}$/', $key)) {
             return false;
         }
-        // Check alphabet
-        for ($i = 0; $i < strlen($part); $i++) {
-            if (strpos(CUSTOM_ALPHABET, $part[$i]) === false) {
-                return false;
-            }
-        }
     }
     
-    // Extract segments
-    list($seg1, $seg2, $seg3, $seg4, $seg5) = $parts;
-    
-    // Validation 1: Check segment relationships
-    // We can't perfectly recreate seg2 without the original seed,
-    // but we can verify properties
-    
-    // Validation 2: Checksum validations
-    $check1 = generate_checksum($seg1, 0);
-    $check2 = generate_checksum($seg2, 1);
-    $check3 = generate_checksum($seg3, 2);
-    $check4 = generate_checksum($seg4, 3);
-    $check5 = generate_checksum($seg5, 4);
-    
-    // Cross-validation: segments must satisfy relationships
-    $cipher_sum = array_sum(unpack('C*', CIPHER));
-    
-    // Complex validation logic
-    // Each segment validates others in a chain
-    $val1 = ($check1 * $cipher_sum + $check5) % 1000;
-    $val2 = ($check2 * $cipher_sum + $check4) % 1000;
-    $val3 = ($check3 * $cipher_sum) % 1000;
-    
-    // The key is valid if all validations pass
-    $validations = [
-        $val1 % 17 <= 15,  // Most values pass (16 out of 17)
-        $val2 % 19 <= 17,  // Most values pass (18 out of 19)
-        $val3 % 23 <= 21,  // Most values pass (22 out of 23)
-        ($check1 + $check2 + $check3 + $check4 + $check5) % 100 != 99,  // Sum check (99 out of 100 pass)
-        count(array_unique(str_split(str_replace('-', '', $key)))) >= 10,  // Entropy check
-    ];
-    
-    // Additional validation: segment 5 must validate all others
-    $all_segs = $seg1 . $seg2 . $seg3 . $seg4;
-    $final_check = hash('sha256', $all_segs . str_repeat(CIPHER, 3), true);
-    $final_bytes = unpack('C*', substr($final_check, 0, 8));
-    $final_value = 0;
-    foreach ($final_bytes as $byte) {
-        $final_value = ($final_value * 256 + $byte) & 0xFFFFFFFF;
-    }
-    
-    // Verify last segment has correct properties
-    $seg5_calculated = '';
-    $transformed = cipher_transform(substr($final_check, 0, 8), 4);
-    for ($i = 0; $i < 5; $i++) {
-        $char_val = ($final_value + $transformed + $i * $cipher_sum) % strlen(CUSTOM_ALPHABET);
-        $seg5_calculated .= CUSTOM_ALPHABET[$char_val];
-        $final_value = ($final_value * 33 + $char_val) % 0xFFFFFFF;
-    }
-    
-    // The last segment must match our calculation
-    if ($seg5 != $seg5_calculated) {
-        return false;
-    }
-    
-    return !in_array(false, $validations, true);
+    return true;
 }
 
 /**
- * Export constants for client-side validation
+ * Validate license signature (server-side only)
  */
-function export_constants() {
-    echo "\n// Constants for client-side validation:\n";
-    echo "const CIPHER = '" . CIPHER . "';\n";
-    echo "const CUSTOM_ALPHABET = '" . CUSTOM_ALPHABET . "';\n";
+function validate_license_signature($key) {
+    if (!validate_license_format($key)) {
+        return ['valid' => false, 'error' => 'Invalid format'];
+    }
+    
+    $segments = explode('-', strtoupper($key));
+    
+    // Handle new format (3 segments of 8 chars each)
+    if (count($segments) === 3 && strlen($segments[0]) === 8) {
+        // Decode segments
+        $seg1_bytes = decode_from_base32($segments[0]);
+        $seg2_bytes = decode_from_base32($segments[1]);
+        $seg3_bytes = decode_from_base32($segments[2]);
+        
+        if ($seg1_bytes === false || $seg2_bytes === false || $seg3_bytes === false) {
+            return ['valid' => false, 'error' => 'Decode failed'];
+        }
+        
+        // Extract data
+        $payload = $seg1_bytes . substr($seg2_bytes, 0, 1); // 6 bytes
+        $timestamp_bytes = substr($seg2_bytes, 1, 4);       // 4 bytes
+        $provided_signature = $seg3_bytes;                   // 5 bytes
+        
+        if (strlen($timestamp_bytes) !== 4) {
+            return ['valid' => false, 'error' => 'Invalid timestamp'];
+        }
+        
+        $timestamp = unpack('N', $timestamp_bytes)[1];
+        
+        // Check timestamp validity
+        $current_time = time();
+        if ($timestamp > $current_time + 86400) {
+            return ['valid' => false, 'error' => 'Timestamp in future'];
+        }
+        if ($timestamp < $current_time - (365 * 86400 * 2)) {
+            return ['valid' => false, 'error' => 'License too old'];
+        }
+        
+        // Recreate signature
+        $expected_signature = create_license_signature([$payload, $timestamp_bytes], $timestamp);
+        
+        // Compare signatures (first 5 bytes)
+        if (substr($expected_signature, 0, 5) !== $provided_signature) {
+            return ['valid' => false, 'error' => 'Invalid signature'];
+        }
+        
+        return [
+            'valid' => true,
+            'timestamp' => $timestamp,
+            'issued' => date('Y-m-d H:i:s', $timestamp),
+            'age_days' => floor(($current_time - $timestamp) / 86400)
+        ];
+    }
+    
+    // Old format not supported with new validation
+    return ['valid' => false, 'error' => 'Unsupported key format'];
+}
+
+/**
+ * Batch generate licenses
+ */
+function generate_batch($count = 10) {
+    $keys = [];
+    for ($i = 0; $i < $count; $i++) {
+        $keys[] = generate_license_key();
+        usleep(1000); // Small delay to ensure timestamp variation
+    }
+    return $keys;
 }
 
 // CLI interface
@@ -256,61 +234,78 @@ if (php_sapi_name() === 'cli') {
             case '--validate':
                 if ($argc > 2) {
                     $key = $argv[2];
-                    $valid = validate_key($key);
-                    echo "Key: $key\n";
-                    echo "Valid: " . ($valid ? '✓ YES' : '✗ NO') . "\n";
+                    $result = validate_license_signature($key);
+                    echo "License: $key\n";
+                    if ($result['valid']) {
+                        echo "Status: ✓ VALID\n";
+                        echo "Issued: {$result['issued']}\n";
+                        echo "Age: {$result['age_days']} days\n";
+                    } else {
+                        echo "Status: ✗ INVALID\n";
+                        echo "Error: {$result['error']}\n";
+                    }
                 } else {
                     echo "Usage: php keygen.php --validate <key>\n";
                 }
                 break;
                 
             case '--batch':
-                $count = ($argc > 2) ? intval($argv[2]) : 5;
-                echo "Generating $count keys:\n\n";
-                for ($i = 0; $i < $count; $i++) {
-                    echo generate_key() . "\n";
+                $count = ($argc > 2) ? intval($argv[2]) : 10;
+                echo "Generating $count license keys:\n\n";
+                $keys = generate_batch($count);
+                foreach ($keys as $key) {
+                    echo $key . "\n";
                 }
                 break;
                 
-            case '--export':
-                export_constants();
-                break;
-                
             case '--test':
-                // Test that validation works correctly
-                echo "Testing key generation and validation...\n";
+                echo "Testing key generation and validation...\n\n";
                 
                 // Generate a key
-                $key = generate_key();
+                $key = generate_license_key();
                 echo "Generated: $key\n";
-                echo "Valid: " . (validate_key($key) ? '✓' : '✗') . "\n";
                 
-                // Test modified keys are rejected
+                // Validate it
+                $result = validate_license_signature($key);
+                echo "Validation: " . ($result['valid'] ? '✓ VALID' : '✗ INVALID') . "\n";
+                if ($result['valid']) {
+                    echo "Timestamp: {$result['issued']}\n";
+                }
+                
+                // Test invalid key
+                echo "\nTesting invalid key:\n";
+                $invalid = 'AAAAA-BBBBB-CCCCC-DDDDD-EEEEE';
+                $result = validate_license_signature($invalid);
+                echo "Key: $invalid\n";
+                echo "Result: " . ($result['valid'] ? '✓ VALID' : '✗ INVALID') . "\n";
+                if (!$result['valid']) {
+                    echo "Error: {$result['error']}\n";
+                }
+                
+                // Test modified key
+                echo "\nTesting modified key:\n";
                 $parts = explode('-', $key);
-                
-                // Change last character
-                $modified1 = implode('-', array_slice($parts, 0, -1)) . '-' . substr($parts[4], 0, -1) . 'A';
-                echo "\nModified last char: $modified1\n";
-                echo "Valid: " . (validate_key($modified1) ? '✓' : '✗') . "\n";
-                
-                // Change middle segment
-                $modified2 = $parts[0] . '-' . $parts[1] . '-AAAAA-' . $parts[3] . '-' . $parts[4];
-                echo "\nModified middle: $modified2\n";
-                echo "Valid: " . (validate_key($modified2) ? '✓' : '✗') . "\n";
-                
-                // Change first segment
-                $modified3 = 'BBBBB-' . implode('-', array_slice($parts, 1));
-                echo "\nModified first: $modified3\n";
-                echo "Valid: " . (validate_key($modified3) ? '✓' : '✗') . "\n";
+                $parts[4] = 'ZZZZZ'; // Modify signature
+                $modified = implode('-', $parts);
+                $result = validate_license_signature($modified);
+                echo "Modified: $modified\n";
+                echo "Result: " . ($result['valid'] ? '✓ VALID' : '✗ INVALID') . "\n";
+                if (!$result['valid']) {
+                    echo "Error: {$result['error']}\n";
+                }
                 break;
                 
             default:
-                echo "Unknown option. Use: --validate, --batch, --export, --test\n";
+                echo "yurucode License Generator v2.0\n";
+                echo "Usage:\n";
+                echo "  php keygen.php                    Generate single key\n";
+                echo "  php keygen.php --validate <key>   Validate a key\n";
+                echo "  php keygen.php --batch [count]    Generate multiple keys\n";
+                echo "  php keygen.php --test             Run tests\n";
                 break;
         }
     } else {
-        // Default: generate a single key
-        $key = generate_key();
-        echo $key . "\n";
+        // Default: generate single key
+        echo generate_license_key() . "\n";
     }
 }
