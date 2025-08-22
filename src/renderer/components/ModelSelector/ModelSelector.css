@@ -11,7 +11,7 @@
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.4);
-  padding: 3px 8px;
+  padding: 2px 8px 3px 8px;
   border-radius: 4px;
   font-size: 10px;
   font-family: 'Fira Code', monospace;

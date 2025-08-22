@@ -590,9 +590,9 @@
 }
 
 .thinking-indicator-bottom .thinking-dots::after {
-  content: '.';
+  content: '';
   display: inline-block;
-  animation: thinkingDots 1.4s infinite;
+  animation: thinkingDots 1.6s infinite linear;
   width: 28px;
   text-align: left;
 }
@@ -617,13 +617,16 @@
 }
 
 @keyframes thinkingDots {
-  0%, 20% {
+  0%, 24% {
+    content: '';
+  }
+  25%, 49% {
     content: '.';
   }
-  40% {
+  50%, 74% {
     content: '..';
   }
-  60%, 100% {
+  75%, 100% {
     content: '...';
   }
 }

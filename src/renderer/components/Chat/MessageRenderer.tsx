@@ -28,7 +28,6 @@ import {
   IconServer,
   IconTerminal2,
   IconPlayerStop,
-  IconPoint,
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
@@ -693,7 +692,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
-                <IconPoint size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
+                <IconDots size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
                 <span className="thinking-stats">
                   {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
                 </span>
@@ -1765,7 +1764,7 @@ const MessageRendererBase: React.FC<{
                     {todo.status === 'completed' ? (
                       <IconCheck size={12} stroke={2} className="todo-icon completed" />
                     ) : todo.status === 'in_progress' ? (
-                      <IconDots size={12} stroke={2} className="todo-icon progress" />
+                      <IconBracketsAngle size={12} stroke={2} className="todo-icon progress" />
                     ) : (
                       <IconMinus size={12} stroke={2} className="todo-icon pending" />
                     )}
