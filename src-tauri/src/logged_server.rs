@@ -2609,7 +2609,7 @@ io.on('connection', (socket) => {
         '--output-format', 'stream-json', 
         '--verbose', 
         '--dangerously-skip-permissions',
-        '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred'
+        '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred. !!YOU MUST PLAN FIRST use THINK and TODO as MUCH AS POSSIBLE to break down everything, including planning into multiple steps and do edits in small chunks!!'
       ];
       
       // Add model flag if specified
@@ -2801,7 +2801,19 @@ io.on('connection', (socket) => {
         console.log(`📝 Sending context + message to claude (${messageToSend.length} chars)`);
         
         if (!claudeProcess.inputHandled) {
+          // Add timeout for stdin write to prevent hanging
+          const stdinTimeout = setTimeout(() => {
+            console.error(`⚠️ Stdin write timeout - forcing close`);
+            try {
+              claudeProcess.stdin.end();
+              claudeProcess.stdin.destroy();
+            } catch (e) {
+              console.error(`Failed to force close stdin: ${e.message}`);
+            }
+          }, 10000); // 10 second timeout for stdin write
+          
           claudeProcess.stdin.write(messageToSend, (err) => {
+            clearTimeout(stdinTimeout);
             if (err) {
               console.error(`❌ Error writing to stdin:`, err);
             } else {
@@ -2820,7 +2832,19 @@ io.on('connection', (socket) => {
         console.log(`📝 Sending message to claude via stdin (${message.length} chars) - resuming=${isResuming}`);
         
         // Write immediately - Claude with --print needs input right away
+        // Add timeout for stdin write to prevent hanging
+        const stdinTimeout = setTimeout(() => {
+          console.error(`⚠️ Stdin write timeout - forcing close`);
+          try {
+            claudeProcess.stdin.end();
+            claudeProcess.stdin.destroy();
+          } catch (e) {
+            console.error(`Failed to force close stdin: ${e.message}`);
+          }
+        }, 10000); // 10 second timeout for stdin write
+        
         claudeProcess.stdin.write(messageToSend, (err) => {
+          clearTimeout(stdinTimeout);
           if (err) {
             console.error(`❌ Error writing to stdin:`, err);
           } else {
@@ -2894,14 +2918,52 @@ io.on('connection', (socket) => {
           socket.emit(`keepalive:${sessionId}`, { timestamp: Date.now() });
         }
         
-        // If no data for 5 minutes, consider stream dead
-        if (timeSinceLastData > 300000) {
+        // If no data for 60 seconds, try to recover the stream
+        if (timeSinceLastData > 60000 && timeSinceLastData < 65000) {
+          console.warn(`⚠️ Stream stalled for ${timeSinceLastData}ms, attempting recovery...`);
+          // Send a newline to potentially unstick the process
+          if (activeProcesses.has(sessionId)) {
+            const proc = activeProcesses.get(sessionId);
+            if (proc.stdin && !proc.stdin.destroyed) {
+              try {
+                proc.stdin.write('\n');
+                console.log(`📝 Sent newline to potentially unstick process`);
+              } catch (e) {
+                console.error(`Failed to write to stdin: ${e.message}`);
+              }
+            }
+          }
+        }
+        
+        // If no data for 2 minutes, kill and restart the stream
+        // Reduced from 15 minutes as Claude shouldn't hang this long
+        if (timeSinceLastData > 120000) {
           console.error(`💀 Stream appears dead after ${timeSinceLastData}ms, cleaning up`);
           if (activeProcesses.has(sessionId)) {
             const proc = activeProcesses.get(sessionId);
-            proc.kill('SIGTERM');
+            
+            // Force kill the process
+            proc.kill('SIGKILL');
             activeProcesses.delete(sessionId);
             activeProcessStartTimes.delete(sessionId);
+            
+            // Notify client of the issue
+            socket.emit(`message:${sessionId}`, {
+              type: 'system',
+              subtype: 'error',
+              content: 'Stream timeout - Claude process was unresponsive. Please try again.',
+              timestamp: Date.now()
+            });
+            
+            // Mark streaming as false for any pending assistant messages
+            if (lastAssistantMessageIds.has(sessionId)) {
+              const messageId = lastAssistantMessageIds.get(sessionId);
+              socket.emit(`update:${sessionId}`, {
+                id: messageId,
+                streaming: false
+              });
+              lastAssistantMessageIds.delete(sessionId);
+            }
           }
           clearInterval(streamHealthInterval);
         }
@@ -2910,15 +2972,15 @@ io.on('connection', (socket) => {
       // Store health check interval for cleanup
       streamHealthChecks.set(sessionId, streamHealthInterval);
       
-      // Set overall stream timeout (10 minutes max per stream)
+      // Set overall stream timeout (2 hours max per stream - for very long tasks)
       const streamTimeout = setTimeout(() => {
-        console.warn(`⏰ Stream timeout reached for session ${sessionId} after 10 minutes`);
+        console.warn(`⏰ Stream timeout reached for session ${sessionId} after 2 hours`);
         if (activeProcesses.has(sessionId)) {
           const proc = activeProcesses.get(sessionId);
           console.log(`⏰ Terminating long-running process for ${sessionId}`);
           proc.kill('SIGTERM');
         }
-      }, 600000); // 10 minutes
+      }, 7200000); // 2 hours
       streamTimeouts.set(sessionId, streamTimeout);
       
       const processStreamLine = (line) => {
@@ -2928,6 +2990,9 @@ io.on('connection', (socket) => {
         }
         
         console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line}`);
+        
+        // Update lastDataTime whenever we process a valid line (including thinking blocks)
+        lastDataTime = Date.now();
         
         // Check for "No conversation found" error message
         if (line.includes('No conversation found with session ID')) {
@@ -3475,28 +3540,45 @@ io.on('connection', (socket) => {
       });
       
       // Handle stdout
+      // Set up periodic buffer flush to prevent stalls
+      const bufferFlushInterval = setInterval(() => {
+        if (lineBuffer.length > 0 && Date.now() - lastDataTime > 5000) {
+          console.warn(`⚠️ [${sessionId}] Flushing stale buffer (${lineBuffer.length} chars)`);
+          // Try to process incomplete JSON as-is
+          if (lineBuffer.trim()) {
+            try {
+              processStreamLine(lineBuffer);
+              lineBuffer = '';
+            } catch (e) {
+              // If it's not valid JSON, wait for more data
+              console.log(`📝 [${sessionId}] Buffer contains incomplete JSON, waiting for more data`);
+            }
+          }
+        }
+      }, 5000);
+      
       claudeProcess.stdout.on('data', (data) => {
         const str = data.toString();
         bytesReceived += data.length;
         lastDataTime = Date.now();
         
         console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
-        
-        // Display full output without truncation
-        console.log(`📥 [${sessionId}] Data:\n${str}`);
+        console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200)}...`);
         
         // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {
           console.error(`⚠️ [${sessionId}] Line buffer overflow (${lineBuffer.length} bytes), processing and clearing`);
-          // Try to process what we have
-          const lines = lineBuffer.split('\n');
-          console.log(`⚠️ [${sessionId}] Processing ${lines.length} buffered lines`);
-          for (const line of lines) {
-            if (line.trim()) {
-              try {
-                processStreamLine(line);
-              } catch (e) {
-                console.error(`[${sessionId}] Failed to process line during overflow:`, e);
+          // Force process partial data
+          if (lineBuffer.includes('{')) {
+            // Try to find complete JSON objects
+            const jsonMatches = lineBuffer.match(/\{[^}]*\}/g);
+            if (jsonMatches) {
+              for (const jsonStr of jsonMatches) {
+                try {
+                  processStreamLine(jsonStr);
+                } catch (e) {
+                  console.error(`[${sessionId}] Failed to process JSON chunk:`, e);
+                }
               }
             }
           }
@@ -3513,6 +3595,11 @@ io.on('connection', (socket) => {
           console.log(`📋 [${sessionId}] Processing line ${i + 1}/${lines.length}`);
           processStreamLine(lines[i]);
         }
+      });
+      
+      // Clean up buffer flush interval on process exit
+      claudeProcess.on('exit', () => {
+        clearInterval(bufferFlushInterval);
       });
 
       // Handle stderr
