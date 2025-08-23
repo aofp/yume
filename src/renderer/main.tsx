@@ -2,6 +2,7 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App.minimal';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
+import './styles/fonts.css';
 import './styles/global.css';
 import './App.minimal.css';
 

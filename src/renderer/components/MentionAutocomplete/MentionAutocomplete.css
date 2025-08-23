@@ -9,7 +9,7 @@
   max-height: 280px;
   display: flex;
   flex-direction: column;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
 }
 

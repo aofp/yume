@@ -9,7 +9,7 @@
 /* CSS variables removed - using direct values */
 
 body {
-  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
+  font-family: 'Helvetica Neue', 'Helvetica', 'Inter', 'Segoe UI', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
   background: #000000;
   color: #ffffff;
   overflow: hidden;

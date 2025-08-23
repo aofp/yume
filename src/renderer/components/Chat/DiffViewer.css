@@ -1,5 +1,5 @@
 .diff-container {
-  font-family: 'Fira Code', 'JetBrains Mono', 'Courier New', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   background: #000;
   padding: 0;

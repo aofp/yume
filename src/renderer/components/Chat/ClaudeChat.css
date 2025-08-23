@@ -51,7 +51,7 @@
   border: none;
   color: rgba(255, 255, 255, 0.8);
   font-size: 11px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   outline: none;
   width: 180px;
   text-transform: lowercase;
@@ -74,7 +74,7 @@
 .search-count {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.4);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   margin-right: 6px;
   width: 45px; /* Fixed width to prevent jumping */
   text-align: center;
@@ -206,7 +206,7 @@
 .header-path {
   flex: 1;
   color: #cccccc;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -296,7 +296,7 @@
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 12px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .message-text pre {
@@ -439,7 +439,7 @@
 
 .tool-detail {
   color: #ffffff !important;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 7pt;
   opacity: 1;
 }
@@ -538,7 +538,7 @@
   padding: 0;
   color: #d0d0d0;
   font-size: 12px;
-  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans);
 }
 
 .thinking-indicator-bottom .thinking-text-wrapper {
@@ -580,7 +580,7 @@
   font-weight: bold;
   font-size: 8px;
   opacity: 0.8;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .thinking-indicator-bottom .thinking-dots {
@@ -816,7 +816,7 @@ textarea.context-full {
   box-sizing: border-box;
   resize: none;
   transition: all 0.2s ease;
-  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans);
   outline: none;
   overflow-y: auto;
   user-select: text;
@@ -1048,7 +1048,7 @@ textarea.context-full {
 
 .chat-input.bash-mode {
   padding-left: 4px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 /* Context bar - stats section */
@@ -1073,7 +1073,7 @@ textarea.context-full {
   gap: 2px;
   align-items: center;
   font-size: 10px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   color: rgba(255, 255, 255, 0.3);
   text-transform: lowercase;
   user-select: none;
@@ -1087,7 +1087,7 @@ textarea.context-full {
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 10px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   text-transform: lowercase;
   transition: all 0.2s ease;
   cursor: default;
@@ -1132,7 +1132,7 @@ textarea.context-full {
 }
 
 .btn-stats {
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 /* Color coding for token usage levels - grey until 70%, then yellow/orange/red */
@@ -1189,13 +1189,13 @@ textarea.context-full {
 
 .context-tokens {
   color: rgba(255, 255, 255, 0.4);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   margin-right: 4px;
 }
 
 .context-usage {
   transition: color 0.2s ease;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .context-usage.low {
@@ -1244,7 +1244,7 @@ textarea.context-full {
 .attachment-text {
   font-size: 11px;
   color: rgba(255, 255, 255, 0.9);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   opacity: 1;
 }
 
@@ -1278,7 +1278,7 @@ textarea.context-full {
   border-radius: 4px;
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .message-attachment-preview .attachment-text {
@@ -1385,7 +1385,7 @@ textarea.context-full {
   color: rgba(255, 255, 255, 0.8);
   padding: 1px 4px;
   border-radius: 3px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 7pt;
   font-weight: 500;
   border: none;
@@ -1413,7 +1413,7 @@ textarea.context-full {
 .shortcut-dots::before {
   content: '....................................................';
   letter-spacing: 1px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 7pt;
 }
 
@@ -1569,7 +1569,7 @@ textarea.context-full {
 .stat-dots::before {
   content: '........................................................................................................................................................';
   letter-spacing: 1px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 7pt;
 }
 
@@ -1579,7 +1579,7 @@ textarea.context-full {
   white-space: nowrap;
   flex-shrink: 0;
   padding-left: 2px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
 }
 
@@ -1806,7 +1806,7 @@ textarea.context-full {
   color: rgba(255, 255, 255, 0.3);
   white-space: nowrap;
   margin-left: 8px;
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   transition: color 0.15s ease;
 }
 
@@ -1826,7 +1826,7 @@ textarea.context-full {
   flex-direction: column;
   gap: 2px;
   overflow: hidden;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .recent-item-name-row {
@@ -1845,7 +1845,7 @@ textarea.context-full {
   /* Hide scrollbar */
   scrollbar-width: none; /* Firefox */
   -ms-overflow-style: none; /* IE/Edge */
-  font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  font-family: var(--font-sans);
   width: 100%;
   max-width: 350px;
   transition: color 0.15s ease;
@@ -1886,7 +1886,7 @@ textarea.context-full {
 }
 
 .recent-item-number {
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   color: rgba(255, 255, 255, 0.3);
   width: 18px;
@@ -1914,13 +1914,13 @@ textarea.context-full {
   display: inline-block;
   width: 15px;
   text-align: left;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .bash-running-time {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.5);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   margin-left: 8px;
 }
 
@@ -1946,14 +1946,14 @@ textarea.context-full {
   font-size: 10px;
   color: var(--accent-color);
   opacity: 1;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   letter-spacing: 0.5px;
 }
 
 .bash-cancel-btn {
   padding: 2px 6px;
   font-size: 7pt;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   background: none;
   border: 1px solid rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);

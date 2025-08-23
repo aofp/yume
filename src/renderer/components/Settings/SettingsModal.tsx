@@ -417,12 +417,12 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     <button
                       className="font-input"
                       onClick={() => {
-                        setSelectedFont(sansFont || 'Helvetica');
+                        setSelectedFont(sansFont || 'Helvetica Neue');
                         setShowFontPicker('sans-serif');
                       }}
-                      style={{ fontFamily: sansFont || 'Helvetica' }}
+                      style={{ fontFamily: sansFont || 'Helvetica Neue' }}
                     >
-                      {sansFont || 'Helvetica'}
+                      {sansFont || 'Helvetica Neue'}
                     </button>
                   </div>
                 </div>

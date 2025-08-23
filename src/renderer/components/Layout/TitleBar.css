@@ -112,7 +112,7 @@
 }
 
 .titlebar-text {
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   font-weight: bold;
   letter-spacing: 0.5px;
@@ -237,7 +237,7 @@
 .stats-text {
   font-size: 10px;
   color: rgba(255, 255, 255, 0.4);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .stats-btn {

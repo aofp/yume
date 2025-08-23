@@ -1013,7 +1013,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // For tracking purposes, accumulate only the NEW tokens added
                     analytics.tokens.input += regularInputTokens; // Only new input
                     analytics.tokens.output += outputTokens; // New output
-                    analytics.tokens.total = actualContextInUse; // Set to actual total context
+                    analytics.tokens.total = analytics.tokens.input + analytics.tokens.output; // Only count new tokens, not cache
                     
                     // Cache size is a snapshot of conversation history
                     analytics.tokens.cacheSize = cacheReadTokens;

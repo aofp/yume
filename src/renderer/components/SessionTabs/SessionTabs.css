@@ -223,7 +223,7 @@ body.tab-dragging * {
   color: var(--accent-color);
   white-space: nowrap;
   font-weight: 600;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -244,7 +244,7 @@ body.tab-dragging * {
   text-overflow: ellipsis;
   flex: 1;
   font-weight: 400;
-  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans);
   user-select: none;
   -webkit-user-select: none;
   position: relative;
@@ -260,7 +260,7 @@ body.tab-dragging * {
   border: none;
   border-radius: 0;
   color: var(--text-secondary);
-  font-family: 'Helvetica', 'Helvetica Neue', Arial, sans-serif;
+  font-family: var(--font-sans);
   font-size: 9px;
   padding: 0;
   margin: 0;
@@ -510,7 +510,7 @@ body.tab-dragging * {
 
 /* Recent projects modal styles */
 .recent-item-number {
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   color: rgba(255, 255, 255, 0.3);
   min-width: 12px;

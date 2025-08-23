@@ -82,7 +82,7 @@
   font-size: 12px;
   color: rgba(255, 255, 255, 0.6);
   text-transform: lowercase;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-weight: bold;
 }
 
@@ -91,7 +91,7 @@
   color: rgba(255, 255, 255, 0.5);
   text-transform: lowercase;
   margin-bottom: 16px;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
 }
 
 .about-description {

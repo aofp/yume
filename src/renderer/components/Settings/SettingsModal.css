@@ -141,7 +141,7 @@
 .zoom-level {
   min-width: 80px;
   text-align: center;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.6);
@@ -185,7 +185,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: rgba(255, 255, 255, 0.2);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 7pt;
   line-height: 1;
   letter-spacing: 1px;
@@ -279,7 +279,7 @@
 }
 
 .color-preview .color-value {
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   color: rgba(255, 255, 255, 0.7);
   text-transform: lowercase;
@@ -647,7 +647,7 @@
   top: 50%;
   transform: translateY(-50%);
   color: rgba(255, 255, 255, 0.2);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 7pt;
   line-height: 1;
   letter-spacing: 1px;
@@ -757,7 +757,7 @@ input[type="checkbox"].checkbox-input:checked:hover {
   top: 50%;
   transform: translateY(-50%);
   color: rgba(255, 255, 255, 0.2);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 7pt;
   line-height: 1;
   letter-spacing: 1px;
