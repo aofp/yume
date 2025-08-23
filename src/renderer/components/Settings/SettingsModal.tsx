@@ -4,6 +4,7 @@ import './SettingsModal.css';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { FontPickerModal } from '../FontPicker/FontPickerModal';
+import { AboutModal } from '../About/AboutModal';
 
 // Access the electron API exposed by preload script
 declare global {
@@ -61,6 +62,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [negativeColor, setNegativeColor] = useState('#ff99ff'); // default magenta
   const [showColorPicker, setShowColorPicker] = useState<'accent' | 'positive' | 'negative' | null>(null);
   const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(null);
+  const [showAboutModal, setShowAboutModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { globalWatermarkImage, setGlobalWatermark, monoFont, sansFont, setMonoFont, setSansFont, rememberTabs, setRememberTabs } = useClaudeCodeStore();
   const [selectedFont, setSelectedFont] = useState<string>('');
@@ -443,7 +445,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               <button
                 className="settings-action-btn about"
                 onClick={() => {
-                  window.dispatchEvent(new CustomEvent('showAboutModal'));
+                  setShowAboutModal(true);
                 }}
                 title="about yuru code"
               >
@@ -580,6 +582,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           }}
           onClose={() => setShowFontPicker(null)}
         />
+      )}
+      {showAboutModal && (
+        <AboutModal isOpen={showAboutModal} onClose={() => setShowAboutModal(false)} />
       )}
     </>
   );

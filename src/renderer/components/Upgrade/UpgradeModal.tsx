@@ -50,7 +50,24 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
             <p>upgrade to pro</p>
             <div className="price">$9</div>
             <p className="price-subtitle">USD, one time</p>
-            <button className="upgrade-button">
+            <button 
+              className="upgrade-button"
+              onClick={async () => {
+                // Open yurucode.com in default browser
+                if (window.__TAURI__) {
+                  const { invoke } = await import('@tauri-apps/api/core');
+                  // Use our custom command to open URL in default browser
+                  await invoke('open_external', { url: 'https://yurucode.com' }).catch(() => {
+                    // Fallback to window.open if command fails
+                    window.open('https://yurucode.com', '_blank');
+                  });
+                } else if (window.electronAPI?.openExternal) {
+                  window.electronAPI.openExternal('https://yurucode.com');
+                } else {
+                  window.open('https://yurucode.com', '_blank');
+                }
+              }}
+            >
               upgrade now
             </button>
           </div>
