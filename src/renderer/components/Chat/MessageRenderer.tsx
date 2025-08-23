@@ -4,11 +4,10 @@ import SyntaxHighlighter from 'react-syntax-highlighter';
 import { DiffViewer, DiffDisplay, DiffLine } from './DiffViewer';
 import { 
   IconBolt,
-  IconBracketsAngle,
   IconAlertTriangle, 
   IconCheck, 
   IconX, 
-  IconDots,
+  IconChevronsRight,
   IconMinus,
   IconChecklist,
   IconCopy,
@@ -28,6 +27,7 @@ import {
   IconServer,
   IconTerminal2,
   IconPlayerStop,
+  IconDots,
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
@@ -922,7 +922,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             if (isEditResult && (prevBlock?.name === 'Edit' || prevBlock?.name === 'MultiEdit' || prevBlock?.name === 'NotebookEdit')) {
               // Extract file path from Edit output
               let filePathMatch = resultContent.match(/The file (.+?) has been updated/) || 
-                                 resultContent.match(/Applied \d+ edits? to (.+?):/);
+                                 resultContent.match(/Applied \d+ edits? to (.+?)(?::|$)/);
               let filePath = filePathMatch ? filePathMatch[1] : 'file';
               
               // Convert to relative path
@@ -1702,7 +1702,7 @@ const MessageRendererBase: React.FC<{
                           {todo.status === 'completed' ? (
                             <IconCheck size={12} stroke={2} className="todo-icon completed" />
                           ) : todo.status === 'in_progress' ? (
-                            <IconBracketsAngle size={12} stroke={2} className="todo-icon progress" />
+                            <IconChevronsRight size={12} stroke={2} className="todo-icon progress" />
                           ) : (
                             <IconMinus size={12} stroke={2} className="todo-icon pending" />
                           )}
@@ -1764,7 +1764,7 @@ const MessageRendererBase: React.FC<{
                     {todo.status === 'completed' ? (
                       <IconCheck size={12} stroke={2} className="todo-icon completed" />
                     ) : todo.status === 'in_progress' ? (
-                      <IconBracketsAngle size={12} stroke={2} className="todo-icon progress" />
+                      <IconChevronsRight size={12} stroke={2} className="todo-icon progress" />
                     ) : (
                       <IconMinus size={12} stroke={2} className="todo-icon pending" />
                     )}
@@ -1948,7 +1948,7 @@ const MessageRendererBase: React.FC<{
       
       // Check if this is an Edit result - they contain "has been updated" or "Applied" for MultiEdit
       const isEditResult = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
-                          (contentStr.includes('Applied') && contentStr.includes('edits to'));
+                          (contentStr.includes('Applied') && (contentStr.includes('edit to') || contentStr.includes('edits to')));
       
       // Check if this is a Read operation result (already have associatedToolUse from above)
       const isReadResult = isReadOperation;
@@ -1965,9 +1965,9 @@ const MessageRendererBase: React.FC<{
         
         // Extract file path from the result message
         let filePath = '';
-        const isMultiEdit = contentStr.includes('Applied') && contentStr.includes('edits to');
+        const isMultiEdit = contentStr.includes('Applied') && (contentStr.includes('edit to') || contentStr.includes('edits to'));
         const filePathMatch = contentStr.match(/The file (.+?) has been updated/) || 
-                              contentStr.match(/Applied \d+ edits? to (.+?):/);
+                              contentStr.match(/Applied \d+ edits? to (.+?)(?::|$)/);
         if (filePathMatch) {
           filePath = formatPath(filePathMatch[1]);
         }

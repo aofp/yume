@@ -359,6 +359,92 @@ pub fn toggle_console_visibility() -> Result<String, String> {
     }
 }
 
+/// Get available system fonts
+/// Returns a list of font families available on the system
+#[tauri::command]
+pub fn get_system_fonts() -> Result<Vec<String>, String> {
+    use std::collections::HashSet;
+    
+    let mut fonts = HashSet::new();
+    
+    // Platform-specific font directories
+    #[cfg(target_os = "macos")]
+    {
+        let home_fonts = format!("{}/Library/Fonts", std::env::var("HOME").unwrap_or_default());
+        let font_dirs = vec![
+            "/System/Library/Fonts",
+            "/Library/Fonts",
+            home_fonts.as_str(),
+        ];
+        
+        for dir in font_dirs {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        if name.ends_with(".ttf") || name.ends_with(".otf") || name.ends_with(".ttc") {
+                            // Extract font name from filename (simplified)
+                            let font_name = name.replace(".ttf", "")
+                                .replace(".otf", "")
+                                .replace(".ttc", "")
+                                .replace("-", " ");
+                            fonts.insert(font_name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        if let Ok(entries) = std::fs::read_dir("C:\\Windows\\Fonts") {
+            for entry in entries.flatten() {
+                if let Some(name) = entry.file_name().to_str() {
+                    if name.ends_with(".ttf") || name.ends_with(".otf") {
+                        let font_name = name.replace(".ttf", "")
+                            .replace(".otf", "")
+                            .replace("-", " ");
+                        fonts.insert(font_name);
+                    }
+                }
+            }
+        }
+    }
+    
+    #[cfg(target_os = "linux")]
+    {
+        let home_fonts = format!("{}/.fonts", std::env::var("HOME").unwrap_or_default());
+        let home_local_fonts = format!("{}/.local/share/fonts", std::env::var("HOME").unwrap_or_default());
+        let font_dirs = vec![
+            "/usr/share/fonts",
+            "/usr/local/share/fonts",
+            home_fonts.as_str(),
+            home_local_fonts.as_str(),
+        ];
+        
+        for dir in font_dirs {
+            if let Ok(entries) = std::fs::read_dir(dir) {
+                for entry in entries.flatten() {
+                    if let Some(name) = entry.file_name().to_str() {
+                        if name.ends_with(".ttf") || name.ends_with(".otf") {
+                            let font_name = name.replace(".ttf", "")
+                                .replace(".otf", "")
+                                .replace("-", " ");
+                            fonts.insert(font_name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    // Convert to sorted vector
+    let mut font_list: Vec<String> = fonts.into_iter().collect();
+    font_list.sort();
+    
+    Ok(font_list)
+}
+
 /// Executes a bash command and returns the output
 /// Platform-specific implementation for Windows (via WSL/Git Bash), macOS, and Linux
 /// Now with process tracking for cancellation support

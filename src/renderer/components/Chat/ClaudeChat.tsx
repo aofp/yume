@@ -2331,7 +2331,14 @@ export const ClaudeChat: React.FC = () => {
                 <textarea
                   ref={inputRef}
                   className={`chat-input ${bashCommandMode ? 'bash-mode' : ''} ${isContextFull ? 'context-full' : ''}`}
-                  placeholder={isContextFull ? "context full - compact or clear required" : currentSession?.readOnly ? "read-only session" : bashCommandMode ? "bash command..." : currentSession?.streaming ? "append message..." : "code prompt..."}
+                  placeholder={(() => {
+                    const projectName = currentSession?.workingDirectory?.split('/').pop() || 'project';
+                    if (isContextFull) return "context full - compact or clear required";
+                    if (currentSession?.readOnly) return "read-only session";
+                    if (bashCommandMode) return "bash command...";
+                    if (currentSession?.streaming) return `append message for ${projectName}...`;
+                    return `code prompt for ${projectName}...`;
+                  })()}
                   value={currentSession?.readOnly || isContextFull ? '' : input}
                   onChange={handleTextareaChange}
                   onKeyDown={handleKeyDown}

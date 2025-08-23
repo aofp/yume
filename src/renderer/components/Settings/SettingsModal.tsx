@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconPlus, IconMinus, IconRefresh, IconSettings, IconPalette, IconPhoto, IconTrash, IconRotateClockwise, IconCrown } from '@tabler/icons-react';
+import { IconX, IconPlus, IconMinus, IconSettings, IconPalette, IconPhoto, IconRotateClockwise, IconCrown } from '@tabler/icons-react';
 import './SettingsModal.css';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
+import { FontPickerModal } from '../FontPicker/FontPickerModal';
 
 // Access the electron API exposed by preload script
 declare global {
@@ -59,8 +60,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [positiveColor, setPositiveColor] = useState('#99eeff'); // default cyan
   const [negativeColor, setNegativeColor] = useState('#ff99ff'); // default magenta
   const [showColorPicker, setShowColorPicker] = useState<'accent' | 'positive' | 'negative' | null>(null);
+  const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { globalWatermarkImage, setGlobalWatermark } = useClaudeCodeStore();
+  const { globalWatermarkImage, setGlobalWatermark, monoFont, sansFont, setMonoFont, setSansFont, rememberTabs, setRememberTabs } = useClaudeCodeStore();
+  const [selectedFont, setSelectedFont] = useState<string>('');
 
   useEffect(() => {
     // Get current zoom level
@@ -277,7 +280,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     <>
       <div className="settings-modal-overlay" onClick={onClose}>
         <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="settings-header">
+          <div className="settings-header" data-tauri-drag-region>
             <h3>
               <IconSettings size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
               settings
@@ -288,6 +291,19 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           </div>
 
           <div className="settings-content">
+            <div className="settings-section">
+              <h4>preferences</h4>
+              <label className="checkbox-setting">
+                <span className="checkbox-label">remember tabs</span>
+                <input
+                  type="checkbox"
+                  checked={rememberTabs}
+                  onChange={(e) => setRememberTabs(e.target.checked)}
+                  className="checkbox-input"
+                />
+              </label>
+            </div>
+
             <div className="settings-section">
               <h4>colors</h4>
               <div className="color-settings-grid">
@@ -369,7 +385,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     disabled={zoomLevel === 0}
                     title={zoomLevel === 0 ? "already at 100%" : "reset zoom to 100%"}
                   >
-                    <IconRefresh size={12} />
+                    <IconRotateClockwise size={12} />
                   </button>
                   <button className="zoom-btn small" onClick={handleZoomOut}>
                     <IconMinus size={12} />
@@ -395,11 +411,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   {globalWatermarkImage ? (
                     <>
                       <button
-                        className="watermark-remove"
+                        className="color-reset"
                         onClick={handleRemoveWatermark}
                         title="remove watermark"
                       >
-                        <IconTrash size={14} />
+                        <IconRotateClockwise size={12} />
                       </button>
                       <img
                         src={globalWatermarkImage}
@@ -410,18 +426,70 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   ) : (
                     <>
                       <button
-                        className="watermark-remove"
+                        className="color-reset"
                         onClick={handleRemoveWatermark}
                         title="remove watermark"
                         style={{ visibility: 'hidden' }}
                       >
-                        <IconTrash size={14} />
+                        <IconRotateClockwise size={12} />
                       </button>
                       <label htmlFor="watermark-upload" className="watermark-upload-btn">
                         <IconPhoto size={14} />
                       </label>
                     </>
                   )}
+                </div>
+              </div>
+            </div>
+
+            <div className="settings-section">
+              <h4>fonts</h4>
+              <div className="font-settings">
+                <div className="font-setting">
+                  <span className="font-label">monospace</span>
+                  <div className="font-controls">
+                    <button
+                      className="color-reset"
+                      onClick={() => setMonoFont('Fira Code')}
+                      title="reset to default"
+                      disabled={!monoFont || monoFont === 'Fira Code'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                    <button
+                      className="font-input"
+                      onClick={() => {
+                        setSelectedFont(monoFont || 'Fira Code');
+                        setShowFontPicker('monospace');
+                      }}
+                      style={{ fontFamily: monoFont || 'Fira Code' }}
+                    >
+                      {monoFont || 'Fira Code'}
+                    </button>
+                  </div>
+                </div>
+                <div className="font-setting">
+                  <span className="font-label">sans-serif</span>
+                  <div className="font-controls">
+                    <button
+                      className="color-reset"
+                      onClick={() => setSansFont('Helvetica')}
+                      title="reset to default"
+                      disabled={!sansFont || sansFont === 'Helvetica'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                    <button
+                      className="font-input"
+                      onClick={() => {
+                        setSelectedFont(sansFont || 'Helvetica');
+                        setShowFontPicker('sans-serif');
+                      }}
+                      style={{ fontFamily: sansFont || 'Helvetica' }}
+                    >
+                      {sansFont || 'Helvetica'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
@@ -483,6 +551,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </div>
           </div>
         </div>
+      )}
+
+      {showFontPicker && (
+        <FontPickerModal
+          fontType={showFontPicker}
+          currentFont={selectedFont}
+          onSelect={(font) => {
+            if (showFontPicker === 'monospace') {
+              setMonoFont(font);
+            } else {
+              setSansFont(font);
+            }
+            setShowFontPicker(null);
+          }}
+          onClose={() => setShowFontPicker(null)}
+        />
       )}
     </>
   );

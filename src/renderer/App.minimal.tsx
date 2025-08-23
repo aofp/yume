@@ -19,7 +19,7 @@ import { claudeCodeClient } from './services/claudeCodeClient';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings /* , restoreToMessage */ } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, rememberTabs, restoreTabs /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -37,10 +37,23 @@ export const App: React.FC = () => {
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
   
-  // Load session mappings on startup
+  // Load session mappings and initialize fonts on startup
   useEffect(() => {
     loadSessionMappings();
-  }, [loadSessionMappings]);
+    
+    // Apply saved fonts from store (store loads from localStorage)
+    if (monoFont) {
+      document.documentElement.style.setProperty('--font-mono', monoFont);
+    }
+    if (sansFont) {
+      document.documentElement.style.setProperty('--font-sans', sansFont);
+    }
+    
+    // Restore tabs if remember tabs is enabled
+    if (rememberTabs) {
+      restoreTabs();
+    }
+  }, [loadSessionMappings, monoFont, sansFont, rememberTabs, restoreTabs]);
   
   // Listen for upgrade modal events
   useEffect(() => {

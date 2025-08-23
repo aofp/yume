@@ -339,32 +339,36 @@ export const SessionTabs: React.FC = () => {
             className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
             onClick={(e) => {
               if (!isDragging) {
-                resumeSession(session.id);
-                
-                // Scroll tab into view if partially visible
-                const tabElement = tabRefs.current[session.id];
-                const container = tabsContainerRef.current;
-                if (tabElement && container) {
-                  const tabRect = tabElement.getBoundingClientRect();
-                  const containerRect = container.getBoundingClientRect();
+                // Always switch to the clicked tab (removed rename on single click)
+                if (currentSessionId !== session.id) {
+                  resumeSession(session.id);
                   
-                  // Check if tab is not fully visible
-                  const isFullyVisible = 
-                    tabRect.left >= containerRect.left && 
-                    tabRect.right <= containerRect.right;
-                  
-                  if (!isFullyVisible) {
-                    // Scroll the tab into view smoothly
-                    tabElement.scrollIntoView({
-                      behavior: 'smooth',
-                      block: 'nearest',
-                      inline: 'center'
-                    });
+                  // Scroll tab into view if partially visible
+                  const tabElement = tabRefs.current[session.id];
+                  const container = tabsContainerRef.current;
+                  if (tabElement && container) {
+                    const tabRect = tabElement.getBoundingClientRect();
+                    const containerRect = container.getBoundingClientRect();
+                    
+                    // Check if tab is not fully visible
+                    const isFullyVisible = 
+                      tabRect.left >= containerRect.left && 
+                      tabRect.right <= containerRect.right;
+                    
+                    if (!isFullyVisible) {
+                      // Scroll the tab into view smoothly
+                      tabElement.scrollIntoView({
+                        behavior: 'smooth',
+                        block: 'nearest',
+                        inline: 'center'
+                      });
+                    }
                   }
                 }
               }
             }}
             onDoubleClick={(e) => {
+              // Double-click to rename any tab
               e.stopPropagation();
               const title = (session as any).claudeTitle || 'new session';
               setRenameValue(title);
@@ -703,9 +707,6 @@ export const SessionTabs: React.FC = () => {
                     await interruptSession();
                   }
                   deleteSession(session.id);
-                }}
-                onDoubleClick={(e) => {
-                  e.stopPropagation(); // Prevent rename on double-click close button
                 }}
                 onMouseDown={(e) => {
                   e.stopPropagation(); // Prevent tab drag when clicking close

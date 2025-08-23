@@ -1731,7 +1731,7 @@ textarea.context-full {
 }
 
 .clear-all-icon:hover {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), 0.15);
   color: var(--accent-color);
 }
 
@@ -1881,7 +1881,7 @@ textarea.context-full {
 }
 
 .recent-item-remove:hover {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), 0.15);
   color: var(--accent-color);
 }
 

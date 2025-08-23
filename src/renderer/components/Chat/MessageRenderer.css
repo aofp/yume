@@ -719,13 +719,16 @@ ol {
   font-family: 'Fira Code', monospace;
   font-size: 7pt;
   background: transparent;
-  overflow-x: auto;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  overflow-wrap: anywhere;
 }
 
 .diff-line {
   display: flex;
   line-height: 16px;
-  background: transparent;
+  flex-wrap: nowrap;
+  word-break: break-all;
 }
 
 .diff-line .line-number {
@@ -735,22 +738,32 @@ ol {
   text-align: right;
   flex-shrink: 0;
   font-size: 7pt;
-  margin-right: 8px;
 }
 
 .diff-line .line-content {
   flex: 1;
-  white-space: pre;
-  color: rgba(255, 255, 255, 0.7);
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  color: rgba(255, 255, 255, 1);
 }
 
 /* Simple pastel colors for removed/added */
+.diff-line.added {
+  background: rgba(var(--positive-rgb), 0.08);
+}
+
 .diff-line.added .line-content {
-  color: var(--color-cyan);
+  color: #fff;
+}
+
+.diff-line.removed {
+  background: rgba(var(--negative-rgb), 0.08);
 }
 
 .diff-line.removed .line-content {
-  color: var(--color-magenta);
+  color: #fff;
 }
 
 .diff-summary {
@@ -841,7 +854,6 @@ pre.edit-diff {
   width: 40px;
   flex-shrink: 0;
   text-align: right;
-  padding-right: 8px;
   color: rgba(255, 255, 255, 0.3);
   font-size: 7pt;
   font-family: 'Fira Code', monospace;
@@ -1400,7 +1412,7 @@ body.platform-win32 .tool-detail {
 
 .todo-item {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 8px;
   padding: 0;
   border-radius: 4px;

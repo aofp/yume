@@ -10,20 +10,23 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 99999;
   animation: fadeIn 0.2s ease;
 }
 
 .settings-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 8px;
-  width: 90%;
-  max-width: 280px;
-  max-height: 80vh;
+  border: none;
+  border-radius: 0;
+  width: 100%;
+  max-width: 100%;
+  height: 100vh;
+  max-height: 100vh;
   overflow-y: auto;
   user-select: none;
   -webkit-user-select: none;
+  display: flex;
+  flex-direction: column;
 }
 
 .settings-header {
@@ -59,6 +62,8 @@
 
 .settings-content {
   padding: 12px;
+  flex: 1;
+  overflow-y: auto;
 }
 
 .settings-section {
@@ -117,8 +122,8 @@
 }
 
 .zoom-btn.small {
-  width: 24px;
-  height: 24px;
+  width: 23px;
+  height: 23px;
   border-radius: 4px;
 }
 
@@ -161,18 +166,41 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  position: relative;
+  overflow: hidden;
 }
 
+
 .color-label {
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
-  min-width: 50px;
+  font-size: 11px;
+  color: #999999;
+  position: relative;
+  white-space: nowrap;
+}
+
+.color-label::after {
+  content: '................................................................................';
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.2);
+  font-family: 'Fira Code', monospace;
+  font-size: 7pt;
+  line-height: 1;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+  width: 1000px;
 }
 
 .color-controls {
   display: flex;
   align-items: center;
   gap: 4px;
+  position: relative;
+  z-index: 1;
+  background: #0a0a0a;
 }
 
 .color-reset {
@@ -264,7 +292,7 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 20000;
+  z-index: 100001;
   animation: fadeInScale 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
@@ -288,8 +316,8 @@
 }
 
 .color-picker-header h4 {
-  color: var(--accent-color);
-  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 10px;
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -439,38 +467,23 @@
   width: 48px;
   height: 48px;
   object-fit: contain;
+  object-position: bottom right;
   background: rgba(255, 255, 255, 0.03);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   padding: 4px;
 }
 
-.watermark-remove {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
-  background: rgba(var(--accent-rgb), 0.1);
-  border: 1px solid rgba(var(--accent-rgb), 0.2);
-  border-radius: 4px;
-  color: var(--accent-color);
-  cursor: default;
-  transition: all 0.2s;
-}
-
-.watermark-remove:hover {
-  background: rgba(var(--accent-rgb), 0.2);
-  border-color: rgba(var(--accent-rgb), 1);
-  color: var(--accent-color);
-}
 
 /* Upgrade banner at bottom */
 .upgrade-banner-bottom {
   padding: 8px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
   display: flex;
   justify-content: center;
+  position: sticky;
+  bottom: 0;
+  background: #0a0a0a;
+  z-index: 100;
 }
 
 .upgrade-btn-small {
@@ -551,3 +564,164 @@
   background: rgba(var(--accent-rgb), 0.2);
   border-color: rgba(var(--accent-rgb), 0.3);
 }
+
+/* Font Settings */
+.font-settings {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.font-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  position: relative;
+  overflow: hidden;
+}
+
+
+.font-controls {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  position: relative;
+  z-index: 1;
+  background: #0a0a0a;
+}
+
+.font-label {
+  color: #999999;
+  font-size: 11px;
+  text-transform: lowercase;
+  position: relative;
+  white-space: nowrap;
+}
+
+.font-label::after {
+  content: '................................................................................';
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.2);
+  font-family: 'Fira Code', monospace;
+  font-size: 7pt;
+  line-height: 1;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+  width: 1000px;
+}
+
+.font-input {
+  width: 120px;
+  height: 23px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: #ffffff;
+  font-size: 11px;
+  padding: 4px 8px;
+  text-transform: none;
+  cursor: default;
+  transition: all 0.2s;
+  text-align: left;
+  display: flex;
+  align-items: center;
+  line-height: 1;
+}
+
+.font-input:hover {
+  border-color: var(--accent-color);
+}
+
+.font-input:focus {
+  outline: none;
+  border-color: var(--accent-color);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Checkbox Settings */
+.checkbox-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: default;
+  padding: 4px 0;
+  position: relative;
+  height: 20px;
+  overflow: hidden;
+}
+
+
+input[type="checkbox"].checkbox-input {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  background: #444444;
+  border: none;
+  border-radius: 2px;
+  cursor: default;
+  position: relative;
+  transition: all 0.2s ease;
+  flex: none;
+  display: inline-block;
+  box-sizing: border-box;
+  padding: 0;
+  margin: 0 0 0 4px;
+  z-index: 1;
+}
+
+input[type="checkbox"].checkbox-input:checked {
+  background: var(--accent-color) !important;
+  border: none;
+}
+
+input[type="checkbox"].checkbox-input:checked::after {
+  content: '';
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  width: 3px;
+  height: 6px;
+  border: solid #000;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+input[type="checkbox"].checkbox-input:not(:checked):hover {
+  background: #555555;
+}
+
+input[type="checkbox"].checkbox-input:checked:hover {
+  opacity: 0.9;
+}
+
+.checkbox-label {
+  color: #999999;
+  font-size: 11px;
+  text-transform: lowercase;
+  user-select: none;
+  position: relative;
+  white-space: nowrap;
+}
+
+.checkbox-label::after {
+  content: '................................................................................';
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.2);
+  font-family: 'Fira Code', monospace;
+  font-size: 7pt;
+  line-height: 1;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+  width: 1000px;
+}
+

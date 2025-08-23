@@ -322,6 +322,64 @@ pub fn run() {
                 }
             }
 
+            // Configure native window properties for better interaction
+            // Enable first click on macOS to accept mouse events even when window is not active
+            #[cfg(target_os = "macos")]
+            {
+                use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
+                use cocoa::base::id;
+                
+                let ns_window = window.ns_window().unwrap() as id;
+                unsafe {
+                    // Enable first mouse click to both activate window AND process the click
+                    // This makes the app feel more responsive
+                    ns_window.setAcceptsMouseMovedEvents_(true);
+                    
+                    // Also ensure window can become key and main window
+                    let collection_behavior = NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenPrimary
+                        | NSWindowCollectionBehavior::NSWindowCollectionBehaviorManaged;
+                    ns_window.setCollectionBehavior_(collection_behavior);
+                }
+            }
+            
+            // Configure Windows-specific window properties
+            #[cfg(target_os = "windows")]
+            {
+                use windows::Win32::Foundation::HWND;
+                use windows::Win32::UI::WindowsAndMessaging::{
+                    SetWindowLongPtrW, GetWindowLongPtrW, GWL_EXSTYLE, 
+                    WS_EX_ACCEPTFILES, WS_EX_APPWINDOW
+                };
+                
+                let hwnd = window.hwnd().unwrap();
+                unsafe {
+                    let hwnd = HWND(hwnd.0);
+                    // Get current extended style
+                    let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
+                    // Add accept files and app window flags for better interaction
+                    SetWindowLongPtrW(
+                        hwnd, 
+                        GWL_EXSTYLE, 
+                        ex_style | WS_EX_ACCEPTFILES as isize | WS_EX_APPWINDOW as isize
+                    );
+                }
+            }
+            
+            // Configure Linux-specific window properties
+            #[cfg(target_os = "linux")]
+            {
+                // On Linux with GTK, first click behavior is generally handled well by default
+                // But we can ensure the window is set to accept focus
+                if let Ok(gtk_window) = window.gtk_window() {
+                    use gtk::prelude::*;
+                    gtk_window.set_accept_focus(true);
+                    gtk_window.set_can_focus(true);
+                    // Ensure window appears in taskbar and can be activated
+                    gtk_window.set_skip_taskbar_hint(false);
+                    gtk_window.set_skip_pager_hint(false);
+                }
+            }
+            
             // Window lifecycle event handlers
             // Manages:
             // - Saving window state on close/resize/move
@@ -485,6 +543,7 @@ pub fn run() {
             commands::add_recent_project,
             commands::check_is_directory,
             commands::toggle_console_visibility,
+            commands::get_system_fonts,
             commands::open_external,
             commands::execute_bash,
             commands::spawn_bash,

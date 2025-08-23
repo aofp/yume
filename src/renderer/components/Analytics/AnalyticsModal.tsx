@@ -304,7 +304,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
         <div className="analytics-content">
           {loading && (
             <div style={{ display: 'flex', justifyContent: 'center', padding: '40px' }}>
-              <LoadingIndicator message="loading analytics..." />
+              <LoadingIndicator />
             </div>
           )}
           

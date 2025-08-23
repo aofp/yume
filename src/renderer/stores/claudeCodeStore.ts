@@ -95,6 +95,14 @@ interface ClaudeCodeStore {
   // Watermark
   globalWatermarkImage: string | null; // Global watermark for all sessions
   
+  // Font customization
+  monoFont: string; // Monospace font for code
+  sansFont: string; // Sans-serif font for UI
+  
+  // Tab persistence
+  rememberTabs: boolean; // Whether to remember open tabs
+  savedTabs: string[]; // Array of project paths to restore
+  
   // Streaming (deprecated - now per-session)
   streamingMessage: string;
   
@@ -142,6 +150,15 @@ interface ClaudeCodeStore {
   
   // Context
   calculateClaudeMdTokens: () => Promise<void>;
+  
+  // Font customization
+  setMonoFont: (font: string) => void;
+  setSansFont: (font: string) => void;
+  
+  // Tab persistence
+  setRememberTabs: (remember: boolean) => void;
+  saveTabs: () => void;
+  restoreTabs: () => Promise<void>;
 }
 
 // Helper function to track file changes from tool operations
@@ -334,6 +351,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   selectedModel: 'claude-opus-4-1-20250805',
   claudeMdTokens: 0, // Will be calculated on first use
   globalWatermarkImage: null,
+  monoFont: 'Fira Code', // Default monospace font
+  sansFont: 'Helvetica', // Default sans-serif font
+  rememberTabs: false, // Default to not remembering tabs
+  savedTabs: [], // Empty array of saved tabs
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],
@@ -548,6 +569,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             );
           persistSessions(newSessions); // Persist after update
           localStorage.setItem('yurucode-current-session', sessionId);
+          
+          // Save tabs if remember tabs is enabled
+          const storeState = get();
+          if (storeState.rememberTabs) {
+            setTimeout(() => storeState.saveTabs(), 100); // Small delay to ensure state is updated
+          }
+          
           return {
             sessions: newSessions,
             currentSessionId: sessionId
@@ -583,13 +611,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             s.id === sessionId 
               ? {
                   ...s,
-                  messages: [...s.messages, {
+                  messages: (() => {
+                    const newMessage = {
                     id: `error-${Date.now()}`,
                     type: 'error',
                     content: error.message,
                     timestamp: error.timestamp || Date.now(),
                     errorType: error.type
-                  }],
+                  };
+                    let updatedMessages = [...s.messages, newMessage];
+                    const MAX_MESSAGES = 500;
+                    if (updatedMessages.length > MAX_MESSAGES) {
+                      const removeCount = updatedMessages.length - MAX_MESSAGES;
+                      updatedMessages = updatedMessages.slice(removeCount);
+                    }
+                    return updatedMessages;
+                  })(),
                   streaming: false
                 }
               : s
@@ -926,16 +963,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     }
                   
                   // Parse token usage from Claude CLI
-                  // IMPORTANT: Cache tokens are pre-computed, not new tokens added to conversation
+                  // IMPORTANT: Cache tokens ARE part of the context window!
                   const regularInputTokens = message.usage.input_tokens || 0;
                   const cacheCreationTokens = message.usage.cache_creation_input_tokens || 0;
                   const cacheReadTokens = message.usage.cache_read_input_tokens || 0;
                   const outputTokens = message.usage.output_tokens || 0;
                   
-                  // Only count NEW tokens toward total (not cached)
-                  // Cache tokens are previously seen content, pre-computed for efficiency
-                  const inputTokens = regularInputTokens;
-                  const totalNewTokens = regularInputTokens + outputTokens;
+                  // CRITICAL FIX: Cache read tokens ARE the conversation history in context!
+                  // They count toward the 200k limit - not counting them was causing "1% used" bug
+                  const inputTokens = regularInputTokens + cacheReadTokens; // Include cache in input
+                  const totalNewTokens = inputTokens + outputTokens; // Total context used this turn
                   const cacheTotal = cacheCreationTokens + cacheReadTokens;
                   
                   console.log(`🔍 [TOKEN DEBUG] Token breakdown:`);
@@ -964,61 +1001,51 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     console.log('🗜️ [COMPACT RECOVERY] New conversation total:', analytics.tokens.total);
                     console.log('🗜️ [COMPACT RECOVERY] New cache size:', analytics.tokens.cacheSize);
                   } else {
-                    // Accumulate conversation tokens and track cache tokens separately
-                    // Cache tokens are tracked separately to avoid double counting
+                    // CRITICAL FIX: Properly handle cache vs new tokens
+                    // cache_read is the TOTAL conversation history (a snapshot, not incremental)
+                    // input_tokens and output_tokens are NEW tokens for this turn
                     const previousTotal = analytics.tokens.total;
                     
-                    analytics.tokens.input += inputTokens;
-                    analytics.tokens.output += outputTokens;
-                    analytics.tokens.total += totalNewTokens;
+                    // The actual context in use RIGHT NOW is cache_read + new tokens
+                    // This is what counts against the 200k limit
+                    const actualContextInUse = cacheReadTokens + regularInputTokens + outputTokens;
                     
-                    // IMPORTANT: cache tokens represent TOTAL cache state, not incremental
-                    // Cache creation + read tokens = current total cache size for this conversation
-                    // Do NOT accumulate - set to current total cache state
-                    const currentCacheTotal = cacheCreationTokens + cacheReadTokens;
-                    if (currentCacheTotal > 0) {
-                      analytics.tokens.cacheSize = currentCacheTotal;
-                      console.log(`   📦 Cache total state: ${currentCacheTotal} tokens (creation: ${cacheCreationTokens}, read: ${cacheReadTokens})`);
-                    }
-                    if (cacheCreationTokens > 0 && cacheReadTokens === 0) {
-                      console.log(`   📦 Cache created: ${cacheCreationTokens} tokens (new cache)`);
-                    } else if (cacheReadTokens > 0) {
-                      console.log(`   📦 Cache read: ${cacheReadTokens} tokens (reusing existing cache)`);
-                    }
+                    // For tracking purposes, accumulate only the NEW tokens added
+                    analytics.tokens.input += regularInputTokens; // Only new input
+                    analytics.tokens.output += outputTokens; // New output
+                    analytics.tokens.total = actualContextInUse; // Set to actual total context
                     
-                    console.log(`📊 [TOKEN UPDATE] Accumulation:`);
-                    console.log(`   Previous conversation total: ${previousTotal}`);
-                    console.log(`   Added conversation: ${totalNewTokens} (input: ${inputTokens} + output: ${outputTokens})`);
-                    console.log(`   Current cache size: ${analytics.tokens.cacheSize || 0} tokens`);
-                    console.log(`   New conversation total: ${analytics.tokens.total}`);
-                    console.log(`   Running totals - Input: ${analytics.tokens.input}, Output: ${analytics.tokens.output}`);
-                    console.log(`📊 [TOKEN UPDATE] Conversation tokens: ${analytics.tokens.total}, Cache tokens: ${analytics.tokens.cacheSize || 0} (separate)`);
+                    // Cache size is a snapshot of conversation history
+                    analytics.tokens.cacheSize = cacheReadTokens;
+                    
+                    console.log(`📊 [TOKEN UPDATE] Context usage:`);
+                    console.log(`   Conversation history (cache): ${cacheReadTokens} tokens`);
+                    console.log(`   New input this turn: ${regularInputTokens} tokens`);
+                    console.log(`   New output this turn: ${outputTokens} tokens`);
+                    console.log(`   TOTAL CONTEXT IN USE: ${actualContextInUse} / 200000 (${(actualContextInUse / 200000 * 100).toFixed(1)}%)`);
+                    console.log(`   Previous total was: ${previousTotal}`);
                   }
                   
                   console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
-                  console.log(`   Input: ${analytics.tokens.input}`);
-                  console.log(`   Output: ${analytics.tokens.output}`);
-                  console.log(`   Conversation total: ${analytics.tokens.total}`);
-                  console.log(`   Cache: ${analytics.tokens.cacheSize || 0} (tracked separately)`);
-                  const totalContext = analytics.tokens.total + (analytics.tokens.cacheSize || 0);
-                  console.log(`   Total context usage: ${totalContext} tokens (${(totalContext / 200000 * 100).toFixed(1)}% of 200k)`);
+                  console.log(`   New tokens accumulated: Input=${analytics.tokens.input}, Output=${analytics.tokens.output}`);
+                  console.log(`   Current context size: ${analytics.tokens.total} tokens`);
+                  console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}% of 200k limit`);
                   
                   // Determine which model was used (check message.model or use current selectedModel)
                   const modelUsed = message.model || get().selectedModel;
                   const isOpus = modelUsed.includes('opus');
                   const modelKey = isOpus ? 'opus' : 'sonnet';
                   
-                  // Update model-specific tokens (accumulate per message)
+                  // Update model-specific tokens (accumulate NEW tokens only, not cache)
                   // Both models can be used in the same conversation if user switches
-                  // Only count NEW tokens, not cache
                   if (isOpus) {
-                    analytics.tokens.byModel.opus.input += inputTokens;
+                    analytics.tokens.byModel.opus.input += regularInputTokens; // Only new input
                     analytics.tokens.byModel.opus.output += outputTokens;
-                    analytics.tokens.byModel.opus.total += totalNewTokens;
+                    analytics.tokens.byModel.opus.total += (regularInputTokens + outputTokens);
                   } else {
-                    analytics.tokens.byModel.sonnet.input += inputTokens;
+                    analytics.tokens.byModel.sonnet.input += regularInputTokens; // Only new input
                     analytics.tokens.byModel.sonnet.output += outputTokens;
-                    analytics.tokens.byModel.sonnet.total += totalNewTokens;
+                    analytics.tokens.byModel.sonnet.total += (regularInputTokens + outputTokens);
                   }
                   
                   // Store cost information (accumulate per message)
@@ -1199,7 +1226,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     streaming: false,
                     thinkingStartTime: undefined,
                     pendingToolIds: new Set(), // Clear pending tools on error
-                    messages: [...s.messages, errorMessage],
+                    messages: (() => {
+                      let updatedMessages = [...s.messages, errorMessage];
+                      const MAX_MESSAGES = 500;
+                      if (updatedMessages.length > MAX_MESSAGES) {
+                        const removeCount = updatedMessages.length - MAX_MESSAGES;
+                        updatedMessages = updatedMessages.slice(removeCount);
+                      }
+                      return updatedMessages;
+                    })(),
                     analytics: updatedAnalytics
                   };
                 }
@@ -1240,7 +1275,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   };
                   sessions = sessions.map(s => 
                     s.id === sessionId 
-                      ? { ...s, messages: [...s.messages, infoMessage] }
+                      ? { ...s, messages: (() => {
+                          let updatedMessages = [...s.messages, infoMessage];
+                          const MAX_MESSAGES = 500;
+                          if (updatedMessages.length > MAX_MESSAGES) {
+                            const removeCount = updatedMessages.length - MAX_MESSAGES;
+                            updatedMessages = updatedMessages.slice(removeCount);
+                          }
+                          return updatedMessages;
+                        })() }
                       : s
                   );
                 }
@@ -1585,7 +1628,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           console.log(`[THINKING TIME] Starting thinking timer at ${now} when user sends message`);
           
           const updates: any = { 
-            messages: [...s.messages, userMessage]
+            messages: (() => {
+              let updatedMessages = [...s.messages, userMessage];
+              const MAX_MESSAGES = 500;
+              if (updatedMessages.length > MAX_MESSAGES) {
+                const removeCount = updatedMessages.length - MAX_MESSAGES;
+                updatedMessages = updatedMessages.slice(removeCount);
+              }
+              return updatedMessages;
+            })()
           };
           
           // Handle thinking time accumulation
@@ -1632,12 +1683,21 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           s.id === sessionToUse 
             ? { 
                 ...s, 
-                messages: [...s.messages, {
-                  type: 'system',
-                  subtype: 'error',
-                  message: `Failed to send message: ${error.message}`,
-                  timestamp: Date.now()
-                }]
+                messages: (() => {
+                  const newMessage = {
+                    type: 'system',
+                    subtype: 'error',
+                    message: `Failed to send message: ${error.message}`,
+                    timestamp: Date.now()
+                  };
+                  let updatedMessages = [...s.messages, newMessage];
+                  const MAX_MESSAGES = 500;
+                  if (updatedMessages.length > MAX_MESSAGES) {
+                    const removeCount = updatedMessages.length - MAX_MESSAGES;
+                    updatedMessages = updatedMessages.slice(removeCount);
+                  }
+                  return updatedMessages;
+                })()
               }
             : s
         )
@@ -1930,13 +1990,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             s.id === sessionId 
               ? {
                   ...s,
-                  messages: [...s.messages, {
+                  messages: (() => {
+                    const newMessage = {
                     id: `error-${Date.now()}`,
                     type: 'error',
                     content: error.message,
                     timestamp: error.timestamp || Date.now(),
                     errorType: error.type
-                  }],
+                  };
+                    let updatedMessages = [...s.messages, newMessage];
+                    const MAX_MESSAGES = 500;
+                    if (updatedMessages.length > MAX_MESSAGES) {
+                      const removeCount = updatedMessages.length - MAX_MESSAGES;
+                      updatedMessages = updatedMessages.slice(removeCount);
+                    }
+                    return updatedMessages;
+                  })(),
                   streaming: false
                 }
               : s
@@ -2118,6 +2187,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       }
       
       persistSessions(newSessions); // Persist after deletion
+      
+      // Save tabs if remember tabs is enabled
+      const storeState = get();
+      if (storeState.rememberTabs) {
+        storeState.saveTabs();
+      }
+      
       if (newCurrentId) {
         localStorage.setItem('yurucode-current-session', newCurrentId);
       } else {
@@ -2145,6 +2221,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     });
     localStorage.removeItem('yurucode-sessions');
     localStorage.removeItem('yurucode-current-session');
+    
+    // Clear saved tabs when deleting all sessions
+    const storeState = get();
+    if (storeState.rememberTabs) {
+      localStorage.removeItem('yurucode-saved-tabs');
+      set({ savedTabs: [] });
+    }
   },
   
   reorderSessions: (fromIndex: number, toIndex: number) => {
@@ -2366,11 +2449,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
   addMessageToSession: (sessionId: string, message: SDKMessage) => {
     set(state => ({
-      sessions: state.sessions.map(s => 
-        s.id === sessionId 
-          ? { ...s, messages: [...s.messages, message], updatedAt: new Date() }
-          : s
-      )
+      sessions: state.sessions.map(s => {
+        if (s.id !== sessionId) return s;
+        
+        // Add new message and check if we exceed 500 message limit
+        let updatedMessages = [...s.messages, message];
+        const MAX_MESSAGES = 500;
+        
+        if (updatedMessages.length > MAX_MESSAGES) {
+          // Remove oldest messages to keep under limit
+          const removeCount = updatedMessages.length - MAX_MESSAGES;
+          updatedMessages = updatedMessages.slice(removeCount);
+          console.log(`[Store] Session ${sessionId} exceeded ${MAX_MESSAGES} messages, removed ${removeCount} oldest messages`);
+        }
+        
+        return { ...s, messages: updatedMessages, updatedAt: new Date() };
+      })
     }));
   },
 
@@ -2459,6 +2553,76 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     set({ claudeMdTokens: tokenEstimate });
     console.log(`[CLAUDE.md] Token count: ${tokenEstimate} (${claudeMdChars} chars)`);
   },
+  
+  // Font customization
+  setMonoFont: (font: string) => {
+    set({ monoFont: font });
+    // Apply to CSS variable
+    document.documentElement.style.setProperty('--font-mono', font);
+    // Save to localStorage
+    localStorage.setItem('yurucode-mono-font', font);
+    console.log('[Store] Set mono font:', font);
+  },
+  
+  setSansFont: (font: string) => {
+    set({ sansFont: font });
+    // Apply to CSS variable
+    document.documentElement.style.setProperty('--font-sans', font);
+    // Save to localStorage
+    localStorage.setItem('yurucode-sans-font', font);
+    console.log('[Store] Set sans font:', font);
+  },
+  
+  // Tab persistence
+  setRememberTabs: (remember: boolean) => {
+    set({ rememberTabs: remember });
+    localStorage.setItem('yurucode-remember-tabs', JSON.stringify(remember));
+    
+    if (remember) {
+      // Save current tabs immediately when enabled
+      const state = get();
+      state.saveTabs();
+    } else {
+      // Clear saved tabs when disabled
+      localStorage.removeItem('yurucode-saved-tabs');
+      set({ savedTabs: [] });
+    }
+    console.log('[Store] Remember tabs:', remember);
+  },
+  
+  saveTabs: () => {
+    const state = get();
+    if (!state.rememberTabs) return;
+    
+    // Save project directories of all open tabs
+    const tabPaths = state.sessions
+      .filter(s => s.workingDirectory)
+      .map(s => s.workingDirectory!);
+    
+    set({ savedTabs: tabPaths });
+    localStorage.setItem('yurucode-saved-tabs', JSON.stringify(tabPaths));
+    console.log('[Store] Saved tabs:', tabPaths);
+  },
+  
+  restoreTabs: async () => {
+    const state = get();
+    if (!state.rememberTabs) return;
+    
+    const stored = localStorage.getItem('yurucode-saved-tabs');
+    if (!stored) return;
+    
+    try {
+      const tabPaths = JSON.parse(stored) as string[];
+      console.log('[Store] Restoring tabs:', tabPaths);
+      
+      // Create sessions for each saved path
+      for (const path of tabPaths) {
+        await state.createSession(undefined, path);
+      }
+    } catch (err) {
+      console.error('[Store] Failed to restore tabs:', err);
+    }
+  },
 
   updateSessionMapping: (sessionId: string, claudeSessionId: string, metadata?: any) => {
     const state = get();
@@ -2510,7 +2674,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       partialize: (state) => ({
         // Only persist model selection and watermark - sessions should be ephemeral
         selectedModel: state.selectedModel,
-        globalWatermarkImage: state.globalWatermarkImage
+        globalWatermarkImage: state.globalWatermarkImage,
+        monoFont: state.monoFont,
+        sansFont: state.sansFont,
+        rememberTabs: state.rememberTabs
         // Do NOT persist sessionId - sessions should not survive app restarts
       })
     }
