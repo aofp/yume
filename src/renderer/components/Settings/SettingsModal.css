@@ -19,7 +19,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 90%;
-  max-width: 320px;
+  max-width: 280px;
   max-height: 80vh;
   overflow-y: auto;
   user-select: none;
@@ -176,11 +176,11 @@
 }
 
 .color-reset {
-  width: 32px;
-  height: 32px;
+  width: 23px;
+  height: 23px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
-  border-radius: 6px;
+  border-radius: 4px;
   color: rgba(255, 255, 255, 0.6);
   cursor: default;
   transition: all 0.2s ease;
@@ -402,9 +402,9 @@
 /* Watermark controls */
 .watermark-controls {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: flex-end;
-  gap: 8px;
+  gap: 4px;
   margin-top: 6px;
 }
 
@@ -461,7 +461,7 @@
 
 .watermark-remove:hover {
   background: rgba(var(--accent-rgb), 0.2);
-  border-color: rgba(var(--accent-rgb), 0.3);
+  border-color: rgba(var(--accent-rgb), 1);
   color: var(--accent-color);
 }
 

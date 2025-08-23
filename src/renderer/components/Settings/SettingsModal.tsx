@@ -363,13 +363,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               <div className="settings-section half-width">
                 <h4>zoom</h4>
                 <div className="zoom-controls compact">
-                  <button className="zoom-btn small" onClick={handleZoomOut}>
-                    <IconMinus size={12} />
-                  </button>
-                  <span className="zoom-level compact">{getZoomPercentage()}%</span>
-                  <button className="zoom-btn small" onClick={handleZoomIn}>
-                    <IconPlus size={12} />
-                  </button>
                   <button
                     className="zoom-btn small"
                     onClick={handleZoomReset}
@@ -377,6 +370,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     title={zoomLevel === 0 ? "already at 100%" : "reset zoom to 100%"}
                   >
                     <IconRefresh size={12} />
+                  </button>
+                  <button className="zoom-btn small" onClick={handleZoomOut}>
+                    <IconMinus size={12} />
+                  </button>
+                  <span className="zoom-level compact">{getZoomPercentage()}%</span>
+                  <button className="zoom-btn small" onClick={handleZoomIn}>
+                    <IconPlus size={12} />
                   </button>
                 </div>
               </div>
