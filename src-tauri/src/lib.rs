@@ -360,7 +360,7 @@ pub fn run() {
                     SetWindowLongPtrW(
                         hwnd, 
                         GWL_EXSTYLE, 
-                        ex_style | WS_EX_ACCEPTFILES as isize | WS_EX_APPWINDOW as isize
+                        ex_style | (WS_EX_ACCEPTFILES.0 as isize) | (WS_EX_APPWINDOW.0 as isize)
                     );
                 }
             }
