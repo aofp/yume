@@ -375,6 +375,58 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               </div>
             </div>
 
+            <div className="settings-section">
+              <h4>fonts</h4>
+              <div className="font-settings">
+                <div className="font-setting">
+                  <span className="font-label">monospace</span>
+                  <div className="font-controls">
+                    <button
+                      className="color-reset"
+                      onClick={() => setMonoFont('Fira Code')}
+                      title="reset to default"
+                      disabled={!monoFont || monoFont === 'Fira Code'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                    <button
+                      className="font-input"
+                      onClick={() => {
+                        setSelectedFont(monoFont || 'Fira Code');
+                        setShowFontPicker('monospace');
+                      }}
+                      style={{ fontFamily: monoFont || 'Fira Code' }}
+                    >
+                      {monoFont || 'Fira Code'}
+                    </button>
+                  </div>
+                </div>
+                <div className="font-setting">
+                  <span className="font-label">sans-serif</span>
+                  <div className="font-controls">
+                    <button
+                      className="color-reset"
+                      onClick={() => setSansFont('Helvetica')}
+                      title="reset to default"
+                      disabled={!sansFont || sansFont === 'Helvetica'}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                    <button
+                      className="font-input"
+                      onClick={() => {
+                        setSelectedFont(sansFont || 'Helvetica');
+                        setShowFontPicker('sans-serif');
+                      }}
+                      style={{ fontFamily: sansFont || 'Helvetica' }}
+                    >
+                      {sansFont || 'Helvetica'}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <div className="settings-row">
               <div className="settings-section half-width">
                 <h4>zoom</h4>
@@ -438,58 +490,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                       </label>
                     </>
                   )}
-                </div>
-              </div>
-            </div>
-
-            <div className="settings-section">
-              <h4>fonts</h4>
-              <div className="font-settings">
-                <div className="font-setting">
-                  <span className="font-label">monospace</span>
-                  <div className="font-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => setMonoFont('Fira Code')}
-                      title="reset to default"
-                      disabled={!monoFont || monoFont === 'Fira Code'}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <button
-                      className="font-input"
-                      onClick={() => {
-                        setSelectedFont(monoFont || 'Fira Code');
-                        setShowFontPicker('monospace');
-                      }}
-                      style={{ fontFamily: monoFont || 'Fira Code' }}
-                    >
-                      {monoFont || 'Fira Code'}
-                    </button>
-                  </div>
-                </div>
-                <div className="font-setting">
-                  <span className="font-label">sans-serif</span>
-                  <div className="font-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => setSansFont('Helvetica')}
-                      title="reset to default"
-                      disabled={!sansFont || sansFont === 'Helvetica'}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <button
-                      className="font-input"
-                      onClick={() => {
-                        setSelectedFont(sansFont || 'Helvetica');
-                        setShowFontPicker('sans-serif');
-                      }}
-                      style={{ fontFamily: sansFont || 'Helvetica' }}
-                    >
-                      {sansFont || 'Helvetica'}
-                    </button>
-                  </div>
                 </div>
               </div>
             </div>
