@@ -686,8 +686,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               if (s.id !== sessionId) return s;
               
               // Update claudeSessionId if present in message
-              if (message.session_id && !s.claudeSessionId) {
-                console.log(`[Store] Updating claudeSessionId for session ${sessionId}: ${message.session_id}`);
+              // IMPORTANT: For compact results, we clear the session ID to start fresh
+              const isCompactResult = message.type === 'system' && message.subtype === 'compact';
+              const isResultWithNewSession = message.type === 'result' && message.session_id;
+              
+              if (isCompactResult) {
+                // Compact clears the session ID - next message starts fresh
+                const oldSessionId = s.claudeSessionId;
+                console.log(`🗜️ [Store] Compact result - clearing session ID (was ${oldSessionId})`);
+                s = { ...s, claudeSessionId: null };
+              } else if (message.session_id && (!s.claudeSessionId || isResultWithNewSession)) {
+                const oldSessionId = s.claudeSessionId;
+                console.log(`[Store] Updating claudeSessionId for session ${sessionId}: ${oldSessionId} -> ${message.session_id}`);
                 s = { ...s, claudeSessionId: message.session_id };
                 
                 // Also update the session mapping

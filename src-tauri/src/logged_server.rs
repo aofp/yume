@@ -3098,10 +3098,16 @@ io.on('connection', (socket) => {
           console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
           
           // Extract session ID if present (update it every time to ensure we have the latest)
-          // This includes compact results which return the NEW compacted session ID
-          if (jsonData.session_id) {
+          // BUT: Don't store session_id from compact results as they can't be resumed
+          const lastUserMessage = session?.messages?.filter(m => m.role === 'user').pop();
+          const isCompactCommand = lastUserMessage?.message?.content?.trim() === '/compact';
+          const isCompactResult = isCompactCommand && jsonData.type === 'result';
+          
+          if (jsonData.session_id && !isCompactResult) {
             session.claudeSessionId = jsonData.session_id;
             console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
+          } else if (isCompactResult && jsonData.session_id) {
+            console.log(`🗜️ [${sessionId}] Ignoring session ID from compact result: ${jsonData.session_id} (not resumable)`);
           }
           
           // Handle different message types - EXACTLY LIKE WINDOWS
@@ -3468,17 +3474,24 @@ io.on('connection', (socket) => {
             const isCompactResult = isCompactCommand && 
                                    (jsonData.result?.includes('Compacted') || 
                                     jsonData.result?.includes('compressed') ||
+                                    jsonData.result?.includes('summary') ||
                                     jsonData.result === '' ||
                                     jsonData.result === null);
             
             if (isCompactResult) {
               console.log(`🗜️ [${sessionId}] Detected /compact command completion`);
               console.log(`🗜️ [${sessionId}] Result text: "${jsonData.result}"`);
+              console.log(`🗜️ [${sessionId}] Session ID in result: ${jsonData.session_id}`);
               console.log(`🗜️ [${sessionId}] Usage data:`, jsonData.usage);
               
-              // Keep the new session ID from compact - it's the compacted session we'll resume with
-              if (session && session.claudeSessionId) {
-                console.log(`✅ Using new compacted session ID: ${session.claudeSessionId}`);
+              // IMPORTANT: After compact, Claude returns a new session ID but it's NOT resumable
+              // We need to clear the session ID so the next message starts fresh with the compacted context
+              if (session) {
+                const oldSessionId = session.claudeSessionId;
+                // Clear the session ID - next message will start fresh
+                session.claudeSessionId = null;
+                console.log(`🗜️ Cleared session ID (was ${oldSessionId}) - next message will start fresh after compact`);
+                console.log(`🗜️ The compact command has summarized the conversation - continuing with reduced context`);
               }
               
               // Extract the new token count from the compact result
@@ -3499,9 +3512,11 @@ io.on('connection', (socket) => {
               socket.emit(`message:${sessionId}`, {
                 type: 'system',
                 subtype: 'compact',
+                session_id: null, // Clear session ID after compact
                 message: { 
-                  content: 'context compacted - token count reset',
-                  compactedTokens: compactedTokens
+                  content: 'context compacted - starting fresh with reduced tokens',
+                  compactedTokens: compactedTokens,
+                  compactSummary: jsonData.result || 'conversation summarized'
                 },
                 timestamp: Date.now()
               });
@@ -3539,9 +3554,11 @@ io.on('connection', (socket) => {
               lastAssistantMessageIds.delete(sessionId); // Reset
             }
             
-            // Just send the result message with model info
+            // Just send the result message with model info and session ID
             // Model is available from the outer scope (sendMessage handler)
             console.log(`✅ [${sessionId}] Sending result message with model: ${model}`);
+            
+            // Don't include session_id in result if this was a compact command
             const resultMessage = {
               type: 'result',
               ...jsonData,
@@ -3549,7 +3566,14 @@ io.on('connection', (socket) => {
               id: `result-${sessionId}-${Date.now()}`,
               model: model || 'unknown' // Use model from outer scope directly
             };
+            
+            // Only include session_id if it's not a compact result
+            if (!isCompactResult && session.claudeSessionId) {
+              resultMessage.session_id = session.claudeSessionId;
+            }
+            
             console.log(`   - Model in result message: ${resultMessage.model}`);
+            console.log(`   - Session ID in result message: ${resultMessage.session_id || '(cleared after compact)'}`);
             if (resultMessage.usage) {
               console.log(`   - Usage breakdown:`);
               console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0}`);
