@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconX, IconPlus, IconMinus, IconSettings, IconPalette, IconPhoto, IconRotateClockwise, IconCrown } from '@tabler/icons-react';
+import { IconX, IconPlus, IconMinus, IconSettings, IconPalette, IconPhoto, IconRotateClockwise, IconCrown, IconInfoCircle } from '@tabler/icons-react';
 import './SettingsModal.css';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
@@ -101,7 +101,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     const accentG = parseInt(accentHex.substr(2, 2), 16);
     const accentB = parseInt(accentHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${accentR}, ${accentG}, ${accentB}`);
-    
+
     const savedPositiveColor = localStorage.getItem('positiveColor') || '#99eeff';
     setPositiveColor(savedPositiveColor);
     // Apply positive color
@@ -111,7 +111,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     const positiveG = parseInt(positiveHex.substr(2, 2), 16);
     const positiveB = parseInt(positiveHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--positive-rgb', `${positiveR}, ${positiveG}, ${positiveB}`);
-    
+
     const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff99ff';
     setNegativeColor(savedNegativeColor);
     // Apply negative color
@@ -190,7 +190,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     const r = parseInt(hex.substr(0, 2), 16);
     const g = parseInt(hex.substr(2, 2), 16);
     const b = parseInt(hex.substr(4, 2), 16);
-    
+
     if (type === 'accent') {
       setAccentColor(color);
       document.documentElement.style.setProperty('--accent-color', color);
@@ -328,7 +328,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="color-setting">
                   <span className="color-label">positive</span>
                   <div className="color-controls">
@@ -350,7 +350,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                     </button>
                   </div>
                 </div>
-                
+
                 <div className="color-setting">
                   <span className="color-label">negative</span>
                   <div className="color-controls">
@@ -427,8 +427,36 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
               </div>
             </div>
 
-            <div className="settings-row">
-              <div className="settings-section half-width">
+            <div className="settings-actions">
+              {!isLicensed && (
+                <button
+                  className="settings-action-btn"
+                  onClick={() => {
+                    window.dispatchEvent(new CustomEvent('showUpgradeModal', { detail: { reason: 'feature' } }));
+                  }}
+                  title="upgrade to pro"
+                >
+                  <IconCrown size={10} />
+                  <span>upgrade to pro</span>
+                </button>
+              )}
+              <button
+                className="settings-action-btn about"
+                onClick={() => {
+                  window.dispatchEvent(new CustomEvent('showAboutModal'));
+                }}
+                title="about yuru code"
+              >
+                <IconInfoCircle size={10} />
+                <span>about yuru code</span>
+              </button>
+            </div>
+
+          </div>
+
+          <div className="settings-bottom-controls">
+            <div className="settings-bottom-left">
+              <div>
                 <h4>zoom</h4>
                 <div className="zoom-controls compact">
                   <button
@@ -448,9 +476,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   </button>
                 </div>
               </div>
+            </div>
 
-              <div className="settings-section half-width">
-                <h4 style={{ textAlign: 'right' }}>watermark</h4>
+            <div className="settings-bottom-right">
+              <div>
+                <h4>watermark image</h4>
                 <div className="watermark-controls">
                   <input
                     ref={fileInputRef}
@@ -493,24 +523,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 </div>
               </div>
             </div>
-
           </div>
-          
-          {!isLicensed && (
-            <div className="upgrade-banner-bottom">
-              <button
-                className="upgrade-btn-small"
-                onClick={() => {
-                  onClose();
-                  window.dispatchEvent(new CustomEvent('showUpgradeModal', { detail: { reason: 'feature' } }));
-                }}
-                title="upgrade to pro"
-              >
-                <IconCrown size={10} />
-                <span>upgrade to pro</span>
-              </button>
-            </div>
-          )}
         </div>
       </div>
 
@@ -531,8 +544,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 <div key={rowIndex} className={`color-row color-row-${rowIndex + 1}`}>
                   {row.map((color) => {
                     const currentColor = showColorPicker === 'accent' ? accentColor :
-                                       showColorPicker === 'positive' ? positiveColor :
-                                       negativeColor;
+                      showColorPicker === 'positive' ? positiveColor :
+                        negativeColor;
                     return (
                       <button
                         key={color}

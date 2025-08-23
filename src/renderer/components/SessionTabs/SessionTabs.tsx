@@ -131,6 +131,16 @@ export const SessionTabs: React.FC = () => {
     checkRecentProjects();
   }, [sessions.length]);
 
+  // Listen for showAboutModal event
+  useEffect(() => {
+    const handleShowAbout = () => {
+      setShowAbout(true);
+    };
+    
+    window.addEventListener('showAboutModal', handleShowAbout);
+    return () => window.removeEventListener('showAboutModal', handleShowAbout);
+  }, []);
+
   // Keyboard handling moved to RecentProjectsModal component to avoid conflicts
 
   // Handle vertical scroll as horizontal scroll on tabs container
