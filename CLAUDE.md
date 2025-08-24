@@ -48,6 +48,9 @@ npm run tauri:build            # Build for current platform with macOS bundling
 npm run tauri:build:win        # Build specifically for Windows x64
 npm run tauri:build:mac        # Build for macOS ARM64
 npm run tauri:build:linux      # Build for Linux x64
+
+# Testing
+npm run test:session-loading   # Test session loading functionality
 ```
 
 ## Critical Architecture
@@ -61,7 +64,7 @@ npm run tauri:build:linux      # Build for Linux x64
    - Bundled server resource management
    - Dynamic port allocation (60000-61000 range)
 
-2. **Node.js Server** (`server-claude-macos.js`)
+2. **Node.js Server** (EMBEDDED in `src-tauri/src/logged_server.rs`)
    - Spawns Claude CLI binary directly (no SDK/API key)
    - Parses `--output-format stream-json --verbose` output
    - WebSocket communication via Socket.IO
@@ -98,24 +101,43 @@ npm run tauri:build:linux      # Build for Linux x64
 - Transparent window with custom decorations
 - Window size: 516x509 pixels
 
-### Important Files & Patterns
+## ⚠️⚠️⚠️ CRITICAL: THE SERVER IS EMBEDDED IN logged_server.rs
 
-- **⚠️⚠️⚠️ CRITICAL: THE SERVER IS EMBEDDED IN logged_server.rs!!!** 
-  - The Node.js server code is EMBEDDED as a string constant `EMBEDDED_SERVER` in `src-tauri/src/logged_server.rs`
-  - On Windows/Linux, this embedded code is extracted to `/tmp/yurucode-server/server.cjs` at runtime
-  - **YOU MUST EDIT THE JAVASCRIPT CODE INSIDE logged_server.rs** - editing other .cjs files has NO EFFECT
-  - The embedded server starts around line 124 with `const EMBEDDED_SERVER: &str = r#"`
-  - This is why changes to .cjs files don't work - the REAL server is embedded in the Rust file!
+The Node.js server code is EMBEDDED as a string constant `EMBEDDED_SERVER` in `src-tauri/src/logged_server.rs`:
+- On Windows/Linux, this embedded code is extracted to `/tmp/yurucode-server/server.cjs` at runtime
+- **YOU MUST EDIT THE JAVASCRIPT CODE INSIDE logged_server.rs** - editing other .cjs files has NO EFFECT
+- The embedded server starts around line 124 with `const EMBEDDED_SERVER: &str = r#"`
+- This is why changes to .cjs files don't work - the REAL server is embedded in the Rust file!
+
+## Important Files & Patterns
+
+- `src-tauri/src/logged_server.rs` - **CONTAINS THE ACTUAL SERVER CODE AS EMBEDDED STRING**
 - `server-claude-macos.cjs` - Server tracking `lastAssistantMessageIds` for streaming (macOS only)
 - `src/renderer/stores/claudeCodeStore.ts` - Use `let sessions` not `const sessions` in setState
 - `src/renderer/services/claudeCodeClient.ts` - Socket.IO connection management
 - `src/renderer/components/Chat/MessageRenderer.tsx` - Message rendering logic
 - `src-tauri/tauri.conf.json` - Tauri configuration and window settings
-- `src-tauri/src/logged_server.rs` - **CONTAINS THE ACTUAL SERVER CODE AS EMBEDDED STRING**
 - `scripts/inject-version.cjs` - Version injection during build
 - `scripts/bundle-macos-server.js` - Bundle server for macOS distribution
 
-### Keyboard Shortcuts
+## Process Wrapper Architecture
+
+yurucode uses a sophisticated process wrapper system for extending Claude CLI functionality:
+
+### Claude Compact Wrapper (`scripts/claude-compact-wrapper-v2.js`)
+- **Token Truth Source**: Authoritative source for token counting and accumulation
+- **Session Management**: Tracks multiple sessions with complete token history
+- **Compact Detection**: Monitors for `/compact` commands and tracks results
+- **Summary Generation**: Creates compact summaries when context is compressed
+- **Platform Support**: Handles Windows, macOS, Linux, and WSL paths
+
+The wrapper intercepts all Claude CLI communication to:
+1. Track exact token usage (input, output, cache)
+2. Detect when compaction happens
+3. Generate summaries of compressed content
+4. Maintain session state across compacts
+
+## Keyboard Shortcuts
 
 - `Ctrl+T` - New tab/session
 - `Ctrl+W` - Close tab
@@ -130,48 +152,70 @@ npm run tauri:build:linux      # Build for Linux x64
 - `?` - Show help
 - `Escape` - Close modals/stop streaming
 
-### Common Issues & Solutions
+## Special Commands
 
-1. **Token accumulation**: Use `+=` for analytics accumulation, restart app after store changes
-2. **Thinking indicator stuck**: Check `message.streaming` flag and `lastAssistantMessageIds` properly cleared
-3. **Zustand store changes**: Require full app restart
-4. **Hot reload**: Components hot-reload, server uses nodemon, store needs restart
-5. **macOS paths**: Server handles path conversion for Claude CLI
-6. **Port conflicts**: Dynamic allocation (60000-61000) prevents conflicts
-7. **Version mismatch**: Check `scripts/inject-version.cjs` runs during build
-8. **Memory issues**: Server has 2GB heap limit with GC exposed
+### `/compact` Command
+- **Native Claude CLI command** - NOT implemented in yurucode source
+- Compresses conversation context server-side
+- Returns empty result with new (non-resumable) session ID
+- Server detects completion and clears session ID
+- Tracked with `wasCompacted` flag to prevent invalid ID restoration
 
-### Testing Changes
+### `clear` Command  
+- **Client-side command** - Implemented in CLI wrapper
+- Wipes local conversation history
+- Does not affect server-side context
+
+## Common Issues & Solutions
+
+1. **After /compact command**: Session properly resets with `wasCompacted` flag
+2. **Token accumulation**: Use `+=` for analytics accumulation, restart app after store changes
+3. **Thinking indicator stuck**: Check `message.streaming` flag and `lastAssistantMessageIds` properly cleared
+4. **Zustand store changes**: Require full app restart
+5. **Hot reload**: Components hot-reload, server uses nodemon, store needs restart
+6. **macOS paths**: Server handles path conversion for Claude CLI
+7. **Port conflicts**: Dynamic allocation (60000-61000) prevents conflicts
+8. **Version mismatch**: Check `scripts/inject-version.cjs` runs during build
+9. **Memory issues**: Server has 2GB heap limit with GC exposed
+
+## Testing Changes
 
 When modifying:
 1. React components hot-reload automatically (HMR)
 2. Server changes reload with nodemon (if using dev server)
-3. Zustand store changes require app restart
+3. **Zustand store changes require app restart**
 4. Tauri main process needs manual restart
 5. Check browser console for Socket.IO errors
 6. Check terminal for Claude spawn errors
 7. Verify bundled resources after build in `src-tauri/resources/`
 
-### Recent Fixes (2024-12-23)
+## Recent Fixes
 
-#### Compact Command Fix
-**Problem**: After `/compact`, users couldn't send messages (session not found error)
-**Solution**: Track compacted sessions with `wasCompacted` flag in server
-**Files Changed**: `src-tauri/src/logged_server.rs` (embedded server)
-**Details**: See `COMPACT_FIX_V2.md` for complete analysis
+### Compact Command Fix (2024-12-23)
+- **Problem**: After `/compact`, users couldn't send messages (session not found error)
+- **Solution**: Track compacted sessions with `wasCompacted` flag in server
+- **Implementation**: Server rejects old session IDs after compact, forces fresh start
+- **Files Changed**: `src-tauri/src/logged_server.rs` (embedded server)
+- **Details**: See `COMPACT_FIX_V2.md` for complete analysis
 
-#### Session Persistence Fixes
+### Session Persistence Fixes
 1. **TauriClient callback registration** - Fixed in main.tsx
 2. **Restored tabs deferred spawn** - Fixed in claudeCodeStore.ts
 3. **Syntax errors** - Removed duplicate catch blocks
 
-### Known Issues & Solutions
+## Claude Code Source Analysis
 
-1. **After /compact command**: Session properly resets, old ID rejected
-2. **Token counting**: Use `+=` for accumulation, not assignment
-3. **Streaming state**: Check `lastAssistantMessageIds` cleared properly
-4. **Memory leaks**: Monitor buffer size, implement pagination
-5. **WSL paths**: Server handles conversion automatically
+The `claude-code-src/` directory contains the de-minified Claude CLI source:
+- **No `/compact` implementation** - It's a server-side Claude API feature
+- **`clear` command** - Local implementation in `cli/app.js:128`
+- **Message flow**: `app.js` → `client.js` → Claude API
+- **Commands sent as regular messages** - Special commands handled by API
 
-### Future Improvements
-See `YURUCODE_TODO.md` for comprehensive list of planned features and fixes
+## Future Improvements
+
+See `YURUCODE_TODO.md` for comprehensive list including:
+- Session persistence improvements (SQLite storage)
+- Checkpoint system (like Claudia)
+- Token optimization and auto-compact triggers
+- Better error recovery and retry mechanisms
+- Performance profiling and debugging tools

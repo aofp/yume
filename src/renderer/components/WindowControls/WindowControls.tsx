@@ -18,15 +18,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   
   const { isLicensed } = useLicenseStore();
   
-  console.log('WindowControls platform detection:', {
-    platform: navigator.platform,
-    userAgent: navigator.userAgent,
-    isMac,
-    isWindows,
-    onHelpClick: !!onHelpClick,
-    onSettingsClick: !!onSettingsClick,
-    onHelpClickFunc: onHelpClick
-  });
+  // Removed spammy platform detection log
   
   // Track window focus state
   const [isWindowFocused, setIsWindowFocused] = React.useState(true);

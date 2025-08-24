@@ -14,6 +14,9 @@ import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { homedir, platform } from 'os';
 
+// Import the wrapper module for API capture and token tracking
+import claudeWrapper from './wrapper-module.js';
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
@@ -1456,7 +1459,7 @@ io.on('connection', (socket) => {
         args: args
       });
       
-      const claudeProcess = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
+      let claudeProcess = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
         (() => {
           // Convert Windows path to WSL path if needed
           let wslWorkingDir = processWorkingDir;
@@ -1474,6 +1477,9 @@ io.on('connection', (socket) => {
           return spawn(wslCommand, wslArgs, spawnOptions);
         })() :
         spawn(CLAUDE_PATH, args, spawnOptions);
+      
+      // Store process reference for wrapper monitoring (but don't wrap stdout)
+      console.log('✅ [WRAPPER] Process ready for monitoring');
       
       // Mark spawning as complete after a short delay
       setTimeout(() => {
@@ -1651,6 +1657,17 @@ Use <thinking> tags extensively to show your reasoning process.`;
         }
         
         console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line.substring(0, 100)}...`);
+        
+        // WRAPPER: Process line through wrapper for API capture and token tracking
+        try {
+          const augmentedLine = claudeWrapper.processLine(line, sessionId);
+          if (augmentedLine && augmentedLine !== line) {
+            // Replace line with augmented version
+            line = augmentedLine;
+          }
+        } catch (e) {
+          console.error(`[WRAPPER] Error processing line:`, e.message);
+        }
         
         try {
           const jsonData = JSON.parse(line);
@@ -2605,6 +2622,47 @@ Use <thinking> tags extensively to show your reasoning process.`;
         lastAssistantMessageIds.delete(sessionId);
       }
     }
+  });
+  
+  // ============================================
+  // WRAPPER SOCKET ENDPOINTS
+  // ============================================
+  
+  socket.on('wrapper:get-stats', (sessionId, callback) => {
+    const stats = claudeWrapper.getStats(sessionId);
+    console.log('📊 [WRAPPER] Stats requested');
+    callback({ success: true, stats });
+  });
+  
+  socket.on('wrapper:get-api-responses', (sessionId, callback) => {
+    if (sessionId && claudeWrapper.apiResponses.has(sessionId)) {
+      const responses = claudeWrapper.apiResponses.get(sessionId);
+      console.log(`📊 [WRAPPER] Returning ${responses.length} API responses for ${sessionId}`);
+      callback({ 
+        success: true, 
+        responses 
+      });
+    } else {
+      const allResponses = claudeWrapper.allApiCalls;
+      console.log(`📊 [WRAPPER] Returning ${allResponses.length} total API responses`);
+      callback({
+        success: true,
+        responses: allResponses
+      });
+    }
+  });
+  
+  socket.on('wrapper:get-sessions', (_, callback) => {
+    const sessions = Array.from(claudeWrapper.sessions.entries()).map(([id, session]) => ({
+      id,
+      messages: session.messageCount,
+      tokens: session.totalTokens,
+      apiCalls: session.apiResponses.length,
+      compactions: session.compactCount,
+      tokensSaved: session.tokensSaved
+    }));
+    console.log(`📊 [WRAPPER] Returning ${sessions.length} sessions`);
+    callback({ success: true, sessions });
   });
 });
 

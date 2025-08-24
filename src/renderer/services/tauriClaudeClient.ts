@@ -3,8 +3,14 @@
  * Replaces Socket.IO with direct Tauri IPC
  */
 
+console.log('🔥🔥🔥 TAURI CLIENT FILE LOADING 🔥🔥🔥');
+
 import { invoke, type Event } from '@tauri-apps/api/core';
 import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event';
+import { processWrapperMessage } from './wrapperIntegration';
+
+// Force wrapper module to load
+console.log('[TauriClient] Wrapper module imported, processWrapperMessage:', typeof processWrapperMessage);
 
 // Keep track of active listeners for cleanup
 const activeListeners = new Map<string, UnlistenFn>();
@@ -264,6 +270,7 @@ export class TauriClaudeClient {
   onMessage(sessionId: string, handler: (message: any) => void): () => void {
     let channel = `claude-message:${sessionId}`;
     const updateChannel = `claude-session-id-update:${sessionId}`;
+    let currentSessionId = sessionId; // Track the current session ID for wrapper
     console.log(`[TauriClient] 📡 Setting up listeners:`, {
       messageChannel: channel,
       updateChannel: updateChannel,
@@ -292,6 +299,11 @@ export class TauriClaudeClient {
         console.error('[TauriClient] Failed to parse message:', payload);
         return;
       }
+      
+      // WRAPPER: Process message for token tracking and compaction detection
+      console.log('[TauriClient] BEFORE wrapper:', message.type, currentSessionId);
+      message = processWrapperMessage(message, currentSessionId);
+      console.log('[TauriClient] AFTER wrapper:', message.type, 'has wrapper:', !!message.wrapper);
       
       // Transform message format to match expected format
       let transformedMessage: any = null;
@@ -515,7 +527,8 @@ export class TauriClaudeClient {
       
       // Set up new listener on the new channel
       channel = `claude-message:${new_session_id}`;
-      console.log(`[TauriClient] Switching to new channel: ${channel}`);
+      currentSessionId = new_session_id; // Update the current session ID for wrapper
+      console.log(`[TauriClient] Switching to new channel: ${channel}, wrapper session: ${currentSessionId}`);
       
       const newUnlisten = await listen(channel, messageHandler);
       currentUnlisten = newUnlisten;
@@ -648,4 +661,6 @@ export class TauriClaudeClient {
 }
 
 // Singleton instance
+console.log('🔴 [CREATING TAURI CLIENT INSTANCE]');
 export const tauriClaudeClient = new TauriClaudeClient();
+console.log('🔴 [TAURI CLIENT CREATED]', tauriClaudeClient);

@@ -2187,9 +2187,7 @@ export const ClaudeChat: React.FC = () => {
         })()}
         {/* Show thinking indicator only when actually streaming */}
         {(() => {
-          if (currentSession?.streaming) {
-            console.log(`🔴 [UI] Showing thinking indicator for session ${currentSessionId}, streaming=${currentSession.streaming}`);
-          }
+          // Removed spammy thinking indicator log
           return currentSession?.streaming;
         })() && (
           <div className="message assistant">
@@ -2416,13 +2414,7 @@ export const ClaudeChat: React.FC = () => {
               const cacheTokens = currentSession.analytics?.tokens?.cacheSize || 0;
               const totalContextTokens = conversationTokens + cacheTokens;
               
-              // Debug log to see actual token values
-              console.log('[TOKEN INDICATOR] Context tokens:', {
-                conversation: conversationTokens,
-                cache: cacheTokens, 
-                total: totalContextTokens,
-                analytics: currentSession.analytics?.tokens
-              });
+              // Disabled spammy token indicator log
               
               // Opus 4.1 has 200k context window
               // Sonnet 4.0 has 200k context window 

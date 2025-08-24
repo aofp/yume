@@ -176,6 +176,141 @@ console.debug = function(...args) {
   }
 };
 
+// ============================================
+// WRAPPER_INJECTED - Universal Claude Wrapper
+// ============================================
+
+const wrapperState = {
+  sessions: new Map(),
+  stats: { apiCalls: 0, totalTokens: 0, compacts: 0 }
+};
+
+function getWrapperSession(sessionId) {
+  if (!wrapperState.sessions.has(sessionId)) {
+    wrapperState.sessions.set(sessionId, {
+      id: sessionId,
+      inputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      messageCount: 0,
+      apiResponses: [],
+      compactCount: 0,
+      wasCompacted: false,
+      tokensSaved: 0
+    });
+    console.log(`✅ [WRAPPER] Created session: ${sessionId}`);
+  }
+  return wrapperState.sessions.get(sessionId);
+}
+
+function processWrapperLine(line, sessionId) {
+  if (!line || !line.trim()) return line;
+  
+  const session = getWrapperSession(sessionId);
+  
+  try {
+    const data = JSON.parse(line);
+    
+    // Log API response
+    wrapperState.stats.apiCalls++;
+    console.log(`📡 [WRAPPER] API ${data.type} #${wrapperState.stats.apiCalls}`);
+    
+    // Store API response
+    session.apiResponses.push({
+      timestamp: Date.now(),
+      type: data.type,
+      data: { ...data }
+    });
+    
+    // Track messages
+    if (data.type === 'user' || data.type === 'assistant') {
+      session.messageCount++;
+    }
+    
+    // Update tokens if usage present
+    if (data.usage) {
+      const input = data.usage.input_tokens || 0;
+      const output = data.usage.output_tokens || 0;
+      const cacheCreation = data.usage.cache_creation_input_tokens || 0;
+      const cacheRead = data.usage.cache_read_input_tokens || 0;
+      
+      session.inputTokens += input + cacheCreation;
+      session.outputTokens += output;
+      
+      const prevTotal = session.totalTokens;
+      session.totalTokens = session.inputTokens + session.outputTokens;
+      
+      const delta = session.totalTokens - prevTotal;
+      wrapperState.stats.totalTokens += delta;
+      
+      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/100000 (${Math.round(session.totalTokens/1000)}%)`);
+    }
+    
+    // Detect compaction
+    if (data.type === 'result' && data.result === '' && 
+        (!data.usage || (data.usage.input_tokens === 0 && data.usage.output_tokens === 0))) {
+      
+      const savedTokens = session.totalTokens;
+      console.log(`🗜️ [WRAPPER] COMPACTION DETECTED! Saved ${savedTokens} tokens`);
+      
+      session.compactCount++;
+      session.wasCompacted = true;
+      session.tokensSaved += savedTokens;
+      wrapperState.stats.compacts++;
+      
+      // Reset tokens
+      session.inputTokens = 0;
+      session.outputTokens = 0;
+      session.totalTokens = 0;
+      
+      // Generate summary
+      const summary = `✅ Conversation compacted successfully!
+      
+📊 Compaction Summary:
+• Tokens saved: ${savedTokens}
+• Messages compressed: ${session.messageCount}
+• Total saved so far: ${session.tokensSaved}
+
+✨ Context reset - you can continue normally.`;
+      
+      data.result = summary;
+      data.wrapper_compact = {
+        savedTokens,
+        totalSaved: session.tokensSaved,
+        compactCount: session.compactCount
+      };
+      
+      console.log(`🗜️ [WRAPPER] Compaction complete`);
+    }
+    
+    // Add wrapper data to every message
+    data.wrapper = {
+      enabled: true,
+      tokens: {
+        total: session.totalTokens,
+        input: session.inputTokens,
+        output: session.outputTokens
+      },
+      compaction: {
+        count: session.compactCount,
+        wasCompacted: session.wasCompacted,
+        tokensSaved: session.tokensSaved
+      }
+    };
+    
+    return JSON.stringify(data);
+    
+  } catch (e) {
+    // Not JSON - pass through
+    return line;
+  }
+}
+
+console.log('════════════════════════════════════════════════════════');
+console.log('🎯 WRAPPER EMBEDDED - Token tracking and compaction enabled');
+console.log('════════════════════════════════════════════════════════');
+
+
 
 // No need for module override when not using asar
 
@@ -3053,6 +3188,16 @@ io.on('connection', (socket) => {
         }
         
         console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line}`);
+        
+        // WRAPPER: Process line for API capture and token tracking
+        try {
+          const augmentedLine = processWrapperLine(line, sessionId);
+          if (augmentedLine && augmentedLine !== line) {
+            line = augmentedLine;
+          }
+        } catch (e) {
+          console.error(`[WRAPPER] Error processing line:`, e.message);
+        }
         
         // Update lastDataTime whenever we process a valid line (including thinking blocks)
         lastDataTime = Date.now();

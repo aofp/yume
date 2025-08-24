@@ -12,7 +12,9 @@ import { claudeCodeClient } from './services/claudeCodeClient';
 import { tauriClaudeClient } from './services/tauriClaudeClient';
 import './services/modalService';
 
-console.log('main.tsx loading...');
+console.log('🟢 main.tsx loading...');
+console.log('🟢 tauriClaudeClient imported:', tauriClaudeClient);
+console.log('🟢 claudeCodeClient imported:', claudeCodeClient);
 
 // Variables for sleep/wake detection and session persistence
 let lastActiveTime = Date.now();
@@ -239,7 +241,7 @@ if (window.electronAPI && window.electronAPI.ipcRenderer) {
 
 // Handle window focus/blur for better session management
 window.addEventListener('focus', () => {
-  console.log('[App] Window focused');
+  // Removed spammy log
   const store = useClaudeCodeStore.getState();
   const { sessions, currentSessionId } = store;
   

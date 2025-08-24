@@ -653,6 +653,48 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // IMPORTANT: Only set up message listener if we have a claudeSessionId
       // For deferred spawns (new tabs without prompt), this will be null until first message
       let messageCleanup: (() => void) | null = null;
+      let tempMessageCleanup: (() => void) | null = null;
+      
+      // ALSO listen on the temp session ID for compact results
+      // Compact creates a new session but emits result on original temp channel
+      console.log('[Store] Setting up listener for temp session (for compact results):', sessionId);
+      tempMessageCleanup = client.onMessage(sessionId, (message) => {
+        console.log('[Store] 🗜️ Message received on TEMP session channel:', sessionId, 'type:', message.type, 'result:', message.result?.substring?.(0, 50));
+        // Only process result messages on temp channel (these are compact results)
+        if (message.type === 'result') {
+          const currentState = get();
+          const isCurrentSession = currentState.currentSessionId === sessionId;
+          
+          console.log('[Store] 🗜️ COMPACT RESULT detected on temp channel!', {
+            sessionId,
+            isCurrentSession,
+            result: message.result
+          });
+          
+          // Process the compact result message
+          set(state => {
+            let sessions = state.sessions.map(s => {
+              if (s.id !== sessionId) return s;
+              
+              // Add the compact result to the session
+              const existingMessages = [...s.messages];
+              existingMessages.push({
+                ...message,
+                id: message.id || `result-${Date.now()}`,
+                timestamp: new Date().toISOString()
+              });
+              
+              return {
+                ...s,
+                messages: existingMessages,
+                streaming: false
+              };
+            });
+            return { sessions };
+          });
+        }
+      });
+      
       if (claudeSessionId) {
         console.log('[Store] Setting up message listener for Claude session:', claudeSessionId);
         messageCleanup = client.onMessage(claudeSessionId, (message) => {
@@ -1851,6 +1893,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     
     // Listen for messages
     const messageCleanup = client.onMessage(sessionId, (message) => {
+      console.log('[Store] Message received on resumed session:', sessionId, 'type:', message.type, 'result:', message.result?.substring?.(0, 50));
       // Use the same message handler logic as createSession
       set(state => {
         let sessions = state.sessions.map(s => {
@@ -1915,7 +1958,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     const session = get().sessions.find(s => s.id === sessionId);
     if (session) {
       (session as any).cleanup = () => {
-        messageCleanup();
+        if (tempMessageCleanup) tempMessageCleanup();
+        if (messageCleanup) messageCleanup();
         titleCleanup();
         errorCleanup();
       };
