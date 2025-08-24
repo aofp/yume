@@ -15,7 +15,7 @@
     "prestart": "node scripts/kill-ports.js",
     "tauri": "tauri",
     "tauri:dev": "tauri dev --config src-tauri/tauri.dev.conf.json",
-    "tauri:dev:mac": "tauri dev --config src-tauri/tauri.dev.conf.json",
+    "tauri:dev:mac": "concurrently -k \"npm run dev\" \"tauri dev --no-dev-server --config src-tauri/tauri.dev.conf.json\"",
     "tauri:dev:win": "concurrently -k \"npm run dev\" \"tauri dev --no-dev-server --config src-tauri/tauri.dev.conf.json\"",
     "tauri:dev:manual": "tauri dev --no-dev-server --config src-tauri/tauri.dev.conf.json",
     "tauri:build": "npm run bundle:macos && tauri build",

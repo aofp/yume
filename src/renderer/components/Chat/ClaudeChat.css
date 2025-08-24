@@ -578,7 +578,7 @@
 .thinking-indicator-bottom .thinking-timer {
   color: var(--accent-color);
   font-weight: bold;
-  font-size: 12px;
+  font-size: 7pt;
   opacity: 0.8;
   font-family: var(--font-mono);
 }

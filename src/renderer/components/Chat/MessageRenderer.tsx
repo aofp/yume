@@ -1950,6 +1950,17 @@ const MessageRendererBase: React.FC<{
       const isEditResult = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
                           (contentStr.includes('Applied') && (contentStr.includes('edit to') || contentStr.includes('edits to')));
       
+      // Debug Edit result detection
+      console.log('[Edit Debug] Tool result check:', {
+        isEditResult,
+        hasAssociatedToolUse: !!associatedToolUse,
+        toolName: associatedToolUse?.message?.name,
+        hasInput: !!associatedToolUse?.message?.input,
+        hasOldString: !!associatedToolUse?.message?.input?.old_string,
+        hasNewString: !!associatedToolUse?.message?.input?.new_string,
+        contentPreview: contentStr.substring(0, 100)
+      });
+      
       // Check if this is a Read operation result (already have associatedToolUse from above)
       const isReadResult = isReadOperation;
       

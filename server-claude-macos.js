@@ -1824,9 +1824,12 @@ Use <thinking> tags extensively to show your reasoning process.`;
                 console.log(`📝 [${sessionId}] Content blocks: ${contentBlocks.length} (types: ${contentBlocks.map(b => b.type).join(', ')})`);
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
-                  message: { content: contentBlocks },  // Send full content blocks array
-                  streaming: true,  // Set streaming to true during active streaming
                   id: messageId,
+                  message: { 
+                    ...jsonData.message,
+                    content: contentBlocks  // Only send text/thinking blocks, not tool_use blocks
+                  },
+                  streaming: true,  // Set streaming to true during active streaming
                   timestamp: Date.now()
                 });
                 

@@ -15,8 +15,8 @@ console.log('[TauriClient] Wrapper module imported, processWrapperMessage:', typ
 // Keep track of active listeners for cleanup
 const activeListeners = new Map<string, UnlistenFn>();
 
-// Keep track of last assistant message IDs for streaming state management
-const lastAssistantMessageIds = new Map<string, string>();
+// Keep track of ALL assistant message IDs during streaming for each session
+const streamingAssistantMessages = new Map<string, Set<string>>();
 
 export class TauriClaudeClient {
   private connected = true; // Always connected with Tauri
@@ -308,11 +308,28 @@ export class TauriClaudeClient {
       // Transform message format to match expected format
       let transformedMessage: any = null;
       
+      // Debug log the exact message structure
+      console.log('[TauriClient] 🔍 Raw message structure:', {
+        type: message.type,
+        hasMessage: !!message.message,
+        messageKeys: message.message ? Object.keys(message.message) : [],
+        contentType: message.message?.content ? typeof message.message.content : 'no content',
+        contentArray: Array.isArray(message.message?.content),
+        contentBlocks: Array.isArray(message.message?.content) ? 
+          message.message.content.map((c: any) => ({ type: c.type, hasName: !!c.name, hasInput: !!c.input })) : 
+          []
+      });
+      
       // Handle different message types from Claude's stream-json output
       if (message.type === 'text') {
         // Text content from Claude - streaming assistant message
-        const messageId = lastAssistantMessageIds.get(sessionId) || `assistant-${Date.now()}`;
-        lastAssistantMessageIds.set(sessionId, messageId);
+        const messageId = `assistant-${Date.now()}-stream`;
+        
+        // Track this streaming message
+        if (!streamingAssistantMessages.has(sessionId)) {
+          streamingAssistantMessages.set(sessionId, new Set());
+        }
+        streamingAssistantMessages.get(sessionId)?.add(messageId);
         
         transformedMessage = {
           id: messageId,
@@ -324,16 +341,9 @@ export class TauriClaudeClient {
           streaming: true
         };
       } else if (message.type === 'message_stop') {
-        // Message complete - clear streaming
-        const messageId = lastAssistantMessageIds.get(sessionId);
-        if (messageId) {
-          transformedMessage = {
-            id: messageId,
-            type: 'assistant',
-            streaming: false
-          };
-          lastAssistantMessageIds.delete(sessionId);
-        }
+        // Message complete - but DON'T clear streaming yet! Wait for result
+        console.log('[TauriClient] 📍 Message stop received but keeping streaming active until result');
+        // Don't send any update here - just log it
       } else if (message.type === 'usage') {
         // Token usage information
         console.log('🎯 [TauriClient] Main channel USAGE message:', {
@@ -358,30 +368,15 @@ export class TauriClaudeClient {
           message: message.message
         };
       } else if (message.type === 'tool_use') {
-        // Tool use request from Claude - might be nested in assistant message
-        // Check if it's in the content array of an assistant message
-        if (message.message && Array.isArray(message.message.content)) {
-          const toolUse = message.message.content.find((c: any) => c.type === 'tool_use');
-          if (toolUse) {
-            transformedMessage = {
-              type: 'tool_use',
-              id: toolUse.id,
-              message: {
-                name: toolUse.name,
-                input: toolUse.input
-              }
-            };
+        // Standalone tool_use message (shouldn't happen with Claude's current output)
+        transformedMessage = {
+          type: 'tool_use',
+          id: message.id,
+          message: {
+            name: message.name,
+            input: message.input
           }
-        } else {
-          transformedMessage = {
-            type: 'tool_use',
-            id: message.id,
-            message: {
-              name: message.name,
-              input: message.input
-            }
-          };
-        }
+        };
       } else if (message.type === 'tool_result') {
         // Tool result
         transformedMessage = {
@@ -403,66 +398,119 @@ export class TauriClaudeClient {
         // Full assistant message from Claude
         // Claude sends: {"type":"assistant","message":{...},"session_id":"..."}
         const messageData = message.message || {};
-        const messageId = messageData.id || `assistant-${Date.now()}`;
+        // ALWAYS generate a unique ID for each message - no updates!
+        const messageId = `assistant-${Date.now()}-${Math.random()}`;
         
-        // Extract text content from the content array
-        let content = '';
+        // Process content blocks
+        let processedContent = messageData.content;
+        let textBlocks: any[] = [];
+        let toolUseBlocks: any[] = [];
+        
         if (Array.isArray(messageData.content)) {
-          // Extract text from content array
-          content = messageData.content
-            .filter((c: any) => c.type === 'text')
-            .map((c: any) => c.text || '')
-            .join('');
-        } else if (typeof messageData.content === 'string') {
-          content = messageData.content;
+          // Separate text/thinking blocks from tool_use blocks
+          textBlocks = messageData.content.filter((c: any) => 
+            c.type === 'text' || c.type === 'thinking'
+          );
+          toolUseBlocks = messageData.content.filter((c: any) => 
+            c.type === 'tool_use'
+          );
+          
+          // Log thinking blocks specifically
+          const thinkingBlocks = messageData.content.filter((c: any) => c.type === 'thinking');
+          if (thinkingBlocks.length > 0) {
+            console.log('[TauriClient] 🧠 Found thinking blocks:', thinkingBlocks);
+          }
+          
+          // Send tool_use blocks as separate messages
+          for (const toolUse of toolUseBlocks) {
+            console.log('[TauriClient] 🔧 Extracting tool_use from assistant message:', toolUse);
+            const toolMessage = {
+              type: 'tool_use',
+              id: toolUse.id || `tool-${Date.now()}-${Math.random()}`,
+              message: {
+                name: toolUse.name,
+                input: toolUse.input,
+                id: toolUse.id
+              },
+              timestamp: Date.now()
+            };
+            // Emit tool_use message immediately
+            console.log('[TauriClient] 🔧 Emitting tool_use message:', toolMessage);
+            handler(toolMessage);
+          }
+          
+          // Keep only text/thinking blocks for the assistant message
+          processedContent = textBlocks;
         }
         
-        // Check if this assistant message contains tool_use
-        const hasToolUse = Array.isArray(messageData.content) && 
-          messageData.content.some((c: any) => c.type === 'tool_use');
-        
-        if (hasToolUse) {
-          // Extract tool_use from content
-          const toolUse = messageData.content.find((c: any) => c.type === 'tool_use');
-          transformedMessage = {
-            type: 'tool_use',
-            id: toolUse.id,
-            message: {
-              name: toolUse.name,
-              input: toolUse.input
-            }
-          };
-        } else {
-          // Regular text assistant message
-          transformedMessage = {
-            id: messageId,
-            type: 'assistant',
-            message: {
-              ...messageData,
-              content: content,  // Use extracted text content
-              role: 'assistant'
-            },
-            model: messageData.model,
-            streaming: false // Complete message
-          };
+        // ALWAYS send assistant messages, even if empty (to maintain context)
+        // Track ALL assistant messages during streaming
+        if (!streamingAssistantMessages.has(sessionId)) {
+          streamingAssistantMessages.set(sessionId, new Set());
         }
+        streamingAssistantMessages.get(sessionId)?.add(messageId);
+        
+        // If we have text/thinking blocks, use them. Otherwise, send empty content
+        // This ensures every assistant message is displayed, maintaining conversation flow
+        const contentToSend = textBlocks.length > 0 ? processedContent : 
+                            typeof processedContent === 'string' ? processedContent : '';
+        
+        transformedMessage = {
+          id: messageId, // Unique ID for each message
+          type: 'assistant',
+          message: {
+            ...messageData,
+            content: contentToSend,  // Empty string if no text/thinking
+            role: 'assistant'
+          },
+          model: messageData.model,
+          streaming: true // ALWAYS true for assistant messages - let result clear it
+        };
+        
+        console.log(`[TauriClient] 📝 Assistant message NEW:`, {
+          id: messageId,
+          hasText: textBlocks.length > 0,
+          hasTools: toolUseBlocks.length > 0,
+          isEmpty: processedContent.length === 0,
+          streaming: true,
+          stopReason: messageData.stop_reason
+        });
       } else if (message.type === 'user') {
         // User message echo from Claude
         const messageData = message.message || {};
+        console.log('[TauriClient] 📥 Processing user message:', messageData);
         
-        // Extract content properly
-        let content = messageData.content;
-        if (Array.isArray(content)) {
-          // Handle tool results and text content
-          content = messageData.content;
+        // Check if this is a tool_result message
+        if (Array.isArray(messageData.content)) {
+          for (const block of messageData.content) {
+            if (block.type === 'tool_result') {
+              console.log('[TauriClient] 📥 Extracting tool_result from user message:', block);
+              // Send tool_result as separate message
+              const toolResultMessage = {
+                type: 'tool_result',
+                id: `toolresult-${Date.now()}-${Math.random()}`,
+                message: {
+                  tool_use_id: block.tool_use_id,
+                  content: block.content,
+                  is_error: block.is_error
+                },
+                timestamp: Date.now()
+              };
+              console.log('[TauriClient] 📥 Emitting tool_result message:', toolResultMessage);
+              handler(toolResultMessage);
+            }
+          }
+          // Don't send user message for tool results
+          return;
         }
         
+        // Regular user message
         transformedMessage = {
           id: `user-${Date.now()}`,
           type: 'user',
           message: {
             ...messageData,
-            content: content,
+            content: messageData.content,
             role: 'user'
           }
         };
@@ -480,7 +528,24 @@ export class TauriClaudeClient {
           type: 'interrupt'
         };
       } else if (message.type === 'result') {
-        // Result message (completion)
+        // Result message (completion) - THIS is when we clear streaming
+        console.log('[TauriClient] 🏁 RESULT received - clearing streaming state NOW');
+        
+        // Send streaming_end for ALL assistant messages from this session
+        const assistantMessages = streamingAssistantMessages.get(sessionId);
+        if (assistantMessages && assistantMessages.size > 0) {
+          console.log(`[TauriClient] 🏁 Clearing streaming for ${assistantMessages.size} assistant messages`);
+        }
+        
+        // Send a special streaming end message
+        handler({
+          type: 'streaming_end',
+          sessionId: sessionId
+        });
+        
+        // Clear tracking
+        streamingAssistantMessages.delete(sessionId);
+        
         transformedMessage = {
           type: 'result',
           subtype: message.subtype,
@@ -557,9 +622,8 @@ export class TauriClaudeClient {
       currentUnlisten = newUnlisten;
       activeListeners.set(channel, newUnlisten);
       
-      // Also update token and complete listeners to new session ID
+      // Also update token listener to new session ID
       setupTokenListener(new_session_id);
-      setupCompleteListener(new_session_id);
     }).then(unlisten => {
       activeListeners.set(updateChannel, unlisten);
     });
@@ -657,48 +721,15 @@ export class TauriClaudeClient {
       activeListeners.set('claude-tokens-global', unlisten);
     });
     
-    // Completion listener - will be updated when session ID changes
-    let completeChannel = `claude-complete:${sessionId}`;
-    let completeUnlisten: UnlistenFn | null = null;
-    
-    const setupCompleteListener = (newSessionId: string) => {
-      // Clean up old complete listener if exists
-      if (completeUnlisten) {
-        completeUnlisten();
-        activeListeners.delete(completeChannel);
-      }
-      
-      // Set up new complete listener
-      completeChannel = `claude-complete:${newSessionId}`;
-      console.log(`[TauriClient] ✅ Setting up complete listener on ${completeChannel}`);
-      
-      listen(completeChannel, (event: Event<any>) => {
-        // Clear streaming state on completion
-        const messageId = lastAssistantMessageIds.get(sessionId);
-        if (messageId) {
-          const completeMessage = {
-            id: messageId,
-            type: 'assistant',
-            streaming: false
-          };
-          handler(completeMessage);
-          lastAssistantMessageIds.delete(sessionId);
-        }
-      }).then(unlisten => {
-        completeUnlisten = unlisten;
-        activeListeners.set(completeChannel, unlisten);
-      });
-    };
-    
-    // Set up initial complete listener
-    setupCompleteListener(sessionId);
+    // NO COMPLETE LISTENER - streaming is cleared ONLY by result message
+    // This prevents premature clearing of the thinking indicator
     
     console.log(`[TauriClient] 👂 Listening for messages on ${channel}`);
     
     // Return cleanup function
     return () => {
       // Clean up all listeners for this session
-      [channel, tokenChannel, completeChannel, updateChannel].forEach(ch => {
+      [channel, tokenChannel, updateChannel].forEach(ch => {
         const unlisten = activeListeners.get(ch);
         if (unlisten) {
           unlisten();
@@ -708,7 +739,7 @@ export class TauriClaudeClient {
       });
       
       // Clear assistant message ID tracking
-      lastAssistantMessageIds.delete(sessionId);
+      streamingAssistantMessages.delete(sessionId);
     };
   }
 

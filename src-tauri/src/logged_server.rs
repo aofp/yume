@@ -3329,6 +3329,10 @@ io.on('connection', (socket) => {
                 if (block.type === 'text' || block.type === 'thinking') {
                   hasContent = true;
                   contentBlocks.push(block);
+                  // Debug log for thinking blocks
+                  if (block.type === 'thinking') {
+                    console.log(`🧠 [${sessionId}] Found thinking block: ${(block.thinking || block.text || '').substring(0, 100)}...`);
+                  }
                 } else if (block.type === 'tool_use') {
                   hasToolUse = true;
                   
@@ -3440,7 +3444,10 @@ io.on('connection', (socket) => {
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
                   id: messageId,
-                  ...jsonData.message,  // Spread the message properties directly
+                  message: {
+                    ...jsonData.message,
+                    content: contentBlocks  // Only send text/thinking blocks, not tool_use blocks
+                  },
                   streaming: true,  // Set streaming to true during active streaming
                   timestamp: Date.now()
                 });
@@ -3475,7 +3482,7 @@ io.on('connection', (socket) => {
                 let enhancedContent = block.content;
                 
                 if (typeof block.content === 'string' && 
-                    (block.content.includes('has been updated') || block.content.includes('Applied') && block.content.includes('edits to'))) {
+                    (block.content.includes('has been updated') || (block.content.includes('Applied') && block.content.includes('edits to')))) {
                   
                   // Extract file path from the content
                   const filePathMatch = block.content.match(/The file (.+?) has been updated/) || 
@@ -3484,6 +3491,7 @@ io.on('connection', (socket) => {
                   if (filePathMatch) {
                     const filePath = filePathMatch[1];
                     const fullPath = join(session.workingDirectory || process.cwd(), filePath);
+                    console.log(`📝 [${sessionId}] Attempting to enhance diff for: ${filePath}`);
                     
                     // Try to read the file and add context lines
                     try {
@@ -3505,6 +3513,7 @@ io.on('connection', (socket) => {
                         
                         // If we found changed lines, enhance the output with context
                         if (changedLineNumbers.size > 0) {
+                          console.log(`📝 [${sessionId}] Found ${changedLineNumbers.size} changed lines, enhancing with context`);
                           const contextLines = 3; // Number of context lines to show
                           const enhancedDiffLines = [];
                           
@@ -3565,6 +3574,9 @@ io.on('connection', (socket) => {
                           });
                           
                           enhancedContent = enhancedDiffLines.join('\n');
+                          console.log(`📝 [${sessionId}] Enhanced diff created with ${enhancedDiffLines.length} lines`);
+                        } else {
+                          console.log(`📝 [${sessionId}] No line numbers found in diff, keeping original content`);
                         }
                       }
                     } catch (err) {
