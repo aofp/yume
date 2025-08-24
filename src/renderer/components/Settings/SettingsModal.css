@@ -542,7 +542,7 @@
 }
 
 .settings-action-btn.about:hover {
-  background: rgba(var(--accent-rgb), 0.1);
+  background: rgba(var(--accent-rgb), 0.2);
   border-color: rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);
 }

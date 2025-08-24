@@ -3765,6 +3765,19 @@ io.on('connection', (socket) => {
               model: model || 'unknown' // Use model from outer scope directly
             };
             
+            // Add wrapper tokens for frontend analytics
+            if (jsonData.usage) {
+              resultMessage.wrapper = {
+                tokens: {
+                  input: jsonData.usage.input_tokens || 0,
+                  output: jsonData.usage.output_tokens || 0,
+                  total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0),
+                  cache_read: jsonData.usage.cache_read_input_tokens || 0,
+                  cache_creation: jsonData.usage.cache_creation_input_tokens || 0
+                }
+              };
+            }
+            
             // Only include session_id if it's not a compact result
             if (!isCompactResult && session.claudeSessionId) {
               resultMessage.session_id = session.claudeSessionId;

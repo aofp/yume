@@ -2268,6 +2268,14 @@ const MessageRendererBase: React.FC<{
                           isWriteOperation ? 'write-output' : 
                           'generic-output';
         
+        // Check if this is a standalone TodoWrite success message and hide it
+        if (className === 'generic-output' && (
+          contentStr.includes('Todos have been modified successfully') ||
+          contentStr.includes('Ensure that you continue to use the todo list') ||
+          contentStr.includes('Please proceed with the current tasks if applicable')
+        )) {
+          return null;
+        }
         
         return (
           <div className="message tool-result-message">
