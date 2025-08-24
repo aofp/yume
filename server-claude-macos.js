@@ -1659,18 +1659,46 @@ Use <thinking> tags extensively to show your reasoning process.`;
         console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line.substring(0, 100)}...`);
         
         // WRAPPER: Process line through wrapper for API capture and token tracking
+        let jsonData;
         try {
+          // First parse the line to get the original data
+          jsonData = JSON.parse(line);
+          
+          // Process through wrapper to track tokens
           const augmentedLine = claudeWrapper.processLine(line, sessionId);
           if (augmentedLine && augmentedLine !== line) {
-            // Replace line with augmented version
-            line = augmentedLine;
+            // Parse the augmented line to get the updated data
+            jsonData = JSON.parse(augmentedLine);
+          }
+          
+          // Get current session token state from wrapper
+          const wrapperSession = claudeWrapper.getSession(sessionId);
+          if (wrapperSession && jsonData.usage) {
+            // Add wrapper token tracking to the message
+            jsonData.wrapper_tokens = {
+              total: wrapperSession.totalTokens,
+              input: wrapperSession.inputTokens,
+              output: wrapperSession.outputTokens,
+              cache_creation: wrapperSession.cacheCreationTokens,
+              cache_read: wrapperSession.cacheReadTokens,
+              percentage: ((wrapperSession.totalTokens / 200000) * 100).toFixed(1),
+              compactCount: wrapperSession.compactCount,
+              tokensSaved: wrapperSession.tokensSaved
+            };
+            console.log(`📊 [WRAPPER] Token state for ${sessionId}: ${wrapperSession.totalTokens}/200000 (${jsonData.wrapper_tokens.percentage}%)`);
           }
         } catch (e) {
           console.error(`[WRAPPER] Error processing line:`, e.message);
+          // Try to parse as regular JSON if wrapper fails
+          try {
+            jsonData = JSON.parse(line);
+          } catch (parseError) {
+            console.error(`Failed to parse line as JSON:`, parseError.message);
+            return;
+          }
         }
         
         try {
-          const jsonData = JSON.parse(line);
           console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
           
           // Extract session ID if present (update it every time to ensure we have the latest)
@@ -1891,7 +1919,7 @@ Use <thinking> tags extensively to show your reasoning process.`;
           allAssistantMessageIds.delete(sessionId);
             }
             
-            // Just send the result message with model info
+            // Send the result message with model info and wrapper tokens
             // Model is available from the outer scope (sendMessage handler)
             console.log(`✅ [${sessionId}] Sending result message with model: ${model}`);
             const resultMessage = {
@@ -1899,9 +1927,13 @@ Use <thinking> tags extensively to show your reasoning process.`;
               ...jsonData,
               streaming: false,
               id: `result-${sessionId}-${Date.now()}`,
-              model: model || 'unknown' // Use model from outer scope directly
+              model: model || 'unknown', // Use model from outer scope directly
+              wrapper_tokens: jsonData.wrapper_tokens // Include wrapper token data
             };
             console.log(`   - Model in result message: ${resultMessage.model}`);
+            if (jsonData.wrapper_tokens) {
+              console.log(`   - Wrapper tokens: ${jsonData.wrapper_tokens.total}/200000 (${jsonData.wrapper_tokens.percentage}%)`);
+            }
             socket.emit(`message:${sessionId}`, resultMessage);
             messageCount++;
           }

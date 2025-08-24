@@ -486,15 +486,27 @@ export class TauriClaudeClient {
           // CRITICAL: Include fields needed for compact detection
           num_turns: message.num_turns,
           session_id: message.session_id,
-          is_error: message.is_error
+          is_error: message.is_error,
+          // CRITICAL: Preserve wrapper metadata from processWrapperMessage
+          wrapper: message.wrapper,
+          wrapper_tokens: message.wrapper_tokens,
+          wrapper_auto_compact: message.wrapper_auto_compact,
+          wrapper_compact: message.wrapper_compact
         };
       }
       
       if (transformedMessage) {
+        // ALWAYS preserve wrapper metadata if present
+        if (message.wrapper) transformedMessage.wrapper = message.wrapper;
+        if (message.wrapper_tokens) transformedMessage.wrapper_tokens = message.wrapper_tokens;
+        if (message.wrapper_auto_compact) transformedMessage.wrapper_auto_compact = message.wrapper_auto_compact;
+        if (message.wrapper_compact) transformedMessage.wrapper_compact = message.wrapper_compact;
         console.log(`[TauriClient] 📨 [${timestamp}] Received message:`, {
           channel,
           originalType: message.type,
           transformedType: transformedMessage.type,
+          hasWrapper: !!transformedMessage.wrapper,
+          wrapperTokens: transformedMessage.wrapper?.tokens?.total || 0,
           streaming: transformedMessage.streaming,
           id: transformedMessage.id
         });

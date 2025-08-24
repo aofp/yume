@@ -684,10 +684,32 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 timestamp: new Date().toISOString()
               });
               
+              // IMPORTANT: After compaction, the old session is gone
+              // Clear the claudeSessionId so next message creates a new session
+              console.log('[Store] 🗜️ Compaction complete - clearing claudeSessionId to force new session');
+              
+              // Check if this was an auto-compact and we need to resend the user's message
+              import('../services/wrapperIntegration').then(({ getAutoCompactMessage, clearAutoCompactMessage }) => {
+                const pendingMessage = getAutoCompactMessage(sessionId);
+                if (pendingMessage) {
+                  console.log('[Store] 🔄 AUTO-COMPACT COMPLETE - Resending user message with summary');
+                  clearAutoCompactMessage(sessionId);
+                  
+                  // Wait a bit for state to settle, then send the message with summary
+                  setTimeout(() => {
+                    // The sendMessage function will automatically prepend the summary
+                    // since wasCompacted is true
+                    get().sendMessage(pendingMessage);
+                  }, 500);
+                }
+              });
+              
               return {
                 ...s,
                 messages: existingMessages,
-                streaming: false
+                streaming: false,
+                claudeSessionId: null, // Clear the session ID - it's no longer valid
+                wasCompacted: true // Mark that this session was compacted
               };
             });
             return { sessions };
@@ -795,6 +817,39 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               if (message.type === 'user') {
                 console.warn('[Store] Ignoring user message from server - user messages should only be created locally');
                 return s;
+              }
+              
+              // Sync wrapper tokens to analytics if available
+              if (message.wrapper?.tokens) {
+                console.log('🔄 [Store] Syncing wrapper tokens to analytics:', message.wrapper.tokens);
+                analytics.tokens.total = message.wrapper.tokens.total || analytics.tokens.total;
+                analytics.tokens.input = message.wrapper.tokens.input || analytics.tokens.input;
+                analytics.tokens.output = message.wrapper.tokens.output || analytics.tokens.output;
+                analytics.tokens.cacheSize = (message.wrapper.tokens.cache_creation || 0) + (message.wrapper.tokens.cache_read || 0);
+                
+                // Update percentage for UI
+                const percentage = message.wrapper.tokens.percentage || ((analytics.tokens.total / 200000) * 100);
+                console.log(`📊 [Store] Token percentage: ${percentage.toFixed(1)}%`);
+              }
+              
+              // Check for auto-compact trigger in wrapper metadata
+              if (message.wrapper_auto_compact?.triggered) {
+                console.log('⚠️ [Store] AUTO-COMPACT TRIGGERED! Saving user message and sending /compact');
+                // Import wrapper function to store the pending message
+                import('../services/wrapperIntegration').then(({ setAutoCompactMessage }) => {
+                  // Store the user's original message for resending after compact
+                  const lastUserMessage = existingMessages.filter(m => m.type === 'user').pop();
+                  if (lastUserMessage?.message?.content) {
+                    setAutoCompactMessage(sessionId, lastUserMessage.message.content);
+                    console.log('[Store] Stored user message for auto-resend after compact');
+                    
+                    // Send /compact command
+                    setTimeout(() => {
+                      console.log('[Store] Sending /compact command...');
+                      get().sendMessage('/compact');
+                    }, 100);
+                  }
+                });
               }
               
               // Handle messages with proper deduplication
@@ -1042,6 +1097,23 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   
                   // Process tokens if this is the first time we're seeing this result message with usage data
                   if (!wasAlreadyProcessed) {
+                    // Check for wrapper tokens first (more accurate)
+                    if (message.wrapper?.tokens) {
+                      console.log('📊 [Store] Using wrapper tokens from result message:', message.wrapper.tokens);
+                      analytics.tokens.total = message.wrapper.tokens.total;
+                      analytics.tokens.input = message.wrapper.tokens.input;
+                      analytics.tokens.output = message.wrapper.tokens.output;
+                      analytics.tokens.cacheSize = (message.wrapper.tokens.cache_creation || 0) + (message.wrapper.tokens.cache_read || 0);
+                      
+                      // Update model-specific tracking
+                      const modelKey = currentModel === 'opus' ? 'opus' : 'sonnet';
+                      analytics.tokens.byModel[modelKey] = {
+                        input: message.wrapper.tokens.input,
+                        output: message.wrapper.tokens.output,
+                        total: message.wrapper.tokens.total
+                      };
+                    }
+                    
                     console.log('📊 Result message with usage:', message.usage);
                     if (message.cost) {
                       console.log('💰 Result message with cost:', message.cost);
@@ -1662,6 +1734,32 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     if (!content || (typeof content === 'string' && !content.trim())) {
       console.warn('[Store] Cannot send empty message');
       return;
+    }
+    
+    // Check if this session was compacted and needs the summary prepended
+    const session = get().sessions.find(s => s.id === currentSessionId);
+    if (session?.wasCompacted && !session.claudeSessionId) {
+      // Find the last compact result message
+      const compactResult = [...session.messages].reverse().find(m => 
+        m.type === 'result' && m.result?.includes('Conversation compacted successfully')
+      );
+      
+      if (compactResult?.result) {
+        console.log('[Store] 🗜️ Session was compacted - prepending summary to message');
+        // Prepend the compact summary to the user's message
+        content = `[Previous conversation context was compressed. Summary:]
+${compactResult.result}
+
+[Continuing with new message:]
+${content}`;
+        
+        // Clear the wasCompacted flag after using it
+        set(state => ({
+          sessions: state.sessions.map(s => 
+            s.id === currentSessionId ? { ...s, wasCompacted: false } : s
+          )
+        }));
+      }
     }
     
     // Wait for session to be active if it's pending
