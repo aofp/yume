@@ -3656,8 +3656,9 @@ io.on('connection', (socket) => {
             }
             
           } else if (jsonData.type === 'result') {
-            console.log(`📦 Message type: result`);
+            console.log(`📦 [${sessionId}] RESULT MESSAGE RECEIVED!`);
             console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
+            console.log(`   📊 Full result data:`, JSON.stringify(jsonData, null, 2));
             
             // Check if this is a compact result - look for the last user message being /compact
             const session = sessions.get(sessionId);

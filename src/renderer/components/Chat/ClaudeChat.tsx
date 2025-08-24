@@ -2062,6 +2062,14 @@ export const ClaudeChat: React.FC = () => {
         ref={chatContainerRef}
       >
         {(() => {
+          // Debug: Log all message types in the array
+          console.log('[ClaudeChat] All messages in session:', currentSession.messages.map(m => ({
+            type: m.type,
+            id: m.id,
+            hasContent: !!m.message?.content || !!m.result,
+            subtype: m.subtype
+          })));
+          
           const processedMessages = currentSession.messages
             .reduce((acc, message, index, array) => {
             // Group messages by type and only show final versions
@@ -2144,6 +2152,13 @@ export const ClaudeChat: React.FC = () => {
             
             // For result messages (completion)
             if (message.type === 'result') {
+              console.log('[ClaudeChat] Processing RESULT message for display:', {
+                id: message.id,
+                subtype: message.subtype,
+                is_error: message.is_error,
+                hasUsage: !!message.usage,
+                hasDuration: !!message.duration_ms
+              });
               // Keep all result messages to show timing for each query
               acc.push(message);
               return acc;
@@ -2153,6 +2168,14 @@ export const ClaudeChat: React.FC = () => {
             }, [] as typeof currentSession.messages);
           
           const filteredMessages = processedMessages;
+          
+          // Debug: Log processed messages
+          console.log('[ClaudeChat] Processed messages after reduce:', filteredMessages.map(m => ({
+            type: m.type,
+            id: m.id,
+            subtype: m.subtype,
+            hasResult: !!m.result
+          })));
           
           // Find the index of the last user or assistant message for restore button logic
           let lastRestorableIndex = -1;

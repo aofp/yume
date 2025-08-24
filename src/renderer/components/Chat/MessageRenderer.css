@@ -1017,17 +1017,22 @@ body.platform-win32 .tool-detail {
   margin: 0 !important;
   padding: 0 !important;
   border: none !important;
+  display: block !important;
+  min-height: 12px;
 }
 
 .elapsed-time {
   color: #808080;
   font-size: 7pt;
   font-family: var(--font-mono);
-  padding: 0 !important;
-  margin: 0 !important;
+  padding: 2px 0 !important;
+  margin: 0 0 4px 0 !important;
   position: relative;
-  top: -3px;
+  top: 0;
   border: none !important;
+  display: block !important;
+  opacity: 1 !important;
+  visibility: visible !important;
 }
 
 .tool-result.success {

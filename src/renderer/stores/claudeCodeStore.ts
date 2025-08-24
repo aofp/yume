@@ -666,6 +666,24 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         // Process ALL messages through the main handler, not just result messages
         // The temp channel receives all messages for the session
         if (message.type !== 'result') {
+          // Special handling for stream_end to clear streaming state
+          if (message.type === 'system' && message.subtype === 'stream_end') {
+            console.log('[Store] 🔚 Stream end on temp channel - clearing streaming state');
+            set(state => ({
+              sessions: state.sessions.map(s => {
+                if (s.id === sessionId) {
+                  return { 
+                    ...s, 
+                    streaming: false, 
+                    thinkingStartTime: undefined,
+                    pendingToolIds: new Set()
+                  };
+                }
+                return s;
+              })
+            }));
+          }
+          
           // Non-result messages should go through the main handler
           get().addMessageToSession(sessionId, message);
           return;
@@ -691,8 +709,32 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               messageType: message.type
             });
             
+            // CRITICAL: Clear streaming state when result is received
+            set(state => ({
+              sessions: state.sessions.map(s => {
+                if (s.id === sessionId) {
+                  console.log('[Store] 🎯 Clearing streaming state on result message');
+                  return { 
+                    ...s, 
+                    streaming: false, 
+                    thinkingStartTime: undefined,
+                    pendingToolIds: new Set()
+                  };
+                }
+                return s;
+              })
+            }));
+            
             // Process as normal message through the main handler
-            // This will trigger the streaming state clearing logic
+            // Ensure all fields are preserved for display
+            console.log('[Store] 📊 Result message fields:', {
+              duration_ms: message.duration_ms,
+              usage: message.usage,
+              model: message.model,
+              total_cost_usd: message.total_cost_usd
+            });
+            
+            // Add the complete result message with all fields
             get().addMessageToSession(sessionId, message);
             return;
           }
@@ -978,8 +1020,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       },
                       streaming: message.streaming // Explicitly preserve streaming flag
                     };
+                    
+                    // If this is an assistant message being marked as not streaming, update session streaming state
+                    if (message.type === 'assistant' && message.streaming === false) {
+                      console.log(`🔴 [STREAMING] Assistant message ${message.id} updated to streaming=false, clearing session streaming state`);
+                      s.streaming = false;
+                      s.thinkingStartTime = undefined;
+                    }
                   } else {
                     existingMessages[existingIndex] = message;
+                    
+                    // Also check here for assistant streaming updates
+                    if (message.type === 'assistant' && message.streaming === false) {
+                      console.log(`🔴 [STREAMING] Assistant message ${message.id} replaced with streaming=false, clearing session streaming state`);
+                      s.streaming = false;
+                      s.thinkingStartTime = undefined;
+                    }
                   }
                 } else {
                   // Add new message only if it doesn't exist
@@ -1593,10 +1649,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 Date.now() - m.timestamp < 3000
               );
               
-              if (recentUserMessage && message.subtype === 'stream_end') {
-                // This is a stream_end from killing the process for a followup
-                // Keep streaming state active
-                console.log('Stream end detected but recent user message found - keeping streaming state for followup');
+              if (recentUserMessage && message.subtype !== 'stream_end') {
+                // Only keep streaming for interruptions when there's a recent user message
+                // But always clear on stream_end
+                console.log('Interruption detected with recent user message - keeping streaming state for followup');
                 sessions = sessions.map(s => 
                   s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
                 );
@@ -2708,6 +2764,9 @@ ${content}`;
       sessions: state.sessions.map(s => {
         if (s.id !== sessionId) return s;
         
+        // Initialize analytics if we need to update tokens
+        let analytics = s.analytics;
+        
         // Special handling for token update messages (synthetic result messages from token listener)
         if (message.type === 'result' && message.wrapper?.tokens) {
           console.log('📊 [Store] Processing TOKEN UPDATE message:', {
@@ -2717,7 +2776,7 @@ ${content}`;
           });
           
           // Initialize analytics if needed
-          const analytics = s.analytics || {
+          analytics = analytics || {
             totalMessages: 0,
             userMessages: 0,
             assistantMessages: 0,
@@ -2751,8 +2810,8 @@ ${content}`;
             });
           }
           
-          // Don't add token update messages to the message list
-          return { ...s, analytics, updatedAt: new Date() };
+          // IMPORTANT: Still add the result message to the message list for display!
+          // Continue to add the message below
         }
         
         // Normal message handling
@@ -2766,7 +2825,12 @@ ${content}`;
           console.log(`[Store] Session ${sessionId} exceeded ${MAX_MESSAGES} messages, removed ${removeCount} oldest messages`);
         }
         
-        return { ...s, messages: updatedMessages, updatedAt: new Date() };
+        return { 
+          ...s, 
+          messages: updatedMessages, 
+          updatedAt: new Date(),
+          ...(analytics ? { analytics } : {})
+        };
       })
     }));
   },

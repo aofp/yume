@@ -2294,6 +2294,16 @@ const MessageRendererBase: React.FC<{
       return null;
       
     case 'result':
+      console.log('[MessageRenderer] RENDERING RESULT MESSAGE:', {
+        id: message.id,
+        type: message.type,
+        subtype: message.subtype,
+        is_error: message.is_error,
+        success: message.success,
+        hasUsage: !!message.usage,
+        hasDuration: !!message.duration_ms
+      });
+      
       // Check if this is actually a success (even if subtype says error_during_execution)
       // Note: Claude CLI sends is_error:false for success, not success:true
       const isSuccess = message.subtype === 'success' || 
@@ -2301,6 +2311,15 @@ const MessageRendererBase: React.FC<{
                        (!message.subtype && message.is_error === false);
       
       if (isSuccess) {
+        // Debug log to see what fields we have
+        console.log('[MessageRenderer] Result SUCCESS - showing stats:', {
+          duration_ms: message.duration_ms,
+          usage: message.usage,
+          model: message.model,
+          total_cost_usd: message.total_cost_usd,
+          fullMessage: message
+        });
+        
         // Show elapsed time for successful completion
         const elapsedMs = message.duration_ms || message.message?.duration_ms || message.duration || 0;
         const elapsedSeconds = (elapsedMs / 1000).toFixed(1);

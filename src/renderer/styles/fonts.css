@@ -1,2 +1,47 @@
-/* font imports - empty file to fix build */
-/* fonts are loaded via system fonts in global.css */
+/* Font imports for yurucode */
+
+/* Import Fira Code from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@300;400;500;600;700&display=swap');
+
+/* Import Inter for UI text */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+/* Override CSS variables with proper font stacks for Windows */
+:root {
+  /* Sans-serif font stack with Windows-friendly fonts */
+  --font-sans: 'Inter', 'Segoe UI', 'Helvetica Neue', 'Helvetica', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
+  
+  /* Monospace font stack with Fira Code and Windows fallbacks */
+  --font-mono: 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', 'Lucida Console', 'Menlo', monospace;
+}
+
+/* Ensure Fira Code ligatures are enabled */
+code, pre, .monaco-editor {
+  font-variant-ligatures: contextual;
+  font-feature-settings: "calt" 1;
+}
+
+/* Fallback for systems without Fira Code installed */
+@supports not (font-family: 'Fira Code') {
+  :root {
+    --font-mono: 'Cascadia Code', 'Consolas', 'Courier New', 'Lucida Console', monospace;
+  }
+}
+
+/* Windows-specific font rendering improvements */
+@media screen and (-webkit-min-device-pixel-ratio: 0) {
+  body {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+}
+
+/* Ensure proper font rendering on Windows */
+* {
+  text-rendering: optimizeLegibility;
+}
+
+/* Fix for Windows ClearType rendering */
+body {
+  font-synthesis: none;
+}
