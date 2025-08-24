@@ -1,0 +1,35 @@
+{
+  "timestamp": "2025-08-24T01:29:01.759Z",
+  "results": {
+    "passed": 20,
+    "failed": 0,
+    "skipped": 0
+  },
+  "platform": "darwin",
+  "capturedData": {
+    "apiResponses": [
+      {
+        "sessionId": "api-test",
+        "response": {
+          "timestamp": 1755998940753,
+          "type": "assistant",
+          "data": {
+            "type": "assistant",
+            "id": "msg_test",
+            "message": {
+              "content": "test response"
+            }
+          }
+        }
+      }
+    ],
+    "tokens": null,
+    "messages": [],
+    "errors": [
+      {
+        "sessionId": "error-test",
+        "error": "Test error"
+      }
+    ]
+  }
+}
