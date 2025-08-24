@@ -2409,10 +2409,9 @@ export const ClaudeChat: React.FC = () => {
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
           <div className="context-info">
             {(() => {
-              // Calculate total context usage including conversation + cache tokens
-              const conversationTokens = currentSession.analytics?.tokens?.total || 0;
-              const cacheTokens = currentSession.analytics?.tokens?.cacheSize || 0;
-              const totalContextTokens = conversationTokens + cacheTokens;
+              // tokens.total already includes all tokens (input + output + cache)
+              const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
+              const cacheTokens = currentSession?.analytics?.tokens?.cacheSize || 0;
               
               // Disabled spammy token indicator log
               
@@ -2421,9 +2420,8 @@ export const ClaudeChat: React.FC = () => {
               // Both models have the same 200k context window
               const contextWindowTokens = 200000;
               
-              // Calculate percentage using only conversation tokens (not cached)
-              const realContextTokens = conversationTokens;
-              const rawPercentage = (realContextTokens / contextWindowTokens * 100);
+              // Calculate percentage using total context tokens
+              const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
               const percentageNum = Math.min(100, rawPercentage);
               // Format: always show 2 decimal places
               const percentage = percentageNum.toFixed(2);
@@ -2475,7 +2473,7 @@ export const ClaudeChat: React.FC = () => {
                     onClick={() => setShowStatsModal(true)}
                     disabled={false}
                     title={hasActivity ? 
-                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (conversation: ${conversationTokens.toLocaleString()}, cached: ${cacheTokens.toLocaleString()}) - click for details (ctrl+.)` : 
+                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()}) - click for details (ctrl+.)` : 
                       `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
                   >
                     {percentage}% used
@@ -2527,10 +2525,16 @@ export const ClaudeChat: React.FC = () => {
             <div className="stats-content">
               {(() => {
                 // Calculate total context usage - only conversation tokens count
-                const conversationTokens = currentSession?.analytics?.tokens?.total || 0;
-                const cacheTokens = currentSession?.analytics?.tokens?.cacheSize || 0;
-                // cache tokens are system prompts, not part of conversation context
-                const totalContextTokens = conversationTokens;
+                if (currentSession?.analytics?.tokens?.total || currentSession?.analytics?.tokens?.total === 0) {
+                  console.log('📱 [UI-ANALYTICS] Session analytics in UI:', {
+                    sessionId: currentSession?.id,
+                    totalTokens: currentSession?.analytics?.tokens?.total,
+                    hasAnalytics: !!currentSession?.analytics,
+                    analyticsKeys: currentSession?.analytics ? Object.keys(currentSession.analytics) : []
+                  });
+                }
+                // tokens.total already includes all tokens
+                const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
                 const contextWindowTokens = 200000;
                 const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
                 const percentageNum = Math.min(100, rawPercentage);

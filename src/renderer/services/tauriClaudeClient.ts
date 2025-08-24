@@ -7,7 +7,7 @@ console.log('🔥🔥🔥 TAURI CLIENT FILE LOADING 🔥🔥🔥');
 
 import { invoke, type Event } from '@tauri-apps/api/core';
 import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event';
-import { processWrapperMessage } from './wrapperIntegration';
+import { processWrapperMessage, mapSessionIds } from './wrapperIntegration';
 
 // Force wrapper module to load
 console.log('[TauriClient] Wrapper module imported, processWrapperMessage:', typeof processWrapperMessage);
@@ -336,6 +336,13 @@ export class TauriClaudeClient {
         }
       } else if (message.type === 'usage') {
         // Token usage information
+        console.log('🎯 [TauriClient] Main channel USAGE message:', {
+          input: message.input_tokens,
+          output: message.output_tokens,
+          cache_creation: message.cache_creation_input_tokens,
+          cache_read: message.cache_read_input_tokens,
+          sessionId: currentSessionId
+        });
         transformedMessage = {
           type: 'result',
           usage: {
@@ -539,46 +546,152 @@ export class TauriClaudeClient {
       
       // Set up new listener on the new channel
       channel = `claude-message:${new_session_id}`;
+      
+      // Map the temp session ID to the real session ID in the wrapper
+      mapSessionIds(old_session_id, new_session_id);
+      
       currentSessionId = new_session_id; // Update the current session ID for wrapper
       console.log(`[TauriClient] Switching to new channel: ${channel}, wrapper session: ${currentSessionId}`);
       
       const newUnlisten = await listen(channel, messageHandler);
       currentUnlisten = newUnlisten;
       activeListeners.set(channel, newUnlisten);
+      
+      // Also update token and complete listeners to new session ID
+      setupTokenListener(new_session_id);
+      setupCompleteListener(new_session_id);
     }).then(unlisten => {
       activeListeners.set(updateChannel, unlisten);
     });
     
-    // Also listen for token events
-    const tokenChannel = `claude-tokens:${sessionId}`;
-    listen(tokenChannel, (event: Event<any>) => {
-      const usage = event.payload;
-      const usageMessage = {
-        type: 'result',
-        usage: usage
-      };
-      handler(usageMessage);
-    }).then(unlisten => {
-      activeListeners.set(tokenChannel, unlisten);
-    });
+    // Token listener - will be updated when session ID changes
+    let tokenChannel = `claude-tokens:${sessionId}`;
+    let tokenUnlisten: UnlistenFn | null = null;
     
-    // Listen for completion events
-    const completeChannel = `claude-complete:${sessionId}`;
-    listen(completeChannel, (event: Event<any>) => {
-      // Clear streaming state on completion
-      const messageId = lastAssistantMessageIds.get(sessionId);
-      if (messageId) {
-        const completeMessage = {
-          id: messageId,
-          type: 'assistant',
-          streaming: false
-        };
-        handler(completeMessage);
-        lastAssistantMessageIds.delete(sessionId);
+    const setupTokenListener = (newSessionId: string) => {
+      // Clean up old token listener if exists
+      if (tokenUnlisten) {
+        tokenUnlisten();
+        activeListeners.delete(tokenChannel);
+      }
+      
+      // Set up new token listener
+      tokenChannel = `claude-tokens:${newSessionId}`;
+      console.log(`[TauriClient] 📊 Setting up token listener on ${tokenChannel}`);
+      
+      listen(tokenChannel, (event: Event<any>) => {
+        console.log('[TauriClient] 📊 Token update received:', event.payload);
+        const tokenData = event.payload;
+        
+        // Process through wrapper with token data
+        if (tokenData?.tokens) {
+          const tokenMessage = {
+            type: 'result',
+            usage: {
+              input_tokens: tokenData.tokens.input || 0,
+              output_tokens: tokenData.tokens.output || 0,
+              cache_creation_input_tokens: tokenData.tokens.cache_creation || 0,
+              cache_read_input_tokens: tokenData.tokens.cache_read || 0
+            },
+            rust_tokens: tokenData.tokens, // Keep original for debugging
+            source: 'token-listener' // Mark source for debugging
+          };
+          
+          console.log('[TauriClient] 📊 TOKEN LISTENER creating synthetic result:', {
+            input: tokenData.tokens.input,
+            output: tokenData.tokens.output,
+            total: tokenData.tokens.total,
+            sessionId: currentSessionId,
+            source: 'token-listener'
+          });
+          
+          // Process through wrapper before sending to handler
+          const processed = processWrapperMessage(tokenMessage, currentSessionId);
+          handler(processed);
+        }
+      }).then(unlisten => {
+        tokenUnlisten = unlisten;
+        activeListeners.set(tokenChannel, unlisten);
+      });
+    };
+    
+    // Set up initial token listener
+    setupTokenListener(sessionId);
+    
+    // Also listen globally for ANY token events (for debugging)
+    listen('claude-tokens', (event: Event<any>) => {
+      console.log('[TauriClient] 📊🔥 GLOBAL token event received:', {
+        payload: event.payload,
+        currentSessionId,
+        originalSessionId: sessionId,
+        tokenSessionId: event.payload?.session_id,
+        matches: event.payload?.session_id === currentSessionId || event.payload?.session_id === sessionId
+      });
+      const tokenData = event.payload;
+      
+      // TEMPORARILY: Process ALL token events for debugging
+      // if (tokenData?.session_id === currentSessionId || tokenData?.session_id === sessionId) {
+      if (true) { // TEMP: Process all token events
+        console.log('[TauriClient] 📊✅ Processing token event (TEMP: processing all)');
+        
+        if (tokenData?.tokens) {
+          const tokenMessage = {
+            type: 'result',
+            usage: {
+              input_tokens: tokenData.tokens.input || 0,
+              output_tokens: tokenData.tokens.output || 0,
+              cache_creation_input_tokens: tokenData.tokens.cache_creation || 0,
+              cache_read_input_tokens: tokenData.tokens.cache_read || 0
+            },
+            rust_tokens: tokenData.tokens // Keep original for debugging
+          };
+          
+          console.log('[TauriClient] 📊 Sending global token message to handler:', tokenMessage);
+          
+          // Process through wrapper before sending to handler
+          const processed = processWrapperMessage(tokenMessage, currentSessionId);
+          handler(processed);
+        }
       }
     }).then(unlisten => {
-      activeListeners.set(completeChannel, unlisten);
+      activeListeners.set('claude-tokens-global', unlisten);
     });
+    
+    // Completion listener - will be updated when session ID changes
+    let completeChannel = `claude-complete:${sessionId}`;
+    let completeUnlisten: UnlistenFn | null = null;
+    
+    const setupCompleteListener = (newSessionId: string) => {
+      // Clean up old complete listener if exists
+      if (completeUnlisten) {
+        completeUnlisten();
+        activeListeners.delete(completeChannel);
+      }
+      
+      // Set up new complete listener
+      completeChannel = `claude-complete:${newSessionId}`;
+      console.log(`[TauriClient] ✅ Setting up complete listener on ${completeChannel}`);
+      
+      listen(completeChannel, (event: Event<any>) => {
+        // Clear streaming state on completion
+        const messageId = lastAssistantMessageIds.get(sessionId);
+        if (messageId) {
+          const completeMessage = {
+            id: messageId,
+            type: 'assistant',
+            streaming: false
+          };
+          handler(completeMessage);
+          lastAssistantMessageIds.delete(sessionId);
+        }
+      }).then(unlisten => {
+        completeUnlisten = unlisten;
+        activeListeners.set(completeChannel, unlisten);
+      });
+    };
+    
+    // Set up initial complete listener
+    setupCompleteListener(sessionId);
     
     console.log(`[TauriClient] 👂 Listening for messages on ${channel}`);
     

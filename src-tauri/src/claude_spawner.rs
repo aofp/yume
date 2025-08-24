@@ -314,13 +314,33 @@ impl ClaudeSpawner {
                 // Still process for session ID extraction and token tracking
                 match stream_processor.process_line(&line).await {
                     Ok(Some(message)) => {
+                        // After processing, check if we have tokens to emit
+                        let tokens = stream_processor.tokens();
+                        let total = tokens.total_tokens();
+                        if total > 0 {
+                            let token_data = serde_json::json!({
+                                "type": "token_update",
+                                "session_id": &real_session_id,
+                                "tokens": {
+                                    "input": tokens.total_input_tokens,
+                                    "output": tokens.total_output_tokens,
+                                    "cache_creation": tokens.total_cache_creation_tokens,
+                                    "cache_read": tokens.total_cache_read_tokens,
+                                    "total": total
+                                }
+                            });
+                            
+                            info!("Emitting token update during stream: total={}", total);
+                            let _ = app_stdout.emit(&format!("claude-tokens:{}", real_session_id), &token_data);
+                            let _ = app_stdout.emit("claude-tokens", &token_data);
+                        }
+                        
                         // Handle specific message types for internal tracking
                         match &message {
                             ClaudeStreamMessage::Usage { .. } => {
-                                // Track tokens internally
-                                let tokens = stream_processor.tokens();
-                                debug!("Token usage - Input: {}, Output: {}", 
-                                    tokens.total_input_tokens, tokens.total_output_tokens);
+                                // This case shouldn't happen anymore since we extract usage in process_line
+                                // But keeping for safety
+                                info!("Got Usage message type (shouldn't happen with new extraction)");
                             }
                             ClaudeStreamMessage::MessageStop => {
                                 let _ = session_manager_stdout.set_streaming(&session_id_stdout, false).await;
@@ -365,9 +385,29 @@ impl ClaudeSpawner {
                 }
             }
             
-            // Final token update
+            // Final token update and emit to frontend
             let tokens = stream_processor.tokens();
-            info!("Session {} complete. Total tokens: {}", session_id_stdout, tokens.total_tokens());
+            let total = tokens.total_tokens();
+            info!("Session {} complete. Total tokens: {}", session_id_stdout, total);
+            
+            // Emit final token data to frontend
+            if total > 0 {
+                let token_data = serde_json::json!({
+                    "type": "token_update",
+                    "session_id": &real_session_id,
+                    "tokens": {
+                        "input": tokens.total_input_tokens,
+                        "output": tokens.total_output_tokens,
+                        "cache_creation": tokens.total_cache_creation_tokens,
+                        "cache_read": tokens.total_cache_read_tokens,
+                        "total": total
+                    }
+                });
+                
+                info!("Emitting final token update: {:?}", token_data);
+                let _ = app_stdout.emit(&format!("claude-tokens:{}", real_session_id), &token_data);
+                let _ = app_stdout.emit("claude-tokens", &token_data);
+            }
         });
 
         // Spawn stderr handler

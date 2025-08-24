@@ -8,6 +8,7 @@
 // Wrapper state
 const wrapperState = {
   sessions: new Map<string, SessionState>(),
+  sessionMapping: new Map<string, string>(), // Map temp IDs to real IDs
   debug: true,
   initialized: false,
   autoCompactThreshold: 160000, // Trigger at 160k tokens (80% of 200k)
@@ -32,9 +33,20 @@ interface SessionState {
 }
 
 function getWrapperSession(sessionId: string): SessionState {
-  if (!wrapperState.sessions.has(sessionId)) {
-    wrapperState.sessions.set(sessionId, {
-      id: sessionId,
+  // Resolve mapped session ID (temp -> real)
+  const resolvedId = wrapperState.sessionMapping.get(sessionId) || sessionId;
+  
+  console.log(`🔍 [WRAPPER-SESSION] Getting session:`, {
+    requested: sessionId,
+    resolved: resolvedId,
+    isTemp: sessionId.startsWith('temp-'),
+    isMapped: wrapperState.sessionMapping.has(sessionId),
+    allMappings: Array.from(wrapperState.sessionMapping.entries())
+  });
+  
+  if (!wrapperState.sessions.has(resolvedId)) {
+    wrapperState.sessions.set(resolvedId, {
+      id: resolvedId,
       inputTokens: 0,
       outputTokens: 0,
       cacheCreationTokens: 0,
@@ -47,21 +59,50 @@ function getWrapperSession(sessionId: string): SessionState {
       created: Date.now(),
       lastUpdateTime: Date.now()
     });
-    if (wrapperState.debug) {
-      console.log(`✅ [WRAPPER] Created session: ${sessionId}`);
-    }
+    console.log(`✅ [WRAPPER-SESSION] Created NEW session:`, {
+      id: resolvedId,
+      requested: sessionId,
+      totalSessions: wrapperState.sessions.size,
+      allSessions: Array.from(wrapperState.sessions.keys())
+    });
+  } else {
+    const session = wrapperState.sessions.get(resolvedId)!;
+    console.log(`📦 [WRAPPER-SESSION] Using EXISTING session:`, {
+      id: resolvedId,
+      requested: sessionId,
+      currentTokens: session.totalTokens,
+      messageCount: session.messageCount
+    });
   }
-  return wrapperState.sessions.get(sessionId)!;
+  return wrapperState.sessions.get(resolvedId)!;
 }
 
 export function processWrapperMessage(message: any, sessionId: string): any {
-  // Debug input
-  console.log('🎨 [WRAPPER] processWrapperMessage called:', {
+  // Debug input - ALWAYS log this
+  console.log('🎨🎨🎨 [WRAPPER] processWrapperMessage ENTRY:', {
     sessionId: sessionId?.substring(0, 8),
     messageType: message?.type,
     hasUsage: !!message?.usage,
-    hasWrapperTokens: !!message?.wrapper_tokens
+    hasWrapperTokens: !!message?.wrapper_tokens,
+    usage: message?.usage,
+    rustTokens: message?.rust_tokens,
+    fullMessage: JSON.stringify(message).substring(0, 500)
   });
+  
+  // Auto-detect and map session IDs when we see a real session ID in a message
+  console.log(`🔍 [WRAPPER-MAPPING] Checking for auto-mapping:`, {
+    hasSessionId: !!message.session_id,
+    messageSessionId: message.session_id,
+    currentSessionId: sessionId,
+    isCurrentTemp: sessionId.startsWith('temp-'),
+    isMessageTemp: message.session_id?.startsWith('temp-'),
+    shouldMap: message.session_id && sessionId.startsWith('temp-') && !message.session_id.startsWith('temp-')
+  });
+  
+  if (message.session_id && sessionId.startsWith('temp-') && !message.session_id.startsWith('temp-')) {
+    console.log(`🔄🔄🔄 [WRAPPER-MAPPING] AUTO-MAPPING TRIGGERED: ${sessionId} -> ${message.session_id}`);
+    mapSessionIds(sessionId, message.session_id);
+  }
   
   // Initialize on first call
   if (!wrapperState.initialized) {
@@ -97,7 +138,13 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     }
   }
   
+  // Get the session (will resolve temp -> real mapping automatically)
   const session = getWrapperSession(sessionId);
+  const resolvedId = wrapperState.sessionMapping.get(sessionId) || sessionId;
+  
+  if (sessionId !== resolvedId) {
+    console.log(`🔄 [WRAPPER] Using resolved session: ${sessionId} -> ${resolvedId}`);
+  }
   
   // Clone message to avoid mutation
   const processed = { ...message };
@@ -115,7 +162,7 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     session.tokensSaved = message.wrapper_tokens.tokensSaved || session.tokensSaved;
     session.lastUpdateTime = Date.now();
     
-    const percentage = message.wrapper_tokens.percentage || ((session.totalTokens / 200000) * 100).toFixed(1);
+    const percentage = message.wrapper_tokens.percentage || ((session.totalTokens / 200000) * 100).toFixed(2);
     console.log(`📊 [WRAPPER] SERVER TOKENS → ${session.totalTokens}/200000 (${percentage}%)`, {
       total: session.totalTokens,
       input: session.inputTokens,
@@ -165,7 +212,7 @@ export function processWrapperMessage(message: any, sessionId: string): any {
         cache_creation: message.usage.cache_creation_input_tokens,
         cache_read: message.usage.cache_read_input_tokens,
         total: session.totalTokens,
-        percentage: ((session.totalTokens / 200000) * 100).toFixed(1) + '%'
+        percentage: ((session.totalTokens / 200000) * 100).toFixed(2) + '%'
       });
     } else if (!isCompactResult(message)) {
       // Result without usage might be an error or special case
@@ -191,19 +238,33 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     const cacheCreation = message.usage.cache_creation_input_tokens || 0;
     const cacheRead = message.usage.cache_read_input_tokens || 0;
     
-    // Accumulate ALL token types separately for accurate tracking
+    // IMPORTANT: Understanding token types:
+    // - input_tokens: NEW input for this message (not including cache)
+    // - output_tokens: NEW output generated
+    // - cache_read_input_tokens: SIZE of cached context (SNAPSHOT, not incremental!)
+    // - cache_creation_input_tokens: One-time cost when content is first cached
+    
+    // Accumulate only NEW tokens
     session.inputTokens += input;
     session.outputTokens += output;
-    session.cacheCreationTokens += cacheCreation;
-    session.cacheReadTokens += cacheRead;
+    
+    // Cache creation happens once when content is cached (accumulate this)
+    if (cacheCreation > 0) {
+      session.cacheCreationTokens += cacheCreation;
+    }
+    
+    // Cache read is the SIZE of cached content - it's a snapshot, not incremental!
+    // This represents the conversation history that's being reused
+    session.cacheReadTokens = cacheRead; // REPLACE, don't accumulate!
     
     const prevTotal = session.totalTokens;
-    // Total includes ALL token types
-    session.totalTokens = session.inputTokens + session.outputTokens + session.cacheCreationTokens + session.cacheReadTokens;
+    // Total context in use = cached history + new tokens
+    // This is what counts against the 200k limit
+    session.totalTokens = session.cacheReadTokens + session.inputTokens + session.outputTokens;
     session.lastUpdateTime = Date.now();
     
     const delta = session.totalTokens - prevTotal;
-    const percentage = (session.totalTokens / 200000 * 100).toFixed(1);
+    const percentage = (session.totalTokens / 200000 * 100).toFixed(2);
     
     // ALWAYS log token updates for visibility
     if (wrapperState.debug) {
@@ -279,7 +340,7 @@ export function processWrapperMessage(message: any, sessionId: string): any {
   }
   
   // Add COMPLETE wrapper metadata to every message
-  const percentage = (session.totalTokens / 200000 * 100).toFixed(1);
+  const percentage = (session.totalTokens / 200000 * 100).toFixed(2);
   processed.wrapper = {
     enabled: true,
     version: '1.0.0',
@@ -307,12 +368,14 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     }
   };
   
-  // Debug output
-  console.log('🎨 [WRAPPER] Returning processed message:', {
+  // Debug output - log complete wrapper details
+  console.log('🎨✅ [WRAPPER] FINAL processed message:', {
     sessionId: sessionId?.substring(0, 8),
     messageType: processed.type,
     hasWrapper: !!processed.wrapper,
-    totalTokens: session.totalTokens
+    wrapperTokens: processed.wrapper?.tokens,
+    sessionTokens: session.totalTokens,
+    percentage: processed.wrapper?.tokens?.percentage
   });
   
   return processed;
@@ -326,7 +389,7 @@ function isCompactResult(message: any): boolean {
 }
 
 function generateCompactSummary(session: SessionState, savedTokens: number): string {
-  const percentageSaved = ((savedTokens / 200000) * 100).toFixed(1);
+  const percentageSaved = ((savedTokens / 200000) * 100).toFixed(2);
   return `✅ Conversation compacted successfully!
 
 📊 Compaction Summary:
@@ -387,11 +450,70 @@ export function clearAutoCompactMessage(sessionId: string) {
   wrapperState.autoCompactPending.delete(sessionId);
 }
 
+export function mapSessionIds(tempId: string, realId: string) {
+  console.log(`📍 [WRAPPER-MAP] mapSessionIds called:`, {
+    tempId,
+    realId,
+    areEqual: tempId === realId,
+    existingMappings: Array.from(wrapperState.sessionMapping.entries()),
+    existingSessions: Array.from(wrapperState.sessions.keys())
+  });
+  
+  if (tempId !== realId) {
+    console.log(`🔄 [WRAPPER-MAP] Creating mapping: ${tempId} -> ${realId}`);
+    wrapperState.sessionMapping.set(tempId, realId);
+    
+    // If there was already a session for the temp ID, merge its tokens into the real session
+    const tempSession = wrapperState.sessions.get(tempId);
+    console.log(`🔍 [WRAPPER-MAP] Temp session exists:`, {
+      exists: !!tempSession,
+      tempTokens: tempSession?.totalTokens || 0,
+      tempMessages: tempSession?.messageCount || 0
+    });
+    
+    if (tempSession) {
+      const realSession = getWrapperSession(realId);
+      const beforeTokens = realSession.totalTokens;
+      
+      realSession.inputTokens += tempSession.inputTokens;
+      realSession.outputTokens += tempSession.outputTokens;
+      realSession.cacheCreationTokens += tempSession.cacheCreationTokens;
+      realSession.cacheReadTokens += tempSession.cacheReadTokens;
+      realSession.totalTokens = realSession.inputTokens + realSession.outputTokens + 
+                               realSession.cacheCreationTokens + realSession.cacheReadTokens;
+      realSession.messageCount += tempSession.messageCount;
+      
+      console.log(`🔄 [WRAPPER-MAP] MERGED temp -> real session:`, {
+        tempId,
+        realId,
+        beforeTokens,
+        afterTokens: realSession.totalTokens,
+        tokensMerged: tempSession.totalTokens,
+        messagesAdded: tempSession.messageCount,
+        realSession
+      });
+      
+      // Delete the temp session
+      wrapperState.sessions.delete(tempId);
+      console.log(`🗑️ [WRAPPER-MAP] Deleted temp session: ${tempId}`);
+    }
+    
+    console.log(`✅ [WRAPPER-MAP] Mapping complete. Current state:`, {
+      mappings: Array.from(wrapperState.sessionMapping.entries()),
+      sessions: Array.from(wrapperState.sessions.keys())
+    });
+  } else {
+    console.log(`⚠️ [WRAPPER-MAP] IDs are identical, no mapping needed`);
+  }
+}
+
 export function getSessionTokenData(sessionId: string) {
-  const session = wrapperState.sessions.get(sessionId);
+  // Resolve mapped session ID
+  const resolvedId = wrapperState.sessionMapping.get(sessionId) || sessionId;
+  const session = wrapperState.sessions.get(resolvedId);
   if (!session) return null;
   
-  const percentage = (session.totalTokens / 100000 * 100).toFixed(1);
+  const percentage = (session.totalTokens / 200000 * 100).toFixed(2);
   return {
     total: session.totalTokens,
     input: session.inputTokens,
@@ -400,7 +522,7 @@ export function getSessionTokenData(sessionId: string) {
     cacheRead: session.cacheReadTokens,
     percentage: parseFloat(percentage),
     percentageDisplay: `${percentage}%`,
-    remaining: 100000 - session.totalTokens,
+    remaining: 200000 - session.totalTokens,
     compactCount: session.compactCount,
     tokensSaved: session.tokensSaved,
     lastUpdate: session.lastUpdateTime
@@ -424,7 +546,7 @@ if (typeof window !== 'undefined') {
       if (activeSessions.length > 0) {
         console.log('━━━━━━━━━━━━━ TOKEN STATUS UPDATE ━━━━━━━━━━━━━');
         activeSessions.forEach(session => {
-          const percentage = (session.totalTokens / 200000 * 100).toFixed(1);
+          const percentage = (session.totalTokens / 200000 * 100).toFixed(2);
           const barLength = 30;
           const filledBars = Math.round((session.totalTokens / 200000) * barLength);
           const emptyBars = barLength - filledBars;

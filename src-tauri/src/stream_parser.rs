@@ -312,8 +312,14 @@ impl TokenAccumulator {
 
     /// Gets the total token count
     pub fn total_tokens(&self) -> u32 {
-        self.total_input_tokens + self.total_output_tokens + 
-        self.total_cache_creation_tokens + self.total_cache_read_tokens
+        let total = self.total_input_tokens + self.total_output_tokens + 
+                   self.total_cache_creation_tokens + self.total_cache_read_tokens;
+        if total > 0 {
+            info!("Token totals - Input: {}, Output: {}, Cache Creation: {}, Cache Read: {}, Total: {}",
+                self.total_input_tokens, self.total_output_tokens, 
+                self.total_cache_creation_tokens, self.total_cache_read_tokens, total);
+        }
+        total
     }
 
     /// Resets all counters
@@ -342,6 +348,43 @@ impl StreamProcessor {
 
     /// Processes a line and returns the parsed message
     pub async fn process_line(&mut self, line: &str) -> Result<Option<ClaudeStreamMessage>> {
+        // First check if line contains usage data and extract it
+        if let Ok(json) = serde_json::from_str::<Value>(line) {
+            if let Some(usage_obj) = json.get("usage") {
+                if let Ok(usage_val) = serde_json::from_value::<serde_json::Value>(usage_obj.clone()) {
+                    let input_tokens = usage_val.get("input_tokens")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32)
+                        .unwrap_or(0);
+                    let output_tokens = usage_val.get("output_tokens")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32)
+                        .unwrap_or(0);
+                    let cache_creation = usage_val.get("cache_creation_input_tokens")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32);
+                    let cache_read = usage_val.get("cache_read_input_tokens")
+                        .and_then(|v| v.as_u64())
+                        .map(|v| v as u32);
+                    
+                    if input_tokens > 0 || output_tokens > 0 {
+                        info!("Extracted usage from line: input={}, output={}, cache_creation={:?}, cache_read={:?}", 
+                            input_tokens, output_tokens, cache_creation, cache_read);
+                        
+                        // Accumulate the tokens directly
+                        let usage_msg = ClaudeStreamMessage::Usage {
+                            input_tokens,
+                            output_tokens,
+                            cache_creation_input_tokens: cache_creation,
+                            cache_read_input_tokens: cache_read,
+                        };
+                        self.accumulator.accumulate(&usage_msg);
+                    }
+                }
+            }
+        }
+        
+        // Now process the line normally for message parsing
         let message = self.parser.process_line(line)?;
 
         if let Some(ref msg) = message {
@@ -356,6 +399,7 @@ impl StreamProcessor {
                     }
                 }
                 ClaudeStreamMessage::Usage { .. } => {
+                    // Already accumulated above if it came from usage field
                     self.accumulator.accumulate(msg);
                 }
                 ClaudeStreamMessage::MessageStop => {

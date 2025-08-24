@@ -18,7 +18,7 @@ class UniversalClaudeWrapper extends EventEmitter {
     
     // Always-on configuration
     this.config = {
-      maxTokens: 100000,
+      maxTokens: 200000,
       enabled: true,
       debug: true, // ALWAYS ON
       captureAll: true,

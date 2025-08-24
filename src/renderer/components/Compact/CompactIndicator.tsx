@@ -159,7 +159,7 @@ export const CompactIndicator: React.FC = () => {
           </div>
           <div style={styles.detailRow}>
             <span>current usage:</span>
-            <span>{Math.round((tokenData?.percentage || 0) * 100)}%</span>
+            <span>{((tokenData?.percentage || 0) * 100).toFixed(2)}%</span>
           </div>
           
           {/* Manual compact button */}

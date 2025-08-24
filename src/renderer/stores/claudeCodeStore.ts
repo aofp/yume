@@ -660,10 +660,29 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       console.log('[Store] Setting up listener for temp session (for compact results):', sessionId);
       tempMessageCleanup = client.onMessage(sessionId, (message) => {
         console.log('[Store] 🗜️ Message received on TEMP session channel:', sessionId, 'type:', message.type, 'result:', message.result?.substring?.(0, 50));
-        // Only process result messages on temp channel (these are compact results)
+        // Only process result messages on temp channel (check if it's actually a compact result)
         if (message.type === 'result') {
           const currentState = get();
           const isCurrentSession = currentState.currentSessionId === sessionId;
+          
+          // Check if this is actually a compact result (empty result string)
+          const isCompactResult = message.result === '' && 
+                                 (!message.usage || 
+                                  (message.usage.input_tokens === 0 && message.usage.output_tokens === 0));
+          
+          // If it's not a compact result, it's a token update - process normally
+          if (!isCompactResult) {
+            console.log('[Store] 📊 TOKEN UPDATE on temp channel (not compact):', {
+              sessionId,
+              hasWrapper: !!message.wrapper,
+              wrapperTokens: message.wrapper?.tokens,
+              usage: message.usage
+            });
+            
+            // Process as normal message through the main handler
+            get().addMessageToSession(sessionId, message);
+            return;
+          }
           
           console.log('[Store] 🗜️ COMPACT RESULT detected on temp channel!', {
             sessionId,
@@ -819,17 +838,52 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 return s;
               }
               
+              // Initialize analytics object early so we can update it with wrapper tokens
+              const analytics = s.analytics || {
+                totalMessages: 0,
+                userMessages: 0,
+                assistantMessages: 0,
+                toolUses: 0,
+                tokens: { 
+                  input: 0, 
+                  output: 0, 
+                  total: 0,
+                  cacheSize: 0,
+                  byModel: {
+                    opus: { input: 0, output: 0, total: 0 },
+                    sonnet: { input: 0, output: 0, total: 0 }
+                  }
+                },
+                duration: 0,
+                lastActivity: new Date(),
+                createdAt: s.createdAt || new Date(),
+                thinkingTime: 0,
+                cost: { total: 0, byModel: { opus: 0, sonnet: 0 } }
+              };
+              
               // Sync wrapper tokens to analytics if available
               if (message.wrapper?.tokens) {
-                console.log('🔄 [Store] Syncing wrapper tokens to analytics:', message.wrapper.tokens);
+                console.log('✅✅✅ [STORE-TOKENS] WRAPPER TOKENS FOUND! Syncing to analytics:', {
+                  sessionId: s.id,
+                  wrapperTokens: message.wrapper.tokens,
+                  beforeTotal: analytics.tokens.total,
+                  afterTotal: message.wrapper.tokens.total
+                });
+                
                 analytics.tokens.total = message.wrapper.tokens.total || analytics.tokens.total;
                 analytics.tokens.input = message.wrapper.tokens.input || analytics.tokens.input;
                 analytics.tokens.output = message.wrapper.tokens.output || analytics.tokens.output;
-                analytics.tokens.cacheSize = (message.wrapper.tokens.cache_creation || 0) + (message.wrapper.tokens.cache_read || 0);
-                
-                // Update percentage for UI
-                const percentage = message.wrapper.tokens.percentage || ((analytics.tokens.total / 200000) * 100);
-                console.log(`📊 [Store] Token percentage: ${percentage.toFixed(1)}%`);
+                // cache_read is the SIZE of cached context, not incremental
+                analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
+              } else if (message.type === 'result') {
+                // Only log missing wrapper for result messages (where we expect tokens)
+                console.log('❌ [STORE-TOKENS] Result message WITHOUT wrapper tokens:', {
+                  sessionId: s.id,
+                  messageType: message.type,
+                  hasWrapper: !!message.wrapper,
+                  wrapperKeys: message.wrapper ? Object.keys(message.wrapper) : [],
+                  hasUsage: !!message.usage
+                });
               }
               
               // Check for auto-compact trigger in wrapper metadata
@@ -949,26 +1003,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 }
               }
               
-              // Update analytics - preserve existing data
-              const analytics = s.analytics || {
-                totalMessages: 0,
-                userMessages: 0,
-                assistantMessages: 0,
-                toolUses: 0,
-                tokens: { 
-                  input: 0, 
-                  output: 0, 
-                  total: 0,
-                  cacheSize: 0,
-                  byModel: {
-                    opus: { input: 0, output: 0, total: 0 },
-                    sonnet: { input: 0, output: 0, total: 0 }
-                  }
-                },
-                duration: 0,
-                lastActivity: new Date(),
-                thinkingTime: 0
-              };
+              // Analytics object was already initialized earlier before wrapper token sync
+              // Just update the existing analytics object
               
               console.log(`🔍 [ANALYTICS DEBUG] Session ${s.id}: Before processing, analytics tokens: ${analytics.tokens.total}`);
               
@@ -1002,7 +1038,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   analytics.tokens.input = compactedTokens.input || 0;
                   analytics.tokens.output = compactedTokens.output || 0;
                   analytics.tokens.total = compactedTokens.total || 0;
-                  analytics.tokens.cacheSize = (compactedTokens.cache_creation || 0) + (compactedTokens.cache_read || 0);
+                  // After compact, cache size is reset
+                  analytics.tokens.cacheSize = compactedTokens.cache_read || 0;
                   
                   // Also reset model-specific counts (we don't know the breakdown, so reset both)
                   analytics.tokens.byModel = {
@@ -1103,7 +1140,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       analytics.tokens.total = message.wrapper.tokens.total;
                       analytics.tokens.input = message.wrapper.tokens.input;
                       analytics.tokens.output = message.wrapper.tokens.output;
-                      analytics.tokens.cacheSize = (message.wrapper.tokens.cache_creation || 0) + (message.wrapper.tokens.cache_read || 0);
+                      // cache_read is the SIZE of cached context
+                      analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
                       
                       // Update model-specific tracking
                       const modelKey = currentModel === 'opus' ? 'opus' : 'sonnet';
@@ -1112,114 +1150,122 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         output: message.wrapper.tokens.output,
                         total: message.wrapper.tokens.total
                       };
-                    }
+                      
+                      console.log('✅ [Store] Wrapper tokens applied to analytics:', {
+                        total: analytics.tokens.total,
+                        input: analytics.tokens.input,
+                        output: analytics.tokens.output,
+                        cacheSize: analytics.tokens.cacheSize
+                      });
+                    } else if (message.usage) {
+                      // Only process message.usage if no wrapper tokens available
+                      console.log('📊 Result message with usage (no wrapper):', message.usage);
+                      if (message.cost) {
+                        console.log('💰 Result message with cost:', message.cost);
+                      }
                     
-                    console.log('📊 Result message with usage:', message.usage);
-                    if (message.cost) {
-                      console.log('💰 Result message with cost:', message.cost);
-                    }
-                  
-                  // Parse token usage from Claude CLI
-                  // IMPORTANT: Cache tokens ARE part of the context window!
-                  const regularInputTokens = message.usage.input_tokens || 0;
-                  const cacheCreationTokens = message.usage.cache_creation_input_tokens || 0;
-                  const cacheReadTokens = message.usage.cache_read_input_tokens || 0;
-                  const outputTokens = message.usage.output_tokens || 0;
-                  
-                  // CRITICAL FIX: Cache read tokens ARE the conversation history in context!
-                  // They count toward the 200k limit - not counting them was causing "1% used" bug
-                  const inputTokens = regularInputTokens + cacheReadTokens; // Include cache in input
-                  const totalNewTokens = inputTokens + outputTokens; // Total context used this turn
-                  const cacheTotal = cacheCreationTokens + cacheReadTokens;
-                  
-                  console.log(`🔍 [TOKEN DEBUG] Token breakdown:`);
-                  console.log(`   Regular input: ${regularInputTokens}`);
-                  console.log(`   Cache creation: ${cacheCreationTokens} (cached system prompts)`);
-                  console.log(`   Cache read: ${cacheReadTokens} (cached system prompts)`);
-                  console.log(`   Output: ${outputTokens}`);
-                  console.log(`   --- ACCUMULATION ---`);
-                  console.log(`   NEW conversation tokens: ${totalNewTokens} (input: ${regularInputTokens} + output: ${outputTokens})`);
-                  console.log(`   NEW cache tokens: ${cacheTotal} (creation: ${cacheCreationTokens}, read: ${cacheReadTokens})`);
-                  console.log(`   Previous conversation total: ${analytics.tokens.total}`);
-                  console.log(`   Will be conversation total: ${analytics.tokens.total + totalNewTokens}`);
-                  
-                  // Check if compactPending flag is set - if so, reset tokens
-                  if (analytics.compactPending) {
-                    console.log('🗜️ [COMPACT RECOVERY] Post-compact message received, resetting token count');
-                    console.log('🗜️ [COMPACT RECOVERY] Old conversation total:', analytics.tokens.total);
-                    console.log('🗜️ [COMPACT RECOVERY] Old cache size:', analytics.tokens.cacheSize || 0);
-                    // Reset conversation tokens after compact
-                    analytics.tokens.input = inputTokens;
-                    analytics.tokens.output = outputTokens;
-                    analytics.tokens.total = totalNewTokens;
-                    // Reset cache size to current total cache state after compact
-                    analytics.tokens.cacheSize = cacheCreationTokens + cacheReadTokens;
-                    analytics.compactPending = false; // Clear the flag
-                    console.log('🗜️ [COMPACT RECOVERY] New conversation total:', analytics.tokens.total);
-                    console.log('🗜️ [COMPACT RECOVERY] New cache size:', analytics.tokens.cacheSize);
-                  } else {
-                    // CRITICAL FIX: Properly handle cache vs new tokens
-                    // cache_read is the TOTAL conversation history (a snapshot, not incremental)
-                    // input_tokens and output_tokens are NEW tokens for this turn
-                    const previousTotal = analytics.tokens.total;
-                    
-                    // The actual context in use RIGHT NOW is cache_read + new tokens
-                    // This is what counts against the 200k limit
-                    const actualContextInUse = cacheReadTokens + regularInputTokens + outputTokens;
-                    
-                    // For tracking purposes, accumulate only the NEW tokens added
-                    analytics.tokens.input += regularInputTokens; // Only new input
-                    analytics.tokens.output += outputTokens; // New output
-                    analytics.tokens.total = analytics.tokens.input + analytics.tokens.output; // Only count new tokens, not cache
-                    
-                    // Cache size is a snapshot of conversation history
-                    analytics.tokens.cacheSize = cacheReadTokens;
-                    
-                    console.log(`📊 [TOKEN UPDATE] Context usage:`);
-                    console.log(`   Conversation history (cache): ${cacheReadTokens} tokens`);
-                    console.log(`   New input this turn: ${regularInputTokens} tokens`);
-                    console.log(`   New output this turn: ${outputTokens} tokens`);
-                    console.log(`   TOTAL CONTEXT IN USE: ${actualContextInUse} / 200000 (${(actualContextInUse / 200000 * 100).toFixed(1)}%)`);
-                    console.log(`   Previous total was: ${previousTotal}`);
-                  }
-                  
-                  console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
-                  console.log(`   New tokens accumulated: Input=${analytics.tokens.input}, Output=${analytics.tokens.output}`);
-                  console.log(`   Current context size: ${analytics.tokens.total} tokens`);
-                  console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(1)}% of 200k limit`);
-                  
-                  // Determine which model was used (check message.model or use current selectedModel)
-                  const modelUsed = message.model || get().selectedModel;
-                  const isOpus = modelUsed.includes('opus');
-                  const modelKey = isOpus ? 'opus' : 'sonnet';
-                  
-                  // Update model-specific tokens (accumulate NEW tokens only, not cache)
-                  // Both models can be used in the same conversation if user switches
-                  if (isOpus) {
-                    analytics.tokens.byModel.opus.input += regularInputTokens; // Only new input
-                    analytics.tokens.byModel.opus.output += outputTokens;
-                    analytics.tokens.byModel.opus.total += (regularInputTokens + outputTokens);
-                  } else {
-                    analytics.tokens.byModel.sonnet.input += regularInputTokens; // Only new input
-                    analytics.tokens.byModel.sonnet.output += outputTokens;
-                    analytics.tokens.byModel.sonnet.total += (regularInputTokens + outputTokens);
-                  }
-                  
-                  // Store cost information (accumulate per message)
-                  if (message.total_cost_usd !== undefined) {
-                    if (!analytics.cost) {
-                      analytics.cost = { total: 0, byModel: { opus: 0, sonnet: 0 } };
-                    }
-                    // Accumulate cost for each message
-                    analytics.cost.total += message.total_cost_usd;
-                    if (isOpus) {
-                      analytics.cost.byModel.opus += message.total_cost_usd;
-                    } else {
-                      analytics.cost.byModel.sonnet += message.total_cost_usd;
-                    }
-                    console.log('💵 Updated cost:', analytics.cost);
-                  }
-                  }
+                      // Parse token usage from Claude CLI
+                      // IMPORTANT: Cache tokens ARE part of the context window!
+                      const regularInputTokens = message.usage.input_tokens || 0;
+                      const cacheCreationTokens = message.usage.cache_creation_input_tokens || 0;
+                      const cacheReadTokens = message.usage.cache_read_input_tokens || 0;
+                      const outputTokens = message.usage.output_tokens || 0;
+                      
+                      // CRITICAL FIX: Cache read tokens ARE the conversation history in context!
+                      // They count toward the 200k limit - not counting them was causing "1% used" bug
+                      const inputTokens = regularInputTokens + cacheReadTokens; // Include cache in input
+                      const totalNewTokens = inputTokens + outputTokens; // Total context used this turn
+                      const cacheTotal = cacheCreationTokens + cacheReadTokens;
+                      
+                      console.log(`🔍 [TOKEN DEBUG] Token breakdown:`);
+                      console.log(`   Regular input: ${regularInputTokens}`);
+                      console.log(`   Cache creation: ${cacheCreationTokens} (cached system prompts)`);
+                      console.log(`   Cache read: ${cacheReadTokens} (cached system prompts)`);
+                      console.log(`   Output: ${outputTokens}`);
+                      console.log(`   --- ACCUMULATION ---`);
+                      console.log(`   NEW conversation tokens: ${totalNewTokens} (input: ${regularInputTokens} + output: ${outputTokens})`);
+                      console.log(`   NEW cache tokens: ${cacheTotal} (creation: ${cacheCreationTokens}, read: ${cacheReadTokens})`);
+                      console.log(`   Previous conversation total: ${analytics.tokens.total}`);
+                      console.log(`   Will be conversation total: ${analytics.tokens.total + totalNewTokens}`);
+                      
+                      // Check if compactPending flag is set - if so, reset tokens
+                      if (analytics.compactPending) {
+                        console.log('🗜️ [COMPACT RECOVERY] Post-compact message received, resetting token count');
+                        console.log('🗜️ [COMPACT RECOVERY] Old conversation total:', analytics.tokens.total);
+                        console.log('🗜️ [COMPACT RECOVERY] Old cache size:', analytics.tokens.cacheSize || 0);
+                        // Reset conversation tokens after compact
+                        analytics.tokens.input = inputTokens;
+                        analytics.tokens.output = outputTokens;
+                        analytics.tokens.total = totalNewTokens;
+                        // Cache read is the size of cached context after compact
+                        analytics.tokens.cacheSize = cacheReadTokens;
+                        analytics.compactPending = false; // Clear the flag
+                        console.log('🗜️ [COMPACT RECOVERY] New conversation total:', analytics.tokens.total);
+                        console.log('🗜️ [COMPACT RECOVERY] New cache size:', analytics.tokens.cacheSize);
+                      } else {
+                        // CRITICAL FIX: Properly handle cache vs new tokens
+                        // cache_read is the TOTAL conversation history (a snapshot, not incremental)
+                        // input_tokens and output_tokens are NEW tokens for this turn
+                        const previousTotal = analytics.tokens.total;
+                        
+                        // The actual context in use RIGHT NOW is cache_read + new tokens
+                        // This is what counts against the 200k limit
+                        const actualContextInUse = cacheReadTokens + regularInputTokens + outputTokens;
+                        
+                        // For tracking purposes, accumulate only the NEW tokens added
+                        analytics.tokens.input += regularInputTokens; // Only new input
+                        analytics.tokens.output += outputTokens; // New output
+                        analytics.tokens.total = analytics.tokens.input + analytics.tokens.output; // Only count new tokens, not cache
+                        
+                        // Cache size is a snapshot of conversation history
+                        analytics.tokens.cacheSize = cacheReadTokens;
+                        
+                        console.log(`📊 [TOKEN UPDATE] Context usage:`);
+                        console.log(`   Conversation history (cache): ${cacheReadTokens} tokens`);
+                        console.log(`   New input this turn: ${regularInputTokens} tokens`);
+                        console.log(`   New output this turn: ${outputTokens} tokens`);
+                        console.log(`   TOTAL CONTEXT IN USE: ${actualContextInUse} / 200000 (${(actualContextInUse / 200000 * 100).toFixed(2)}%)`);
+                        console.log(`   Previous total was: ${previousTotal}`);
+                      }
+                      
+                      console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
+                      console.log(`   New tokens accumulated: Input=${analytics.tokens.input}, Output=${analytics.tokens.output}`);
+                      console.log(`   Current context size: ${analytics.tokens.total} tokens`);
+                      console.log(`   Context usage: ${(analytics.tokens.total / 200000 * 100).toFixed(2)}% of 200k limit`);
+                      
+                      // Determine which model was used (check message.model or use current selectedModel)
+                      const modelUsed = message.model || get().selectedModel;
+                      const isOpus = modelUsed.includes('opus');
+                      const modelKey = isOpus ? 'opus' : 'sonnet';
+                      
+                      // Update model-specific tokens (accumulate NEW tokens only, not cache)
+                      // Both models can be used in the same conversation if user switches
+                      if (isOpus) {
+                        analytics.tokens.byModel.opus.input += regularInputTokens; // Only new input
+                        analytics.tokens.byModel.opus.output += outputTokens;
+                        analytics.tokens.byModel.opus.total += (regularInputTokens + outputTokens);
+                      } else {
+                        analytics.tokens.byModel.sonnet.input += regularInputTokens; // Only new input
+                        analytics.tokens.byModel.sonnet.output += outputTokens;
+                        analytics.tokens.byModel.sonnet.total += (regularInputTokens + outputTokens);
+                      }
+                      
+                      // Store cost information (accumulate per message)
+                      if (message.total_cost_usd !== undefined) {
+                        if (!analytics.cost) {
+                          analytics.cost = { total: 0, byModel: { opus: 0, sonnet: 0 } };
+                        }
+                        // Accumulate cost for each message
+                        analytics.cost.total += message.total_cost_usd;
+                        if (isOpus) {
+                          analytics.cost.byModel.opus += message.total_cost_usd;
+                        } else {
+                          analytics.cost.byModel.sonnet += message.total_cost_usd;
+                        }
+                        console.log('💵 Updated cost:', analytics.cost);
+                      }
+                    } // End of else if (message.usage)
+                  } // End of if (!wasAlreadyProcessed)
                 } else {
                   // No usage data in result message - estimate based on messages
                   console.log('⚠️ [TOKEN DEBUG] No usage data in result message, estimating from messages');
@@ -1309,6 +1355,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   });
                 }
               }
+              
+              // Always log final state to debug token tracking
+              console.log('📊 [STORE-FINAL] Returning session with analytics:', {
+                sessionId: s.id,
+                tokenTotal: analytics.tokens.total,
+                tokenInput: analytics.tokens.input,
+                tokenOutput: analytics.tokens.output,
+                cacheSize: analytics.tokens.cacheSize,
+                hasWrapper: !!message.wrapper,
+                wrapperTokens: message.wrapper?.tokens
+              });
               
               return { 
                 ...s, 
@@ -2641,7 +2698,54 @@ ${content}`;
       sessions: state.sessions.map(s => {
         if (s.id !== sessionId) return s;
         
-        // Add new message and check if we exceed 500 message limit
+        // Special handling for token update messages (synthetic result messages from token listener)
+        if (message.type === 'result' && message.wrapper?.tokens) {
+          console.log('📊 [Store] Processing TOKEN UPDATE message:', {
+            sessionId,
+            wrapperTokens: message.wrapper.tokens,
+            source: (message as any).source
+          });
+          
+          // Initialize analytics if needed
+          const analytics = s.analytics || {
+            totalMessages: 0,
+            userMessages: 0,
+            assistantMessages: 0,
+            toolUses: 0,
+            tokens: { 
+              input: 0, 
+              output: 0, 
+              total: 0,
+              cacheSize: 0,
+              byModel: {
+                opus: { input: 0, output: 0, total: 0 },
+                sonnet: { input: 0, output: 0, total: 0 }
+              }
+            },
+            duration: 0,
+            thinkingTime: 0
+          };
+          
+          // Update with wrapper tokens
+          if (message.wrapper.tokens) {
+            analytics.tokens.total = message.wrapper.tokens.total || 0;
+            analytics.tokens.input = message.wrapper.tokens.input || 0;
+            analytics.tokens.output = message.wrapper.tokens.output || 0;
+            // cache_read is the SIZE of cached context, not incremental
+            analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
+            
+            console.log('✅ [Store] TOKEN UPDATE applied to analytics:', {
+              sessionId,
+              total: analytics.tokens.total,
+              percentage: message.wrapper.tokens.percentage
+            });
+          }
+          
+          // Don't add token update messages to the message list
+          return { ...s, analytics, updatedAt: new Date() };
+        }
+        
+        // Normal message handling
         let updatedMessages = [...s.messages, message];
         const MAX_MESSAGES = 500;
         
