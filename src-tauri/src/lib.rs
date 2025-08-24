@@ -6,7 +6,12 @@ extern crate objc;
 
 // Module declarations for the application's core functionality
 mod claude;         // Claude CLI process management and communication
+mod claude_binary;  // Claude binary detection and environment setup
+mod claude_session; // Session management and ID extraction
+mod claude_spawner; // Claude process spawning and coordination
+mod stream_parser;  // Stream JSON parsing for Claude output
 mod commands;       // Tauri IPC commands exposed to the frontend
+mod process;        // Process registry for tracking and managing Claude processes
 mod state;          // Application state management (sessions, settings, etc.)
 mod websocket;      // WebSocket server for real-time communication with frontend
 mod logged_server;  // Node.js server process management with logging
@@ -519,16 +524,30 @@ pub fn run() {
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
+            // Window management
             commands::toggle_devtools,
             commands::select_folder,
             commands::get_server_port,
             commands::get_home_directory,
             commands::get_current_directory,
             commands::new_window,
+            // Legacy Claude commands (to be replaced)
             commands::send_message,
             commands::interrupt_session,
             commands::clear_session,
             commands::get_sessions,
+            // New direct CLI Claude commands
+            commands::claude_commands::spawn_claude_session,
+            commands::claude_commands::send_claude_message,
+            commands::claude_commands::resume_claude_session,
+            commands::claude_commands::interrupt_claude_session,
+            commands::claude_commands::clear_claude_context,
+            commands::claude_commands::get_session_info,
+            commands::claude_commands::get_token_stats,
+            commands::claude_commands::list_active_sessions,
+            commands::claude_commands::get_session_output,
+            commands::claude_info::get_claude_binary_info,
+            // UI commands
             commands::set_zoom_level,
             commands::minimize_window,
             commands::maximize_window,
@@ -537,6 +556,7 @@ pub fn run() {
             commands::clear_server_logs,
             commands::close_window,
             commands::show_context_menu,
+            // Settings and state
             commands::save_settings,
             commands::load_settings,
             commands::get_recent_projects,
@@ -545,9 +565,11 @@ pub fn run() {
             commands::toggle_console_visibility,
             commands::get_system_fonts,
             commands::open_external,
+            // Bash execution
             commands::execute_bash,
             commands::spawn_bash,
             commands::kill_bash_process,
+            // File operations
             commands::search_files,
             commands::get_recent_files,
             commands::get_git_status,

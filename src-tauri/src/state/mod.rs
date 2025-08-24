@@ -18,7 +18,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use crate::claude::ClaudeManager;
+use crate::claude_session::SessionManager;
 use crate::commands::SessionInfo;
+use crate::process::ProcessRegistry;
 
 // Maximum number of recent projects to remember
 const MAX_RECENT_PROJECTS: usize = 10;
@@ -26,7 +28,9 @@ const MAX_RECENT_PROJECTS: usize = 10;
 /// Central application state container
 /// Shared across all Tauri command handlers via Tauri's state management
 pub struct AppState {
-    claude_manager: Arc<ClaudeManager>,                       // Manages Claude CLI sessions
+    claude_manager: Arc<ClaudeManager>,                       // Manages Claude CLI sessions (legacy)
+    process_registry: Arc<ProcessRegistry>,                   // New: Process tracking and management
+    session_manager: Arc<SessionManager>,                     // New: Session state management
     server_port: u16,                                         // Port where Node.js server is running
     settings: Arc<RwLock<serde_json::Map<String, Value>>>,   // Key-value settings storage
     recent_projects: Arc<RwLock<VecDeque<String>>>,          // Recently opened project paths
@@ -37,8 +41,14 @@ impl AppState {
     /// Initializes with the provided ClaudeManager and server port
     /// Settings and recent projects start empty
     pub fn new(claude_manager: Arc<ClaudeManager>, server_port: u16) -> Self {
+        // Create new process registry and session manager for direct CLI spawning
+        let process_registry = Arc::new(ProcessRegistry::new());
+        let session_manager = Arc::new(SessionManager::new());
+        
         Self {
             claude_manager,
+            process_registry,
+            session_manager,
             server_port,
             settings: Arc::new(RwLock::new(serde_json::Map::new())),
             recent_projects: Arc::new(RwLock::new(VecDeque::new())),
@@ -48,6 +58,16 @@ impl AppState {
     /// Returns the port number where the Node.js backend server is running
     pub fn server_port(&self) -> u16 {
         self.server_port
+    }
+    
+    /// Returns a reference to the ProcessRegistry for direct CLI process management
+    pub fn process_registry(&self) -> Arc<ProcessRegistry> {
+        self.process_registry.clone()
+    }
+    
+    /// Returns a reference to the SessionManager for session state tracking
+    pub fn session_manager(&self) -> Arc<SessionManager> {
+        self.session_manager.clone()
     }
 
     /// Sends a message to a Claude session

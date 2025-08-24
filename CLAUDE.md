@@ -151,3 +151,27 @@ When modifying:
 5. Check browser console for Socket.IO errors
 6. Check terminal for Claude spawn errors
 7. Verify bundled resources after build in `src-tauri/resources/`
+
+### Recent Fixes (2024-12-23)
+
+#### Compact Command Fix
+**Problem**: After `/compact`, users couldn't send messages (session not found error)
+**Solution**: Track compacted sessions with `wasCompacted` flag in server
+**Files Changed**: `src-tauri/src/logged_server.rs` (embedded server)
+**Details**: See `COMPACT_FIX_V2.md` for complete analysis
+
+#### Session Persistence Fixes
+1. **TauriClient callback registration** - Fixed in main.tsx
+2. **Restored tabs deferred spawn** - Fixed in claudeCodeStore.ts
+3. **Syntax errors** - Removed duplicate catch blocks
+
+### Known Issues & Solutions
+
+1. **After /compact command**: Session properly resets, old ID rejected
+2. **Token counting**: Use `+=` for accumulation, not assignment
+3. **Streaming state**: Check `lastAssistantMessageIds` cleared properly
+4. **Memory leaks**: Monitor buffer size, implement pagination
+5. **WSL paths**: Server handles conversion automatically
+
+### Future Improvements
+See `YURUCODE_TODO.md` for comprehensive list of planned features and fixes

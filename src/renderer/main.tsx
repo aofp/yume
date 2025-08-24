@@ -9,6 +9,7 @@ import './App.minimal.css';
 // Initialize platform bridge for Tauri/Electron compatibility
 import './services/platformBridge';
 import { claudeCodeClient } from './services/claudeCodeClient';
+import { tauriClaudeClient } from './services/tauriClaudeClient';
 import './services/modalService';
 
 console.log('main.tsx loading...');
@@ -44,9 +45,20 @@ for (let i = 0; i < localStorage.length; i++) {
 keysToRemove.forEach(key => localStorage.removeItem(key));
 console.log('Cleared any persisted sessions on startup');
 
-// Set up listener for auto-created sessions from server
-claudeCodeClient.onSessionCreated((data) => {
-  console.log('[App] Server auto-created session:', data);
+// Set up listener for auto-created sessions from server and Tauri client
+const sessionCreatedHandler = (data) => {
+  console.log('[App] Session created/spawned:', data);
+  
+  // Handle deferred spawn case (when tempSessionId and realSessionId are provided)
+  if (data.tempSessionId && data.realSessionId) {
+    console.log('[App] Deferred spawn completed:', data.tempSessionId, '->', data.realSessionId);
+    
+    // Call the store method to handle the deferred spawn
+    store.handleDeferredSpawn(data.tempSessionId, data.realSessionId);
+    return;
+  }
+  
+  // Original logic for server auto-created sessions
   console.log('[App] Restoring', data.messages?.length || 0, 'messages from disk');
   
   // Update the session in the store to mark it as active and restore messages
@@ -97,7 +109,12 @@ claudeCodeClient.onSessionCreated((data) => {
       currentSessionId: data.sessionId
     });
   }
-});
+};
+
+// Register the handler for both clients
+claudeCodeClient.onSessionCreated(sessionCreatedHandler);
+tauriClaudeClient.onSessionCreated(sessionCreatedHandler);
+console.log('[App] Registered sessionCreated handlers for both Socket.IO and Tauri clients');
 
 // Auto-reconnect restored sessions after app starts
 setTimeout(() => {

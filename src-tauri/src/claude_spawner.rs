@@ -1,0 +1,559 @@
+use anyhow::{anyhow, Result};
+use std::path::Path;
+use std::process::Stdio;
+use std::sync::Arc;
+use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::process::{Child, Command};
+use tauri::{AppHandle, Emitter};
+use tracing::{debug, error, info, warn};
+
+use crate::claude_binary::{find_claude_binary, create_command_with_env};
+use crate::claude_session::{
+    SessionInfo, SessionIdResult, SessionManager,
+    extract_session_id_from_child, generate_synthetic_session_id,
+};
+use crate::process::{ProcessRegistry, ProcessType};
+use crate::stream_parser::{StreamProcessor, ClaudeStreamMessage};
+
+/// Options for spawning a Claude process
+#[derive(Debug, Clone)]
+pub struct SpawnOptions {
+    /// Working directory for the Claude process
+    pub project_path: String,
+    /// Model to use (e.g., "claude-3-opus-20240229")
+    pub model: String,
+    /// Initial prompt to send
+    pub prompt: String,
+    /// Session ID to resume (optional)
+    pub resume_session_id: Option<String>,
+    /// Whether to continue a conversation
+    pub continue_conversation: bool,
+}
+
+/// Result from spawning a Claude process
+#[derive(Debug)]
+pub struct SpawnResult {
+    /// Session ID (either extracted or synthetic)
+    pub session_id: String,
+    /// Run ID in the ProcessRegistry
+    pub run_id: i64,
+    /// Process ID
+    pub pid: u32,
+    /// Whether this is a resumed session
+    pub resumed: bool,
+}
+
+/// Main Claude spawner that coordinates all components
+pub struct ClaudeSpawner {
+    registry: Arc<ProcessRegistry>,
+    session_manager: Arc<SessionManager>,
+}
+
+impl ClaudeSpawner {
+    pub fn new(registry: Arc<ProcessRegistry>, session_manager: Arc<SessionManager>) -> Self {
+        Self {
+            registry,
+            session_manager,
+        }
+    }
+
+    /// Spawns a new Claude process with the given options
+    pub async fn spawn_claude(
+        &self,
+        app: AppHandle,
+        options: SpawnOptions,
+    ) -> Result<SpawnResult> {
+        info!("Spawning Claude process with options: {:?}", options);
+
+        // Find Claude binary
+        let claude_path = find_claude_binary()
+            .map_err(|e| anyhow!("Failed to find Claude binary: {}", e))?;
+        info!("Using Claude binary at: {}", claude_path);
+
+        // Build command with proper argument order
+        let mut cmd = self.build_claude_command(&claude_path, &options)?;
+
+        // Log the full command for debugging
+        info!("Spawning Claude with command: {:?}", cmd);
+        
+        // Spawn the process
+        let mut child = cmd
+            .spawn()
+            .map_err(|e| anyhow!("Failed to spawn Claude process: {}", e))?;
+
+        // Get PID immediately
+        let pid = child.id().ok_or_else(|| anyhow!("Failed to get process PID"))?;
+        info!("Spawned Claude process with PID: {}", pid);
+
+        // CRITICAL: Register process IMMEDIATELY to prevent orphans
+        let temp_session_id = generate_synthetic_session_id();
+        let run_id = self.registry.register_claude_process(
+            temp_session_id.clone(),
+            pid,
+            options.project_path.clone(),
+            options.prompt.clone(),
+            options.model.clone(),
+            child,
+        ).map_err(|e| anyhow!(e))?;
+        info!("Registered process with temporary session ID: {} and run_id: {}", temp_session_id, run_id);
+
+        // Get the child back from registry for session ID extraction
+        let mut child = self.take_child_for_extraction(run_id).await?;
+
+        // Take stdout and stderr immediately before they're consumed
+        let stdout = child.stdout.take()
+            .ok_or_else(|| anyhow!("No stdout available"))?;
+        let stderr = child.stderr.take()
+            .ok_or_else(|| anyhow!("No stderr available"))?;
+
+        // Return the child to registry after taking streams
+        self.registry.return_child(run_id, child)
+            .map_err(|e| anyhow!(e))?;
+
+        // We'll extract session ID from the stream handler itself
+        // For now, use the temporary session ID
+        let session_id = temp_session_id.clone();
+
+        // Register session in SessionManager
+        let session_info = SessionInfo {
+            session_id: session_id.clone(),
+            project_path: options.project_path.clone(),
+            model: options.model.clone(),
+            streaming: true,
+            run_id: Some(run_id),
+        };
+        self.session_manager.register_session(session_info).await?;
+
+        // Start streaming handlers with the streams we already took
+        self.start_stream_handlers_with_streams(
+            app, 
+            stdout,
+            stderr,
+            session_id.clone(), 
+            run_id
+        ).await?;
+
+        // DO NOT send initial prompt via stdin - it's already passed with -p flag
+        // The prompt is included in the command arguments when spawning
+
+        Ok(SpawnResult {
+            session_id,
+            run_id,
+            pid,
+            resumed: options.resume_session_id.is_some(),
+        })
+    }
+
+    /// Builds the Claude command with proper argument ordering
+    fn build_claude_command(&self, claude_path: &str, options: &SpawnOptions) -> Result<Command> {
+        let mut cmd = tokio::process::Command::from(create_command_with_env(claude_path));
+
+        // CRITICAL: Argument order matters! Following claudia's working implementation
+        // 1. Resume session (if applicable)
+        if let Some(session_id) = &options.resume_session_id {
+            cmd.arg("--resume").arg(session_id);
+            debug!("Added resume argument for session: {}", session_id);
+        }
+
+        // 2. Continue conversation (if applicable)
+        if options.continue_conversation {
+            cmd.arg("-c");  // Use -c instead of --continue
+            debug!("Added continue argument");
+        }
+
+        // 3. Prompt (if provided and not just whitespace)
+        // Use -p flag instead of --prompt, as per claudia's working implementation
+        if !options.prompt.trim().is_empty() {
+            cmd.arg("-p").arg(&options.prompt);
+            debug!("Added prompt argument: {}", options.prompt);
+        }
+
+        // 4. Model
+        cmd.arg("--model").arg(&options.model);
+        debug!("Using model: {}", options.model);
+
+        // 5. Output format
+        cmd.arg("--output-format").arg("stream-json");
+        
+        // CRITICAL: --print flag is ONLY for NEW sessions
+        // NEVER use --print with -c (continue) or --resume flags
+        // Claudia NEVER uses --print flag at all
+        if options.resume_session_id.is_none() && !options.continue_conversation {
+            cmd.arg("--print");
+            debug!("Added --print flag (new session only)");
+        } else {
+            debug!("Skipping --print flag (resuming or continuing)");
+        }
+
+        // 6. --verbose for extra debugging info
+        cmd.arg("--verbose");
+
+        // 7. Platform-specific flags
+        #[cfg(target_os = "macos")]
+        {
+            // macOS may need special permissions flag
+            cmd.arg("--dangerously-skip-permissions");
+        }
+
+        // Set working directory
+        cmd.current_dir(&options.project_path);
+        
+        // Configure stdio - Following claudia's implementation exactly
+        // Claudia NEVER pipes stdin - prompts are always passed via -p flag
+        // Only pipe stdout and stderr for reading output
+        cmd.stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .kill_on_drop(true);
+
+        Ok(cmd)
+    }
+
+    /// Takes the child process from registry for session ID extraction
+    async fn take_child_for_extraction(&self, run_id: i64) -> Result<Child> {
+        self.registry
+            .take_child(run_id)
+            .map_err(|e| anyhow!(e))?
+            .ok_or_else(|| anyhow!("No child process available for run_id {}", run_id))
+    }
+
+    /// Starts the stream handlers with already-taken stdout and stderr
+    async fn start_stream_handlers_with_streams(
+        &self,
+        app: AppHandle,
+        stdout: tokio::process::ChildStdout,
+        stderr: tokio::process::ChildStderr,
+        session_id: String,
+        run_id: i64,
+    ) -> Result<()> {
+
+        let registry = self.registry.clone();
+        let session_manager = self.session_manager.clone();
+
+        // Spawn stdout handler with StreamProcessor
+        let app_stdout = app.clone();
+        let session_id_stdout = session_id.clone();
+        let registry_stdout = registry.clone();
+        let session_manager_stdout = session_manager.clone();
+        
+        tokio::spawn(async move {
+            info!("Starting stdout handler for session {}", session_id_stdout);
+            let reader = BufReader::new(stdout);
+            let mut lines = reader.lines();
+            let mut stream_processor = StreamProcessor::new();
+            stream_processor.start_streaming();
+            let mut real_session_id = session_id_stdout.clone();
+            let mut session_id_extracted = false;
+            
+            while let Ok(Some(line)) = lines.next_line().await {
+                info!("Claude stdout: {}", line);
+                
+                // Store raw output in registry
+                let _ = registry_stdout.append_live_output(run_id, &line);
+                
+                // Try to extract session ID from early messages if not yet done
+                if !session_id_extracted {
+                    if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
+                        if json["type"] == "system" && json["subtype"] == "init" {
+                            if let Some(sid) = json["session_id"].as_str() {
+                                info!("Extracted real Claude session ID: {}", sid);
+                                real_session_id = sid.to_string();
+                                session_id_extracted = true;
+                                // Update session manager with real ID
+                                let _ = session_manager_stdout.update_session_id(&session_id_stdout, &real_session_id).await;
+                                
+                                // Emit a session ID update event so frontend can update its listener
+                                let _ = app_stdout.emit(
+                                    &format!("claude-session-id-update:{}", session_id_stdout),
+                                    &serde_json::json!({
+                                        "old_session_id": &session_id_stdout,
+                                        "new_session_id": &real_session_id
+                                    })
+                                );
+                                info!("Emitted session ID update: {} -> {}", session_id_stdout, real_session_id);
+                            }
+                        }
+                    }
+                }
+                
+                // CRITICAL: Just emit the raw line to frontend for parsing
+                // This is how Claudia does it - the frontend parses the JSON
+                // Use the real session ID if we have it, otherwise use the synthetic one
+                let emit_session_id = if session_id_extracted {
+                    &real_session_id
+                } else {
+                    &session_id_stdout
+                };
+                let channel = format!("claude-message:{}", emit_session_id);
+                info!("Emitting message on channel: {}", channel);
+                let emit_result = app_stdout.emit(&channel, &line);
+                if let Err(e) = emit_result {
+                    error!("Failed to emit message: {:?}", e);
+                }
+                
+                // SPECIAL HANDLING FOR /compact: Also emit on original session channel
+                // This is because /compact creates a NEW session but frontend is still on OLD channel
+                if line.contains("\"subtype\":\"success\"") && line.contains("\"num_turns\"") {
+                    // This looks like a compact result - check if we have an original session to emit to
+                    if let Ok(original_session) = std::env::var("COMPACT_ORIGINAL_SESSION") {
+                        let original_channel = format!("claude-message:{}", original_session);
+                        info!("Detected compact result - also emitting on original channel: {}", original_channel);
+                        let _ = app_stdout.emit(&original_channel, &line);
+                        // Clear the env var after use
+                        std::env::remove_var("COMPACT_ORIGINAL_SESSION");
+                    }
+                }
+                
+                // ALSO emit on the original session channel for /compact results
+                // /compact creates a new session, but frontend is listening on old channel
+                if session_id_stdout != real_session_id && session_id_extracted {
+                    let original_channel = format!("claude-message:{}", session_id_stdout);
+                    debug!("Also emitting on original channel for session transition: {}", original_channel);
+                    let _ = app_stdout.emit(&original_channel, &line);
+                }
+                
+                // Still process for session ID extraction and token tracking
+                match stream_processor.process_line(&line).await {
+                    Ok(Some(message)) => {
+                        // Handle specific message types for internal tracking
+                        match &message {
+                            ClaudeStreamMessage::Usage { .. } => {
+                                // Track tokens internally
+                                let tokens = stream_processor.tokens();
+                                debug!("Token usage - Input: {}, Output: {}", 
+                                    tokens.total_input_tokens, tokens.total_output_tokens);
+                            }
+                            ClaudeStreamMessage::MessageStop => {
+                                let _ = session_manager_stdout.set_streaming(&session_id_stdout, false).await;
+                                info!("Message complete for session {}", session_id_stdout);
+                                // Emit completion event using the real session ID
+                                let emit_sid = if session_id_extracted { &real_session_id } else { &session_id_stdout };
+                                let _ = app_stdout.emit(
+                                    &format!("claude-complete:{}", emit_sid),
+                                    true
+                                );
+                            }
+                            ClaudeStreamMessage::Error { message: err_msg, .. } => {
+                                error!("Claude error in session {}: {}", session_id_stdout, err_msg);
+                                // Emit error event using the real session ID
+                                let emit_sid = if session_id_extracted { &real_session_id } else { &session_id_stdout };
+                                let _ = app_stdout.emit(
+                                    &format!("claude-error:{}", emit_sid),
+                                    err_msg
+                                );
+                            }
+                            _ => {
+                                // Other message types are handled by the raw line emission above
+                            }
+                        }
+                    }
+                    Ok(None) => {
+                        // Incomplete JSON, waiting for more
+                        debug!("Buffering incomplete JSON");
+                    }
+                    Err(e) => {
+                        warn!("Failed to parse line: {}", e);
+                    }
+                }
+                
+                // Also emit raw output for backward compatibility
+                let _ = app_stdout.emit(&format!("claude-output:{}", real_session_id), &line);
+                let _ = app_stdout.emit("claude-output", &line);
+                
+                // Check if streaming stopped
+                if !stream_processor.is_streaming() {
+                    break;
+                }
+            }
+            
+            // Final token update
+            let tokens = stream_processor.tokens();
+            info!("Session {} complete. Total tokens: {}", session_id_stdout, tokens.total_tokens());
+        });
+
+        // Spawn stderr handler
+        let app_stderr = app.clone();
+        let session_id_stderr = session_id.clone();
+        
+        tokio::spawn(async move {
+            info!("Starting stderr handler for session {}", session_id_stderr);
+            let reader = BufReader::new(stderr);
+            let mut lines = reader.lines();
+            
+            while let Ok(Some(line)) = lines.next_line().await {
+                error!("Claude stderr: {}", line);
+                
+                // Emit error with session-specific event
+                let _ = app_stderr.emit(&format!("claude-error:{}", session_id_stderr), &line);
+                
+                // Also emit generic event
+                let _ = app_stderr.emit("claude-error", &line);
+            }
+        });
+
+        // Spawn process completion handler
+        let app_complete = app.clone();
+        let session_id_complete = session_id.clone();
+        let registry_complete = registry.clone();
+        let session_manager_complete = session_manager.clone();
+        
+        tokio::spawn(async move {
+            // Monitor process status
+            loop {
+                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
+                
+                // Check if process is still running
+                match registry_complete.is_process_running(run_id).await {
+                    Ok(false) => {
+                        // Process has exited
+                        info!("Process {} has completed", run_id);
+                        let _ = session_manager_complete.set_streaming(&session_id_complete, false).await;
+                        
+                        // Emit completion event
+                        let _ = app_complete.emit(&format!("claude-complete:{}", session_id_complete), true);
+                        let _ = app_complete.emit("claude-complete", true);
+                        break;
+                    }
+                    Ok(true) => {
+                        // Still running, continue monitoring
+                    }
+                    Err(e) => {
+                        error!("Error checking process status: {}", e);
+                        break;
+                    }
+                }
+            }
+        });
+
+        Ok(())
+    }
+
+    /// Sends a prompt to an active Claude session
+    pub async fn send_prompt(&self, session_id: &str, prompt: &str) -> Result<()> {
+        // Get the session info to find the run_id
+        // First try exact match, then check all sessions for temporary IDs
+        let session = if let Some(s) = self.session_manager.get_session(session_id).await {
+            Some(s)
+        } else {
+            // Check if this is a temporary session ID that's been replaced
+            let all_sessions = self.session_manager.list_sessions().await;
+            all_sessions.into_iter().find(|s| {
+                // Check if session_id starts with "temp-" and matches pattern
+                session_id.starts_with("temp-") || session_id.starts_with("syn_")
+            })
+        };
+        
+        if let Some(session) = session {
+            if let Some(run_id) = session.run_id {
+                info!("Sending prompt to session {} (run_id {}): {}", session.session_id, run_id, prompt);
+                
+                // Write the prompt to stdin through the registry
+                // Add a newline to ensure the prompt is sent
+                let prompt_with_newline = if prompt.ends_with('\n') {
+                    prompt.to_string()
+                } else {
+                    format!("{}\n", prompt)
+                };
+                
+                self.registry.write_to_stdin(run_id, &prompt_with_newline).await
+                    .map_err(|e| anyhow!("Failed to write prompt: {}", e))?;
+                
+                info!("Successfully sent prompt to session {} (wrote {} bytes)", session.session_id, prompt_with_newline.len());
+                Ok(())
+            } else {
+                Err(anyhow!("Session {} has no associated process", session_id))
+            }
+        } else {
+            // If not found, try to find by run_id in process registry
+            // This handles cases where the session was just spawned
+            if let Ok(processes) = self.registry.get_running_claude_sessions() {
+                for process in processes {
+                    if let ProcessType::ClaudeSession { session_id: proc_session_id } = &process.process_type {
+                        if proc_session_id == session_id {
+                            info!("Found process by registry lookup, sending prompt to run_id {}", process.run_id);
+                            let prompt_with_newline = if prompt.ends_with('\n') {
+                                prompt.to_string()
+                            } else {
+                                format!("{}\n", prompt)
+                            };
+                            self.registry.write_to_stdin(process.run_id, &prompt_with_newline).await
+                                .map_err(|e| anyhow!("Failed to write prompt: {}", e))?;
+                            return Ok(());
+                        }
+                    }
+                }
+            }
+            Err(anyhow!("Session {} not found in session manager or process registry", session_id))
+        }
+    }
+
+    /// Interrupts a Claude session
+    pub async fn interrupt_session(&self, session_id: &str) -> Result<()> {
+        if let Some(session) = self.session_manager.get_session(session_id).await {
+            if let Some(run_id) = session.run_id {
+                info!("Interrupting session {} with run_id {}", session_id, run_id);
+                
+                // Kill the process
+                self.registry.kill_process(run_id).await.map_err(|e| anyhow!(e))?;
+                
+                // Update session manager
+                self.session_manager.set_streaming(session_id, false).await?;
+                
+                info!("Successfully interrupted session {}", session_id);
+                Ok(())
+            } else {
+                Err(anyhow!("Session {} has no associated process", session_id))
+            }
+        } else {
+            Err(anyhow!("Session {} not found", session_id))
+        }
+    }
+
+    /// Clears a session completely
+    pub async fn clear_session(&self, session_id: &str) -> Result<()> {
+        // First interrupt if running
+        let _ = self.interrupt_session(session_id).await;
+        
+        // Remove from session manager
+        self.session_manager.remove_session(session_id).await;
+        
+        info!("Cleared session {}", session_id);
+        Ok(())
+    }
+}
+
+/// Creates a title generation prompt
+pub fn create_title_prompt(first_message: &str) -> String {
+    format!(
+        "Generate a concise title (max 50 characters) for a conversation that starts with: {}",
+        first_message
+    )
+}
+
+/// Spawns a separate Claude process for title generation
+pub async fn spawn_claude_for_title(
+    app: AppHandle,
+    first_message: &str,
+    project_path: &str,
+) -> Result<String> {
+    info!("Spawning Claude for title generation");
+    
+    let claude_path = find_claude_binary()
+        .map_err(|e| anyhow!("Failed to find Claude binary: {}", e))?;
+    
+    let mut cmd = tokio::process::Command::from(create_command_with_env(&claude_path));
+    
+    // Use Sonnet for title generation (faster and cheaper)
+    cmd.arg("--model").arg("claude-3-5-sonnet-20241022");
+    cmd.arg("--prompt").arg(create_title_prompt(first_message));
+    cmd.arg("--output-format").arg("stream-json");
+    cmd.arg("--print");
+    cmd.current_dir(project_path);
+    cmd.stdout(Stdio::piped());
+    cmd.stderr(Stdio::piped());
+    
+    let output = cmd.output().await?;
+    
+    // Parse the output to extract the title
+    // For now, return a placeholder
+    Ok("New Conversation".to_string())
+}

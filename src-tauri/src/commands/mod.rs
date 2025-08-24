@@ -6,6 +6,27 @@
 /// - Application state management (sessions, settings)
 /// - Git integration
 /// - Server communication
+/// - Claude CLI direct spawning and management
+
+pub mod claude_commands;
+pub mod claude_info;
+
+// Re-export all Claude commands for easier access
+pub use claude_commands::{
+    spawn_claude_session,
+    send_claude_message,
+    resume_claude_session,
+    interrupt_claude_session,
+    clear_claude_context,
+    get_session_info,
+    get_token_stats,
+    list_active_sessions,
+    get_session_output,
+};
+
+pub use claude_info::{
+    get_claude_binary_info,
+};
 
 use serde::{Deserialize, Serialize};
 use tauri::{State, Window, Emitter};

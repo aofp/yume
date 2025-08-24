@@ -5,8 +5,13 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { claudeCodeClient } from '../services/claudeCodeClient';
+import { client } from '../services/client';
+import { tauriClaudeClient } from '../services/tauriClaudeClient';
 import { useLicenseStore } from '../services/licenseManager';
+
+// Use Tauri client if available, otherwise fall back to Socket.IO
+const USE_TAURI_BACKEND = true; // Set to false to use Socket.IO
+const client = USE_TAURI_BACKEND ? tauriClaudeClient : client;
 
 export type SDKMessage = any; // Type from Claude Code SDK
 
@@ -77,6 +82,7 @@ export interface Session {
   thinkingStartTime?: number; // Track when thinking started for this session
   readOnly?: boolean; // Mark sessions loaded from projects as read-only
   initialized?: boolean; // Track if session has received first message from Claude (safe to interrupt)
+  wasCompacted?: boolean; // Track if session was compacted to prevent old ID restoration
 }
 
 interface ClaudeCodeStore {
@@ -136,6 +142,7 @@ interface ClaudeCodeStore {
   updateSessionMapping: (sessionId: string, claudeSessionId: string, metadata?: any) => void;
   loadSessionMappings: () => void;
   saveSessionMappings: () => void;
+  handleDeferredSpawn: (tempSessionId: string, realSessionId: string) => void;
   
   // Model management
   toggleModel: () => void;
@@ -252,7 +259,8 @@ const persistSessions = (sessions: Session[]) => {
       draftInput: s.draftInput, // Preserve draft input
       draftAttachments: s.draftAttachments, // Preserve draft attachments
       restorePoints: s.restorePoints,
-      modifiedFiles: s.modifiedFiles ? Array.from(s.modifiedFiles) : [] // Convert Set to Array for storage
+      modifiedFiles: s.modifiedFiles ? Array.from(s.modifiedFiles) : [], // Convert Set to Array for storage
+      wasCompacted: s.wasCompacted // Preserve compacted state
     }));
     localStorage.setItem('yurucode-sessions', JSON.stringify(sessionData));
     localStorage.setItem('yurucode-sessions-timestamp', Date.now().toString()); // Add timestamp for validation
@@ -317,6 +325,7 @@ const restoreSessions = (): Session[] => {
         draftInput: s.draftInput,
         draftAttachments: s.draftAttachments,
         restorePoints: s.restorePoints || [],
+        wasCompacted: s.wasCompacted, // Preserve compacted state
         // Mark that we need to reconnect this session
         needsReconnect: !!s.claudeSessionId
       }));
@@ -485,9 +494,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         
         // Create or resume session using Claude Code Client
         // Only pass claudeSessionId if we're reconnecting an existing session (not creating new)
-        const claudeSessionIdToResume = existingSessionId ? existingSession?.claudeSessionId : undefined;
+        // AND the session wasn't compacted (compacted sessions can't be resumed)
+        const claudeSessionIdToResume = existingSessionId && !existingSession?.wasCompacted 
+          ? existingSession?.claudeSessionId 
+          : undefined;
         
-        const result = await claudeCodeClient.createSession(sessionName, workingDirectory, {
+        if (existingSessionId && existingSession?.wasCompacted) {
+          console.log(`🗜️ [Store] Session ${existingSessionId} was compacted - ignoring old Claude ID`);
+        }
+        
+        const result = await client.createSession(sessionName, workingDirectory, {
           allowedTools: [
             'Read', 'Write', 'Edit', 'MultiEdit',
             'LS', 'Glob', 'Grep',
@@ -588,7 +604,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       console.log('[Store] Setting up message listener for session:', sessionId);
       
       // Listen for title updates
-      const titleCleanup = claudeCodeClient.onTitle(sessionId, (title: string) => {
+      const titleCleanup = client.onTitle(sessionId, (title: string) => {
         console.log('[Store] Received title for session:', sessionId, title);
         set(state => ({
           sessions: state.sessions.map(s => 
@@ -601,7 +617,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       });
       
       // Set up error handler for this session
-      const errorCleanup = claudeCodeClient.onError(sessionId, (error) => {
+      const errorCleanup = client.onError(sessionId, (error) => {
         console.error('[Store] Error received for session:', sessionId, error);
         
         // Add error message to the session
@@ -634,7 +650,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         }));
       });
       
-      const messageCleanup = claudeCodeClient.onMessage(sessionId, (message) => {
+      // IMPORTANT: Only set up message listener if we have a claudeSessionId
+      // For deferred spawns (new tabs without prompt), this will be null until first message
+      let messageCleanup: (() => void) | null = null;
+      if (claudeSessionId) {
+        console.log('[Store] Setting up message listener for Claude session:', claudeSessionId);
+        messageCleanup = client.onMessage(claudeSessionId, (message) => {
           // CRITICAL: Check if this session is still the current one
           const currentState = get();
           const isCurrentSession = currentState.currentSessionId === sessionId;
@@ -687,14 +708,26 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               
               // Update claudeSessionId if present in message
               // IMPORTANT: For compact results, we clear the session ID to start fresh
-              const isCompactResult = message.type === 'system' && message.subtype === 'compact';
+              // /compact returns type:"result" with new session_id, not system message
+              // Compact result has num_turns field and all-zero usage
+              const isCompactResult = (message.type === 'system' && message.subtype === 'compact') ||
+                                    (message.type === 'result' && 
+                                     message.num_turns !== undefined && 
+                                     message.usage?.input_tokens === 0 && 
+                                     message.usage?.output_tokens === 0);
               const isResultWithNewSession = message.type === 'result' && message.session_id;
               
               if (isCompactResult) {
-                // Compact clears the session ID - next message starts fresh
+                // Compact result includes new session ID - update to it
                 const oldSessionId = s.claudeSessionId;
-                console.log(`🗜️ [Store] Compact result - clearing session ID (was ${oldSessionId})`);
-                s = { ...s, claudeSessionId: null };
+                const newSessionId = message.session_id || null;
+                console.log(`🗜️ [Store] Compact result - updating session ID: ${oldSessionId} -> ${newSessionId}`);
+                s = { ...s, 
+                  claudeSessionId: newSessionId, 
+                  wasCompacted: true,
+                  streaming: false,  // Clear streaming state after compact
+                  lastAssistantMessageIds: [] // Clear assistant message tracking
+                };
               } else if (message.session_id && (!s.claudeSessionId || isResultWithNewSession)) {
                 const oldSessionId = s.claudeSessionId;
                 console.log(`[Store] Updating claudeSessionId for session ${sessionId}: ${oldSessionId} -> ${message.session_id}`);
@@ -1475,11 +1508,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             persistSessions(sessions); // Persist after any message update
             return { sessions };
           });
-      });
+        });
+      } else {
+        console.log('[Store] No claudeSessionId yet - will set up listener after spawn');
+      }
       
       // Combined cleanup function
       const cleanup = () => {
-        messageCleanup();
+        if (messageCleanup) messageCleanup();
         titleCleanup();
         errorCleanup();
       };
@@ -1487,19 +1523,19 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // Store cleanup function (could be used later)
       (activeSession as any).cleanup = cleanup;
       
-        return sessionId;
-      } catch (error) {
-        // If Claude SDK initialization fails, update tab to error status
-        console.error('Failed to initialize Claude SDK session:', error);
-        set(state => ({
-          sessions: state.sessions.map(s => 
-            s.id === tempSessionId 
-              ? { ...s, status: 'error' as const, updatedAt: new Date() }
-              : s
-          )
-        }));
-        throw error;
-      }
+      return sessionId;
+    } catch (error) {
+      // If Claude SDK initialization fails, update tab to error status
+      console.error('Failed to initialize Claude SDK session:', error);
+      set(state => ({
+        sessions: state.sessions.map(s => 
+          s.id === tempSessionId 
+            ? { ...s, status: 'error' as const, updatedAt: new Date() }
+            : s
+        )
+      }));
+      throw error;
+    }
     } catch (error) {
       console.error('Failed to create session:', error);
       throw error;
@@ -1529,7 +1565,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         
         // Try to resume the session with the server
         try {
-          const result = await claudeCodeClient.createSession(
+          const result = await client.createSession(
             session.name,
             session.workingDirectory || '/',
             {
@@ -1679,7 +1715,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // Send message to Claude Code Server (REAL SDK) with selected model
       const { selectedModel } = get();
       console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse);
-      await claudeCodeClient.sendMessage(sessionToUse, content, selectedModel);
+      await client.sendMessage(sessionToUse, content, selectedModel);
       
       // Messages are handled by the onMessage listener
       // The streaming state will be cleared when we receive the result message
@@ -1734,7 +1770,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       
       // Need to call createSession with the claudeSessionId to resume
       try {
-        const result = await claudeCodeClient.createSession(
+        const result = await client.createSession(
           session.name, 
           session.workingDirectory || '/',
           {
@@ -1767,7 +1803,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     
     // Notify server of directory change if needed
     if (session.workingDirectory) {
-      await claudeCodeClient.setWorkingDirectory(sessionId, session.workingDirectory);
+      await client.setWorkingDirectory(sessionId, session.workingDirectory);
     }
   },
   
@@ -1777,7 +1813,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     console.log(`[Store] Reconnecting session ${sessionId} with claudeSessionId ${claudeSessionId}`);
     
     // Listen for title updates
-    const titleCleanup = claudeCodeClient.onTitle(sessionId, (title: string) => {
+    const titleCleanup = client.onTitle(sessionId, (title: string) => {
       console.log('[Store] Received title for reconnected session:', sessionId, title);
       set(state => ({
         sessions: state.sessions.map(s => 
@@ -1789,7 +1825,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     });
     
     // Set up error handler for resumed session
-    const errorCleanup = claudeCodeClient.onError(sessionId, (error) => {
+    const errorCleanup = client.onError(sessionId, (error) => {
       console.error('[Store] Error received for resumed session:', sessionId, error);
       
       set(state => ({
@@ -1814,7 +1850,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     });
     
     // Listen for messages
-    const messageCleanup = claudeCodeClient.onMessage(sessionId, (message) => {
+    const messageCleanup = client.onMessage(sessionId, (message) => {
       // Use the same message handler logic as createSession
       set(state => {
         let sessions = state.sessions.map(s => {
@@ -1889,7 +1925,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   loadSessionHistory: async (sessionId: string) => {
     set({ isLoadingHistory: true });
     try {
-      const history = await claudeCodeClient.getSessionHistory(sessionId);
+      const history = await client.getSessionHistory(sessionId);
       if (history.messages) {
         set(state => ({
           sessions: state.sessions.map(s => 
@@ -1908,7 +1944,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   
   listAvailableSessions: async () => {
     try {
-      const sessions = await claudeCodeClient.listSessions();
+      const sessions = await client.listSessions();
       set({ availableSessions: sessions });
     } catch (error) {
       console.error('Failed to list sessions:', error);
@@ -1940,7 +1976,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       }
       
       // Create/resume session with existing ID and claudeSessionId
-      const result = await claudeCodeClient.createSession('resumed session', workingDirectory, {
+      const result = await client.createSession('resumed session', workingDirectory, {
         sessionId,
         claudeSessionId,
         messages: [] // Will be populated from server if session exists
@@ -1980,7 +2016,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       };
       
       // Listen for title updates
-      const titleCleanup = claudeCodeClient.onTitle(sessionId, (title: string) => {
+      const titleCleanup = client.onTitle(sessionId, (title: string) => {
         console.log('[Store] Received title for resumed session:', sessionId, title);
         set(state => ({
           sessions: state.sessions.map(s => 
@@ -1991,7 +2027,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       });
       
       // Set up error handler for loaded session
-      const errorCleanup = claudeCodeClient.onError(sessionId, (error) => {
+      const errorCleanup = client.onError(sessionId, (error) => {
         console.error('[Store] Error received for loaded session:', sessionId, error);
         
         set(state => ({
@@ -2024,7 +2060,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       });
       
       // Set up message listener
-      const messageCleanup = claudeCodeClient.onMessage(sessionId, (message) => {
+      const messageCleanup = client.onMessage(sessionId, (message) => {
         set(state => {
           let sessions = state.sessions.map(s => {
             if (s.id !== sessionId) return s;
@@ -2317,7 +2353,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       }));
       
       try {
-        await claudeCodeClient.interrupt(currentSessionId);
+        await client.interrupt(currentSessionId);
         
         // Don't add interrupt message here - server already sends it
         // IMPORTANT: Keep claudeSessionId intact to allow resume after interrupt
@@ -2390,6 +2426,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 claudeTitle: `tab ${tabNumber}`, // Reset title to 'tab x' format
                 pendingToolIds: new Set(), // Clear pending tools
                 streaming: false, // Stop streaming
+                wasCompacted: false, // Reset compacted flag
               analytics: {
                 totalMessages: 0,
                 userMessages: 0,
@@ -2429,7 +2466,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     });
     
     // Notify server to clear the Claude session - use the imported singleton
-    claudeCodeClient.clearSession(sessionId).catch(error => {
+    client.clearSession(sessionId).catch(error => {
       console.error('Failed to clear server session:', error);
     });
   },
@@ -2528,7 +2565,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         };
         
         // Notify server to clear the Claude session
-        claudeCodeClient.clearSession(sessionId);
+        client.clearSession(sessionId);
         
         console.log(`Restored session ${sessionId} to message ${messageIndex}`);
       }
@@ -2626,8 +2663,74 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       console.log('[Store] Restoring tabs:', tabPaths);
       
       // Create sessions for each saved path
+      // Important: Don't call createSession which tries to connect to Claude
+      // Just create placeholder tabs that will spawn Claude on first message
       for (const path of tabPaths) {
-        await state.createSession(undefined, path);
+        const timestamp = Date.now().toString(36);
+        const random1 = Math.random().toString(36).substring(2, 8);
+        const random2 = Math.random().toString(36).substring(2, 8);
+        const sessionId = `restored-${timestamp}-${random1}-${random2}`;
+        const tabNumber = state.sessions.length + 1;
+        
+        // Create a placeholder session without Claude connection
+        const newSession: Session = {
+          id: sessionId,
+          name: `tab ${tabNumber}`,
+          status: 'active' as const,
+          messages: [],
+          workingDirectory: path,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          claudeSessionId: null, // No Claude session yet
+          claudeTitle: `tab ${tabNumber}`,
+          pendingToolIds: new Set(),
+          analytics: {
+            totalMessages: 0,
+            userMessages: 0,
+            assistantMessages: 0,
+            totalTokensInput: 0,
+            totalTokensOutput: 0,
+            totalCacheCreationInputTokens: 0,
+            totalCacheReadInputTokens: 0,
+            messageCount: 0,
+            toolCalls: 0,
+            fileOperations: 0,
+            bashCommands: 0,
+            thinkingTime: 0
+          },
+          streaming: false,
+          modifiedFiles: new Set()
+        };
+        
+        set(state => ({
+          sessions: [...state.sessions, newSession],
+          currentSessionId: sessionId
+        }));
+        
+        // Register the session in the session store for deferred spawn
+        // This ensures TauriClient knows to spawn Claude on first message
+        if (USE_TAURI_BACKEND && window) {
+          if (!(window as any).__claudeSessionStore) {
+            (window as any).__claudeSessionStore = {};
+          }
+          
+          const { selectedModel } = get();
+          const modelMap: Record<string, string> = {
+            'opus': 'claude-opus-4-1-20250805',
+            'sonnet': 'claude-sonnet-4-20250514'
+          };
+          
+          (window as any).__claudeSessionStore[sessionId] = {
+            sessionId: sessionId,
+            workingDirectory: path,
+            model: modelMap[selectedModel] || 'claude-opus-4-1-20250805',
+            pendingSpawn: true
+          };
+          
+          console.log('[Store] Registered restored tab in session store for deferred spawn');
+        }
+        
+        console.log('[Store] Restored tab for path:', path);
       }
     } catch (err) {
       console.error('[Store] Failed to restore tabs:', err);
@@ -2650,7 +2753,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     localStorage.setItem('yurucode-session-mappings', JSON.stringify(mappings));
     
     // Update server with the mapping
-    claudeCodeClient.updateSessionMetadata(sessionId, { 
+    client.updateSessionMetadata(sessionId, { 
       claudeSessionId,
       ...metadata 
     }).catch(err => {
@@ -2677,6 +2780,81 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     const state = get();
     localStorage.setItem('yurucode-session-mappings', JSON.stringify(state.sessionMappings));
     console.log('[Store] Saved session mappings:', Object.keys(state.sessionMappings).length);
+  },
+
+  handleDeferredSpawn: (tempSessionId: string, realSessionId: string) => {
+    console.log('[Store] 🎯 Handling deferred spawn:', tempSessionId, '->', realSessionId);
+    
+    // Update the session with the real Claude session ID
+    set(state => {
+      const sessions = state.sessions.map(s => {
+        if (s.id === tempSessionId) {
+          console.log('[Store] 🎯 Updating session', s.id, 'with claudeSessionId:', realSessionId);
+          return {
+            ...s,
+            claudeSessionId: realSessionId
+          };
+        }
+        return s;
+      });
+      return { sessions };
+    });
+    
+    // Set up the message listener with the real session ID
+    console.log('[Store] 🎯 Setting up deferred message listener for:', realSessionId);
+    const messageCleanup = client.onMessage(realSessionId, (message) => {
+      // Forward to the existing message processing logic
+      const state = get();
+      const isCurrentSession = state.currentSessionId === tempSessionId;
+      
+      console.log('[Store] 🎯 Deferred session message received:', {
+        tempSessionId,
+        realSessionId,
+        messageType: message.type,
+        messageId: message.id,
+        isCurrentSession,
+        streaming: message.streaming
+      });
+      
+      // Process message - simplified version
+      set(state => {
+        const sessions = state.sessions.map(s => {
+          if (s.id !== tempSessionId) return s;
+          
+          console.log('[Store] 🎯 Processing message for session:', s.id);
+          const messages = [...s.messages];
+          if (message.id) {
+            const idx = messages.findIndex(m => m.id === message.id);
+            if (idx >= 0) {
+              console.log('[Store] 🎯 Updating existing message at index:', idx);
+              messages[idx] = message;
+            } else {
+              console.log('[Store] 🎯 Adding new message to session');
+              messages.push(message);
+            }
+          } else {
+            console.log('[Store] 🎯 Adding message without ID');
+            messages.push(message);
+          }
+          
+          const newStreaming = message.type === 'assistant' && message.streaming;
+          console.log('[Store] 🎯 Session streaming state:', s.streaming, '->', newStreaming);
+          
+          return {
+            ...s,
+            messages,
+            streaming: newStreaming
+          };
+        });
+        return { sessions };
+      });
+    });
+    
+    // Store cleanup function
+    const session = get().sessions.find(s => s.id === tempSessionId);
+    if (session) {
+      (session as any)._deferredCleanup = messageCleanup;
+    }
   }
 }),
     {

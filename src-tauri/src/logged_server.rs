@@ -2429,9 +2429,19 @@ io.on('connection', (socket) => {
       if (data.existingSessionId && data.messages) {
         // Loading an existing session - preserve the session ID and messages
         sessionId = data.existingSessionId;
-        existingClaudeSessionId = data.claudeSessionId || null;
+        
+        // Check if session already exists and was compacted
+        const existingSession = sessions.get(sessionId);
+        if (existingSession?.wasCompacted) {
+          // Don't restore old claudeSessionId if session was compacted
+          existingClaudeSessionId = null;
+          console.log(`📂 Loading compacted session: ${sessionId} - ignoring old Claude ID`);
+        } else {
+          existingClaudeSessionId = data.claudeSessionId || null;
+          console.log(`📂 Loading existing session: ${sessionId} with Claude ID: ${existingClaudeSessionId}`);
+        }
+        
         existingMessages = data.messages || [];
-        console.log(`📂 Loading existing session: ${sessionId} with Claude ID: ${existingClaudeSessionId}`);
         console.log(`📝 Loaded ${existingMessages.length} existing messages`);
       } else {
         // Creating a brand new session
@@ -2471,7 +2481,8 @@ io.on('connection', (socket) => {
         createdAt: Date.now(),
         claudeSessionId: existingClaudeSessionId,  // Preserve Claude session ID
         hasGeneratedTitle: existingMessages.length > 0,  // If we have messages, we likely have a title
-        wasInterrupted: false  // Track if last conversation was interrupted vs completed
+        wasInterrupted: false,  // Track if last conversation was interrupted vs completed
+        wasCompacted: existingSession?.wasCompacted || false  // Preserve compacted state
       };
       
       sessions.set(sessionId, sessionData);
@@ -3490,7 +3501,10 @@ io.on('connection', (socket) => {
                 const oldSessionId = session.claudeSessionId;
                 // Clear the session ID - next message will start fresh
                 session.claudeSessionId = null;
+                // Mark that this session has been compacted so we don't try to restore old IDs
+                session.wasCompacted = true;
                 console.log(`🗜️ Cleared session ID (was ${oldSessionId}) - next message will start fresh after compact`);
+                console.log(`🗜️ Marked session as compacted to prevent old ID restoration`);
                 console.log(`🗜️ The compact command has summarized the conversation - continuing with reduced context`);
               }
               
@@ -3686,7 +3700,11 @@ io.on('connection', (socket) => {
         
         // Check if this is a "No conversation found" error
         if (error.includes('No conversation found with session ID')) {
-          console.log(`🔄 Resume failed - will recreate session with existing context`);
+          console.log(`🔄 Resume failed - session not found in Claude storage`);
+          console.log(`🔄 Clearing invalid session ID - will use fresh conversation on next message`);
+          if (session?.wasCompacted) {
+            console.log(`🔄 This was expected - session was compacted and old ID is no longer valid`);
+          }
           
           // Clear the invalid session ID
           session.claudeSessionId = null;
@@ -4051,6 +4069,7 @@ io.on('connection', (socket) => {
     session.claudeSessionId = null;  // Reset Claude session ID so next message starts fresh
     session.hasGeneratedTitle = false;  // Reset title generation flag so next message gets a new title
     session.wasInterrupted = false;  // Reset interrupted flag
+    session.wasCompacted = false;  // Reset compacted flag
     lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
     
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
