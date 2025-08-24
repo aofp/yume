@@ -1,0 +1,72 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "yurucode",
+  "version": "0.1.0",
+  "identifier": "be.yuru.yurucode",
+  "build": {
+    "frontendDist": "../dist/renderer",
+    "devUrl": "http://localhost:60278",
+    "beforeDevCommand": "",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "security": {
+      "csp": null
+    },
+    "windows": [
+      {
+        "title": "yurucode",
+        "titleBarStyle": "Overlay",
+        "decorations": false,
+        "transparent": true,
+        "x": 150,
+        "y": 150,
+        "width": 516,
+        "height": 509,
+        "minWidth": 400,
+        "minHeight": 320,
+        "resizable": false,
+        "hiddenTitle": true,
+        "center": false,
+        "alwaysOnTop": false,
+        "focus": true,
+        "visible": true,
+        "acceptFirstMouse": true,
+        "closable": true,
+        "maximizable": false,
+        "minimizable": true,
+        "fullscreenable": false,
+        "skipTaskbar": false,
+        "shadow": true,
+        "theme": "Dark",
+        "proxyUrl": "http://localhost:60000"
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "deb",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": ["resources/**/*"],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "entitlements": null
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
+  }
+}

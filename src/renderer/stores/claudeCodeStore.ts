@@ -5,13 +5,15 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { client } from '../services/client';
+import { claudeCodeClient } from '../services/claudeCodeClient';
 import { tauriClaudeClient } from '../services/tauriClaudeClient';
 import { useLicenseStore } from '../services/licenseManager';
 
 // Use Tauri client if available, otherwise fall back to Socket.IO
-const USE_TAURI_BACKEND = true; // Set to false to use Socket.IO
-const client = USE_TAURI_BACKEND ? tauriClaudeClient : client;
+// On Windows, always use Socket.IO because Claude runs in WSL
+const isWindows = navigator.platform.toLowerCase().includes('win');
+const USE_TAURI_BACKEND = !isWindows; // Use Socket.IO on Windows, Tauri on macOS/Linux
+const claudeClient = USE_TAURI_BACKEND ? tauriClaudeClient : claudeCodeClient;
 
 export type SDKMessage = any; // Type from Claude Code SDK
 
@@ -503,7 +505,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           console.log(`🗜️ [Store] Session ${existingSessionId} was compacted - ignoring old Claude ID`);
         }
         
-        const result = await client.createSession(sessionName, workingDirectory, {
+        const result = await claudeClient.createSession(sessionName, workingDirectory, {
           allowedTools: [
             'Read', 'Write', 'Edit', 'MultiEdit',
             'LS', 'Glob', 'Grep',
@@ -604,7 +606,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       console.log('[Store] Setting up message listener for session:', sessionId);
       
       // Listen for title updates
-      const titleCleanup = client.onTitle(sessionId, (title: string) => {
+      const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
         console.log('[Store] Received title for session:', sessionId, title);
         set(state => ({
           sessions: state.sessions.map(s => 
@@ -617,7 +619,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       });
       
       // Set up error handler for this session
-      const errorCleanup = client.onError(sessionId, (error) => {
+      const errorCleanup = claudeClient.onError(sessionId, (error) => {
         console.error('[Store] Error received for session:', sessionId, error);
         
         // Add error message to the session
@@ -658,9 +660,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // ALSO listen on the temp session ID for compact results
       // Compact creates a new session but emits result on original temp channel
       console.log('[Store] Setting up listener for temp session (for compact results):', sessionId);
-      tempMessageCleanup = client.onMessage(sessionId, (message) => {
+      tempMessageCleanup = claudeClient.onMessage(sessionId, (message) => {
         console.log('[Store] 🗜️ Message received on TEMP session channel:', sessionId, 'type:', message.type, 'result:', message.result?.substring?.(0, 50));
-        // Only process result messages on temp channel (check if it's actually a compact result)
+        
+        // Process ALL messages through the main handler, not just result messages
+        // The temp channel receives all messages for the session
+        if (message.type !== 'result') {
+          // Non-result messages should go through the main handler
+          get().addMessageToSession(sessionId, message);
+          return;
+        }
+        
+        // Only special handling for result messages (to check if compact)
         if (message.type === 'result') {
           const currentState = get();
           const isCurrentSession = currentState.currentSessionId === sessionId;
@@ -670,16 +681,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                                  (!message.usage || 
                                   (message.usage.input_tokens === 0 && message.usage.output_tokens === 0));
           
-          // If it's not a compact result, it's a token update - process normally
+          // If it's not a compact result, it's a normal result - process through main handler
           if (!isCompactResult) {
-            console.log('[Store] 📊 TOKEN UPDATE on temp channel (not compact):', {
+            console.log('[Store] 📊 NORMAL RESULT on temp channel (not compact), forwarding to main handler:', {
               sessionId,
               hasWrapper: !!message.wrapper,
               wrapperTokens: message.wrapper?.tokens,
-              usage: message.usage
+              usage: message.usage,
+              messageType: message.type
             });
             
             // Process as normal message through the main handler
+            // This will trigger the streaming state clearing logic
             get().addMessageToSession(sessionId, message);
             return;
           }
@@ -738,7 +751,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       
       if (claudeSessionId) {
         console.log('[Store] Setting up message listener for Claude session:', claudeSessionId);
-        messageCleanup = client.onMessage(claudeSessionId, (message) => {
+        messageCleanup = claudeClient.onMessage(claudeSessionId, (message) => {
           // CRITICAL: Check if this session is still the current one
           const currentState = get();
           const isCurrentSession = currentState.currentSessionId === sessionId;
@@ -1456,6 +1469,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               });
               return { sessions };
             } else if (message.type === 'result') {
+              console.log('📊 [STREAMING-FIX] Result message received:', {
+                sessionId,
+                messageType: message.type,
+                isError: message.is_error,
+                requiresCheckpointRestore: message.requiresCheckpointRestore,
+                currentStreaming: sessions.find(s => s.id === sessionId)?.streaming
+              });
               // CRITICAL: Check for error result FIRST - handle session resume failures
               if (message.is_error || message.requiresCheckpointRestore) {
                 console.log('[Store] ❌ ERROR RESULT - Session resume failed, clearing streaming state', {
@@ -1505,31 +1525,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 return { sessions };
               }
               
-              // Check if we have a recent user message (within last 3 seconds)
-              // If so, this is likely a followup during streaming, so keep streaming state
+              // Check if we still have pending tools
               const session = sessions.find(s => s.id === sessionId);
-              const recentUserMessage = session?.messages.findLast(m => 
-                m.type === 'user' && 
-                m.timestamp && 
-                Date.now() - m.timestamp < 3000
-              );
               
-              if (recentUserMessage) {
-                // This is a result from killing the process for a followup
-                // Keep streaming state active
-                console.log('Result message received but recent user message found - keeping streaming state for followup');
-                sessions = sessions.map(s => 
-                  s.id === sessionId 
-                    ? { 
-                        ...s, 
-                        // Keep streaming true for followup
-                        runningBash: false,
-                        userBashRunning: false
-                        // Keep claudeSessionId for resumption
-                      } 
-                    : s
-                );
-              } else if (session?.pendingToolIds && session.pendingToolIds.size > 0) {
+              if (session?.pendingToolIds && session.pendingToolIds.size > 0) {
                 // Still have pending tools - keep streaming active
                 console.log(`Result message received but ${session.pendingToolIds.size} tools still pending - keeping streaming state`);
                 sessions = sessions.map(s => 
@@ -1544,17 +1543,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 );
               } else {
                 // Normal result - clear streaming
-                console.log('Received result message, clearing streaming state. Result details:', {
+                console.log('🎯 [STREAMING-FIX] Normal result - CLEARING STREAMING STATE:', {
+                  sessionId,
                   subtype: message.subtype,
                   is_error: message.is_error,
-                  result: message.result,
-                  sessionMessages: session?.messages.length || 0
+                  result: message.result?.substring?.(0, 50),
+                  sessionMessages: session?.messages.length || 0,
+                  currentStreaming: session?.streaming
                 });
                 
                 // Never clear claudeSessionId - keep it for session resumption
                 // Claude CLI handles session management, we just track the ID
                 sessions = sessions.map(s => {
                   if (s.id === sessionId) {
+                    console.log(`✅ [STREAMING-FIX] Setting streaming=false for session ${sessionId}`);
                     // Calculate thinking time on result
                     let updatedAnalytics = s.analytics;
                     if (s.thinkingStartTime && updatedAnalytics) {
@@ -1571,7 +1573,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       thinkingStartTime: undefined,
                       runningBash: false,
                       userBashRunning: false,
-                      analytics: updatedAnalytics
+                      analytics: updatedAnalytics,
+                      pendingToolIds: new Set() // Clear all pending tools when stream completes
                       // Keep claudeSessionId for resumption
                     };
                   }
@@ -1597,15 +1600,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 sessions = sessions.map(s => 
                   s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
                 );
-              } else if (session?.pendingToolIds && session.pendingToolIds.size > 0) {
-                // Still have pending tools - keep streaming active
-                console.log(`Stream end but ${session.pendingToolIds.size} tools still pending - keeping streaming state`);
-                sessions = sessions.map(s => 
-                  s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
-                );
               } else {
-                // Clear streaming and bash running on interruption or error
-                console.log('System message received, clearing streaming and bash state');
+                // Clear streaming and bash running on interruption, error, or stream_end
+                console.log(`System message (${message.subtype}) received, clearing streaming and bash state`);
                 sessions = sessions.map(s => {
                   if (s.id === sessionId) {
                     // Calculate thinking time on stream end
@@ -1618,7 +1615,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       };
                       console.log(`📊 [THINKING TIME] Stream end - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
                     }
-                    return { ...s, streaming: false, thinkingStartTime: undefined, runningBash: false, userBashRunning: false, analytics: updatedAnalytics };
+                    // Clear pendingToolIds on stream_end
+                    const clearedPendingTools = message.subtype === 'stream_end' ? new Set() : s.pendingToolIds;
+                    if (message.subtype === 'stream_end' && s.pendingToolIds?.size) {
+                      console.log(`[Store] Clearing ${s.pendingToolIds.size} pending tools on stream_end`);
+                    }
+                    return { 
+                      ...s, 
+                      streaming: false, 
+                      thinkingStartTime: undefined, 
+                      runningBash: false, 
+                      userBashRunning: false, 
+                      analytics: updatedAnalytics,
+                      pendingToolIds: clearedPendingTools
+                    };
                   }
                   return s;
                 });
@@ -1736,7 +1746,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         
         // Try to resume the session with the server
         try {
-          const result = await client.createSession(
+          const result = await claudeClient.createSession(
             session.name,
             session.workingDirectory || '/',
             {
@@ -1912,7 +1922,7 @@ ${content}`;
       // Send message to Claude Code Server (REAL SDK) with selected model
       const { selectedModel } = get();
       console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse);
-      await client.sendMessage(sessionToUse, content, selectedModel);
+      await claudeClient.sendMessage(sessionToUse, content, selectedModel);
       
       // Messages are handled by the onMessage listener
       // The streaming state will be cleared when we receive the result message
@@ -1967,7 +1977,7 @@ ${content}`;
       
       // Need to call createSession with the claudeSessionId to resume
       try {
-        const result = await client.createSession(
+        const result = await claudeClient.createSession(
           session.name, 
           session.workingDirectory || '/',
           {
@@ -2000,7 +2010,7 @@ ${content}`;
     
     // Notify server of directory change if needed
     if (session.workingDirectory) {
-      await client.setWorkingDirectory(sessionId, session.workingDirectory);
+      await claudeClient.setWorkingDirectory(sessionId, session.workingDirectory);
     }
   },
   
@@ -2010,7 +2020,7 @@ ${content}`;
     console.log(`[Store] Reconnecting session ${sessionId} with claudeSessionId ${claudeSessionId}`);
     
     // Listen for title updates
-    const titleCleanup = client.onTitle(sessionId, (title: string) => {
+    const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
       console.log('[Store] Received title for reconnected session:', sessionId, title);
       set(state => ({
         sessions: state.sessions.map(s => 
@@ -2022,7 +2032,7 @@ ${content}`;
     });
     
     // Set up error handler for resumed session
-    const errorCleanup = client.onError(sessionId, (error) => {
+    const errorCleanup = claudeClient.onError(sessionId, (error) => {
       console.error('[Store] Error received for resumed session:', sessionId, error);
       
       set(state => ({
@@ -2047,7 +2057,7 @@ ${content}`;
     });
     
     // Listen for messages
-    const messageCleanup = client.onMessage(sessionId, (message) => {
+    const messageCleanup = claudeClient.onMessage(sessionId, (message) => {
       console.log('[Store] Message received on resumed session:', sessionId, 'type:', message.type, 'result:', message.result?.substring?.(0, 50));
       // Use the same message handler logic as createSession
       set(state => {
@@ -2124,7 +2134,7 @@ ${content}`;
   loadSessionHistory: async (sessionId: string) => {
     set({ isLoadingHistory: true });
     try {
-      const history = await client.getSessionHistory(sessionId);
+      const history = await claudeClient.getSessionHistory(sessionId);
       if (history.messages) {
         set(state => ({
           sessions: state.sessions.map(s => 
@@ -2143,7 +2153,7 @@ ${content}`;
   
   listAvailableSessions: async () => {
     try {
-      const sessions = await client.listSessions();
+      const sessions = await claudeClient.listSessions();
       set({ availableSessions: sessions });
     } catch (error) {
       console.error('Failed to list sessions:', error);
@@ -2175,7 +2185,7 @@ ${content}`;
       }
       
       // Create/resume session with existing ID and claudeSessionId
-      const result = await client.createSession('resumed session', workingDirectory, {
+      const result = await claudeClient.createSession('resumed session', workingDirectory, {
         sessionId,
         claudeSessionId,
         messages: [] // Will be populated from server if session exists
@@ -2215,7 +2225,7 @@ ${content}`;
       };
       
       // Listen for title updates
-      const titleCleanup = client.onTitle(sessionId, (title: string) => {
+      const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
         console.log('[Store] Received title for resumed session:', sessionId, title);
         set(state => ({
           sessions: state.sessions.map(s => 
@@ -2226,7 +2236,7 @@ ${content}`;
       });
       
       // Set up error handler for loaded session
-      const errorCleanup = client.onError(sessionId, (error) => {
+      const errorCleanup = claudeClient.onError(sessionId, (error) => {
         console.error('[Store] Error received for loaded session:', sessionId, error);
         
         set(state => ({
@@ -2259,7 +2269,7 @@ ${content}`;
       });
       
       // Set up message listener
-      const messageCleanup = client.onMessage(sessionId, (message) => {
+      const messageCleanup = claudeClient.onMessage(sessionId, (message) => {
         set(state => {
           let sessions = state.sessions.map(s => {
             if (s.id !== sessionId) return s;
@@ -2552,7 +2562,7 @@ ${content}`;
       }));
       
       try {
-        await client.interrupt(currentSessionId);
+        await claudeClient.interrupt(currentSessionId);
         
         // Don't add interrupt message here - server already sends it
         // IMPORTANT: Keep claudeSessionId intact to allow resume after interrupt
@@ -2665,7 +2675,7 @@ ${content}`;
     });
     
     // Notify server to clear the Claude session - use the imported singleton
-    client.clearSession(sessionId).catch(error => {
+    claudeClient.clearSession(sessionId).catch(error => {
       console.error('Failed to clear server session:', error);
     });
   },
@@ -2811,7 +2821,7 @@ ${content}`;
         };
         
         // Notify server to clear the Claude session
-        client.clearSession(sessionId);
+        claudeClient.clearSession(sessionId);
         
         console.log(`Restored session ${sessionId} to message ${messageIndex}`);
       }
@@ -2999,7 +3009,7 @@ ${content}`;
     localStorage.setItem('yurucode-session-mappings', JSON.stringify(mappings));
     
     // Update server with the mapping
-    client.updateSessionMetadata(sessionId, { 
+    claudeClient.updateSessionMetadata(sessionId, { 
       claudeSessionId,
       ...metadata 
     }).catch(err => {
@@ -3048,7 +3058,7 @@ ${content}`;
     
     // Set up the message listener with the real session ID
     console.log('[Store] 🎯 Setting up deferred message listener for:', realSessionId);
-    const messageCleanup = client.onMessage(realSessionId, (message) => {
+    const messageCleanup = claudeClient.onMessage(realSessionId, (message) => {
       // Forward to the existing message processing logic
       const state = get();
       const isCurrentSession = state.currentSessionId === tempSessionId;

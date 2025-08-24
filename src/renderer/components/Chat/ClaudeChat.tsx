@@ -2552,7 +2552,7 @@ export const ClaudeChat: React.FC = () => {
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {totalContextTokens.toLocaleString()} / {contextWindowTokens.toLocaleString()} ({percentage}%)
+                            {(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / {200000} ({Math.min(100, ((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100)).toFixed(2)}%)
                           </span>
                         </div>
                         <div className="stat-row">
@@ -2562,7 +2562,7 @@ export const ClaudeChat: React.FC = () => {
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {cacheTokens.toLocaleString()}
+                            {(currentSession?.analytics?.tokens?.cacheSize || 0).toLocaleString()}
                           </span>
                         </div>
                       </div>

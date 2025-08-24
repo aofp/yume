@@ -1,42 +1,52 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "yuru code",
+  "productName": "yurucode",
   "version": "0.1.0",
   "identifier": "be.yuru.yurucode",
   "build": {
     "frontendDist": "../dist/renderer",
-    "devUrl": "http://localhost:60310",
-    "beforeDevCommand": "npm run dev",
+    "devUrl": "http://localhost:60370",
+    "beforeDevCommand": "",
     "beforeBuildCommand": "npm run build"
   },
   "app": {
     "withGlobalTauri": true,
     "macOSPrivateApi": true,
+    "security": {
+      "csp": null
+    },
     "windows": [
       {
-        "title": "yuru code",
-        "width": 502,
-        "height": 502,
-        "minWidth": 502,
-        "minHeight": 502,
-        "resizable": true,
-        "fullscreen": false,
+        "title": "yurucode",
+        "titleBarStyle": "Overlay",
         "decorations": false,
         "transparent": true,
-        "center": true,
-        "skipTaskbar": false,
-        "acceptFirstMouse": true,
+        "x": 150,
+        "y": 150,
+        "width": 516,
+        "height": 509,
+        "minWidth": 400,
+        "minHeight": 320,
+        "resizable": false,
         "hiddenTitle": true,
-        "visible": false
+        "center": false,
+        "alwaysOnTop": false,
+        "focus": true,
+        "visible": true,
+        "acceptFirstMouse": true,
+        "closable": true,
+        "maximizable": false,
+        "minimizable": true,
+        "skipTaskbar": false,
+        "shadow": true,
+        "theme": "Dark",
+        "proxyUrl": "http://localhost:60000"
       }
-    ],
-    "security": {
-      "csp": "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; connect-src 'self' http://localhost:* ws://localhost:* https://yurucode.com; font-src 'self' data: https:"
-    }
+    ]
   },
   "bundle": {
     "active": true,
-    "targets": "all",
+    "targets": "deb",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
@@ -47,17 +57,17 @@
     "resources": [
       "resources/**/*"
     ],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "entitlements": null
+    },
     "windows": {
-      "wix": {
-        "language": "en-US"
-      },
-      "nsis": {
-        "displayLanguageSelector": false
-      },
-      "webviewInstallMode": {
-        "type": "embedBootstrapper",
-        "silent": true
-      }
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
     }
   }
 }

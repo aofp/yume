@@ -2560,13 +2560,14 @@ io.on('connection', (socket) => {
       let sessionId;
       let existingClaudeSessionId = null;
       let existingMessages = [];
+      let existingSession = null; // Define at the top level
       
       if (data.existingSessionId && data.messages) {
         // Loading an existing session - preserve the session ID and messages
         sessionId = data.existingSessionId;
         
         // Check if session already exists and was compacted
-        const existingSession = sessions.get(sessionId);
+        existingSession = sessions.get(sessionId);
         if (existingSession?.wasCompacted) {
           // Don't restore old claudeSessionId if session was compacted
           existingClaudeSessionId = null;
@@ -2651,6 +2652,85 @@ io.on('connection', (socket) => {
       console.error(`❌ Session not found: ${sessionId}`);
       if (callback) callback({ success: false, error: 'Session not found' });
       return;
+    }
+    
+    // Check if this is a bash command (starts with !)
+    if (message && message.startsWith('!')) {
+      console.log(`🐚 Executing bash command: ${message}`);
+      const bashCommand = message.substring(1).trim(); // Remove the ! prefix
+      
+      // Execute the bash command directly
+      const { exec } = require('child_process');
+      const { promisify } = require('util');
+      const execAsync = promisify(exec);
+      
+      try {
+        // Emit user message first
+        socket.emit(`message:${sessionId}`, {
+          type: 'user',
+          message: { content: message },
+          timestamp: Date.now()
+        });
+        
+        // Execute the command
+        const workingDir = session.workingDirectory || require('os').homedir();
+        console.log(`🐚 Executing in directory: ${workingDir}`);
+        
+        let execResult;
+        
+        // Check if we're on Windows and need to use WSL
+        if (process.platform === 'win32') {
+          // Execute in WSL
+          const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+          const wslCommand = `cd "${workingDir}" && ${bashCommand}`;
+          console.log(`🐚 Using WSL to execute: ${wslCommand}`);
+          
+          execResult = await execAsync(`"${wslPath}" -e bash -c "${wslCommand.replace(/"/g, '\\"')}"`, {
+            timeout: 30000, // 30 second timeout
+            maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+          });
+        } else {
+          // Execute directly on macOS/Linux
+          execResult = await execAsync(bashCommand, {
+            cwd: workingDir,
+            timeout: 30000, // 30 second timeout
+            maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+          });
+        }
+        
+        const { stdout, stderr } = execResult;
+        
+        // Send the result back
+        const output = stdout || stderr || '(no output)';
+        socket.emit(`message:${sessionId}`, {
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'text', text: `\`\`\`\n${output}\n\`\`\`` }
+            ]
+          },
+          streaming: false,
+          timestamp: Date.now()
+        });
+        
+        if (callback) callback({ success: true });
+      } catch (error) {
+        console.error('❌ Bash command failed:', error);
+        socket.emit(`message:${sessionId}`, {
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'text', text: `Error executing command: ${error.message}` }
+            ]
+          },
+          streaming: false,
+          timestamp: Date.now()
+        });
+        
+        if (callback) callback({ success: false, error: error.message });
+      }
+      
+      return; // Don't process through Claude
     }
     
     // Log the model being used
@@ -2785,56 +2865,7 @@ io.on('connection', (socket) => {
         console.log('📝 Starting fresh conversation (no previous session)');
       }
 
-      // Check for simple echo commands first - handle them without Claude
-      const echoMatch = message && message.match(/^echo\s+(.+)$/i);
-      if (echoMatch) {
-        const echoText = echoMatch[1];
-        console.log(`📝 Handling echo command directly: "${echoText}"`);
-        
-        // Send the echo response back to the client
-        const echoMessageId = `assistant-${sessionId}-${Date.now()}-${Math.random()}`;
-        socket.emit(`message:${sessionId}`, {
-          type: 'assistant',
-          id: echoMessageId,
-          message: {
-            id: echoMessageId,
-            type: 'message',
-            role: 'assistant',
-            model: 'echo-handler',
-            content: [{
-              type: 'text',
-              text: echoText
-            }],
-            usage: {
-              input_tokens: 0,
-              output_tokens: 0
-            }
-          },
-          streaming: false,
-          timestamp: Date.now()
-        });
-        
-        // Mark session as completed
-        session.streaming = false;
-        
-        // Trigger title generation for first message
-        if (!session.hasGeneratedTitle && echoText.length > 3) {
-          session.hasGeneratedTitle = true;
-          generateTitle(sessionId, echoText, () => {
-            console.log(`🏷️ Title successfully generated for session ${sessionId}`);
-          });
-        }
-        
-        // Execute the queue callback and process next request
-        if (callback) callback({ success: true });
-        
-        // Process next request in queue
-        setTimeout(() => {
-          processNextInQueue();
-        }, 100);
-        
-        return; // Exit early since we handled the echo
-      }
+      // REMOVED broken echo detection - all messages should go to Claude
 
       // Spawn claude process with proper PATH for Node.js
       console.log(`🚀 Spawning claude with args:`, args);
@@ -2887,62 +2918,69 @@ io.on('connection', (socket) => {
         args: args
       });
       
-      const claudeProcess = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
-        (() => {
-          // Convert Windows path to WSL path if needed
-          let wslWorkingDir = processWorkingDir;
-          if (processWorkingDir && processWorkingDir.match(/^[A-Z]:\\/)) {
-            const driveLetter = processWorkingDir[0].toLowerCase();
-            const pathWithoutDrive = processWorkingDir.substring(2).replace(/\\/g, '/');
-            wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
-            console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
-          }
+      let claudeProcess;
+      if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
+        // Convert Windows path to WSL path if needed
+        let wslWorkingDir = processWorkingDir;
+        if (processWorkingDir && processWorkingDir.match(/^[A-Z]:\\/)) {
+          const driveLetter = processWorkingDir[0].toLowerCase();
+          const pathWithoutDrive = processWorkingDir.substring(2).replace(/\\/g, '/');
+          wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
+          console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
+        }
+        
+        // Build the message with context if needed
+        let messageToSend = message;
+        if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
+          console.log(`🔄 Building context for WSL command`);
+          let contextSummary = "Here's our previous conversation context:\\n\\n";
           
-          // Build the message with context if needed
-          let messageToSend = message;
-          if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
-            console.log(`🔄 Building context for WSL command`);
-            let contextSummary = "Here's our previous conversation context:\\n\\n";
-            
-            const recentMessages = session.messages.slice(-10);
-            for (const msg of recentMessages) {
-              if (msg.type === 'user') {
-                const content = msg.message?.content || '';
-                // Handle both string and array content
-                let textContent = '';
-                if (typeof content === 'string') {
-                  textContent = content;
-                } else if (Array.isArray(content)) {
-                  textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
-                }
-                contextSummary += `User: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\\n\\n`;
-              } else if (msg.type === 'assistant') {
-                const content = msg.message?.content || '';
-                let textContent = '';
-                if (typeof content === 'string') {
-                  textContent = content;
-                } else if (Array.isArray(content)) {
-                  textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
-                }
-                contextSummary += `Assistant: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\\n\\n`;
+          const recentMessages = session.messages.slice(-10);
+          for (const msg of recentMessages) {
+            if (msg.type === 'user') {
+              const content = msg.message?.content || '';
+              // Handle both string and array content
+              let textContent = '';
+              if (typeof content === 'string') {
+                textContent = content;
+              } else if (Array.isArray(content)) {
+                textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
               }
+              contextSummary += `User: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\\n\\n`;
+            } else if (msg.type === 'assistant') {
+              const content = msg.message?.content || '';
+              let textContent = '';
+              if (typeof content === 'string') {
+                textContent = content;
+              } else if (Array.isArray(content)) {
+                textContent = content.filter(c => c.type === 'text').map(c => c.text).join('');
+              }
+              contextSummary += `Assistant: ${textContent.substring(0, 200)}${textContent.length > 200 ? '...' : ''}\\n\\n`;
             }
-            
-            contextSummary += `---\\nNow, continuing our conversation: ${message}`;
-            messageToSend = contextSummary;
-            session.pendingContextRestore = false;
           }
           
-          const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, messageToSend);
-          console.log(`🚀 Running WSL command: ${wslCommand}`);
-          console.log(`🚀 WSL args:`, wslArgs);
-          console.log(`🚀 Input handled in script: ${inputHandled}`);
-          
-          const process = spawn(wslCommand, wslArgs, spawnOptions);
-          process.inputHandled = inputHandled;
-          return process;
-        })() :
-        spawn(CLAUDE_PATH, args, spawnOptions);
+          contextSummary += `---\\nNow, continuing our conversation: ${message}`;
+          messageToSend = contextSummary;
+          session.pendingContextRestore = false;
+        }
+        
+        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, messageToSend);
+        console.log(`🚀 Running WSL command: ${wslCommand}`);
+        console.log(`🚀 WSL args (first 500 chars):`, JSON.stringify(wslArgs).substring(0, 500));
+        console.log(`🚀 Input handled in script: ${inputHandled}`);
+        
+        // Check if WSL.exe exists before trying to spawn
+        if (!existsSync(wslCommand)) {
+          console.error(`❌ WSL.exe not found at: ${wslCommand}`);
+          console.error(`❌ Please ensure WSL is installed on Windows`);
+          throw new Error('WSL.exe not found. Please install Windows Subsystem for Linux.');
+        }
+        
+        claudeProcess = spawn(wslCommand, wslArgs, spawnOptions);
+        claudeProcess.inputHandled = inputHandled;
+      } else {
+        claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
+      }
       
       // Mark spawning as complete after a short delay
       setTimeout(() => {
@@ -3401,9 +3439,9 @@ io.on('connection', (socket) => {
                 console.log(`📝 [${sessionId}] Content blocks: ${contentBlocks.length} (types: ${contentBlocks.map(b => b.type).join(', ')})`);
                 socket.emit(`message:${sessionId}`, {
                   type: 'assistant',
-                  message: { content: contentBlocks },  // Send full content blocks array
-                  streaming: true,  // Set streaming to true during active streaming
                   id: messageId,
+                  ...jsonData.message,  // Spread the message properties directly
+                  streaming: true,  // Set streaming to true during active streaming
                   timestamp: Date.now()
                 });
                 
