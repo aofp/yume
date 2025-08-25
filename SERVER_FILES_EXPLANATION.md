@@ -93,9 +93,10 @@ The embedded server now logs clear identification:
 3. Save the file
 4. The changes take effect immediately (hot reload)
 
-## Token Calculation Fix Applied
+## Token Calculation Corrected
 
 The embedded server now correctly:
-- Only counts actual input/output tokens in usage totals
-- Tracks cache tokens separately (they don't count towards usage)
-- Shows accurate token counts instead of including system cache tokens
+- Counts ALL tokens (input, output, cache_creation, cache_read) towards the 200k context limit
+- This matches how Claude actually enforces context limits
+- Cache tokens represent the conversation history and DO count towards the total context in use
+- Example: 4 input + 4 output + 6149 cache_creation + 11459 cache_read = 17,616 total tokens in context

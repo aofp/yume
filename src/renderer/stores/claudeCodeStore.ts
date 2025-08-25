@@ -1013,8 +1013,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   afterTotal: message.wrapper.tokens.total
                 });
                 
-                // wrapper.tokens.total now correctly contains only actual tokens (not cache)
-                // This is the actual token usage
+                // wrapper.tokens.total now includes ALL tokens (including cache)
+                // This is the actual context size in use
                 analytics.tokens.total = message.wrapper.tokens.total || analytics.tokens.total;
                 analytics.tokens.input = message.wrapper.tokens.input || analytics.tokens.input;
                 analytics.tokens.output = message.wrapper.tokens.output || analytics.tokens.output;
@@ -1385,40 +1385,37 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         // input_tokens and output_tokens are NEW tokens for this turn
                         const previousTotal = analytics.tokens.total;
                         
-                        // Only actual input/output tokens count towards usage
-                        // Cache tokens are system-level and don't count towards the user's token usage
-                        const actualTokensUsed = regularInputTokens + outputTokens;
+                        // ALL tokens count towards the 200k context limit
+                        // This includes cache_read and cache_creation
+                        const actualContextInUse = cacheReadTokens + cacheCreationTokens + regularInputTokens + outputTokens;
                         
-                        // For tracking purposes, accumulate the actual tokens
-                        analytics.tokens.input += regularInputTokens; // Only new input
+                        // For tracking purposes, accumulate only the NEW tokens added
+                        analytics.tokens.input += regularInputTokens; // New input
                         analytics.tokens.output += outputTokens; // New output
-                        analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens; // Track cache creation separately
-                        analytics.tokens.cacheRead = (analytics.tokens.cacheRead || 0) + cacheReadTokens; // Track cache read separately
+                        analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens; // Accumulate cache creation
                         
-                        // Total is the cumulative actual tokens used (not cache)
-                        analytics.tokens.total = analytics.tokens.input + analytics.tokens.output;
+                        // The total should reflect the actual context in use (ALL tokens)
+                        analytics.tokens.total = actualContextInUse; // Total context in use
                         
-                        // Cache size is a snapshot of conversation history (for info only)
+                        // Cache size is a snapshot of conversation history
                         analytics.tokens.cacheSize = cacheReadTokens;
                         
-                        console.log(`📊 [TOKEN UPDATE] Actual usage:`);
+                        console.log(`📊 [TOKEN UPDATE] Context usage:`);
+                        console.log(`   Conversation history (cache): ${cacheReadTokens} tokens`);
+                        console.log(`   Cache creation: ${cacheCreationTokens} tokens`);
                         console.log(`   New input this turn: ${regularInputTokens} tokens`);
                         console.log(`   New output this turn: ${outputTokens} tokens`);
-                        console.log(`   Cumulative input: ${analytics.tokens.input} tokens`);
-                        console.log(`   Cumulative output: ${analytics.tokens.output} tokens`);
-                        console.log(`   TOTAL TOKENS USED: ${analytics.tokens.total} (actual usage)`);
-                        console.log(`   Cache info: read=${cacheReadTokens}, creation=${cacheCreationTokens} (system-level, not counted)`);
+                        console.log(`   TOTAL CONTEXT IN USE: ${actualContextInUse} / 200000 (${(actualContextInUse / 200000 * 100).toFixed(2)}%)`);
                         console.log(`   Previous total was: ${previousTotal}`);
                       }
                       
                       // Update new analytics fields to match Claude Code
-                      // Note: Context window is informational - actual token limits are managed by Claude
-                      // We show actual tokens used, not cache tokens
+                      // Context window shows ALL tokens (including cache) as they all count towards the limit
                       analytics.contextWindow = {
                         used: analytics.tokens.total,
                         limit: 200000,
-                        percentage: 0, // Don't show percentage since we're not tracking full context
-                        remaining: 200000 // Actual remaining is managed by Claude
+                        percentage: Math.min(100, (analytics.tokens.total / 200000 * 100)),
+                        remaining: Math.max(0, 200000 - analytics.tokens.total)
                       };
                       
                       // Update conversation tokens
