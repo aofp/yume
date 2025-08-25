@@ -327,14 +327,15 @@ async function generateTitle(sessionId, userMessage, socket, onSuccess) {
     console.log(`🏷️ Message preview: "${userMessage.substring(0, 100)}..."`);
     
     // Spawn a separate claude process just for title generation
+    const titlePrompt = `user message: "${userMessage.substring(0, 200)}"
+task: reply with ONLY 1-3 words describing what user wants. lowercase only. no punctuation. be extremely concise. examples: "echo command", "file search", "debug issue"`;
+    
     const titleArgs = [
+      '-p', titlePrompt,  // Pass prompt via -p flag
       '--print',  // Non-interactive mode
       '--output-format', 'json',
       '--model', 'claude-3-5-sonnet-20241022'
     ];
-    
-    const titlePrompt = `user message: "${userMessage.substring(0, 200)}"
-task: reply with ONLY 1-3 words describing what user wants. lowercase only. no punctuation. be extremely concise. examples: "echo command", "file search", "debug issue"`;
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
     
@@ -423,9 +424,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       console.error('🏷️ Failed to spawn title generation process:', error);
     });
     
-    // Send the prompt
-    console.log(`🏷️ Writing prompt to stdin`);
-    child.stdin.write(titlePrompt);
+    // No need to write to stdin - prompt is passed via -p flag
     child.stdin.end();
     
   } catch (error) {

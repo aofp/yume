@@ -1998,10 +1998,46 @@ ${content}`;
     }));
     
     try {
-      // Send message to Claude Code Server (REAL SDK) with selected model
-      const { selectedModel } = get();
-      console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse);
-      await claudeClient.sendMessage(sessionToUse, content, selectedModel);
+      // Check if this is a restored tab that needs spawning
+      const sessionStore = (window as any).__claudeSessionStore;
+      if (sessionStore && sessionStore[sessionToUse]?.pendingSpawn && sessionStore[sessionToUse]?.isRestored) {
+        console.log('[Store] Restored tab needs spawn - creating session first');
+        
+        const sessionData = sessionStore[sessionToUse];
+        const { selectedModel } = get();
+        
+        // Create the session with the first message
+        const result = await claudeClient.createSession(
+          `tab ${get().sessions.findIndex(s => s.id === sessionToUse) + 1}`,
+          sessionData.workingDirectory,
+          {
+            sessionId: sessionToUse,
+            initialPrompt: content, // Pass the first message as initial prompt
+            model: selectedModel
+          }
+        );
+        
+        // Update the session store
+        delete sessionStore[sessionToUse];
+        
+        console.log('[Store] Restored tab spawned with session:', result);
+        
+        // Update the session with the real Claude session ID if returned
+        if (result?.sessionId) {
+          set(state => ({
+            sessions: state.sessions.map(s => 
+              s.id === sessionToUse 
+                ? { ...s, claudeSessionId: result.sessionId }
+                : s
+            )
+          }));
+        }
+      } else {
+        // Send message to Claude Code Server (REAL SDK) with selected model
+        const { selectedModel } = get();
+        console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse);
+        await claudeClient.sendMessage(sessionToUse, content, selectedModel);
+      }
       
       // Messages are handled by the onMessage listener
       // The streaming state will be cleared when we receive the result message
@@ -2973,12 +3009,18 @@ ${content}`;
       // Create sessions for each saved path
       // Important: Don't call createSession which tries to connect to Claude
       // Just create placeholder tabs that will spawn Claude on first message
-      for (const path of tabPaths) {
+      for (let i = 0; i < tabPaths.length; i++) {
+        const path = tabPaths[i];
+        // Generate a temp session ID like the normal createSession does
+        // Add a small delay to ensure unique timestamps
+        await new Promise(resolve => setTimeout(resolve, 10));
         const timestamp = Date.now().toString(36);
         const random1 = Math.random().toString(36).substring(2, 8);
         const random2 = Math.random().toString(36).substring(2, 8);
-        const sessionId = `restored-${timestamp}-${random1}-${random2}`;
-        const tabNumber = state.sessions.length + 1;
+        const sessionId = `temp-${timestamp}-${random1}-${random2}`;
+        // Use the current state to get the right tab number
+        const currentState = get();
+        const tabNumber = currentState.sessions.length + 1;
         
         // Create a placeholder session without Claude connection
         const newSession: Session = {
@@ -3015,9 +3057,9 @@ ${content}`;
           currentSessionId: sessionId
         }));
         
-        // Register the session in the session store for deferred spawn
-        // This ensures TauriClient knows to spawn Claude on first message
-        if (USE_TAURI_BACKEND && window) {
+        // Register the session for deferred spawn regardless of backend
+        // For Socket.IO, we'll spawn on first message in sendMessage
+        if (window) {
           if (!(window as any).__claudeSessionStore) {
             (window as any).__claudeSessionStore = {};
           }
@@ -3032,7 +3074,8 @@ ${content}`;
             sessionId: sessionId,
             workingDirectory: path,
             model: modelMap[selectedModel] || 'claude-opus-4-1-20250805',
-            pendingSpawn: true
+            pendingSpawn: true,
+            isRestored: true // Mark as restored for special handling
           };
           
           console.log('[Store] Registered restored tab in session store for deferred spawn');
