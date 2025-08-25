@@ -234,7 +234,7 @@ function processWrapperLine(line, sessionId) {
       const cacheCreation = data.usage.cache_creation_input_tokens || 0;
       const cacheRead = data.usage.cache_read_input_tokens || 0;
       
-      session.inputTokens += input + cacheCreation;
+      session.inputTokens += input + cacheCreation + cacheRead;
       session.outputTokens += output;
       
       const prevTotal = session.totalTokens;
@@ -1368,11 +1368,12 @@ app.get('/claude-analytics', async (req, res) => {
                         messageCount++;
                         const usage = data.message.usage;
                         
-                        // Only count NEW tokens for session total, not cached tokens
-                        // Cache tokens represent pre-computed context, not new usage
+                        // Count ALL tokens including cached ones - they all count towards 200k limit
                         const inputTokens = usage.input_tokens || 0;
                         const outputTokens = usage.output_tokens || 0;
-                        sessionTokens += inputTokens + outputTokens;
+                        const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+                        const cacheReadTokens = usage.cache_read_input_tokens || 0;
+                        sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                         
                         // Detect model from message
                         if (data.message.model) {
@@ -1516,11 +1517,12 @@ app.get('/claude-analytics', async (req, res) => {
                       messageCount++;
                       const usage = data.message.usage;
                       
-                      // Only count NEW tokens for session total, not cached tokens
-                      // Cache tokens represent pre-computed context, not new usage
+                      // Count ALL tokens including cached ones - they all count towards 200k limit
                       const inputTokens = usage.input_tokens || 0;
                       const outputTokens = usage.output_tokens || 0;
-                      sessionTokens += inputTokens + outputTokens;
+                      const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+                      const cacheReadTokens = usage.cache_read_input_tokens || 0;
+                      sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                       
                       // Detect model from message
                       if (data.message.model) {
@@ -1639,11 +1641,12 @@ app.get('/claude-analytics', async (req, res) => {
                     messageCount++;
                     const usage = data.message.usage;
                     
-                    // Only count NEW tokens for session total, not cached tokens
-                    // Cache tokens represent pre-computed context, not new usage
+                    // Count ALL tokens including cached ones - they all count towards 200k limit
                     const inputTokens = usage.input_tokens || 0;
                     const outputTokens = usage.output_tokens || 0;
-                    sessionTokens += inputTokens + outputTokens;
+                    const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
+                    const cacheReadTokens = usage.cache_read_input_tokens || 0;
+                    sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                     
                     // Detect model from message
                     if (data.message.model) {
@@ -3711,7 +3714,7 @@ io.on('connection', (socket) => {
                 output: jsonData.usage.output_tokens || 0,
                 cache_creation: jsonData.usage.cache_creation_input_tokens || 0,
                 cache_read: jsonData.usage.cache_read_input_tokens || 0,
-                total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0)
+                total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0)
               } : null;
               
               if (compactedTokens) {
@@ -3739,12 +3742,12 @@ io.on('connection', (socket) => {
               console.log(`   output_tokens: ${jsonData.usage.output_tokens || 0}`);
               console.log(`   cache_creation_input_tokens: ${jsonData.usage.cache_creation_input_tokens || 0}`);
               console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0}`);
-              console.log(`   --- CONVERSATION TOKENS (counted in context) ---`);
-              console.log(`   actual_input (no cache): ${jsonData.usage.input_tokens || 0}`);
+              console.log(`   --- ALL TOKENS COUNT TOWARDS 200K LIMIT ---`);
+              console.log(`   actual_input: ${jsonData.usage.input_tokens || 0}`);
               console.log(`   actual_output: ${jsonData.usage.output_tokens || 0}`);
-              console.log(`   conversation_total: ${(jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0)}`);
-              console.log(`   --- CACHE INFO (not counted in context) ---`);
-              console.log(`   cache_tokens_total: ${(jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0)}`);
+              console.log(`   cache_creation: ${jsonData.usage.cache_creation_input_tokens || 0}`);
+              console.log(`   cache_read: ${jsonData.usage.cache_read_input_tokens || 0}`);
+              console.log(`   TOTAL CONTEXT USED: ${(jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0)}`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
@@ -3783,7 +3786,7 @@ io.on('connection', (socket) => {
                 tokens: {
                   input: jsonData.usage.input_tokens || 0,
                   output: jsonData.usage.output_tokens || 0,
-                  total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0),
+                  total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0),
                   cache_read: jsonData.usage.cache_read_input_tokens || 0,
                   cache_creation: jsonData.usage.cache_creation_input_tokens || 0
                 }
@@ -3803,8 +3806,8 @@ io.on('connection', (socket) => {
               console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0}`);
               console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0}`);
               console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0}`);
-              console.log(`     • conversation_total: ${(resultMessage.usage.input_tokens || 0) + (resultMessage.usage.output_tokens || 0)}`);
-              console.log(`     • cumulative_estimate: check frontend for accurate total`);
+              console.log(`     • TOTAL CONTEXT USED: ${(resultMessage.usage.input_tokens || 0) + (resultMessage.usage.output_tokens || 0) + (resultMessage.usage.cache_creation_input_tokens || 0) + (resultMessage.usage.cache_read_input_tokens || 0)}`);
+              console.log(`     • Note: ALL tokens (including cached) count towards 200k limit`);
             }
             socket.emit(`message:${sessionId}`, resultMessage);
             messageCount++;
