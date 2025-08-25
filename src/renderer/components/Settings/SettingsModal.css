@@ -4,14 +4,15 @@
   position: fixed;
   top: 0;
   left: 0;
-  right: 0;
-  bottom: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(0, 0, 0, 0.8);
+  z-index: 100001;
+  animation: fadeIn 0.2s ease;
+  overflow: hidden;
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100001;
-  animation: fadeIn 0.2s ease;
 }
 
 .settings-modal {
@@ -19,14 +20,15 @@
   border: none;
   border-radius: 0;
   width: 100%;
+  height: 100%;
   max-width: 100%;
-  height: 100vh;
-  max-height: 100vh;
-  overflow-y: auto;
+  max-height: 100%;
   user-select: none;
   -webkit-user-select: none;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow: hidden;
 }
 
 .settings-header {
@@ -35,6 +37,11 @@
   align-items: center;
   padding: 8px 12px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  position: sticky;
+  top: 0;
+  background: #0a0a0a;
+  z-index: 10;
 }
 
 .settings-header h3 {
@@ -62,8 +69,10 @@
 
 .settings-content {
   padding: 12px;
-  flex: 1;
+  flex: 1 1 auto;
   overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
 }
 
 .settings-section {
@@ -292,10 +301,13 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  z-index: 100001;
+  z-index: 100002;
   animation: fadeInScale 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
+  max-width: 90vw;
+  max-height: 90vh;
+  overflow: auto;
 }
 
 /* Color Picker Dropdown */
@@ -476,14 +488,15 @@
 
 /* Bottom anchored sections */
 .settings-bottom-controls {
-  position: sticky;
-  bottom: 0px;
   display: flex;
   justify-content: space-between;
   padding: 12px;
   background: #0a0a0a;
-  z-index: 100;
-  margin-top: auto;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  position: sticky;
+  bottom: 0;
+  z-index: 10;
 }
 
 .settings-bottom-left,

@@ -64,7 +64,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { globalWatermarkImage, setGlobalWatermark, monoFont, sansFont, setMonoFont, setSansFont, rememberTabs, setRememberTabs } = useClaudeCodeStore();
+  const { globalWatermarkImage, setGlobalWatermark, monoFont, sansFont, setMonoFont, setSansFont, rememberTabs, setRememberTabs, autoGenerateTitle, setAutoGenerateTitle } = useClaudeCodeStore();
   const [selectedFont, setSelectedFont] = useState<string>('');
 
   useEffect(() => {
@@ -301,6 +301,15 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   type="checkbox"
                   checked={rememberTabs}
                   onChange={(e) => setRememberTabs(e.target.checked)}
+                  className="checkbox-input"
+                />
+              </label>
+              <label className="checkbox-setting">
+                <span className="checkbox-label">auto-generate titles</span>
+                <input
+                  type="checkbox"
+                  checked={autoGenerateTitle}
+                  onChange={(e) => setAutoGenerateTitle(e.target.checked)}
                   className="checkbox-input"
                 />
               </label>

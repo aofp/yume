@@ -153,6 +153,9 @@ interface ClaudeCodeStore {
   rememberTabs: boolean; // Whether to remember open tabs
   savedTabs: string[]; // Array of project paths to restore
   
+  // Title generation
+  autoGenerateTitle: boolean; // Whether to auto-generate titles for new sessions
+  
   // Streaming (deprecated - now per-session)
   streamingMessage: string;
   
@@ -210,6 +213,9 @@ interface ClaudeCodeStore {
   setRememberTabs: (remember: boolean) => void;
   saveTabs: () => void;
   restoreTabs: () => Promise<void>;
+  
+  // Title generation
+  setAutoGenerateTitle: (autoGenerate: boolean) => void;
 }
 
 // Helper function to track file changes from tool operations
@@ -406,8 +412,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   globalWatermarkImage: null,
   monoFont: 'Fira Code', // Default monospace font
   sansFont: 'Helvetica', // Default sans-serif font
-  rememberTabs: false, // Default to not remembering tabs
+  rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
+  autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],
@@ -2125,13 +2132,13 @@ ${content}`;
         }
       }
       
-      // Send message to Claude Code Server (REAL SDK) with selected model
-      const { selectedModel } = get();
+      // Send message to Claude Code Server (REAL SDK) with selected model and auto-generate title setting
+      const { selectedModel, autoGenerateTitle } = get();
       console.log('[Store] About to call claudeClient.sendMessage...');
-      console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse);
+      console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse, 'autoGenerateTitle:', autoGenerateTitle);
       
       try {
-        await claudeClient.sendMessage(sessionToUse, content, selectedModel);
+        await claudeClient.sendMessage(sessionToUse, content, selectedModel, autoGenerateTitle);
         console.log('[Store] claudeClient.sendMessage completed successfully');
       } catch (sendError) {
         console.error('[Store] claudeClient.sendMessage failed:', sendError);
@@ -3165,6 +3172,12 @@ ${content}`;
       console.error('[Store] Failed to restore tabs:', err);
     }
   },
+  
+  setAutoGenerateTitle: (autoGenerate: boolean) => {
+    set({ autoGenerateTitle: autoGenerate });
+    localStorage.setItem('yurucode-auto-generate-title', JSON.stringify(autoGenerate));
+    console.log('[Store] Auto-generate title:', autoGenerate);
+  },
 
   updateSessionMapping: (sessionId: string, claudeSessionId: string, metadata?: any) => {
     const state = get();
@@ -3294,7 +3307,8 @@ ${content}`;
         globalWatermarkImage: state.globalWatermarkImage,
         monoFont: state.monoFont,
         sansFont: state.sansFont,
-        rememberTabs: state.rememberTabs
+        rememberTabs: state.rememberTabs,
+        autoGenerateTitle: state.autoGenerateTitle
         // Do NOT persist sessionId - sessions should not survive app restarts
       })
     }
