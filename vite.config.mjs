@@ -114,7 +114,8 @@ export default defineConfig({
       },
     },
     cssCodeSplit: false, // Single CSS file
-    assetsInlineLimit: 4096, // Inline small assets
+    cssTarget: 'chrome89', // Modern CSS features
+    assetsInlineLimit: 10240, // Inline assets up to 10KB (includes small WebP images)
   },
   resolve: {
     alias: {
