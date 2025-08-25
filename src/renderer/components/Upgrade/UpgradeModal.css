@@ -10,7 +10,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100000; /* Higher than settings modal (99999) */
+  z-index: 100002; /* Higher than settings modal (100001) */
   animation: fadeIn 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
