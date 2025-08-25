@@ -927,6 +927,19 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 cost: { total: 0, byModel: { opus: 0, sonnet: 0 } }
               };
               
+              // Debug log incoming message
+              if (message.type === 'result') {
+                console.log('🔍 [STORE-RESULT-DEBUG] Received result message:', {
+                  sessionId: s.id,
+                  messageKeys: Object.keys(message),
+                  hasWrapper: !!message.wrapper,
+                  wrapperStructure: message.wrapper ? Object.keys(message.wrapper) : null,
+                  wrapperTokens: message.wrapper?.tokens,
+                  hasUsage: !!message.usage,
+                  usage: message.usage
+                });
+              }
+              
               // Sync wrapper tokens to analytics if available
               if (message.wrapper?.tokens) {
                 console.log('✅✅✅ [STORE-TOKENS] WRAPPER TOKENS FOUND! Syncing to analytics:', {
@@ -936,6 +949,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   afterTotal: message.wrapper.tokens.total
                 });
                 
+                // CRITICAL: wrapper.tokens.total already includes cache_read in the calculation
+                // This is the actual context in use that should be displayed
                 analytics.tokens.total = message.wrapper.tokens.total || analytics.tokens.total;
                 analytics.tokens.input = message.wrapper.tokens.input || analytics.tokens.input;
                 analytics.tokens.output = message.wrapper.tokens.output || analytics.tokens.output;
@@ -948,7 +963,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   messageType: message.type,
                   hasWrapper: !!message.wrapper,
                   wrapperKeys: message.wrapper ? Object.keys(message.wrapper) : [],
-                  hasUsage: !!message.usage
+                  hasUsage: !!message.usage,
+                  fullMessage: message
                 });
               }
               
@@ -1239,7 +1255,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       });
                     } else if (message.usage) {
                       // Only process message.usage if no wrapper tokens available
-                      console.log('📊 Result message with usage (no wrapper):', message.usage);
+                      console.log('📊 [DIRECT-USAGE] Processing result message with direct usage (Windows-style):', {
+                        usage: message.usage,
+                        input_tokens: message.usage.input_tokens,
+                        output_tokens: message.usage.output_tokens,
+                        cache_creation_input_tokens: message.usage.cache_creation_input_tokens,
+                        cache_read_input_tokens: message.usage.cache_read_input_tokens
+                      });
                       if (message.cost) {
                         console.log('💰 Result message with cost:', message.cost);
                       }
@@ -1295,7 +1317,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         // For tracking purposes, accumulate only the NEW tokens added
                         analytics.tokens.input += regularInputTokens; // Only new input
                         analytics.tokens.output += outputTokens; // New output
-                        analytics.tokens.total = analytics.tokens.input + analytics.tokens.output; // Only count new tokens, not cache
+                        
+                        // CRITICAL: For display, we need to show ACTUAL context in use (including cache)
+                        // The total should be what's actually being used in context, not just new tokens
+                        analytics.tokens.total = actualContextInUse; // Total context in use including cache
                         
                         // Cache size is a snapshot of conversation history
                         analytics.tokens.cacheSize = cacheReadTokens;

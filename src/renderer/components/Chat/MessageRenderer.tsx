@@ -1941,8 +1941,11 @@ const MessageRendererBase: React.FC<{
          associatedToolUse?.message?.name === 'WebSearch';
       const isBashOperation = associatedToolUse?.message?.name === 'Bash';
       
-      // Never trim for Read, Search, or Bash operations to preserve formatting
-      if (!isReadOperation && !isSearchOperation && !isBashOperation) {
+      // Never trim for Read, Search, Bash, or Edit operations to preserve formatting
+      const isEditOperation = associatedToolUse?.message?.name === 'Edit' || 
+                              associatedToolUse?.message?.name === 'MultiEdit' ||
+                              associatedToolUse?.message?.name === 'NotebookEdit';
+      if (!isReadOperation && !isSearchOperation && !isBashOperation && !isEditOperation) {
         contentStr = contentStr.trim();
       }
       

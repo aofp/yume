@@ -2,51 +2,103 @@
 
 /* Fira Code - Local Loading */
 @font-face {
-  font-family: 'Fira Code Local';
+  font-family: 'Fira Code';
   font-style: normal;
   font-weight: 300;
   font-display: swap;
-  src: local('Fira Code Light'), local('FiraCode-Light'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bh0NSDulI.woff2') format('woff2'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bh0NSDul8.woff') format('woff');
+  src: url('./woff2/FiraCode-Light.woff2') format('woff2'),
+       url('./woff/FiraCode-Light.woff') format('woff'),
+       url('./ttf/FiraCode-Light.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: 'Fira Code Local';
+  font-family: 'Fira Code';
   font-style: normal;
   font-weight: 400;
   font-display: swap;
-  src: local('Fira Code Regular'), local('FiraCode-Regular'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bh2dSD.woff2') format('woff2'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bh2dSE.woff') format('woff');
+  src: url('./woff2/FiraCode-Regular.woff2') format('woff2'),
+       url('./woff/FiraCode-Regular.woff') format('woff'),
+       url('./ttf/FiraCode-Regular.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: 'Fira Code Local';
+  font-family: 'Fira Code';
   font-style: normal;
   font-weight: 500;
   font-display: swap;
-  src: local('Fira Code Medium'), local('FiraCode-Medium'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bh6NSDulI.woff2') format('woff2'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bh6NSDul8.woff') format('woff');
+  src: url('./woff2/FiraCode-Medium.woff2') format('woff2'),
+       url('./woff/FiraCode-Medium.woff') format('woff'),
+       url('./ttf/FiraCode-Medium.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: 'Fira Code Local';
+  font-family: 'Fira Code';
   font-style: normal;
   font-weight: 600;
   font-display: swap;
-  src: local('Fira Code SemiBold'), local('FiraCode-SemiBold'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bhwNODulI.woff2') format('woff2'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bhwNODul8.woff') format('woff');
+  src: url('./woff2/FiraCode-SemiBold.woff2') format('woff2'),
+       url('./woff/FiraCode-SemiBold.woff') format('woff'),
+       url('./ttf/FiraCode-SemiBold.ttf') format('truetype');
 }
 
 @font-face {
-  font-family: 'Fira Code Local';
+  font-family: 'Fira Code';
   font-style: normal;
   font-weight: 700;
   font-display: swap;
-  src: local('Fira Code Bold'), local('FiraCode-Bold'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bh3NODulI.woff2') format('woff2'),
-       url('https://fonts.gstatic.com/s/firacode/v22/uU9NCBsR6Z2vfE9aq3bh3NODul8.woff') format('woff');
+  src: url('./woff2/FiraCode-Bold.woff2') format('woff2'),
+       url('./woff/FiraCode-Bold.woff') format('woff'),
+       url('./ttf/FiraCode-Bold.ttf') format('truetype');
+}
+
+/* Inter - Local Loading */
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./Inter-Regular.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./Inter-Medium.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./Inter-SemiBold.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Inter';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./Inter-Bold.ttf') format('truetype');
+}
+
+/* Inter Variable Font for smoother weight transitions */
+@font-face {
+  font-family: 'Inter Variable';
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url('./Inter-Variable.ttf') format('truetype-variations');
+}
+
+/* Helvetica Neue - Windows compatible declaration */
+@font-face {
+  font-family: 'Helvetica Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: local('Helvetica Neue'), local('HelveticaNeue'),
+       local('Helvetica'), local('Arial'), local('sans-serif');
 }

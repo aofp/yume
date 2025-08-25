@@ -54,6 +54,10 @@
     <!-- Additional polyfills (non-blocking) -->
     <script src="/polyfills.js" defer></script>
     <link rel="icon" type="image/png" href="/yurucode.png" />
+    <!-- Preload critical fonts -->
+    <link rel="preload" href="/fonts/woff2/FiraCode-Regular.woff2" as="font" type="font/woff2" crossorigin>
+    <link rel="preload" href="/fonts/Inter-Regular.ttf" as="font" type="font/truetype" crossorigin>
+    <link rel="stylesheet" href="/fonts/fonts.css">
     <style>
       /* Critical styles to prevent white flash */
       html, body {

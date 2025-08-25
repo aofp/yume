@@ -640,6 +640,18 @@ export const SessionTabs: React.FC = () => {
                   const contextMax = 200000; // 200k context window
                   const percentage = Math.min((totalTokens / contextMax) * 100, 100);
                   
+                  // Debug logging for token tracking (can be disabled by setting window.debugTokens = false)
+                  if ((window as any).debugTokens !== false) {
+                    console.log(`[TAB-TOKENS] Session ${session.id} token display:`, {
+                      sessionId: session.id,
+                      totalTokens,
+                      percentage: percentage.toFixed(2) + '%',
+                      hasAnalytics: !!(session as any).analytics,
+                      analyticsTokens: (session as any).analytics?.tokens,
+                      fullAnalytics: (session as any).analytics
+                    });
+                  }
+                  
                   // Color gradient: grey until 70%, then yellow -> orange -> red
                   const getColor = (pct: number) => {
                     if (pct < 70) return 'rgba(150, 150, 150, 0.8)'; // Grey

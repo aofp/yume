@@ -1,11 +1,11 @@
-Name: John Smith
-Age: 28
-City: San Francisco
+Name: Jane Doe
+Age: 32
+City: New York
 Email: john.smith@example.com
 Phone: (555) 123-4567
-Department: Engineering
+Department: Data Science
 Start Date: 2022-03-15
-Salary: $95000
+Salary: $105000
 Skills: JavaScript, Python, React, Node.js
 Status: Active
 Added some new data: timestamp 2025-08-24

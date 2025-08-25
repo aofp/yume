@@ -3056,8 +3056,9 @@ io.on('connection', (socket) => {
             } else {
               console.log(`✅ Successfully sent context restoration`);
             }
-            // DON'T CLOSE STDIN - keep it open for claude to continue interaction
-            console.log(`📝 Keeping stdin open for continued interaction`);
+            // IMPORTANT: Close stdin for --print mode to signal end of input
+            claudeProcess.stdin.end();
+            console.log(`📝 Closed stdin after sending message (--print mode requires this)`);
           });
         }
         
@@ -3087,8 +3088,9 @@ io.on('connection', (socket) => {
           } else {
             console.log(`✅ Successfully wrote to stdin`);
           }
-          // DON'T CLOSE STDIN - keep it open for claude to continue interaction
-          console.log(`📝 Keeping stdin open for continued interaction`);
+          // IMPORTANT: Close stdin for --print mode to signal end of input
+          claudeProcess.stdin.end();
+          console.log(`📝 Closed stdin after sending message (--print mode requires this)`);
         });
       } else if (claudeProcess.inputHandled) {
         console.log(`📝 Message already embedded in WSL script`);
@@ -3471,8 +3473,39 @@ io.on('connection', (socket) => {
                 
                 messageCount++;
               } else if (hasToolUse && !hasContent) {
-                // If there's only tool uses and no text/thinking, skip assistant message
-                console.log('Assistant message with only tool uses, skipping text message');
+                // ALWAYS emit assistant message, even if only tool uses
+                // This ensures UI shows all messages properly
+                lastAssistantMessageIds.set(sessionId, messageId);
+                
+                if (!allAssistantMessageIds.has(sessionId)) {
+                  allAssistantMessageIds.set(sessionId, []);
+                }
+                allAssistantMessageIds.get(sessionId).push(messageId);
+                
+                console.log(`📝 [${sessionId}] Emitting assistant message ${messageId} (tool-only) with streaming=true`);
+                socket.emit(`message:${sessionId}`, {
+                  type: 'assistant',
+                  id: messageId,
+                  message: { 
+                    ...jsonData.message,
+                    content: []  // Empty content array for tool-only messages
+                  },
+                  streaming: true,
+                  timestamp: Date.now()
+                });
+                
+                // Save to session
+                const session = sessions.get(sessionId);
+                if (session) {
+                  session.messages.push({
+                    type: 'assistant',
+                    message: { content: [] },
+                    id: messageId,
+                    timestamp: Date.now()
+                  });
+                }
+                
+                messageCount++;
               }
             }
             
@@ -3779,8 +3812,13 @@ io.on('connection', (socket) => {
               model: model || 'unknown' // Use model from outer scope directly
             };
             
-            // Add wrapper tokens for frontend analytics
+            // CRITICAL: Include usage directly (like Windows) AND in wrapper field
+            // This ensures compatibility with both old Windows code and new wrapper integration
             if (jsonData.usage) {
+              // Include usage directly for Windows compatibility
+              resultMessage.usage = jsonData.usage;
+              
+              // Also add wrapper tokens for enhanced analytics
               resultMessage.wrapper = {
                 tokens: {
                   input: jsonData.usage.input_tokens || 0,
@@ -3790,6 +3828,12 @@ io.on('connection', (socket) => {
                   cache_creation: jsonData.usage.cache_creation_input_tokens || 0
                 }
               };
+              console.log(`📊 [WRAPPER-TOKENS] Added both usage and wrapper tokens to result message:`, {
+                usage: resultMessage.usage,
+                wrapperTokens: resultMessage.wrapper.tokens
+              });
+            } else {
+              console.log(`❌ [WRAPPER-TOKENS] No usage data in jsonData, neither usage nor wrapper field added`);
             }
             
             // Only include session_id if it's not a compact result
@@ -3808,6 +3852,15 @@ io.on('connection', (socket) => {
               console.log(`     • TOTAL CONTEXT USED: ${(resultMessage.usage.input_tokens || 0) + (resultMessage.usage.output_tokens || 0) + (resultMessage.usage.cache_creation_input_tokens || 0) + (resultMessage.usage.cache_read_input_tokens || 0)}`);
               console.log(`     • Note: ALL tokens (including cached) count towards 200k limit`);
             }
+            
+            // Debug log the full resultMessage before emitting
+            console.log(`📤 [EMIT-DEBUG] About to emit result message with wrapper field:`, {
+              hasWrapper: !!resultMessage.wrapper,
+              wrapperTokens: resultMessage.wrapper?.tokens,
+              messageKeys: Object.keys(resultMessage),
+              wrapperStructure: resultMessage.wrapper ? Object.keys(resultMessage.wrapper) : null
+            });
+            
             socket.emit(`message:${sessionId}`, resultMessage);
             messageCount++;
           }

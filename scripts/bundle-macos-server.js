@@ -86,10 +86,14 @@ console.debug = function(...args) {
 };
 `;
 
-// Insert safe console wrapper after the header comment
-const headerEnd = serverCJS.indexOf('*/');
-if (headerEnd !== -1) {
-  serverCJS = serverCJS.slice(0, headerEnd + 2) + safeConsoleWrapper + serverCJS.slice(headerEnd + 2);
+// Check if console wrapper already exists before adding
+const hasConsoleWrapper = serverCJS.includes('originalConsole');
+if (!hasConsoleWrapper) {
+  // Insert safe console wrapper after the header comment
+  const headerEnd = serverCJS.indexOf('*/');
+  if (headerEnd !== -1) {
+    serverCJS = serverCJS.slice(0, headerEnd + 2) + safeConsoleWrapper + serverCJS.slice(headerEnd + 2);
+  }
 }
 
 writeFileSync(join(resourcesDir, 'server-claude-macos.cjs'), serverCJS);
