@@ -2648,6 +2648,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('sendMessage', async (data, callback) => {
+    console.log('🔴🔴🔴 RUNNING FROM: EMBEDDED SERVER IN logged_server.rs');
     const { sessionId, content: message, model, autoGenerateTitle } = data;
     const session = sessions.get(sessionId);
     

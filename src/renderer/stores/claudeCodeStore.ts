@@ -414,7 +414,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   sansFont: 'Helvetica', // Default sans-serif font
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
-  autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
+  autoGenerateTitle: true, // Default to auto-generating titles (enabled by default)
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],

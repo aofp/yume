@@ -48,12 +48,19 @@ export const App: React.FC = () => {
     if (sansFont) {
       document.documentElement.style.setProperty('--font-sans', sansFont);
     }
-    
-    // Restore tabs if remember tabs is enabled
-    if (rememberTabs) {
-      restoreTabs();
-    }
-  }, [loadSessionMappings, monoFont, sansFont, rememberTabs, restoreTabs]);
+  }, [loadSessionMappings, monoFont, sansFont]);
+  
+  // Restore tabs after store is hydrated from persistence
+  useEffect(() => {
+    // Small delay to ensure store is fully hydrated from persistence
+    const timer = setTimeout(() => {
+      if (rememberTabs) {
+        console.log('[App] Remember tabs is enabled, restoring tabs...');
+        restoreTabs();
+      }
+    }, 100);
+    return () => clearTimeout(timer);
+  }, [rememberTabs, restoreTabs]);
   
   // Listen for upgrade modal events
   useEffect(() => {

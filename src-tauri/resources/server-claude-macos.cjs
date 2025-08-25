@@ -2539,7 +2539,9 @@ io.on('connection', (socket) => {
   });
 
   socket.on('sendMessage', async (data, callback) => {
-    const { sessionId, content: message, model } = data;
+    console.log('🚨🚨🚨 RUNNING FROM: server-claude-macos.cjs FILE');
+    console.log('Data received:', { ...data, content: data.content ? '(content present)' : '(no content)' });
+    const { sessionId, content: message, model, autoGenerateTitle } = data;
     const session = sessions.get(sessionId);
     
     if (!session) {
@@ -2990,9 +2992,9 @@ io.on('connection', (socket) => {
         console.log(`📝 No message to send`);
       }
       
-      // Generate title with Sonnet (fire and forget) - only for first message
-      console.log(`🏷️ Title check: hasGeneratedTitle=${session.hasGeneratedTitle}, messageLength=${message?.length}`);
-      if (!session.hasGeneratedTitle && message && message.length > 5) {
+      // Generate title with Sonnet (fire and forget) - only for first message if enabled
+      console.log(`🏷️ Title check: hasGeneratedTitle=${session.hasGeneratedTitle}, messageLength=${message?.length}, autoGenerateTitle=${autoGenerateTitle}`);
+      if (autoGenerateTitle && !session.hasGeneratedTitle && message && message.length > 5) {
         // Extract only text content (no attachments)
         let textContent = message;
         try {
