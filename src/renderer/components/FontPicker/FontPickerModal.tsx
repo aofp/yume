@@ -18,9 +18,14 @@ interface FontPickerModalProps {
 
 const DEFAULT_MONOSPACE_FONTS = [
   'Fira Code',
+  'JetBrains Mono',
   'Monaco',
   'Menlo',
+  'SF Mono',
   'Consolas',
+  'Source Code Pro',
+  'Inconsolata',
+  'Hack',
   'Courier New',
   'monospace'
 ];
@@ -47,17 +52,20 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
   // Load system fonts on mount
   useEffect(() => {
     const loadSystemFonts = async () => {
-      if (window.__TAURI__) {
-        try {
-          const { invoke } = await import('@tauri-apps/api/core');
+      try {
+        if (window.__TAURI__) {
+          const { invoke } = window.__TAURI__.core;
           const fonts = await invoke<string[]>('get_system_fonts');
+          console.log('[FontPicker] Loaded system fonts:', fonts.length);
           setSystemFonts(fonts);
-        } catch (err) {
-          console.error('Failed to load system fonts:', err);
         }
+      } catch (error) {
+        console.error('[FontPicker] Failed to load system fonts:', error);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     };
+    
     loadSystemFonts();
   }, []);
   
@@ -143,10 +151,10 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
               key={font}
               className={`font-option ${currentFont === font ? 'selected' : ''}`}
               onClick={() => handleFontSelect(font)}
-              style={{ fontFamily: font }}
+              style={{ fontFamily: `"${font}"` }}
             >
               <span className="font-name">{font}</span>
-              <span className="font-preview" style={{ fontFamily: font }}>
+              <span className="font-preview" style={{ fontFamily: `"${font}"` }}>
                 {fontType === 'monospace' ? 'const x = 42;' : 'Hello World'}
               </span>
             </button>
