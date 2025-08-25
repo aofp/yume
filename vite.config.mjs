@@ -4,6 +4,16 @@ import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
 import { readFileSync, writeFileSync, existsSync } from 'fs';
 import net from 'net';
+import crypto from 'crypto';
+
+// Polyfill for crypto.hash if it doesn't exist
+if (!crypto.hash) {
+  crypto.hash = (algorithm, data, outputEncoding) => {
+    const hash = crypto.createHash(algorithm);
+    hash.update(data);
+    return outputEncoding ? hash.digest(outputEncoding) : hash.digest();
+  };
+}
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
@@ -82,6 +92,8 @@ export default defineConfig({
     minify: false, // Disable minification to avoid breaking libraries
     reportCompressedSize: false, // Faster builds
     chunkSizeWarningLimit: 500,
+    // Copy fonts to dist folder
+    copyPublicDir: true,
     rollupOptions: {
       input: {
         main: resolve(__dirname, 'index.html'),

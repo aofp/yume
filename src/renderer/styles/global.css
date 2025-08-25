@@ -53,8 +53,8 @@
   --shadow-xl: 0 20px 25px rgba(0, 0, 0, 0.5);
   
   /* Typography - Default fallbacks, overridden by fonts.css based on platform */
-  --font-sans: 'Helvetica Neue', 'Helvetica', 'Inter', 'Segoe UI', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
-  --font-mono: 'Fira Code', 'Consolas', 'Cascadia Code', 'SF Mono', 'Monaco', 'Courier New', 'Lucida Console', 'Menlo', monospace;
+  --font-sans: 'Inter', 'Helvetica Neue', 'Segoe UI', 'Arial', 'Helvetica', 'Calibri', 'Tahoma', 'Verdana', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
+  --font-mono: 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', 'Lucida Console', 'Menlo', monospace;
   
   /* Font Sizes */
   --text-xs: 11px;

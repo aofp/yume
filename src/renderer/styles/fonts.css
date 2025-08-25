@@ -1,12 +1,9 @@
 /* Font imports for yurucode */
 
-/* Import local fonts for offline support and Windows compatibility */
-@import url('/fonts/fonts.css');
-
 /* Override CSS variables with proper font stacks for Windows */
 :root {
-  /* Sans-serif font stack with Windows-friendly fonts */
-  --font-sans: 'Inter', 'Segoe UI', 'Arial', 'Calibri', 'Tahoma', 'Verdana', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
+  /* Sans-serif font stack - Inter first for consistency across platforms */
+  --font-sans: 'Inter', 'Helvetica Neue', 'Segoe UI', 'Arial', 'Helvetica', 'Calibri', 'Tahoma', 'Verdana', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
   
   /* Monospace font stack with Fira Code and Windows fallbacks */
   --font-mono: 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', 'Lucida Console', 'Menlo', monospace;
@@ -27,12 +24,37 @@ code, pre, .monaco-editor {
   }
 }
 
+/* Windows-specific font rendering fixes */
+@supports (-ms-ime-align: auto) {
+  /* Target Edge/Windows specifically */
+  body {
+    font-weight: 400 !important;
+  }
+  
+  * {
+    -webkit-font-smoothing: auto !important;
+  }
+}
+
 /* Ensure proper font rendering on Windows */
 * {
   text-rendering: optimizeLegibility;
+  -webkit-text-size-adjust: 100%;
 }
 
 /* Fix for Windows ClearType rendering */
 body {
   font-synthesis: none;
+  -webkit-font-feature-settings: "kern" 1;
+  font-feature-settings: "kern" 1;
+}
+
+/* Ensure font weights render correctly on Windows */
+.platform-win32 {
+  font-weight: 400;
+}
+
+.platform-win32 b,
+.platform-win32 strong {
+  font-weight: 700;
 }
