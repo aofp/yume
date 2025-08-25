@@ -56,7 +56,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
             <span className="yuru">y</span><span className="code">&gt;</span>
           </div>
           
-          <div className="about-name">yuru code</div>
+          <div className="about-name">yurucode</div>
           
           <div className="about-version">
             version {versionInfo.version}<br />

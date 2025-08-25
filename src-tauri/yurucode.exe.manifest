@@ -6,7 +6,7 @@
     name="be.yuru.yurucode"
     type="win32"
   />
-  <description>yuru code - Minimal UI for Claude CLI</description>
+  <description>yurucode - Minimal UI for Claude CLI</description>
   
   <!-- Windows 10/11 compatibility -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">

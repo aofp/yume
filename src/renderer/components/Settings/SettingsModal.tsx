@@ -300,7 +300,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 <input
                   type="checkbox"
                   checked={rememberTabs}
-                  onChange={(e) => setRememberTabs(e.target.checked)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setRememberTabs(e.target.checked);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                   className="checkbox-input"
                 />
               </label>
@@ -309,7 +313,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 <input
                   type="checkbox"
                   checked={autoGenerateTitle}
-                  onChange={(e) => setAutoGenerateTitle(e.target.checked)}
+                  onChange={(e) => {
+                    e.stopPropagation();
+                    setAutoGenerateTitle(e.target.checked);
+                  }}
+                  onClick={(e) => e.stopPropagation()}
                   className="checkbox-input"
                 />
               </label>
@@ -456,10 +464,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 onClick={() => {
                   setShowAboutModal(true);
                 }}
-                title="about yuru code"
+                title="about yurucode"
               >
                 <IconInfoCircle size={10} />
-                <span>about yuru code</span>
+                <span>about yurucode</span>
               </button>
             </div>
 

@@ -5,7 +5,7 @@
   "identifier": "be.yuru.yurucode",
   "build": {
     "frontendDist": "../dist/renderer",
-    "devUrl": "http://localhost:60497",
+    "devUrl": "http://localhost:60147",
     "beforeDevCommand": "",
     "beforeBuildCommand": "npm run build"
   },
@@ -27,7 +27,7 @@
         "height": 509,
         "minWidth": 400,
         "minHeight": 320,
-        "resizable": false,
+        "resizable": true,
         "hiddenTitle": true,
         "center": false,
         "alwaysOnTop": false,
@@ -35,7 +35,7 @@
         "visible": true,
         "acceptFirstMouse": true,
         "closable": true,
-        "maximizable": false,
+        "maximizable": true,
         "minimizable": true,
         "skipTaskbar": false,
         "shadow": true,
@@ -46,10 +46,7 @@
   },
   "bundle": {
     "active": true,
-    "targets": [
-      "app",
-      "dmg"
-    ],
+    "targets": "all",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

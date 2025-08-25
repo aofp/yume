@@ -733,14 +733,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         if (message.type !== 'result') {
           // Special handling for stream_end to clear streaming state
           if (message.type === 'system' && message.subtype === 'stream_end') {
-            console.log('[Store] 🔚 Stream end on temp channel - clearing streaming state');
+            console.log('[Store] 🔚 Stream end on temp channel - clearing streaming state (but keeping thinkingStartTime for result)');
             set(state => ({
               sessions: state.sessions.map(s => {
                 if (s.id === sessionId) {
                   return { 
                     ...s, 
                     streaming: false, 
-                    thinkingStartTime: undefined,
+                    // DON'T clear thinkingStartTime here - we need it for the result message
+                    // It will be cleared when the result is processed
                     pendingToolIds: new Set()
                   };
                 }
@@ -1174,6 +1175,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               analytics.toolUses = existingMessages.filter(m => m.type === 'tool_use').length;
               analytics.systemMessages = existingMessages.filter(m => m.type === 'system').length;
               
+              // Debug log to see what's being calculated
+              console.log(`📊 [ANALYTICS COUNTS] Session ${s.id}:`, {
+                totalMessages: analytics.totalMessages,
+                userMessages: analytics.userMessages,
+                assistantMessages: analytics.assistantMessages,
+                toolUses: analytics.toolUses,
+                systemMessages: analytics.systemMessages,
+                messageTypes: existingMessages.map(m => m.type)
+              });
+              
               // Initialize byModel if it doesn't exist (for backward compatibility)
               if (!analytics.tokens.byModel) {
                 analytics.tokens.byModel = {
@@ -1374,13 +1385,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         // input_tokens and output_tokens are NEW tokens for this turn
                         const previousTotal = analytics.tokens.total;
                         
-                        // The actual context in use RIGHT NOW is cache_read + new tokens
+                        // The actual context in use RIGHT NOW is cache_read + cache_creation + new tokens
                         // This is what counts against the 200k limit
-                        const actualContextInUse = cacheReadTokens + regularInputTokens + outputTokens;
+                        const actualContextInUse = cacheReadTokens + cacheCreationTokens + regularInputTokens + outputTokens;
                         
                         // For tracking purposes, accumulate only the NEW tokens added
                         analytics.tokens.input += regularInputTokens; // Only new input
                         analytics.tokens.output += outputTokens; // New output
+                        analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens; // Accumulate cache creation
                         
                         // CRITICAL: For display, we need to show ACTUAL context in use (including cache)
                         // The total should be what's actually being used in context, not just new tokens
@@ -1391,6 +1403,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         
                         console.log(`📊 [TOKEN UPDATE] Context usage:`);
                         console.log(`   Conversation history (cache): ${cacheReadTokens} tokens`);
+                        console.log(`   Cache creation: ${cacheCreationTokens} tokens`);
                         console.log(`   New input this turn: ${regularInputTokens} tokens`);
                         console.log(`   New output this turn: ${outputTokens} tokens`);
                         console.log(`   TOTAL CONTEXT IN USE: ${actualContextInUse} / 200000 (${(actualContextInUse / 200000 * 100).toFixed(2)}%)`);
@@ -1531,6 +1544,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     cost: estimatedCost
                   });
                 }
+              }
+              
+              // Calculate thinking time when result message is received
+              if (message.type === 'result' && s.thinkingStartTime) {
+                const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                analytics.thinkingTime = (analytics.thinkingTime || 0) + thinkingDuration;
+                console.log(`📊 [THINKING TIME] Result received - added ${thinkingDuration}s, total: ${analytics.thinkingTime}s`);
+              } else if (message.type === 'result') {
+                console.log(`📊 [THINKING TIME] Result received but no thinkingStartTime set for session ${s.id}`);
               }
               
               // Update duration and last activity
@@ -2102,6 +2124,7 @@ ${content}`;
           // Always start new thinking timer when user sends message
           updates.thinkingStartTime = now;
           updates.analytics = updatedAnalytics;
+          console.log(`📊 [THINKING TIME] Starting thinking timer for session ${s.id} at ${now}`);
           
           // Always set streaming to true when sending a message
           // This ensures the streaming indicator shows immediately
@@ -2922,12 +2945,25 @@ ${content}`;
   },
 
   addMessageToSession: (sessionId: string, message: SDKMessage) => {
-    set(state => ({
-      sessions: state.sessions.map(s => {
-        if (s.id !== sessionId) return s;
-        
-        // Initialize analytics if we need to update tokens
-        let analytics = s.analytics;
+    set(state => {
+      // Log the current thinking state for debugging
+      const currentSession = state.sessions.find(s => s.id === sessionId);
+      if (message.type === 'result') {
+        console.log(`📊 [THINKING TIME PRE-CHECK] Before processing result:`, {
+          sessionId,
+          hasSession: !!currentSession,
+          hasThinkingStartTime: !!currentSession?.thinkingStartTime,
+          thinkingStartTime: currentSession?.thinkingStartTime,
+          streaming: currentSession?.streaming
+        });
+      }
+      
+      return {
+        sessions: state.sessions.map(s => {
+          if (s.id !== sessionId) return s;
+          
+          // Initialize analytics if we need to update tokens
+          let analytics = s.analytics;
         
         // Special handling for token update messages (synthetic result messages from token listener)
         if (message.type === 'result' && message.wrapper?.tokens) {
@@ -2987,14 +3023,130 @@ ${content}`;
           console.log(`[Store] Session ${sessionId} exceeded ${MAX_MESSAGES} messages, removed ${removeCount} oldest messages`);
         }
         
+        // Always update message counts in analytics
+        if (!analytics) {
+          analytics = s.analytics || {
+            totalMessages: 0,
+            userMessages: 0,
+            assistantMessages: 0,
+            toolUses: 0,
+            systemMessages: 0,
+            tokens: { 
+              input: 0, 
+              output: 0, 
+              total: 0,
+              cacheSize: 0,
+              byModel: {
+                opus: { input: 0, output: 0, total: 0 },
+                sonnet: { input: 0, output: 0, total: 0 }
+              }
+            },
+            duration: 0,
+            thinkingTime: 0,
+            cost: { total: 0, byModel: { opus: 0, sonnet: 0 } }
+          };
+        }
+        
+        // Create a new analytics object to ensure React detects the change
+        analytics = {
+          ...analytics,
+          totalMessages: updatedMessages.length,
+          userMessages: updatedMessages.filter(m => m.type === 'user').length,
+          assistantMessages: updatedMessages.filter(m => m.type === 'assistant').length,
+          toolUses: updatedMessages.filter(m => m.type === 'tool_use').length,
+          systemMessages: updatedMessages.filter(m => m.type === 'system').length
+        };
+        
+        console.log(`📊 [ANALYTICS COUNTS] Session ${sessionId} in addMessageToSession:`, {
+          totalMessages: analytics.totalMessages,
+          userMessages: analytics.userMessages,
+          assistantMessages: analytics.assistantMessages,
+          toolUses: analytics.toolUses,
+          systemMessages: analytics.systemMessages,
+          messageTypes: updatedMessages.map(m => m.type)
+        });
+        
+        // Use duration_ms from result message for thinking time
+        let shouldClearThinkingTime = false;
+        if (message.type === 'result') {
+          console.log(`📊 [THINKING TIME DEBUG] Result message in addMessageToSession:`, {
+            sessionId,
+            duration_ms: message.duration_ms,
+            existingThinkingTime: analytics.thinkingTime || 0
+          });
+          
+          // Use duration_ms from the result message - this is the actual elapsed time from the server
+          if (message.duration_ms) {
+            const thinkingDuration = Math.round(message.duration_ms / 1000); // Convert ms to seconds
+            analytics = {
+              ...analytics,
+              thinkingTime: (analytics.thinkingTime || 0) + thinkingDuration
+            };
+            console.log(`📊 [THINKING TIME] Using duration_ms from result - added ${thinkingDuration}s, total: ${analytics.thinkingTime}s`);
+            shouldClearThinkingTime = true;
+          } else {
+            console.log(`📊 [THINKING TIME] Result received but no duration_ms in message`);
+          }
+        }
+        
+        // Calculate cost from usage data in result messages
+        if (message.type === 'result' && message.usage) {
+          // Get the model from the message or use the global selectedModel
+          const currentModel = message.model || get().selectedModel;
+          const isOpus = currentModel?.includes('opus');
+          const inputTokens = message.usage.input_tokens || 0;
+          const outputTokens = message.usage.output_tokens || 0;
+          
+          // Calculate cost based on model pricing
+          let messageCost = 0;
+          if (isOpus) {
+            // Opus: $3/1M input, $15/1M output
+            messageCost = (inputTokens / 1000000) * 3.00 + (outputTokens / 1000000) * 15.00;
+          } else {
+            // Sonnet: $2.50/1M input, $12.50/1M output  
+            messageCost = (inputTokens / 1000000) * 2.50 + (outputTokens / 1000000) * 12.50;
+          }
+          
+          // Use total_cost_usd if provided, otherwise use calculated cost
+          if (message.total_cost_usd !== undefined) {
+            messageCost = message.total_cost_usd;
+          }
+          
+          // Initialize cost if needed
+          if (!analytics.cost) {
+            analytics.cost = { total: 0, byModel: { opus: 0, sonnet: 0 } };
+          }
+          
+          // Update cost
+          analytics = {
+            ...analytics,
+            cost: {
+              total: analytics.cost.total + messageCost,
+              byModel: {
+                opus: analytics.cost.byModel.opus + (isOpus ? messageCost : 0),
+                sonnet: analytics.cost.byModel.sonnet + (!isOpus ? messageCost : 0)
+              }
+            }
+          };
+          
+          console.log(`💵 [COST] Updated cost in addMessageToSession:`, {
+            messageCost,
+            totalCost: analytics.cost.total,
+            model: isOpus ? 'opus' : 'sonnet'
+          });
+        }
+        
         return { 
           ...s, 
           messages: updatedMessages, 
           updatedAt: new Date(),
-          ...(analytics ? { analytics } : {})
+          analytics,
+          // Clear thinkingStartTime after we've used it for result
+          ...(shouldClearThinkingTime ? { thinkingStartTime: undefined } : {})
         };
       })
-    }));
+    };
+    });
   },
 
   setSessionStreaming: (sessionId: string, streaming: boolean) => {

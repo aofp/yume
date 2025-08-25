@@ -2654,7 +2654,18 @@ export const ClaudeChat: React.FC = () => {
                       <span className="stat-name">messages</span>
                     </div>
                     <span className="stat-dots"></span>
-                    <span className="stat-desc">{currentSession?.analytics?.totalMessages || 0}</span>
+                    <span className="stat-desc">
+                      {(() => {
+                        const messageCount = currentSession?.analytics?.totalMessages || 0;
+                        console.log(`📊 [UI MESSAGES] Displaying message count:`, { 
+                          sessionId: currentSession?.id,
+                          totalMessages: messageCount,
+                          hasAnalytics: !!currentSession?.analytics,
+                          analytics: currentSession?.analytics
+                        });
+                        return messageCount;
+                      })()}
+                    </span>
                   </div>
                   <div className="stat-row">
                     <div className="stat-keys">
@@ -2662,7 +2673,17 @@ export const ClaudeChat: React.FC = () => {
                       <span className="stat-name">tool uses</span>
                     </div>
                     <span className="stat-dots"></span>
-                    <span className="stat-desc">{currentSession?.analytics?.toolUses || 0}</span>
+                    <span className="stat-desc">
+                      {(() => {
+                        const toolCount = currentSession?.analytics?.toolUses || 0;
+                        console.log(`📊 [UI TOOLS] Displaying tool count:`, { 
+                          sessionId: currentSession?.id,
+                          toolUses: toolCount,
+                          hasAnalytics: !!currentSession?.analytics
+                        });
+                        return toolCount;
+                      })()}
+                    </span>
                   </div>
                   <div className="stat-row">
                     <div className="stat-keys">

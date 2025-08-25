@@ -71,38 +71,63 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
   
   // Filter fonts based on type and availability
   const getAvailableFonts = () => {
-    const defaults = fontType === 'monospace' ? DEFAULT_MONOSPACE_FONTS : DEFAULT_SANS_SERIF_FONTS;
+    // ALWAYS start with our essential fonts - no matter what
+    let fontList: string[] = [];
     
+    if (fontType === 'monospace') {
+      // ALWAYS include Fira Code first for monospace
+      fontList = [
+        'Fira Code',
+        'Consolas', 
+        'Courier New',
+        'JetBrains Mono',
+        'Monaco',
+        'Menlo',
+        'SF Mono',
+        'Source Code Pro',
+        'Inconsolata',
+        'Hack',
+        'monospace'
+      ];
+    } else {
+      // ALWAYS include Helvetica first for sans-serif
+      fontList = [
+        'Helvetica',
+        'Helvetica Neue',
+        'Arial',
+        'Segoe UI',
+        'Inter',
+        'System UI',
+        '-apple-system',
+        'sans-serif'
+      ];
+    }
+    
+    // If we have system fonts, add them (but don't replace our list)
     if (systemFonts.length > 0) {
-      // For monospace, filter for known monospace keywords
-      // For sans-serif, show all fonts except monospace ones
       const monoKeywords = ['mono', 'code', 'courier', 'consolas', 'menlo', 'monaco', 'hack', 'inconsolata', 'jetbrains', 'fira'];
       
-      let relevant: string[];
+      let additionalFonts: string[];
       if (fontType === 'monospace') {
-        // Show fonts that contain monospace keywords
-        relevant = systemFonts.filter(f => 
+        additionalFonts = systemFonts.filter(f => 
           monoKeywords.some(keyword => f.toLowerCase().includes(keyword))
         );
       } else {
-        // Show all fonts that don't contain monospace keywords
-        relevant = systemFonts.filter(f => 
+        additionalFonts = systemFonts.filter(f => 
           !monoKeywords.some(keyword => f.toLowerCase().includes(keyword))
         );
       }
       
-      // Add generic fallbacks at the end
-      const genericFallbacks = fontType === 'monospace' ? ['monospace'] : ['sans-serif', '-apple-system', 'system-ui'];
-      const combined = [...new Set([...relevant, ...genericFallbacks])];
-      return combined.sort((a, b) => {
-        // Put generic fallbacks at the end
-        if (genericFallbacks.includes(a)) return 1;
-        if (genericFallbacks.includes(b)) return -1;
-        return a.localeCompare(b);
+      // Add system fonts that aren't already in our list
+      additionalFonts.forEach(font => {
+        if (!fontList.some(f => f.toLowerCase() === font.toLowerCase())) {
+          fontList.push(font);
+        }
       });
     }
     
-    return defaults;
+    console.log(`[FontPicker] Returning ${fontList.length} fonts for ${fontType}:`, fontList);
+    return fontList;
   };
   
   const fonts = getAvailableFonts();

@@ -68,7 +68,7 @@
 }
 
 .settings-content {
-  padding: 12px;
+  padding: 8px;
   flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
@@ -76,7 +76,7 @@
 }
 
 .settings-section {
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .settings-section:last-child {
@@ -98,7 +98,7 @@
   color: var(--accent-color);
   font-size: 11px;
   font-weight: 500;
-  margin: 0 0 6px 0;
+  margin: 0 0 4px 0;
   text-transform: lowercase;
   user-select: none;
   -webkit-user-select: none;
@@ -167,7 +167,7 @@
 .color-settings-grid {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .color-setting {
@@ -188,7 +188,7 @@
 }
 
 .color-label::after {
-  content: '................................................................................';
+  content: '................................................................................................................................................................................................................................................................................................................................................................................................';
   position: absolute;
   left: calc(100% + 4px);
   top: 50%;
@@ -213,8 +213,8 @@
 }
 
 .color-reset {
-  width: 23px;
-  height: 23px;
+  width: 22px;
+  height: 22px;
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
@@ -490,7 +490,7 @@
 .settings-bottom-controls {
   display: flex;
   justify-content: space-between;
-  padding: 12px;
+  padding: 8px;
   background: #0a0a0a;
   border-top: 1px solid rgba(255, 255, 255, 0.15);
   flex-shrink: 0;
@@ -654,7 +654,7 @@
 }
 
 .font-label::after {
-  content: '................................................................................';
+  content: '................................................................................................................................................................................................................................................................................................................................................................................................';
   position: absolute;
   left: calc(100% + 4px);
   top: 50%;
@@ -713,8 +713,8 @@
 input[type="checkbox"].checkbox-input {
   appearance: none;
   -webkit-appearance: none;
-  width: 14px;
-  height: 14px;
+  width: 18px;
+  height: 18px;
   background: #444444;
   border: none;
   border-radius: 2px;
@@ -737,10 +737,10 @@ input[type="checkbox"].checkbox-input:checked {
 input[type="checkbox"].checkbox-input:checked::after {
   content: '';
   position: absolute;
-  left: 4px;
+  left: 5px;
   top: 2px;
-  width: 3px;
-  height: 6px;
+  width: 4px;
+  height: 8px;
   border: solid #000;
   border-width: 0 2px 2px 0;
   transform: rotate(45deg);
@@ -764,7 +764,7 @@ input[type="checkbox"].checkbox-input:checked:hover {
 }
 
 .checkbox-label::after {
-  content: '................................................................................';
+  content: '................................................................................................................................................................................................................................................................................................................................................................................................';
   position: absolute;
   left: calc(100% + 4px);
   top: 50%;
