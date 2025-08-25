@@ -94,6 +94,14 @@ if (headerEnd !== -1) {
 
 writeFileSync(join(resourcesDir, 'server-claude-macos.cjs'), serverCJS);
 
+// Copy wrapper-module.js to resources
+const wrapperSource = join(projectRoot, 'wrapper-module.js');
+const wrapperDest = join(resourcesDir, 'wrapper-module.js');
+if (existsSync(wrapperSource)) {
+  console.log('📋 Copying wrapper-module.js...');
+  cpSync(wrapperSource, wrapperDest);
+}
+
 // Create a minimal package.json for the resources
 const resourcePackage = {
   name: "yurucode-server",

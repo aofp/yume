@@ -11,8 +11,10 @@ import { useLicenseStore } from '../services/licenseManager';
 
 // Use Tauri client if available, otherwise fall back to Socket.IO
 // On Windows, always use Socket.IO because Claude runs in WSL
+// On macOS, also use Socket.IO because we're using the Node.js server
 const isWindows = navigator.platform.toLowerCase().includes('win');
-const USE_TAURI_BACKEND = !isWindows; // Use Socket.IO on Windows, Tauri on macOS/Linux
+const isMacOS = navigator.platform.toLowerCase().includes('mac');
+const USE_TAURI_BACKEND = false; // Always use Socket.IO for now since server handles everything
 const claudeClient = USE_TAURI_BACKEND ? tauriClaudeClient : claudeCodeClient;
 
 export type SDKMessage = any; // Type from Claude Code SDK
@@ -887,10 +889,19 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               
               const existingMessages = [...s.messages];
               
-              // CRITICAL: Never accept user messages from server - they should only come from sendMessage
+              // CRITICAL: Only accept tool_result user messages from server
+              // Regular user messages should only come from sendMessage
               if (message.type === 'user') {
-                console.warn('[Store] Ignoring user message from server - user messages should only be created locally');
-                return s;
+                // Check if this is a tool_result message (these come from Claude)
+                const isToolResult = message.message?.content?.some?.((c: any) => 
+                  c.type === 'tool_result'
+                ) || message.message?.tool_use_id;
+                
+                if (!isToolResult) {
+                  console.warn('[Store] Ignoring non-tool-result user message from server - regular user messages should only be created locally');
+                  return s;
+                }
+                console.log('[Store] 🔧 Accepting tool_result user message from server');
               }
               
               // Initialize analytics object early so we can update it with wrapper tokens

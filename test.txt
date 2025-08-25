@@ -13,3 +13,8 @@ Random number: 73
 Status: Testing complete
 Author: Claude Code Assistant
 Edit test: Modified at 2025-08-24
+Line 16: Added via MultiEdit
+Line 17: Another line added
+Line 18: Third new line
+Line 19: Fourth new line
+Line 20: Fifth new line

@@ -481,9 +481,11 @@ export class TauriClaudeClient {
         console.log('[TauriClient] 📥 Processing user message:', messageData);
         
         // Check if this is a tool_result message
+        let hasToolResult = false;
         if (Array.isArray(messageData.content)) {
           for (const block of messageData.content) {
             if (block.type === 'tool_result') {
+              hasToolResult = true;
               console.log('[TauriClient] 📥 Extracting tool_result from user message:', block);
               // Send tool_result as separate message
               const toolResultMessage = {
@@ -500,11 +502,10 @@ export class TauriClaudeClient {
               handler(toolResultMessage);
             }
           }
-          // Don't send user message for tool results
-          return;
         }
         
-        // Regular user message
+        // ALWAYS send the user message (including tool_result ones)
+        // The store will filter out non-tool-result user messages
         transformedMessage = {
           id: `user-${Date.now()}`,
           type: 'user',
@@ -514,6 +515,7 @@ export class TauriClaudeClient {
             role: 'user'
           }
         };
+        console.log('[TauriClient] 📥 Sending user message (has tool_result: ' + hasToolResult + ')');
       } else if (message.type === 'system') {
         // System messages
         transformedMessage = {
