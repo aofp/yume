@@ -122,6 +122,13 @@ pub fn get_server_logs() -> String {
 /// - Implements tool use detection and forwarding
 /// - Manages streaming state for proper UI updates
 const EMBEDDED_SERVER: &str = r#"
+console.log('════════════════════════════════════════════════════════════════════');
+console.log('🔴 YURUCODE SERVER: EMBEDDED IN logged_server.rs (Windows/Linux)');
+console.log('🔴 This is NOT server-claude-macos.js or server.js');
+console.log('🔴 Edit code at: src-tauri/src/logged_server.rs line ~124');
+console.log('🔴 After editing: Restart Tauri dev server for changes to take effect');
+console.log('════════════════════════════════════════════════════════════════════');
+
 /**
  * macOS-compatible server that runs claude CLI directly
  * IDENTICAL TO WINDOWS SERVER - NO SDK, NO API KEY - just direct claude CLI calls with streaming
@@ -234,8 +241,13 @@ function processWrapperLine(line, sessionId) {
       const cacheCreation = data.usage.cache_creation_input_tokens || 0;
       const cacheRead = data.usage.cache_read_input_tokens || 0;
       
-      session.inputTokens += input + cacheCreation + cacheRead;
+      // Only count actual input/output tokens, not cache tokens
+      session.inputTokens += input;
       session.outputTokens += output;
+      
+      // Track cache tokens separately
+      session.cacheCreationTokens = (session.cacheCreationTokens || 0) + cacheCreation;
+      session.cacheReadTokens = (session.cacheReadTokens || 0) + cacheRead;
       
       const prevTotal = session.totalTokens;
       session.totalTokens = session.inputTokens + session.outputTokens;
@@ -243,7 +255,8 @@ function processWrapperLine(line, sessionId) {
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;
       
-      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/100000 (${Math.round(session.totalTokens/1000)}%)`);
+      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
+      console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead} (not counted in total)`);
     }
     
     // Detect compaction
@@ -355,12 +368,13 @@ function createWslClaudeCommand(args, workingDir, message) {
         encoding: 'utf8',
         windowsHide: true
       }).trim();
-      console.log(`🔍 WSL user detected: ${wslUser}`);
+      console.log(`🔍 WSL USER DETECTED: ${wslUser}`);
     } catch (e) {
       console.warn('⚠️ Could not detect WSL user, using default');
     }
     
     // Potential paths to check (in order of preference) - using dynamic user
+    console.log(`🔎 SEARCHING FOR CLAUDE IN WSL (user: ${wslUser})...`);
     const possiblePaths = [
       `/home/${wslUser}/.claude/local/node_modules/.bin/claude`,  // User-specific claude install
       `~/.npm-global/bin/claude`,  // npm global install
@@ -395,7 +409,7 @@ function createWslClaudeCommand(args, workingDir, message) {
           } else {
             claudePath = path;
           }
-          console.log(`✅ Found Claude at: ${claudePath}`);
+          console.log(`✅ CLAUDE FOUND AT: ${claudePath}`);
           break;
         }
       } catch (e) {
@@ -544,7 +558,11 @@ function createWslClaudeCommand(args, workingDir, message) {
 
 if (isWindows) {
   // On Windows, Claude only runs in WSL, so we'll use our comprehensive command builder
-  console.log('🔍 Windows detected, Claude will be invoked through WSL with comprehensive path detection...');
+  console.log('════════════════════════════════════════════════════════════════════');
+  console.log('🔍 PLATFORM: Windows detected');
+  console.log('🔍 CLAUDE EXECUTION: Will run through WSL (Windows Subsystem for Linux)');
+  console.log('🔍 PATH DETECTION: Automatic WSL user and Claude path detection enabled');
+  console.log('════════════════════════════════════════════════════════════════════');
   CLAUDE_PATH = 'WSL_CLAUDE'; // Special marker to use createWslClaudeCommand
   
 } else {
@@ -2648,7 +2666,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('sendMessage', async (data, callback) => {
-    console.log('🔴🔴🔴 RUNNING FROM: EMBEDDED SERVER IN logged_server.rs');
+    console.log('📨 [sendMessage] Processing message in EMBEDDED SERVER');
     const { sessionId, content: message, model, autoGenerateTitle } = data;
     const session = sessions.get(sessionId);
     
@@ -2930,7 +2948,7 @@ io.on('connection', (socket) => {
           const driveLetter = processWorkingDir[0].toLowerCase();
           const pathWithoutDrive = processWorkingDir.substring(2).replace(/\\/g, '/');
           wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
-          console.log(`📂 Converted Windows path to WSL: ${processWorkingDir} -> ${wslWorkingDir}`);
+          console.log(`📂 PATH CONVERSION: Windows "${processWorkingDir}" → WSL "${wslWorkingDir}"`);
         }
         
         // Build the message with context if needed
@@ -3774,14 +3792,11 @@ io.on('connection', (socket) => {
               console.log(`\n📊 TOKEN USAGE FROM CLAUDE CLI:`);
               console.log(`   input_tokens: ${jsonData.usage.input_tokens || 0}`);
               console.log(`   output_tokens: ${jsonData.usage.output_tokens || 0}`);
-              console.log(`   cache_creation_input_tokens: ${jsonData.usage.cache_creation_input_tokens || 0}`);
-              console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0}`);
-              console.log(`   --- ALL TOKENS COUNT TOWARDS 200K LIMIT ---`);
-              console.log(`   actual_input: ${jsonData.usage.input_tokens || 0}`);
-              console.log(`   actual_output: ${jsonData.usage.output_tokens || 0}`);
-              console.log(`   cache_creation: ${jsonData.usage.cache_creation_input_tokens || 0}`);
-              console.log(`   cache_read: ${jsonData.usage.cache_read_input_tokens || 0}`);
-              console.log(`   TOTAL CONTEXT USED: ${(jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0)}`);
+              console.log(`   cache_creation_input_tokens: ${jsonData.usage.cache_creation_input_tokens || 0} (not counted)`);
+              console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0} (not counted)`);
+              console.log(`   --- ACTUAL TOKEN USAGE ---`);
+              console.log(`   TOTAL TOKENS USED: ${(jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0)}`);
+              console.log(`   Note: Cache tokens are system-level and don't count towards usage`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
@@ -3821,11 +3836,12 @@ io.on('connection', (socket) => {
               resultMessage.usage = jsonData.usage;
               
               // Also add wrapper tokens for enhanced analytics
+              // IMPORTANT: Only count actual input/output tokens in total, not cache tokens
               resultMessage.wrapper = {
                 tokens: {
                   input: jsonData.usage.input_tokens || 0,
                   output: jsonData.usage.output_tokens || 0,
-                  total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0),
+                  total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0),  // Only actual tokens
                   cache_read: jsonData.usage.cache_read_input_tokens || 0,
                   cache_creation: jsonData.usage.cache_creation_input_tokens || 0
                 }
@@ -3849,10 +3865,10 @@ io.on('connection', (socket) => {
               console.log(`   - Usage breakdown:`);
               console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0}`);
               console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0}`);
-              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0}`);
-              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0}`);
-              console.log(`     • TOTAL CONTEXT USED: ${(resultMessage.usage.input_tokens || 0) + (resultMessage.usage.output_tokens || 0) + (resultMessage.usage.cache_creation_input_tokens || 0) + (resultMessage.usage.cache_read_input_tokens || 0)}`);
-              console.log(`     • Note: ALL tokens (including cached) count towards 200k limit`);
+              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0} (system cache)`);
+              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0} (system cache)`);
+              console.log(`     • ACTUAL TOKENS USED: ${(resultMessage.usage.input_tokens || 0) + (resultMessage.usage.output_tokens || 0)}`);
+              console.log(`     • Note: Only input/output tokens count towards usage, cache tokens are system-level`);
             }
             
             // Debug log the full resultMessage before emitting
