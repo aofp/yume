@@ -18,6 +18,7 @@ export interface TauriAPI {
     clearSession: (sessionId: string) => Promise<void>;
     getSessions: () => Promise<any[]>;
     getServerPort: () => Promise<number>;
+    readPortFile: () => Promise<number>;
   };
   settings: {
     save: (key: string, value: any) => Promise<void>;
@@ -78,6 +79,9 @@ class TauriAPIBridge implements TauriAPI {
     },
     getServerPort: async (): Promise<number> => {
       return await invoke('get_server_port');
+    },
+    readPortFile: async (): Promise<number> => {
+      return await invoke('read_port_file');
     }
   };
 

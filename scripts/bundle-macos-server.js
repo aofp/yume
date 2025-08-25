@@ -18,8 +18,8 @@ console.log('📦 Bundling macOS server for production...');
 const resourcesDir = join(projectRoot, 'src-tauri', 'resources');
 mkdirSync(resourcesDir, { recursive: true });
 
-// Read the original server file
-const serverSource = readFileSync(join(projectRoot, 'server-claude-macos.js'), 'utf8');
+// Read the original server file (now .cjs)
+const serverSource = readFileSync(join(projectRoot, 'server-claude-macos.cjs'), 'utf8');
 
 // Create a CommonJS version for production use
 let serverCJS = serverSource

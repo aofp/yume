@@ -36,19 +36,35 @@ export interface RestorePoint {
 }
 
 export interface SessionAnalytics {
+  // Message counts - matches Claude Code
   totalMessages: number;
   userMessages: number;
   assistantMessages: number;
   toolUses: number;
+  systemMessages?: number;
+  
+  // Token tracking - matches Claude Code exactly
   tokens: {
     input: number;
     output: number;
     total: number;
+    cacheSize?: number; // Size of cached context
+    cacheCreation?: number; // Tokens used to create cache
+    cacheRead?: number; // Tokens read from cache
+    conversationTokens?: number; // Active conversation context
+    systemTokens?: number; // System prompt tokens
+    average?: number; // Average tokens per message
     byModel: {
       opus: { input: number; output: number; total: number; };
       sonnet: { input: number; output: number; total: number; };
     };
+    breakdown?: {
+      user: number; // Total user tokens
+      assistant: number; // Total assistant tokens
+    };
   };
+  
+  // Cost tracking
   cost?: {
     total: number;
     byModel: {
@@ -56,9 +72,33 @@ export interface SessionAnalytics {
       sonnet: number;
     };
   };
-  duration: number; // in milliseconds
+  
+  // Performance metrics
+  duration: number; // Total session duration in ms
   lastActivity: Date;
-  thinkingTime: number; // total thinking time in seconds
+  thinkingTime: number; // Total thinking time in seconds
+  responseTime?: number; // Average response time in ms
+  
+  // Rate limiting info
+  rateLimit?: {
+    requestsPerMinute?: number;
+    tokensPerMinute?: number;
+    requestsPerDay?: number;
+  };
+  
+  // Context window usage - like Claude Code
+  contextWindow?: {
+    used: number; // Tokens used
+    limit: number; // Max tokens (200000)
+    percentage: number; // Usage percentage
+    remaining: number; // Tokens remaining
+  };
+  
+  // Additional metadata
+  model?: string; // Current model being used
+  temperature?: number; // Temperature setting
+  maxTokens?: number; // Max tokens setting
+  stopReason?: string; // Last stop reason
 }
 
 export interface Session {
@@ -453,19 +493,35 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           userMessages: 0,
           assistantMessages: 0,
           toolUses: 0,
+          systemMessages: 0,
           tokens: { 
             input: 0, 
             output: 0, 
             total: 0,
+            cacheSize: 0,
+            cacheCreation: 0,
+            cacheRead: 0,
+            conversationTokens: 0,
+            systemTokens: 0,
+            average: 0,
             byModel: {
               opus: { input: 0, output: 0, total: 0 },
               sonnet: { input: 0, output: 0, total: 0 }
-            }
+            },
+            breakdown: { user: 0, assistant: 0 }
           },
           cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
           duration: 0,
           lastActivity: new Date(),
-          thinkingTime: 0
+          thinkingTime: 0,
+          responseTime: 0,
+          contextWindow: {
+            used: 0,
+            limit: 200000,
+            percentage: 0,
+            remaining: 200000
+          },
+          model: 'claude-3-opus-20240229'
         }
       };
       
@@ -1104,11 +1160,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               
               console.log(`🔍 [ANALYTICS DEBUG] Session ${s.id}: Before processing, analytics tokens: ${analytics.tokens.total}`);
               
-              // Update message counts
+              // Update message counts - matches Claude Code
               analytics.totalMessages = existingMessages.length;
               analytics.userMessages = existingMessages.filter(m => m.type === 'user').length;
               analytics.assistantMessages = existingMessages.filter(m => m.type === 'assistant').length;
               analytics.toolUses = existingMessages.filter(m => m.type === 'tool_use').length;
+              analytics.systemMessages = existingMessages.filter(m => m.type === 'system').length;
               
               // Initialize byModel if it doesn't exist (for backward compatibility)
               if (!analytics.tokens.byModel) {
@@ -1331,6 +1388,33 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         console.log(`   New output this turn: ${outputTokens} tokens`);
                         console.log(`   TOTAL CONTEXT IN USE: ${actualContextInUse} / 200000 (${(actualContextInUse / 200000 * 100).toFixed(2)}%)`);
                         console.log(`   Previous total was: ${previousTotal}`);
+                      }
+                      
+                      // Update new analytics fields to match Claude Code
+                      // Update context window usage
+                      analytics.contextWindow = {
+                        used: analytics.tokens.total,
+                        limit: 200000,
+                        percentage: Math.min(100, (analytics.tokens.total / 200000 * 100)),
+                        remaining: Math.max(0, 200000 - analytics.tokens.total)
+                      };
+                      
+                      // Update conversation tokens
+                      analytics.tokens.conversationTokens = analytics.tokens.total - (analytics.tokens.cacheSize || 0);
+                      
+                      // Update token breakdown
+                      analytics.tokens.breakdown = {
+                        user: existingMessages.filter(m => m.type === 'user').reduce((sum, m) => {
+                          // Estimate user message tokens (rough calculation)
+                          const content = typeof m.message === 'string' ? m.message : JSON.stringify(m.message);
+                          return sum + Math.ceil(content.length / 4); // Rough estimate
+                        }, 0),
+                        assistant: analytics.tokens.output // Assistant tokens = output tokens
+                      };
+                      
+                      // Update average tokens per message
+                      if (analytics.totalMessages > 0) {
+                        analytics.tokens.average = Math.ceil(analytics.tokens.total / analytics.totalMessages);
                       }
                       
                       console.log(`📊 [TOKEN UPDATE] Session ${s.id}:`);
@@ -2023,45 +2107,35 @@ ${content}`;
     }));
     
     try {
-      // Check if this is a restored tab that needs spawning
-      const sessionStore = (window as any).__claudeSessionStore;
-      if (sessionStore && sessionStore[sessionToUse]?.pendingSpawn && sessionStore[sessionToUse]?.isRestored) {
-        console.log('[Store] Restored tab needs spawn - creating session first');
+      console.log('[Store] About to send message, checking connection state...');
+      console.log('[Store] claudeClient isConnected:', claudeClient.isConnected());
+      console.log('[Store] sessionToUse:', sessionToUse);
+      console.log('[Store] content length:', content.length);
+      
+      // CRITICAL: Ensure claudeClient is connected before proceeding
+      if (!claudeClient.isConnected()) {
+        console.error('[Store] Client not connected! Attempting to reconnect...');
+        // Force reconnection
+        await claudeClient.initialize();
+        // Wait a bit for connection
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        const sessionData = sessionStore[sessionToUse];
-        const { selectedModel } = get();
-        
-        // Create the session with the first message
-        const result = await claudeClient.createSession(
-          `tab ${get().sessions.findIndex(s => s.id === sessionToUse) + 1}`,
-          sessionData.workingDirectory,
-          {
-            sessionId: sessionToUse,
-            initialPrompt: content, // Pass the first message as initial prompt
-            model: selectedModel
-          }
-        );
-        
-        // Update the session store
-        delete sessionStore[sessionToUse];
-        
-        console.log('[Store] Restored tab spawned with session:', result);
-        
-        // Update the session with the real Claude session ID if returned
-        if (result?.sessionId) {
-          set(state => ({
-            sessions: state.sessions.map(s => 
-              s.id === sessionToUse 
-                ? { ...s, claudeSessionId: result.sessionId }
-                : s
-            )
-          }));
+        if (!claudeClient.isConnected()) {
+          throw new Error('Unable to connect to server');
         }
-      } else {
-        // Send message to Claude Code Server (REAL SDK) with selected model
-        const { selectedModel } = get();
-        console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse);
+      }
+      
+      // Send message to Claude Code Server (REAL SDK) with selected model
+      const { selectedModel } = get();
+      console.log('[Store] About to call claudeClient.sendMessage...');
+      console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse);
+      
+      try {
         await claudeClient.sendMessage(sessionToUse, content, selectedModel);
+        console.log('[Store] claudeClient.sendMessage completed successfully');
+      } catch (sendError) {
+        console.error('[Store] claudeClient.sendMessage failed:', sendError);
+        throw sendError;
       }
       
       // Messages are handled by the onMessage listener
@@ -2069,6 +2143,7 @@ ${content}`;
       console.log('[Store] Message sent successfully, waiting for response...');
     } catch (error) {
       console.error('[Store] Error sending message:', error);
+      console.error('[Store] Error stack:', error.stack);
       
       // Add error message to chat
       set(state => ({
@@ -2313,19 +2388,35 @@ ${content}`;
           userMessages: 0,
           assistantMessages: 0,
           toolUses: 0,
+          systemMessages: 0,
           tokens: { 
             input: 0, 
             output: 0, 
             total: 0,
+            cacheSize: 0,
+            cacheCreation: 0,
+            cacheRead: 0,
+            conversationTokens: 0,
+            systemTokens: 0,
+            average: 0,
             byModel: {
               opus: { input: 0, output: 0, total: 0 },
               sonnet: { input: 0, output: 0, total: 0 }
-            }
+            },
+            breakdown: { user: 0, assistant: 0 }
           },
           cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
           duration: 0,
           lastActivity: new Date(),
-          thinkingTime: 0
+          thinkingTime: 0,
+          responseTime: 0,
+          contextWindow: {
+            used: 0,
+            limit: 200000,
+            percentage: 0,
+            remaining: 200000
+          },
+          model: 'claude-3-opus-20240229'
         }
       };
       
@@ -2746,20 +2837,35 @@ ${content}`;
                 userMessages: 0,
                 assistantMessages: 0,
                 toolUses: 0,
+                systemMessages: 0,
                 tokens: { 
                   input: 0, 
                   output: 0, 
                   total: 0,
                   cacheSize: 0,
+                  cacheCreation: 0,
+                  cacheRead: 0,
+                  conversationTokens: 0,
+                  systemTokens: 0,
+                  average: 0,
                   byModel: {
                     opus: { input: 0, output: 0, total: 0 },
                     sonnet: { input: 0, output: 0, total: 0 }
-                  }
+                  },
+                  breakdown: { user: 0, assistant: 0 }
                 },
                 cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
                 duration: 0,
                 lastActivity: new Date(),
-                thinkingTime: 0
+                thinkingTime: 0,
+                responseTime: 0,
+                contextWindow: {
+                  used: 0,
+                  limit: 200000,
+                  percentage: 0,
+                  remaining: 200000
+                },
+                model: 'claude-3-opus-20240229'
               },
               updatedAt: new Date()
             }
@@ -3031,82 +3137,29 @@ ${content}`;
       const tabPaths = JSON.parse(stored) as string[];
       console.log('[Store] Restoring tabs:', tabPaths);
       
-      // Create sessions for each saved path
-      // Important: Don't call createSession which tries to connect to Claude
-      // Just create placeholder tabs that will spawn Claude on first message
+      // Wait for socket connection before creating sessions
+      const maxAttempts = 30; // 3 seconds
+      let attempts = 0;
+      while (!claudeClient.isConnected() && attempts < maxAttempts) {
+        console.log('[Store] Waiting for socket connection before restoring tabs...');
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+      }
+      
+      if (!claudeClient.isConnected()) {
+        console.error('[Store] Failed to connect to server, cannot restore tabs');
+        return;
+      }
+      
+      console.log('[Store] Socket connected, restoring tabs now');
+      
+      // Simply create new sessions for each saved path
+      // Don't try to restore Claude sessions - just create fresh tabs
       for (let i = 0; i < tabPaths.length; i++) {
         const path = tabPaths[i];
-        // Generate a temp session ID like the normal createSession does
-        // Add a small delay to ensure unique timestamps
-        await new Promise(resolve => setTimeout(resolve, 10));
-        const timestamp = Date.now().toString(36);
-        const random1 = Math.random().toString(36).substring(2, 8);
-        const random2 = Math.random().toString(36).substring(2, 8);
-        const sessionId = `temp-${timestamp}-${random1}-${random2}`;
-        // Use the current state to get the right tab number
-        const currentState = get();
-        const tabNumber = currentState.sessions.length + 1;
-        
-        // Create a placeholder session without Claude connection
-        const newSession: Session = {
-          id: sessionId,
-          name: `tab ${tabNumber}`,
-          status: 'active' as const,
-          messages: [],
-          workingDirectory: path,
-          createdAt: new Date(),
-          updatedAt: new Date(),
-          claudeSessionId: null, // No Claude session yet
-          claudeTitle: `tab ${tabNumber}`,
-          pendingToolIds: new Set(),
-          analytics: {
-            totalMessages: 0,
-            userMessages: 0,
-            assistantMessages: 0,
-            totalTokensInput: 0,
-            totalTokensOutput: 0,
-            totalCacheCreationInputTokens: 0,
-            totalCacheReadInputTokens: 0,
-            messageCount: 0,
-            toolCalls: 0,
-            fileOperations: 0,
-            bashCommands: 0,
-            thinkingTime: 0
-          },
-          streaming: false,
-          modifiedFiles: new Set()
-        };
-        
-        set(state => ({
-          sessions: [...state.sessions, newSession],
-          currentSessionId: sessionId
-        }));
-        
-        // Register the session for deferred spawn regardless of backend
-        // For Socket.IO, we'll spawn on first message in sendMessage
-        if (window) {
-          if (!(window as any).__claudeSessionStore) {
-            (window as any).__claudeSessionStore = {};
-          }
-          
-          const { selectedModel } = get();
-          const modelMap: Record<string, string> = {
-            'opus': 'claude-opus-4-1-20250805',
-            'sonnet': 'claude-sonnet-4-20250514'
-          };
-          
-          (window as any).__claudeSessionStore[sessionId] = {
-            sessionId: sessionId,
-            workingDirectory: path,
-            model: modelMap[selectedModel] || 'claude-opus-4-1-20250805',
-            pendingSpawn: true,
-            isRestored: true // Mark as restored for special handling
-          };
-          
-          console.log('[Store] Registered restored tab in session store for deferred spawn');
-        }
-        
-        console.log('[Store] Restored tab for path:', path);
+        // Call the regular createSession function which will create a fresh session
+        await get().createSession(undefined, path);
+        console.log('[Store] Created new tab for path:', path);
       }
     } catch (err) {
       console.error('[Store] Failed to restore tabs:', err);

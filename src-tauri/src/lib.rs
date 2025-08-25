@@ -528,6 +528,7 @@ pub fn run() {
             commands::toggle_devtools,
             commands::select_folder,
             commands::get_server_port,
+            commands::read_port_file,
             commands::get_home_directory,
             commands::get_current_directory,
             commands::new_window,

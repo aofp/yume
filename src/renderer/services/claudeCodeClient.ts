@@ -23,12 +23,16 @@ export class ClaudeCodeClient {
     console.log('[ClaudeCodeClient] Is Tauri:', isTauri());
     console.log('[ClaudeCodeClient] Window location:', window.location.href);
     
-    // Only auto-connect if not in Tauri, or if server is available
-    if (!isTauri()) {
-      this.discoverAndConnect();
+    // In production, wait a bit for the server to fully start
+    // This prevents race conditions where the client tries to connect too early
+    if (isTauri()) {
+      console.log('[ClaudeCodeClient] Production mode - waiting for server to start...');
+      setTimeout(() => {
+        this.discoverAndConnect();
+      }, 2000); // Wait 2 seconds for server to be ready
     } else {
-      // In Tauri, check if server is available first
-      this.checkServerAndConnect();
+      // Dev mode - connect immediately
+      this.discoverAndConnect();
     }
   }
   
@@ -77,44 +81,128 @@ export class ClaudeCodeClient {
     }
     
     console.error('[ClaudeCodeClient] Server health check failed after all retries');
-    console.log('📡 Node.js server not available. Please check the server console.');
+    console.log('[ClaudeCodeClient] Falling back to port discovery...');
+    // Fall back to port discovery
+    await this.discoverAndConnect();
   }
 
   private async discoverAndConnect() {
     console.log('[ClaudeCodeClient] Starting server discovery...');
+    console.log('[ClaudeCodeClient] isTauri():', isTauri());
+    console.log('[ClaudeCodeClient] window.__TAURI__:', typeof window !== 'undefined' && '__TAURI__' in window);
+    
+    // FIRST: Try to get the actual running server port from Tauri
+    // The server writes port to ~/.yurucode/current-port.txt
+    if (isTauri() && platformAPI && platformAPI.claude && platformAPI.claude.readPortFile) {
+      try {
+        // Use custom Tauri command to read the port file
+        const port = await platformAPI.claude.readPortFile();
+        if (port && !isNaN(port)) {
+          console.log(`[ClaudeCodeClient] Found port ${port} from readPortFile command`);
+          this.serverPort = port;
+          this.connectWithRetry();
+          return;
+        }
+      } catch (err) {
+        console.log('[ClaudeCodeClient] Could not read port via readPortFile:', err);
+        // Fall through to port discovery
+      }
+    }
+    
+    // Write debug info to localStorage for production debugging
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem('yurucode-debug', JSON.stringify({
+        time: new Date().toISOString(),
+        isTauri: isTauri(),
+        hasTauriGlobal: '__TAURI__' in window,
+        platformAPI: !!platformAPI,
+        claudeAPI: !!(platformAPI && platformAPI.claude),
+        getServerPort: !!(platformAPI && platformAPI.claude && platformAPI.claude.getServerPort)
+      }));
+    }
     
     // For Tauri, get the dynamic port from the backend
     if (isTauri()) {
       console.log('[ClaudeCodeClient] Tauri mode - getting dynamic port...');
+      console.log('[ClaudeCodeClient] platformAPI:', platformAPI);
+      console.log('[ClaudeCodeClient] platformAPI.claude:', platformAPI.claude);
       try {
         const port = await platformAPI.claude.getServerPort();
         console.log('[ClaudeCodeClient] Got dynamic port from Tauri:', port);
+        
+        // Store port in localStorage for debugging
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('yurucode-port', String(port));
+        }
+        
         this.serverPort = port;
         this.connectWithRetry();
         return;
       } catch (err) {
         console.error('[ClaudeCodeClient] Failed to get server port from Tauri:', err);
+        console.error('[ClaudeCodeClient] Error details:', err.message, err.stack);
+        
+        // Store error in localStorage for debugging
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem('yurucode-error', JSON.stringify({
+            time: new Date().toISOString(),
+            error: err.message,
+            stack: err.stack
+          }));
+        }
         // Fall through to port discovery
       }
     }
     
     // Fallback: Try to discover running servers by checking multiple ports
-    const portsToCheck = [3001, 3002, 3003, 3004, 3005];
-    for (const port of portsToCheck) {
+    // Start with most likely production ports based on our pattern
+    const commonPorts = [
+      55849, 46937, // Current production ports we just saw
+      49674, 50349, 63756, 54293, 59931, // Recently seen production ports  
+      3001, 3002, 3003, 3004, 3005 // Development ports
+    ];
+    
+    // Scan broader range systematically
+    const dynamicPorts = [];
+    // Check every 50th port in the typical Tauri range
+    for (let p = 35000; p <= 65000; p += 50) {
+      dynamicPorts.push(p, p+37, p+49); // Common offsets we've seen
+    }
+    
+    const portsToCheck = [...commonPorts, ...dynamicPorts];
+    
+    console.log('[ClaudeCodeClient] Fallback port discovery - checking', portsToCheck.length, 'ports...');
+    
+    // Check ports in parallel for faster discovery
+    const checkPort = async (port) => {
       try {
         const response = await fetch(`http://localhost:${port}/health`, { 
-          signal: AbortSignal.timeout(1000) 
+          signal: AbortSignal.timeout(500)
         });
         if (response.ok) {
           const data = await response.json();
           if (data.service === 'yurucode-claude') {
-            this.serverPort = port;
-            this.connectWithRetry();
-            return;
+            return port;
           }
         }
       } catch (err) {
-        // Port not available, continue
+        // Port not available
+      }
+      return null;
+    };
+    
+    // Check ports in batches
+    const batchSize = 10;
+    for (let i = 0; i < portsToCheck.length; i += batchSize) {
+      const batch = portsToCheck.slice(i, i + batchSize);
+      const results = await Promise.all(batch.map(checkPort));
+      const foundPort = results.find(p => p !== null);
+      
+      if (foundPort) {
+        console.log(`[ClaudeCodeClient] Found server on port ${foundPort} via fallback discovery!`);
+        this.serverPort = foundPort;
+        this.connectWithRetry();
+        return;
       }
     }
     
@@ -128,34 +216,21 @@ export class ClaudeCodeClient {
   private async connectWithRetry(retries = 10, delay = 1000) {
     console.log(`[ClaudeCodeClient] Connection attempt (${10 - retries + 1}/10) to port ${this.serverPort}`);
     
-    // First check if server is responding
-    try {
-      const response = await fetch(`http://localhost:${this.serverPort}/health`);
-      if (response.ok) {
-        console.log('[ClaudeCodeClient] Health check passed, connecting...');
-        this.connect();
-        return;
-      }
-      console.warn('[ClaudeCodeClient] Health check failed:', response.status);
-    } catch (err) {
-      console.warn('[ClaudeCodeClient] Health check error:', err);
-    }
-    
-    if (retries > 0) {
-      console.log(`[ClaudeCodeClient] Retrying in ${delay}ms...`);
-      setTimeout(() => {
-        this.connectWithRetry(retries - 1, Math.min(delay * 1.5, 5000));
-      }, delay);
-    } else {
-      console.warn('[ClaudeCodeClient] Max retries reached, attempting direct connection');
-      // Try to connect anyway - Socket.IO will keep retrying
-      this.connect();
-    }
+    // Skip health check and connect directly - Socket.IO will handle retries
+    // The health check might be failing due to CORS or other issues in production
+    console.log('[ClaudeCodeClient] Connecting directly without health check...');
+    this.connect();
   }
 
   private connect() {
     if (!this.serverPort) {
       console.error('[ClaudeCodeClient] No server port available');
+      return;
+    }
+    
+    // Prevent multiple connections
+    if (this.socket && (this.socket.connected || this.socket.connecting)) {
+      console.log('[ClaudeCodeClient] Already connected or connecting, skipping duplicate connection');
       return;
     }
     
@@ -243,7 +318,8 @@ export class ClaudeCodeClient {
   }
 
   isConnected(): boolean {
-    return this.connected;
+    // Return actual socket connection state, not just our flag
+    return !!(this.socket && this.socket.connected);
   }
 
   getServerPort(): number | null {
@@ -251,9 +327,38 @@ export class ClaudeCodeClient {
   }
 
   async createSession(name: string, workingDirectory: string, options?: any): Promise<any> {
+    // Wait for connection if socket exists but not connected yet
+    if (this.socket && !this.socket.connected) {
+      console.log('[Client] Socket exists but not connected, waiting for connection before creating session...');
+      await new Promise<void>((resolve) => {
+        const checkConnection = setInterval(() => {
+          // Check actual socket connection state
+          if (this.socket && this.socket.connected) {
+            console.log('[Client] Connection established, proceeding with session creation');
+            this.connected = true; // Update our flag
+            clearInterval(checkConnection);
+            resolve();
+          }
+        }, 100);
+        
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          clearInterval(checkConnection);
+          console.warn('[Client] Connection wait timed out after 5 seconds');
+          resolve(); // Let it try anyway
+        }, 5000);
+      });
+    }
+    
     return new Promise((resolve, reject) => {
-      if (!this.socket) {
-        console.error('[Client] Cannot create session - not connected to server');
+      // Check actual socket connection state
+      if (!this.socket || !this.socket.connected) {
+        console.error('[Client] Cannot create session - not connected to server', {
+          hasSocket: !!this.socket,
+          socketConnected: this.socket?.connected,
+          socketConnecting: this.socket?.connecting,
+          ourFlag: this.connected
+        });
         reject(new Error('Not connected to server'));
         return;
       }
@@ -376,9 +481,38 @@ export class ClaudeCodeClient {
   }
   
   async sendMessage(sessionId: string, content: string, model?: string): Promise<void> {
+    // Wait for connection if socket exists but not connected yet
+    if (this.socket && !this.socket.connected) {
+      console.log('[Client] Socket exists but not connected, waiting for connection...');
+      await new Promise<void>((resolve) => {
+        const checkConnection = setInterval(() => {
+          // Check actual socket connection state, not our flag
+          if (this.socket && this.socket.connected) {
+            console.log('[Client] Connection established, proceeding with message');
+            this.connected = true; // Update our flag
+            clearInterval(checkConnection);
+            resolve();
+          }
+        }, 100);
+        
+        // Timeout after 5 seconds
+        setTimeout(() => {
+          clearInterval(checkConnection);
+          console.warn('[Client] Connection wait timed out after 5 seconds');
+          resolve(); // Let it try anyway
+        }, 5000);
+      });
+    }
+    
     return new Promise((resolve, reject) => {
-      if (!this.socket) {
-        console.error('[Client] Cannot send message - not connected to server');
+      // Check actual socket connection state
+      if (!this.socket || !this.socket.connected) {
+        console.error('[Client] Cannot send message - not connected to server', {
+          hasSocket: !!this.socket,
+          socketConnected: this.socket?.connected,
+          socketConnecting: this.socket?.connecting,
+          ourFlag: this.connected
+        });
         reject(new Error('Not connected to server'));
         return;
       }
@@ -436,11 +570,6 @@ export class ClaudeCodeClient {
   }
 
   onMessage(sessionId: string, handler: (message: any) => void): () => void {
-    if (!this.socket) {
-      console.warn('[Client] Cannot listen for messages - not connected');
-      return () => {};
-    }
-
     const channel = `message:${sessionId}`;
     
     // Wrap handler with extensive logging
@@ -499,6 +628,37 @@ export class ClaudeCodeClient {
       
       handler(message);
     };
+    
+    // If socket doesn't exist yet, wait for it
+    if (!this.socket) {
+      console.warn('[Client] Socket not ready, waiting for connection before setting up message listener for', channel);
+      
+      // Set up a delayed subscription that will activate once connected
+      const checkInterval = setInterval(() => {
+        if (this.socket && this.connected) {
+          console.log('[Client] Socket now ready, setting up delayed message listener for', channel);
+          clearInterval(checkInterval);
+          
+          // Store handler
+          this.messageHandlers.set(channel, loggingHandler);
+          
+          // Listen for messages
+          this.socket.on(channel, loggingHandler);
+        }
+      }, 100);
+      
+      // Return cleanup that clears the interval and removes handler if set up
+      return () => {
+        clearInterval(checkInterval);
+        if (this.socket) {
+          const storedHandler = this.messageHandlers.get(channel);
+          if (storedHandler) {
+            this.socket.off(channel, storedHandler);
+            this.messageHandlers.delete(channel);
+          }
+        }
+      };
+    }
     
     // Store handler
     this.messageHandlers.set(channel, loggingHandler);

@@ -663,6 +663,7 @@ let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let activeProcessStartTimes = new Map();  // Map of sessionId -> process start time
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
+let allAssistantMessageIds = new Map();  // Map of sessionId -> Array of all assistant message IDs
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
 
@@ -4794,7 +4795,7 @@ pub fn start_logged_server(port: u16) {
 }
 
 /// macOS-specific server startup
-/// Uses an external server file (server-claude-macos.js) rather than embedded code
+/// Uses an external server file (server-claude-macos.cjs) rather than embedded code
 /// This allows for easier debugging and avoids code signing issues
 /// Handles both development (project root) and production (.app bundle) scenarios
 #[cfg(target_os = "macos")]
@@ -4816,7 +4817,7 @@ fn start_macos_server(port: u16) {
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("server-claude-macos.js"))
+            .map(|p| p.join("server-claude-macos.cjs"))
     } else {
         // In production, try both .js and .cjs versions
         info!("Production mode - looking for server in .app bundle");
@@ -4834,7 +4835,7 @@ fn start_macos_server(port: u16) {
                 write_log(&format!("Resources dir: {:?}", resources_dir));
                 
                 // Try .js first (original working file)
-                let server_js = resources_dir.join("server-claude-macos.js");
+                let server_js = resources_dir.join("server-claude-macos.cjs");
                 if server_js.exists() {
                     write_log(&format!("Found server.js at: {:?}", server_js));
                     return Some(server_js);

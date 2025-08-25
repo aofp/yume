@@ -540,6 +540,7 @@ let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let activeProcessStartTimes = new Map();  // Map of sessionId -> process start time
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
+let allAssistantMessageIds = new Map();  // Map of sessionId -> Array of all assistant message IDs
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
 
@@ -708,7 +709,9 @@ app.get('/health', (req, res) => {
     status: 'ok', 
     pid: process.pid,
     service: 'yurucode-claude',
-    claudeCodeLoaded: true
+    claudeCodeLoaded: true,
+    port: PORT,
+    sessions: Object.keys(sessions).length
   });
 });
 
@@ -2385,7 +2388,19 @@ function writePidFile() {
     console.log(`📝 Server PID ${process.pid} written to ${pidFilePath}`);
   } catch (err) {
     console.log(`⚠️ Could not write PID file (running from read-only location?):`, err.message);
-    // Don't fail if we can't write PID file in production
+  }
+  
+  // CRITICAL: Write port to user-writable location for client discovery
+  try {
+    const userPortDir = join(homedir(), '.yurucode');
+    if (!existsSync(userPortDir)) {
+      mkdirSync(userPortDir, { recursive: true });
+    }
+    const portFile = join(userPortDir, 'current-port.txt');
+    writeFileSync(portFile, String(PORT));
+    console.log(`📝 Server PORT ${PORT} written to ${portFile}`);
+  } catch (err) {
+    console.log(`⚠️ Could not write port file:`, err.message);
   }
 }
 

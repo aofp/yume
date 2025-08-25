@@ -174,6 +174,32 @@ pub async fn get_server_port(state: State<'_, AppState>) -> Result<u16, String> 
     Ok(state.server_port())
 }
 
+/// Reads the port number from the ~/.yurucode/current-port.txt file
+/// This file is written by the server when it starts to enable discovery
+#[tauri::command]
+pub async fn read_port_file() -> Result<u16, String> {
+    use std::fs;
+    use std::path::PathBuf;
+    
+    let home = std::env::var("HOME")
+        .or_else(|_| std::env::var("USERPROFILE"))
+        .map_err(|_| "Could not find home directory")?;
+    
+    let port_file = PathBuf::from(home).join(".yurucode").join("current-port.txt");
+    
+    if !port_file.exists() {
+        return Err(format!("Port file does not exist: {:?}", port_file));
+    }
+    
+    let content = fs::read_to_string(&port_file)
+        .map_err(|e| format!("Failed to read port file: {}", e))?;
+    
+    let port = content.trim().parse::<u16>()
+        .map_err(|e| format!("Invalid port number in file: {}", e))?;
+    
+    Ok(port)
+}
+
 /// Creates a new application window with the same configuration as the main window
 /// Each window gets a unique ID to support multiple instances
 /// Windows are borderless, transparent, and have custom decorations

@@ -256,3 +256,4 @@ See `YURUCODE_TODO.md` for comprehensive list including:
 - Token optimization and auto-compact triggers
 - Better error recovery and retry mechanisms
 - Performance profiling and debugging tools
+- don't run dmg - npm run tauri:build:mac automatically runs dmg
