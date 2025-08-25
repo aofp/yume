@@ -1764,7 +1764,7 @@ textarea.context-full {
   padding: 4px;
   background: none;
   border: none;
-  color: white;
+  color: #fffa;
   text-align: left;
   cursor: default;
   transition: all 0.15s ease;
