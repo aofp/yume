@@ -5,7 +5,7 @@
   "identifier": "be.yuru.yurucode",
   "build": {
     "frontendDist": "../dist/renderer",
-    "devUrl": "http://localhost:60548",
+    "devUrl": "http://localhost:60350",
     "beforeDevCommand": "",
     "beforeBuildCommand": "npm run build"
   },

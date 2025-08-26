@@ -60,7 +60,9 @@ export const App: React.FC = () => {
       }
     }, 100);
     return () => clearTimeout(timer);
-  }, [rememberTabs, restoreTabs]);
+    // Only run on mount, not when rememberTabs changes
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   
   // Listen for upgrade modal events
   useEffect(() => {

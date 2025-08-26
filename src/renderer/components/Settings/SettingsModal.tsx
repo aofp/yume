@@ -295,32 +295,54 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
           <div className="settings-content">
             <div className="settings-section">
               <h4>preferences</h4>
-              <label className="checkbox-setting">
+              <div className="checkbox-setting">
                 <span className="checkbox-label">remember tabs</span>
+                <div className="toggle-switch-container">
+                  <div 
+                    className={`toggle-switch ${rememberTabs ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setRememberTabs(!rememberTabs);
+                    }}
+                  >
+                    <span className="toggle-switch-label off">off</span>
+                    <span className="toggle-switch-label on">on</span>
+                    <div className="toggle-switch-slider" />
+                  </div>
+                </div>
                 <input
                   type="checkbox"
                   checked={rememberTabs}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    setRememberTabs(e.target.checked);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => {}}
                   className="checkbox-input"
+                  tabIndex={-1}
+                  aria-hidden="true"
                 />
-              </label>
-              <label className="checkbox-setting">
+              </div>
+              <div className="checkbox-setting">
                 <span className="checkbox-label">auto-generate titles</span>
+                <div className="toggle-switch-container">
+                  <div 
+                    className={`toggle-switch ${autoGenerateTitle ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAutoGenerateTitle(!autoGenerateTitle);
+                    }}
+                  >
+                    <span className="toggle-switch-label off">off</span>
+                    <span className="toggle-switch-label on">on</span>
+                    <div className="toggle-switch-slider" />
+                  </div>
+                </div>
                 <input
                   type="checkbox"
                   checked={autoGenerateTitle}
-                  onChange={(e) => {
-                    e.stopPropagation();
-                    setAutoGenerateTitle(e.target.checked);
-                  }}
-                  onClick={(e) => e.stopPropagation()}
+                  onChange={() => {}}
                   className="checkbox-input"
+                  tabIndex={-1}
+                  aria-hidden="true"
                 />
-              </label>
+              </div>
             </div>
 
             <div className="settings-section">
@@ -338,7 +360,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                       <IconRotateClockwise size={12} />
                     </button>
                     <button
-                      className="color-preview compact"
+                      className="color-preview"
                       onClick={() => setShowColorPicker(showColorPicker === 'accent' ? null : 'accent')}
                       title="click to select accent color"
                     >
@@ -360,7 +382,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                       <IconRotateClockwise size={12} />
                     </button>
                     <button
-                      className="color-preview compact"
+                      className="color-preview"
                       onClick={() => setShowColorPicker(showColorPicker === 'positive' ? null : 'positive')}
                       title="click to select positive color"
                     >
@@ -382,7 +404,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                       <IconRotateClockwise size={12} />
                     </button>
                     <button
-                      className="color-preview compact"
+                      className="color-preview"
                       onClick={() => setShowColorPicker(showColorPicker === 'negative' ? null : 'negative')}
                       title="click to select negative color"
                     >
