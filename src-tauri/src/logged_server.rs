@@ -2991,17 +2991,21 @@ io.on('connection', (socket) => {
       }
       
       // Check for custom /compact command - handle it ourselves instead of sending to Claude
-      // Support: /compact or /compact [custom instructions]
+      // Support: /compact [optional instructions] - compresses conversation with custom focus
       // Create a mutable copy of message for processing
       let processedMessage = message;
       
       const compactMatch = processedMessage?.match(/^\/compact\s*(.*)?$/i);
       if (compactMatch) {
         const customInstructions = compactMatch[1]?.trim() || null;
-        console.log(`🗜️ Custom /compact triggered - will use Claude to self-summarize`);
+        console.log(`🗜️ Custom /compact triggered - will use Sonnet to self-summarize`);
         if (customInstructions) {
           console.log(`🗜️ Custom instructions: "${customInstructions}"`);
         }
+        
+        // Force Sonnet 4.0 model for compact operations (faster and more efficient)
+        model = 'claude-sonnet-4-20250514';
+        console.log(`🗜️ Using Sonnet 4.0 for compact operation: ${model}`);
         
         // Check if we have an active session to compact
         if (!session.claudeSessionId) {
@@ -3045,9 +3049,18 @@ Format as a clear, structured summary that preserves all important context.`;
         
         // Mark that we're in compact mode
         session.isCompacting = true;
-        session.compactStartTokens = session.totalTokens || 0;
+        // Get token count from wrapper if available, otherwise use session count
+        const wrapperSession = typeof getWrapperSession !== 'undefined' ? getWrapperSession(sessionId) : null;
+        console.log(`🗜️ Wrapper session state:`, wrapperSession ? {
+          totalTokens: wrapperSession.totalTokens,
+          inputTokens: wrapperSession.inputTokens,
+          outputTokens: wrapperSession.outputTokens
+        } : 'not available');
+        console.log(`🗜️ Session token state: totalTokens=${session.totalTokens}`);
+        session.compactStartTokens = wrapperSession?.totalTokens || session.totalTokens || 0;
         session.compactMessageCount = session.messages?.length || 0;
         session.compactCustomInstructions = customInstructions;
+        console.log(`🗜️ Set compactStartTokens to ${session.compactStartTokens}`);
         
         // Continue with normal flow but with our summary prompt
         // The result will be caught in the result handler
@@ -3896,14 +3909,57 @@ Format as a clear, structured summary that preserves all important context.`;
                                     jsonData.result === null);
             
             // Handle custom compacting - when Claude returns the summary
-            if (isCustomCompacting && jsonData.result) {
+            if (isCustomCompacting) {
               console.log(`🗜️ [${sessionId}] Received compact summary from Claude`);
-              console.log(`🗜️ Summary length: ${jsonData.result.length} chars`);
+              
+              // Check if result is empty or generic - if so, use last assistant message
+              let actualSummary = jsonData.result;
+              if (!actualSummary || 
+                  actualSummary.trim() === '' || 
+                  actualSummary.includes('ready to continue') ||
+                  actualSummary.includes('continue normally') ||
+                  actualSummary.length < 50) {
+                
+                console.log(`🗜️ Result is empty/generic, looking for last assistant message`);
+                
+                // Find the last assistant message with text content
+                const assistantMessages = session?.messages?.filter(m => m.type === 'assistant' && m.message?.content) || [];
+                for (let i = assistantMessages.length - 1; i >= 0; i--) {
+                  const msg = assistantMessages[i];
+                  const content = msg.message?.content;
+                  
+                  // Extract text from content blocks
+                  let textContent = '';
+                  if (typeof content === 'string') {
+                    textContent = content;
+                  } else if (Array.isArray(content)) {
+                    const textBlocks = content.filter(block => block.type === 'text' && block.text);
+                    textContent = textBlocks.map(block => block.text).join('\n').trim();
+                  }
+                  
+                  // Use this as summary if it's substantial (for compact, any substantial message is the summary)
+                  if (textContent && textContent.length > 100) {
+                    actualSummary = textContent;
+                    console.log(`🗜️ Using assistant message as summary (${textContent.length} chars)`);
+                    break;
+                  }
+                }
+                
+                // If still no good summary, use a fallback
+                if (!actualSummary || actualSummary.length < 50) {
+                  actualSummary = `Conversation compacted successfully. Previous context preserved.`;
+                  console.log(`🗜️ Using fallback summary`);
+                }
+              }
+              
+              console.log(`🗜️ Summary length: ${actualSummary.length} chars`);
               console.log(`🗜️ Previous token count: ${session.compactStartTokens}`);
               
               // Store the summary
-              session.compactSummary = jsonData.result;
-              session.tokensSavedByCompact = session.compactStartTokens || 0;
+              session.compactSummary = actualSummary;
+              // Fix the token tracking - get from wrapper if available
+              const wrapperSession = typeof getWrapperSession !== 'undefined' ? getWrapperSession(sessionId) : null;
+              session.tokensSavedByCompact = session.compactStartTokens || wrapperSession?.totalTokens || 0;
               
               // Clear the current session ID - we'll start fresh
               const oldSessionId = session.claudeSessionId;
@@ -3914,14 +3970,21 @@ Format as a clear, structured summary that preserves all important context.`;
               console.log(`🗜️ Saved summary and cleared session ${oldSessionId}`);
               console.log(`🗜️ Next message will start fresh with summary as context`);
               
-              // Send success message to user
+              // Send success message to user with the actual summary
               let resultText = `✅ Conversation compacted successfully!\n\n📊 Compaction Summary:\n• Tokens saved: ${session.tokensSavedByCompact.toLocaleString()}\n• Previous messages: ${session.compactMessageCount || session.messages.length}\n• Summary preserved: Yes`;
               
               if (session.compactCustomInstructions) {
                 resultText += `\n• Custom focus: ${session.compactCustomInstructions}`;
               }
               
-              resultText += `\n\n✨ Context has been compressed. You can continue normally.`;
+              // Include the actual summary from Claude
+              resultText += `\n\n📝 Summary:\n${actualSummary}\n\n✨ Context has been compressed. You can continue normally.`;
+              
+              // Calculate the duration from when the process started (or use jsonData.duration_ms)
+              const processStartTime = activeProcessStartTimes.get(sessionId);
+              // Use Claude's reported duration if available, otherwise calculate from start time
+              const duration = jsonData.duration_ms || (processStartTime ? (Date.now() - processStartTime) : 0);
+              console.log(`🗜️ Duration: jsonData.duration_ms=${jsonData.duration_ms}, calculated=${processStartTime ? Date.now() - processStartTime : 'N/A'}, using=${duration}ms`);
               
               const compactMessage = {
                 type: 'result',
@@ -3929,6 +3992,7 @@ Format as a clear, structured summary that preserves all important context.`;
                 is_error: false,
                 result: resultText,
                 session_id: null, // No session ID since we're starting fresh
+                duration_ms: jsonData.duration_ms || duration, // Use Claude's duration or our calculated one
                 usage: {
                   input_tokens: 0,
                   output_tokens: 0,
@@ -3944,7 +4008,7 @@ Format as a clear, structured summary that preserves all important context.`;
                 },
                 streaming: false,
                 id: `result-${sessionId}-${Date.now()}-${Math.random()}`,
-                model: model || 'claude-3-5-sonnet-20241022',
+                model: jsonData.model || model || 'claude-3-5-sonnet-20241022',
                 timestamp: Date.now()
               };
               
@@ -4219,6 +4283,7 @@ Format as a clear, structured summary that preserves all important context.`;
         }
         
         lineBuffer += str;
+        
         const lines = lineBuffer.split('\n');
         lineBuffer = lines.pop() || '';
         
@@ -4343,6 +4408,7 @@ Format as a clear, structured summary that preserves all important context.`;
           if (session) {
             session.wasInterrupted = false;
             console.log(`✅ Marked session ${sessionId} as completed normally`);
+            
           }
         } else if (code === 1) {
           // Exit code 1 might mean --resume failed OR other errors

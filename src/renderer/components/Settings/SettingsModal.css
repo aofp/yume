@@ -782,11 +782,11 @@ input[type="checkbox"].checkbox-input {
 }
 
 /* macOS specific adjustment - move slider up by 2px */
-@supports (-webkit-appearance: none) and (not (-moz-appearance: none)) {
+/* @supports (-webkit-appearance: none) and (not (-moz-appearance: none)) { */
   .toggle-switch-slider {
     top: -2px;
   }
-}
+/* } */
 
 .toggle-switch.active .toggle-switch-slider {
   transform: translateX(60px);  /* Move by 60px to align with right side */

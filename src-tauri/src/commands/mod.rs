@@ -1186,13 +1186,15 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
     {
         use windows::Win32::Foundation::HWND;
         use windows::Win32::UI::WindowsAndMessaging::{
-            SetForegroundWindow, SetActiveWindow, SetFocus,
-            ShowWindow, SW_RESTORE, BringWindowToTop
+            SetForegroundWindow,
+            ShowWindow, SW_RESTORE, BringWindowToTop,
+            GetForegroundWindow, GetWindowThreadProcessId
         };
-        use windows::Win32::System::Threading::GetCurrentThreadId;
-        use windows::Win32::UI::WindowsAndMessaging::{
-            GetForegroundWindow, AttachThreadInput, 
-            GetWindowThreadProcessId
+        use windows::Win32::UI::Input::KeyboardAndMouse::{
+            SetActiveWindow, SetFocus
+        };
+        use windows::Win32::System::Threading::{
+            GetCurrentThreadId, AttachThreadInput
         };
         
         let hwnd = window.hwnd().map_err(|e| format!("Failed to get window handle: {}", e))?;
@@ -1202,7 +1204,7 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
             // Get the thread of the foreground window
             let foreground = GetForegroundWindow();
             let mut foreground_thread = 0u32;
-            if foreground.0 != 0 {
+            if !foreground.0.is_null() {
                 foreground_thread = GetWindowThreadProcessId(foreground, None);
             }
             
@@ -1212,7 +1214,7 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
             // This allows us to bring our window to the foreground more reliably
             let mut attached = false;
             if foreground_thread != 0 && foreground_thread != current_thread {
-                attached = AttachThreadInput(current_thread, foreground_thread, true).is_ok();
+                attached = AttachThreadInput(current_thread, foreground_thread, true).as_bool();
             }
             
             // Multiple attempts to ensure window gets focus
