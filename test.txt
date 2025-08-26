@@ -1,15 +1,15 @@
 Name: Alice Johnson
-Age: 28
-City: New York
-Email: john.smith@example.com
+Age: 29
+City: Seattle
+Email: alice.johnson@example.com
 Phone: (555) 123-4567
-Department: Data Science
+Department: Product
 Start Date: 2022-03-15
-Salary: $105000
-Skills: JavaScript, Python, React, Node.js
+Salary: $125000
+Skills: JavaScript, Python, React, Node.js, Rust, Go
 Status: Active
-Added some new data: timestamp 2025-08-24
-Random number: 42
+Added some new data: timestamp 2025-08-26
+Random number: 512
 Status: Testing complete
 Author: Claude Code Assistant
 Edit test: Modified at 2025-08-24
@@ -20,3 +20,9 @@ Line 19: Fourth new line
 Line 20: Fifth new line
 Line 21: Test edit by claude
 Line 22: Another test modification
+Line 23: New test line added
+Line 24: Testing edit functionality
+Line 25: Final test edit
+Line 26: Additional test content
+Line 27: More testing data
+Line 28: Last edit for now

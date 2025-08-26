@@ -3568,91 +3568,9 @@ Format as a clear, structured summary that preserves all important context.`;
                 } else if (block.type === 'tool_use') {
                   hasToolUse = true;
                   
-                  // Calculate line numbers for Edit/MultiEdit tools
-                  let enhancedInput = block.input;
-                  if ((block.name === 'Edit' || block.name === 'MultiEdit') && block.input?.file_path) {
-                    try {
-                      const filePath = block.input.file_path;
-                      // Handle both absolute and relative paths
-                      const fullPath = isAbsolute(filePath) ? filePath : join(session.workingDirectory || process.cwd(), filePath);
-                      
-                      console.log(`📍 [${sessionId}] Calculating line numbers for ${block.name} on ${fullPath}`);
-                      
-                      if (existsSync(fullPath)) {
-                        const fileContent = readFileSync(fullPath, 'utf8');
-                        const fileLines = fileContent.split('\n');
-                        console.log(`📍 [${sessionId}] File has ${fileLines.length} lines`);
-                        
-                        if (block.name === 'Edit' && block.input.old_string) {
-                          // Find line number for single edit
-                          const oldString = block.input.old_string;
-                          const oldLines = oldString.split('\n');
-                          console.log(`📍 [${sessionId}] Looking for ${oldLines.length} line(s) in file`);
-                          
-                          // Find where this text appears in the file
-                          let found = false;
-                          for (let i = 0; i <= fileLines.length - oldLines.length; i++) {
-                            let match = true;
-                            for (let j = 0; j < oldLines.length; j++) {
-                              if (fileLines[i + j] !== oldLines[j]) {
-                                match = false;
-                                break;
-                              }
-                            }
-                            if (match) {
-                              enhancedInput = { ...block.input, lineNumber: i + 1, endLineNumber: i + oldLines.length };
-                              console.log(`📍 [${sessionId}] Found edit at lines ${i + 1}-${i + oldLines.length}`);
-                              found = true;
-                              break;
-                            }
-                          }
-                          if (!found) {
-                            console.log(`📍 [${sessionId}] Could not find exact match for old_string in file`);
-                          }
-                        } else if (block.name === 'MultiEdit' && block.input.edits) {
-                          // Find line numbers for multiple edits
-                          let currentFileContent = fileContent;
-                          let currentFileLines = fileLines;
-                          
-                          const editsWithLineNumbers = block.input.edits.map((edit, editIdx) => {
-                            if (!edit.old_string) return edit;
-                            
-                            const oldLines = edit.old_string.split('\n');
-                            console.log(`📍 [${sessionId}] Edit ${editIdx + 1}: Looking for ${oldLines.length} line(s)`);
-                            
-                            // Find where this text appears in the current file state
-                            for (let i = 0; i <= currentFileLines.length - oldLines.length; i++) {
-                              let match = true;
-                              for (let j = 0; j < oldLines.length; j++) {
-                                if (currentFileLines[i + j] !== oldLines[j]) {
-                                  match = false;
-                                  break;
-                                }
-                              }
-                              if (match) {
-                                console.log(`📍 [${sessionId}] Edit ${editIdx + 1} found at lines ${i + 1}-${i + oldLines.length}`);
-                                
-                                // Apply this edit to our working copy for subsequent edits
-                                const newLines = edit.new_string.split('\n');
-                                currentFileLines.splice(i, oldLines.length, ...newLines);
-                                currentFileContent = currentFileLines.join('\n');
-                                
-                                return { ...edit, lineNumber: i + 1, endLineNumber: i + oldLines.length };
-                              }
-                            }
-                            console.log(`📍 [${sessionId}] Edit ${editIdx + 1} could not find match`);
-                            return edit;
-                          });
-                          
-                          enhancedInput = { ...block.input, edits: editsWithLineNumbers };
-                        }
-                      } else {
-                        console.log(`📍 [${sessionId}] File not found: ${fullPath}`);
-                      }
-                    } catch (err) {
-                      console.log(`📍 [${sessionId}] Error calculating line numbers for ${block.name}: ${err.message}`);
-                    }
-                  }
+                  // Don't calculate line numbers for Edit/MultiEdit tools anymore
+                  // The diff will be shown in the tool_result message instead
+                  // Just use the original input without enhancements
                   
                   // Track Bash tool uses for focus restoration on Windows
                   if (block.name === 'Bash' && isFirstBashCommand) {
@@ -3660,12 +3578,12 @@ Format as a clear, structured summary that preserves all important context.`;
                     bashToolUseIds.set(block.id, { sessionId, timestamp: Date.now() });
                   }
                   
-                  // Send tool use as separate message immediately
+                  // Send tool use as separate message immediately (without line number enhancements)
                   socket.emit(`message:${sessionId}`, {
                     type: 'tool_use',
                     message: {
                       name: block.name,
-                      input: enhancedInput,
+                      input: block.input,  // Use original input without enhancements
                       id: block.id
                     },
                     timestamp: Date.now(),

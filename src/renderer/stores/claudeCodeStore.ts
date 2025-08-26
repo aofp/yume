@@ -1606,27 +1606,40 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   s.id === sessionId ? { ...s, streaming: true } : s
                 );
               } else if (message.streaming === false) {
-                // When explicitly marked as streaming=false, always clear streaming
-                // The server marks assistant messages as streaming=false when complete
-                console.log(`🔴 [STREAMING] Assistant message ${message.id} marked as streaming=false, clearing streaming state for session ${sessionId}`);
-                sessions = sessions.map(s => {
-                  if (s.id === sessionId) {
-                    // Calculate thinking time if we have a start time
-                    let updatedAnalytics = s.analytics;
-                    if (s.thinkingStartTime && updatedAnalytics) {
-                      const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
-                      updatedAnalytics = {
-                        ...updatedAnalytics,
-                        thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
-                      };
-                      console.log(`📊 [THINKING TIME] Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                // Check if there's a recent user message indicating a new request is being sent
+                const session = sessions.find(s => s.id === sessionId);
+                const recentUserMessage = session?.messages?.slice(-3).find(m => 
+                  m.role === 'user' && 
+                  m.timestamp && 
+                  (Date.now() - m.timestamp) < 3000 // Within last 3 seconds
+                );
+                
+                if (recentUserMessage) {
+                  // User sent a followup message while streaming, keep streaming state
+                  console.log(`🔄 [STREAMING] Keeping streaming=true due to recent user message (interrupt + followup scenario)`);
+                } else {
+                  // When explicitly marked as streaming=false, clear streaming
+                  // The server marks assistant messages as streaming=false when complete
+                  console.log(`🔴 [STREAMING] Assistant message ${message.id} marked as streaming=false, clearing streaming state for session ${sessionId}`);
+                  sessions = sessions.map(s => {
+                    if (s.id === sessionId) {
+                      // Calculate thinking time if we have a start time
+                      let updatedAnalytics = s.analytics;
+                      if (s.thinkingStartTime && updatedAnalytics) {
+                        const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                        updatedAnalytics = {
+                          ...updatedAnalytics,
+                          thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                        };
+                        console.log(`📊 [THINKING TIME] Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                      }
+                      console.log(`🔴 [STREAMING] Session ${sessionId} streaming state changed: ${s.streaming} -> false`);
+                      return { ...s, streaming: false, thinkingStartTime: undefined, analytics: updatedAnalytics };
                     }
-                    console.log(`🔴 [STREAMING] Session ${sessionId} streaming state changed: ${s.streaming} -> false`);
-                    return { ...s, streaming: false, thinkingStartTime: undefined, analytics: updatedAnalytics };
-                  }
-                  return s;
-                });
-                console.log(`🔴 [STREAMING] Successfully cleared streaming state for session ${sessionId}`);
+                    return s;
+                  });
+                  console.log(`🔴 [STREAMING] Successfully cleared streaming state for session ${sessionId}`);
+                }
               }
             }
             // If streaming is undefined, don't change the state
