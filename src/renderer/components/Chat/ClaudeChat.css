@@ -1106,6 +1106,7 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   padding: 2px 7px;
+  color: #444;
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -1127,7 +1128,7 @@ textarea.context-full {
 }
 
 .btn-dictation:disabled {
-  opacity: 0.3;
+  color: #666;
   cursor: default;
 }
 
