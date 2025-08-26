@@ -520,8 +520,8 @@ export const App: React.FC = () => {
 
   // Apply accent color, zoom level, and window state from localStorage on mount
   useEffect(() => {
-    // Apply accent color
-    const savedAccentColor = localStorage.getItem('accentColor') || '#cccccc';
+    // Apply accent color - use the same default as SettingsModal (#99bbff)
+    const savedAccentColor = localStorage.getItem('accentColor') || '#99bbff';
     document.documentElement.style.setProperty('--accent-color', savedAccentColor);
     const accentHex = savedAccentColor.replace('#', '');
     const accentR = parseInt(accentHex.substr(0, 2), 16);
@@ -529,8 +529,8 @@ export const App: React.FC = () => {
     const accentB = parseInt(accentHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${accentR}, ${accentG}, ${accentB}`);
     
-    // Apply positive color
-    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99ffff';
+    // Apply positive color - use the same default as SettingsModal (#99ff99)
+    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99ff99';
     document.documentElement.style.setProperty('--positive-color', savedPositiveColor);
     const positiveHex = savedPositiveColor.replace('#', '');
     const positiveR = parseInt(positiveHex.substr(0, 2), 16);
@@ -538,8 +538,8 @@ export const App: React.FC = () => {
     const positiveB = parseInt(positiveHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--positive-rgb', `${positiveR}, ${positiveG}, ${positiveB}`);
     
-    // Apply negative color
-    const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff99ff';
+    // Apply negative color - use the same default as SettingsModal (#ff9999)
+    const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff9999';
     document.documentElement.style.setProperty('--negative-color', savedNegativeColor);
     const negativeHex = savedNegativeColor.replace('#', '');
     const negativeR = parseInt(negativeHex.substr(0, 2), 16);

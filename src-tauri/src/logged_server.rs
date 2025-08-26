@@ -643,10 +643,20 @@ function createWslClaudeCommand(args, workingDir, message) {
       console.log(`⚠️ Claude not found for title gen, using default: ${claudePath}`);
     }
     
-    // For title generation, use direct WSL with full path
-    const script = `cat | ${claudePath} --print --output-format json --model claude-3-5-sonnet-20241022 2>&1`;
+    // For title generation, build command with the provided args
+    const argsStr = args.map(arg => {
+      // Only quote args that contain spaces or special characters
+      if (arg.includes(' ') || arg.includes(':') || arg.includes('(') || arg.includes(')') || arg.includes(',')) {
+        // Escape single quotes properly for bash
+        return `'${arg.replace(/'/g, "'\\''")}'`;
+      }
+      return arg;
+    }).join(' ');
     
-    console.log(`🔍 WSL script (title gen)`);
+    // For title generation with -p flag, no stdin needed
+    const script = `cd "${wslWorkingDir}" && ${claudePath} ${argsStr} 2>&1`;
+    
+    console.log(`🔍 WSL script (title gen) with args: ${argsStr}`);
     return [wslPath, ['-e', 'bash', '-c', script], false];
   }
 }
