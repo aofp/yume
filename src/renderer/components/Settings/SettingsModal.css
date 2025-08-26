@@ -615,7 +615,7 @@
 .font-settings {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 }
 
 .font-setting {
@@ -727,7 +727,7 @@ input[type="checkbox"].checkbox-input {
 /* Toggle Switch - matches standard button size */
 .toggle-switch {
   position: relative;
-  width: 120px;
+  width: 118px;
   height: 21px;
   border: none;  /* No borders */
   border-radius: 4px;
