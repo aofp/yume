@@ -2936,12 +2936,91 @@ io.on('connection', (socket) => {
         '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred. !!YOU MUST PLAN FIRST use THINK and TODO as MUCH AS POSSIBLE to break down everything, including planning into multiple steps and do edits in small chunks!!'
       ];
       
+      // Auto-trigger compact if we're near the token limit (96% = 192k tokens)
+      const currentTokens = session.totalTokens || 0;
+      const tokenLimit = 200000;
+      const compactThreshold = 192000; // 96% of limit
+      
+      if (currentTokens >= compactThreshold && !session.isCompacting && message.trim() !== '/compact') {
+        console.log(`⚠️ Auto-compact triggered: ${currentTokens}/${tokenLimit} tokens (${Math.round(currentTokens/tokenLimit*100)}%)`);
+        
+        // Inform user that we're auto-compacting
+        socket.emit(`message:${sessionId}`, {
+          type: 'system',
+          subtype: 'info',
+          message: { content: `📊 Context nearly full (${Math.round(currentTokens/tokenLimit*100)}%). Auto-compacting conversation...` },
+          timestamp: Date.now()
+        });
+        
+        // Trigger compact
+        processedMessage = '/compact';
+      }
+      
+      // Check for custom /compact command - handle it ourselves instead of sending to Claude
+      // Support: /compact or /compact [custom instructions]
+      // Create a mutable copy of message for processing
+      let processedMessage = message;
+      
+      const compactMatch = processedMessage?.match(/^\/compact\s*(.*)?$/i);
+      if (compactMatch) {
+        const customInstructions = compactMatch[1]?.trim() || null;
+        console.log(`🗜️ Custom /compact triggered - will use Claude to self-summarize`);
+        if (customInstructions) {
+          console.log(`🗜️ Custom instructions: "${customInstructions}"`);
+        }
+        
+        // Check if we have an active session to compact
+        if (!session.claudeSessionId) {
+          console.log(`⚠️ No active session to compact`);
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'error',
+            message: { content: 'No active conversation to compact. Start a conversation first.' },
+            timestamp: Date.now()
+          });
+          
+          processSpawnQueue.shift();
+          isSpawningProcess = false;
+          if (processSpawnQueue.length > 0) {
+            processNextSpawnRequest();
+          }
+          return;
+        }
+        
+        // Step 1: Ask current Claude to summarize the conversation
+        // Use the CURRENT session to generate summary
+        let summaryPrompt = `Please provide a detailed summary of our entire conversation so far. Include:
+1. Key facts about me (name, project details, preferences)
+2. Main topics we've discussed
+3. Any code or solutions we've worked on
+4. Important decisions or conclusions
+5. Current task/problem we're addressing
+6. Any context needed to continue our work
+
+Format as a clear, structured summary that preserves all important context.`;
+        
+        // Add custom instructions if provided
+        if (customInstructions) {
+          summaryPrompt += `\n\nAdditional instructions for the summary:\n${customInstructions}`;
+        }
+        
+        console.log(`🗜️ Asking Claude to self-summarize with session ${session.claudeSessionId}`);
+        
+        // Replace the user's /compact message with our summary request
+        processedMessage = summaryPrompt;
+        
+        // Mark that we're in compact mode
+        session.isCompacting = true;
+        session.compactStartTokens = session.totalTokens || 0;
+        session.compactMessageCount = session.messages?.length || 0;
+        session.compactCustomInstructions = customInstructions;
+        
+        // Continue with normal flow but with our summary prompt
+        // The result will be caught in the result handler
+      }
+      
       // Add model flag if specified
-      // Force sonnet for /compact command
-      if (message && message.trim() === '/compact') {
-        args.push('--model', 'claude-3-5-sonnet-20241022');
-        console.log(`🤖 Using model: claude-3-5-sonnet-20241022 (forced for /compact)`);
-      } else if (model) {
+      if (model) {
         args.push('--model', model);
         console.log(`🤖 Using model: ${model}`);
       }
@@ -2959,6 +3038,20 @@ io.on('connection', (socket) => {
           console.log('📝 Resuming after interrupt');
           session.wasInterrupted = false;
         }
+      } else if (session.wasCompacted && session.compactSummary) {
+        console.log('📝 Starting fresh conversation after compaction');
+        console.log(`🗜️ Previous conversation was compacted, saved ${session.tokensSavedByCompact || 0} tokens`);
+        console.log(`🗜️ Injecting summary into new conversation`);
+        
+        // Prepend the summary to the user's message
+        const summaryContext = `[Previous conversation context - compacted from ${session.tokensSavedByCompact} tokens]:\n${session.compactSummary}\n\n[Continuing conversation]\nUser: ${processedMessage}`;
+        processedMessage = summaryContext;
+        
+        // Clear the compact flag after using the summary
+        session.wasCompacted = false;
+        session.compactSummary = null;
+        
+        console.log(`🗜️ Message with context: ${message.substring(0, 200)}...`);
       } else {
         console.log('📝 Starting fresh conversation (no previous session)');
       }
@@ -3028,7 +3121,7 @@ io.on('connection', (socket) => {
         }
         
         // Build the message with context if needed
-        let messageToSend = message;
+        let messageToSend = processedMessage;
         if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
           console.log(`🔄 Building context for WSL command`);
           let contextSummary = "Here's our previous conversation context:\\n\\n";
@@ -3057,7 +3150,7 @@ io.on('connection', (socket) => {
             }
           }
           
-          contextSummary += `---\\nNow, continuing our conversation: ${message}`;
+          contextSummary += `---\\nNow, continuing our conversation: ${processedMessage}`;
           messageToSend = contextSummary;
           session.pendingContextRestore = false;
         }
@@ -3162,8 +3255,8 @@ io.on('connection', (socket) => {
       } else if (message && !claudeProcess.inputHandled) {
         // ALWAYS send the message, whether resuming or not
         // When resuming, --resume restores history but we still need to send the new message
-        const messageToSend = message + '\n';
-        console.log(`📝 Sending message to claude via stdin (${message.length} chars) - resuming=${isResuming}`);
+        const messageToSend = processedMessage + '\n';
+        console.log(`📝 Sending message to claude via stdin (${processedMessage.length} chars) - resuming=${isResuming}`);
         
         // Write immediately - Claude with --print needs input right away
         // Add timeout for stdin write to prevent hanging
@@ -3397,11 +3490,12 @@ io.on('connection', (socket) => {
           const isCompactCommand = lastUserMessage?.message?.content?.trim() === '/compact';
           const isCompactResult = isCompactCommand && jsonData.type === 'result';
           
-          if (jsonData.session_id && !isCompactResult) {
+          // Don't store ANY session IDs during a compact operation
+          if (jsonData.session_id && !isCompactCommand) {
             session.claudeSessionId = jsonData.session_id;
             console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
-          } else if (isCompactResult && jsonData.session_id) {
-            console.log(`🗜️ [${sessionId}] Ignoring session ID from compact result: ${jsonData.session_id} (not resumable)`);
+          } else if (isCompactCommand && jsonData.session_id) {
+            console.log(`🗜️ [${sessionId}] Ignoring session ID during compact: ${jsonData.session_id} (not resumable)`);
           }
           
           // Handle different message types - EXACTLY LIKE WINDOWS
@@ -3808,6 +3902,9 @@ io.on('connection', (socket) => {
             const lastUserMessage = session?.messages?.filter(m => m.role === 'user').pop();
             const isCompactCommand = lastUserMessage?.message?.content?.trim() === '/compact';
             
+            // Check if we're in custom compacting mode (Claude is generating summary)
+            const isCustomCompacting = session?.isCompacting === true;
+            
             // Compact results have specific patterns in the result text
             const isCompactResult = isCompactCommand && 
                                    (jsonData.result?.includes('Compacted') || 
@@ -3816,7 +3913,72 @@ io.on('connection', (socket) => {
                                     jsonData.result === '' ||
                                     jsonData.result === null);
             
-            if (isCompactResult) {
+            // Handle custom compacting - when Claude returns the summary
+            if (isCustomCompacting && jsonData.result) {
+              console.log(`🗜️ [${sessionId}] Received compact summary from Claude`);
+              console.log(`🗜️ Summary length: ${jsonData.result.length} chars`);
+              console.log(`🗜️ Previous token count: ${session.compactStartTokens}`);
+              
+              // Store the summary
+              session.compactSummary = jsonData.result;
+              session.tokensSavedByCompact = session.compactStartTokens || 0;
+              
+              // Clear the current session ID - we'll start fresh
+              const oldSessionId = session.claudeSessionId;
+              session.claudeSessionId = null;
+              session.wasCompacted = true;
+              session.isCompacting = false;
+              
+              console.log(`🗜️ Saved summary and cleared session ${oldSessionId}`);
+              console.log(`🗜️ Next message will start fresh with summary as context`);
+              
+              // Send success message to user
+              let resultText = `✅ Conversation compacted successfully!\n\n📊 Compaction Summary:\n• Tokens saved: ${session.tokensSavedByCompact.toLocaleString()}\n• Previous messages: ${session.compactMessageCount || session.messages.length}\n• Summary preserved: Yes`;
+              
+              if (session.compactCustomInstructions) {
+                resultText += `\n• Custom focus: ${session.compactCustomInstructions}`;
+              }
+              
+              resultText += `\n\n✨ Context has been compressed. You can continue normally.`;
+              
+              const compactMessage = {
+                type: 'result',
+                subtype: 'success',
+                is_error: false,
+                result: resultText,
+                session_id: null, // No session ID since we're starting fresh
+                usage: {
+                  input_tokens: 0,
+                  output_tokens: 0,
+                  cache_creation_input_tokens: 0,
+                  cache_read_input_tokens: 0
+                },
+                wrapperTokens: {
+                  input: 0,
+                  output: 0,
+                  total: 0,
+                  cache_read: 0,
+                  cache_creation: 0
+                },
+                streaming: false,
+                id: `result-${sessionId}-${Date.now()}-${Math.random()}`,
+                model: model || 'claude-3-5-sonnet-20241022',
+                timestamp: Date.now()
+              };
+              
+              socket.emit(`message:${sessionId}`, compactMessage);
+              console.log(`📤 [${sessionId}] Sent compact success message`);
+              
+              // Clear message history but keep the summary
+              session.messages = [];
+              session.compactCount = (session.compactCount || 0) + 1;
+              
+              // Don't process the normal result - we handled it
+              return;
+            }
+            
+            // Handle old-style compact (shouldn't happen with our custom handling)
+            if (isCompactResult && !isCustomCompacting) {
               console.log(`🗜️ [${sessionId}] Detected /compact command completion`);
               console.log(`🗜️ [${sessionId}] Result text: "${jsonData.result}"`);
               console.log(`🗜️ [${sessionId}] Session ID in result: ${jsonData.session_id}`);
@@ -3830,8 +3992,13 @@ io.on('connection', (socket) => {
                 session.claudeSessionId = null;
                 // Mark that this session has been compacted so we don't try to restore old IDs
                 session.wasCompacted = true;
+                // Store the compact summary and token info for the next session
+                session.compactSummary = jsonData.result || 'conversation summarized';
+                session.compactedTokenCount = compactedTokens?.total || 0;
+                session.tokensSavedByCompact = (session.totalTokens || 0);
                 console.log(`🗜️ Cleared session ID (was ${oldSessionId}) - next message will start fresh after compact`);
                 console.log(`🗜️ Marked session as compacted to prevent old ID restoration`);
+                console.log(`🗜️ Stored compact summary for next session: ${session.compactSummary.substring(0, 100)}...`);
                 console.log(`🗜️ The compact command has summarized the conversation - continuing with reduced context`);
               }
               
