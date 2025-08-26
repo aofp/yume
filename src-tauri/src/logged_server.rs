@@ -234,6 +234,57 @@ function processWrapperLine(line, sessionId) {
       session.messageCount++;
     }
     
+    // Detect /compact command starting and generate summary
+    if (data.type === 'user' && data.message?.content) {
+      const content = typeof data.message.content === 'string' 
+        ? data.message.content 
+        : (Array.isArray(data.message.content) 
+            ? data.message.content.find(c => c.type === 'text')?.text 
+            : '');
+      if (content?.trim() === '/compact') {
+        session.compactInProgress = true;
+        console.log(`🗜️ [WRAPPER] Detected /compact command starting`);
+        
+        // Generate our own summary from conversation history
+        const recentMessages = session.history.slice(-20); // Last 20 API messages
+        let summary = `✅ Conversation compacted successfully!\n\n`;
+        summary += `📊 Compaction Summary:\n`;
+        summary += `• Messages compressed: ${session.messageCount}\n`;
+        summary += `• Tokens saved: ${session.totalTokens.toLocaleString()}\n`;
+        
+        // Find the main topics discussed
+        const userMessages = recentMessages.filter(m => m.type === 'user');
+        if (userMessages.length > 0) {
+          summary += `\n📝 Recent context:\n`;
+          const topics = userMessages.slice(-3).map(m => {
+            const content = m.data?.message?.content;
+            let text = '';
+            if (typeof content === 'string') {
+              text = content;
+            } else if (Array.isArray(content)) {
+              const textBlock = content.find(c => c.type === 'text');
+              text = textBlock?.text || '';
+            }
+            // Clean up and truncate
+            text = text.replace(/\n+/g, ' ').trim();
+            if (text.length > 80) {
+              text = text.substring(0, 77) + '...';
+            }
+            return text;
+          }).filter(t => t);
+          
+          topics.forEach((topic, i) => {
+            summary += `• ${topic}\n`;
+          });
+        }
+        
+        summary += `\n✨ Context reset - you can continue normally.`;
+        
+        session.compactSummary = summary;
+        console.log(`🗜️ [WRAPPER] Generated compact summary: ${summary.substring(0, 100)}...`);
+      }
+    }
+    
     // Update tokens if usage present
     if (data.usage) {
       const input = data.usage.input_tokens || 0;
@@ -241,12 +292,18 @@ function processWrapperLine(line, sessionId) {
       const cacheCreation = data.usage.cache_creation_input_tokens || 0;
       const cacheRead = data.usage.cache_read_input_tokens || 0;
       
-      // ALL tokens count towards context limit (including cache)
-      session.inputTokens += input + cacheCreation + cacheRead;
+      // Track actual input/output separately from cache
+      session.inputTokens += input;
       session.outputTokens += output;
       
+      // Track cache tokens separately
+      session.cacheCreationTokens = (session.cacheCreationTokens || 0) + cacheCreation;
+      session.cacheReadTokens = (session.cacheReadTokens || 0) + cacheRead;
+      
+      // Total context includes ALL tokens
       const prevTotal = session.totalTokens;
-      session.totalTokens = session.inputTokens + session.outputTokens;
+      session.totalTokens = session.inputTokens + session.outputTokens + 
+                           session.cacheCreationTokens + session.cacheReadTokens;
       
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;
@@ -258,9 +315,30 @@ function processWrapperLine(line, sessionId) {
       }
     }
     
-    // Detect compaction
-    if (data.type === 'result' && data.result === '' && 
-        (!data.usage || (data.usage.input_tokens === 0 && data.usage.output_tokens === 0))) {
+    // Track if this is during a compact operation
+    if (data.type === 'assistant' && session.compactInProgress) {
+      // Capture assistant messages during compaction for summary
+      if (data.message?.content) {
+        let content = '';
+        if (typeof data.message.content === 'string') {
+          content = data.message.content;
+        } else if (Array.isArray(data.message.content)) {
+          content = data.message.content
+            .filter(c => c.type === 'text')
+            .map(c => c.text)
+            .join('');
+        }
+        if (content) {
+          session.compactSummary = content;
+          console.log(`🗜️ [WRAPPER] Captured compact summary: ${content.substring(0, 100)}...`);
+        }
+      }
+    }
+    
+    // Detect compaction - Claude's /compact returns 0 tokens 
+    if (data.type === 'result' && 
+        (!data.usage || (data.usage.input_tokens === 0 && data.usage.output_tokens === 0)) &&
+        session.totalTokens > 0) {  // Only if we had tokens before
       
       const savedTokens = session.totalTokens;
       console.log(`🗜️ [WRAPPER] COMPACTION DETECTED! Saved ${savedTokens} tokens`);
@@ -275,23 +353,22 @@ function processWrapperLine(line, sessionId) {
       session.outputTokens = 0;
       session.totalTokens = 0;
       
-      // Generate summary
-      const summary = `✅ Conversation compacted successfully!
+      // Use Claude's summary if we captured it, otherwise use fallback
+      if (session.compactSummary) {
+        data.result = session.compactSummary;
+        delete session.compactSummary; // Clean up
+      } else if (!data.result || data.result === '') {
+        data.result = `Conversation compacted. Saved ${savedTokens.toLocaleString()} tokens.`;
+      }
       
-📊 Compaction Summary:
-• Tokens saved: ${savedTokens}
-• Messages compressed: ${session.messageCount}
-• Total saved so far: ${session.tokensSaved}
-
-✨ Context reset - you can continue normally.`;
-      
-      data.result = summary;
+      // Add wrapper metadata
       data.wrapper_compact = {
         savedTokens,
         totalSaved: session.tokensSaved,
         compactCount: session.compactCount
       };
       
+      session.compactInProgress = false; // Clear flag
       console.log(`🗜️ [WRAPPER] Compaction complete`);
     }
     
@@ -3788,17 +3865,24 @@ io.on('connection', (socket) => {
             
             // Log usage/cost information if present
             if (jsonData.usage) {
-              const totalContext = (jsonData.usage.input_tokens || 0) + 
-                                  (jsonData.usage.output_tokens || 0) + 
-                                  (jsonData.usage.cache_creation_input_tokens || 0) + 
-                                  (jsonData.usage.cache_read_input_tokens || 0);
-              console.log(`\n📊 TOKEN USAGE FROM CLAUDE CLI:`);
-              console.log(`   input_tokens: ${jsonData.usage.input_tokens || 0}`);
-              console.log(`   output_tokens: ${jsonData.usage.output_tokens || 0}`);
-              console.log(`   cache_creation_input_tokens: ${jsonData.usage.cache_creation_input_tokens || 0}`);
-              console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0}`);
-              console.log(`   --- TOTAL CONTEXT SIZE ---`);
-              console.log(`   TOTAL TOKENS IN CONTEXT: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
+              const input = jsonData.usage.input_tokens || 0;
+              const output = jsonData.usage.output_tokens || 0;
+              const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
+              const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
+              const totalContext = input + output + cacheCreation + cacheRead;
+              
+              console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
+              console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
+              console.log(`   │ Type            │ Input    │ Cache Read   │ Cache New  │`);
+              console.log(`   ├─────────────────┼──────────┼──────────────┼────────────┤`);
+              console.log(`   │ User Message    │ ${String(input).padEnd(8)} │              │            │`);
+              console.log(`   │ Assistant Reply │ ${String(output).padEnd(8)} │              │            │`);
+              console.log(`   │ Context History │          │ ${String(cacheRead).padEnd(12)} │            │`);
+              console.log(`   │ New Cache       │          │              │ ${String(cacheCreation).padEnd(10)} │`);
+              console.log(`   ├─────────────────┼──────────┼──────────────┼────────────┤`);
+              console.log(`   │ Subtotal        │ ${String(input + output).padEnd(8)} │ ${String(cacheRead).padEnd(12)} │ ${String(cacheCreation).padEnd(10)} │`);
+              console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
+              console.log(`   TOTAL CONTEXT: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
               console.log(`   Note: ALL tokens count towards the 200k context limit`);
             }
             
@@ -3946,6 +4030,16 @@ io.on('connection', (socket) => {
         
         console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
         console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200)}...`);
+        
+        // LOG EVERYTHING DURING COMPACT TO SEE WHAT CLAUDE OUTPUTS
+        const session = sessions.get(sessionId);
+        const lastUserMessage = session?.messages?.filter(m => m.role === 'user').pop();
+        const isCompactCommand = lastUserMessage?.message?.content?.trim() === '/compact';
+        if (isCompactCommand) {
+          console.log(`🗜️🗜️🗜️ [COMPACT RAW DATA] Full output from Claude:`);
+          console.log(str);
+          console.log(`🗜️🗜️🗜️ [COMPACT RAW DATA] End of output chunk`);
+        }
         
         // Prevent memory overflow from excessive buffering
         if (lineBuffer.length > MAX_LINE_BUFFER_SIZE) {

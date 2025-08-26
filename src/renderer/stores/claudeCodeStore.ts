@@ -760,10 +760,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           const currentState = get();
           const isCurrentSession = currentState.currentSessionId === sessionId;
           
-          // Check if this is actually a compact result (empty result string)
-          const isCompactResult = message.result === '' && 
-                                 (!message.usage || 
-                                  (message.usage.input_tokens === 0 && message.usage.output_tokens === 0));
+          // Check if this is actually a compact result (has wrapper_compact field or old detection)
+          const isCompactResult = !!message.wrapper_compact || 
+                                 (message.result === '' && 
+                                  (!message.usage || 
+                                   (message.usage.input_tokens === 0 && message.usage.output_tokens === 0)));
           
           // If it's not a compact result, it's a normal result - process through main handler
           if (!isCompactResult) {
@@ -1020,6 +1021,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 analytics.tokens.output = message.wrapper.tokens.output || analytics.tokens.output;
                 // cache_read is the SIZE of cached context, not incremental
                 analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
+                analytics.tokens.cacheCreation = message.wrapper.tokens.cache_creation || 0;
               } else if (message.type === 'result') {
                 // Only log missing wrapper for result messages (where we expect tokens)
                 console.log('❌ [STORE-TOKENS] Result message WITHOUT wrapper tokens:', {
@@ -1313,6 +1315,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       analytics.tokens.output = message.wrapper.tokens.output;
                       // cache_read is the SIZE of cached context
                       analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
+                      analytics.tokens.cacheCreation = message.wrapper.tokens.cache_creation || 0;
                       
                       // Update model-specific tracking
                       const modelKey = currentModel === 'opus' ? 'opus' : 'sonnet';
@@ -2999,6 +3002,7 @@ ${content}`;
             analytics.tokens.output = message.wrapper.tokens.output || 0;
             // cache_read is the SIZE of cached context, not incremental
             analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
+            analytics.tokens.cacheCreation = message.wrapper.tokens.cache_creation || 0;
             
             console.log('✅ [Store] TOKEN UPDATE applied to analytics:', {
               sessionId,

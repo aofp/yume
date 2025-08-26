@@ -15,6 +15,12 @@ interface Analytics {
   totalMessages: number;
   totalTokens: number;
   totalCost: number;
+  tokenBreakdown?: {
+    input: number;
+    output: number;
+    cacheRead: number;
+    cacheCreation: number;
+  };
   byModel: {
     opus: {
       sessions: number;
@@ -347,6 +353,51 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                   <div className="stat-label">sessions</div>
                 </div>
               </div>
+
+              {/* Token Breakdown Table - show in both views */}
+              {filteredAnalytics.tokenBreakdown && (
+                <div className="analytics-section">
+                  <h3>token breakdown</h3>
+                  <div className="token-breakdown-table">
+                    <table>
+                      <thead>
+                        <tr>
+                          <th>Type</th>
+                          <th>Actual</th>
+                          <th>Cache Read</th>
+                          <th>Cache New</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr>
+                          <td>Input</td>
+                          <td>{formatNumber(filteredAnalytics.tokenBreakdown.input)}</td>
+                          <td>-</td>
+                          <td>-</td>
+                        </tr>
+                        <tr>
+                          <td>Output</td>
+                          <td>{formatNumber(filteredAnalytics.tokenBreakdown.output)}</td>
+                          <td>-</td>
+                          <td>-</td>
+                        </tr>
+                        <tr>
+                          <td>Context</td>
+                          <td>-</td>
+                          <td>{formatNumber(filteredAnalytics.tokenBreakdown.cacheRead)}</td>
+                          <td>{formatNumber(filteredAnalytics.tokenBreakdown.cacheCreation)}</td>
+                        </tr>
+                        <tr className="total-row">
+                          <td>Total</td>
+                          <td colSpan={3} style={{ textAlign: 'center' }}>
+                            {formatNumber(filteredAnalytics.totalTokens)}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              )}
 
               {/* Model Breakdown - only show in all view */}
               {viewMode === 'all' && (

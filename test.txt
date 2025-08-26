@@ -1,5 +1,5 @@
-Name: Jane Doe
-Age: 32
+Name: Alice Johnson
+Age: 28
 City: New York
 Email: john.smith@example.com
 Phone: (555) 123-4567
@@ -9,7 +9,7 @@ Salary: $105000
 Skills: JavaScript, Python, React, Node.js
 Status: Active
 Added some new data: timestamp 2025-08-24
-Random number: 73
+Random number: 42
 Status: Testing complete
 Author: Claude Code Assistant
 Edit test: Modified at 2025-08-24
@@ -18,3 +18,5 @@ Line 17: Another line added
 Line 18: Third new line
 Line 19: Fourth new line
 Line 20: Fifth new line
+Line 21: Test edit by claude
+Line 22: Another test modification

@@ -193,6 +193,40 @@
   opacity: 0.8;
 }
 
+/* Token Breakdown Table */
+.token-breakdown-table {
+  margin-top: 10px;
+}
+
+.token-breakdown-table table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 11px;
+}
+
+.token-breakdown-table th {
+  text-align: left;
+  padding: 6px 8px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--accent-color);
+  font-weight: 500;
+  text-transform: lowercase;
+  opacity: 0.8;
+}
+
+.token-breakdown-table td {
+  padding: 6px 8px;
+  color: rgba(255, 255, 255, 0.8);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.token-breakdown-table tr.total-row td {
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-bottom: none;
+  font-weight: 500;
+  color: var(--accent-color);
+}
+
 /* Model Breakdown */
 .model-breakdown {
   display: grid;

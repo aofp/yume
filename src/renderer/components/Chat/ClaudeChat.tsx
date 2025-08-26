@@ -34,7 +34,10 @@ import {
   IconArrowsUpDown,
   IconBrain,
   IconChartDots,
-  IconClock
+  IconClock,
+  IconMessage,
+  IconDatabase,
+  IconCirclePlus
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -2539,7 +2542,7 @@ export const ClaudeChat: React.FC = () => {
             <div className="stats-header">
               <h3>
                 <IconChartDots size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                session analytics
+                context usage
               </h3>
               <button className="stats-close" onClick={() => setShowStatsModal(false)}>
                 <IconX size={16} />
@@ -2567,87 +2570,41 @@ export const ClaudeChat: React.FC = () => {
                   <>
                     <div className="stats-column" style={{ gridColumn: 'span 2' }}>
                       <div className="stats-section">
-                        <h4>context usage</h4>
                         <div className="stat-row">
                           <div className="stat-keys">
                             <IconChartBubbleFilled size={14} />
-                            <span className="stat-name">tokens</span>
+                            <span className="stat-name">total context</span>
+                          </div>
+                          <span className="stat-dots"></span>
+                          <span className="stat-desc" style={{ fontWeight: 600, color: 'var(--accent-color)' }}>
+                            {(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k ({Math.min(100, ((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100)).toFixed(1)}%)
+                          </span>
+                        </div>
+                        <div className="stat-row">
+                          <div className="stat-keys">
+                            <IconMessage size={14} />
+                            <span className="stat-name">actual tokens</span>
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / {200000} ({Math.min(100, ((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100)).toFixed(2)}%)
+                            {((currentSession?.analytics?.tokens?.input || 0) + (currentSession?.analytics?.tokens?.output || 0)).toLocaleString()} (in: {(currentSession?.analytics?.tokens?.input || 0).toLocaleString()}, out: {(currentSession?.analytics?.tokens?.output || 0).toLocaleString()})
                           </span>
                         </div>
                         <div className="stat-row">
                           <div className="stat-keys">
                             <IconArtboardFilled size={14} />
-                            <span className="stat-name">cached tokens</span>
+                            <span className="stat-name">cache tokens</span>
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc">
-                            {(currentSession?.analytics?.tokens?.cacheSize || 0).toLocaleString()}
+                            {((currentSession?.analytics?.tokens?.cacheSize || 0) + (currentSession?.analytics?.tokens?.cacheCreation || 0)).toLocaleString()} (read: {(currentSession?.analytics?.tokens?.cacheSize || 0).toLocaleString()}, new: {(currentSession?.analytics?.tokens?.cacheCreation || 0).toLocaleString()})
                           </span>
                         </div>
                       </div>
                     </div>
               <div className="stats-column">
                 <div className="stats-section">
-                  <h4>token breakdown</h4>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconClock size={14} />
-                      <span className="stat-name">thinking</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {(() => {
-                        const thinkingSeconds = currentSession?.analytics?.thinkingTime || 0;
-                        const minutes = Math.floor(thinkingSeconds / 60);
-                        const seconds = thinkingSeconds % 60;
-                        if (minutes > 0) {
-                          return `${minutes}:${seconds.toString().padStart(2, '0')}`;
-                        }
-                        return `${seconds}s`;
-                      })()}
-                    </span>
-                  </div>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconArrowsUpDown size={14} />
-                      <span className="stat-name">in/out %</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {(() => {
-                        const inputTokens = currentSession?.analytics?.tokens?.input || 0;
-                        const outputTokens = currentSession?.analytics?.tokens?.output || 0;
-                        const totalTokens = inputTokens + outputTokens || 1;
-                        const inputPercent = Math.round((inputTokens / totalTokens) * 100);
-                        const outputPercent = Math.round((outputTokens / totalTokens) * 100);
-                        return `${inputPercent}% / ${outputPercent}%`;
-                      })()}
-                    </span>
-                  </div>
-                  <div className="stat-row">
-                    <div className="stat-keys">
-                      <IconBrain size={14} />
-                      <span className="stat-name">opus %</span>
-                    </div>
-                    <span className="stat-dots"></span>
-                    <span className="stat-desc">
-                      {(() => {
-                        const opusTokens = currentSession?.analytics?.tokens?.byModel?.opus?.total || 0;
-                        const totalTokens = currentSession?.analytics?.tokens?.total || 1;
-                        return `${Math.round((opusTokens / totalTokens) * 100)}%`;
-                      })()}
-                    </span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="stats-column">
-                <div className="stats-section">
-                  <h4>usage & cost</h4>
+                  <h4>usage</h4>
                   <div className="stat-row">
                     <div className="stat-keys">
                       <IconSend size={14} />
@@ -2685,10 +2642,30 @@ export const ClaudeChat: React.FC = () => {
                       })()}
                     </span>
                   </div>
+                </div>
+              </div>
+              
+              <div className="stats-column">
+                <div className="stats-section">
+                  <h4>cost</h4>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconBrain size={14} />
+                      <span className="stat-name">opus %</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">
+                      {(() => {
+                        const opusTokens = currentSession?.analytics?.tokens?.byModel?.opus?.total || 0;
+                        const totalTokens = currentSession?.analytics?.tokens?.total || 1;
+                        return `${Math.round((opusTokens / totalTokens) * 100)}%`;
+                      })()}
+                    </span>
+                  </div>
                   <div className="stat-row">
                     <div className="stat-keys">
                       <IconCoin size={14} />
-                      <span className="stat-name">cost</span>
+                      <span className="stat-name">total</span>
                     </div>
                     <span className="stat-dots"></span>
                     <span className="stat-desc">

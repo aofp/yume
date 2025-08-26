@@ -123,9 +123,10 @@ function processWrapperLine(line, sessionId) {
       console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/100000 (${Math.round(session.totalTokens/1000)}%)`);
     }
     
-    // Detect compaction
-    if (data.type === 'result' && data.result === '' && 
-        (!data.usage || (data.usage.input_tokens === 0 && data.usage.output_tokens === 0))) {
+    // Detect compaction - Claude's /compact returns 0 tokens 
+    if (data.type === 'result' && 
+        (!data.usage || (data.usage.input_tokens === 0 && data.usage.output_tokens === 0)) &&
+        session.totalTokens > 0) {  // Only if we had tokens before
       
       const savedTokens = session.totalTokens;
       console.log(`🗜️ [WRAPPER] COMPACTION DETECTED! Saved ${savedTokens} tokens`);
@@ -140,17 +141,13 @@ function processWrapperLine(line, sessionId) {
       session.outputTokens = 0;
       session.totalTokens = 0;
       
-      // Generate summary
-      const summary = `✅ Conversation compacted successfully!
+      // Don't overwrite data.result - Claude provides its own summary!
+      // If Claude didn't provide a summary (empty result), add a minimal one
+      if (!data.result || data.result === '') {
+        data.result = `Conversation compacted. Saved ${savedTokens.toLocaleString()} tokens.`;
+      }
       
-📊 Compaction Summary:
-• Tokens saved: ${savedTokens}
-• Messages compressed: ${session.messageCount}
-• Total saved so far: ${session.tokensSaved}
-
-✨ Context reset - you can continue normally.`;
-      
-      data.result = summary;
+      // Add wrapper metadata
       data.wrapper_compact = {
         savedTokens,
         totalSaved: session.tokensSaved,
@@ -3663,17 +3660,25 @@ io.on('connection', (socket) => {
             
             // Log usage/cost information if present
             if (jsonData.usage) {
-              console.log(`\n📊 TOKEN USAGE FROM CLAUDE CLI:`);
-              console.log(`   input_tokens: ${jsonData.usage.input_tokens || 0}`);
-              console.log(`   output_tokens: ${jsonData.usage.output_tokens || 0}`);
-              console.log(`   cache_creation_input_tokens: ${jsonData.usage.cache_creation_input_tokens || 0}`);
-              console.log(`   cache_read_input_tokens: ${jsonData.usage.cache_read_input_tokens || 0}`);
-              console.log(`   --- ALL TOKENS COUNT TOWARDS 200K LIMIT ---`);
-              console.log(`   actual_input: ${jsonData.usage.input_tokens || 0}`);
-              console.log(`   actual_output: ${jsonData.usage.output_tokens || 0}`);
-              console.log(`   cache_creation: ${jsonData.usage.cache_creation_input_tokens || 0}`);
-              console.log(`   cache_read: ${jsonData.usage.cache_read_input_tokens || 0}`);
-              console.log(`   TOTAL CONTEXT USED: ${(jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0)}`);
+              const input = jsonData.usage.input_tokens || 0;
+              const output = jsonData.usage.output_tokens || 0;
+              const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
+              const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
+              const totalContext = input + output + cacheCreation + cacheRead;
+              
+              console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
+              console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
+              console.log(`   │ Type            │ Input    │ Cache Read   │ Cache New  │`);
+              console.log(`   ├─────────────────┼──────────┼──────────────┼────────────┤`);
+              console.log(`   │ User Message    │ ${String(input).padEnd(8)} │              │            │`);
+              console.log(`   │ Assistant Reply │ ${String(output).padEnd(8)} │              │            │`);
+              console.log(`   │ Context History │          │ ${String(cacheRead).padEnd(12)} │            │`);
+              console.log(`   │ New Cache       │          │              │ ${String(cacheCreation).padEnd(10)} │`);
+              console.log(`   ├─────────────────┼──────────┼──────────────┼────────────┤`);
+              console.log(`   │ Subtotal        │ ${String(input + output).padEnd(8)} │ ${String(cacheRead).padEnd(12)} │ ${String(cacheCreation).padEnd(10)} │`);
+              console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
+              console.log(`   TOTAL CONTEXT: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
+              console.log(`   Note: ALL tokens count towards the 200k context limit`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
