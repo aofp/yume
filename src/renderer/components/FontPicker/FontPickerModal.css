@@ -56,7 +56,7 @@
 }
 
 .font-picker-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .font-picker-search {

@@ -115,7 +115,7 @@
 }
 
 .mac-control.close:hover {
-  background: #444;
+  background: var(--negative-color);
 }
 
 .mac-control.minimize {
@@ -139,9 +139,20 @@
   background: #222;
 }
 
+/* Keep close button grey when inactive */
+.mac-controls.inactive .mac-control.close {
+  background: #222;
+  opacity: 0.6;
+}
+
 .mac-controls.inactive .mac-control:hover {
   background: #444;
   opacity: 1;
+}
+
+.mac-controls.inactive .mac-control.close:hover {
+  background: var(--negative-color);
+  opacity: 0.8;
 }
 
 .window-control {
@@ -196,9 +207,14 @@
   flex: 1;
 }
 
+.window-control.close {
+  background-color: transparent;
+  color: rgba(255, 255, 255, 0.7);
+}
+
 .window-control.close:hover {
-  background-color: var(--accent-color, #ff9999);
-  color: #000000;
+  background-color: var(--negative-color);
+  color: #ffffff;
 }
 
 .window-control:active {

@@ -319,7 +319,7 @@ body.tab-dragging * {
 
 .tab-close:hover {
   background: transparent;
-  color: rgba(var(--accent-rgb), 1); /* Keep same color */
+  color: var(--negative-color);
   opacity: 1 !important;
 }
 

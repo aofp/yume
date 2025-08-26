@@ -48,7 +48,7 @@
   padding: 0;
   margin: 0;
   background: transparent;
-  font-size: 7pt;
+  font-size: 8pt;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -562,7 +562,7 @@ ol {
 .thinking-code-pre {
   margin: 0;
   padding: 8px;
-  overflow-x: auto;
+  overflow-x: visible;
 }
 
 .thinking-code {
@@ -664,7 +664,7 @@ ol {
   margin: 0 0 2px 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.8);
   white-space: pre-wrap;
   word-break: break-all;
@@ -674,7 +674,7 @@ ol {
 
 /* Smaller font for Write tool output */
 .tool-result.standalone.write-output .result-content {
-  font-size: 6pt;
+  font-size: 8pt;
 }
 
 .tool-result.standalone.file-diff .result-content {
@@ -707,7 +707,7 @@ ol {
 .diff-file-path {
   color: rgba(255, 255, 255, 0.7);
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   line-height: 1.4;
   font-weight: 400;
 }
@@ -717,7 +717,7 @@ ol {
   margin: 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   background: transparent;
   overflow-x: hidden;
   word-wrap: break-word;
@@ -737,7 +737,7 @@ ol {
   color: rgba(255, 255, 255, 0.3);
   text-align: right;
   flex-shrink: 0;
-  font-size: 7pt;
+  font-size: 8pt;
 }
 
 .diff-line .line-content {
@@ -768,7 +768,7 @@ ol {
 
 .diff-summary {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.5);
   margin: 2px 0;
   padding-left: 20px;
@@ -800,21 +800,21 @@ ol {
 .edit-action {
   color: var(--accent-color);
   font-weight: 500;
-  font-size: 7pt;
+  font-size: 8pt;
   margin-right: 8px;
 }
 
 .edit-file {
   color: rgba(255, 255, 255, 0.9);
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   display: block;
   margin-top: 4px;
 }
 
 .edit-diff {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   margin: 0;
   margin-bottom: 2px;
   padding: 0;
@@ -823,15 +823,16 @@ ol {
 .edit-diff pre,
 pre.edit-diff {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   margin: 0;
   padding: 4px 8px;
-  white-space: pre;
-  word-break: break-word;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
   color: #999;
   background: transparent;
   border: none;
-  overflow-x: auto;
+  overflow-x: visible;
 }
 
 .diff-section {
@@ -855,7 +856,7 @@ pre.edit-diff {
   flex-shrink: 0;
   text-align: right;
   color: rgba(255, 255, 255, 0.3);
-  font-size: 7pt;
+  font-size: 8pt;
   font-family: var(--font-mono);
 }
 
@@ -923,7 +924,7 @@ pre.edit-diff {
 
 .diff-separator {
   color: rgba(255, 255, 255, 0.5);
-  font-size: 7pt;
+  font-size: 8pt;
   font-family: var(--font-mono);
   margin: 8px 0 4px 0;
   padding: 2px 0;
@@ -979,9 +980,10 @@ pre.edit-diff {
   font-size: 10px;
   opacity: 1;
   max-width: 600px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  overflow: visible;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  word-break: break-all;
   position: relative;
 }
 
@@ -1007,7 +1009,7 @@ body.platform-win32 .tool-detail {
   gap: 6px;
   padding: 0;
   border-radius: 0;
-  font-size: 7pt;
+  font-size: 8pt;
   margin: 0;
   animation: resultFade 0.3s ease;
 }
@@ -1023,7 +1025,7 @@ body.platform-win32 .tool-detail {
 
 .elapsed-time {
   color: #808080;
-  font-size: 7pt;
+  font-size: 8pt;
   font-family: var(--font-mono);
   padding: 2px 0 !important;
   margin: 0 0 4px 0 !important;
@@ -1055,7 +1057,7 @@ body.platform-win32 .tool-detail {
   background: transparent;
   color: #606060;
   opacity: 0.6;
-  font-size: 7pt;
+  font-size: 8pt;
   padding: 0;
 }
 
@@ -1071,7 +1073,7 @@ body.platform-win32 .tool-detail {
 .read-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
 }
@@ -1092,7 +1094,7 @@ body.platform-win32 .tool-detail {
   padding-right: 8px;
   color: rgba(255, 255, 255, 0.3);
   flex-shrink: 0;
-  font-size: 7pt;
+  font-size: 8pt;
   font-family: var(--font-mono);
 }
 
@@ -1118,7 +1120,7 @@ body.platform-win32 .tool-detail {
   border-radius: 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 6pt;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.85);
   white-space: pre-wrap;
   word-break: break-all;
@@ -1131,7 +1133,7 @@ body.platform-win32 .tool-detail {
 .bash-more {
   display: block;
   margin-top: 2px;
-  font-size: 7pt;
+  font-size: 8pt;
   color: rgba(128, 128, 128, 0.6);
   font-family: var(--font-mono);
   cursor: default;
@@ -1151,7 +1153,7 @@ body.platform-win32 .tool-detail {
 .search-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.6);
   white-space: pre-wrap;
   word-break: break-all;
@@ -1165,7 +1167,7 @@ body.platform-win32 .tool-detail {
 .bash-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 6pt;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.8);
   white-space: pre-wrap;
   word-break: break-all;
@@ -1178,7 +1180,7 @@ body.platform-win32 .tool-detail {
 .bash-more {
   display: block;
   margin-top: 4px;
-  font-size: 7pt;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.5);
   font-family: var(--font-mono);
 }
@@ -1186,7 +1188,7 @@ body.platform-win32 .tool-detail {
 .read-more, .search-more, .result-more {
   display: block;
   margin-top: 2px;
-  font-size: 7pt;
+  font-size: 8pt;
   color: rgba(255, 255, 255, 0.7);
   font-family: var(--font-mono);
   cursor: default;
@@ -1199,7 +1201,7 @@ body.platform-win32 .tool-detail {
 
 .result-text {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
 }
 
 /* Result Messages */
@@ -1369,7 +1371,7 @@ body.platform-win32 .tool-detail {
 
 .diff-content {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8pt;
   line-height: 1.4;
   color: #a0a0a0;
   white-space: pre-wrap;
@@ -1431,15 +1433,15 @@ body.platform-win32 .tool-detail {
 }
 
 .todo-icon.completed {
-  color: var(--color-accent-green);
+  color: var(--positive-color); /* positive color for completed */
 }
 
 .todo-icon.progress {
-  color: var(--color-magenta);
+  color: var(--accent-color); /* accent color for active tasks */
 }
 
 .todo-icon.pending {
-  color: var(--color-cyan);
+  color: #666666; /* grey for pending tasks */
 }
 
 .todo-item.completed {
@@ -1448,7 +1450,7 @@ body.platform-win32 .tool-detail {
 
 .todo-item.completed .todo-content {
   text-decoration: none;
-  color: var(--color-cyan);
+  color: var(--positive-color);
   opacity: 1;
 }
 
@@ -1457,7 +1459,7 @@ body.platform-win32 .tool-detail {
 }
 
 .todo-item.in_progress .todo-content {
-  color: var(--color-magenta);
+  color: var(--accent-color);
 }
 
 .todo-item.pending {

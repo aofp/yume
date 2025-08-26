@@ -488,6 +488,7 @@ export const SessionTabs: React.FC = () => {
                     moved = true;
                     setIsDragging(true);
                     setDraggedTab(session.id);
+                    useClaudeCodeStore.getState().setIsDraggingTab(true);
                     dragPreview = createDragPreview();
                     document.body.classList.add('tab-dragging');
                     // Force cursor change immediately
@@ -570,6 +571,7 @@ export const SessionTabs: React.FC = () => {
                   // Reset all drag states
                   setIsDragging(false);
                   setDraggedTab(null);
+                  useClaudeCodeStore.getState().setIsDraggingTab(false);
                   setDragOverTab(null);
                   setDragOverNewTab(false);
                   setDragOverRecent(false);
@@ -652,12 +654,10 @@ export const SessionTabs: React.FC = () => {
                     });
                   }
                   
-                  // Color gradient: grey until 70%, then yellow -> orange -> red
+                  // Color gradient: grey until 90%, then custom negative color
                   const getColor = (pct: number) => {
-                    if (pct < 70) return 'rgba(150, 150, 150, 0.8)'; // Grey
-                    if (pct < 80) return 'rgba(255, 255, 100, 0.8)'; // Yellow
-                    if (pct < 90) return 'rgba(255, 200, 100, 0.8)'; // Orange
-                    return 'rgba(255, 100, 100, 0.8)'; // Red
+                    if (pct < 90) return 'rgba(150, 150, 150, 0.8)'; // Grey
+                    return 'rgba(var(--negative-rgb), 0.8)'; // Custom negative color
                   };
                   
                   return (

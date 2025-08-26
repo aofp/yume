@@ -83,7 +83,7 @@
 }
 
 .analytics-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .analytics-controls {

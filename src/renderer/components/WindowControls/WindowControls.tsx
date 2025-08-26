@@ -1,6 +1,7 @@
 import React from 'react';
 import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconTrendingUp, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
+import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './WindowControls.css';
 
 interface WindowControlsProps {
@@ -17,6 +18,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                    navigator.userAgent.toLowerCase().includes('windows');
   
   const { isLicensed } = useLicenseStore();
+  const isDraggingTab = useClaudeCodeStore(state => state.isDraggingTab);
   
   // Removed spammy platform detection log
   
@@ -48,7 +50,8 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
       const y = e.clientY;
       
       // Check if in trigger zone (top 28px height for title bar area)
-      if (y <= 28) {
+      // Don't open menu if dragging a tab
+      if (y <= 28 && !isDraggingTab) {
         if (isMac) {
           // macOS: right 1/3 of window
           if (x >= windowWidth * 0.67) {
@@ -76,7 +79,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [isMac]);
+  }, [isMac, isDraggingTab]);
   
   // Always show controls for frameless window
   // if (!isWindows) return null;

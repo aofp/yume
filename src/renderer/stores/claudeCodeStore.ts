@@ -156,6 +156,9 @@ interface ClaudeCodeStore {
   // Title generation
   autoGenerateTitle: boolean; // Whether to auto-generate titles for new sessions
   
+  // UI state
+  isDraggingTab: boolean; // Whether a tab is currently being dragged
+  
   // Streaming (deprecated - now per-session)
   streamingMessage: string;
   
@@ -216,6 +219,9 @@ interface ClaudeCodeStore {
   
   // Title generation
   setAutoGenerateTitle: (autoGenerate: boolean) => void;
+  
+  // UI state
+  setIsDraggingTab: (isDragging: boolean) => void;
 }
 
 // Helper function to track file changes from tool operations
@@ -415,6 +421,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
   autoGenerateTitle: true, // Default to auto-generating titles (enabled by default)
+  isDraggingTab: false, // No tab is being dragged initially
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],
@@ -483,7 +490,23 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // Get the current number of sessions to determine tab number
       const tabNumber = existingSession ? 
         currentState.sessions.findIndex(s => s.id === existingSessionId) + 1 :
-        currentState.sessions.length + 1;
+        (() => {
+          // If no sessions exist, start fresh at tab 1
+          if (currentState.sessions.length === 0) {
+            return 1;
+          }
+          
+          // Find the maximum tab number and add 1
+          const tabNumbers = currentState.sessions
+            .map(s => {
+              const match = s.claudeTitle?.match(/^tab (\d+)$/);
+              return match ? parseInt(match[1]) : 0;
+            })
+            .filter(n => n > 0);
+          
+          // If no numbered tabs exist (all renamed), start at 1
+          return tabNumbers.length > 0 ? Math.max(...tabNumbers) + 1 : 1;
+        })();
       
       const pendingSession: Session = existingSession || {
         id: tempSessionId,
@@ -1203,47 +1226,30 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // Handle compact system message with token reset
               if (message.type === 'system' && message.subtype === 'compact') {
                 console.log('🗜️ [COMPACT] Received compact system message');
-                if (message.message?.compactedTokens) {
-                  const compactedTokens = message.message.compactedTokens;
-                  console.log('🗜️ [COMPACT] Resetting token count to compacted values:', compactedTokens);
-                  
-                  // Reset conversation tokens to the compacted values
-                  analytics.tokens.input = compactedTokens.input || 0;
-                  analytics.tokens.output = compactedTokens.output || 0;
-                  analytics.tokens.total = compactedTokens.total || 0;
-                  // After compact, cache size is reset
-                  analytics.tokens.cacheSize = compactedTokens.cache_read || 0;
-                  
-                  // Also reset model-specific counts (we don't know the breakdown, so reset both)
-                  analytics.tokens.byModel = {
-                    opus: { input: 0, output: 0, total: 0 },
-                    sonnet: { input: 0, output: 0, total: 0 }
-                  };
-                  
-                  // The compacted tokens become the new baseline for the current model
-                  const currentModel = get().selectedModel || 'claude-3-5-sonnet-20241022';
-                  const isOpus = currentModel.includes('opus');
-                  if (isOpus) {
-                    analytics.tokens.byModel.opus = {
-                      input: compactedTokens.input || 0,
-                      output: compactedTokens.output || 0,
-                      total: compactedTokens.total || 0
-                    };
-                  } else {
-                    analytics.tokens.byModel.sonnet = {
-                      input: compactedTokens.input || 0,
-                      output: compactedTokens.output || 0,
-                      total: compactedTokens.total || 0
-                    };
-                  }
-                  
-                  // Clear compactPending flag if it was set
-                  if (analytics.compactPending) {
-                    delete analytics.compactPending;
-                  }
-                  
-                  console.log('🗜️ [COMPACT] Token count reset complete. New totals:', analytics.tokens);
-                }
+                const tokensSaved = message.message?.tokensSaved || 0;
+                console.log(`🗜️ [COMPACT] Compact saved ${tokensSaved} tokens`);
+                
+                // Always reset tokens to 0 after compact
+                // The next message will establish the new baseline
+                console.log('🗜️ [COMPACT] Resetting all token counts to 0');
+                
+                // Reset conversation tokens completely
+                analytics.tokens.input = 0;
+                analytics.tokens.output = 0;
+                analytics.tokens.total = 0;
+                analytics.tokens.cacheSize = 0;
+                
+                // Reset model-specific counts
+                analytics.tokens.byModel = {
+                  opus: { input: 0, output: 0, total: 0 },
+                  sonnet: { input: 0, output: 0, total: 0 }
+                };
+                
+                // Set compactPending flag so next message knows to use new baseline
+                analytics.compactPending = true;
+                console.log('🗜️ [COMPACT] Set compactPending flag for next message');
+                
+                console.log('🗜️ [COMPACT] Token count reset complete. New totals:', analytics.tokens);
               }
               
               // Update tokens if result message - Claude CLI sends cumulative values for this conversation
@@ -1269,18 +1275,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                                          message.usage.cache_read_input_tokens === 0;
                   
                   if (isCompactResult) {
-                    console.log('🗜️ [COMPACT DETECTED] /compact command completed - need to fetch new token count');
-                    console.log('🗜️ [COMPACT] Current analytics before compact:', analytics.tokens);
-                    console.log('🗜️ [COMPACT] Session claudeSessionId:', s.claudeSessionId);
-                    
-                    // Mark that we're waiting for post-compact token count
-                    analytics.compactPending = true;
-                    
-                    // After a compact, we need to query Claude for the new context size
-                    // For now, log that we detected it - the next message will have the updated counts
-                    console.log('🗜️ [COMPACT] Next message from Claude should have updated token counts');
-                    
-                    // Don't update tokens for compact result (all zeros)
+                    console.log('🗜️ [COMPACT DETECTED] /compact result message received (all zeros)');
+                    console.log('🗜️ [COMPACT] Ignoring zero usage from compact command itself');
+                    // The system compact message will handle the actual token reset
+                    // Don't process this result message's usage
                     return { ...s, messages: existingMessages, analytics, updatedAt: new Date() };
                   }
                   
@@ -2849,9 +2847,18 @@ ${content}`;
         console.log(`🧹 [Store] Current claudeSessionId: ${session.claudeSessionId}`);
       }
       
-      // Find the session index to maintain tab number
-      const sessionIndex = state.sessions.findIndex(s => s.id === sessionId);
-      const tabNumber = sessionIndex !== -1 ? sessionIndex + 1 : 1;
+      // Keep the original tab number if it exists
+      let tabNumber = 1;
+      if (session?.claudeTitle) {
+        const match = session.claudeTitle.match(/^tab (\d+)$/);
+        if (match) {
+          tabNumber = parseInt(match[1]);
+        } else {
+          // If title was renamed by user, don't reset it
+          const sessionIndex = state.sessions.findIndex(s => s.id === sessionId);
+          tabNumber = sessionIndex !== -1 ? sessionIndex + 1 : 1;
+        }
+      }
       
       return {
         sessions: state.sessions.map(s => 
@@ -2860,7 +2867,7 @@ ${content}`;
                 ...s, 
                 messages: [], // Clear ALL messages - don't keep any
                 claudeSessionId: undefined, // Clear Claude session to start fresh
-                claudeTitle: `tab ${tabNumber}`, // Reset title to 'tab x' format
+                claudeTitle: session?.userRenamed ? s.claudeTitle : `tab ${tabNumber}`, // Keep custom titles, reset default ones
                 pendingToolIds: new Set(), // Clear pending tools
                 streaming: false, // Stop streaming
                 wasCompacted: false, // Reset compacted flag
@@ -3332,6 +3339,10 @@ ${content}`;
     set({ autoGenerateTitle: autoGenerate });
     localStorage.setItem('yurucode-auto-generate-title', JSON.stringify(autoGenerate));
     console.log('[Store] Auto-generate title:', autoGenerate);
+  },
+  
+  setIsDraggingTab: (isDragging: boolean) => {
+    set({ isDraggingTab: isDragging });
   },
 
   updateSessionMapping: (sessionId: string, claudeSessionId: string, metadata?: any) => {

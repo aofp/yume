@@ -57,7 +57,7 @@
 }
 
 .upgrade-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .upgrade-content {

@@ -55,7 +55,7 @@
 }
 
 .about-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .about-content {

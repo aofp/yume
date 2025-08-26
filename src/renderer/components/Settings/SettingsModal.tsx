@@ -58,8 +58,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { isLicensed } = useLicenseStore();
   const [zoomLevel, setZoomLevel] = useState(0);
   const [accentColor, setAccentColor] = useState('#99bbff');
-  const [positiveColor, setPositiveColor] = useState('#99eeff'); // default cyan
-  const [negativeColor, setNegativeColor] = useState('#ff99ff'); // default magenta
+  const [positiveColor, setPositiveColor] = useState('#99ff99'); // default green
+  const [negativeColor, setNegativeColor] = useState('#ff9999'); // default red
   const [showColorPicker, setShowColorPicker] = useState<'accent' | 'positive' | 'negative' | null>(null);
   const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
@@ -104,7 +104,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     const accentB = parseInt(accentHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${accentR}, ${accentG}, ${accentB}`);
 
-    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99eeff';
+    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99ff99';
     setPositiveColor(savedPositiveColor);
     // Apply positive color
     document.documentElement.style.setProperty('--positive-color', savedPositiveColor);
@@ -114,7 +114,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     const positiveB = parseInt(positiveHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--positive-rgb', `${positiveR}, ${positiveG}, ${positiveB}`);
 
-    const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff99ff';
+    const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff9999';
     setNegativeColor(savedNegativeColor);
     // Apply negative color
     document.documentElement.style.setProperty('--negative-color', savedNegativeColor);
@@ -375,9 +375,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <div className="color-controls">
                     <button
                       className="color-reset"
-                      onClick={() => handleColorSelect('#99eeff', 'positive')}
-                      title="reset to default cyan"
-                      disabled={positiveColor === '#99eeff'}
+                      onClick={() => handleColorSelect('#99ff99', 'positive')}
+                      title="reset to default green"
+                      disabled={positiveColor === '#99ff99'}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
@@ -397,9 +397,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <div className="color-controls">
                     <button
                       className="color-reset"
-                      onClick={() => handleColorSelect('#ff99ff', 'negative')}
-                      title="reset to default magenta"
-                      disabled={negativeColor === '#ff99ff'}
+                      onClick={() => handleColorSelect('#ff9999', 'negative')}
+                      title="reset to default red"
+                      disabled={negativeColor === '#ff9999'}
                     >
                       <IconRotateClockwise size={12} />
                     </button>

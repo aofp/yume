@@ -64,7 +64,7 @@
 }
 
 .settings-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .settings-content {
@@ -339,7 +339,7 @@
 }
 
 .color-picker-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .color-picker-content {

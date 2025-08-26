@@ -221,8 +221,8 @@
 }
 
 .clear-all-icon:hover {
-  background: rgba(var(--accent-rgb), 0.1);
-  color: var(--accent-color);
+  background: rgba(var(--negative-rgb), 0.1);
+  color: var(--negative-color);
 }
 
 .modal-close {
@@ -240,8 +240,8 @@
 }
 
 .modal-close:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.6);
+  background: rgba(var(--negative-rgb), 0.1);
+  color: var(--negative-color);
 }
 
 .modal-content {
@@ -306,8 +306,8 @@
 }
 
 .recent-item-remove:hover {
-  background: rgba(var(--accent-rgb), 0.1);
-  color: var(--accent-color);
+  background: rgba(var(--negative-rgb), 0.1);
+  color: var(--negative-color);
 }
 
 .recent-item-info {

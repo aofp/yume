@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   IconSend, 
   IconPlayerStop, 
@@ -37,7 +37,9 @@ import {
   IconClock,
   IconMessage,
   IconDatabase,
-  IconCirclePlus
+  IconCirclePlus,
+  IconMicrophone,
+  IconMicrophoneOff
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -149,6 +151,8 @@ export const ClaudeChat: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [isDictating, setIsDictating] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
@@ -532,6 +536,78 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.runningBash, currentSession?.userBashRunning, currentSessionId, bashStartTimes[currentSessionId]]);
 
+  // Speech recognition for dictation
+  const startDictation = useCallback(() => {
+    if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
+      console.error('[Dictation] Speech recognition not supported');
+      return;
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+    
+    recognition.onstart = () => {
+      console.log('[Dictation] Started');
+      setIsDictating(true);
+    };
+    
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      
+      if (finalTranscript) {
+        // Append final transcript to input
+        setInput(prev => {
+          const newText = prev + (prev && !prev.endsWith(' ') ? ' ' : '') + finalTranscript;
+          return newText;
+        });
+      }
+    };
+    
+    recognition.onerror = (event: any) => {
+      console.error('[Dictation] Error:', event.error);
+      setIsDictating(false);
+      recognitionRef.current = null;
+    };
+    
+    recognition.onend = () => {
+      console.log('[Dictation] Ended');
+      setIsDictating(false);
+      recognitionRef.current = null;
+    };
+    
+    recognitionRef.current = recognition;
+    recognition.start();
+  }, []);
+  
+  const stopDictation = useCallback(() => {
+    if (recognitionRef.current) {
+      recognitionRef.current.stop();
+      recognitionRef.current = null;
+      setIsDictating(false);
+    }
+  }, []);
+  
+  const toggleDictation = useCallback(() => {
+    if (isDictating) {
+      stopDictation();
+    } else {
+      startDictation();
+    }
+  }, [isDictating, startDictation, stopDictation]);
+
   // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -563,6 +639,10 @@ export const ClaudeChat: React.FC = () => {
             [currentSessionId]: -1
           }));
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        // Toggle dictation
+        toggleDictation();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
         // Dispatch event to open recent modal in App
@@ -634,7 +714,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length]);
+  }, [searchVisible, currentSessionId, clearContext, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, toggleDictation]);
 
 
 
@@ -723,6 +803,16 @@ export const ClaudeChat: React.FC = () => {
     document.addEventListener('keydown', handleGlobalKeyDown, true);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown, true);
   }, []);
+  
+  // Stop dictation when component unmounts or session changes
+  useEffect(() => {
+    return () => {
+      if (recognitionRef.current) {
+        recognitionRef.current.stop();
+        recognitionRef.current = null;
+      }
+    };
+  }, [currentSessionId]);
   
   // Clean up pending followup if session changes
   useEffect(() => {
@@ -2437,6 +2527,17 @@ export const ClaudeChat: React.FC = () => {
         {/* Context info bar */}
         <div className="context-bar">
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+          
+          {/* Dictation button */}
+          <button
+            className={`btn-dictation ${isDictating ? 'active' : ''}`}
+            onClick={toggleDictation}
+            title={isDictating ? "stop dictation (ctrl+e)" : "start dictation (ctrl+e)"}
+            disabled={currentSession?.readOnly}
+          >
+            {isDictating ? <IconMicrophoneOff size={14} /> : <IconMicrophone size={14} />}
+          </button>
+          
           <div className="context-info">
             {(() => {
               // tokens.total already includes all tokens (input + output + cache)
@@ -2460,10 +2561,8 @@ export const ClaudeChat: React.FC = () => {
               if (rawPercentage > 100) {
                 console.warn(`[TOKEN WARNING] Tokens (${totalContextTokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
               }
-              // Color classes: grey until 70%, then yellow/orange/red
-              const usageClass = percentageNum >= 90 ? 'high' : 
-                                percentageNum >= 80 ? 'orange' : 
-                                percentageNum >= 70 ? 'medium' : 'low';
+              // Color classes: grey until 90%, then custom negative color
+              const usageClass = percentageNum >= 90 ? 'high' : 'low';
               
               const hasActivity = currentSession.messages.some(m => 
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'

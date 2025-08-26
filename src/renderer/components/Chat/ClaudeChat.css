@@ -743,9 +743,9 @@ textarea.context-full {
   position: absolute;
   right: 3px;
   bottom: 3px;
-  background: transparent;
-  border: 1px solid var(--color-accent-red);
-  color: var(--color-accent-red);
+  background: rgba(var(--negative-rgb), 0.1);
+  border: 1px solid var(--negative-color);
+  color: var(--negative-color);
   padding: 10px;
   border-radius: 3px;
   cursor: default;
@@ -759,9 +759,9 @@ textarea.context-full {
 }
 
 .stop-streaming-btn:hover {
-  background: transparent;
-  border: 1px solid var(--color-accent-red);
-  color: var(--color-accent-red);
+  background: rgba(var(--negative-rgb), 0.2);
+  border: 1px solid var(--negative-color);
+  color: var(--negative-color);
   opacity: 1;
   animation: none;
 }
@@ -1060,6 +1060,7 @@ textarea.context-full {
   margin-top: 1px;
   background: #000000;
   flex-shrink: 0; /* Prevent shrinking */
+  position: relative; /* For absolute positioning of dictation button */
 }
 
 /* Windows release build specific adjustment - buttons need to go down 1px */
@@ -1080,7 +1081,7 @@ textarea.context-full {
   -webkit-user-select: none;
 }
 
-.btn-clear-context, .btn-stats, .btn-help {
+.btn-clear-context, .btn-stats, .btn-help, .btn-dictation {
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: rgba(255, 255, 255, 0.4);
@@ -1093,10 +1094,50 @@ textarea.context-full {
   cursor: default;
 }
 
-.btn-clear-context:hover:not(:disabled), .btn-stats:hover, .btn-help:hover {
+.btn-clear-context:hover:not(:disabled), .btn-stats:hover, .btn-help:hover, .btn-dictation:hover:not(:disabled):not(.active) {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
+}
+
+/* Dictation button specific styles */
+.btn-dictation {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2px 7px;
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1;
+}
+
+
+.btn-dictation.active {
+  color: var(--negative-color);
+  border-color: var(--negative-color);
+  background: rgba(var(--negative-rgb), 0.1);
+  animation: pulse 1.5s infinite;
+}
+
+.btn-dictation.active:hover {
+  background: rgba(var(--negative-rgb), 0.15);
+  color: var(--negative-color);
+  border-color: var(--negative-color);
+}
+
+.btn-dictation:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
 }
 
 .btn-clear-context:disabled {
@@ -1135,7 +1176,7 @@ textarea.context-full {
   font-family: var(--font-mono);
 }
 
-/* Color coding for token usage levels - grey until 70%, then yellow/orange/red */
+/* Color coding for token usage levels - grey until 90%, then custom negative color */
 .btn-stats.low {
   color: rgba(255, 255, 255, 0.4);
 }
@@ -1146,40 +1187,16 @@ textarea.context-full {
   border-color: rgba(var(--accent-rgb), 1);
 }
 
-/* Yellow at 70-80% */
-.btn-stats.medium {
-  color: rgba(255, 255, 100, 0.8);
-  border-color: rgba(255, 255, 100, 0.3);
-}
-
-.btn-stats.medium:hover {
-  background: rgba(255, 255, 100, 0.05);
-  color: rgba(255, 255, 100, 1);
-  border-color: rgba(255, 255, 100, 1);
-}
-
-/* Orange at 80-90% */
-.btn-stats.orange {
-  color: rgba(255, 200, 100, 0.8);
-  border-color: rgba(255, 200, 100, 0.3);
-}
-
-.btn-stats.orange:hover {
-  background: rgba(255, 200, 100, 0.05);
-  color: rgba(255, 200, 100, 1);
-  border-color: rgba(255, 200, 100, 1);
-}
-
-/* Red at 90%+ */
+/* Custom negative color at 90%+ */
 .btn-stats.high {
-  color: rgba(255, 100, 100, 0.8);
-  border-color: rgba(255, 100, 100, 0.3);
+  color: var(--negative-color);
+  border-color: rgba(var(--negative-rgb), 0.3);
 }
 
 .btn-stats.high:hover {
-  background: rgba(255, 100, 100, 0.05);
-  color: rgba(255, 100, 100, 1);
-  border-color: rgba(255, 100, 100, 1);
+  background: rgba(var(--negative-rgb), 0.05);
+  color: var(--negative-color);
+  border-color: var(--negative-color);
 }
 
 .btn-stats.disabled {
@@ -1338,7 +1355,7 @@ textarea.context-full {
 }
 
 .help-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .help-content {
@@ -1478,7 +1495,7 @@ textarea.context-full {
 }
 
 .stats-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .stats-content {

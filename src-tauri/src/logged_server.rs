@@ -529,23 +529,42 @@ function createWslClaudeCommand(args, workingDir, message) {
     
     // For very long messages, use a temp file to avoid command line length limits
     // Create temp file in WSL /tmp with unique name
-    const tempFileName = `/tmp/yurucode-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`;
+    const wslTempFileName = `/tmp/yurucode-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`;
     
-    // Write message to temp file, then cat it to Claude, then delete temp file
-    // Use base64 encoding to safely pass the message content to WSL
-    const messageBase64 = Buffer.from(message).toString('base64');
+    // For large messages, write to a Windows temp file first to avoid command line limits
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
     
-    // Build the WSL command - decode base64, write to temp, pipe to claude, cleanup
-    const script = `cd "${wslWorkingDir}" && echo "${messageBase64}" | base64 -d > "${tempFileName}" && cat "${tempFileName}" | ${claudePath} ${argsStr} 2>&1; rm -f "${tempFileName}"`;
+    // Create a Windows temp file
+    const windowsTempFile = path.join(os.tmpdir(), `yurucode-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`);
+    
+    try {
+      // Write the message directly to the Windows temp file
+      fs.writeFileSync(windowsTempFile, message, 'utf8');
+    } catch (err) {
+      console.error(`❌ Failed to write temp file: ${err.message}`);
+      throw err;
+    }
+    
+    // Convert Windows path to WSL path for the temp file
+    const windowsTempDrive = windowsTempFile[0].toLowerCase();
+    const windowsTempPath = windowsTempFile.substring(2).replace(/\\/g, '/');
+    const wslWindowsTempFile = `/mnt/${windowsTempDrive}${windowsTempPath}`;
+    
+    // Build the WSL command - copy from Windows temp to WSL temp, pipe to claude, cleanup both files
+    // Use trap to ensure cleanup happens even on errors
+    const script = `trap 'rm -f "${wslTempFileName}"' EXIT; cd "${wslWorkingDir}" && cat "${wslWindowsTempFile}" > "${wslTempFileName}" && rm -f "${wslWindowsTempFile}" && cat "${wslTempFileName}" | ${claudePath} ${argsStr} 2>&1`;
     
     console.log(`🔍 WSL script (main message):`);
     console.log(`  Working dir: ${wslWorkingDir}`);
     console.log(`  Claude path: ${claudePath}`);
     console.log(`  Args: ${argsStr}`);
     console.log(`  Message length: ${message.length} chars`);
-    console.log(`  Using temp file: ${tempFileName}`);
+    console.log(`  Windows temp file: ${windowsTempFile}`);
+    console.log(`  WSL temp file: ${wslTempFileName}`);
     
-    return [wslPath, ['-e', 'bash', '-c', script], true];
+    return [wslPath, ['-e', 'bash', '-c', script], true, windowsTempFile];
   } else {
     // Title generation - use same path detection
     const { execFileSync } = require('child_process');
@@ -3110,6 +3129,8 @@ Format as a clear, structured summary that preserves all important context.`;
       });
       
       let claudeProcess;
+      let windowsTempFileToCleanup = null; // Track temp file for cleanup
+      
       if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
         // Convert Windows path to WSL path if needed
         let wslWorkingDir = processWorkingDir;
@@ -3155,7 +3176,9 @@ Format as a clear, structured summary that preserves all important context.`;
           session.pendingContextRestore = false;
         }
         
-        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(args, wslWorkingDir, messageToSend);
+        const [wslCommand, wslArgs, inputHandled, tempFile] = createWslClaudeCommand(args, wslWorkingDir, messageToSend);
+        windowsTempFileToCleanup = tempFile; // Store temp file path for cleanup
+        
         console.log(`🚀 Running WSL command: ${wslCommand}`);
         console.log(`🚀 WSL args (first 500 chars):`, JSON.stringify(wslArgs).substring(0, 500));
         console.log(`🚀 Input handled in script: ${inputHandled}`);
@@ -4008,28 +4031,36 @@ Format as a clear, structured summary that preserves all important context.`;
                 console.log(`🗜️ The compact command has summarized the conversation - continuing with reduced context`);
               }
               
-              // Extract the new token count from the compact result
-              // The compact command returns the new compressed token count
-              const compactedTokens = jsonData.usage ? {
-                input: jsonData.usage.input_tokens || 0,
-                output: jsonData.usage.output_tokens || 0,
-                cache_creation: jsonData.usage.cache_creation_input_tokens || 0,
-                cache_read: jsonData.usage.cache_read_input_tokens || 0,
-                total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0)
-              } : null;
+              // After compact, we don't know the exact new token count until the next message
+              // The /compact command itself returns usage: 0 which is not the compressed context size
+              // Reset tokens to 0 and let the next message establish the new baseline
+              console.log(`🗜️ [${sessionId}] Compact complete - tokens will reset on next message`);
               
-              if (compactedTokens) {
-                console.log(`🗜️ [${sessionId}] Compacted token count: ${compactedTokens.total} (input: ${compactedTokens.input}, output: ${compactedTokens.output})`);
+              // Reset session token tracking
+              if (session) {
+                const savedTokens = session.totalTokens || 0;
+                session.totalTokens = 0;
+                session.inputTokens = 0;
+                session.outputTokens = 0;
+                console.log(`🗜️ [${sessionId}] Reset session tokens from ${savedTokens} to 0`);
               }
               
-              // Send compact notification with token info
+              // Send compact notification with reset instruction
               socket.emit(`message:${sessionId}`, {
                 type: 'system',
                 subtype: 'compact',
                 session_id: null, // Clear session ID after compact
                 message: { 
-                  content: 'context compacted - starting fresh with reduced tokens',
-                  compactedTokens: compactedTokens,
+                  content: 'context compacted - tokens reset',
+                  compactedTokens: {
+                    input: 0,
+                    output: 0,
+                    total: 0,
+                    cache_read: 0,
+                    cache_creation: 0,
+                    reset: true  // Flag to indicate full reset
+                  },
+                  tokensSaved: session?.tokensSavedByCompact || 0,
                   compactSummary: jsonData.result || 'conversation summarized'
                 },
                 timestamp: Date.now()
@@ -4308,6 +4339,19 @@ Format as a clear, structured summary that preserves all important context.`;
           }
         }
         
+        // Clean up Windows temp file if it exists
+        if (windowsTempFileToCleanup) {
+          try {
+            const fs = require('fs');
+            if (fs.existsSync(windowsTempFileToCleanup)) {
+              fs.unlinkSync(windowsTempFileToCleanup);
+              console.log(`🧹 Cleaned up Windows temp file: ${windowsTempFileToCleanup}`);
+            }
+          } catch (e) {
+            console.warn(`⚠️ Failed to clean up temp file: ${e.message}`);
+          }
+        }
+        
         // Clean up all tracking for this session
         if (streamHealthChecks.has(sessionId)) {
           clearInterval(streamHealthChecks.get(sessionId));
@@ -4456,6 +4500,19 @@ Format as a clear, structured summary that preserves all important context.`;
 
       // Handle process errors
       claudeProcess.on('error', (err) => {
+        // Clean up Windows temp file on error
+        if (windowsTempFileToCleanup) {
+          try {
+            const fs = require('fs');
+            if (fs.existsSync(windowsTempFileToCleanup)) {
+              fs.unlinkSync(windowsTempFileToCleanup);
+              console.log(`🧹 Cleaned up Windows temp file on error: ${windowsTempFileToCleanup}`);
+            }
+          } catch (e) {
+            console.warn(`⚠️ Failed to clean up temp file: ${e.message}`);
+          }
+        }
+        
         // Clean up all tracking for this session
         if (streamHealthChecks.has(sessionId)) {
           clearInterval(streamHealthChecks.get(sessionId));

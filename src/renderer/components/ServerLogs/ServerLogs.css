@@ -62,9 +62,12 @@
 
 .server-logs-refresh:hover:not(:disabled),
 .server-logs-clear:hover,
-.server-logs-copy:hover,
-.server-logs-close:hover {
+.server-logs-copy:hover {
   color: var(--accent-color);
+}
+
+.server-logs-close:hover {
+  color: var(--negative-color);
 }
 
 .server-logs-refresh:disabled {
