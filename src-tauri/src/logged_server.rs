@@ -296,11 +296,12 @@ function processWrapperLine(line, sessionId) {
       session.inputTokens += input;
       session.outputTokens += output;
       
-      // Track cache tokens separately
-      session.cacheCreationTokens = (session.cacheCreationTokens || 0) + cacheCreation;
-      session.cacheReadTokens = (session.cacheReadTokens || 0) + cacheRead;
+      // Cache tokens should be set to the max value seen, not accumulated
+      // Cache represents the total cached context, not additive per turn
+      session.cacheCreationTokens = Math.max(session.cacheCreationTokens || 0, cacheCreation);
+      session.cacheReadTokens = Math.max(session.cacheReadTokens || 0, cacheRead);
       
-      // Total context includes ALL tokens
+      // Total context = actual new tokens this session + current cache size
       const prevTotal = session.totalTokens;
       session.totalTokens = session.inputTokens + session.outputTokens + 
                            session.cacheCreationTokens + session.cacheReadTokens;
@@ -352,6 +353,8 @@ function processWrapperLine(line, sessionId) {
       session.inputTokens = 0;
       session.outputTokens = 0;
       session.totalTokens = 0;
+      session.cacheCreationTokens = 0;
+      session.cacheReadTokens = 0;
       
       // Use Claude's summary if we captured it, otherwise use fallback
       if (session.compactSummary) {
@@ -378,7 +381,9 @@ function processWrapperLine(line, sessionId) {
       tokens: {
         total: session.totalTokens,
         input: session.inputTokens,
-        output: session.outputTokens
+        output: session.outputTokens,
+        cache_read: session.cacheReadTokens || 0,
+        cache_creation: session.cacheCreationTokens || 0
       },
       compaction: {
         count: session.compactCount,
