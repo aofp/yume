@@ -3665,6 +3665,26 @@ Format as a clear, structured summary that preserves all important context.`;
             // Handle tool results from user messages
             for (const block of jsonData.message.content) {
               if (block.type === 'tool_result') {
+                // Check if this is a Bash tool result and trigger focus restoration on Windows
+                if (bashToolUseIds.has(block.tool_use_id)) {
+                  console.log(`🔧 [${sessionId}] Bash tool result received, triggering focus restoration`);
+                  const bashInfo = bashToolUseIds.get(block.tool_use_id);
+                  bashToolUseIds.delete(block.tool_use_id); // Clean up
+                  
+                  // Set flag to false after first bash command
+                  if (isFirstBashCommand) {
+                    isFirstBashCommand = false;
+                    console.log(`🔧 [${sessionId}] First bash command completed, focus restoration disabled for future commands`);
+                  }
+                  
+                  // Emit event to trigger focus restoration on Windows
+                  if (process.platform === 'win32') {
+                    socket.emit(`trigger:focus:${bashInfo.sessionId}`, {
+                      timestamp: Date.now()
+                    });
+                  }
+                }
+                
                 // Check if this is an Edit/MultiEdit tool result and enhance with context lines
                 let enhancedContent = block.content;
                 

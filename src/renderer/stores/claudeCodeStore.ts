@@ -744,6 +744,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // For deferred spawns (new tabs without prompt), this will be null until first message
       let messageCleanup: (() => void) | null = null;
       let tempMessageCleanup: (() => void) | null = null;
+      let focusCleanup: (() => void) | null = null;
       
       // ALSO listen on the temp session ID for compact results
       // Compact creates a new session but emits result on original temp channel
@@ -1922,6 +1923,27 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             return { sessions };
           });
         });
+        
+        // Set up focus trigger listener for Windows (restores focus after bash commands)
+        if (navigator.platform.includes('Win')) {
+          console.log('[Store] Setting up focus trigger listener for Windows');
+          focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
+            console.log('[Store] 🎯 Focus trigger received, restoring window focus');
+            // Use Tauri command to restore focus
+            if (window.__TAURI__) {
+              import('@tauri-apps/api/core').then(({ invoke }) => {
+                invoke('restore_window_focus').catch(console.warn);
+              });
+            }
+            // Also try web-based focus restoration
+            window.focus();
+            // Focus the input if we have a reference
+            const inputElement = document.querySelector('textarea.message-input') as HTMLTextAreaElement;
+            if (inputElement) {
+              inputElement.focus();
+            }
+          });
+        }
       } else {
         console.log('[Store] No claudeSessionId yet - will set up listener after spawn');
       }
@@ -1929,6 +1951,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       // Combined cleanup function
       const cleanup = () => {
         if (messageCleanup) messageCleanup();
+        if (focusCleanup) focusCleanup();
+        if (tempMessageCleanup) tempMessageCleanup();
         titleCleanup();
         errorCleanup();
       };
@@ -2242,6 +2266,10 @@ ${content}`;
     // This doesn't create a new claude process, just reconnects the message handlers
     console.log(`[Store] Reconnecting session ${sessionId} with claudeSessionId ${claudeSessionId}`);
     
+    // Initialize cleanup functions
+    let focusCleanup: (() => void) | null = null;
+    let tempMessageCleanup: (() => void) | null = null;
+    
     // Listen for title updates
     const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
       console.log('[Store] Received title for reconnected session:', sessionId, title);
@@ -2342,12 +2370,34 @@ ${content}`;
       });
     });
     
+    // Set up focus trigger listener for Windows (restores focus after bash commands)
+    if (navigator.platform.includes('Win')) {
+      console.log('[Store] Setting up focus trigger listener for Windows (reconnect)');
+      focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
+        console.log('[Store] 🎯 Focus trigger received, restoring window focus');
+        // Use Tauri command to restore focus
+        if (window.__TAURI__) {
+          import('@tauri-apps/api/core').then(({ invoke }) => {
+            invoke('restore_window_focus').catch(console.warn);
+          });
+        }
+        // Also try web-based focus restoration
+        window.focus();
+        // Focus the input if we have a reference
+        const inputElement = document.querySelector('textarea.message-input') as HTMLTextAreaElement;
+        if (inputElement) {
+          inputElement.focus();
+        }
+      });
+    }
+    
     // Store cleanup function
     const session = get().sessions.find(s => s.id === sessionId);
     if (session) {
       (session as any).cleanup = () => {
         if (tempMessageCleanup) tempMessageCleanup();
         if (messageCleanup) messageCleanup();
+        if (focusCleanup) focusCleanup();
         titleCleanup();
         errorCleanup();
       };

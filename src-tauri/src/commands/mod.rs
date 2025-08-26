@@ -603,16 +603,21 @@ pub async fn spawn_bash(
     #[cfg(target_os = "windows")]
     let mut child = {
         use std::os::windows::process::CommandExt;
+        // Combine flags to prevent window creation and focus stealing
         const CREATE_NO_WINDOW: u32 = 0x08000000;
+        const DETACHED_PROCESS: u32 = 0x00000008;
+        const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
         
-        // Use CREATE_NO_WINDOW to prevent console window
+        // Use combined flags to prevent focus loss
+        let creation_flags = CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
+        
         Command::new("wsl")
             .current_dir(&cwd)
             .args(&["bash", "-c", &command])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null())
-            .creation_flags(CREATE_NO_WINDOW)
+            .creation_flags(creation_flags)
             .spawn()
             .or_else(|_| {
                 Command::new("bash")
@@ -621,7 +626,7 @@ pub async fn spawn_bash(
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .stdin(Stdio::null())
-                    .creation_flags(CREATE_NO_WINDOW)
+                    .creation_flags(creation_flags)
                     .spawn()
             })
             .or_else(|_| {
@@ -631,7 +636,7 @@ pub async fn spawn_bash(
                     .stdout(Stdio::piped())
                     .stderr(Stdio::piped())
                     .stdin(Stdio::null())
-                    .creation_flags(CREATE_NO_WINDOW)
+                    .creation_flags(creation_flags)
                     .spawn()
             })
             .map_err(|e| format!("Failed to spawn command: {}", e))?
@@ -1174,18 +1179,53 @@ fn fuzzy_match(query: &str, text: &str) -> bool {
 }
 
 /// Restores focus to the application window (Windows only)
-/// Called after first bash command to prevent focus loss
+/// Called after bash command to prevent focus loss
 #[tauri::command]
 pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> {
     #[cfg(target_os = "windows")]
     {
         use windows::Win32::Foundation::HWND;
-        use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            SetForegroundWindow, SetActiveWindow, SetFocus,
+            ShowWindow, SW_RESTORE, BringWindowToTop
+        };
+        use windows::Win32::System::Threading::GetCurrentThreadId;
+        use windows::Win32::UI::WindowsAndMessaging::{
+            GetForegroundWindow, AttachThreadInput, 
+            GetWindowThreadProcessId
+        };
         
         let hwnd = window.hwnd().map_err(|e| format!("Failed to get window handle: {}", e))?;
         unsafe {
             let hwnd = HWND(hwnd.0);
+            
+            // Get the thread of the foreground window
+            let foreground = GetForegroundWindow();
+            let mut foreground_thread = 0u32;
+            if foreground.0 != 0 {
+                foreground_thread = GetWindowThreadProcessId(foreground, None);
+            }
+            
+            let current_thread = GetCurrentThreadId();
+            
+            // Attach our thread to the foreground thread temporarily
+            // This allows us to bring our window to the foreground more reliably
+            let mut attached = false;
+            if foreground_thread != 0 && foreground_thread != current_thread {
+                attached = AttachThreadInput(current_thread, foreground_thread, true).is_ok();
+            }
+            
+            // Multiple attempts to ensure window gets focus
+            BringWindowToTop(hwnd);
+            ShowWindow(hwnd, SW_RESTORE);
+            SetActiveWindow(hwnd);
             SetForegroundWindow(hwnd);
+            SetFocus(hwnd);
+            
+            // Detach the thread input if we attached it
+            if attached {
+                let _ = AttachThreadInput(current_thread, foreground_thread, false);
+            }
         }
     }
     

@@ -772,6 +772,27 @@ export class ClaudeCodeClient {
     this.sessionCreatedCallback = handler;
   }
   
+  onFocusTrigger(sessionId: string, handler: () => void): () => void {
+    const eventName = `trigger:focus:${sessionId}`;
+    console.log(`[Client] 🎯 Setting up focus trigger listener for ${eventName}`);
+    
+    if (this.socket) {
+      this.socket.on(eventName, () => {
+        console.log(`[Client] 🎯 Focus trigger received for session ${sessionId}`);
+        handler();
+      });
+      
+      // Return cleanup function
+      return () => {
+        if (this.socket) {
+          this.socket.off(eventName);
+        }
+      };
+    }
+    
+    return () => {};
+  }
+  
   onTitle(sessionId: string, handler: (title: string) => void): () => void {
     const eventName = `title:${sessionId}`;
     console.log(`[Client] 🏷️ Setting up title listener for ${eventName}`);
