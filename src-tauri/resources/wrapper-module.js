@@ -204,53 +204,9 @@ class UniversalClaudeWrapper extends EventEmitter {
     
     const session = this.getSession(sessionId);
     
-    // Track if we're in a compact operation
-    if (!session.compactTracking) {
-      session.compactTracking = {
-        inProgress: false,
-        startTime: null,
-        messages: [],
-        rawOutput: []
-      };
-    }
-    
     try {
       // Parse JSON
       const data = JSON.parse(line);
-      
-      // Check for /compact command
-      if (data.type === 'user' && data.message?.content) {
-        const content = typeof data.message.content === 'string' 
-          ? data.message.content 
-          : (Array.isArray(data.message.content) 
-            ? data.message.content.find(c => c.type === 'text')?.text 
-            : '');
-        
-        if (content?.trim() === '/compact') {
-          session.compactTracking.inProgress = true;
-          session.compactTracking.startTime = Date.now();
-          session.compactTracking.messages = [];
-          session.compactTracking.rawOutput = [];
-          
-          console.log('🗜️🗜️🗜️ [WRAPPER] /compact command detected - starting tracking');
-          console.log('🗜️ Session ID:', sessionId);
-          console.log('🗜️ Start time:', new Date(session.compactTracking.startTime).toISOString());
-        }
-      }
-      
-      // If we're tracking a compact, log everything
-      if (session.compactTracking.inProgress) {
-        session.compactTracking.rawOutput.push(line);
-        session.compactTracking.messages.push(data);
-        
-        console.log(`🗜️ [COMPACT TRACKING] ${data.type}:`, JSON.stringify(data).substring(0, 200));
-        
-        // Look for assistant messages during compact
-        if (data.type === 'assistant' && data.message?.content) {
-          console.log('🗜️ [COMPACT] Assistant message during compact:');
-          console.log('   Content:', JSON.stringify(data.message.content));
-        }
-      }
       
       // CAPTURE EVERYTHING
       this.captureApiResponse(data, sessionId);
@@ -480,26 +436,10 @@ class UniversalClaudeWrapper extends EventEmitter {
    * Check if result is compaction
    */
   isCompactResult(data) {
-    // Log potential compact results for debugging
-    if (data.type === 'result') {
-      console.log('🔍 [WRAPPER] Checking if result is compact:');
-      console.log('   - Type:', data.type);
-      console.log('   - Result:', data.result ? `"${data.result.substring(0, 50)}..."` : '(empty)');
-      console.log('   - Usage:', data.usage);
-      console.log('   - Input tokens:', data.usage?.input_tokens);
-      console.log('   - Output tokens:', data.usage?.output_tokens);
-    }
-    
     // Compaction has empty result and 0 tokens
-    const isCompact = data.type === 'result' &&
+    return data.type === 'result' &&
            data.result === '' &&
            (!data.usage || (data.usage.input_tokens === 0 && data.usage.output_tokens === 0));
-           
-    if (isCompact) {
-      console.log('✅ [WRAPPER] CONFIRMED: This is a compact result!');
-    }
-    
-    return isCompact;
   }
   
   /**
@@ -508,48 +448,10 @@ class UniversalClaudeWrapper extends EventEmitter {
   handleCompaction(data, session) {
     const savedTokens = session.totalTokens;
     
-    this.log('compact', `🗜️🗜️🗜️ COMPACTION DETECTED! Saved ${savedTokens} tokens`);
-    
-    // LOG ALL DATA DURING COMPACTION
-    console.log('╔════════════════════════════════════════════════════════');
-    console.log('║ 🗜️ COMPACT COMPLETE DATA DUMP');
-    console.log('╠════════════════════════════════════════════════════════');
-    console.log('║ Raw data received:', JSON.stringify(data, null, 2));
-    console.log('╠════════════════════════════════════════════════════════');
-    console.log('║ Session state before compact:');
-    console.log('║   - Total tokens:', session.totalTokens);
-    console.log('║   - Input tokens:', session.inputTokens);
-    console.log('║   - Output tokens:', session.outputTokens);
-    console.log('║   - Cache tokens:', session.cacheReadTokens);
-    console.log('║   - Message count:', session.messageCount);
-    console.log('║   - User messages:', session.userMessages.length);
-    console.log('║   - Assistant messages:', session.assistantMessages.length);
-    console.log('║   - Tool calls:', session.toolCalls.length);
-    console.log('║   - API responses:', session.apiResponses.length);
-    console.log('╠════════════════════════════════════════════════════════');
-    
-    // Log last few messages for context
-    console.log('║ Last 3 user messages:');
-    session.userMessages.slice(-3).forEach((msg, i) => {
-      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-      console.log(`║   ${i+1}. ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`);
-    });
-    
-    console.log('║ Last 3 assistant messages:');
-    session.assistantMessages.slice(-3).forEach((msg, i) => {
-      const content = typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content);
-      console.log(`║   ${i+1}. ${content.substring(0, 100)}${content.length > 100 ? '...' : ''}`);
-    });
+    this.log('compact', `COMPACTION DETECTED! Saved ${savedTokens} tokens`);
     
     // Generate summary
     const summary = this.generateSummary(session);
-    
-    console.log('╠════════════════════════════════════════════════════════');
-    console.log('║ Generated summary:');
-    summary.split('\n').forEach(line => {
-      console.log(`║   ${line}`);
-    });
-    console.log('╚════════════════════════════════════════════════════════');
     
     // Store compaction info
     session.compactSummaries.push({
@@ -557,8 +459,7 @@ class UniversalClaudeWrapper extends EventEmitter {
       savedTokens,
       summary,
       messageCount: session.messageCount,
-      toolCount: session.toolCalls.length,
-      rawData: data  // Store raw data for debugging
+      toolCount: session.toolCalls.length
     });
     
     // Update stats
@@ -580,46 +481,6 @@ class UniversalClaudeWrapper extends EventEmitter {
     session.userMessages = [];
     session.assistantMessages = [];
     
-    // Log all messages captured during compact
-    if (session.compactTracking?.inProgress) {
-      console.log('╔════════════════════════════════════════════════════════');
-      console.log('║ 🗜️ COMPACT OPERATION COMPLETE - ALL CAPTURED DATA');
-      console.log('╠════════════════════════════════════════════════════════');
-      console.log('║ Duration:', Date.now() - session.compactTracking.startTime, 'ms');
-      console.log('║ Messages captured:', session.compactTracking.messages.length);
-      console.log('║ Raw lines captured:', session.compactTracking.rawOutput.length);
-      console.log('╠════════════════════════════════════════════════════════');
-      console.log('║ All messages during compact:');
-      session.compactTracking.messages.forEach((msg, i) => {
-        console.log(`║ ${i+1}. Type: ${msg.type}, Subtype: ${msg.subtype || 'none'}`);
-        if (msg.message?.content) {
-          const content = typeof msg.message.content === 'string' 
-            ? msg.message.content 
-            : JSON.stringify(msg.message.content);
-          console.log(`║    Content: ${content.substring(0, 200)}${content.length > 200 ? '...' : ''}`);
-        }
-        if (msg.result !== undefined) {
-          console.log(`║    Result: ${msg.result || '(empty)'}`);
-        }
-        if (msg.usage) {
-          console.log(`║    Usage: input=${msg.usage.input_tokens}, output=${msg.usage.output_tokens}`);
-        }
-      });
-      console.log('╚════════════════════════════════════════════════════════');
-      
-      // Look for any assistant message that might contain the summary
-      const assistantMessages = session.compactTracking.messages.filter(m => m.type === 'assistant');
-      if (assistantMessages.length > 0) {
-        console.log('🗜️ [COMPACT] Found', assistantMessages.length, 'assistant messages during compact');
-        assistantMessages.forEach((msg, i) => {
-          console.log(`🗜️ Assistant message ${i+1}:`, JSON.stringify(msg.message?.content).substring(0, 500));
-        });
-      }
-      
-      // Clear tracking
-      session.compactTracking.inProgress = false;
-    }
-    
     // Augment result with summary
     data.result = `✅ Conversation compacted successfully!
 
@@ -637,8 +498,7 @@ ${summary}
       savedTokens,
       summary,
       totalSaved: session.tokensSaved,
-      compactCount: session.compactCount,
-      capturedMessages: session.compactTracking?.messages || []  // Include captured messages
+      compactCount: session.compactCount
     };
     
     this.log('compact', 'Compaction complete', {

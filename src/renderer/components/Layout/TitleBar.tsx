@@ -110,7 +110,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
             }}
           >
             <span className="titlebar-text">
-              yuru<span style={{ color: isWindowActive ? 'var(--accent-color)' : undefined }}>&gt;</span>code
+              y<span style={{ color: isWindowActive ? 'var(--accent-color)' : undefined }}>&gt;</span>&nbsp;
             </span>
           </div>
         </div>

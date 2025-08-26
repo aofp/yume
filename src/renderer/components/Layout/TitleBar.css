@@ -113,7 +113,7 @@
 
 .titlebar-text {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 9pt;
   font-weight: bold;
   letter-spacing: 0.5px;
   padding: 0;
@@ -121,7 +121,7 @@
   -webkit-user-select: none;
   color: rgba(255, 255, 255, 0.4);
   position: relative;
-  top: -4px;
+  top: -3px;
 }
 
 /* Removed per-character hover effect */

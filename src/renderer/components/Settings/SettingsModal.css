@@ -713,7 +713,7 @@ input[type="checkbox"].checkbox-input {
 /* Toggle switch container with background */
 .toggle-switch-container {
   display: inline-block;
-  background: #0a0a0a;  /* Dark background container */
+  background: #111;  /* Dark background container */
   border-radius: 4px;
   height: 23px;
   z-index: 2;
@@ -737,8 +737,6 @@ input[type="checkbox"].checkbox-input {
   align-items: center;
   justify-content: space-between;
   padding: 0;
-  flex-shrink: 0;
-  overflow: hidden;
   cursor: default !important;
 }
 
@@ -775,12 +773,19 @@ input[type="checkbox"].checkbox-input {
 /* Sliding background with 2px padding */
 .toggle-switch-slider {
   position: absolute;
-  width: calc(60px);  /* Adjust width for padding */
+  width: calc(58px);  /* Adjust width for padding */
   height: calc(23px - 2px);  /* Adjust height for padding */
   background: rgba(255, 255, 255, 0.05);
-  border-radius: 2px;  /* Smaller radius for inner slider */
+  border-radius: 3px;  /* Smaller radius for inner slider */
   transition: transform 0.2s ease;
   pointer-events: none;
+}
+
+/* macOS specific adjustment - move slider up by 2px */
+@supports (-webkit-appearance: none) and (not (-moz-appearance: none)) {
+  .toggle-switch-slider {
+    top: -2px;
+  }
 }
 
 .toggle-switch.active .toggle-switch-slider {
