@@ -469,6 +469,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             </div>
 
             <div className="settings-actions">
+              <button
+                className="settings-action-btn about"
+                onClick={() => {
+                  setShowAboutModal(true);
+                }}
+                title="about yurucode"
+              >
+                <IconInfoCircle size={10} />
+                <span>about yurucode</span>
+              </button>
               {!isLicensed && (
                 <button
                   className="settings-action-btn"
@@ -481,16 +491,6 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <span>upgrade to pro</span>
                 </button>
               )}
-              <button
-                className="settings-action-btn about"
-                onClick={() => {
-                  setShowAboutModal(true);
-                }}
-                title="about yurucode"
-              >
-                <IconInfoCircle size={10} />
-                <span>about yurucode</span>
-              </button>
             </div>
 
           </div>

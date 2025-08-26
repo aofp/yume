@@ -367,6 +367,19 @@ pre {
   animation: spin 1s linear infinite;
 }
 
+/* Ensure tool icons have full opacity - tabler icons */
+.tool-icon {
+  opacity: 1 !important;
+}
+
+.tool-icon svg {
+  opacity: 1 !important;
+}
+
+.tool-use svg {
+  opacity: 1 !important;
+}
+
 #debug {
   display: none !important;
 }

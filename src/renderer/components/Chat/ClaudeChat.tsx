@@ -2535,7 +2535,7 @@ export const ClaudeChat: React.FC = () => {
             title={isDictating ? "stop dictation (ctrl+e)" : "start dictation (ctrl+e)"}
             disabled={currentSession?.readOnly}
           >
-            {isDictating ? <IconMicrophoneOff size={14} /> : <IconMicrophone size={14} />}
+            {isDictating ? <IconMicrophone size={14} /> : <IconMicrophoneOff size={14} />}
           </button>
           
           <div className="context-info">

@@ -636,7 +636,7 @@
   flex: 0 0 auto;
   padding: 3px 4px 3px 4px; /* Default padding */
   background: #000000;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
   transition: background 0.2s ease;
   min-height: 60px;
   max-height: 40vh;
@@ -654,7 +654,7 @@
   min-height: 60px;
   max-height: 40vh; /* Limit to 40% of viewport height */
   background: #000000;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
   padding: 3px 4px 3px 4px;
   overflow-y: auto; /* Allow scrolling if content gets too tall */
 }
@@ -803,7 +803,7 @@ textarea.context-full {
 .chat-input {
   flex: 1;
   background: #000000;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: #ffffff;
   caret-color: var(--accent-color);
   padding: 4px;
@@ -1083,7 +1083,7 @@ textarea.context-full {
 
 .btn-clear-context, .btn-stats, .btn-help, .btn-dictation {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.4);
   padding: 3px 8px;
   border-radius: 4px;
@@ -1148,7 +1148,7 @@ textarea.context-full {
 .btn-clear-context:disabled:hover {
   background: transparent;
   color: rgba(255, 255, 255, 0.4);
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.2);
 }
 
 .btn-help-icon {
@@ -1924,7 +1924,7 @@ textarea.context-full {
   justify-content: space-between;
   padding: 6px 12px;
   background: transparent;
-  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .bash-running-dots {
