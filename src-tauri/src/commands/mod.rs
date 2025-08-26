@@ -1172,3 +1172,27 @@ fn fuzzy_match(query: &str, text: &str) -> bool {
     
     current_char.is_none() // True if all query chars were found
 }
+
+/// Restores focus to the application window (Windows only)
+/// Called after first bash command to prevent focus loss
+#[tauri::command]
+pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::Foundation::HWND;
+        use windows::Win32::UI::WindowsAndMessaging::SetForegroundWindow;
+        
+        let hwnd = window.hwnd().map_err(|e| format!("Failed to get window handle: {}", e))?;
+        unsafe {
+            let hwnd = HWND(hwnd.0);
+            SetForegroundWindow(hwnd);
+        }
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = window; // Suppress unused warning  
+    }
+    
+    Ok(())
+}

@@ -3616,6 +3616,12 @@ Format as a clear, structured summary that preserves all important context.`;
                     }
                   }
                   
+                  // Track Bash tool uses for focus restoration on Windows
+                  if (block.name === 'Bash' && isFirstBashCommand) {
+                    console.log(`🔧 [${sessionId}] Tracking first Bash tool use: ${block.id}`);
+                    bashToolUseIds.set(block.id, { sessionId, timestamp: Date.now() });
+                  }
+                  
                   // Send tool use as separate message immediately
                   socket.emit(`message:${sessionId}`, {
                     type: 'tool_use',
@@ -4793,8 +4799,13 @@ httpServer.listen(PORT, () => {
   console.log('🔥 Warming up bash execution...');
   const warmupCmd = spawn('echo', ['warmup'], {
     shell: false,
-    stdio: 'pipe'
+    stdio: 'pipe',
+    windowsHide: true
   });
+  
+  // Track first bash command to restore focus on Windows
+  let isFirstBashCommand = true;
+  const bashToolUseIds = new Map(); // Maps tool_use_id to tool info for focus restoration
   warmupCmd.on('close', () => {
     console.log('✅ Bash warmup complete');
   });

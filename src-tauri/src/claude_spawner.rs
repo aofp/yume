@@ -6,6 +6,7 @@ use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, Command};
 use tauri::{AppHandle, Emitter};
 use tracing::{debug, error, info, warn};
+use tokio::sync::Mutex;
 
 use crate::claude_binary::{find_claude_binary, create_command_with_env};
 use crate::claude_session::{

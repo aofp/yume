@@ -1181,10 +1181,14 @@ export const ClaudeChat: React.FC = () => {
               }
             };
             
-            // Try immediately
+            // Try immediately with both web and native focus restoration
             restoreFocus();
+            invoke('restore_window_focus').catch(console.warn);
             // Try after WSL initialization (critical timing)
-            setTimeout(restoreFocus, 50);
+            setTimeout(() => {
+              restoreFocus();
+              invoke('restore_window_focus').catch(console.warn);
+            }, 50);
             setTimeout(restoreFocus, 100);
             setTimeout(restoreFocus, 200);
             // Try after process likely fully started

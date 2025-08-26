@@ -177,14 +177,13 @@ pub fn run() {
                     MINMAXINFO
                 };
                 use windows::Win32::Foundation::RECT;
-                use std::sync::Mutex;
                 
                 if let Ok(hwnd) = window.hwnd() {
                     let hwnd = HWND(hwnd.0);
                     
                     // Store the original window procedure
                     static mut ORIGINAL_WNDPROC: Option<isize> = None;
-                    static INIT: Mutex<bool> = Mutex::new(false);
+                    static INIT: std::sync::Mutex<bool> = std::sync::Mutex::new(false);
                     
                     unsafe {
                         // Custom window procedure to enforce minimum size
@@ -353,7 +352,7 @@ pub fn run() {
                 use windows::Win32::Foundation::HWND;
                 use windows::Win32::UI::WindowsAndMessaging::{
                     SetWindowLongPtrW, GetWindowLongPtrW, GWL_EXSTYLE, 
-                    WS_EX_ACCEPTFILES, WS_EX_APPWINDOW
+                    WS_EX_ACCEPTFILES, WS_EX_APPWINDOW, SetForegroundWindow
                 };
                 
                 let hwnd = window.hwnd().unwrap();
@@ -557,6 +556,7 @@ pub fn run() {
             commands::clear_server_logs,
             commands::close_window,
             commands::show_context_menu,
+            commands::restore_window_focus,
             // Settings and state
             commands::save_settings,
             commands::load_settings,

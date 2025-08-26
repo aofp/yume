@@ -744,8 +744,8 @@ textarea.context-full {
   right: 3px;
   bottom: 3px;
   background: transparent;
-  border: 1px solid rgba(var(--accent-rgb), 0.8);
-  color: var(--accent-color);
+  border: 1px solid var(--color-accent-red);
+  color: var(--color-accent-red);
   padding: 10px;
   border-radius: 3px;
   cursor: default;
@@ -760,8 +760,8 @@ textarea.context-full {
 
 .stop-streaming-btn:hover {
   background: transparent;
-  border: 1px solid var(--accent-color);
-  color: var(--accent-color);
+  border: 1px solid var(--color-accent-red);
+  color: var(--color-accent-red);
   opacity: 1;
   animation: none;
 }

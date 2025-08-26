@@ -1431,7 +1431,7 @@ body.platform-win32 .tool-detail {
 }
 
 .todo-icon.completed {
-  color: var(--color-cyan);
+  color: var(--color-accent-green);
 }
 
 .todo-icon.progress {
@@ -1439,7 +1439,7 @@ body.platform-win32 .tool-detail {
 }
 
 .todo-icon.pending {
-  color: #b3b3cc; /* Pastel grey-blue */
+  color: var(--color-cyan);
 }
 
 .todo-item.completed {
