@@ -1145,12 +1145,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       s.thinkingStartTime = undefined;
                     }
                     
-                    // Special handling for bash results - always clear streaming
-                    if ((message as any).isBashResult) {
-                      console.log(`🔴 [STREAMING] Bash result received, clearing session streaming state`);
-                      s.streaming = false;
-                      s.thinkingStartTime = undefined;
-                    }
                   } else {
                     existingMessages[existingIndex] = message;
                     
@@ -1161,12 +1155,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       s.thinkingStartTime = undefined;
                     }
                     
-                    // Special handling for bash results - always clear streaming
-                    if ((message as any).isBashResult) {
-                      console.log(`🔴 [STREAMING] Bash result received, clearing session streaming state`);
-                      s.streaming = false;
-                      s.thinkingStartTime = undefined;
-                    }
                   }
                 } else {
                   // Add new message only if it doesn't exist
@@ -2177,9 +2165,10 @@ ${content}`;
           updates.analytics = updatedAnalytics;
           console.log(`📊 [THINKING TIME] Starting thinking timer for session ${s.id} at ${now}`);
           
-          // Always set streaming to true when sending a message
-          // This ensures the streaming indicator shows immediately
-          updates.streaming = true;
+          // Set streaming to true when sending a message (but not for bash commands)
+          // Bash commands start with ! and don't need thinking indicator
+          const isBashCommand = content.startsWith('!');
+          updates.streaming = !isBashCommand;
           
           return { ...s, ...updates };
         }
