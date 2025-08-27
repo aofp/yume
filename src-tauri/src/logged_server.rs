@@ -2777,7 +2777,8 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', async (data, callback) => {
     console.log('📨 [sendMessage] Processing message in EMBEDDED SERVER');
-    const { sessionId, content: message, model, autoGenerateTitle } = data;
+    const { sessionId, content: message, autoGenerateTitle } = data;
+    let { model } = data; // Use let for model so we can reassign it for /compact
     const session = sessions.get(sessionId);
     
     if (!session) {
@@ -2791,10 +2792,8 @@ io.on('connection', (socket) => {
       console.log(`🐚 Executing bash command: ${message}`);
       const bashCommand = message.substring(1).trim(); // Remove the ! prefix
       
-      // Execute the bash command directly
-      const { exec } = require('child_process');
-      const { promisify } = require('util');
-      const execAsync = promisify(exec);
+      // Execute the bash command using spawn to avoid console windows
+      const { spawn } = require('child_process');
       
       try {
         // Emit user message first
@@ -2808,51 +2807,91 @@ io.on('connection', (socket) => {
         const workingDir = session.workingDirectory || require('os').homedir();
         console.log(`🐚 Executing in directory: ${workingDir}`);
         
-        let execResult;
+        let bashProcess;
+        let output = '';
+        let errorOutput = '';
         
         // Check if we're on Windows and need to use WSL
         if (process.platform === 'win32') {
-          // Execute in WSL
+          // Convert Windows path to WSL path if needed
+          let wslWorkingDir = workingDir;
+          if (workingDir && workingDir.match(/^[A-Z]:\\/)) {
+            const driveLetter = workingDir[0].toLowerCase();
+            const pathWithoutDrive = workingDir.substring(2).replace(/\\/g, '/');
+            wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
+            console.log(`📂 PATH CONVERSION: Windows "${workingDir}" → WSL "${wslWorkingDir}"`);
+          }
+          
+          // Execute in WSL with proper window hiding
           const wslPath = 'C:\\Windows\\System32\\wsl.exe';
-          const wslCommand = `cd "${workingDir}" && ${bashCommand}`;
+          const wslCommand = `cd "${wslWorkingDir}" && ${bashCommand}`;
           console.log(`🐚 Using WSL to execute: ${wslCommand}`);
           
-          execResult = await execAsync(`"${wslPath}" -e bash -c "${wslCommand.replace(/"/g, '\\"')}"`, {
-            timeout: 30000, // 30 second timeout
-            maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+          bashProcess = spawn(wslPath, ['-e', 'bash', '-c', wslCommand], {
+            windowsHide: true, // CRITICAL: Hide the console window
+            shell: false, // Don't use cmd.exe shell
+            stdio: ['ignore', 'pipe', 'pipe']
           });
         } else {
           // Execute directly on macOS/Linux
-          execResult = await execAsync(bashCommand, {
+          bashProcess = spawn('bash', ['-c', bashCommand], {
             cwd: workingDir,
-            timeout: 30000, // 30 second timeout
-            maxBuffer: 10 * 1024 * 1024 // 10MB buffer
+            stdio: ['ignore', 'pipe', 'pipe']
           });
         }
         
-        const { stdout, stderr } = execResult;
-        
-        // Send the result back
-        const output = stdout || stderr || '(no output)';
-        socket.emit(`message:${sessionId}`, {
-          type: 'assistant',
-          message: {
-            content: [
-              { type: 'text', text: `\`\`\`\n${output}\n\`\`\`` }
-            ]
-          },
-          streaming: false,
-          timestamp: Date.now()
+        // Collect output
+        bashProcess.stdout.on('data', (data) => {
+          output += data.toString();
         });
         
-        if (callback) callback({ success: true });
+        bashProcess.stderr.on('data', (data) => {
+          errorOutput += data.toString();
+        });
+        
+        // Handle process completion
+        bashProcess.on('close', (code) => {
+          console.log(`🐚 Bash command exited with code ${code}`);
+          
+          // Send the result back
+          const finalOutput = output || errorOutput || '(no output)';
+          socket.emit(`message:${sessionId}`, {
+            type: 'assistant',
+            message: {
+              content: [
+                { type: 'text', text: `\`\`\`\n${finalOutput}\n\`\`\`` }
+              ]
+            },
+            streaming: false,
+            timestamp: Date.now()
+          });
+          
+          if (callback) callback({ success: code === 0, error: code !== 0 ? errorOutput : undefined });
+        });
+        
+        // Handle process errors
+        bashProcess.on('error', (error) => {
+          console.error('❌ Bash command failed:', error);
+          socket.emit(`message:${sessionId}`, {
+            type: 'assistant',
+            message: {
+              content: [
+                { type: 'text', text: `Error executing command: ${error.message}` }
+              ]
+            },
+            streaming: false,
+            timestamp: Date.now()
+          });
+          
+          if (callback) callback({ success: false, error: error.message });
+        });
       } catch (error) {
-        console.error('❌ Bash command failed:', error);
+        console.error('❌ Bash command spawn failed:', error);
         socket.emit(`message:${sessionId}`, {
           type: 'assistant',
           message: {
             content: [
-              { type: 'text', text: `Error executing command: ${error.message}` }
+              { type: 'text', text: `Error spawning command: ${error.message}` }
             ]
           },
           streaming: false,
