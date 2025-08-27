@@ -699,11 +699,17 @@ export const App: React.FC = () => {
             <>
               <button 
                 className="context-menu-item"
-                onClick={() => {
+                onClick={async () => {
                   const textarea = contextMenu.target as HTMLTextAreaElement | HTMLInputElement;
-                  if (textarea && textarea.select) {
-                    textarea.focus();
-                    document.execCommand('copy');
+                  if (textarea) {
+                    try {
+                      const start = textarea.selectionStart || 0;
+                      const end = textarea.selectionEnd || 0;
+                      const selectedText = textarea.value.substring(start, end) || textarea.value;
+                      await navigator.clipboard.writeText(selectedText);
+                    } catch (err) {
+                      console.error('Failed to copy:', err);
+                    }
                   }
                   setContextMenu(null);
                 }}
@@ -715,8 +721,27 @@ export const App: React.FC = () => {
                 onClick={async () => {
                   const textarea = contextMenu.target as HTMLTextAreaElement | HTMLInputElement;
                   if (textarea) {
-                    textarea.focus();
-                    document.execCommand('paste');
+                    try {
+                      const text = await navigator.clipboard.readText();
+                      textarea.focus();
+                      
+                      // Insert at current position or replace selection
+                      const start = textarea.selectionStart || 0;
+                      const end = textarea.selectionEnd || 0;
+                      const currentValue = textarea.value;
+                      
+                      textarea.value = currentValue.substring(0, start) + text + currentValue.substring(end);
+                      
+                      // Set cursor position after pasted text
+                      const newPos = start + text.length;
+                      textarea.setSelectionRange(newPos, newPos);
+                      
+                      // Trigger input event for React
+                      const event = new Event('input', { bubbles: true });
+                      textarea.dispatchEvent(event);
+                    } catch (err) {
+                      console.error('Failed to paste:', err);
+                    }
                   }
                   setContextMenu(null);
                 }}
