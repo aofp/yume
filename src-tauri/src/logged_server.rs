@@ -2817,7 +2817,7 @@ io.on('connection', (socket) => {
           id: bashMessageId,
           type: 'assistant',
           message: { content: '' },
-          streaming: false,  // Don't show thinking for bash commands
+          streaming: false,  // Don't show thinking for bash commands,
           timestamp: Date.now()
         });
         
@@ -2827,7 +2827,7 @@ io.on('connection', (socket) => {
             id: bashMessageId,
             type: 'assistant',
             message: { content: '' },
-            streaming: false,  // Don't show thinking for bash commands
+            streaming: false,  // Don't show thinking for bash commands,
             timestamp: Date.now()
           });
         }
@@ -2941,7 +2941,7 @@ io.on('connection', (socket) => {
                   { type: 'text', text: `\`\`\`ansi\n${finalOutput}\n\`\`\`` }
                 ]
               },
-              streaming: false  // Bash commands never stream
+              streaming: false,  // Bash commands never stream
               timestamp: Date.now()
             };
             
@@ -3073,7 +3073,7 @@ io.on('connection', (socket) => {
                   { type: 'text', text: `\`\`\`ansi\n${finalOutput}\n\`\`\`` }
                 ]
               },
-              streaming: false  // Bash commands never stream
+              streaming: false,  // Bash commands never stream
               timestamp: Date.now()
             };
             
