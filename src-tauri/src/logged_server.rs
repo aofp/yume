@@ -1502,7 +1502,7 @@ app.get('/claude-analytics', async (req, res) => {
                         
                         // Detect model from message
                         if (data.message.model) {
-                          sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                          sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                         }
                         
                         // Calculate cost based on model
@@ -1651,7 +1651,7 @@ app.get('/claude-analytics', async (req, res) => {
                       
                       // Detect model from message
                       if (data.message.model) {
-                        sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                        sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                       }
                       
                       // Calculate cost based on model
@@ -1775,7 +1775,7 @@ app.get('/claude-analytics', async (req, res) => {
                     
                     // Detect model from message
                     if (data.message.model) {
-                      sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                      sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                     }
                     
                     // Calculate cost based on model
