@@ -3187,11 +3187,21 @@ ${content}`;
           m.message?.content?.startsWith?.('!')
         );
         
+        // Also exclude assistant messages that are bash responses (id starts with 'bash-')
+        const nonBashAssistantMessages = updatedMessages.filter(m => 
+          m.type === 'assistant' && 
+          !m.id?.startsWith?.('bash-')
+        );
+        const bashResponses = updatedMessages.filter(m => 
+          m.type === 'assistant' && 
+          m.id?.startsWith?.('bash-')
+        );
+        
         analytics = {
           ...analytics,
-          totalMessages: updatedMessages.length - bashCommands.length,
+          totalMessages: updatedMessages.length - bashCommands.length - bashResponses.length,
           userMessages: nonBashUserMessages.length,
-          assistantMessages: updatedMessages.filter(m => m.type === 'assistant').length,
+          assistantMessages: nonBashAssistantMessages.length,
           toolUses: updatedMessages.filter(m => m.type === 'tool_use').length,
           systemMessages: updatedMessages.filter(m => m.type === 'system').length
         };
