@@ -2993,6 +2993,23 @@ io.on('connection', (socket) => {
             console.log(`🐚 ${isCmd} Process EXIT event: code=${code}, signal=${signal}`);
           });
           
+          // Fallback timeout to ensure streaming stops
+          setTimeout(() => {
+            console.log(`🐚 [BASH] Fallback timeout - ensuring streaming is stopped`);
+            socket.emit(`message:${sessionId}`, {
+              id: bashMessageId,
+              type: 'assistant',
+              message: {
+                content: [
+                  { type: 'text', text: `\`\`\`\n(Command may still be running...)\n\`\`\`` }
+                ]
+              },
+              streaming: false,
+              isBashResult: true,
+              timestamp: Date.now()
+            });
+          }, 30000); // 30 second timeout
+          
           bashProcess.on('error', (error) => {
             const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
             console.error(`🐚 ${isCmd} Process error: ${error.message}`);
@@ -3014,6 +3031,7 @@ io.on('connection', (socket) => {
         } else {
           // macOS/Linux - use spawn for consistency
           console.log(`🐚 [BASH] Unix command: ${bashCommand}`);
+          console.log(`🐚 [BASH] Using bashMessageId: ${bashMessageId}`);
           
           const bashProcess = spawn('bash', ['-c', bashCommand], {
             cwd: workingDir,
@@ -3022,18 +3040,28 @@ io.on('connection', (socket) => {
           
           let output = '';
           let errorOutput = '';
+          let processCompleted = false;
           
           bashProcess.stdout.on('data', (data) => {
             output += data.toString();
+            console.log(`🐚 [BASH] stdout received: ${data.toString().length} bytes`);
           });
           
           bashProcess.stderr.on('data', (data) => {
             errorOutput += data.toString();
+            console.log(`🐚 [BASH] stderr received: ${data.toString().length} bytes`);
           });
           
           bashProcess.on('close', (code) => {
+            if (processCompleted) {
+              console.log(`🐚 [BASH] Ignoring duplicate close event`);
+              return;
+            }
+            processCompleted = true;
+            
             console.log(`🐚 [BASH] Unix process exited with code ${code}`);
             console.log(`🐚 [BASH] Total output: ${output.length} bytes stdout, ${errorOutput.length} bytes stderr`);
+            console.log(`🐚 [BASH] Sending result with bashMessageId: ${bashMessageId}`);
             
             // Determine final output and format based on exit code
             let finalOutput = '';
@@ -3054,7 +3082,7 @@ io.on('connection', (socket) => {
               finalOutput = output || errorOutput || '(no output)';
             }
             
-            socket.emit(`message:${sessionId}`, {
+            const resultMessage = {
               id: bashMessageId,  // Use same ID to update the streaming message
               type: 'assistant',
               message: {
@@ -3065,7 +3093,10 @@ io.on('connection', (socket) => {
               streaming: false,  // Clear streaming state
               isBashResult: true,  // Mark as bash result for special handling
               timestamp: Date.now()
-            });
+            };
+            
+            console.log(`🐚 [BASH] Emitting result message:`, JSON.stringify(resultMessage, null, 2));
+            socket.emit(`message:${sessionId}`, resultMessage);
             
             if (callback) callback({ 
               success: code === 0, 
@@ -3074,8 +3105,12 @@ io.on('connection', (socket) => {
           });
           
           bashProcess.on('error', (error) => {
+            if (processCompleted) return;
+            processCompleted = true;
+            
             console.error(`🐚 [BASH] Unix process error: ${error.message}`);
             socket.emit(`message:${sessionId}`, {
+              id: bashMessageId,
               type: 'assistant',
               message: {
                 content: [
@@ -3083,11 +3118,34 @@ io.on('connection', (socket) => {
                 ]
               },
               streaming: false,  // Clear streaming state on error
+              isBashResult: true,
               timestamp: Date.now()
             });
             
             if (callback) callback({ success: false, error: error.message });
           });
+          
+          // Quick timeout for fast commands (most bash commands complete in < 5 seconds)
+          setTimeout(() => {
+            if (!processCompleted && (output || errorOutput)) {
+              console.log(`🐚 [BASH] Quick timeout - command produced output, sending result`);
+              processCompleted = true;
+              
+              const finalOutput = output || errorOutput || '(still running...)';
+              socket.emit(`message:${sessionId}`, {
+                id: bashMessageId,
+                type: 'assistant',
+                message: {
+                  content: [
+                    { type: 'text', text: `\`\`\`ansi\n${finalOutput}\n\`\`\`` }
+                  ]
+                },
+                streaming: false,
+                isBashResult: true,
+                timestamp: Date.now()
+              });
+            }
+          }, 5000); // 5 second quick timeout
         }
       } catch (error) {
         console.error(`🐚 [BASH] Failed to spawn: ${error.message}`);
