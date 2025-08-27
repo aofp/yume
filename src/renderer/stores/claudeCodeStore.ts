@@ -1144,12 +1144,26 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       s.streaming = false;
                       s.thinkingStartTime = undefined;
                     }
+                    
+                    // Special handling for bash results - always clear streaming
+                    if ((message as any).isBashResult) {
+                      console.log(`🔴 [STREAMING] Bash result received, clearing session streaming state`);
+                      s.streaming = false;
+                      s.thinkingStartTime = undefined;
+                    }
                   } else {
                     existingMessages[existingIndex] = message;
                     
                     // Also check here for assistant streaming updates
                     if (message.type === 'assistant' && message.streaming === false) {
                       console.log(`🔴 [STREAMING] Assistant message ${message.id} replaced with streaming=false, clearing session streaming state`);
+                      s.streaming = false;
+                      s.thinkingStartTime = undefined;
+                    }
+                    
+                    // Special handling for bash results - always clear streaming
+                    if ((message as any).isBashResult) {
+                      console.log(`🔴 [STREAMING] Bash result received, clearing session streaming state`);
                       s.streaming = false;
                       s.thinkingStartTime = undefined;
                     }

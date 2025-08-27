@@ -2942,6 +2942,7 @@ io.on('connection', (socket) => {
                 ]
               },
               streaming: false,  // Clear streaming state
+              isBashResult: true,  // Mark as bash result for special handling
               timestamp: Date.now()
             };
             
@@ -3054,6 +3055,7 @@ io.on('connection', (socket) => {
             }
             
             socket.emit(`message:${sessionId}`, {
+              id: bashMessageId,  // Use same ID to update the streaming message
               type: 'assistant',
               message: {
                 content: [
@@ -3061,6 +3063,7 @@ io.on('connection', (socket) => {
                 ]
               },
               streaming: false,  // Clear streaming state
+              isBashResult: true,  // Mark as bash result for special handling
               timestamp: Date.now()
             });
             
