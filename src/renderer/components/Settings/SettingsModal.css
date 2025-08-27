@@ -741,6 +741,10 @@ input[type="checkbox"].checkbox-input {
   cursor: default !important;
 }
 
+.platform-darwin {
+  top: 0px;
+}
+
 /* Toggle labels */
 .toggle-switch-label {
   font-size: 11px;
