@@ -729,6 +729,7 @@ input[type="checkbox"].checkbox-input {
   position: relative;
   width: 118px;
   height: 21px;
+  top: 2px;
   border: none;  /* No borders */
   border-radius: 4px;
   cursor: pointer;
@@ -779,10 +780,6 @@ input[type="checkbox"].checkbox-input {
   border-radius: 3px;  /* Smaller radius for inner slider */
   transition: transform 0.2s ease;
   pointer-events: none;
-}
-
-.toggle-switch-slider {
-  top: 2px;
 }
 
 /* macOS specific adjustment - move slider up by 2px */

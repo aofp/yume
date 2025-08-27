@@ -673,7 +673,7 @@ export const App: React.FC = () => {
               }
               return contextMenu.y;
             })(),
-            zIndex: 10001
+            zIndex: 200000 // Above all modals including upgrade modal
           }}
         >
           {/* Show copy option if text is selected */}

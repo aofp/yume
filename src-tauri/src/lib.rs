@@ -122,7 +122,8 @@ pub fn run() {
                     // Minimal delay for webview to load and apply styles
                     std::thread::sleep(std::time::Duration::from_millis(50));
                     let _ = window_clone.show();
-                    info!("Window shown after initialization");
+                    let _ = window_clone.set_focus();
+                    info!("Window shown and focused after initialization");
                 });
             }
             
@@ -366,6 +367,8 @@ pub fn run() {
                         GWL_EXSTYLE, 
                         ex_style | (WS_EX_ACCEPTFILES.0 as isize) | (WS_EX_APPWINDOW.0 as isize)
                     );
+                    // Force window to take focus
+                    let _ = SetForegroundWindow(hwnd);
                 }
             }
             
