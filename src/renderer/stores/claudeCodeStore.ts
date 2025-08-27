@@ -1198,15 +1198,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               
               // Update message counts - matches Claude Code
               // Exclude bash commands (messages starting with !) from user message count
-              const nonBashUserMessages = existingMessages.filter(m => 
-                m.type === 'user' && 
-                !(typeof m.message === 'object' && m.message?.content?.startsWith?.('!'))
-              );
-              const bashCommands = existingMessages.filter(m => 
-                m.type === 'user' && 
-                typeof m.message === 'object' && 
-                m.message?.content?.startsWith?.('!')
-              );
+              const nonBashUserMessages = existingMessages.filter(m => {
+                if (m.type !== 'user') return false;
+                const content = typeof m.message === 'object' ? m.message?.content : m.message;
+                return !(typeof content === 'string' && content.startsWith('!'));
+              });
+              const bashCommands = existingMessages.filter(m => {
+                if (m.type !== 'user') return false;
+                const content = typeof m.message === 'object' ? m.message?.content : m.message;
+                return typeof content === 'string' && content.startsWith('!');
+              });
               
               // Also exclude assistant messages that are bash responses (id starts with 'bash-')
               const nonBashAssistantMessages = existingMessages.filter(m => 
@@ -3177,15 +3178,16 @@ ${content}`;
         
         // Create a new analytics object to ensure React detects the change
         // Exclude bash commands (messages starting with !) from user message count
-        const nonBashUserMessages = updatedMessages.filter(m => 
-          m.type === 'user' && 
-          !(typeof m.message === 'object' && m.message?.content?.startsWith?.('!'))
-        );
-        const bashCommands = updatedMessages.filter(m => 
-          m.type === 'user' && 
-          typeof m.message === 'object' && 
-          m.message?.content?.startsWith?.('!')
-        );
+        const nonBashUserMessages = updatedMessages.filter(m => {
+          if (m.type !== 'user') return false;
+          const content = typeof m.message === 'object' ? m.message?.content : m.message;
+          return !(typeof content === 'string' && content.startsWith('!'));
+        });
+        const bashCommands = updatedMessages.filter(m => {
+          if (m.type !== 'user') return false;
+          const content = typeof m.message === 'object' ? m.message?.content : m.message;
+          return typeof content === 'string' && content.startsWith('!');
+        });
         
         // Also exclude assistant messages that are bash responses (id starts with 'bash-')
         const nonBashAssistantMessages = updatedMessages.filter(m => 
