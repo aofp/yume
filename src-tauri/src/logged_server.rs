@@ -2980,10 +2980,9 @@ io.on('connection', (socket) => {
               }
             }, 100);
             
-            if (callback) callback({ 
-              success: code === 0, 
-              error: code !== 0 ? errorOutput : undefined 
-            });
+            // Always report success for bash commands - the output is sent as a message
+            // Don't treat non-zero exit codes as errors in the callback
+            if (callback) callback({ success: true });
           });
           
           // Also handle 'exit' event for better reliability
@@ -3081,10 +3080,9 @@ io.on('connection', (socket) => {
             console.log(`🐚 [BASH] Emitting result message:`, JSON.stringify(resultMessage, null, 2));
             socket.emit(`message:${sessionId}`, resultMessage);
             
-            if (callback) callback({ 
-              success: code === 0, 
-              error: code !== 0 ? errorOutput : undefined 
-            });
+            // Always report success for bash commands - the output is sent as a message
+            // Don't treat non-zero exit codes as errors in the callback
+            if (callback) callback({ success: true });
           });
           
           bashProcess.on('error', (error) => {

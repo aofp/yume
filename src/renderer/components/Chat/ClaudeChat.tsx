@@ -1263,28 +1263,9 @@ export const ClaudeChat: React.FC = () => {
           }, 1000);
           
         } catch (error) {
-          console.error('[ClaudeChat] Failed to execute bash command:', error);
-          
-          // Add error message with proper structure
-          // Extract the actual error message
-          const errorText = error instanceof Error ? error.message : String(error);
-          const errorMessage = {
-            id: `bash-err-${Date.now()}`,
-            type: 'assistant' as const,
-            message: { 
-              content: [
-                { 
-                  type: 'text', 
-                  text: `\`\`\`\n${errorText}\n\`\`\`` 
-                }
-              ]
-            },
-            timestamp: Date.now()
-          };
-          
-          if (currentSessionId) {
-            addMessageToSession(currentSessionId, errorMessage);
-          }
+          // This should rarely happen since bash commands now always return success
+          // The actual command output (including errors) is sent as a message
+          console.error('[ClaudeChat] Unexpected error sending bash command:', error);
           
           // Clear userBashRunning flag even on error
           useClaudeCodeStore.setState(state => ({
