@@ -2787,11 +2787,22 @@ io.on('connection', (socket) => {
     // Check if this is a bash command (starts with !)
     if (message && message.startsWith('!')) {
       console.log(`🐚 [BASH] Detected bash command: ${message}`);
-      const bashCommand = message.substring(1).trim(); // Remove the ! prefix
+      let bashCommand = message.substring(1).trim(); // Remove the ! prefix
       console.log(`🐚 [BASH] Extracted command: ${bashCommand}`);
+      
+      // Check for Windows CMD alias (!! prefix means run in cmd.exe instead of WSL)
+      let useCmdExe = false;
+      if (bashCommand.startsWith('!')) {
+        useCmdExe = true;
+        bashCommand = bashCommand.substring(1).trim(); // Remove the second ! prefix
+        console.log(`🐚 [BASH] Windows CMD mode detected, will use cmd.exe for: ${bashCommand}`);
+      }
       
       // Use spawn with proper configuration to hide windows
       const { spawn } = require('child_process');
+      
+      // Generate message ID outside try block so it's accessible to event handlers
+      const bashMessageId = `bash-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
       try {
         // Emit user message first
@@ -2801,48 +2812,80 @@ io.on('connection', (socket) => {
           timestamp: Date.now()
         });
         
-        // Send initial streaming state for bash command
+        // Send initial streaming state for bash command with unique ID
         socket.emit(`message:${sessionId}`, {
+          id: bashMessageId,
           type: 'assistant',
           message: { content: '' },
           streaming: true,  // Start streaming state
           timestamp: Date.now()
         });
         
+        // Also emit to Claude session if different
+        if (session.claudeSessionId && session.claudeSessionId !== sessionId) {
+          socket.emit(`message:${session.claudeSessionId}`, {
+            id: bashMessageId,
+            type: 'assistant',
+            message: { content: '' },
+            streaming: true,  // Start streaming state
+            timestamp: Date.now()
+          });
+        }
+        
+        console.log(`🐚 [BASH] Started streaming with message ID: ${bashMessageId}`);
+        
         // Execute the command
         const workingDir = session.workingDirectory || require('os').homedir();
         console.log(`🐚 [BASH] Working directory: ${workingDir}`);
         
-        // Check if we're on Windows and need to use WSL
+        // Check if we're on Windows
         if (process.platform === 'win32') {
-          // Convert Windows path to WSL path if needed
-          let wslWorkingDir = workingDir;
-          if (workingDir && workingDir.match(/^[A-Z]:\\/)) {
-            const driveLetter = workingDir[0].toLowerCase();
-            const pathWithoutDrive = workingDir.substring(2).replace(/\\/g, '/');
-            wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
-            console.log(`🐚 [BASH] Path conversion: "${workingDir}" → "${wslWorkingDir}"`);
+          let bashProcess;
+          
+          if (useCmdExe) {
+            // Use cmd.exe for Windows native commands
+            console.log(`🐚 [CMD] Running Windows command: ${bashCommand}`);
+            console.log(`🐚 [CMD] Working directory: ${workingDir}`);
+            
+            bashProcess = spawn('cmd.exe', ['/c', bashCommand], {
+              cwd: workingDir,        // Use Windows path directly
+              windowsHide: true,      // Hide console window
+              detached: false,        // Stay attached to parent
+              shell: false,           // Don't use another shell
+              stdio: ['ignore', 'pipe', 'pipe']  // Capture output
+            });
+            
+            console.log(`🐚 [CMD] Process spawned`);
+          } else {
+            // Use WSL for bash commands
+            // Convert Windows path to WSL path if needed
+            let wslWorkingDir = workingDir;
+            if (workingDir && workingDir.match(/^[A-Z]:\\/)) {
+              const driveLetter = workingDir[0].toLowerCase();
+              const pathWithoutDrive = workingDir.substring(2).replace(/\\/g, '/');
+              wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
+              console.log(`🐚 [BASH] Path conversion: "${workingDir}" → "${wslWorkingDir}"`);
+            }
+            
+            // Build command to run in WSL
+            const wslCommand = `cd '${wslWorkingDir}' && ${bashCommand}`;
+            console.log(`🐚 [BASH] WSL command: ${wslCommand}`);
+            
+            // Use wsl.exe directly with proper quoting
+            bashProcess = spawn('wsl.exe', [
+              '-e', 
+              'bash', 
+              '-c',
+              wslCommand
+            ], {
+              windowsHide: true,      // Hide console window
+              detached: false,        // Stay attached to parent
+              shell: false,           // Don't use cmd.exe
+              stdio: ['ignore', 'pipe', 'pipe']  // Capture output
+            });
+            
+            console.log(`🐚 [BASH] Process spawned`);
           }
-          
-          // Build command to run in WSL
-          const wslCommand = `cd '${wslWorkingDir}' && ${bashCommand}`;
-          console.log(`🐚 [BASH] WSL command: ${wslCommand}`);
-          
-          // Use wsl.exe directly with proper quoting
-          // The key is to escape quotes properly for bash -c
-          const bashProcess = spawn('wsl.exe', [
-            '-e', 
-            'bash', 
-            '-c',
-            wslCommand
-          ], {
-            windowsHide: true,      // Hide console window
-            detached: false,        // Stay attached to parent
-            shell: false,           // Don't use cmd.exe
-            stdio: ['ignore', 'pipe', 'pipe']  // Capture output
-          });
-          
-          console.log(`🐚 [BASH] Process spawned`);
           
           let output = '';
           let errorOutput = '';
@@ -2851,24 +2894,29 @@ io.on('connection', (socket) => {
           bashProcess.stdout.on('data', (data) => {
             const chunk = data.toString();
             output += chunk;
-            console.log(`🐚 [BASH] stdout chunk (${chunk.length} bytes)`);
+            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
+            console.log(`🐚 ${isCmd} stdout chunk (${chunk.length} bytes)`);
           });
           
           bashProcess.stderr.on('data', (data) => {
             const chunk = data.toString();
             errorOutput += chunk;
-            console.log(`🐚 [BASH] stderr chunk (${chunk.length} bytes)`);
+            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
+            console.log(`🐚 ${isCmd} stderr chunk (${chunk.length} bytes)`);
           });
           
           // Handle completion
           bashProcess.on('close', (code) => {
             const finalOutput = output || errorOutput || '(no output)';
-            console.log(`🐚 [BASH] Process exited with code ${code}`);
-            console.log(`🐚 [BASH] Total output: ${finalOutput.length} bytes`);
+            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
+            console.log(`🐚 ${isCmd} Process exited with code ${code}`);
+            console.log(`🐚 ${isCmd} Total output: ${finalOutput.length} bytes`);
+            console.log(`🐚 ${isCmd} Sending streaming: false to clear thinking state`);
             
             // Send result to UI with ANSI color support
             // Using ansi-block to preserve colors in the output
-            socket.emit(`message:${sessionId}`, {
+            const resultMessage = {
+              id: bashMessageId,  // Use same ID to update the streaming message
               type: 'assistant',
               message: {
                 content: [
@@ -2877,7 +2925,42 @@ io.on('connection', (socket) => {
               },
               streaming: false,  // Clear streaming state
               timestamp: Date.now()
-            });
+            };
+            
+            // Need to check what sessionId we're using
+            console.log(`🐚 ${isCmd} SessionId:`, sessionId);
+            console.log(`🐚 ${isCmd} Session claudeSessionId:`, session.claudeSessionId);
+            
+            // Emit to BOTH the regular session AND the Claude session if different
+            console.log(`🐚 ${isCmd} Emitting result message to channel message:${sessionId}`);
+            console.log(`🐚 ${isCmd} Message details:`, JSON.stringify(resultMessage, null, 2));
+            socket.emit(`message:${sessionId}`, resultMessage);
+            
+            // If there's a separate claudeSessionId, emit there too
+            if (session.claudeSessionId && session.claudeSessionId !== sessionId) {
+              console.log(`🐚 ${isCmd} Also emitting to Claude session: message:${session.claudeSessionId}`);
+              socket.emit(`message:${session.claudeSessionId}`, resultMessage);
+            }
+            
+            // Also try emitting a separate streaming end signal
+            setTimeout(() => {
+              console.log(`🐚 ${isCmd} Sending explicit stream end signal`);
+              socket.emit(`message:${sessionId}`, {
+                type: 'system',
+                subtype: 'stream_end',
+                streaming: false,
+                timestamp: Date.now()
+              });
+              
+              if (session.claudeSessionId && session.claudeSessionId !== sessionId) {
+                socket.emit(`message:${session.claudeSessionId}`, {
+                  type: 'system',
+                  subtype: 'stream_end',
+                  streaming: false,
+                  timestamp: Date.now()
+                });
+              }
+            }, 100);
             
             if (callback) callback({ 
               success: code === 0, 
@@ -2885,8 +2968,17 @@ io.on('connection', (socket) => {
             });
           });
           
+          // Also handle 'exit' event for better reliability
+          bashProcess.on('exit', (code, signal) => {
+            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
+            console.log(`🐚 ${isCmd} Process EXIT event: code=${code}, signal=${signal}`);
+          });
+          
           bashProcess.on('error', (error) => {
-            console.error(`🐚 [BASH] Process error: ${error.message}`);
+            const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
+            console.error(`🐚 ${isCmd} Process error: ${error.message}`);
+            console.log(`🐚 ${isCmd} Sending streaming: false due to error`);
+            
             socket.emit(`message:${sessionId}`, {
               type: 'assistant',
               message: {
