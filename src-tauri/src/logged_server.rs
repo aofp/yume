@@ -2823,14 +2823,16 @@ io.on('connection', (socket) => {
           }
           
           // Execute in WSL with proper window hiding
-          const wslPath = 'C:\\Windows\\System32\\wsl.exe';
+          const wslPath = 'wsl.exe'; // Use just 'wsl.exe' not full path
           const wslCommand = `cd "${wslWorkingDir}" && ${bashCommand}`;
           console.log(`🐚 Using WSL to execute: ${wslCommand}`);
           
           bashProcess = spawn(wslPath, ['-e', 'bash', '-c', wslCommand], {
             windowsHide: true, // CRITICAL: Hide the console window
+            detached: false, // Keep attached to parent
             shell: false, // Don't use cmd.exe shell
-            stdio: ['ignore', 'pipe', 'pipe']
+            stdio: ['ignore', 'pipe', 'pipe'],
+            env: { ...process.env, WSLENV: 'PATH/l' } // Pass environment properly
           });
         } else {
           // Execute directly on macOS/Linux
@@ -2855,7 +2857,7 @@ io.on('connection', (socket) => {
           
           // Send the result back
           const finalOutput = output || errorOutput || '(no output)';
-          socket.emit(`message:${sessionId}`, {
+          const assistantMessage = {
             type: 'assistant',
             message: {
               content: [
@@ -2864,7 +2866,14 @@ io.on('connection', (socket) => {
             },
             streaming: false,
             timestamp: Date.now()
-          });
+          };
+          
+          // Add to session history
+          if (!session.messages) session.messages = [];
+          session.messages.push(assistantMessage);
+          
+          // Emit the message to the client
+          socket.emit(`message:${sessionId}`, assistantMessage);
           
           if (callback) callback({ success: code === 0, error: code !== 0 ? errorOutput : undefined });
         });
@@ -2872,7 +2881,7 @@ io.on('connection', (socket) => {
         // Handle process errors
         bashProcess.on('error', (error) => {
           console.error('❌ Bash command failed:', error);
-          socket.emit(`message:${sessionId}`, {
+          const errorMessage = {
             type: 'assistant',
             message: {
               content: [
@@ -2881,13 +2890,20 @@ io.on('connection', (socket) => {
             },
             streaming: false,
             timestamp: Date.now()
-          });
+          };
+          
+          // Add to session history
+          if (!session.messages) session.messages = [];
+          session.messages.push(errorMessage);
+          
+          // Emit the message to the client
+          socket.emit(`message:${sessionId}`, errorMessage);
           
           if (callback) callback({ success: false, error: error.message });
         });
       } catch (error) {
         console.error('❌ Bash command spawn failed:', error);
-        socket.emit(`message:${sessionId}`, {
+        const errorMessage = {
           type: 'assistant',
           message: {
             content: [
@@ -2896,7 +2912,14 @@ io.on('connection', (socket) => {
           },
           streaming: false,
           timestamp: Date.now()
-        });
+        };
+        
+        // Add to session history
+        if (!session.messages) session.messages = [];
+        session.messages.push(errorMessage);
+        
+        // Emit the message to the client
+        socket.emit(`message:${sessionId}`, errorMessage);
         
         if (callback) callback({ success: false, error: error.message });
       }
@@ -4912,21 +4935,42 @@ httpServer.listen(PORT, () => {
   
   // Warmup bash command to prevent focus loss on first run
   console.log('🔥 Warming up bash execution...');
-  const warmupCmd = spawn('echo', ['warmup'], {
-    shell: false,
-    stdio: 'pipe',
-    windowsHide: true
-  });
+  
+  // Different warmup for Windows vs Unix
+  if (process.platform === 'win32') {
+    // Use wsl.exe for Windows warmup
+    const warmupCmd = spawn('wsl.exe', ['-e', 'echo', 'warmup'], {
+      shell: false,
+      stdio: 'ignore',
+      windowsHide: true,
+      detached: false
+    });
+    
+    warmupCmd.on('close', () => {
+      console.log('✅ Bash warmup complete (Windows/WSL)');
+    });
+    warmupCmd.on('error', (err) => {
+      console.warn('⚠️ Bash warmup failed:', err.message);
+    });
+  } else {
+    // Use echo directly on Unix systems
+    const warmupCmd = spawn('echo', ['warmup'], {
+      shell: false,
+      stdio: 'pipe',
+      windowsHide: true
+    });
+    
+    warmupCmd.on('close', () => {
+      console.log('✅ Bash warmup complete (Unix)');
+    });
+    warmupCmd.on('error', (err) => {
+      console.warn('⚠️ Bash warmup failed:', err.message);
+    });
+  }
   
   // Track first bash command to restore focus on Windows
   let isFirstBashCommand = true;
   const bashToolUseIds = new Map(); // Maps tool_use_id to tool info for focus restoration
-  warmupCmd.on('close', () => {
-    console.log('✅ Bash warmup complete');
-  });
-  warmupCmd.on('error', (err) => {
-    console.warn('⚠️ Bash warmup failed:', err.message);
-  });
 });
 
 // Handle port already in use error
