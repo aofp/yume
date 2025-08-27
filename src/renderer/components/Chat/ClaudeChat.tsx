@@ -1235,188 +1235,32 @@ export const ClaudeChat: React.FC = () => {
         }
         
         try {
-          // Bash warmup removed - proceed directly to command execution
+          // Send bash command through the server (which handles it properly)
+          // The server will execute through WSL and send back results via socket
+          console.log('[ClaudeChat] Sending bash command to server:', `!${originalCommand}`);
           
-          // Execute the bash command via Tauri with streaming
-          const { invoke } = await import('@tauri-apps/api/core');
-          const { listen } = await import('@tauri-apps/api/event');
-          const session = sessions.find(s => s.id === currentSessionId);
-          const workingDir = session?.workingDirectory || undefined;
+          // Use the store's sendMessage which already has the socket connection
+          // The ! prefix tells the server this is a bash command
+          await sendMessage(`!${originalCommand}`, true);
           
-          // Store current focus state on Windows
-          const hadFocus = document.activeElement === inputRef.current;
-          
-          // Spawn bash process and get process ID
-          const processId = await invoke<string>('spawn_bash', { 
-            command: bashCommand,
-            workingDir: workingDir 
-          });
-          
-          // Aggressively restore focus on Windows to combat OS focus stealing
-          if (navigator.platform.includes('Win')) {
-            // Multiple attempts to ensure focus is restored after WSL process spawn
-            const restoreFocus = () => {
-              if (inputRef.current && hadFocus) {
-                // Force window to foreground first
-                window.focus();
-                // Then focus the input
-                inputRef.current.focus();
-                // Double-check focus was actually restored
-                if (document.activeElement !== inputRef.current) {
-                  setTimeout(() => {
-                    window.focus();
-                    inputRef.current?.focus();
-                  }, 50);
-                }
-              }
-            };
-            
-            // Try immediately with both web and native focus restoration
-            restoreFocus();
-            invoke('restore_window_focus').catch(console.warn);
-            // Try after WSL initialization (critical timing)
+          // Focus restoration after sending to server
+          if (navigator.platform.includes('Win') && inputRef.current) {
+            // Simple focus restoration since server handles execution
             setTimeout(() => {
-              restoreFocus();
-              invoke('restore_window_focus').catch(console.warn);
-            }, 50);
-            setTimeout(restoreFocus, 100);
-            setTimeout(restoreFocus, 200);
-            // Try after process likely fully started
-            setTimeout(restoreFocus, 500);
+              inputRef.current?.focus();
+            }, 100);
           }
           
-          // Store process ID for cancellation
-          useClaudeCodeStore.setState(state => ({
-            sessions: state.sessions.map(s => 
-              s.id === currentSessionId ? { ...s, bashProcessId: processId } : s
-            )
-          }));
-          
-          // Create initial message with command
-          const commandOutput: string[] = [`$ ${bashCommand}`];
-          const messageId = `bash-out-${Date.now()}`;
-          
-          const outputMessage = {
-            id: messageId,
-            type: 'assistant' as const,
-            message: { content: `\`\`\`bash\n$ ${bashCommand}\n\`\`\`` },
-            timestamp: Date.now()
-          };
-          
-          // Add initial message
-          if (currentSessionId) {
-            addMessageToSession(currentSessionId, outputMessage);
-          }
-          
-          // Listen for output
-          const unlistenOutput = await listen<string>(`bash-output-${processId}`, (event) => {
-            console.log('[Bash] Output received:', event.payload);
-            commandOutput.push(event.payload);
-            
-            // Create updated message
-            const updatedContent = `\`\`\`bash\n${commandOutput.join('\n')}\n\`\`\``;
-            
-            // Update the message in the store
-            useClaudeCodeStore.setState(state => ({
-              sessions: state.sessions.map(s => {
-                if (s.id === currentSessionId) {
-                  return {
-                    ...s,
-                    messages: s.messages.map(m => 
-                      m.id === messageId ? {
-                        ...m,
-                        message: { content: updatedContent }
-                      } : m
-                    )
-                  };
-                }
-                return s;
-              })
-            }));
-            
-            // Auto-scroll if at bottom
-            if (isAtBottom[currentSessionId] !== false && chatContainerRef.current) {
-              requestAnimationFrame(() => {
-                if (chatContainerRef.current) {
-                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                }
-              });
-            }
-          });
-          
-          // Listen for errors
-          const unlistenError = await listen<string>(`bash-error-${processId}`, (event) => {
-            console.log('[Bash] Error received:', event.payload);
-            commandOutput.push(event.payload);
-            
-            // Create updated message
-            const updatedContent = `\`\`\`bash\n${commandOutput.join('\n')}\n\`\`\``;
-            
-            // Update the message in the store
-            useClaudeCodeStore.setState(state => ({
-              sessions: state.sessions.map(s => {
-                if (s.id === currentSessionId) {
-                  return {
-                    ...s,
-                    messages: s.messages.map(m => 
-                      m.id === messageId ? {
-                        ...m,
-                        message: { content: updatedContent }
-                      } : m
-                    )
-                  };
-                }
-                return s;
-              })
-            }));
-            
-            // Auto-scroll if at bottom
-            if (isAtBottom[currentSessionId] !== false && chatContainerRef.current) {
-              requestAnimationFrame(() => {
-                if (chatContainerRef.current) {
-                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                }
-              });
-            }
-          });
-          
-          // Listen for completion
-          const unlistenComplete = await listen<number | null>(`bash-complete-${processId}`, (event) => {
-            console.log('[Bash] Process completed with code:', event.payload);
-            
-            // Clean up listeners
-            unlistenOutput();
-            unlistenError();
-            unlistenComplete();
-            
-            // Clear flags - force update
+          // Clear userBashRunning flag after sending to server
+          setTimeout(() => {
             useClaudeCodeStore.setState(state => ({
               sessions: state.sessions.map(s => 
                 s.id === currentSessionId 
-                  ? { ...s, userBashRunning: false, bashProcessId: undefined } 
+                  ? { ...s, userBashRunning: false } 
                   : s
               )
             }));
-            
-            // Force re-render
-            useClaudeCodeStore.getState().sessions.find(s => s.id === currentSessionId);
-            
-            // Final auto-scroll if at bottom
-            if (isAtBottom[currentSessionId] !== false && chatContainerRef.current) {
-              requestAnimationFrame(() => {
-                if (chatContainerRef.current) {
-                  chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-                }
-              });
-            }
-            
-            // Refocus the input after bash completes
-            setTimeout(() => {
-              if (inputRef.current) {
-                inputRef.current.focus();
-              }
-            }, 50);
-          });
+          }, 1000);
           
         } catch (error) {
           console.error('[ClaudeChat] Failed to execute bash command:', error);

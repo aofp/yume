@@ -437,89 +437,86 @@ function createWslClaudeCommand(args, workingDir, message) {
   
   // For the main message, run Claude with the args
   if (message) {
-    // Try multiple possible Claude paths in WSL
-    // First check which paths exist
+    // Find Claude path - try dynamic detection first, then fallback to known locations
     const { execFileSync } = require('child_process');
     let claudePath = null;
     
-    // First, get the actual WSL username dynamically
-    let wslUser = 'user'; // fallback default
+    // First get WSL username
+    let wslUser = 'yuru'; // default from your system
     try {
       wslUser = execFileSync(wslPath, ['-e', 'bash', '-c', 'whoami'], {
         encoding: 'utf8',
         windowsHide: true
       }).trim();
-      console.log(`🔍 WSL USER DETECTED: ${wslUser}`);
+      console.log(`🔍 WSL user: ${wslUser}`);
     } catch (e) {
-      console.warn('⚠️ Could not detect WSL user, using default');
+      console.log(`⚠️ Could not detect WSL user, using default: ${wslUser}`);
     }
     
-    // Potential paths to check (in order of preference) - using dynamic user
-    console.log(`🔎 SEARCHING FOR CLAUDE IN WSL (user: ${wslUser})...`);
-    const possiblePaths = [
-      `/home/${wslUser}/.claude/local/node_modules/.bin/claude`,  // User-specific claude install
-      `~/.npm-global/bin/claude`,  // npm global install
-      `~/node_modules/.bin/claude`,  // Local install in home
-      `/usr/local/bin/claude`,  // System-wide install
-      `/usr/bin/claude`,  // System binary
-      `~/.local/bin/claude`  // User local bin
-    ];
-    
-    // Find the first working Claude path
-    for (const path of possiblePaths) {
-      try {
-        // Expand ~ to $HOME and check if file exists
-        const checkCmd = path.startsWith('~') 
-          ? `[ -f "${path.replace('~', '$HOME')}" ] && echo "exists"`
-          : `[ -f "${path}" ] && echo "exists"`;
+    // Try to source .bashrc and get claude alias
+    try {
+      console.log(`🔎 Finding Claude path by sourcing .bashrc...`);
+      const typeCmd = `. /home/${wslUser}/.bashrc 2>/dev/null && type claude 2>/dev/null`;
+      const typeOutput = execFileSync(wslPath, ['-e', 'bash', '-c', typeCmd], {
+        encoding: 'utf8',
+        windowsHide: true
+      }).trim();
+      
+      if (typeOutput) {
+        console.log(`🔍 'type claude' output: ${typeOutput}`);
         
-        const result = execFileSync(wslPath, ['-e', 'bash', '-c', checkCmd], {
-          encoding: 'utf8',
-          windowsHide: true
-        }).trim();
-        
-        if (result === 'exists') {
-          // For paths with ~, we need to expand to actual home path
-          if (path.startsWith('~')) {
-            // Get actual home directory
-            const homeDir = execFileSync(wslPath, ['-e', 'bash', '-c', 'echo $HOME'], {
-              encoding: 'utf8',
-              windowsHide: true
-            }).trim();
-            claudePath = path.replace('~', homeDir);
-          } else {
-            claudePath = path;
+        // Parse alias format: claude is aliased to `/home/yuru/.claude/local/claude'
+        if (typeOutput.includes('is aliased to')) {
+          const match = typeOutput.match(/is aliased to [`']([^`']+)[`']/);
+          if (match) {
+            claudePath = match[1];
+            console.log(`✅ CLAUDE PATH FROM ALIAS: ${claudePath}`);
           }
-          console.log(`✅ CLAUDE FOUND AT: ${claudePath}`);
-          break;
         }
-      } catch (e) {
-        // Path doesn't exist, continue checking
       }
+    } catch (e) {
+      console.log(`⚠️ Could not get claude from .bashrc`);
     }
     
-    // If still not found, try 'which claude'
+    // If not found, check the known location from your system
     if (!claudePath) {
+      const knownPath = `/home/${wslUser}/.claude/local/claude`;
+      console.log(`🔎 Checking known location: ${knownPath}`);
       try {
-        const whichResult = execFileSync(wslPath, ['-e', 'bash', '-c', 'which claude'], {
+        const exists = execFileSync(wslPath, ['-e', 'bash', '-c', `[ -f "${knownPath}" ] && echo "yes"`], {
           encoding: 'utf8',
           windowsHide: true
         }).trim();
         
-        if (whichResult) {
-          claudePath = whichResult;
-          console.log(`✅ Found Claude via 'which': ${claudePath}`);
+        if (exists === 'yes') {
+          claudePath = knownPath;
+          console.log(`✅ CLAUDE FOUND AT: ${claudePath}`);
         }
       } catch (e) {
-        // Claude not in PATH
+        // File doesn't exist
       }
     }
     
-    // Default to a dynamic path if nothing found (will fail but with clear error)
+    // If still not found, check PATH
     if (!claudePath) {
-      claudePath = `/home/${wslUser}/.claude/local/node_modules/.bin/claude`;
-      console.log(`⚠️ Claude not found in WSL, using default path: ${claudePath}`);
-      console.log('⚠️ Please install Claude CLI in WSL: npm install -g @anthropic-ai/claude-cli');
+      try {
+        claudePath = execFileSync(wslPath, ['-e', 'bash', '-c', 'which claude 2>/dev/null'], {
+          encoding: 'utf8',
+          windowsHide: true
+        }).trim();
+        if (claudePath) {
+          console.log(`✅ CLAUDE PATH FROM WHICH: ${claudePath}`);
+        }
+      } catch (e) {
+        // Not in PATH
+      }
+    }
+    
+    // If Claude path not found, error out clearly
+    if (!claudePath) {
+      const errorMsg = `Claude CLI not found in WSL. Checked: /home/${wslUser}/.claude/local/claude. Please ensure Claude is installed.`;
+      console.error(`❌ ${errorMsg}`);
+      throw new Error(errorMsg);
     }
     
     // Build the command with all the args - quote ones that need it
@@ -2789,10 +2786,11 @@ io.on('connection', (socket) => {
     
     // Check if this is a bash command (starts with !)
     if (message && message.startsWith('!')) {
-      console.log(`🐚 Executing bash command: ${message}`);
+      console.log(`🐚 [BASH] Detected bash command: ${message}`);
       const bashCommand = message.substring(1).trim(); // Remove the ! prefix
+      console.log(`🐚 [BASH] Extracted command: ${bashCommand}`);
       
-      // Execute the bash command using spawn to avoid console windows
+      // Use spawn with proper configuration to hide windows
       const { spawn } = require('child_process');
       
       try {
@@ -2803,13 +2801,17 @@ io.on('connection', (socket) => {
           timestamp: Date.now()
         });
         
+        // Send initial streaming state for bash command
+        socket.emit(`message:${sessionId}`, {
+          type: 'assistant',
+          message: { content: '' },
+          streaming: true,  // Start streaming state
+          timestamp: Date.now()
+        });
+        
         // Execute the command
         const workingDir = session.workingDirectory || require('os').homedir();
-        console.log(`🐚 Executing in directory: ${workingDir}`);
-        
-        let bashProcess;
-        let output = '';
-        let errorOutput = '';
+        console.log(`🐚 [BASH] Working directory: ${workingDir}`);
         
         // Check if we're on Windows and need to use WSL
         if (process.platform === 'win32') {
@@ -2819,107 +2821,154 @@ io.on('connection', (socket) => {
             const driveLetter = workingDir[0].toLowerCase();
             const pathWithoutDrive = workingDir.substring(2).replace(/\\/g, '/');
             wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
-            console.log(`📂 PATH CONVERSION: Windows "${workingDir}" → WSL "${wslWorkingDir}"`);
+            console.log(`🐚 [BASH] Path conversion: "${workingDir}" → "${wslWorkingDir}"`);
           }
           
-          // Execute in WSL with proper window hiding
-          const wslPath = 'wsl.exe'; // Use just 'wsl.exe' not full path
-          const wslCommand = `cd "${wslWorkingDir}" && ${bashCommand}`;
-          console.log(`🐚 Using WSL to execute: ${wslCommand}`);
+          // Build command to run in WSL
+          const wslCommand = `cd '${wslWorkingDir}' && ${bashCommand}`;
+          console.log(`🐚 [BASH] WSL command: ${wslCommand}`);
           
-          bashProcess = spawn(wslPath, ['-e', 'bash', '-c', wslCommand], {
-            windowsHide: true, // CRITICAL: Hide the console window
-            detached: false, // Keep attached to parent
-            shell: false, // Don't use cmd.exe shell
-            stdio: ['ignore', 'pipe', 'pipe'],
-            env: { ...process.env, WSLENV: 'PATH/l' } // Pass environment properly
+          // Use wsl.exe directly with proper quoting
+          // The key is to escape quotes properly for bash -c
+          const bashProcess = spawn('wsl.exe', [
+            '-e', 
+            'bash', 
+            '-c',
+            wslCommand
+          ], {
+            windowsHide: true,      // Hide console window
+            detached: false,        // Stay attached to parent
+            shell: false,           // Don't use cmd.exe
+            stdio: ['ignore', 'pipe', 'pipe']  // Capture output
+          });
+          
+          console.log(`🐚 [BASH] Process spawned`);
+          
+          let output = '';
+          let errorOutput = '';
+          
+          // Capture output
+          bashProcess.stdout.on('data', (data) => {
+            const chunk = data.toString();
+            output += chunk;
+            console.log(`🐚 [BASH] stdout chunk (${chunk.length} bytes)`);
+          });
+          
+          bashProcess.stderr.on('data', (data) => {
+            const chunk = data.toString();
+            errorOutput += chunk;
+            console.log(`🐚 [BASH] stderr chunk (${chunk.length} bytes)`);
+          });
+          
+          // Handle completion
+          bashProcess.on('close', (code) => {
+            const finalOutput = output || errorOutput || '(no output)';
+            console.log(`🐚 [BASH] Process exited with code ${code}`);
+            console.log(`🐚 [BASH] Total output: ${finalOutput.length} bytes`);
+            
+            // Send result to UI with ANSI color support
+            // Using ansi-block to preserve colors in the output
+            socket.emit(`message:${sessionId}`, {
+              type: 'assistant',
+              message: {
+                content: [
+                  { type: 'text', text: `\`\`\`ansi\n${finalOutput}\n\`\`\`` }
+                ]
+              },
+              streaming: false,  // Clear streaming state
+              timestamp: Date.now()
+            });
+            
+            if (callback) callback({ 
+              success: code === 0, 
+              error: code !== 0 ? errorOutput : undefined 
+            });
+          });
+          
+          bashProcess.on('error', (error) => {
+            console.error(`🐚 [BASH] Process error: ${error.message}`);
+            socket.emit(`message:${sessionId}`, {
+              type: 'assistant',
+              message: {
+                content: [
+                  { type: 'text', text: `\`\`\`\nError: ${error.message}\n\`\`\`` }
+                ]
+              },
+              streaming: false,  // Clear streaming state on error
+              timestamp: Date.now()
+            });
+            
+            if (callback) callback({ success: false, error: error.message });
           });
         } else {
-          // Execute directly on macOS/Linux
-          bashProcess = spawn('bash', ['-c', bashCommand], {
+          // macOS/Linux - use spawn for consistency
+          console.log(`🐚 [BASH] Unix command: ${bashCommand}`);
+          
+          const bashProcess = spawn('bash', ['-c', bashCommand], {
             cwd: workingDir,
             stdio: ['ignore', 'pipe', 'pipe']
           });
+          
+          let output = '';
+          let errorOutput = '';
+          
+          bashProcess.stdout.on('data', (data) => {
+            output += data.toString();
+          });
+          
+          bashProcess.stderr.on('data', (data) => {
+            errorOutput += data.toString();
+          });
+          
+          bashProcess.on('close', (code) => {
+            const finalOutput = output || errorOutput || '(no output)';
+            console.log(`🐚 [BASH] Unix process exited with code ${code}`);
+            
+            socket.emit(`message:${sessionId}`, {
+              type: 'assistant',
+              message: {
+                content: [
+                  { type: 'text', text: `\`\`\`ansi\n${finalOutput}\n\`\`\`` }
+                ]
+              },
+              streaming: false,  // Clear streaming state
+              timestamp: Date.now()
+            });
+            
+            if (callback) callback({ 
+              success: code === 0, 
+              error: code !== 0 ? errorOutput : undefined 
+            });
+          });
+          
+          bashProcess.on('error', (error) => {
+            console.error(`🐚 [BASH] Unix process error: ${error.message}`);
+            socket.emit(`message:${sessionId}`, {
+              type: 'assistant',
+              message: {
+                content: [
+                  { type: 'text', text: `\`\`\`\nError: ${error.message}\n\`\`\`` }
+                ]
+              },
+              streaming: false,  // Clear streaming state on error
+              timestamp: Date.now()
+            });
+            
+            if (callback) callback({ success: false, error: error.message });
+          });
         }
-        
-        // Collect output
-        bashProcess.stdout.on('data', (data) => {
-          output += data.toString();
-        });
-        
-        bashProcess.stderr.on('data', (data) => {
-          errorOutput += data.toString();
-        });
-        
-        // Handle process completion
-        bashProcess.on('close', (code) => {
-          console.log(`🐚 Bash command exited with code ${code}`);
-          
-          // Send the result back
-          const finalOutput = output || errorOutput || '(no output)';
-          const assistantMessage = {
-            type: 'assistant',
-            message: {
-              content: [
-                { type: 'text', text: `\`\`\`\n${finalOutput}\n\`\`\`` }
-              ]
-            },
-            streaming: false,
-            timestamp: Date.now()
-          };
-          
-          // Add to session history
-          if (!session.messages) session.messages = [];
-          session.messages.push(assistantMessage);
-          
-          // Emit the message to the client
-          socket.emit(`message:${sessionId}`, assistantMessage);
-          
-          if (callback) callback({ success: code === 0, error: code !== 0 ? errorOutput : undefined });
-        });
-        
-        // Handle process errors
-        bashProcess.on('error', (error) => {
-          console.error('❌ Bash command failed:', error);
-          const errorMessage = {
-            type: 'assistant',
-            message: {
-              content: [
-                { type: 'text', text: `Error executing command: ${error.message}` }
-              ]
-            },
-            streaming: false,
-            timestamp: Date.now()
-          };
-          
-          // Add to session history
-          if (!session.messages) session.messages = [];
-          session.messages.push(errorMessage);
-          
-          // Emit the message to the client
-          socket.emit(`message:${sessionId}`, errorMessage);
-          
-          if (callback) callback({ success: false, error: error.message });
-        });
       } catch (error) {
-        console.error('❌ Bash command spawn failed:', error);
-        const errorMessage = {
+        console.error(`🐚 [BASH] Failed to spawn: ${error.message}`);
+        socket.emit(`message:${sessionId}`, {
           type: 'assistant',
           message: {
             content: [
-              { type: 'text', text: `Error spawning command: ${error.message}` }
+              { type: 'text', text: `\`\`\`\nFailed to execute: ${error.message}\n\`\`\`` }
             ]
           },
-          streaming: false,
+          streaming: false,  // Clear streaming state on failure
           timestamp: Date.now()
-        };
-        
-        // Add to session history
-        if (!session.messages) session.messages = [];
-        session.messages.push(errorMessage);
-        
-        // Emit the message to the client
-        socket.emit(`message:${sessionId}`, errorMessage);
+        });
         
         if (callback) callback({ success: false, error: error.message });
       }
@@ -4933,40 +4982,8 @@ httpServer.listen(PORT, () => {
   
   console.log(`✅ Server configured for ${platform() === 'win32' ? 'Windows' : platform()}`);
   
-  // Warmup bash command to prevent focus loss on first run
-  console.log('🔥 Warming up bash execution...');
-  
-  // Different warmup for Windows vs Unix
-  if (process.platform === 'win32') {
-    // Use wsl.exe for Windows warmup
-    const warmupCmd = spawn('wsl.exe', ['-e', 'echo', 'warmup'], {
-      shell: false,
-      stdio: 'ignore',
-      windowsHide: true,
-      detached: false
-    });
-    
-    warmupCmd.on('close', () => {
-      console.log('✅ Bash warmup complete (Windows/WSL)');
-    });
-    warmupCmd.on('error', (err) => {
-      console.warn('⚠️ Bash warmup failed:', err.message);
-    });
-  } else {
-    // Use echo directly on Unix systems
-    const warmupCmd = spawn('echo', ['warmup'], {
-      shell: false,
-      stdio: 'pipe',
-      windowsHide: true
-    });
-    
-    warmupCmd.on('close', () => {
-      console.log('✅ Bash warmup complete (Unix)');
-    });
-    warmupCmd.on('error', (err) => {
-      console.warn('⚠️ Bash warmup failed:', err.message);
-    });
-  }
+  // Skip bash warmup - not needed with exec()
+  console.log('✅ Server ready for bash commands');
   
   // Track first bash command to restore focus on Windows
   let isFirstBashCommand = true;
