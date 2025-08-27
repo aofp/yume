@@ -1266,10 +1266,19 @@ export const ClaudeChat: React.FC = () => {
           console.error('[ClaudeChat] Failed to execute bash command:', error);
           
           // Add error message with proper structure
+          // Extract the actual error message
+          const errorText = error instanceof Error ? error.message : String(error);
           const errorMessage = {
             id: `bash-err-${Date.now()}`,
             type: 'assistant' as const,
-            message: { content: `Error executing command: ${error}` },
+            message: { 
+              content: [
+                { 
+                  type: 'text', 
+                  text: `\`\`\`\n${errorText}\n\`\`\`` 
+                }
+              ]
+            },
             timestamp: Date.now()
           };
           
