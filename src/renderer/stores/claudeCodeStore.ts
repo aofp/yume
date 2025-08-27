@@ -1197,8 +1197,19 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               console.log(`🔍 [ANALYTICS DEBUG] Session ${s.id}: Before processing, analytics tokens: ${analytics.tokens.total}`);
               
               // Update message counts - matches Claude Code
-              analytics.totalMessages = existingMessages.length;
-              analytics.userMessages = existingMessages.filter(m => m.type === 'user').length;
+              // Exclude bash commands (messages starting with !) from user message count
+              const nonBashUserMessages = existingMessages.filter(m => 
+                m.type === 'user' && 
+                !(typeof m.message === 'object' && m.message?.content?.startsWith?.('!'))
+              );
+              const bashCommands = existingMessages.filter(m => 
+                m.type === 'user' && 
+                typeof m.message === 'object' && 
+                m.message?.content?.startsWith?.('!')
+              );
+              
+              analytics.totalMessages = existingMessages.length - bashCommands.length;
+              analytics.userMessages = nonBashUserMessages.length;
               analytics.assistantMessages = existingMessages.filter(m => m.type === 'assistant').length;
               analytics.toolUses = existingMessages.filter(m => m.type === 'tool_use').length;
               analytics.systemMessages = existingMessages.filter(m => m.type === 'system').length;
@@ -3155,10 +3166,21 @@ ${content}`;
         }
         
         // Create a new analytics object to ensure React detects the change
+        // Exclude bash commands (messages starting with !) from user message count
+        const nonBashUserMessages = updatedMessages.filter(m => 
+          m.type === 'user' && 
+          !(typeof m.message === 'object' && m.message?.content?.startsWith?.('!'))
+        );
+        const bashCommands = updatedMessages.filter(m => 
+          m.type === 'user' && 
+          typeof m.message === 'object' && 
+          m.message?.content?.startsWith?.('!')
+        );
+        
         analytics = {
           ...analytics,
-          totalMessages: updatedMessages.length,
-          userMessages: updatedMessages.filter(m => m.type === 'user').length,
+          totalMessages: updatedMessages.length - bashCommands.length,
+          userMessages: nonBashUserMessages.length,
           assistantMessages: updatedMessages.filter(m => m.type === 'assistant').length,
           toolUses: updatedMessages.filter(m => m.type === 'tool_use').length,
           systemMessages: updatedMessages.filter(m => m.type === 'system').length
