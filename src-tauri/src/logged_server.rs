@@ -2907,11 +2907,29 @@ io.on('connection', (socket) => {
           
           // Handle completion
           bashProcess.on('close', (code) => {
-            const finalOutput = output || errorOutput || '(no output)';
             const isCmd = useCmdExe ? '[CMD]' : '[BASH]';
             console.log(`🐚 ${isCmd} Process exited with code ${code}`);
-            console.log(`🐚 ${isCmd} Total output: ${finalOutput.length} bytes`);
+            console.log(`🐚 ${isCmd} Total output: ${output.length} bytes stdout, ${errorOutput.length} bytes stderr`);
             console.log(`🐚 ${isCmd} Sending streaming: false to clear thinking state`);
+            
+            // Determine final output and format based on exit code
+            let finalOutput = '';
+            if (code !== 0) {
+              // Command failed - show error clearly
+              if (errorOutput) {
+                finalOutput = `❌ Command failed with exit code ${code}\n\nError output:\n${errorOutput}`;
+                if (output) {
+                  finalOutput += `\n\nStandard output:\n${output}`;
+                }
+              } else if (output) {
+                finalOutput = `❌ Command failed with exit code ${code}\n\n${output}`;
+              } else {
+                finalOutput = `❌ Command failed with exit code ${code} (no output)`;
+              }
+            } else {
+              // Command succeeded - show normal output
+              finalOutput = output || errorOutput || '(no output)';
+            }
             
             // Send result to UI with ANSI color support
             // Using ansi-block to preserve colors in the output
@@ -3013,8 +3031,27 @@ io.on('connection', (socket) => {
           });
           
           bashProcess.on('close', (code) => {
-            const finalOutput = output || errorOutput || '(no output)';
             console.log(`🐚 [BASH] Unix process exited with code ${code}`);
+            console.log(`🐚 [BASH] Total output: ${output.length} bytes stdout, ${errorOutput.length} bytes stderr`);
+            
+            // Determine final output and format based on exit code
+            let finalOutput = '';
+            if (code !== 0) {
+              // Command failed - show error clearly
+              if (errorOutput) {
+                finalOutput = `❌ Command failed with exit code ${code}\n\nError output:\n${errorOutput}`;
+                if (output) {
+                  finalOutput += `\n\nStandard output:\n${output}`;
+                }
+              } else if (output) {
+                finalOutput = `❌ Command failed with exit code ${code}\n\n${output}`;
+              } else {
+                finalOutput = `❌ Command failed with exit code ${code} (no output)`;
+              }
+            } else {
+              // Command succeeded - show normal output
+              finalOutput = output || errorOutput || '(no output)';
+            }
             
             socket.emit(`message:${sessionId}`, {
               type: 'assistant',
