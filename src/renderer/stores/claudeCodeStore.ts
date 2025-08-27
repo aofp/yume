@@ -1447,8 +1447,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       
                       // Determine which model was used (check message.model or use current selectedModel)
                       const modelUsed = message.model || get().selectedModel;
-                      const isOpus = modelUsed.includes('opus');
+                      const isOpus = modelUsed?.toLowerCase()?.includes('opus');
                       const modelKey = isOpus ? 'opus' : 'sonnet';
+                      
+                      console.log('🔍 [MODEL DETECTION] Token update:', {
+                        messageModel: message.model,
+                        selectedModel: get().selectedModel,
+                        modelUsed,
+                        isOpus,
+                        modelKey,
+                        regularInputTokens,
+                        outputTokens
+                      });
                       
                       // Update model-specific tokens (accumulate NEW tokens only, not cache)
                       // Both models can be used in the same conversation if user switches
@@ -3077,10 +3087,31 @@ ${content}`;
             analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
             analytics.tokens.cacheCreation = message.wrapper.tokens.cache_creation || 0;
             
+            // Update model-specific tracking
+            const modelUsed = message.model || get().selectedModel;
+            const isOpus = modelUsed?.toLowerCase()?.includes('opus');
+            
+            if (isOpus) {
+              analytics.tokens.byModel.opus = {
+                input: analytics.tokens.input,
+                output: analytics.tokens.output,
+                total: analytics.tokens.input + analytics.tokens.output
+              };
+            } else {
+              analytics.tokens.byModel.sonnet = {
+                input: analytics.tokens.input,
+                output: analytics.tokens.output,
+                total: analytics.tokens.input + analytics.tokens.output
+              };
+            }
+            
             console.log('✅ [Store] TOKEN UPDATE applied to analytics:', {
               sessionId,
               total: analytics.tokens.total,
-              percentage: message.wrapper.tokens.percentage
+              percentage: message.wrapper.tokens.percentage,
+              modelUsed,
+              isOpus,
+              byModel: analytics.tokens.byModel
             });
           }
           
@@ -3169,7 +3200,7 @@ ${content}`;
         if (message.type === 'result' && message.usage) {
           // Get the model from the message or use the global selectedModel
           const currentModel = message.model || get().selectedModel;
-          const isOpus = currentModel?.includes('opus');
+          const isOpus = currentModel?.toLowerCase()?.includes('opus');
           const inputTokens = message.usage.input_tokens || 0;
           const outputTokens = message.usage.output_tokens || 0;
           

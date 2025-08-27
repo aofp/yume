@@ -2571,8 +2571,18 @@ export const ClaudeChat: React.FC = () => {
                     <span className="stat-desc">
                       {(() => {
                         const opusTokens = currentSession?.analytics?.tokens?.byModel?.opus?.total || 0;
-                        const totalTokens = currentSession?.analytics?.tokens?.total || 1;
-                        return `${Math.round((opusTokens / totalTokens) * 100)}%`;
+                        const sonnetTokens = currentSession?.analytics?.tokens?.byModel?.sonnet?.total || 0;
+                        // Use only NEW tokens (not cache) for model percentage
+                        const totalNewTokens = opusTokens + sonnetTokens || 1;
+                        const percentage = Math.round((opusTokens / totalNewTokens) * 100);
+                        console.log('🎨 [OPUS UI] Rendering opus percentage:', {
+                          opusTokens,
+                          sonnetTokens,
+                          totalNewTokens,
+                          percentage,
+                          byModel: currentSession?.analytics?.tokens?.byModel
+                        });
+                        return `${percentage}%`;
                       })()}
                     </span>
                   </div>
