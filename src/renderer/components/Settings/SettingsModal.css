@@ -741,7 +741,7 @@ input[type="checkbox"].checkbox-input {
   cursor: default !important;
 }
 
-.platform-darwin {
+.platform-darwin .toggle-switch {
   top: 0px;
 }
 
