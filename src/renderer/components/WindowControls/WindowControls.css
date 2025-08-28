@@ -174,7 +174,7 @@
   color: rgba(255, 255, 255, 1);
 }
 
-.window-control.settings, .window-control.help, .window-control.projects, .window-control.analytics, .window-control.refresh {
+.window-control.settings, .window-control.help, .window-control.projects, .window-control.agents, .window-control.analytics, .window-control.refresh {
   width: 24px;
   height: 21px;
   background: transparent;
@@ -190,7 +190,7 @@
   margin-right: 1px;
 }
 
-.window-control.settings:hover, .window-control.help:hover, .window-control.projects:hover, .window-control.analytics:hover, .window-control.refresh:hover {
+.window-control.settings:hover, .window-control.help:hover, .window-control.projects:hover, .window-control.agents:hover, .window-control.analytics:hover, .window-control.refresh:hover {
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
@@ -200,6 +200,7 @@
 .mac-right-controls .window-control.settings,
 .mac-right-controls .window-control.help,
 .mac-right-controls .window-control.projects,
+.mac-right-controls .window-control.agents,
 .mac-right-controls .window-control.analytics,
 .mac-right-controls .window-control.refresh {
   margin-right: 0;
