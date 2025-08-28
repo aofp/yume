@@ -741,7 +741,7 @@ const io = new Server(httpServer, {
     methods: ["GET", "POST"]
   },
   transports: ['websocket', 'polling'],
-  pingTimeout: 600000, // 10 minutes - prevent timeout during long operations
+  pingTimeout: 1200000, // 20 minutes - support long-running operations
   pingInterval: 30000, // 30 seconds heartbeat
   upgradeTimeout: 60000, // 60 seconds for upgrade
   maxHttpBufferSize: 5e8, // 500mb - handle large contexts
@@ -3655,6 +3655,7 @@ Format as a clear, structured summary that preserves all important context.`;
       let bytesReceived = 0;
       let lastDataTime = Date.now();
       let streamStartTime = Date.now();
+      let watchdogTimerRef = { timer: null }; // Store watchdog timer reference
       
       // Cleanup any existing health check for this session
       if (streamHealthChecks.has(sessionId)) {
@@ -3670,39 +3671,70 @@ Format as a clear, structured summary that preserves all important context.`;
         const streamDuration = Date.now() - streamStartTime;
         console.log(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
         
-        if (timeSinceLastData > 30000) {
-          console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
-          // Send keepalive to prevent client timeout
-          socket.emit(`keepalive:${sessionId}`, { timestamp: Date.now() });
+        // Info at 1 minute - this is normal for complex tasks
+        if (timeSinceLastData > 60000 && timeSinceLastData < 65000) {
+          console.log(`⏳ No data for 1 min - Claude processing complex task...`);
+          socket.emit(`keepalive:${sessionId}`, { 
+            timestamp: Date.now(),
+            info: 'Processing complex task',
+            elapsed: timeSinceLastData 
+          });
         }
         
-        // If no data for 45 seconds, try to recover the stream
-        if (timeSinceLastData > 45000 && timeSinceLastData < 50000) {
-          console.warn(`⚠️ Stream stalled for ${timeSinceLastData}ms, attempting recovery...`);
-          // Send a newline to potentially unstick the process
-          if (activeProcesses.has(sessionId)) {
-            const proc = activeProcesses.get(sessionId);
-            if (proc.stdin && !proc.stdin.destroyed) {
+        // Warning at 5 minutes
+        if (timeSinceLastData > 300000 && timeSinceLastData < 305000) {
+          console.warn(`⚠️ No data for 5 min - task taking longer than usual`);
+          socket.emit(`keepalive:${sessionId}`, { 
+            timestamp: Date.now(),
+            warning: 'Long-running operation in progress',
+            elapsed: timeSinceLastData 
+          });
+        }
+        
+        // Serious warning at 8 minutes
+        if (timeSinceLastData > 480000 && timeSinceLastData < 485000) {
+          console.error(`🚨 No data for 8 min - may be frozen`);
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'warning',
+            content: '⚠️ Claude has been silent for 8 minutes. Will terminate at 10 minutes if no response.',
+            timestamp: Date.now()
+          });
+        }
+        
+        // Don't try to recover with newlines - it doesn't work and can break things
+        // Claude legitimately takes time to process complex tasks
+        
+        // ONLY kill if frozen for 10+ minutes - Claude needs time for complex tasks
+        // Many operations legitimately take 20+ minutes
+        if (timeSinceLastData > 600000) { // 10 minutes
+          console.error(`💀 Stream appears dead after ${timeSinceLastData}ms, cleaning up`);
+          
+          // Kill any bash processes first
+          if (activeBashProcesses.has(sessionId)) {
+            const bashProc = activeBashProcesses.get(sessionId);
+            if (bashProc) {
+              console.log(`🔪 Killing frozen bash process for session ${sessionId}`);
               try {
-                // Send a few newlines to make sure Claude gets input
-                proc.stdin.write('\n\n');
-                console.log(`📝 Sent newlines to potentially unstick process`);
+                bashProc.kill('SIGKILL');
               } catch (e) {
-                console.error(`Failed to write to stdin: ${e.message}`);
+                console.error(`Failed to kill bash process: ${e.message}`);
               }
+              activeBashProcesses.delete(sessionId);
             }
           }
-        }
-        
-        // If no data for 2 minutes, kill and restart the stream
-        // Reduced from 15 minutes as Claude shouldn't hang this long
-        if (timeSinceLastData > 120000) {
-          console.error(`💀 Stream appears dead after ${timeSinceLastData}ms, cleaning up`);
+          
+          // Then kill the Claude process
           if (activeProcesses.has(sessionId)) {
             const proc = activeProcesses.get(sessionId);
             
+            console.log(`🔪 Force killing frozen Claude process for session ${sessionId}`);
             // Force kill the process
-            proc.kill('SIGKILL');
+            try {
+              proc.kill('SIGKILL');
+            } catch (e) {
+              console.error(`Failed to kill Claude process: ${e.message}`);
+            }
             activeProcesses.delete(sessionId);
             activeProcessStartTimes.delete(sessionId);
             
@@ -3710,9 +3742,16 @@ Format as a clear, structured summary that preserves all important context.`;
             socket.emit(`message:${sessionId}`, {
               type: 'system',
               subtype: 'error',
-              content: 'Stream timeout - Claude process was unresponsive. Please try again.',
+              content: '⚠️ Claude became unresponsive and was terminated. Please retry your request.',
               timestamp: Date.now()
             });
+            
+            // Mark session for automatic retry
+            if (session) {
+              session.needsRetry = true;
+              session.frozenCount = (session.frozenCount || 0) + 1;
+              console.log(`🔄 Session ${sessionId} marked for retry (frozen ${session.frozenCount} times)`);
+            }
             
             // Mark streaming as false for any pending assistant messages
             if (lastAssistantMessageIds.has(sessionId)) {
@@ -3726,20 +3765,68 @@ Format as a clear, structured summary that preserves all important context.`;
           }
           clearInterval(streamHealthInterval);
         }
-      }, 5000);
+      }, 5000); // Check every 5 seconds - balance between monitoring and performance
       
       // Store health check interval for cleanup
       streamHealthChecks.set(sessionId, streamHealthInterval);
       
-      // Set overall stream timeout (2 hours max per stream - for very long tasks)
+      // Function to reset watchdog timer
+      const resetWatchdog = () => {
+        if (watchdogTimerRef.timer) {
+          clearTimeout(watchdogTimerRef.timer);
+        }
+        watchdogTimerRef.timer = setTimeout(() => {
+          const finalTimeSinceData = Date.now() - lastDataTime;
+          console.error(`🐕 WATCHDOG: Killing frozen process after ${finalTimeSinceData}ms of no data`);
+          
+          // Force kill everything
+          if (activeBashProcesses.has(sessionId)) {
+            const bashProc = activeBashProcesses.get(sessionId);
+            if (bashProc) {
+              try { bashProc.kill('SIGKILL'); } catch(e) {}
+              activeBashProcesses.delete(sessionId);
+            }
+          }
+          
+          if (activeProcesses.has(sessionId)) {
+            const proc = activeProcesses.get(sessionId);
+            try { proc.kill('SIGKILL'); } catch(e) {}
+            activeProcesses.delete(sessionId);
+            activeProcessStartTimes.delete(sessionId);
+          }
+          
+          // Send error message
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'error',
+            content: '🔴 Watchdog timer: Claude was terminated due to unresponsiveness',
+            timestamp: Date.now()
+          });
+          
+          // Clean up all timers
+          if (streamHealthChecks.has(sessionId)) {
+            clearInterval(streamHealthChecks.get(sessionId));
+            streamHealthChecks.delete(sessionId);
+          }
+          if (streamTimeouts.has(sessionId)) {
+            clearTimeout(streamTimeouts.get(sessionId));
+            streamTimeouts.delete(sessionId);
+          }
+        }, 660000); // Kill after 11 minutes (gives 10 min warning + 1 min buffer)
+      };
+      
+      // Start the watchdog timer
+      resetWatchdog();
+      
+      // Set overall stream timeout (45 minutes max - even complex tasks shouldn't take longer)
       const streamTimeout = setTimeout(() => {
-        console.warn(`⏰ Stream timeout reached for session ${sessionId} after 2 hours`);
+        console.warn(`⏰ Stream timeout reached for session ${sessionId} after 45 minutes`);
         if (activeProcesses.has(sessionId)) {
           const proc = activeProcesses.get(sessionId);
           console.log(`⏰ Terminating long-running process for ${sessionId}`);
           proc.kill('SIGTERM');
         }
-      }, 7200000); // 2 hours
+      }, 2700000); // 45 minutes max
       streamTimeouts.set(sessionId, streamTimeout);
       
       const processStreamLine = (line) => {
@@ -3762,6 +3849,7 @@ Format as a clear, structured summary that preserves all important context.`;
         
         // Update lastDataTime whenever we process a valid line (including thinking blocks)
         lastDataTime = Date.now();
+        resetWatchdog(); // Reset the watchdog timer on valid data
         
         // Check for "No conversation found" error message
         if (line.includes('No conversation found with session ID')) {
@@ -4547,6 +4635,7 @@ Format as a clear, structured summary that preserves all important context.`;
         const str = data.toString();
         bytesReceived += data.length;
         lastDataTime = Date.now();
+        resetWatchdog(); // Reset watchdog on any data reception
         
         console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
         console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200)}...`);
@@ -4654,6 +4743,13 @@ Format as a clear, structured summary that preserves all important context.`;
           } catch (e) {
             // Ignore errors on cleanup
           }
+        }
+        
+        // Clean up watchdog timer
+        if (watchdogTimerRef.timer) {
+          clearTimeout(watchdogTimerRef.timer);
+          watchdogTimerRef.timer = null;
+          console.log(`🐕 Watchdog timer cleared on process exit`);
         }
         
         // Clean up Windows temp file if it exists
