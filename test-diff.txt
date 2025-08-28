@@ -1,5 +1,0 @@
-line 1 - original
-line 2 - original
-line 3 - modified with new content
-line 4 - original
-line 5 - original

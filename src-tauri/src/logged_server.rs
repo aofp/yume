@@ -5627,17 +5627,17 @@ fn start_macos_server(port: u16) {
                 let resources_dir = contents_dir.join("Resources").join("resources");
                 write_log(&format!("Resources dir: {:?}", resources_dir));
                 
-                // Try .js first (original working file)
-                let server_js = resources_dir.join("server-claude-macos.cjs");
-                if server_js.exists() {
-                    write_log(&format!("Found server.js at: {:?}", server_js));
-                    return Some(server_js);
+                // Try .cjs first (current bundled file)
+                let server_cjs = resources_dir.join("server-claude-macos.cjs");
+                if server_cjs.exists() {
+                    write_log(&format!("Found server.js at: {:?}", server_cjs));
+                    return Some(server_cjs);
                 }
                 
-                // Fall back to .cjs
-                let server_cjs = resources_dir.join("server-claude-macos.cjs");
-                write_log(&format!("Looking for server.cjs at: {:?}", server_cjs));
-                Some(server_cjs)
+                // Fall back to .js (legacy)
+                let server_js = resources_dir.join("server-claude-macos.js");
+                write_log(&format!("Looking for server.js at: {:?}", server_js));
+                Some(server_js)
             });
         
         if result.is_none() {

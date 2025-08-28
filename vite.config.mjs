@@ -89,7 +89,23 @@ export default defineConfig({
     outDir: 'dist/renderer',
     emptyOutDir: true,
     sourcemap: false, // Disable sourcemaps for production
-    minify: false, // Disable minification to avoid breaking libraries
+    minify: 'terser', // Safe minification for JS
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console logs in production
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.debug'],
+        passes: 2,
+      },
+      mangle: {
+        safari10: true, // Fix for Safari 10/11 bugs
+      },
+      format: {
+        comments: false,
+      },
+      keep_classnames: true, // Keep class names for React
+      keep_fnames: true, // Keep function names for better debugging
+    },
     reportCompressedSize: false, // Faster builds
     chunkSizeWarningLimit: 500,
     // Copy fonts to dist folder
@@ -111,17 +127,20 @@ export default defineConfig({
       treeshake: {
         preset: 'recommended',
         moduleSideEffects: false,
+        propertyReadSideEffects: false,
+        tryCatchDeoptimization: false,
       },
     },
     cssCodeSplit: false, // Single CSS file
     cssTarget: 'chrome89', // Modern CSS features
-    assetsInlineLimit: 10240, // Inline assets up to 10KB (includes small WebP images)
+    cssMinify: true, // Enable CSS minification
+    assetsInlineLimit: 4096, // Reduced from 10KB to 4KB
   },
   resolve: {
     alias: {
       '@': resolve(__dirname, './src/renderer'),
       '@shared': resolve(__dirname, './src/shared'),
-      '@tabler/icons-react': resolve(__dirname, 'node_modules/@tabler/icons-react/dist/esm/tabler-icons-react.mjs'),
+      '@icons': resolve(__dirname, './src/renderer/components/Icons'),
     },
   },
   define: {
