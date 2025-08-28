@@ -2411,6 +2411,19 @@ export const ClaudeChat: React.FC = () => {
                   <button 
                     className="btn-context-icon"
                     onClick={() => {
+                      if (currentSessionId && !currentSession?.readOnly && hasActivity) {
+                        sendMessage('/compact');
+                      }
+                    }}
+                    disabled={currentSession?.readOnly || !hasActivity}
+                    title="compact context (ctrl+m)"
+                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
+                  >
+                    <IconArrowsDiagonalMinimize2 size={12} stroke={1.5} />
+                  </button>
+                  <button 
+                    className="btn-context-icon"
+                    onClick={() => {
                       if (currentSessionId && hasActivity && !currentSession?.readOnly) {
                         clearContext(currentSessionId);
                         setIsAtBottom(prev => ({
@@ -2429,19 +2442,6 @@ export const ClaudeChat: React.FC = () => {
                     style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
                   >
                     <IconWashDrycleanOff size={12} stroke={1.5} />
-                  </button>
-                  <button 
-                    className="btn-context-icon"
-                    onClick={() => {
-                      if (currentSessionId && !currentSession?.readOnly && hasActivity) {
-                        sendMessage('/compact');
-                      }
-                    }}
-                    disabled={currentSession?.readOnly || !hasActivity}
-                    title="compact context (ctrl+m)"
-                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
-                  >
-                    <IconArrowsDiagonalMinimize2 size={12} stroke={1.5} />
                   </button>
                   <button 
                     className={`btn-stats ${usageClass}`} 
