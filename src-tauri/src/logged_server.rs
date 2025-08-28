@@ -2681,6 +2681,10 @@ process.on('unhandledRejection', (reason, promise) => {
 // Socket.IO connection handling - EXACTLY LIKE WINDOWS
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);
+  
+  // Track first bash command to restore focus on Windows
+  let isFirstBashCommand = true;
+  const bashToolUseIds = new Map(); // Maps tool_use_id to tool info for focus restoration
 
   socket.on('createSession', async (data, callback) => {
     try {
@@ -5153,10 +5157,6 @@ httpServer.listen(PORT, () => {
   
   // Skip bash warmup - not needed with exec()
   console.log('✅ Server ready for bash commands');
-  
-  // Track first bash command to restore focus on Windows
-  let isFirstBashCommand = true;
-  const bashToolUseIds = new Map(); // Maps tool_use_id to tool info for focus restoration
 });
 
 // Handle port already in use error
