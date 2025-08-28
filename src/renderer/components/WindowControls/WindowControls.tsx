@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconTrendingUp, IconChevronLeft, IconChevronRight } from '@tabler/icons-react';
+import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconTrendingUp, IconChevronLeft, IconChevronRight, IconBrain } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './WindowControls.css';
@@ -8,10 +8,11 @@ interface WindowControlsProps {
   onSettingsClick?: () => void;
   onHelpClick?: () => void;
   onProjectsClick?: () => void;
+  onAgentsClick?: () => void;
   onAnalyticsClick?: () => void;
 }
 
-export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick, onHelpClick, onProjectsClick, onAnalyticsClick }) => {
+export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick, onHelpClick, onProjectsClick, onAgentsClick, onAnalyticsClick }) => {
   // Show on all platforms when using frameless window
   const isMac = navigator.platform.toLowerCase().includes('mac');
   const isWindows = navigator.platform.toLowerCase().includes('win') || 
@@ -189,6 +190,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                   <IconFolder size={10} stroke={2} />
                 </button>
               )}
+              {onAgentsClick && (
+                <button className="window-control agents" onClick={onAgentsClick} title="agents (cmd+g)">
+                  <IconBrain size={10} stroke={2} />
+                </button>
+              )}
               {onAnalyticsClick && (
                 <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (cmd+y)">
                   <IconTrendingUp size={10} stroke={2} />
@@ -228,6 +234,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             {onProjectsClick && (
               <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
                 <IconFolder size={10} stroke={2} />
+              </button>
+            )}
+            {onAgentsClick && (
+              <button className="window-control agents" onClick={onAgentsClick} title="agents (ctrl+g)">
+                <IconBrain size={10} stroke={2} />
               </button>
             )}
             {onAnalyticsClick && (

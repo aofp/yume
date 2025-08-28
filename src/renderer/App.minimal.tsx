@@ -11,6 +11,7 @@ import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus
 import { ServerLogs } from './components/ServerLogs/ServerLogs';
 import { RecentProjectsModal } from './components/RecentProjectsModal/RecentProjectsModal';
 import { ProjectsModal } from './components/ProjectsModal/ProjectsModal';
+import { AgentsModal } from './components/AgentsModal/AgentsModal';
 import { UpgradeModal } from './components/Upgrade/UpgradeModal';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { useLicenseStore } from './services/licenseManager';
@@ -26,6 +27,7 @@ export const App: React.FC = () => {
   const [showServerLogs, setShowServerLogs] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
+  const [showAgentsModal, setShowAgentsModal] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [analyticsProject, setAnalyticsProject] = useState<string | undefined>(undefined);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
@@ -440,6 +442,12 @@ export const App: React.FC = () => {
         setShowProjectsModal(true);
       }
       
+      // Ctrl+G for agents modal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+        e.preventDefault();
+        setShowAgentsModal(true);
+      }
+      
       // Ctrl+, for settings
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
@@ -485,6 +493,9 @@ export const App: React.FC = () => {
         } else if (showProjectsModal) {
           e.preventDefault();
           setShowProjectsModal(false);
+        } else if (showAgentsModal) {
+          e.preventDefault();
+          setShowAgentsModal(false);
         }
       }
       
@@ -607,7 +618,7 @@ export const App: React.FC = () => {
       onDragLeave={handleGlobalDragLeave}
       onContextMenu={handleGlobalContextMenu}
     >
-      <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} onAnalyticsClick={() => {
+      <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} onAgentsClick={() => setShowAgentsModal(true)} onAnalyticsClick={() => {
         setAnalyticsProject(undefined);
         setShowAnalytics(true);
       }} />
@@ -994,6 +1005,17 @@ export const App: React.FC = () => {
             .replace(/-/g, '/');
           // setAnalyticsProject(projectName);
           // setShowAnalytics(true);
+        }}
+      />
+      <AgentsModal
+        isOpen={showAgentsModal}
+        onClose={() => setShowAgentsModal(false)}
+        onSelectAgent={(agent) => {
+          // Apply selected agent to the store
+          const store = useClaudeCodeStore.getState();
+          store.selectAgent(agent.id);
+          console.log('[App] Selected agent:', agent.name);
+          setShowAgentsModal(false);
         }}
       />
       <AnalyticsModal

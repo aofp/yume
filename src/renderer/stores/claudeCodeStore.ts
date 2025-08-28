@@ -19,6 +19,18 @@ const claudeClient = USE_TAURI_BACKEND ? tauriClaudeClient : claudeCodeClient;
 
 export type SDKMessage = any; // Type from Claude Code SDK
 
+// Agent structure
+export interface Agent {
+  id: string;
+  name: string;
+  icon: string;
+  model: 'opus' | 'sonnet' | 'haiku';
+  default_task: string;
+  system_prompt: string;
+  created_at: number;
+  updated_at: number;
+}
+
 export interface FileSnapshot {
   path: string;
   content: string;
@@ -159,6 +171,10 @@ interface ClaudeCodeStore {
   // UI state
   isDraggingTab: boolean; // Whether a tab is currently being dragged
   
+  // Agents
+  agents: Agent[]; // List of available agents
+  currentAgentId: string | null; // Currently selected agent for new sessions
+  
   // Streaming (deprecated - now per-session)
   streamingMessage: string;
   
@@ -222,6 +238,14 @@ interface ClaudeCodeStore {
   
   // UI state
   setIsDraggingTab: (isDragging: boolean) => void;
+  
+  // Agent management
+  addAgent: (agent: Agent) => void;
+  updateAgent: (agent: Agent) => void;
+  deleteAgent: (agentId: string) => void;
+  selectAgent: (agentId: string | null) => void;
+  importAgents: (agents: Agent[]) => void;
+  exportAgents: () => Agent[];
 }
 
 // Helper function to track file changes from tool operations
@@ -422,6 +446,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   savedTabs: [], // Empty array of saved tabs
   autoGenerateTitle: true, // Default to auto-generating titles (enabled by default)
   isDraggingTab: false, // No tab is being dragged initially
+  agents: [], // No agents initially, will load from localStorage
+  currentAgentId: null, // No agent selected initially
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],
@@ -3490,6 +3516,72 @@ ${content}`;
   setIsDraggingTab: (isDragging: boolean) => {
     set({ isDraggingTab: isDragging });
   },
+  
+  // Agent management
+  addAgent: (agent: Agent) => {
+    const agents = [...get().agents, agent];
+    set({ agents });
+    // Persist to localStorage
+    localStorage.setItem('yurucode-agents', JSON.stringify(agents));
+    console.log('[Store] Added agent:', agent.name);
+  },
+  
+  updateAgent: (updatedAgent: Agent) => {
+    const agents = get().agents.map(agent => 
+      agent.id === updatedAgent.id ? updatedAgent : agent
+    );
+    set({ agents });
+    // Persist to localStorage
+    localStorage.setItem('yurucode-agents', JSON.stringify(agents));
+    console.log('[Store] Updated agent:', updatedAgent.name);
+  },
+  
+  deleteAgent: (agentId: string) => {
+    const agents = get().agents.filter(agent => agent.id !== agentId);
+    set({ agents });
+    // If the deleted agent was selected, clear the selection
+    if (get().currentAgentId === agentId) {
+      set({ currentAgentId: null });
+    }
+    // Persist to localStorage
+    localStorage.setItem('yurucode-agents', JSON.stringify(agents));
+    console.log('[Store] Deleted agent:', agentId);
+  },
+  
+  selectAgent: (agentId: string | null) => {
+    set({ currentAgentId: agentId });
+    // Persist selection to localStorage
+    if (agentId) {
+      localStorage.setItem('yurucode-current-agent', agentId);
+    } else {
+      localStorage.removeItem('yurucode-current-agent');
+    }
+    console.log('[Store] Selected agent:', agentId);
+  },
+  
+  importAgents: (newAgents: Agent[]) => {
+    const existingAgents = get().agents;
+    // Merge agents, avoiding duplicates by ID
+    const mergedAgents = [...existingAgents];
+    newAgents.forEach(newAgent => {
+      const existingIndex = mergedAgents.findIndex(a => a.id === newAgent.id);
+      if (existingIndex >= 0) {
+        // Update existing agent
+        mergedAgents[existingIndex] = newAgent;
+      } else {
+        // Add new agent
+        mergedAgents.push(newAgent);
+      }
+    });
+    set({ agents: mergedAgents });
+    // Persist to localStorage
+    localStorage.setItem('yurucode-agents', JSON.stringify(mergedAgents));
+    console.log('[Store] Imported', newAgents.length, 'agents');
+  },
+  
+  exportAgents: () => {
+    return get().agents;
+  },
 
   updateSessionMapping: (sessionId: string, claudeSessionId: string, metadata?: any) => {
     const state = get();
@@ -3620,7 +3712,9 @@ ${content}`;
         monoFont: state.monoFont,
         sansFont: state.sansFont,
         rememberTabs: state.rememberTabs,
-        autoGenerateTitle: state.autoGenerateTitle
+        autoGenerateTitle: state.autoGenerateTitle,
+        agents: state.agents,
+        currentAgentId: state.currentAgentId
         // Do NOT persist sessionId - sessions should not survive app restarts
       })
     }
