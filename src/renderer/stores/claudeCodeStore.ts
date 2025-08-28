@@ -2162,10 +2162,10 @@ ${content}`;
     set(state => ({
       sessions: state.sessions.map(s => {
         if (s.id === sessionToUse) {
-          // When already streaming (followup during active response), preserve streaming state
+          // When already streaming (followup during active response), keep streaming true
           // When not streaming (new conversation), set streaming to true
           const wasStreaming = s.streaming;
-          console.log('[Store] Current streaming state:', wasStreaming, 'Preserving during followup:', wasStreaming);
+          console.log('[Store] Current streaming state:', wasStreaming, 'Will set streaming to true for followup');
           console.log(`[THINKING TIME] Starting thinking timer at ${now} when user sends message`);
           
           const updates: any = { 
@@ -2197,10 +2197,15 @@ ${content}`;
           updates.analytics = updatedAnalytics;
           console.log(`📊 [THINKING TIME] Starting thinking timer for session ${s.id} at ${now}`);
           
-          // Set streaming to true when sending a message (but not for bash commands)
-          // Bash commands start with ! and don't need thinking indicator
+          // ALWAYS set streaming to true when sending a message (even during followup)
+          // This ensures the UI shows streaming state after interrupting and sending a new message
+          // Only skip for bash commands which don't need thinking indicator
           const isBashCommand = content.startsWith('!');
           updates.streaming = !isBashCommand;
+          if (!isBashCommand && !updates.streaming) {
+            console.warn('[Store] BUG: streaming should be true after sending message!');
+            updates.streaming = true;
+          }
           
           return { ...s, ...updates };
         }

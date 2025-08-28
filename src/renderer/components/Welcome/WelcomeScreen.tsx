@@ -69,7 +69,39 @@ export const WelcomeScreen: React.FC = () => {
     }
   };
 
-  const handleNewSession = async () => {
+  const handleNewSession = async (e?: React.MouseEvent) => {
+    // Add ripple effect if it's a mouse event
+    if (e) {
+      const target = e.currentTarget as HTMLElement;
+      const rect = target.getBoundingClientRect();
+      const x = e.clientX - rect.left;
+      const y = e.clientY - rect.top;
+      
+      // Create ripple element directly in DOM
+      const ripple = document.createElement('div');
+      ripple.style.cssText = `
+        position: absolute;
+        top: ${y}px;
+        left: ${x}px;
+        width: 0;
+        height: 0;
+        border-radius: 50%;
+        background: rgba(var(--accent-rgb), 0.4);
+        transform: translate(-50%, -50%);
+        pointer-events: none;
+        z-index: 100;
+        animation: welcome-ripple-expand 1s ease-out forwards;
+      `;
+      target.appendChild(ripple);
+      
+      // Remove ripple after animation completes
+      setTimeout(() => {
+        if (ripple.parentNode) {
+          ripple.parentNode.removeChild(ripple);
+        }
+      }, 1000);
+    }
+
     let directory = null;
     
     // Check if we're in Tauri environment
@@ -176,7 +208,37 @@ export const WelcomeScreen: React.FC = () => {
 
           <button 
             className="action-button"
-            onClick={() => {
+            onClick={(e) => {
+              // Add ripple effect
+              const target = e.currentTarget as HTMLElement;
+              const rect = target.getBoundingClientRect();
+              const x = e.clientX - rect.left;
+              const y = e.clientY - rect.top;
+              
+              // Create ripple element directly in DOM
+              const ripple = document.createElement('div');
+              ripple.style.cssText = `
+                position: absolute;
+                top: ${y}px;
+                left: ${x}px;
+                width: 0;
+                height: 0;
+                border-radius: 50%;
+                background: rgba(255, 255, 255, 0.2);
+                transform: translate(-50%, -50%);
+                pointer-events: none;
+                z-index: 100;
+                animation: welcome-ripple-expand 1s ease-out forwards;
+              `;
+              target.appendChild(ripple);
+              
+              // Remove ripple after animation completes
+              setTimeout(() => {
+                if (ripple.parentNode) {
+                  ripple.parentNode.removeChild(ripple);
+                }
+              }, 1000);
+
               const event = new CustomEvent('openRecentProjects');
               window.dispatchEvent(event);
             }}

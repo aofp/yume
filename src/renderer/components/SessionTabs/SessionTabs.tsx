@@ -934,7 +934,7 @@ export const SessionTabs: React.FC = () => {
                   setDragOverRecent(true);
                 }
               }}
-              title={draggedTab ? "drop to save as recent" : "recent projects (ctrl+r)"}
+              title={"recent projects (ctrl+r)"}
             >
               <IconChevronDown size={16} stroke={1.5} />
             </button>

@@ -3961,15 +3961,28 @@ Format as a clear, structured summary that preserves all important context.`;
                 // Check if this is an Edit/MultiEdit tool result and enhance with context lines
                 let enhancedContent = block.content;
                 
+                // Log the content for debugging
+                console.log(`🔍 [${sessionId}] Tool result content preview:`, block.content?.substring(0, 200));
+                
+                // More permissive check for Edit tool results
                 if (typeof block.content === 'string' && 
-                    (block.content.includes('has been updated') || (block.content.includes('Applied') && block.content.includes('edits to')))) {
+                    (block.content.includes('has been updated') || 
+                     block.content.includes('updated.') || 
+                     (block.content.includes('Applied') && block.content.includes('edit')) ||
+                     block.content.includes('The file') ||
+                     block.content.includes('snippet of the edited file'))) {
                   
-                  // Extract file path from the content
+                  // Extract file path from the content - try multiple patterns
                   const filePathMatch = block.content.match(/The file (.+?) has been updated/) || 
-                                        block.content.match(/Applied \d+ edits? to (.+?):/);
+                                        block.content.match(/Applied \d+ edits? to (.+?):/) ||
+                                        block.content.match(/file[:\s]+(.+?)(?:\s+has been|\s+updated|:|\n)/) ||
+                                        block.content.match(/\/[^\s]+\.(?:tsx?|jsx?|py|rs|md|css|json|yml|yaml|toml|html|vue|svelte)/g);
                   
                   if (filePathMatch) {
-                    const filePath = filePathMatch[1];
+                    // Handle different match formats
+                    const filePath = Array.isArray(filePathMatch) && !filePathMatch[1] 
+                                    ? filePathMatch[0] 
+                                    : (filePathMatch[1] || filePathMatch[0]);
                     const fullPath = join(session.workingDirectory || process.cwd(), filePath);
                     console.log(`📝 [${sessionId}] Attempting to enhance diff for: ${filePath}`);
                     
@@ -3981,13 +3994,18 @@ Format as a clear, structured summary that preserves all important context.`;
                         
                         // Parse the diff lines to find changed line numbers
                         const diffLines = block.content.split('\n');
-                        const lineNumberRegex = /^\s*(\d+)→/;
+                        // Match various line number formats: "42→", "  42→", "42:", line 42, etc
+                        const lineNumberRegex = /(?:^\s*(\d+)[→:])|(?:line[s]?\s+(\d+))/i;
                         const changedLineNumbers = new Set();
                         
                         diffLines.forEach(line => {
                           const match = line.match(lineNumberRegex);
                           if (match) {
-                            changedLineNumbers.add(parseInt(match[1]));
+                            // Get the first captured group that has a value
+                            const lineNum = match[1] || match[2];
+                            if (lineNum) {
+                              changedLineNumbers.add(parseInt(lineNum));
+                            }
                           }
                         });
                         
@@ -4055,8 +4073,10 @@ Format as a clear, structured summary that preserves all important context.`;
                           
                           enhancedContent = enhancedDiffLines.join('\n');
                           console.log(`📝 [${sessionId}] Enhanced diff created with ${enhancedDiffLines.length} lines`);
+                          console.log(`📝 [${sessionId}] Diff preview:`, enhancedContent.substring(0, 300));
                         } else {
                           console.log(`📝 [${sessionId}] No line numbers found in diff, keeping original content`);
+                          console.log(`📝 [${sessionId}] Original content:`, block.content.substring(0, 300));
                         }
                       }
                     } catch (err) {

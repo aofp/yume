@@ -107,6 +107,7 @@
   flex-shrink: 0; /* Prevent tabs from shrinking */
   user-select: none;
   -webkit-user-select: none;
+  opacity: 0.8;
 }
 
 /* Override cursor for dragging states */
@@ -162,6 +163,7 @@ body.tab-dragging .session-tab {
 }
 
 .session-tab.active {
+  opacity: 1;
   background: rgba(var(--accent-rgb), 0.20);
 }
 
@@ -389,6 +391,7 @@ body.tab-dragging * {
   position: relative;
   margin: 0;
   flex-shrink: 0;
+  opacity: 0.8;
 }
 
 .tab-recent::before {
@@ -412,6 +415,7 @@ body.tab-dragging * {
 .tab-recent:hover {
   background: rgba(var(--accent-rgb), 0.30);
   color: var(--accent-color);
+  opacity: 1;
 }
 
 .tab-recent.drag-over-save {

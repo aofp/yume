@@ -76,17 +76,46 @@
   transition: all 0.2s ease;
   cursor: default;
   padding: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ripple effect for welcome-new-button */
+@keyframes welcome-ripple-expand {
+  0% {
+    width: 0;
+    height: 0;
+    opacity: 0.6;
+  }
+  100% {
+    width: 120px;
+    height: 120px;
+    opacity: 0;
+  }
+}
+
+.welcome-new-button::before {
+  content: '';
+  position: absolute;
+  top: var(--ripple-y, 50%);
+  left: var(--ripple-x, 50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(var(--accent-rgb), 0.4);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.welcome-new-button.ripple-active::before {
+  animation: welcome-ripple-expand 1s ease-out;
 }
 
 .welcome-new-button:hover {
   background: rgba(var(--accent-rgb), 0.30);
   color: var(--accent-color);
 }
-
-.welcome-new-button:active {
-  transform: scale(0.95);
-}
-
 
 .action-button {
   width: 60px;
@@ -104,6 +133,27 @@
   transition: all 0.2s ease;
   cursor: default;
   text-transform: lowercase;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Ripple effect for action-button */
+.action-button::before {
+  content: '';
+  position: absolute;
+  top: var(--ripple-y, 50%);
+  left: var(--ripple-x, 50%);
+  width: 0;
+  height: 0;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.2);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+  z-index: 10;
+}
+
+.action-button.ripple-active::before {
+  animation: welcome-ripple-expand 1s ease-out;
 }
 
 .action-button span {

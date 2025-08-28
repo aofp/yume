@@ -29,6 +29,9 @@ import {
   IconCoin,
   IconChevronUp,
   IconChevronDown,
+  IconChevronRight,
+  IconTrendingUp,
+  IconSettingsFilled,
   IconArrowUp,
   IconArrowDown,
   IconArrowsUpDown,
@@ -39,7 +42,9 @@ import {
   IconDatabase,
   IconCirclePlus,
   IconMicrophone,
-  IconMicrophoneOff
+  IconMicrophoneOff,
+  IconWashDrycleanOff,
+  IconArrowsDiagonalMinimize2
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -151,6 +156,7 @@ export const ClaudeChat: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showContextMenu, setShowContextMenu] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
   const recognitionRef = useRef<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -275,6 +281,21 @@ export const ClaudeChat: React.FC = () => {
       resizeObserver.disconnect();
     };
   }, []);
+
+  // Close context menu on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('.context-menu-wrapper')) {
+        setShowContextMenu(false);
+      }
+    };
+    
+    if (showContextMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }
+  }, [showContextMenu]);
 
   // Track scroll position and whether we're at bottom
   useEffect(() => {
@@ -643,6 +664,12 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Toggle dictation
         toggleDictation();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+        e.preventDefault();
+        // Trigger compact command
+        if (currentSessionId && !currentSession?.readOnly) {
+          sendMessage('/compact');
+        }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
         // Dispatch event to open recent modal in App
@@ -2382,12 +2409,10 @@ export const ClaudeChat: React.FC = () => {
               return (
                 <>
                   <button 
-                    className="btn-clear-context" 
+                    className="btn-context-icon"
                     onClick={() => {
-                      // Clear messages but keep session
                       if (currentSessionId && hasActivity && !currentSession?.readOnly) {
                         clearContext(currentSessionId);
-                        // Reset to stick to bottom for this session
                         setIsAtBottom(prev => ({
                           ...prev,
                           [currentSessionId]: true
@@ -2399,14 +2424,22 @@ export const ClaudeChat: React.FC = () => {
                         });
                       }
                     }}
-                    disabled={currentSession?.readOnly}
-                    title={hasActivity ? "clear context (ctrl+l)" : "clear context (ctrl+l)"}
-                    style={{
-                      opacity: 1,
-                      cursor: 'default'
-                    }}
+                    disabled={currentSession?.readOnly || !hasActivity}
+                    title="clear context (ctrl+l)"
                   >
-                    clear
+                    <IconWashDrycleanOff size={12} stroke={1.5} />
+                  </button>
+                  <button 
+                    className="btn-context-icon"
+                    onClick={() => {
+                      if (currentSessionId && !currentSession?.readOnly) {
+                        sendMessage('/compact');
+                      }
+                    }}
+                    disabled={currentSession?.readOnly}
+                    title="compact context (ctrl+m)"
+                  >
+                    <IconArrowsDiagonalMinimize2 size={12} stroke={1.5} />
                   </button>
                   <button 
                     className={`btn-stats ${usageClass}`} 
@@ -2416,7 +2449,7 @@ export const ClaudeChat: React.FC = () => {
                       `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()}) - click for details (ctrl+.)` : 
                       `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
                   >
-                    {percentage}% used
+                    {percentage}%
                   </button>
                 </>
               );
