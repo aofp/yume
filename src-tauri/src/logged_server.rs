@@ -787,6 +787,7 @@ const PORT = (() => {
 let sessions = new Map();
 let activeProcesses = new Map();  // Map of sessionId -> process
 let activeProcessStartTimes = new Map();  // Map of sessionId -> process start time
+let activeBashProcesses = new Map();  // Map of sessionId -> bash process
 let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMessageId
 let allAssistantMessageIds = new Map();  // Map of sessionId -> Array of all assistant message IDs
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
@@ -2846,6 +2847,9 @@ io.on('connection', (socket) => {
         if (process.platform === 'win32') {
           let bashProcess;
           
+          // Store bash process for interrupt handling
+          activeBashProcesses.set(sessionId, null);
+          
           if (useCmdExe) {
             // Use cmd.exe for Windows native commands
             console.log(`🐚 [CMD] Running Windows command: ${bashCommand}`);
@@ -2860,6 +2864,7 @@ io.on('connection', (socket) => {
             });
             
             console.log(`🐚 [CMD] Process spawned`);
+            activeBashProcesses.set(sessionId, bashProcess);
           } else {
             // Use WSL for bash commands
             // Convert Windows path to WSL path if needed
@@ -2889,6 +2894,7 @@ io.on('connection', (socket) => {
             });
             
             console.log(`🐚 [BASH] Process spawned`);
+            activeBashProcesses.set(sessionId, bashProcess);
           }
           
           let output = '';
@@ -2915,6 +2921,9 @@ io.on('connection', (socket) => {
             console.log(`🐚 ${isCmd} Process exited with code ${code}`);
             console.log(`🐚 ${isCmd} Total output: ${output.length} bytes stdout, ${errorOutput.length} bytes stderr`);
             console.log(`🐚 ${isCmd} Sending streaming: false to clear thinking state`);
+            
+            // Clean up bash process tracking
+            activeBashProcesses.delete(sessionId);
             
             // Determine final output and format based on exit code
             let finalOutput = '';
@@ -3024,6 +3033,9 @@ io.on('connection', (socket) => {
             stdio: ['ignore', 'pipe', 'pipe']
           });
           
+          // Store bash process for interrupt handling
+          activeBashProcesses.set(sessionId, bashProcess);
+          
           let output = '';
           let errorOutput = '';
           let processCompleted = false;
@@ -3045,6 +3057,9 @@ io.on('connection', (socket) => {
               return;
             }
             processCompleted = true;
+            
+            // Clean up bash process tracking
+            activeBashProcesses.delete(sessionId);
             
             console.log(`🐚 [BASH] Unix process exited with code ${code}`);
             console.log(`🐚 [BASH] Total output: ${output.length} bytes stdout, ${errorOutput.length} bytes stderr`);
@@ -4902,6 +4917,7 @@ Format as a clear, structured summary that preserves all important context.`;
 
   socket.on('interrupt', ({ sessionId }, callback) => {
     const process = activeProcesses.get(sessionId);
+    const bashProcess = activeBashProcesses.get(sessionId);
     const session = sessions.get(sessionId);
     
     // Clear the spawn queue on interrupt to prevent stale messages from being sent
@@ -4912,7 +4928,44 @@ Format as a clear, structured summary that preserves all important context.`;
       console.log(`🧹 Cleared ${queueLengthBefore} queued messages after interrupt`);
     }
     
-    if (process) {
+    // Check for bash process first
+    if (bashProcess) {
+      console.log(`🛑 Killing bash process for session ${sessionId} (PID: ${bashProcess.pid})`);
+      
+      try {
+        // Kill the bash process
+        if (process.platform !== 'win32' && bashProcess.pid) {
+          try {
+            process.kill(-bashProcess.pid, 'SIGTERM'); // Negative PID kills process group
+          } catch (e) {
+            // Fallback to regular kill
+            bashProcess.kill('SIGTERM');
+          }
+        } else {
+          bashProcess.kill('SIGTERM');  // Use SIGTERM for immediate termination
+        }
+        
+        activeBashProcesses.delete(sessionId);
+        
+        // Send interrupted message
+        socket.emit(`message:${sessionId}`, {
+          type: 'system',
+          subtype: 'interrupted',
+          message: 'bash command interrupted by user',
+          timestamp: Date.now()
+        });
+        
+        // Send callback response so client knows interrupt completed
+        if (callback) {
+          callback({ success: true });
+        }
+      } catch (error) {
+        console.error(`❌ Error killing bash process: ${error.message}`);
+        if (callback) {
+          callback({ success: false, error: error.message });
+        }
+      }
+    } else if (process) {
       console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${process.pid})`);
       
       // Kill the entire process group if on Unix
