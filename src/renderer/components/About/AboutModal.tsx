@@ -15,11 +15,11 @@ const versionInfo = {
 interface AboutModalProps {
   isOpen: boolean;
   onClose: () => void;
+  onShowUpgrade?: () => void;
 }
 
-export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
+export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowUpgrade }) => {
   const { isLicensed, clearLicense } = useLicenseStore();
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   
   // Handle Escape key
   useEffect(() => {
@@ -59,15 +59,17 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
           <div className="about-name">yurucode</div>
           
           <div className="about-version">
-            version {versionInfo.version}<br />
+            {versionInfo.version}<br />
             <span 
               style={{ 
                 color: 'var(--accent-color)',
-                cursor: !isLicensed ? 'pointer' : 'default'
+                cursor: 'pointer'
               }}
               onClick={() => {
-                if (!isLicensed) {
-                  setShowUpgradeModal(true);
+                if (!isLicensed && onShowUpgrade) {
+                  onShowUpgrade();
+                } else {
+                  onClose();
                 }
               }}
               onContextMenu={(e) => {
@@ -109,13 +111,6 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose }) => {
         </div>
       </div>
     </div>
-    {showUpgradeModal && (
-      <UpgradeModal
-        isOpen={showUpgradeModal}
-        onClose={() => setShowUpgradeModal(false)}
-        reason="trial"
-      />
-    )}
   </>
   );
 };

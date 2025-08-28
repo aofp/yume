@@ -1636,6 +1636,9 @@ const MessageRendererBase: React.FC<{
       // The thinking indicator is shown separately in ClaudeChat
       const hasTextContent = textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim()));
       
+      // Show empty assistant message with (no content) if it's not streaming and has no text
+      const showEmptyMessage = !message.streaming && !hasTextContent && message.type === 'assistant';
+      
       return (
         <>
           {/* Render thinking blocks first, outside any message bubble */}
@@ -1647,12 +1650,15 @@ const MessageRendererBase: React.FC<{
             </div>
           )}
           
-          {/* Render text content in message bubble if there is any */}
-          {hasTextContent && (
+          {/* Render text content in message bubble if there is any, or show (no content) */}
+          {(hasTextContent || showEmptyMessage) && (
             <div className="message assistant">
               <div className="message-content">
                 <div className="message-bubble">
-                  {renderContent(textContent, message, searchQuery, isCurrentMatch)}
+                  {hasTextContent ? 
+                    renderContent(textContent, message, searchQuery, isCurrentMatch) :
+                    <span style={{ color: '#666', fontStyle: 'italic' }}>(no content)</span>
+                  }
                 </div>
               </div>
               {showButtons && (

@@ -815,7 +815,11 @@ export const App: React.FC = () => {
       )}
       
       {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
-      {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />}
+      {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} onShowUpgrade={() => {
+        setShowAbout(false);
+        setUpgradeReason('trial');
+        setShowUpgradeModal(true);
+      }} />}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
       <ServerLogs isOpen={showServerLogs} onClose={() => setShowServerLogs(false)} />
       <RecentProjectsModal

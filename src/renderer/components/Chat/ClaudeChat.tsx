@@ -1621,6 +1621,35 @@ export const ClaudeChat: React.FC = () => {
       return path;
     };
     
+    const files = Array.from(e.dataTransfer.files);
+    
+    // First check if any files are images - if so, attach them as base64
+    const hasImages = files.some(file => file.type.startsWith('image/'));
+    if (hasImages) {
+      for (const file of files) {
+        if (attachments.length >= 10) break;
+        
+        if (file.type.startsWith('image/')) {
+          // Handle image files - convert to base64 for inline viewing
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const dataUrl = event.target?.result as string;
+            const newAttachment: Attachment = {
+              id: Math.random().toString(36).substr(2, 9),
+              type: 'image',
+              name: file.name,
+              size: file.size,
+              content: dataUrl,
+              preview: 'Image'
+            };
+            setAttachments(prev => [...prev, newAttachment]);
+          };
+          reader.readAsDataURL(file);
+        }
+      }
+      return; // Exit early if we handled images
+    }
+    
     // Try to detect folders using webkitGetAsEntry
     const items = Array.from(e.dataTransfer.items);
     for (const item of items) {
@@ -1641,8 +1670,28 @@ export const ClaudeChat: React.FC = () => {
               return;
             }
           } else {
-            // It's a file - insert path into input
+            // It's a file - check if it's an image first (shouldn't reach here due to early return above)
             const file = item.getAsFile();
+            if (file && file.type.startsWith('image/') && attachments.length < 10) {
+              // Handle as image attachment
+              const reader = new FileReader();
+              reader.onload = (event) => {
+                const dataUrl = event.target?.result as string;
+                const newAttachment: Attachment = {
+                  id: Math.random().toString(36).substr(2, 9),
+                  type: 'image',
+                  name: file.name,
+                  size: file.size,
+                  content: dataUrl,
+                  preview: 'Image'
+                };
+                setAttachments(prev => [...prev, newAttachment]);
+              };
+              reader.readAsDataURL(file);
+              return;
+            }
+            
+            // Not an image - insert path into input
             const path = (file as any)?.path;
             if (path) {
               const wslPath = convertToWSLPath(path);
@@ -1656,7 +1705,6 @@ export const ClaudeChat: React.FC = () => {
     }
     
     // Fallback: Check files array (for browsers that don't support webkitGetAsEntry)
-    const files = Array.from(e.dataTransfer.files);
     if (files.length === 1) {
       const file = files[0];
       const path = (file as any).path;
@@ -1696,27 +1744,11 @@ export const ClaudeChat: React.FC = () => {
       }
     }
     
-    // If no path available, handle as attachment (images/text files)
+    // If no path available, handle as attachment (text files only, images already handled above)
     for (const file of files) {
       if (attachments.length >= 10) break;
       
-      if (file.type.startsWith('image/')) {
-        // Handle image files
-        const reader = new FileReader();
-        reader.onload = (event) => {
-          const dataUrl = event.target?.result as string;
-          const newAttachment: Attachment = {
-            id: Math.random().toString(36).substr(2, 9),
-            type: 'image',
-            name: file.name,
-            size: file.size,
-            content: dataUrl,
-            preview: 'Image'
-          };
-          setAttachments(prev => [...prev, newAttachment]);
-        };
-        reader.readAsDataURL(file);
-      } else if (file.type.startsWith('text/')) {
+      if (file.type.startsWith('text/')) {
         // Handle text files
         const reader = new FileReader();
         reader.onload = (event) => {
