@@ -89,23 +89,7 @@ export default defineConfig({
     outDir: 'dist/renderer',
     emptyOutDir: true,
     sourcemap: false, // Disable sourcemaps for production
-    minify: 'terser', // Safe minification for JS
-    terserOptions: {
-      compress: {
-        drop_console: true, // Remove console logs in production
-        drop_debugger: true,
-        pure_funcs: ['console.log', 'console.debug'],
-        passes: 2,
-      },
-      mangle: {
-        safari10: true, // Fix for Safari 10/11 bugs
-      },
-      format: {
-        comments: false,
-      },
-      keep_classnames: true, // Keep class names for React
-      keep_fnames: true, // Keep function names for better debugging
-    },
+    minify: false, // DISABLED - minification breaks the app in Tauri!
     reportCompressedSize: false, // Faster builds
     chunkSizeWarningLimit: 500,
     // Copy fonts to dist folder
@@ -133,7 +117,7 @@ export default defineConfig({
     },
     cssCodeSplit: false, // Single CSS file
     cssTarget: 'chrome89', // Modern CSS features
-    cssMinify: true, // Enable CSS minification
+    cssMinify: false, // DISABLED - minification breaks the app in Tauri!
     assetsInlineLimit: 4096, // Reduced from 10KB to 4KB
   },
   resolve: {
