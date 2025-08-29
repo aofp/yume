@@ -1041,7 +1041,8 @@ textarea.context-full {
   justify-content: space-between;
   align-items: center;
   padding: 0;
-  margin-top: 1px;
+  margin-top: 2px;
+  margin-bottom: 1px;
   background: #000000;
   flex-shrink: 0; /* Prevent shrinking */
   position: relative; /* For absolute positioning of dictation button */
@@ -1050,6 +1051,8 @@ textarea.context-full {
 /* Windows release build specific adjustment - buttons need to go down 1px */
 .platform-win32 .context-bar {
   position: relative;
+  margin-top: 1px;
+  margin-bottom: 0;
   top: 1px; /* Move buttons down 1px in Windows builds */
 }
 

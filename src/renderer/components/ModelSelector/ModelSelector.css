@@ -7,7 +7,7 @@
 
 .model-selector-trigger {
   position: relative;
-  top: -2px;
+  top: 0px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.4);
