@@ -76,6 +76,17 @@ pub struct GitStatus {
     pub renamed: Vec<String>,
 }
 
+/// Represents a Claude agent loaded from ~/.claude/agents
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClaudeAgent {
+    pub id: String,
+    pub name: String,
+    pub model: String,
+    pub system_prompt: String,
+    pub created_at: u64,
+    pub updated_at: u64,
+}
+
 /// Get the user's home directory path
 #[tauri::command]
 pub fn get_home_directory() -> Result<String, String> {
@@ -541,6 +552,13 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
             
             // Check if the command failed based on exit status
             if !output.status.success() {
+                // Special case: git commit with nothing to commit returns exit code 1
+                // but outputs to stdout, not stderr
+                if command.starts_with("git commit") && stdout.contains("nothing to commit") {
+                    // This is not really an error, return the message as success
+                    return Ok(stdout.to_string());
+                }
+                
                 // Return error with both stderr and stdout for debugging
                 let error_msg = if !stderr.is_empty() {
                     stderr.to_string()
@@ -573,6 +591,13 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
             
             // Check if the command failed based on exit status
             if !output.status.success() {
+                // Special case: git commit with nothing to commit returns exit code 1
+                // but outputs to stdout, not stderr
+                if command.starts_with("git commit") && stdout.contains("nothing to commit") {
+                    // This is not really an error, return the message as success
+                    return Ok(stdout.to_string());
+                }
+                
                 // Return error with both stderr and stdout for debugging
                 let error_msg = if !stderr.is_empty() {
                     stderr.to_string()
@@ -835,6 +860,190 @@ pub fn get_server_log_path() -> Result<String, String> {
 #[tauri::command]
 pub fn clear_server_logs() -> Result<(), String> {
     logged_server::clear_log();
+    Ok(())
+}
+
+/// Load Claude agents from ~/.claude/agents directory (global agents)
+#[tauri::command]
+pub fn load_claude_agents() -> Result<Vec<ClaudeAgent>, String> {
+    use std::fs;
+    use std::path::Path;
+    
+    let home_dir = dirs::home_dir()
+        .ok_or_else(|| "Could not determine home directory".to_string())?;
+    
+    let agents_dir = home_dir.join(".claude").join("agents");
+    
+    load_agents_from_directory(&agents_dir)
+}
+
+/// Load project-specific Claude agents from a directory's .claude/agents
+#[tauri::command]
+pub fn load_project_agents(directory: String) -> Result<Vec<ClaudeAgent>, String> {
+    use std::path::PathBuf;
+    
+    let project_dir = PathBuf::from(directory);
+    let agents_dir = project_dir.join(".claude").join("agents");
+    
+    load_agents_from_directory(&agents_dir)
+}
+
+// Helper function to load agents from a specific directory
+fn load_agents_from_directory(agents_dir: &std::path::Path) -> Result<Vec<ClaudeAgent>, String> {
+    use std::fs;
+    
+    if !agents_dir.exists() {
+        return Ok(Vec::new());
+    }
+    
+    let mut agents = Vec::new();
+    
+    // Read all .md files in the agents directory
+    for entry in fs::read_dir(&agents_dir).map_err(|e| format!("Failed to read agents directory: {}", e))? {
+        let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
+        let path = entry.path();
+        
+        if path.extension().and_then(|s| s.to_str()) == Some("md") {
+            // Read the file
+            let content = fs::read_to_string(&path)
+                .map_err(|e| format!("Failed to read agent file: {}", e))?;
+            
+            // Parse the frontmatter
+            if let Some((frontmatter, body)) = parse_frontmatter(&content) {
+                // Extract name and model from frontmatter
+                let name = extract_yaml_field(&frontmatter, "name").unwrap_or_default();
+                let model = extract_yaml_field(&frontmatter, "model").unwrap_or_else(|| "opus".to_string());
+                
+                if !name.is_empty() && !body.trim().is_empty() {
+                    let file_metadata = fs::metadata(&path).ok();
+                    let created_at = file_metadata.as_ref()
+                        .and_then(|m| m.created().ok())
+                        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0);
+                    let updated_at = file_metadata.as_ref()
+                        .and_then(|m| m.modified().ok())
+                        .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
+                        .map(|d| d.as_secs())
+                        .unwrap_or(0);
+                    
+                    agents.push(ClaudeAgent {
+                        id: format!("claude-agent-{}", name),
+                        name,
+                        model,
+                        system_prompt: body.trim().to_string(),
+                        created_at,
+                        updated_at,
+                    });
+                }
+            }
+        }
+    }
+    
+    Ok(agents)
+}
+
+// Helper function to parse YAML frontmatter
+fn parse_frontmatter(content: &str) -> Option<(String, String)> {
+    if content.starts_with("---\n") {
+        let parts: Vec<&str> = content.splitn(3, "---\n").collect();
+        if parts.len() >= 3 {
+            return Some((parts[1].to_string(), parts[2].to_string()));
+        }
+    }
+    None
+}
+
+// Helper function to extract a field from YAML frontmatter
+fn extract_yaml_field(yaml: &str, field: &str) -> Option<String> {
+    for line in yaml.lines() {
+        if line.starts_with(&format!("{}:", field)) {
+            let value = line.split(':').nth(1)?.trim();
+            // Remove quotes if present
+            let value = value.trim_matches('"').trim_matches('\'');
+            return Some(value.to_string());
+        }
+    }
+    None
+}
+
+/// Save a Claude agent to the global agents directory (~/.claude/agents)
+#[tauri::command]
+pub fn save_global_agent(agent: ClaudeAgent) -> Result<(), String> {
+    let home_dir = dirs::home_dir()
+        .ok_or_else(|| "Could not determine home directory".to_string())?;
+    
+    let agents_dir = home_dir.join(".claude").join("agents");
+    save_agent_to_directory(&agent, &agents_dir)
+}
+
+/// Save a Claude agent to a project's agents directory
+#[tauri::command]
+pub fn save_project_agent(agent: ClaudeAgent, directory: String) -> Result<(), String> {
+    use std::path::PathBuf;
+    
+    let project_dir = PathBuf::from(directory);
+    let agents_dir = project_dir.join(".claude").join("agents");
+    save_agent_to_directory(&agent, &agents_dir)
+}
+
+// Helper function to save an agent to a specific directory
+fn save_agent_to_directory(agent: &ClaudeAgent, agents_dir: &std::path::Path) -> Result<(), String> {
+    use std::fs;
+    
+    // Create directory if it doesn't exist
+    if !agents_dir.exists() {
+        fs::create_dir_all(agents_dir)
+            .map_err(|e| format!("Failed to create agents directory: {}", e))?;
+    }
+    
+    // Create the markdown content with YAML frontmatter
+    let content = format!(
+        "---\nname: {}\nmodel: {}\n---\n\n{}",
+        agent.name,
+        agent.model,
+        agent.system_prompt
+    );
+    
+    // Write to file (name.md)
+    let file_path = agents_dir.join(format!("{}.md", agent.name));
+    fs::write(&file_path, content)
+        .map_err(|e| format!("Failed to write agent file: {}", e))?;
+    
+    Ok(())
+}
+
+/// Delete a Claude agent from the global agents directory
+#[tauri::command]
+pub fn delete_global_agent(agent_name: String) -> Result<(), String> {
+    let home_dir = dirs::home_dir()
+        .ok_or_else(|| "Could not determine home directory".to_string())?;
+    
+    let agents_dir = home_dir.join(".claude").join("agents");
+    let file_path = agents_dir.join(format!("{}.md", agent_name));
+    
+    if file_path.exists() {
+        std::fs::remove_file(&file_path)
+            .map_err(|e| format!("Failed to delete agent file: {}", e))?;
+    }
+    
+    Ok(())
+}
+
+/// Delete a project agent
+#[tauri::command]
+pub fn delete_project_agent(agent_name: String, directory: String) -> Result<(), String> {
+    use std::path::PathBuf;
+    
+    let project_dir = PathBuf::from(directory);
+    let agents_dir = project_dir.join(".claude").join("agents");
+    let file_path = agents_dir.join(format!("{}.md", agent_name));
+    
+    if file_path.exists() {
+        std::fs::remove_file(&file_path)
+            .map_err(|e| format!("Failed to delete agent file: {}", e))?;
+    }
+    
     Ok(())
 }
 

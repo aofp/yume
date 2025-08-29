@@ -1,4 +1,5 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
 import { 
   IconRobot, 
   IconPlus, 
@@ -19,13 +20,11 @@ import {
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './AgentsModal.css';
 
-// Agent structure based on claudia format
+// Agent structure - simplified
 export interface Agent {
   id: string;
   name: string;
-  icon: string;
   model: 'opus' | 'sonnet' | 'haiku';
-  default_task: string;
   system_prompt: string;
   created_at: number;
   updated_at: number;
@@ -37,24 +36,9 @@ interface AgentsModalProps {
   onSelectAgent?: (agent: Agent) => void;
 }
 
-// Icon mapping for agent icons
-const iconMap: Record<string, React.ReactNode> = {
-  'bot': <IconRobot size={16} />,
-  'shield': <IconShield size={16} />,
-  'git': <IconGitCommit size={16} />,
-  'code': <IconCode size={16} />,
-  'bug': <IconBug size={16} />,
-  'wand': <IconWand size={16} />,
-  'brain': <IconBrain size={16} />,
-  'rocket': <IconRocket size={16} />,
-};
-
-const getAgentIcon = (iconName: string) => {
-  return iconMap[iconName] || <IconRobot size={16} />;
-};
 
 export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSelectAgent }) => {
-  const { agents, addAgent, updateAgent, deleteAgent } = useClaudeCodeStore();
+  const { agents, addAgent, updateAgent, deleteAgent, importAgents, sessions, currentSessionId } = useClaudeCodeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -62,34 +46,43 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [showSearch, setShowSearch] = useState(false);
+  const [hasLoadedAgents, setHasLoadedAgents] = useState(false);
+  const [agentScope, setAgentScope] = useState<'global' | 'project'>('global');
+  const [globalAgents, setGlobalAgents] = useState<Agent[]>([]);
+  const [projectAgents, setProjectAgents] = useState<Agent[]>([]);
+  
+  // Get current session's directory
+  const currentSession = sessions.find(s => s.id === currentSessionId);
+  const currentDirectory = currentSession?.workingDirectory;
+  const projectName = currentDirectory ? currentDirectory.split('/').pop() || currentDirectory : null;
   
   // Form state for editing/creating
   const [formData, setFormData] = useState<Partial<Agent>>({
     name: '',
-    icon: 'bot',
-    model: 'sonnet',
-    default_task: '',
+    model: 'opus', // Default to latest model
     system_prompt: ''
   });
 
+  // Get current agents based on scope
+  const currentAgents = useMemo(() => {
+    return agentScope === 'global' ? globalAgents : projectAgents;
+  }, [agentScope, globalAgents, projectAgents]);
+  
   // Filter agents based on search
   const filteredAgents = useMemo(() => {
-    if (!searchQuery) return agents;
+    if (!searchQuery) return currentAgents;
     const query = searchQuery.toLowerCase();
-    return agents.filter(agent => 
+    return currentAgents.filter(agent => 
       agent.name.toLowerCase().includes(query) ||
-      agent.default_task.toLowerCase().includes(query) ||
       agent.system_prompt.toLowerCase().includes(query)
     );
-  }, [agents, searchQuery]);
+  }, [currentAgents, searchQuery]);
 
   // Reset form when opening create mode
   const handleCreateNew = useCallback(() => {
     setFormData({
       name: '',
-      icon: 'bot',
-      model: 'sonnet',
-      default_task: '',
+      model: 'opus', // Default to latest model
       system_prompt: ''
     });
     setCreateMode(true);
@@ -101,9 +94,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   const handleEdit = useCallback((agent: Agent) => {
     setFormData({
       name: agent.name,
-      icon: agent.icon,
       model: agent.model,
-      default_task: agent.default_task,
       system_prompt: agent.system_prompt
     });
     setSelectedAgent(agent);
@@ -112,37 +103,45 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   }, []);
 
   // Save agent (create or update)
-  const handleSave = useCallback(() => {
+  const handleSave = useCallback(async () => {
     if (!formData.name || !formData.system_prompt) {
       alert('Name and system prompt are required');
       return;
     }
 
-    if (createMode) {
-      // Create new agent
-      const newAgent: Agent = {
-        id: `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-        name: formData.name!,
-        icon: formData.icon || 'bot',
-        model: formData.model || 'sonnet',
-        default_task: formData.default_task || '',
-        system_prompt: formData.system_prompt!,
-        created_at: Date.now(),
-        updated_at: Date.now()
-      };
-      addAgent(newAgent);
-    } else if (editMode && selectedAgent) {
-      // Update existing agent
-      const updatedAgent: Agent = {
-        ...selectedAgent,
-        name: formData.name!,
-        icon: formData.icon || 'bot',
-        model: formData.model || 'sonnet',
-        default_task: formData.default_task || '',
-        system_prompt: formData.system_prompt!,
-        updated_at: Date.now()
-      };
-      updateAgent(updatedAgent);
+    const agent: Agent = {
+      id: selectedAgent?.id || `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      name: formData.name!,
+      model: formData.model || 'opus',
+      system_prompt: formData.system_prompt!,
+      created_at: selectedAgent?.created_at || Date.now(),
+      updated_at: Date.now()
+    };
+
+    try {
+      // Save to filesystem
+      if (agentScope === 'global') {
+        await invoke('save_global_agent', { agent });
+      } else if (currentDirectory) {
+        await invoke('save_project_agent', { agent, directory: currentDirectory });
+      }
+      
+      // Update local state
+      if (agentScope === 'global') {
+        const updated = globalAgents.filter(a => a.id !== agent.id);
+        updated.push(agent);
+        setGlobalAgents(updated);
+      } else {
+        const updated = projectAgents.filter(a => a.id !== agent.id);
+        updated.push(agent);
+        setProjectAgents(updated);
+      }
+      
+      console.log('Agent saved:', agent.name);
+    } catch (err) {
+      console.error('Failed to save agent:', err);
+      alert(`Failed to save agent: ${err}`);
+      return;
     }
 
     // Reset state
@@ -151,49 +150,115 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     setSelectedAgent(null);
     setFormData({
       name: '',
-      icon: 'bot',
-      model: 'sonnet',
-      default_task: '',
+      model: 'opus',
       system_prompt: ''
     });
-  }, [formData, createMode, editMode, selectedAgent, addAgent, updateAgent]);
+  }, [formData, selectedAgent, agentScope, currentDirectory, globalAgents, projectAgents]);
 
   // Delete agent with confirmation
-  const handleDelete = useCallback((agent: Agent) => {
+  const handleDelete = useCallback(async (agent: Agent) => {
     if (confirm(`Delete agent "${agent.name}"? This cannot be undone.`)) {
-      deleteAgent(agent.id);
-      if (selectedAgent?.id === agent.id) {
-        setSelectedAgent(null);
-        setEditMode(false);
+      try {
+        // Delete from filesystem
+        if (agentScope === 'global') {
+          await invoke('delete_global_agent', { agentName: agent.name });
+          setGlobalAgents(globalAgents.filter(a => a.id !== agent.id));
+        } else if (currentDirectory) {
+          await invoke('delete_project_agent', { agentName: agent.name, directory: currentDirectory });
+          setProjectAgents(projectAgents.filter(a => a.id !== agent.id));
+        }
+        
+        if (selectedAgent?.id === agent.id) {
+          setSelectedAgent(null);
+          setEditMode(false);
+        }
+        
+        console.log('Agent deleted:', agent.name);
+      } catch (err) {
+        console.error('Failed to delete agent:', err);
+        alert(`Failed to delete agent: ${err}`);
       }
     }
-  }, [deleteAgent, selectedAgent]);
+  }, [agentScope, currentDirectory, globalAgents, projectAgents, selectedAgent]);
 
   // Duplicate an agent
-  const handleDuplicate = useCallback((agent: Agent) => {
+  const handleDuplicate = useCallback(async (agent: Agent) => {
     const duplicatedAgent: Agent = {
       ...agent,
       id: `agent-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      name: `${agent.name} (copy)`,
+      name: `${agent.name}-copy`,
       created_at: Date.now(),
       updated_at: Date.now()
     };
-    addAgent(duplicatedAgent);
-  }, [addAgent]);
+    
+    try {
+      // Save to filesystem
+      if (agentScope === 'global') {
+        await invoke('save_global_agent', { agent: duplicatedAgent });
+        setGlobalAgents([...globalAgents, duplicatedAgent]);
+      } else if (currentDirectory) {
+        await invoke('save_project_agent', { agent: duplicatedAgent, directory: currentDirectory });
+        setProjectAgents([...projectAgents, duplicatedAgent]);
+      }
+      
+      console.log('Agent duplicated:', duplicatedAgent.name);
+    } catch (err) {
+      console.error('Failed to duplicate agent:', err);
+      alert(`Failed to duplicate agent: ${err}`);
+    }
+  }, [agentScope, currentDirectory, globalAgents, projectAgents]);
 
-  // Cancel editing
+  // Cancel editing / Go back to list
   const handleCancel = useCallback(() => {
     setCreateMode(false);
     setEditMode(false);
     setSelectedAgent(null);
     setFormData({
       name: '',
-      icon: 'bot',
-      model: 'sonnet',
-      default_task: '',
+      model: 'opus',
       system_prompt: ''
     });
   }, []);
+
+  // Load Claude agents when modal opens or directory changes
+  useEffect(() => {
+    if (isOpen) {
+      // Load global agents
+      invoke<Agent[]>('load_claude_agents')
+        .then(agents => {
+          console.log('Loaded global agents:', agents);
+          setGlobalAgents(agents || []);
+        })
+        .catch(err => {
+          console.error('Failed to load global agents:', err);
+          setGlobalAgents([]);
+        });
+      
+      // Load project agents if a project is open
+      if (currentDirectory) {
+        console.log('Loading project agents from:', currentDirectory);
+        invoke<Agent[]>('load_project_agents', { directory: currentDirectory })
+          .then(agents => {
+            console.log('Loaded project agents:', agents);
+            setProjectAgents(agents || []);
+            // If project agents exist and we're on global, switch to project
+            if (agents && agents.length > 0 && agentScope === 'global') {
+              setAgentScope('project');
+            }
+          })
+          .catch(err => {
+            console.error('Failed to load project agents:', err);
+            setProjectAgents([]);
+          });
+      } else {
+        setProjectAgents([]);
+        // Switch to global if no project is open
+        if (agentScope === 'project') {
+          setAgentScope('global');
+        }
+      }
+    }
+  }, [isOpen, currentDirectory]);  // Reload when directory changes
 
   // Keyboard navigation
   useEffect(() => {
@@ -269,26 +334,34 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
       <div className="agents-modal" onClick={e => e.stopPropagation()}>
         <div className="agents-header" data-tauri-drag-region>
           <div className="agents-title" data-tauri-drag-region>
-            <IconBrain size={16} />
+            <IconRobot size={16} />
             <span>claude agents</span>
-            <span className="agents-count">
-              {agents.length} agent{agents.length !== 1 ? 's' : ''}
-            </span>
           </div>
           <div className="agents-header-actions">
-            <button 
-              className="agents-new"
-              onClick={handleCreateNew}
-              title="new agent (Ctrl+N)"
-              disabled={createMode || editMode}
-            >
-              <IconPlus size={16} />
-            </button>
             <button className="agents-close" onClick={onClose}>
               <IconX size={16} />
             </button>
           </div>
         </div>
+
+        {!editMode && !createMode && (
+          <div className="agents-scope-toggle">
+            <button 
+              className={`scope-btn ${agentScope === 'global' ? 'active' : ''}`}
+              onClick={() => setAgentScope('global')}
+            >
+              global ({globalAgents.length})
+            </button>
+            <button 
+              className={`scope-btn ${agentScope === 'project' ? 'active' : ''}`}
+              onClick={() => setAgentScope('project')}
+              disabled={!currentDirectory}
+              title={!currentDirectory ? 'no project open' : currentDirectory}
+            >
+              {projectName ? `${projectName} (${projectAgents.length})` : `project (${projectAgents.length})`}
+            </button>
+          </div>
+        )}
 
         {showSearch && !editMode && !createMode && (
           <div className="agents-search">
@@ -318,19 +391,13 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                       key={agent.id}
                       className={`agent-item ${focusedIndex === index ? 'focused' : ''} ${selectedAgent?.id === agent.id ? 'selected' : ''}`}
                       onClick={() => {
-                        if (onSelectAgent) {
-                          onSelectAgent(agent);
-                          onClose();
-                        } else {
-                          setSelectedAgent(agent);
-                        }
+                        // Always edit on click
+                        handleEdit(agent);
                       }}
                       onMouseEnter={() => setFocusedIndex(index)}
                     >
-                      <div className="agent-icon">{getAgentIcon(agent.icon)}</div>
                       <div className="agent-info">
                         <div className="agent-name">{agent.name}</div>
-                        <div className="agent-task">{agent.default_task || 'no default task'}</div>
                         <div className="agent-model">{agent.model}</div>
                       </div>
                       <div className="agent-actions">
@@ -367,65 +434,57 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                       </div>
                     </div>
                   ))}
+                  <div
+                    className="agent-item add-agent-item"
+                    onClick={handleCreateNew}
+                    onMouseEnter={() => setFocusedIndex(filteredAgents.length)}
+                  >
+                    <div className="agent-info">
+                      <IconPlus size={14} style={{ marginRight: 8 }} />
+                      <div className="agent-name">add agent</div>
+                    </div>
+                  </div>
                 </div>
               )}
             </>
           ) : (
             <div className="agent-editor">
-              <div className="editor-title">
-                {createMode ? 'create new agent' : `edit: ${selectedAgent?.name}`}
+              <div className="editor-header">
+                <button className="btn-back" onClick={handleCancel} title="back to list">
+                  ← back
+                </button>
+                <div className="editor-title">
+                  {createMode ? 'new agent' : 'edit agent'}
+                </div>
               </div>
               
               <div className="editor-form">
-                <div className="form-group">
-                  <label>name</label>
-                  <input
-                    type="text"
-                    value={formData.name}
-                    onChange={e => setFormData({...formData, name: e.target.value})}
-                    placeholder="e.g. Security Scanner"
-                    autoFocus
-                  />
-                </div>
-
                 <div className="form-row">
-                  <div className="form-group">
-                    <label>icon</label>
-                    <div className="icon-selector">
-                      {Object.entries(iconMap).map(([key, icon]) => (
-                        <button
-                          key={key}
-                          className={`icon-option ${formData.icon === key ? 'selected' : ''}`}
-                          onClick={() => setFormData({...formData, icon: key})}
-                          title={key}
-                        >
-                          {icon}
-                        </button>
-                      ))}
-                    </div>
+                  <div className="form-group" style={{flex: 1}}>
+                    <label>name</label>
+                    <input
+                      type="text"
+                      value={formData.name}
+                      onChange={e => setFormData({...formData, name: e.target.value})}
+                      placeholder="agent name"
+                      autoFocus
+                    />
                   </div>
 
                   <div className="form-group">
                     <label>model</label>
-                    <select
-                      value={formData.model}
-                      onChange={e => setFormData({...formData, model: e.target.value as 'opus' | 'sonnet' | 'haiku'})}
-                    >
-                      <option value="opus">opus</option>
-                      <option value="sonnet">sonnet</option>
-                      <option value="haiku">haiku</option>
-                    </select>
+                    <div className="model-selector">
+                      <select
+                        value={formData.model}
+                        onChange={e => setFormData({...formData, model: e.target.value as 'opus' | 'sonnet' | 'haiku'})}
+                        className="agent-model-select"
+                      >
+                        <option value="opus">opus (latest)</option>
+                        <option value="sonnet">sonnet</option>
+                        <option value="haiku">haiku</option>
+                      </select>
+                    </div>
                   </div>
-                </div>
-
-                <div className="form-group">
-                  <label>default task</label>
-                  <input
-                    type="text"
-                    value={formData.default_task}
-                    onChange={e => setFormData({...formData, default_task: e.target.value})}
-                    placeholder="e.g. Review the codebase for security issues"
-                  />
                 </div>
 
                 <div className="form-group">
@@ -434,7 +493,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                     value={formData.system_prompt}
                     onChange={e => setFormData({...formData, system_prompt: e.target.value})}
                     placeholder="Enter the system prompt for this agent..."
-                    rows={12}
+                    rows={8}
                   />
                 </div>
 

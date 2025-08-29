@@ -1,5 +1,5 @@
 import React from 'react';
-import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconTrendingUp, IconChevronLeft, IconChevronRight, IconBrain } from '@tabler/icons-react';
+import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolder, IconTrendingUp, IconChevronLeft, IconChevronRight, IconRobot } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './WindowControls.css';
@@ -192,7 +192,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
               )}
               {onAgentsClick && (
                 <button className="window-control agents" onClick={onAgentsClick} title="agents (cmd+g)">
-                  <IconBrain size={10} stroke={2} />
+                  <IconRobot size={10} stroke={2} />
                 </button>
               )}
               {onAnalyticsClick && (
@@ -238,7 +238,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             )}
             {onAgentsClick && (
               <button className="window-control agents" onClick={onAgentsClick} title="agents (ctrl+g)">
-                <IconBrain size={10} stroke={2} />
+                <IconRobot size={10} stroke={2} />
               </button>
             )}
             {onAnalyticsClick && (
