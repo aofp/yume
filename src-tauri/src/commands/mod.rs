@@ -539,6 +539,20 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
             
+            // Check if the command failed based on exit status
+            if !output.status.success() {
+                // Return error with both stderr and stdout for debugging
+                let error_msg = if !stderr.is_empty() {
+                    stderr.to_string()
+                } else if !stdout.is_empty() {
+                    stdout.to_string()
+                } else {
+                    format!("Command failed with exit code: {:?}", output.status.code())
+                };
+                return Err(error_msg);
+            }
+            
+            // Command succeeded, return output
             if !stderr.is_empty() {
                 Ok(format!("{}\n{}", stdout, stderr))
             } else {
@@ -557,6 +571,20 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
             
+            // Check if the command failed based on exit status
+            if !output.status.success() {
+                // Return error with both stderr and stdout for debugging
+                let error_msg = if !stderr.is_empty() {
+                    stderr.to_string()
+                } else if !stdout.is_empty() {
+                    stdout.to_string()
+                } else {
+                    format!("Command failed with exit code: {:?}", output.status.code())
+                };
+                return Err(error_msg);
+            }
+            
+            // Command succeeded, return output
             if !stderr.is_empty() {
                 Ok(format!("{}\n{}", stdout, stderr))
             } else {
