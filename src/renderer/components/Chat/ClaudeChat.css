@@ -1331,8 +1331,8 @@ textarea.context-full {
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 8px;
   width: 90%;
-  max-width: 460px;
-  max-height: 80vh;
+  max-width: 450px;
+  max-height: 90vh;
   overflow-y: auto;
   user-select: none;
 }
