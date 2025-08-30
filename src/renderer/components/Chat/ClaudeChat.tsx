@@ -2,8 +2,6 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { 
   IconSend, 
   IconPlayerStop, 
-  IconFolderOpen,
-  IconTrash,
   IconBook,
   IconPencil,
   IconScissors,
@@ -18,33 +16,19 @@ import {
   IconCheck,
   IconNotebook,
   IconTool,
-  IconMessageCircle,
   IconX,
-  IconAlertTriangle,
-  IconFileText,
-  IconFile,
-  IconChartBar,
   IconChartBubbleFilled,
   IconArtboardFilled,
   IconCoin,
   IconChevronUp,
   IconChevronDown,
-  IconChevronRight,
-  IconTrendingUp,
-  IconSettingsFilled,
-  IconArrowUp,
-  IconArrowDown,
-  IconArrowsUpDown,
   IconBrain,
   IconChartDots,
-  IconClock,
   IconMessage,
-  IconDatabase,
-  IconCirclePlus,
   IconMicrophone,
   IconMicrophoneOff,
-  IconWashDrycleanOff,
-  IconArrowsDiagonalMinimize2
+  IconFlare,
+  IconArrowsMinimize,
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -2443,19 +2427,6 @@ export const ClaudeChat: React.FC = () => {
                   <button 
                     className="btn-context-icon"
                     onClick={() => {
-                      if (currentSessionId && !currentSession?.readOnly && hasActivity) {
-                        sendMessage('/compact');
-                      }
-                    }}
-                    disabled={currentSession?.readOnly || !hasActivity}
-                    title="compact context (ctrl+m)"
-                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
-                  >
-                    <IconArrowsDiagonalMinimize2 size={12} stroke={1.5} />
-                  </button>
-                  <button 
-                    className="btn-context-icon"
-                    onClick={() => {
                       if (currentSessionId && hasActivity && !currentSession?.readOnly) {
                         clearContext(currentSessionId);
                         setIsAtBottom(prev => ({
@@ -2473,7 +2444,20 @@ export const ClaudeChat: React.FC = () => {
                     title="clear context (ctrl+l)"
                     style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
                   >
-                    <IconWashDrycleanOff size={12} stroke={1.5} />
+                    <IconFlare size={12} stroke={1.5} />
+                  </button>
+                  <button 
+                    className="btn-context-icon"
+                    onClick={() => {
+                      if (currentSessionId && !currentSession?.readOnly && hasActivity) {
+                        sendMessage('/compact');
+                      }
+                    }}
+                    disabled={currentSession?.readOnly || !hasActivity}
+                    title="compact context (ctrl+m)"
+                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
+                  >
+                    <IconArrowsMinimize size={12} stroke={1.5} />
                   </button>
                   <button 
                     className={`btn-stats ${usageClass}`} 
