@@ -159,32 +159,6 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             </button>
           ) : (
             <>
-              {!isLicensed && (
-                <button 
-                  className="trial-indicator" 
-                  onClick={() => {
-                    window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-                      detail: { reason: 'trial' } 
-                    }));
-                  }}
-                  style={{ 
-                    color: '#666666', 
-                    fontSize: '10px',
-                    fontWeight: 'normal',
-                    padding: '0 6px',
-                    opacity: 0.8,
-                    background: 'transparent',
-                    border: 'none',
-                    cursor: 'default',
-                    transition: 'color 0.2s'
-                  }}
-                  onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-color)'}
-                  onMouseLeave={(e) => e.currentTarget.style.color = '#666666'}
-                  title="click to upgrade"
-                >
-                  trial
-                </button>
-              )}
               {onProjectsClick && (
                 <button className="window-control projects" onClick={onProjectsClick} title="projects (cmd+p)">
                   <IconFolder size={10} stroke={2} />
@@ -254,32 +228,6 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
               <span style={{ fontSize: '10px' }}>?</span>
             </button>
-            {!isLicensed && (
-              <button 
-                className="trial-indicator" 
-                onClick={() => {
-                  window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-                    detail: { reason: 'trial' } 
-                  }));
-                }}
-                style={{ 
-                  color: '#666666', 
-                  fontSize: '10px',
-                  fontWeight: 'normal',
-                  padding: '0 6px',
-                  opacity: 1,
-                  background: 'transparent',
-                  border: 'none',
-                  cursor: 'default',
-                  transition: 'color 0.2s'
-                }}
-                onMouseEnter={(e) => e.currentTarget.style.color = 'var(--accent-color)'}
-                onMouseLeave={(e) => e.currentTarget.style.color = '#666666'}
-                title="click to upgrade"
-              >
-                trial
-              </button>
-            )}
           </>
         )}
       </div>

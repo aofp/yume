@@ -634,7 +634,7 @@
 /* Input Area */
 .chat-input-container {
   flex: 0 0 auto;
-  padding: 2px 3px 3px 3px; /* Default padding */
+  padding: 2px 2px 3px 2px; /* Default padding */
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   transition: background 0.2s ease;
@@ -655,7 +655,7 @@
   max-height: 40vh; /* Limit to 40% of viewport height */
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 2px 3px 3px 3px;
+  padding: 2px 2px 3px 2px;
   overflow-y: auto; /* Allow scrolling if content gets too tall */
 }
 
