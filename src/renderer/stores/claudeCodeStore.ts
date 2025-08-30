@@ -1657,12 +1657,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             });
             
             // Update streaming state based on message type
-            if (message.type === 'assistant') {
+            if (message.type === 'assistant' || message.type === 'tool_result') {
               // Update streaming state based on the message's streaming flag
-              console.log(`[THINKING TIME DEBUG] Assistant message - streaming: ${message.streaming}, sessionId: ${sessionId}`);
+              console.log(`[THINKING TIME DEBUG] ${message.type} message - streaming: ${message.streaming}, sessionId: ${sessionId}`);
               if (message.streaming === true) {
                 // Don't reset thinkingStartTime here - it's already set when user sends message
-                console.log(`[THINKING TIME DEBUG] Assistant streaming started, keeping existing thinkingStartTime`);
+                console.log(`[THINKING TIME DEBUG] ${message.type} streaming started, keeping existing thinkingStartTime`);
                 sessions = sessions.map(s => 
                   s.id === sessionId ? { ...s, streaming: true } : s
                 );
@@ -1680,8 +1680,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   console.log(`🔄 [STREAMING] Keeping streaming=true due to recent user message (interrupt + followup scenario)`);
                 } else {
                   // When explicitly marked as streaming=false, clear streaming
-                  // The server marks assistant messages as streaming=false when complete
-                  console.log(`🔴 [STREAMING] Assistant message ${message.id} marked as streaming=false, clearing streaming state for session ${sessionId}`);
+                  // The server marks messages as streaming=false when complete
+                  console.log(`🔴 [STREAMING] ${message.type} message ${message.id} marked as streaming=false, clearing streaming state for session ${sessionId}`);
                   sessions = sessions.map(s => {
                     if (s.id === sessionId) {
                       // Calculate thinking time if we have a start time

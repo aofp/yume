@@ -442,8 +442,8 @@ export const App: React.FC = () => {
         setShowProjectsModal(true);
       }
       
-      // Ctrl+G for agents modal
-      if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+      // Ctrl+N for agents modal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'n') {
         e.preventDefault();
         setShowAgentsModal(true);
       }

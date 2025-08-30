@@ -596,6 +596,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             block.text.includes('Ensure that you continue to use the todo list') ||
             block.text.includes('Please proceed with the current tasks if applicable')
           )) {
+            console.log('[TodoFilter] Filtering todo success message in text block:', block.text.substring(0, 100));
             return null;
           }
           // For text blocks with search highlighting
@@ -800,6 +801,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             resultContent.includes('Ensure that you continue to use the todo list') ||
             resultContent.includes('Please proceed with the current tasks if applicable')
           )) {
+            console.log('[TodoFilter] Filtering todo success message in tool result:', resultContent.substring(0, 100));
             return null;
           }
           
@@ -2294,6 +2296,7 @@ const MessageRendererBase: React.FC<{
           contentStr.includes('Ensure that you continue to use the todo list') ||
           contentStr.includes('Please proceed with the current tasks if applicable')
         )) {
+          console.log('[TodoFilter] Filtering standalone todo success message:', contentStr.substring(0, 100));
           return null;
         }
         

@@ -4200,6 +4200,7 @@ Format as a clear, structured summary that preserves all important context.`;
                     content: enhancedContent,
                     is_error: block.is_error
                   },
+                  streaming: true,  // Keep streaming true during tool execution
                   timestamp: Date.now(),
                   id: `toolresult-${sessionId}-${Date.now()}`
                 });
