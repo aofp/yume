@@ -1086,7 +1086,7 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   padding: 3px 7px;
-  color: #444;
+  color: #555;
   margin-right: 1px;
 }
 
@@ -1112,7 +1112,7 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   padding: 2px 7px;
-  color: #444;
+  color: #555;
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
