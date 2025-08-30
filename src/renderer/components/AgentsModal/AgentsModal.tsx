@@ -54,7 +54,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   // Get current session's directory
   const currentSession = sessions.find(s => s.id === currentSessionId);
   const currentDirectory = currentSession?.workingDirectory;
-  const projectName = currentDirectory ? currentDirectory.split('/').pop() || currentDirectory : null;
+  const projectName = currentDirectory ? currentDirectory.split(/[/\\]/).pop() || currentDirectory : null;
   
   // Form state for editing/creating
   const [formData, setFormData] = useState<Partial<Agent>>({

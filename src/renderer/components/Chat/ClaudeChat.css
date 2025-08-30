@@ -634,7 +634,7 @@
 /* Input Area */
 .chat-input-container {
   flex: 0 0 auto;
-  padding: 3px 4px 3px 4px; /* Default padding */
+  padding: 2px 3px 3px 3px; /* Default padding */
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   transition: background 0.2s ease;
@@ -646,7 +646,7 @@
 
 /* macOS-specific padding */
 .platform-darwin .chat-input-container {
-  padding: 2px 4px 2px 4px; /* macOS only: top right bottom left */
+  padding: 2px 3px 2px 3px; /* macOS only: top right bottom left */
 }
 
 /* Windows-specific fix to keep input visible when zoomed */
@@ -655,7 +655,7 @@
   max-height: 40vh; /* Limit to 40% of viewport height */
   background: #000000;
   border-top: 1px solid rgba(255, 255, 255, 0.2);
-  padding: 3px 4px 3px 4px;
+  padding: 2px 3px 3px 3px;
   overflow-y: auto; /* Allow scrolling if content gets too tall */
 }
 
