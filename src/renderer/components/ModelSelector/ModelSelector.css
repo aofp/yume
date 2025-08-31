@@ -30,7 +30,7 @@
 /* Windows-specific positioning */
 .platform-win32 .model-selector-trigger {
   top: 0px;
-  padding-top: 3px; /* 1px more than default 2px */
+  padding: 2px 8px 3px 8px;
 }
 
 /* Windows-specific positioning on welcome screen */
