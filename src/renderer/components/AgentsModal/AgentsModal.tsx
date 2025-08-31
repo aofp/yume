@@ -382,7 +382,21 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
             <>
               {filteredAgents.length === 0 ? (
                 <div className="agents-empty">
-                  {searchQuery ? 'no agents match your search' : 'no agents yet'}
+                  {searchQuery ? 'no agents match your search' : (
+                    <>
+                      <div>no agents yet</div>
+                      <div
+                        className="agent-item add-agent-item"
+                        onClick={handleCreateNew}
+                        style={{ marginTop: 16, cursor: 'pointer' }}
+                      >
+                        <div className="agent-info">
+                          <IconPlus size={14} style={{ marginRight: 8 }} />
+                          <div className="agent-name">add agent</div>
+                        </div>
+                      </div>
+                    </>
+                  )}
                 </div>
               ) : (
                 <div className="agents-list">

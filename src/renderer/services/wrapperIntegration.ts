@@ -11,7 +11,7 @@ const wrapperState = {
   sessionMapping: new Map<string, string>(), // Map temp IDs to real IDs
   debug: true,
   initialized: false,
-  autoCompactThreshold: 160000, // Trigger at 160k tokens (80% of 200k)
+  autoCompactThreshold: 192000,
   autoCompactPending: new Map<string, string>() // Track pending auto-compacts
 };
 

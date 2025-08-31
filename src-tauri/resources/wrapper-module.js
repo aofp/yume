@@ -24,7 +24,7 @@ class UniversalClaudeWrapper extends EventEmitter {
       captureAll: true,
       augmentStream: true,
       trackTokens: true,
-      compactThreshold: 75000,
+      compactThreshold: 192000,
       ...config
     };
     

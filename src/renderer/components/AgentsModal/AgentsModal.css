@@ -226,11 +226,14 @@
 .agent-item.add-agent-item {
   border-style: dashed;
   opacity: 0.6;
+  transition: all 0.2s;
 }
 
 .agent-item.add-agent-item:hover {
   opacity: 1;
-  border-style: solid;
+  border-style: dashed;
+  border-color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.05);
 }
 
 .agent-item.add-agent-item .agent-info {

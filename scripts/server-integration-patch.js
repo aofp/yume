@@ -18,10 +18,10 @@ import ClaudeCompactWrapperV2 from './scripts/claude-compact-wrapper-v2.js';
 
 // Create wrapper instance - this is our token truth source
 const tokenWrapper = new ClaudeCompactWrapperV2({
-  maxTokens: 100000,
+  maxTokens: 200000,
   enabled: true,
   debug: process.env.CLAUDE_WRAPPER_DEBUG === 'true',
-  compactThreshold: 75000
+  compactThreshold: 192000
 });
 
 // Track wrapper sessions by socket session
