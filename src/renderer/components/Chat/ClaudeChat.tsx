@@ -2657,8 +2657,8 @@ export const ClaudeChat: React.FC = () => {
                         const sonnetInput = currentSession?.analytics?.tokens?.byModel?.sonnet?.input || 0;
                         const sonnetOutput = currentSession?.analytics?.tokens?.byModel?.sonnet?.output || 0;
                         
-                        const opusCost = (opusInput / 1000000) * 3.00 + (opusOutput / 1000000) * 15.00;
-                        const sonnetCost = (sonnetInput / 1000000) * 2.50 + (sonnetOutput / 1000000) * 12.50;
+                        const opusCost = (opusInput / 1000000) * 15.00 + (opusOutput / 1000000) * 75.00;
+                        const sonnetCost = (sonnetInput / 1000000) * 3.00 + (sonnetOutput / 1000000) * 15.00;
                         
                         return (opusCost + sonnetCost).toFixed(2);
                       })()}

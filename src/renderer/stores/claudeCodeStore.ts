@@ -3282,11 +3282,11 @@ ${content}`;
           // Calculate cost based on model pricing
           let messageCost = 0;
           if (isOpus) {
-            // Opus: $3/1M input, $15/1M output
-            messageCost = (inputTokens / 1000000) * 3.00 + (outputTokens / 1000000) * 15.00;
+            // Opus: $15/1M input, $75/1M output
+            messageCost = (inputTokens / 1000000) * 15.00 + (outputTokens / 1000000) * 75.00;
           } else {
-            // Sonnet: $2.50/1M input, $12.50/1M output  
-            messageCost = (inputTokens / 1000000) * 2.50 + (outputTokens / 1000000) * 12.50;
+            // Sonnet 3.5: $3/1M input, $15/1M output  
+            messageCost = (inputTokens / 1000000) * 3.00 + (outputTokens / 1000000) * 15.00;
           }
           
           // Use total_cost_usd if provided, otherwise use calculated cost
