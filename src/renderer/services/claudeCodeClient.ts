@@ -5,6 +5,7 @@
 
 import { io, Socket } from 'socket.io-client';
 import platformAPI, { isTauri } from './tauriApi';
+import { hooksService } from './hooksService';
 
 export class ClaudeCodeClient {
   private socket: Socket | null = null;
@@ -481,6 +482,14 @@ export class ClaudeCodeClient {
   }
   
   async sendMessage(sessionId: string, content: string, model?: string, autoGenerateTitle?: boolean): Promise<void> {
+    // Process through hooks first
+    try {
+      const processedContent = await hooksService.processUserPrompt(content, sessionId);
+      content = processedContent;
+    } catch (error) {
+      console.error('[Hooks] Prompt blocked:', error);
+      throw error;
+    }
     // Wait for connection if socket exists but not connected yet
     if (this.socket && !this.socket.connected) {
       console.log('[Client] Socket exists but not connected, waiting for connection...');

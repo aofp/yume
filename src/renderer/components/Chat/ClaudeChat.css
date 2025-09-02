@@ -1207,6 +1207,24 @@ textarea.context-full {
   border-color: var(--negative-color);
 }
 
+/* Critical - auto-compact triggered at 96%+ */
+.btn-stats.critical {
+  color: #ff4444;
+  border-color: #ff4444;
+  animation: pulse-critical 1.5s ease-in-out infinite;
+}
+
+.btn-stats.critical:hover {
+  background: rgba(255, 68, 68, 0.1);
+  color: #ff6666;
+  border-color: #ff6666;
+}
+
+@keyframes pulse-critical {
+  0%, 100% { opacity: 0.8; }
+  50% { opacity: 1; }
+}
+
 .btn-stats.disabled {
   opacity: 0.3;
   pointer-events: none;

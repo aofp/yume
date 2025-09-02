@@ -3,7 +3,7 @@ import { TitleBar } from './components/Layout/TitleBar';
 import { SessionTabs } from './components/SessionTabs/SessionTabs';
 import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
-import { SettingsModal } from './components/Settings/SettingsModal';
+import { SettingsModalTabbed } from './components/Settings/SettingsModalTabbed';
 import { AboutModal } from './components/About/AboutModal';
 import { AnalyticsModal } from './components/Analytics/AnalyticsModal';
 import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
@@ -825,7 +825,7 @@ export const App: React.FC = () => {
         </div>
       )}
       
-      {showSettings && <SettingsModal onClose={() => setShowSettings(false)} />}
+      {showSettings && <SettingsModalTabbed onClose={() => setShowSettings(false)} />}
       {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} onShowUpgrade={() => {
         setShowAbout(false);
         setUpgradeReason('trial');

@@ -185,12 +185,12 @@ body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: var(--color-border-strong);
+  background: rgba(var(--accent-rgb), 0.2);
   border-radius: var(--radius-sm);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--color-text-tertiary);
+  background: rgba(var(--accent-rgb), 0.4);
 }
 
 ::-webkit-scrollbar-corner {

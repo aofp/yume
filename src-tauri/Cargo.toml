@@ -50,6 +50,7 @@ native-dialog = "0.7"
 dirs = "5.0"
 walkdir = "2.4"
 rand = "0.8"
+rusqlite = { version = "0.32", features = ["bundled", "serde_json", "chrono"] }
 # sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "sqlite"] }  # Commented out for now
 # notify = "6.1"  # Commented out for now
 

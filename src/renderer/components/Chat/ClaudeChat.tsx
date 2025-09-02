@@ -2415,8 +2415,11 @@ export const ClaudeChat: React.FC = () => {
               if (rawPercentage > 100) {
                 console.warn(`[TOKEN WARNING] Tokens (${totalContextTokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
               }
-              // Color classes: grey until 90%, then custom negative color
-              const usageClass = percentageNum >= 90 ? 'high' : 'low';
+              
+              // Determine usage class and auto-compact status
+              const usageClass = percentageNum >= 96 ? 'critical' : percentageNum >= 90 ? 'high' : 'low';
+              const willAutoCompact = percentageNum >= 96;
+              const approachingCompact = percentageNum >= 90 && percentageNum < 96;
               
               const hasActivity = currentSession.messages.some(m => 
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
@@ -2464,10 +2467,10 @@ export const ClaudeChat: React.FC = () => {
                     onClick={() => setShowStatsModal(true)}
                     disabled={false}
                     title={hasActivity ? 
-                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()}) - click for details (ctrl+.)` : 
+                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 96%' : ''} - click for details (ctrl+.)` : 
                       `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
                   >
-                    {percentage}%
+                    {willAutoCompact ? '⚠️ ' : ''}{percentage}%
                   </button>
                 </>
               );

@@ -10,6 +10,9 @@
 
 pub mod claude_commands;
 pub mod claude_info;
+pub mod database;
+pub mod hooks;
+pub mod compaction;
 
 // Re-export all Claude commands for easier access
 pub use claude_commands::{
@@ -26,6 +29,22 @@ pub use claude_commands::{
 
 pub use claude_info::{
     get_claude_binary_info,
+};
+
+// Re-export database commands
+pub use database::{
+    db_save_session,
+    db_load_session,
+    db_load_all_sessions,
+    db_delete_session,
+    db_save_message,
+    db_load_messages,
+    db_save_analytics,
+    db_load_analytics,
+    db_get_statistics,
+    db_clear_all_data,
+    db_export_data,
+    db_import_data,
 };
 
 use serde::{Deserialize, Serialize};

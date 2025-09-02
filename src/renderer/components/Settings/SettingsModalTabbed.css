@@ -1,0 +1,307 @@
+/* Settings Modal Tabbed - Minimal OLED UI */
+
+/* Header with inline tabs */
+.settings-header-left {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  flex: 1;
+}
+
+.settings-tabs-inline {
+  display: flex;
+  gap: 0;
+  margin-left: 20px;
+}
+
+.settings-tab-inline {
+  padding: 0 12px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+  transition: all 0.2s;
+  font-size: 11px;
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+  position: relative;
+  height: 100%;
+  -webkit-app-region: no-drag;
+}
+
+.settings-tab-inline:not(:last-child)::after {
+  content: '|';
+  position: absolute;
+  right: 0;
+  color: rgba(255, 255, 255, 0.1);
+  pointer-events: none;
+}
+
+.settings-tab-inline:hover {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.settings-tab-inline.active {
+  color: var(--accent-color);
+}
+
+/* Old tab navigation removed - using inline tabs in header */
+
+/* Hooks tab */
+.hooks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.hook-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.hook-item label {
+  color: #999;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.hook-script {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 8px;
+  font-size: 11px;
+  font-family: var(--mono-font);
+  outline: none;
+  transition: all 0.2s;
+  resize: vertical;
+}
+
+.hook-script:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-color);
+}
+
+/* Commands tab */
+.commands-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.add-command-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #666;
+  padding: 6px 12px;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: fit-content;
+}
+
+.add-command-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.command-item {
+  display: grid;
+  grid-template-columns: 120px 1fr;
+  gap: 8px;
+  padding: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.command-trigger,
+.command-desc,
+.command-script {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 6px 8px;
+  font-size: 11px;
+  font-family: var(--mono-font);
+  outline: none;
+  transition: all 0.2s;
+}
+
+.command-script {
+  grid-column: 1 / -1;
+  resize: vertical;
+}
+
+.command-trigger:focus,
+.command-desc:focus,
+.command-script:focus {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--accent-color);
+}
+
+/* Storage tab */
+.storage-stats {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.stat-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.stat-item label {
+  color: #666;
+  font-size: 10px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.stat-item span {
+  color: var(--accent-color);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.storage-actions {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.storage-btn {
+  flex: 1;
+  padding: 8px 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #999;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.2s;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.storage-btn:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.storage-btn.export {
+  border-color: rgba(var(--positive-rgb), 0.3);
+  color: var(--positive-color);
+}
+
+.storage-btn.export:hover {
+  background: rgba(var(--positive-rgb), 0.1);
+  border-color: var(--positive-color);
+}
+
+.storage-btn.import {
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
+}
+
+.storage-btn.import:hover {
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: var(--accent-color);
+}
+
+.storage-btn.danger {
+  border-color: rgba(var(--negative-rgb), 0.3);
+  color: var(--negative-color);
+}
+
+.storage-btn.danger:hover {
+  background: rgba(var(--negative-rgb), 0.1);
+  border-color: var(--negative-color);
+}
+
+.storage-info {
+  padding: 8px;
+  background: rgba(var(--negative-rgb), 0.05);
+  border: 1px solid rgba(var(--negative-rgb), 0.2);
+  border-radius: 4px;
+}
+
+.info-text {
+  margin: 0;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.info-text svg {
+  color: var(--negative-color);
+}
+
+/* Advanced tab */
+.advanced-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.advanced-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.advanced-item label {
+  color: #999;
+  font-size: 11px;
+}
+
+.advanced-item input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent-color);
+}
+
+/* Loading state */
+.loading {
+  color: #666;
+  font-size: 11px;
+  font-style: italic;
+  text-align: center;
+  padding: 20px;
+}
+
+/* Placeholder text */
+.settings-placeholder {
+  color: #444;
+  font-size: 10px;
+  font-style: italic;
+  margin-bottom: 12px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}

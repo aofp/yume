@@ -16,6 +16,9 @@ mod state;          // Application state management (sessions, settings, etc.)
 mod websocket;      // WebSocket server for real-time communication with frontend
 mod logged_server;  // Node.js server process management with logging
 mod port_manager;   // Dynamic port allocation for server instances
+mod db;             // SQLite database for persistent storage
+mod hooks;          // Hook system for intercepting and modifying Claude behavior
+mod compaction;     // Context compaction management for auto-trigger at 96%
 
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tauri::{Manager, Listener};
@@ -584,6 +587,33 @@ pub fn run() {
             commands::get_recent_files,
             commands::get_git_status,
             commands::get_folder_contents,
+            // Database operations
+            commands::database::db_save_session,
+            commands::database::db_load_session,
+            commands::database::db_load_all_sessions,
+            commands::database::db_delete_session,
+            commands::database::db_save_message,
+            commands::database::db_load_messages,
+            commands::database::db_save_analytics,
+            commands::database::db_load_analytics,
+            commands::database::db_get_statistics,
+            commands::database::db_clear_all_data,
+            commands::database::db_export_data,
+            commands::database::db_import_data,
+            // Hook operations
+            commands::hooks::execute_hook,
+            commands::hooks::test_hook,
+            commands::hooks::get_hook_events,
+            commands::hooks::get_sample_hooks,
+            // Compaction operations
+            commands::compaction::update_context_usage,
+            commands::compaction::save_context_manifest,
+            commands::compaction::load_context_manifest,
+            commands::compaction::get_compaction_state,
+            commands::compaction::reset_compaction_state,
+            commands::compaction::update_compaction_config,
+            commands::compaction::get_compaction_config,
+            commands::compaction::generate_context_manifest,
         ])
         .on_window_event(|app_handle, event| {
             // Global window event handler for app-level lifecycle

@@ -139,6 +139,12 @@ export interface Session {
   readOnly?: boolean; // Mark sessions loaded from projects as read-only
   initialized?: boolean; // Track if session has received first message from Claude (safe to interrupt)
   wasCompacted?: boolean; // Track if session was compacted to prevent old ID restoration
+  compactionState?: { // Track compaction state
+    isCompacting: boolean;
+    lastCompacted?: Date;
+    manifestSaved?: boolean;
+    autoTriggered?: boolean;
+  };
 }
 
 interface ClaudeCodeStore {
@@ -200,6 +206,8 @@ interface ClaudeCodeStore {
   restoreToMessage: (sessionId: string, messageIndex: number) => void;
   addMessageToSession: (sessionId: string, message: SDKMessage) => void;
   setSessionStreaming: (sessionId: string, streaming: boolean) => void;
+  updateCompactionState: (sessionId: string, compactionState: Partial<Session['compactionState']>) => void;
+  setCompacting: (sessionId: string, isCompacting: boolean) => void;
   
   // Session persistence
   loadSessionHistory: (sessionId: string) => Promise<void>;
@@ -939,12 +947,40 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           
           // CRITICAL LOG FOR TOOL MESSAGES
           if (message.type === 'tool_use' || message.type === 'tool_result') {
-            console.log('🔧🔧🔧 TOOL MESSAGE RECEIVED:', {
+            console.log('[Tool] Message received:', {
               type: message.type,
               name: message.message?.name,
-              id: message.id,
-              fullMessage: message
+              id: message.id
             });
+            
+            // Process tool_use through hooks
+            if (message.type === 'tool_use' && message.message?.name) {
+              import('../services/hooksService').then(({ hooksService }) => {
+                hooksService.processToolUse(
+                  message.message.name, 
+                  message.message.input || {},
+                  sessionId,
+                  'pre'
+                ).then(result => {
+                  if (!result.allowed) {
+                    console.warn('[Hook] Tool blocked:', result.message);
+                    // Add a message to show the block
+                    const blockMessage = {
+                      id: `blocked-${Date.now()}`,
+                      type: 'system',
+                      message: { content: `Hook blocked: ${result.message}` },
+                      timestamp: new Date().toISOString()
+                    };
+                    set(state => ({
+                      sessionMessages: {
+                        ...state.sessionMessages,
+                        [sessionId]: [...(state.sessionMessages[sessionId] || []), blockMessage]
+                      }
+                    }));
+                  }
+                });
+              });
+            }
           }
           
           // Handle streaming messages by updating existing message or adding new
@@ -1470,6 +1506,24 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         remaining: Math.max(0, 200000 - analytics.tokens.total)
                       };
                       
+                      // Check for context warnings and auto-compaction
+                      if (analytics.contextWindow.percentage >= 75) {
+                        // Process context warning hooks
+                        import('../services/hooksService').then(({ hooksService }) => {
+                          hooksService.processContextWarning(
+                            analytics.contextWindow.percentage,
+                            analytics.contextWindow.used,
+                            analytics.contextWindow.limit,
+                            sessionId
+                          );
+                        });
+                        
+                        // Check for auto-compaction at 96%
+                        import('../services/compactionService').then(({ compactionService }) => {
+                          compactionService.updateContextUsage(sessionId, analytics.contextWindow.percentage);
+                        });
+                      }
+                      
                       // Update conversation tokens
                       analytics.tokens.conversationTokens = analytics.tokens.total - (analytics.tokens.cacheSize || 0);
                       
@@ -1935,7 +1989,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // Track if this is a Bash command
               const isBash = message.message?.name === 'Bash';
               if (isBash) {
-                console.log('🖥️ Bash command started');
+                console.log('[Bash] Command started');
               }
               
               // Add tool ID to pending set
@@ -3071,6 +3125,57 @@ ${content}`;
           : s
       )
     }));
+  },
+  
+  updateCompactionState: (sessionId: string, compactionState: Partial<Session['compactionState']>) => {
+    set(state => ({
+      sessions: state.sessions.map(s => 
+        s.id === sessionId 
+          ? { 
+              ...s, 
+              compactionState: {
+                ...s.compactionState,
+                ...compactionState
+              }
+            }
+          : s
+      )
+    }));
+  },
+  
+  setCompacting: (sessionId: string, isCompacting: boolean) => {
+    set(state => ({
+      sessions: state.sessions.map(s => 
+        s.id === sessionId 
+          ? { 
+              ...s, 
+              compactionState: {
+                ...s.compactionState,
+                isCompacting,
+                autoTriggered: isCompacting ? true : s.compactionState?.autoTriggered
+              }
+            }
+          : s
+      )
+    }));
+    
+    // If compaction finished, update the lastCompacted timestamp
+    if (!isCompacting) {
+      set(state => ({
+        sessions: state.sessions.map(s => 
+          s.id === sessionId 
+            ? { 
+                ...s, 
+                compactionState: {
+                  ...s.compactionState,
+                  isCompacting: false,
+                  lastCompacted: new Date()
+                }
+              }
+            : s
+        )
+      }));
+    }
   },
   
   toggleModel: () => {

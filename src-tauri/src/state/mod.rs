@@ -21,6 +21,9 @@ use crate::claude::ClaudeManager;
 use crate::claude_session::SessionManager;
 use crate::commands::SessionInfo;
 use crate::process::ProcessRegistry;
+use crate::db::Database;
+use crate::compaction::CompactionManager;
+use tokio::sync::Mutex;
 
 // Maximum number of recent projects to remember
 const MAX_RECENT_PROJECTS: usize = 10;
@@ -34,6 +37,8 @@ pub struct AppState {
     server_port: u16,                                         // Port where Node.js server is running
     settings: Arc<RwLock<serde_json::Map<String, Value>>>,   // Key-value settings storage
     recent_projects: Arc<RwLock<VecDeque<String>>>,          // Recently opened project paths
+    database: Option<Arc<Database>>,                          // SQLite database for persistence
+    pub compaction_manager: Arc<Mutex<CompactionManager>>,    // Manages context compaction and auto-trigger
 }
 
 impl AppState {
@@ -45,6 +50,18 @@ impl AppState {
         let process_registry = Arc::new(ProcessRegistry::new());
         let session_manager = Arc::new(SessionManager::new());
         
+        // Initialize database (optional - fallback to in-memory if fails)
+        let database = match Database::new() {
+            Ok(db) => {
+                tracing::info!("SQLite database initialized successfully");
+                Some(Arc::new(db))
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize database, using in-memory storage: {}", e);
+                None
+            }
+        };
+        
         Self {
             claude_manager,
             process_registry,
@@ -52,6 +69,8 @@ impl AppState {
             server_port,
             settings: Arc::new(RwLock::new(serde_json::Map::new())),
             recent_projects: Arc::new(RwLock::new(VecDeque::new())),
+            database,
+            compaction_manager: Arc::new(Mutex::new(CompactionManager::new())),
         }
     }
 
@@ -68,6 +87,11 @@ impl AppState {
     /// Returns a reference to the SessionManager for session state tracking
     pub fn session_manager(&self) -> Arc<SessionManager> {
         self.session_manager.clone()
+    }
+    
+    /// Returns a reference to the Database if initialized
+    pub fn database(&self) -> Option<Arc<Database>> {
+        self.database.clone()
     }
 
     /// Sends a message to a Claude session
