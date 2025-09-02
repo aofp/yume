@@ -10,6 +10,7 @@
 
 pub mod claude_commands;
 pub mod claude_info;
+pub mod claude_detector;
 pub mod database;
 pub mod hooks;
 pub mod compaction;

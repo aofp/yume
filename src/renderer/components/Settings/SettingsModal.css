@@ -675,9 +675,10 @@
   text-transform: none;
   cursor: default;
   transition: all 0.2s;
-  text-align: left;
+  text-align: center;
   display: flex;
   align-items: center;
+  justify-content: center;
   line-height: 1;
 }
 
@@ -780,6 +781,7 @@ input[type="checkbox"].checkbox-input {
 /* Sliding background with 2px padding */
 .toggle-switch-slider {
   position: absolute;
+  top: -2px;
   width: calc(58px);  /* Adjust width for padding */
   height: calc(23px - 2px);  /* Adjust height for padding */
   background: rgba(255, 255, 255, 0.05);
@@ -788,12 +790,13 @@ input[type="checkbox"].checkbox-input {
   pointer-events: none;
 }
 
-/* macOS specific adjustment - move slider up by 2px */
-@supports (-webkit-appearance: none) and (not (-moz-appearance: none)) {
-  .toggle-switch-slider {
+.platform-win32 .toggle-switch-slider {
+  transform: translateY(-2);
+}
+
+.platform-darwin .toggle-switch-slider {
     top: -1px;
   }
-}
 
 .toggle-switch.active .toggle-switch-slider {
   transform: translateX(60px);  /* Move by 60px to align with right side */

@@ -1,0 +1,187 @@
+/* Claude Selector Modal - Enhanced with more info */
+.claude-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(4px);
+}
+
+.claude-modal {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  width: 420px;
+  max-width: 90vw;
+  overflow: hidden;
+}
+
+.claude-modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.modal-title {
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.6);
+  font-weight: 500;
+}
+
+.claude-modal-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.3);
+  cursor: pointer;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+}
+
+.claude-modal-close:hover {
+  color: var(--accent-color);
+}
+
+/* Current installation info */
+.claude-modal-info {
+  padding: 12px 16px;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.info-row {
+  display: flex;
+  align-items: baseline;
+  margin-bottom: 6px;
+  font-size: 11px;
+}
+
+.info-row:last-child {
+  margin-bottom: 0;
+}
+
+.info-label {
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 80px;
+  margin-right: 8px;
+}
+
+.info-value {
+  color: rgba(255, 255, 255, 0.7);
+  font-family: var(--mono-font);
+  flex: 1;
+}
+
+.info-value.path {
+  word-break: break-all;
+  font-size: 10px;
+  color: var(--accent-color);
+  opacity: 0.7;
+}
+
+.claude-modal-divider {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Options section */
+.claude-modal-options {
+  padding: 8px;
+}
+
+.claude-option {
+  padding: 10px 12px;
+  cursor: default;
+  transition: all 0.2s;
+  border-radius: 4px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.claude-option:last-child {
+  margin-bottom: 0;
+}
+
+.claude-option:hover:not(.disabled):not(.active) {
+  background: rgba(var(--accent-rgb), 0.05);
+  color: var(--accent-color);
+}
+
+.claude-option.active {
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.2);
+  color: var(--accent-color);
+  padding: 9px 11px; /* Adjust for border */
+}
+
+.claude-option.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.option-version {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.3);
+  font-family: var(--mono-font);
+}
+
+.option-name {
+  font-family: var(--mono-font);
+  font-weight: 500;
+}
+
+.option-path {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-family: var(--mono-font);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 320px;
+}
+
+.option-missing {
+  font-size: 10px;
+  color: rgba(255, 153, 153, 0.6);
+  font-style: italic;
+}
+
+.option-check {
+  color: var(--positive-color);
+  flex-shrink: 0;
+}
+
+/* Warning */
+.claude-modal-warning {
+  padding: 12px 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 153, 153, 0.7);
+  font-size: 12px;
+  background: rgba(255, 153, 153, 0.05);
+  border-top: 1px solid rgba(255, 153, 153, 0.1);
+}
+
+.claude-modal-warning svg {
+  flex-shrink: 0;
+}

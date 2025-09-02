@@ -1,0 +1,58 @@
+/* Claude Selector Button - Matches font-input style exactly */
+.claude-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+  position: relative;
+  overflow: hidden;
+}
+
+.claude-label {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  flex: 1;
+  position: relative;
+  white-space: nowrap;
+}
+
+.claude-label::after {
+  content: '................................................................................................................................................................................................................................................................................................................................................................................................';
+  position: absolute;
+  left: calc(100% + 4px);
+  top: 50%;
+  transform: translateY(-50%);
+  color: rgba(255, 255, 255, 0.2);
+  font-family: var(--mono-font);
+  font-size: 7pt;
+  line-height: 1;
+  letter-spacing: 1px;
+  white-space: nowrap;
+  pointer-events: none;
+  width: 1000px;
+}
+
+.claude-selector-button {
+  width: 120px;
+  height: 23px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 4px;
+  padding: 0 8px;
+  font-size: 11px;
+  font-family: var(--mono-font);
+  cursor: default;
+  transition: all 0.2s;
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+}
+
+.claude-selector-button:hover {
+  border-color: var(--accent-color);
+}

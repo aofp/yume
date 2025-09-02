@@ -537,6 +537,15 @@ pub fn run() {
             commands::get_home_directory,
             commands::get_current_directory,
             commands::new_window,
+            // Claude detection
+            commands::claude_detector::check_file_exists,
+            commands::claude_detector::check_wsl_available,
+            commands::claude_detector::get_wsl_username,
+            commands::claude_detector::check_wsl_file_exists,
+            commands::claude_detector::execute_wsl_command,
+            commands::claude_detector::execute_command,
+            commands::claude_detector::save_claude_settings,
+            commands::claude_detector::load_claude_settings,
             // Legacy Claude commands (to be replaced)
             commands::send_message,
             commands::interrupt_session,

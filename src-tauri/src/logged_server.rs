@@ -422,6 +422,239 @@ let CLAUDE_PATH = 'claude'; // Default to PATH lookup
 // Try to find Claude CLI in common locations
 const isWindows = platform() === 'win32';
 
+// Claude execution mode settings
+let CLAUDE_EXECUTION_MODE = 'auto'; // 'native-windows', 'wsl', or 'auto'
+let NATIVE_WINDOWS_CLAUDE_PATH = null;
+let WSL_CLAUDE_PATH = null;
+
+// Helper function to load Claude settings from storage
+function loadClaudeSettings() {
+  try {
+    const settingsPath = isWindows 
+      ? join(process.env.APPDATA || process.env.USERPROFILE, 'yurucode', 'claude_settings.json')
+      : join(homedir(), '.config', 'yurucode', 'claude_settings.json');
+    
+    if (existsSync(settingsPath)) {
+      const settings = JSON.parse(readFileSync(settingsPath, 'utf8'));
+      console.log('📋 Loaded Claude settings:', settings.settings?.executionMode || 'not set');
+      
+      if (settings.settings?.executionMode) {
+        CLAUDE_EXECUTION_MODE = settings.settings.executionMode;
+      }
+      if (settings.detection?.nativeWindows?.path) {
+        NATIVE_WINDOWS_CLAUDE_PATH = settings.detection.nativeWindows.path;
+        console.log('🎯 Native Windows Claude path:', NATIVE_WINDOWS_CLAUDE_PATH);
+      }
+      if (settings.detection?.wsl?.path) {
+        WSL_CLAUDE_PATH = settings.detection.wsl.path;
+        console.log('🎯 WSL Claude path:', WSL_CLAUDE_PATH);
+      }
+    }
+  } catch (e) {
+    console.log('⚠️ Could not load Claude settings, using defaults:', e.message);
+  }
+}
+
+// Path translation utilities
+function windowsToWslPath(windowsPath) {
+  // Convert C:\Users\... to /mnt/c/Users/...
+  if (!windowsPath) return windowsPath;
+  const normalized = windowsPath.replace(/\\/g, '/');
+  const match = normalized.match(/^([A-Z]):(.*)/i);
+  if (match) {
+    return `/mnt/${match[1].toLowerCase()}${match[2]}`;
+  }
+  return normalized;
+}
+
+function wslToWindowsPath(wslPath) {
+  // Convert /mnt/c/Users/... to C:\Users\...
+  if (!wslPath) return wslPath;
+  const match = wslPath.match(/^\/mnt\/([a-z])(.*)/i);
+  if (match) {
+    return `${match[1].toUpperCase()}:${match[2].replace(/\//g, '\\')}`;
+  }
+  return wslPath;
+}
+
+// Helper function to create native Windows command for claude
+function createNativeWindowsClaudeCommand(args, workingDir, message) {
+  let claudePath = NATIVE_WINDOWS_CLAUDE_PATH || 'claude';
+  let nodeExe = null;
+  let claudeJs = null;
+  
+  // Check if this is a .cmd file - if so, we need to find Node.js and the actual .js file
+  if (claudePath.endsWith('.cmd')) {
+    console.log(`📦 Detected .cmd file, looking for Node.js and actual JS file...`);
+    
+    // Find Node.js executable
+    const possibleNodePaths = [
+      'C:\\Program Files\\nodejs\\node.exe',
+      'C:\\Program Files (x86)\\nodejs\\node.exe',
+      process.env.ProgramFiles + '\\nodejs\\node.exe',
+      process.env['ProgramFiles(x86)'] + '\\nodejs\\node.exe',
+    ].filter(Boolean);
+    
+    for (const nodePath of possibleNodePaths) {
+      if (existsSync(nodePath)) {
+        nodeExe = nodePath;
+        break;
+      }
+    }
+    
+    // Check if Node.js is in the npm directory itself
+    if (!nodeExe) {
+      const npmDir = require('path').dirname(claudePath);
+      const nodeInNpm = require('path').join(npmDir, 'node.exe');
+      if (existsSync(nodeInNpm)) {
+        nodeExe = nodeInNpm;
+        console.log(`✅ Found Node.js in npm directory: ${nodeExe}`);
+      }
+    }
+    
+    // Try to find Node.js via PATH (most reliable)
+    if (!nodeExe) {
+      try {
+        const { execSync } = require('child_process');
+        const whereNode = execSync('where node', { encoding: 'utf8', windowsHide: true, stdio: ['pipe', 'pipe', 'ignore'] }).trim();
+        if (whereNode) {
+          const paths = whereNode.split('\n').map(p => p.trim()).filter(p => p.endsWith('.exe'));
+          if (paths.length > 0) {
+            nodeExe = paths[0];
+            console.log(`✅ Found Node.js via PATH: ${nodeExe}`);
+          }
+        }
+      } catch (e) {
+        // Try PowerShell as fallback
+        try {
+          const psResult = execSync('powershell -Command "Get-Command node | Select-Object -ExpandProperty Source"', { 
+            encoding: 'utf8', 
+            windowsHide: true,
+            stdio: ['pipe', 'pipe', 'ignore']
+          }).trim();
+          if (psResult && psResult.endsWith('.exe')) {
+            nodeExe = psResult;
+            console.log(`✅ Found Node.js via PowerShell: ${nodeExe}`);
+          }
+        } catch (e2) {
+          console.error('⚠️ Could not find Node.js via where or PowerShell');
+        }
+      }
+    }
+    
+    // Find the actual Claude JS file
+    const path = require('path');
+    const cmdDir = path.dirname(claudePath);
+    console.log(`📂 Looking for Claude JS relative to: ${cmdDir}`);
+    
+    const possibleJsPaths = [
+      // npm global installation paths
+      path.join(cmdDir, 'node_modules', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
+      path.join(cmdDir, '..', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
+      path.join(cmdDir, '..', 'node_modules', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
+      // Check in the npm global node_modules
+      path.join(process.env.APPDATA || '', 'npm', 'node_modules', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
+      // Check relative to the .cmd file
+      claudePath.replace('.cmd', '.js'),
+      claudePath.replace('claude.cmd', '..\\@anthropic-ai\\claude-cli\\bin\\claude.js'),
+      // Additional paths to check
+      path.join(cmdDir, 'node_modules', 'claude', 'bin', 'claude.js'),
+      path.join(cmdDir, '..', 'lib', 'node_modules', '@anthropic-ai', 'claude-cli', 'bin', 'claude.js'),
+    ].filter(Boolean);
+    
+    console.log(`🔍 Checking ${possibleJsPaths.length} possible paths for Claude JS...`);
+    for (const jsPath of possibleJsPaths) {
+      const exists = existsSync(jsPath);
+      console.log(`  ${exists ? '✅' : '❌'} ${jsPath}`);
+      if (exists) {
+        claudeJs = jsPath;
+        break;
+      }
+    }
+    
+    if (nodeExe && claudeJs) {
+      console.log(`✅ Using Node.js to run Claude directly:`);
+      console.log(`  Node: ${nodeExe}`);
+      console.log(`  Claude JS: ${claudeJs}`);
+      claudePath = nodeExe;
+      args = [claudeJs, ...args];
+    } else if (!nodeExe) {
+      console.error(`❌ Could not find Node.js executable`);
+      console.error(`  Checked standard paths and PATH environment`);
+      console.error(`  Please ensure Node.js is installed and in PATH`);
+      // Try to fall back to .cmd file with shell
+      console.log(`⚠️ Falling back to .cmd file execution with shell`);
+    } else if (!claudeJs) {
+      console.error(`❌ Could not find Claude JavaScript file`);
+      console.error(`  Checked paths relative to: ${cmdDir}`);
+      console.error(`  Node.js found at: ${nodeExe}`);
+      // Try to fall back to .cmd file with shell
+      console.log(`⚠️ Falling back to .cmd file execution with shell`);
+    }
+  }
+  
+  console.log(`🖥️ Creating native Windows Claude command`);
+  console.log(`  Claude path: ${claudePath}`);
+  console.log(`  Working dir: ${workingDir}`);
+  console.log(`  Args: ${args.join(' ')}`);
+  
+  if (message) {
+    // For native Windows, we need to write to a temp file for large messages
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    
+    const windowsTempFile = path.join(os.tmpdir(), `yurucode-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`);
+    
+    try {
+      fs.writeFileSync(windowsTempFile, message, 'utf8');
+      console.log(`  Temp file: ${windowsTempFile} (${message.length} chars)`);
+    } catch (err) {
+      console.error(`❌ Failed to write temp file: ${err.message}`);
+      throw err;
+    }
+    
+    // Return command, args, input handled flag, and temp file
+    return [claudePath, args, true, windowsTempFile];
+  } else {
+    // Title generation - no input needed
+    return [claudePath, args, false, null];
+  }
+}
+
+// Helper function to choose the appropriate command builder
+function getClaudeCommand(args, workingDir, message) {
+  // Always load latest settings
+  loadClaudeSettings();
+  
+  // Convert paths based on execution mode
+  let effectiveWorkingDir = workingDir;
+  
+  if (CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
+    // Use native Windows execution
+    console.log('🖥️ Using native Windows Claude execution');
+    return createNativeWindowsClaudeCommand(args, workingDir, message);
+  } else if (CLAUDE_EXECUTION_MODE === 'wsl' || (isWindows && !NATIVE_WINDOWS_CLAUDE_PATH)) {
+    // Use WSL execution (also fallback for Windows if no native path)
+    console.log('🐧 Using WSL Claude execution');
+    effectiveWorkingDir = windowsToWslPath(workingDir);
+    return createWslClaudeCommand(args, effectiveWorkingDir, message);
+  } else if (CLAUDE_EXECUTION_MODE === 'auto') {
+    // Auto mode - prefer native Windows if available
+    if (NATIVE_WINDOWS_CLAUDE_PATH) {
+      console.log('🤖 Auto mode: Using native Windows Claude');
+      return createNativeWindowsClaudeCommand(args, workingDir, message);
+    } else if (isWindows) {
+      console.log('🤖 Auto mode: Falling back to WSL');
+      effectiveWorkingDir = windowsToWslPath(workingDir);
+      return createWslClaudeCommand(args, effectiveWorkingDir, message);
+    }
+  }
+  
+  // Non-Windows systems - return standard command
+  return [CLAUDE_PATH, args, false, null];
+}
+
 // Helper function to create WSL command for claude
 function createWslClaudeCommand(args, workingDir, message) {
   // Use full path to WSL.exe - Node in temp directory needs this
@@ -664,13 +897,26 @@ function createWslClaudeCommand(args, workingDir, message) {
 }
 
 if (isWindows) {
-  // On Windows, Claude only runs in WSL, so we'll use our comprehensive command builder
+  // Load Claude settings to determine execution mode
+  loadClaudeSettings();
+  
   console.log('════════════════════════════════════════════════════════════════════');
   console.log('🔍 PLATFORM: Windows detected');
-  console.log('🔍 CLAUDE EXECUTION: Will run through WSL (Windows Subsystem for Linux)');
-  console.log('🔍 PATH DETECTION: Automatic WSL user and Claude path detection enabled');
+  console.log('🔍 CLAUDE EXECUTION MODE:', CLAUDE_EXECUTION_MODE);
+  if (NATIVE_WINDOWS_CLAUDE_PATH) {
+    console.log('✅ Native Windows Claude available:', NATIVE_WINDOWS_CLAUDE_PATH);
+  }
+  if (WSL_CLAUDE_PATH) {
+    console.log('✅ WSL Claude available:', WSL_CLAUDE_PATH);
+  }
   console.log('════════════════════════════════════════════════════════════════════');
-  CLAUDE_PATH = 'WSL_CLAUDE'; // Special marker to use createWslClaudeCommand
+  
+  // Set marker based on mode
+  if (CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
+    CLAUDE_PATH = 'NATIVE_WINDOWS_CLAUDE';
+  } else {
+    CLAUDE_PATH = 'WSL_CLAUDE'; // Default to WSL for compatibility
+  }
   
 } else {
   // macOS/Linux paths
@@ -838,40 +1084,65 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       console.log('⚠️ Could not create title gen directory, using home:', e.message);
     }
     
-    const child = isWindows && CLAUDE_PATH === 'WSL_CLAUDE' ? 
+    const child = isWindows ? 
       (() => {
-        // Get WSL username dynamically for title gen dir
-        const { execSync } = require('child_process');
-        let wslUser = 'user';
-        try {
-          wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
-            encoding: 'utf8',
-            windowsHide: true
-          }).trim();
-        } catch (e) {
-          // Use default
+        // Use getClaudeCommand to determine the right execution mode
+        const [command, commandArgs, inputHandled, tempFile] = getClaudeCommand(titleArgs, titleGenDir, null);
+        
+        if (command === 'C:\\Windows\\System32\\wsl.exe') {
+          // WSL mode - need to handle WSL-specific directory
+          const { execSync } = require('child_process');
+          let wslUser = 'user';
+          try {
+            wslUser = execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "whoami"`, {
+              encoding: 'utf8',
+              windowsHide: true
+            }).trim();
+          } catch (e) {
+            // Use default
+          }
+          
+          const wslTitleGenDir = `/home/${wslUser}/.yurucode-title-gen`;
+          try {
+            execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "mkdir -p ${wslTitleGenDir}"`, {
+              windowsHide: true
+            });
+          } catch (e) {
+            console.log('⚠️ Could not create WSL title gen directory:', e.message);
+          }
         }
         
-        // For WSL, use a dedicated directory in WSL home with dynamic user
-        const wslTitleGenDir = `/home/${wslUser}/.yurucode-title-gen`;
-        
-        // Create the WSL directory if needed
-        try {
-          execSync(`C:\\Windows\\System32\\wsl.exe -e bash -c "mkdir -p ${wslTitleGenDir}"`, {
-            windowsHide: true
-          });
-        } catch (e) {
-          console.log('⚠️ Could not create WSL title gen directory:', e.message);
-        }
-        
-        const [wslCommand, wslArgs, inputHandled] = createWslClaudeCommand(titleArgs, wslTitleGenDir, null);
-        return spawn(wslCommand, wslArgs, {
+        const spawnOpts = {
           cwd: titleGenDir,
           env: enhancedEnv,
           stdio: ['pipe', 'pipe', 'pipe'],
           windowsHide: true,
           detached: false
-        });
+        };
+        
+        // For .cmd files on Windows, we need shell: true
+        // BUT not if we're running Node.js directly
+        if ((command.endsWith('.cmd') || command.endsWith('.bat')) && !command.endsWith('node.exe')) {
+          spawnOpts.shell = true;
+          
+          // Add Node.js to PATH for .cmd execution
+          const nodePaths = [
+            'C:\\Program Files\\nodejs',
+            'C:\\Program Files (x86)\\nodejs',
+            process.env.ProgramFiles + '\\nodejs',
+          ].filter(Boolean);
+          
+          for (const nodePath of nodePaths) {
+            if (existsSync(nodePath)) {
+              spawnOpts.env = { ...spawnOpts.env };
+              spawnOpts.env.PATH = nodePath + ';' + (spawnOpts.env.PATH || process.env.PATH);
+              console.log(`✅ Added Node.js to PATH for .cmd execution: ${nodePath}`);
+              break;
+            }
+          }
+        }
+        
+        return spawn(command, commandArgs, spawnOpts);
       })() :
       spawn(CLAUDE_PATH, titleArgs, {
       cwd: titleGenDir,
@@ -2687,6 +2958,21 @@ io.on('connection', (socket) => {
   let isFirstBashCommand = true;
   const bashToolUseIds = new Map(); // Maps tool_use_id to tool info for focus restoration
 
+  // Handle Claude settings updates from frontend
+  socket.on('claude-settings-update', (data) => {
+    console.log('🔄 Received Claude settings update:', data.settings?.executionMode);
+    if (data.settings) {
+      CLAUDE_EXECUTION_MODE = data.settings.executionMode || 'auto';
+      if (data.detection?.nativeWindows?.path) {
+        NATIVE_WINDOWS_CLAUDE_PATH = data.detection.nativeWindows.path;
+      }
+      if (data.detection?.wsl?.path) {
+        WSL_CLAUDE_PATH = data.detection.wsl.path;
+      }
+      console.log('✅ Claude settings updated successfully');
+    }
+  });
+
   socket.on('createSession', async (data, callback) => {
     try {
       // Check if this is loading an existing session
@@ -3438,15 +3724,9 @@ Format as a clear, structured summary that preserves all important context.`;
       let claudeProcess;
       let windowsTempFileToCleanup = null; // Track temp file for cleanup
       
-      if (isWindows && CLAUDE_PATH === 'WSL_CLAUDE') {
-        // Convert Windows path to WSL path if needed
-        let wslWorkingDir = processWorkingDir;
-        if (processWorkingDir && processWorkingDir.match(/^[A-Z]:\\/)) {
-          const driveLetter = processWorkingDir[0].toLowerCase();
-          const pathWithoutDrive = processWorkingDir.substring(2).replace(/\\/g, '/');
-          wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
-          console.log(`📂 PATH CONVERSION: Windows "${processWorkingDir}" → WSL "${wslWorkingDir}"`);
-        }
+      if (isWindows) {
+        // Use the unified command builder that checks settings
+        let effectiveWorkingDir = processWorkingDir;
         
         // Build the message with context if needed
         let messageToSend = processedMessage;
@@ -3483,21 +3763,43 @@ Format as a clear, structured summary that preserves all important context.`;
           session.pendingContextRestore = false;
         }
         
-        const [wslCommand, wslArgs, inputHandled, tempFile] = createWslClaudeCommand(args, wslWorkingDir, messageToSend);
+        const [command, commandArgs, inputHandled, tempFile] = getClaudeCommand(args, effectiveWorkingDir, messageToSend);
         windowsTempFileToCleanup = tempFile; // Store temp file path for cleanup
         
-        console.log(`🚀 Running WSL command: ${wslCommand}`);
-        console.log(`🚀 WSL args (first 500 chars):`, JSON.stringify(wslArgs).substring(0, 500));
-        console.log(`🚀 Input handled in script: ${inputHandled}`);
+        console.log(`🚀 Running command: ${command}`);
+        console.log(`🚀 Args (first 500 chars):`, JSON.stringify(commandArgs).substring(0, 500));
+        console.log(`🚀 Input handled: ${inputHandled}`);
         
-        // Check if WSL.exe exists before trying to spawn
-        if (!existsSync(wslCommand)) {
-          console.error(`❌ WSL.exe not found at: ${wslCommand}`);
+        // Check if command exists before trying to spawn
+        if (command.includes('wsl.exe') && !existsSync(command)) {
+          console.error(`❌ WSL.exe not found at: ${command}`);
           console.error(`❌ Please ensure WSL is installed on Windows`);
           throw new Error('WSL.exe not found. Please install Windows Subsystem for Linux.');
         }
         
-        claudeProcess = spawn(wslCommand, wslArgs, spawnOptions);
+        // For .cmd files on Windows, we need shell: true
+        // BUT not if we're running Node.js directly
+        if ((command.endsWith('.cmd') || command.endsWith('.bat')) && !command.endsWith('node.exe')) {
+          spawnOptions.shell = true;
+          
+          // Add Node.js to PATH for .cmd execution
+          const nodePaths = [
+            'C:\\Program Files\\nodejs',
+            'C:\\Program Files (x86)\\nodejs',
+            process.env.ProgramFiles + '\\nodejs',
+          ].filter(Boolean);
+          
+          for (const nodePath of nodePaths) {
+            if (existsSync(nodePath)) {
+              spawnOptions.env = { ...spawnOptions.env };
+              spawnOptions.env.PATH = nodePath + ';' + (spawnOptions.env.PATH || process.env.PATH);
+              console.log(`✅ Added Node.js to PATH for .cmd execution: ${nodePath}`);
+              break;
+            }
+          }
+        }
+        
+        claudeProcess = spawn(command, commandArgs, spawnOptions);
         claudeProcess.inputHandled = inputHandled;
       } else {
         claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
@@ -3612,7 +3914,28 @@ Format as a clear, structured summary that preserves all important context.`;
           console.log(`📝 Closed stdin after sending message (--print mode requires this)`);
         });
       } else if (claudeProcess.inputHandled) {
-        console.log(`📝 Message already embedded in WSL script`);
+        console.log(`📝 Message already embedded in command (WSL or temp file)`);
+        // For native Windows with temp file, we need to pipe it to stdin
+        if (windowsTempFileToCleanup && CLAUDE_EXECUTION_MODE === 'native-windows') {
+          const fs = require('fs');
+          try {
+            const tempContent = fs.readFileSync(windowsTempFileToCleanup, 'utf8');
+            console.log(`📝 Piping temp file content to stdin (${tempContent.length} chars)`);
+            claudeProcess.stdin.write(tempContent);
+            claudeProcess.stdin.end();
+            // Clean up temp file after reading
+            setTimeout(() => {
+              try {
+                fs.unlinkSync(windowsTempFileToCleanup);
+                console.log(`🗑️ Cleaned up temp file: ${windowsTempFileToCleanup}`);
+              } catch (e) {
+                // Ignore cleanup errors
+              }
+            }, 1000);
+          } catch (e) {
+            console.error(`❌ Failed to read temp file: ${e.message}`);
+          }
+        }
       } else if (!message) {
         console.log(`📝 No message to send`);
       }

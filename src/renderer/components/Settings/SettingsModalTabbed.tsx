@@ -12,6 +12,7 @@ import { useLicenseStore } from '../../services/licenseManager';
 import { FontPickerModal } from '../FontPicker/FontPickerModal';
 import { AboutModal } from '../About/AboutModal';
 import { HooksTab } from './HooksTab';
+import { ClaudeSelector } from './ClaudeSelector';
 import { invoke } from '@tauri-apps/api/core';
 import { hooksService, HookConfig } from '../../services/hooksService';
 
@@ -27,7 +28,7 @@ interface SettingsModalProps {
 }
 
 // Tab type definition
-type SettingsTab = 'general' | 'hooks' | 'commands' | 'storage';
+type SettingsTab = 'general' | 'hooks' | 'commands';
 
 // Color swatches organized in 4 rows (same as original)
 const COLOR_ROWS = [
@@ -81,9 +82,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     autoGenerateTitle, setAutoGenerateTitle 
   } = useClaudeCodeStore();
   
-  // Storage tab state
-  const [dbStats, setDbStats] = useState<any>(null);
-  const [loadingStats, setLoadingStats] = useState(false);
   
   // Hooks tab state
   const [hooks, setHooks] = useState<HookConfig[]>([]);
@@ -94,10 +92,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const [commands, setCommands] = useState<any[]>([]);
 
   useEffect(() => {
-    // Load database statistics when storage tab is active
-    if (activeTab === 'storage') {
-      loadDatabaseStats();
-    }
     // Load hooks when hooks tab is active
     if (activeTab === 'hooks') {
       loadHooks();
@@ -168,35 +162,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     return () => window.removeEventListener('zoom-changed', handleZoomChange);
   }, []);
 
-  const loadDatabaseStats = async () => {
-    setLoadingStats(true);
-    try {
-      const stats = await invoke('db_get_statistics');
-      setDbStats(stats);
-    } catch (error) {
-      console.error('Failed to load database statistics:', error);
-    }
-    setLoadingStats(false);
-  };
-
-  const handleClearDatabase = async () => {
-    if (!confirm('This will permanently delete all sessions and messages. Are you sure?')) {
-      return;
-    }
-    
-    if (!confirm('This action cannot be undone. Please confirm again.')) {
-      return;
-    }
-    
-    try {
-      await invoke('db_clear_all_data', { confirm: true });
-      alert('Database cleared successfully');
-      loadDatabaseStats();
-    } catch (error) {
-      console.error('Failed to clear database:', error);
-      alert('Failed to clear database');
-    }
-  };
 
   const handleWatermarkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -224,43 +189,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     }
   };
 
-  const handleExportData = async () => {
-    try {
-      const data = await invoke('db_export_data');
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `yurucode-backup-${new Date().toISOString().split('T')[0]}.json`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (error) {
-      console.error('Failed to export data:', error);
-      alert('Failed to export data');
-    }
-  };
-
-  const handleImportData = async () => {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = '.json';
-    input.onchange = async (e: any) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      try {
-        const text = await file.text();
-        const data = JSON.parse(text);
-        await invoke('db_import_data', { data });
-        alert('Data imported successfully');
-        loadDatabaseStats();
-      } catch (error) {
-        console.error('Failed to import data:', error);
-        alert('Failed to import data');
-      }
-    };
-    input.click();
-  };
 
   const handleZoomIn = async () => {
     if (window.electronAPI?.zoom?.in) {
@@ -419,6 +347,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               </div>
             </div>
 
+
             {/* Font controls */}
             <div className="settings-section">
               <h4>fonts</h4>
@@ -504,6 +433,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </label>
                 </div>
               </div>
+
+              {/* Claude CLI Configuration */}
+              <ClaudeSelector onSettingsChange={(settings) => {
+                console.log('Claude settings updated:', settings);
+              }} />
             </div>
 
             {/* About */}
@@ -655,12 +589,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   onClick={() => setActiveTab('commands')}
                 >
                   commands
-                </button>
-                <button 
-                  className={`settings-tab-inline ${activeTab === 'storage' ? 'active' : ''}`}
-                  onClick={() => setActiveTab('storage')}
-                >
-                  storage
                 </button>
               </div>
             </div>

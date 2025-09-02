@@ -250,6 +250,9 @@ export class ClaudeCodeClient {
       forceNew: false, // Reuse connection if possible
       perMessageDeflate: true // Enable compression
     });
+    
+    // Expose socket globally for claudeDetector to use
+    (window as any).claudeSocket = this.socket;
 
     this.socket.on('connect', () => {
       const timestamp = new Date().toISOString();
