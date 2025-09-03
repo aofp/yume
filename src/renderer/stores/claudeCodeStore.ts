@@ -1507,8 +1507,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       };
                       
                       // Check for context warnings and auto-compaction
-                      if (analytics.contextWindow.percentage >= 75) {
-                        // Process context warning hooks
+                      if (analytics.contextWindow.percentage >= 90) {
+                        // Process context warning hooks at 90%
                         import('../services/hooksService').then(({ hooksService }) => {
                           hooksService.processContextWarning(
                             analytics.contextWindow.percentage,
@@ -1518,7 +1518,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           );
                         });
                         
-                        // Check for auto-compaction at 96%
+                        // Check for auto-compaction at 97%
                         import('../services/compactionService').then(({ compactionService }) => {
                           compactionService.updateContextUsage(sessionId, analytics.contextWindow.percentage);
                         });

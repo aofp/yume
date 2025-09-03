@@ -1,6 +1,6 @@
 /**
  * Compaction Service
- * Handles context compaction and auto-trigger at 96%
+ * Handles context compaction and auto-trigger at 97%
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -8,7 +8,7 @@ import { useClaudeCodeStore } from '../stores/claudeCodeStore';
 import { hooksService } from './hooksService';
 
 export interface CompactionConfig {
-  autoThreshold: number;  // 0.96 (96%)
+  autoThreshold: number;  // 0.97 (97%)
   forceThreshold: number; // 0.98 (98%)
   preserveContext: boolean;
   generateManifest: boolean;
@@ -44,7 +44,7 @@ export interface ContextManifest {
 
 class CompactionService {
   private config: CompactionConfig = {
-    autoThreshold: 0.96,
+    autoThreshold: 0.97,
     forceThreshold: 0.98,
     preserveContext: true,
     generateManifest: true
@@ -63,9 +63,9 @@ class CompactionService {
       case 'Notice':
         return 'Context usage at 75%. Consider organizing your conversation.';
       case 'Warning':
-        return 'Context usage at 90%. Preparing for auto-compact at 96%.';
+        return 'Context usage at 90%. Preparing for auto-compact at 97%.';
       case 'AutoTrigger':
-        return 'Context usage at 96%. Auto-triggering compact to preserve conversation flow.';
+        return 'Context usage at 97%. Auto-triggering compact to preserve conversation flow.';
       case 'Force':
         return 'Context usage at 98%. Force-compacting to prevent context overflow.';
       default:
@@ -148,7 +148,7 @@ class CompactionService {
   }
 
   /**
-   * Trigger auto-compaction at 96%
+   * Trigger auto-compaction at 97%
    */
   async triggerAutoCompaction(sessionId: string): Promise<void> {
     console.log('[Compaction] 🎯 triggerAutoCompaction called for session:', sessionId);

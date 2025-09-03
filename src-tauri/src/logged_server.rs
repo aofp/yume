@@ -3661,10 +3661,10 @@ io.on('connection', (socket) => {
         console.log(`🎯 [${sessionId}] System prompt disabled`);
       }
       
-      // Auto-trigger compact if we're near the token limit (96% = 192k tokens)
+      // Auto-trigger compact if we're near the token limit (97% = 194k tokens)
       const currentTokens = session.totalTokens || 0;
       const tokenLimit = 200000;
-      const compactThreshold = 192000; // 96% of limit
+      const compactThreshold = 194000; // 97% of limit
       
       if (currentTokens >= compactThreshold && !session.isCompacting && message.trim() !== '/compact') {
         console.log(`⚠️ Auto-compact triggered: ${currentTokens}/${tokenLimit} tokens (${Math.round(currentTokens/tokenLimit*100)}%)`);

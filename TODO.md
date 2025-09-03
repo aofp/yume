@@ -27,12 +27,6 @@ Last Updated: 2025-01-03
   - Implement session export/import
   - Add session backup/restore functionality
 
-- [ ] **User Experience**
-  - Add onboarding flow for new users
-  - Create in-app tour highlighting key features
-  - Improve error messages to be user-friendly
-  - Add crash reporting/telemetry (opt-in)
-
 - [ ] **Documentation**
   - Create user manual
   - Record demo videos
@@ -41,7 +35,7 @@ Last Updated: 2025-01-03
 
 ## ✅ Completed Features (DONE)
 - ✅ Auto-compact at 96% context usage
-- ✅ Multi-tier context warnings (75%, 90%, 96%, 98%)
+- ✅ Multi-tier context warnings
 - ✅ Token tracking with accurate costs
 - ✅ Session lazy reconnection (performance fix)
 - ✅ Tab persistence across restarts
@@ -63,7 +57,7 @@ Last Updated: 2025-01-03
 - [ ] Launch with "Beta" badge initially
 
 ## 💡 Future Enhancements (Post-Launch)
-- Checkpoint system (like Claudia)
+- Checkpoint system (like opcode)
 - Voice dictation support
 - Plugin system for extensions
 - Team collaboration features
@@ -71,10 +65,10 @@ Last Updated: 2025-01-03
 - Mobile companion app
 
 ## 🏆 Key Selling Points
-1. **"Never hit context limits"** - Auto-compact at 96%
+1. **"Never hit context limits"** - Auto-compact at 97%
 2. **"Know your costs exactly"** - Accurate token tracking
 3. **"Zero setup required"** - Embedded server
-4. **"Faster than Claudia"** - Optimized performance
+4. **"Faster than opcode"** - Optimized performance
 5. **"Beautiful OLED theme"** - Minimal, professional UI
 
 ## 📊 Success Metrics
