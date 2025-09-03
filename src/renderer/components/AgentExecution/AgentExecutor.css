@@ -1,0 +1,305 @@
+/* Agent Executor styles - Ultra-minimal black theme */
+
+.agent-executor-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+.agent-executor {
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 900px;
+  height: 80%;
+  max-height: 700px;
+  display: flex;
+  flex-direction: column;
+  animation: slideUp 0.3s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.agent-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.agent-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: rgba(0, 255, 255, 0.9);
+  font-size: 16px;
+  font-weight: 500;
+  font-family: var(--font-mono);
+}
+
+.agent-close-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.agent-close-btn:hover {
+  border-color: rgba(255, 100, 100, 0.3);
+  color: rgba(255, 100, 100, 0.8);
+  background: rgba(255, 100, 100, 0.05);
+}
+
+.agent-content {
+  flex: 1;
+  display: flex;
+  gap: 20px;
+  padding: 20px;
+  min-height: 0;
+}
+
+.agent-config {
+  flex: 0 0 350px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.agent-template-selector label,
+.agent-task-input label,
+.agent-advanced label {
+  display: block;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 12px;
+  font-family: var(--font-mono);
+  margin-bottom: 6px;
+}
+
+.agent-template-selector select {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  transition: all 0.2s ease;
+  cursor: pointer;
+}
+
+.agent-template-selector select:focus {
+  border-color: rgba(0, 255, 255, 0.3);
+  background: rgba(0, 255, 255, 0.02);
+}
+
+.agent-template-selector select:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-task-input textarea,
+.agent-advanced textarea {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  outline: none;
+  transition: all 0.2s ease;
+  resize: vertical;
+}
+
+.agent-task-input textarea:focus,
+.agent-advanced textarea:focus {
+  border-color: rgba(0, 255, 255, 0.3);
+  background: rgba(0, 255, 255, 0.02);
+}
+
+.agent-task-input textarea:disabled,
+.agent-advanced textarea:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-advanced-toggle button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  padding: 8px 12px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  justify-content: center;
+}
+
+.agent-advanced-toggle button:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.agent-advanced-toggle button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.agent-advanced {
+  animation: fadeIn 0.2s ease;
+}
+
+.agent-output {
+  flex: 1;
+  background: rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 16px;
+  overflow-y: auto;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
+.agent-output::-webkit-scrollbar {
+  width: 8px;
+}
+
+.agent-output::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.agent-output::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.agent-output::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.agent-output-empty {
+  color: rgba(255, 255, 255, 0.3);
+  text-align: center;
+  padding: 40px;
+}
+
+.agent-output pre {
+  margin: 0;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.agent-metrics {
+  display: flex;
+  gap: 20px;
+  padding: 12px 20px;
+  background: rgba(255, 255, 255, 0.02);
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.agent-metrics span {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.agent-metrics .metric-error {
+  color: rgba(255, 100, 100, 0.8);
+}
+
+.agent-error {
+  padding: 12px 20px;
+  background: rgba(255, 0, 0, 0.05);
+  border-top: 1px solid rgba(255, 0, 0, 0.1);
+  color: rgba(255, 100, 100, 0.9);
+  font-size: 12px;
+  font-family: var(--font-mono);
+}
+
+.agent-actions {
+  padding: 16px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  justify-content: center;
+}
+
+.agent-execute-btn,
+.agent-stop-btn {
+  padding: 10px 24px;
+  border-radius: 6px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+}
+
+.agent-execute-btn {
+  background: rgba(0, 255, 0, 0.1);
+  border: 1px solid rgba(0, 255, 0, 0.3);
+  color: rgba(0, 255, 0, 0.9);
+}
+
+.agent-execute-btn:hover {
+  background: rgba(0, 255, 0, 0.15);
+  border-color: rgba(0, 255, 0, 0.4);
+  color: lime;
+  transform: translateY(-1px);
+}
+
+.agent-stop-btn {
+  background: rgba(255, 100, 100, 0.1);
+  border: 1px solid rgba(255, 100, 100, 0.3);
+  color: rgba(255, 100, 100, 0.9);
+}
+
+.agent-stop-btn:hover {
+  background: rgba(255, 100, 100, 0.15);
+  border-color: rgba(255, 100, 100, 0.4);
+  color: #ff6666;
+  transform: translateY(-1px);
+}

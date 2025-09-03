@@ -2011,3 +2011,76 @@ textarea.context-full {
   opacity: 1;
   background: rgba(var(--accent-rgb), 0.1);
 }
+
+/* Virtualized message list styles */
+.virtualized-messages-container {
+  flex: 1;
+  min-height: 0; /* Important for proper flex behavior */
+  width: 100%;
+}
+
+.messages-virtualized {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+}
+
+.messages-virtualized::-webkit-scrollbar {
+  width: 8px;
+}
+
+.messages-virtualized::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.messages-virtualized::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+}
+
+.messages-virtualized::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Timeline button */
+.btn-timeline {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 0, 255, 0.5);
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.btn-timeline:hover:not(:disabled) {
+  border-color: rgba(255, 0, 255, 0.3);
+  color: rgba(255, 0, 255, 0.8);
+  background: rgba(255, 0, 255, 0.05);
+}
+
+/* Agent executor button */
+.btn-agent {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(0, 255, 255, 0.5);
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.btn-agent:hover:not(:disabled) {
+  border-color: rgba(0, 255, 255, 0.3);
+  color: rgba(0, 255, 255, 0.8);
+  background: rgba(0, 255, 255, 0.05);
+}

@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  IconPlus, IconTrash, IconRefresh, IconDownload, 
-  IconUpload, IconAlertCircle, IconCheck, IconLoader2,
+  IconPlus, IconTrash, IconRefresh,
+  IconAlertCircle, IconCheck, IconLoader2,
   IconTerminal, IconWorld, IconFolder, IconUser
 } from '@tabler/icons-react';
 import { mcpService, MCPServer } from '../../services/mcpService';
@@ -145,39 +145,6 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
     }
   };
 
-  const handleImport = async () => {
-    try {
-      const count = await mcpService.importFromClaudeDesktop();
-      if (count > 0) {
-        showNotification(`Imported ${count} server${count === 1 ? '' : 's'}`, 'success');
-        await loadServers();
-      } else {
-        showNotification('No servers found to import', 'info');
-      }
-    } catch (error) {
-      console.error('Failed to import:', error);
-      const errorMsg = error instanceof Error ? error.message : 'Failed to import';
-      showNotification(errorMsg, 'error');
-    }
-  };
-
-  const handleExport = async () => {
-    try {
-      const config = await mcpService.exportConfig();
-      // Create download link
-      const blob = new Blob([config], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'mcp-config.json';
-      a.click();
-      URL.revokeObjectURL(url);
-      showNotification('Configuration exported', 'success');
-    } catch (error) {
-      console.error('Failed to export:', error);
-      showNotification('Failed to export configuration', 'error');
-    }
-  };
 
   const addEnvVar = () => {
     setFormData(prev => ({
@@ -260,20 +227,6 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
               >
                 <IconPlus size={10} />
                 add server
-              </button>
-              <button 
-                className="mcp-action-btn"
-                onClick={handleImport}
-              >
-                <IconDownload size={10} />
-                import
-              </button>
-              <button 
-                className="mcp-action-btn"
-                onClick={handleExport}
-              >
-                <IconUpload size={10} />
-                export
               </button>
             </>
           )}

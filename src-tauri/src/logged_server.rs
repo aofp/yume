@@ -5632,6 +5632,381 @@ Format as a clear, structured summary that preserves all important context.`;
     callback({ success: true });
   });
 
+  // Checkpoint system implementation
+  const checkpoints = new Map(); // Map of sessionId -> array of checkpoints
+  const timelines = new Map();   // Map of sessionId -> timeline
+  
+  // Create checkpoint handler
+  socket.on('create-checkpoint', async (data) => {
+    const { sessionId, description, trigger = 'manual' } = data;
+    console.log(`📸 Creating checkpoint for session ${sessionId}`);
+    
+    try {
+      const session = sessions.get(sessionId);
+      if (!session) {
+        socket.emit('checkpoint-error', { 
+          sessionId, 
+          error: 'Session not found' 
+        });
+        return;
+      }
+      
+      // Create checkpoint ID
+      const checkpointId = `chk_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Capture current state
+      const checkpoint = {
+        id: checkpointId,
+        sessionId: sessionId,
+        projectPath: session.projectPath || process.cwd(),
+        parentId: timelines.get(sessionId)?.currentCheckpoint,
+        createdAt: new Date().toISOString(),
+        messageCount: session.messages ? session.messages.length : 0,
+        metadata: {
+          description: description,
+          trigger: trigger,
+          tokensUsed: session.tokenCount || 0,
+          model: session.model || 'opus',
+          messageIds: session.messages ? session.messages.map(m => m.id) : [],
+        },
+        fileSnapshots: [], // TODO: Implement file tracking
+      };
+      
+      // Store checkpoint
+      if (!checkpoints.has(sessionId)) {
+        checkpoints.set(sessionId, []);
+      }
+      checkpoints.get(sessionId).push(checkpoint);
+      
+      // Update timeline
+      if (!timelines.has(sessionId)) {
+        timelines.set(sessionId, {
+          sessionId: sessionId,
+          rootCheckpoint: checkpointId,
+          currentCheckpoint: checkpointId,
+          checkpoints: new Map(),
+          branches: [],
+        });
+      } else {
+        const timeline = timelines.get(sessionId);
+        timeline.currentCheckpoint = checkpointId;
+        timeline.checkpoints.set(checkpointId, checkpoint);
+      }
+      
+      // Save to disk (optional) - handle platform-specific paths
+      const homeDir = process.platform === 'win32' 
+        ? process.env.USERPROFILE || process.env.HOMEDRIVE + process.env.HOMEPATH
+        : process.env.HOME || homedir();
+      const checkpointDir = path.join(homeDir, '.yurucode', 'checkpoints', sessionId);
+      if (!fs.existsSync(checkpointDir)) {
+        fs.mkdirSync(checkpointDir, { recursive: true });
+      }
+      
+      const checkpointFile = path.join(checkpointDir, `${checkpointId}.json`);
+      fs.writeFileSync(checkpointFile, JSON.stringify(checkpoint, null, 2));
+      
+      console.log(`✅ Checkpoint created: ${checkpointId}`);
+      socket.emit('checkpoint-created', { 
+        sessionId, 
+        checkpoint 
+      });
+      
+    } catch (error) {
+      console.error('❌ Checkpoint creation failed:', error);
+      socket.emit('checkpoint-error', { 
+        sessionId, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Restore checkpoint handler
+  socket.on('restore-checkpoint', async (data) => {
+    const { sessionId, checkpointId } = data;
+    console.log(`⏮️ Restoring checkpoint ${checkpointId} for session ${sessionId}`);
+    
+    try {
+      const sessionCheckpoints = checkpoints.get(sessionId);
+      if (!sessionCheckpoints) {
+        throw new Error('No checkpoints found for session');
+      }
+      
+      const checkpoint = sessionCheckpoints.find(c => c.id === checkpointId);
+      if (!checkpoint) {
+        throw new Error('Checkpoint not found');
+      }
+      
+      const session = sessions.get(sessionId);
+      if (!session) {
+        throw new Error('Session not found');
+      }
+      
+      // Restore messages up to checkpoint
+      const restoredMessages = session.messages.filter(m => 
+        checkpoint.metadata.messageIds.includes(m.id)
+      );
+      
+      // Update session state
+      session.messages = restoredMessages;
+      session.tokenCount = checkpoint.metadata.tokensUsed;
+      
+      // Update timeline
+      const timeline = timelines.get(sessionId);
+      if (timeline) {
+        timeline.currentCheckpoint = checkpointId;
+      }
+      
+      console.log(`✅ Checkpoint restored: ${checkpointId}`);
+      socket.emit('checkpoint-restored', { 
+        sessionId, 
+        checkpointId,
+        messages: restoredMessages 
+      });
+      
+    } catch (error) {
+      console.error('❌ Checkpoint restoration failed:', error);
+      socket.emit('checkpoint-error', { 
+        sessionId, 
+        error: error.message 
+      });
+    }
+  });
+
+  // Get timeline handler
+  socket.on('get-timeline', async (data) => {
+    const { sessionId } = data;
+    
+    const timeline = timelines.get(sessionId);
+    const sessionCheckpoints = checkpoints.get(sessionId) || [];
+    
+    socket.emit('timeline-data', {
+      sessionId,
+      timeline: timeline || null,
+      checkpoints: sessionCheckpoints,
+    });
+  });
+
+  // Agent execution system implementation
+  const agentRuns = new Map(); // Map of runId -> agent run data
+  const activeAgents = new Map(); // Map of runId -> active process
+  
+  // Execute agent handler
+  socket.on('execute-agent', async (data) => {
+    const { 
+      sessionId, 
+      agentConfig,
+      projectPath = process.cwd()
+    } = data;
+    
+    console.log(`🤖 Executing agent for session ${sessionId}`);
+    
+    const runId = `run_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    try {
+      // Create agent run record
+      const agentRun = {
+        id: runId,
+        sessionId: sessionId,
+        status: 'starting',
+        config: agentConfig,
+        projectPath: projectPath,
+        startTime: new Date().toISOString(),
+        endTime: null,
+        output: [],
+        metrics: {
+          messagesProcessed: 0,
+          tokensUsed: 0,
+          toolsExecuted: 0,
+          errors: 0,
+        },
+      };
+      
+      agentRuns.set(runId, agentRun);
+      
+      // Build Claude command with agent configuration
+      const args = [
+        '--output-format', 'stream-json',
+        '--verbose',
+        '--print',
+      ];
+      
+      // Add model if specified
+      if (agentConfig.model) {
+        args.push('--model', agentConfig.model);
+      }
+      
+      // Add system prompt if provided
+      let systemPrompt = agentConfig.systemPrompt || '';
+      if (agentConfig.task) {
+        systemPrompt = `${systemPrompt}\n\nTask: ${agentConfig.task}`;
+      }
+      
+      // Spawn Claude process for agent - handle platform differences
+      const spawnArgs = [...args];
+      console.log(`🚀 Spawning agent process: claude ${spawnArgs.join(' ')}`);
+      
+      // Determine Claude path based on platform
+      const isWindows = process.platform === 'win32';
+      const isWSL = process.platform === 'linux' && fs.existsSync('/mnt/c');
+      const actualClaudePath = isWindows ? 
+        (claudePath.endsWith('.cmd') ? claudePath : `${claudePath}.cmd`) :
+        claudePath;
+      
+      const agentProcess = spawn(actualClaudePath, spawnArgs, {
+        cwd: projectPath,
+        env: { ...process.env },
+        shell: isWindows, // Use shell on Windows for .cmd files
+      });
+      
+      activeAgents.set(runId, agentProcess);
+      agentRun.status = 'running';
+      
+      // Send initial message with system prompt
+      if (systemPrompt) {
+        agentProcess.stdin.write(systemPrompt + '\n');
+      }
+      
+      // Handle agent output
+      let outputBuffer = '';
+      agentProcess.stdout.on('data', (chunk) => {
+        outputBuffer += chunk.toString();
+        const lines = outputBuffer.split('\n');
+        outputBuffer = lines.pop() || '';
+        
+        for (const line of lines) {
+          if (line.trim()) {
+            try {
+              const parsed = JSON.parse(line);
+              
+              // Update metrics
+              agentRun.metrics.messagesProcessed++;
+              
+              // Track tool usage
+              if (parsed.type === 'tool_use') {
+                agentRun.metrics.toolsExecuted++;
+              }
+              
+              // Track token usage
+              if (parsed.type === 'result' && parsed.usage) {
+                agentRun.metrics.tokensUsed += (parsed.usage.output_tokens || 0);
+              }
+              
+              // Store output
+              agentRun.output.push({
+                timestamp: new Date().toISOString(),
+                data: parsed,
+              });
+              
+              // Emit progress update
+              socket.emit('agent-progress', {
+                runId,
+                sessionId,
+                data: parsed,
+                metrics: agentRun.metrics,
+              });
+              
+            } catch (e) {
+              console.error('Failed to parse agent output:', e);
+              agentRun.metrics.errors++;
+            }
+          }
+        }
+      });
+      
+      // Handle agent errors
+      agentProcess.stderr.on('data', (chunk) => {
+        const error = chunk.toString();
+        console.error(`❌ Agent error: ${error}`);
+        agentRun.metrics.errors++;
+        
+        socket.emit('agent-error', {
+          runId,
+          sessionId,
+          error: error,
+        });
+      });
+      
+      // Handle agent completion
+      agentProcess.on('close', (code) => {
+        console.log(`✅ Agent completed with code ${code}`);
+        
+        agentRun.status = code === 0 ? 'completed' : 'failed';
+        agentRun.endTime = new Date().toISOString();
+        
+        activeAgents.delete(runId);
+        
+        socket.emit('agent-completed', {
+          runId,
+          sessionId,
+          status: agentRun.status,
+          metrics: agentRun.metrics,
+        });
+        
+        // Auto-create checkpoint after agent run if configured
+        if (agentConfig.createCheckpoint) {
+          const checkpointData = {
+            sessionId: sessionId,
+            description: `Agent run: ${agentConfig.name || runId}`,
+            trigger: 'auto',
+          };
+          socket.emit('create-checkpoint', checkpointData);
+        }
+      });
+      
+      socket.emit('agent-started', {
+        runId,
+        sessionId,
+        config: agentConfig,
+      });
+      
+    } catch (error) {
+      console.error('❌ Agent execution failed:', error);
+      socket.emit('agent-error', {
+        runId,
+        sessionId,
+        error: error.message,
+      });
+    }
+  });
+  
+  // Stop agent handler
+  socket.on('stop-agent', async (data) => {
+    const { runId } = data;
+    console.log(`⏹️ Stopping agent ${runId}`);
+    
+    const agentProcess = activeAgents.get(runId);
+    if (agentProcess) {
+      agentProcess.kill('SIGINT');
+      activeAgents.delete(runId);
+      
+      const agentRun = agentRuns.get(runId);
+      if (agentRun) {
+        agentRun.status = 'stopped';
+        agentRun.endTime = new Date().toISOString();
+      }
+      
+      socket.emit('agent-stopped', { runId });
+    } else {
+      socket.emit('agent-error', {
+        runId,
+        error: 'Agent not found or already stopped',
+      });
+    }
+  });
+  
+  // Get agent runs handler
+  socket.on('get-agent-runs', async (data) => {
+    const { sessionId } = data;
+    
+    const sessionRuns = Array.from(agentRuns.values())
+      .filter(run => run.sessionId === sessionId);
+    
+    socket.emit('agent-runs-data', {
+      sessionId,
+      runs: sessionRuns,
+    });
+  });
+
   socket.on('disconnect', () => {
     console.log('🔌 Client disconnected:', socket.id);
     // Clean up any processes and intervals associated with this socket

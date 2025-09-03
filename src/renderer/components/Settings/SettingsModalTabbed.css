@@ -17,7 +17,6 @@
 .settings-header-left {
   display: flex;
   align-items: center;
-  gap: 20px;
   flex: 1;
   -webkit-app-region: drag;
   user-select: none;

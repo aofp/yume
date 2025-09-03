@@ -1,0 +1,217 @@
+/* Checkpoint button styles - Ultra-minimal black theme */
+
+.checkpoint-button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+  padding: 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 32px;
+  height: 32px;
+}
+
+.checkpoint-button:hover:not(:disabled) {
+  border-color: rgba(0, 255, 255, 0.3);
+  color: rgba(0, 255, 255, 0.8);
+  background: rgba(0, 255, 255, 0.05);
+}
+
+.checkpoint-button:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.checkpoint-button.creating {
+  border-color: rgba(255, 0, 255, 0.3);
+  color: rgba(255, 0, 255, 0.8);
+  background: rgba(255, 0, 255, 0.05);
+}
+
+.checkpoint-button.checkpoint-success {
+  animation: checkpointSuccess 1.5s ease;
+}
+
+@keyframes checkpointSuccess {
+  0% {
+    transform: scale(1);
+    background: rgba(0, 255, 0, 0);
+  }
+  20% {
+    transform: scale(1.2);
+    background: rgba(0, 255, 0, 0.2);
+  }
+  100% {
+    transform: scale(1);
+    background: rgba(0, 255, 0, 0);
+  }
+}
+
+.checkpoint-icon {
+  stroke-width: 1.5;
+}
+
+.checkpoint-icon.spinning {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Checkpoint dialog */
+.checkpoint-dialog-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.checkpoint-dialog {
+  background: #000;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 20px;
+  min-width: 400px;
+  max-width: 500px;
+  animation: slideUp 0.2s ease;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.checkpoint-dialog-title {
+  color: rgba(0, 255, 255, 0.9);
+  font-size: 14px;
+  font-weight: 500;
+  margin: 0 0 16px 0;
+  font-family: var(--font-mono);
+}
+
+.checkpoint-description-input {
+  width: 100%;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.9);
+  padding: 10px;
+  border-radius: 4px;
+  font-size: 13px;
+  font-family: var(--font-mono);
+  outline: none;
+  transition: all 0.2s ease;
+}
+
+.checkpoint-description-input:focus {
+  border-color: rgba(0, 255, 255, 0.3);
+  background: rgba(0, 255, 255, 0.02);
+}
+
+.checkpoint-description-input::placeholder {
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.checkpoint-error {
+  color: rgba(255, 100, 100, 0.9);
+  font-size: 12px;
+  margin-top: 8px;
+  font-family: var(--font-mono);
+}
+
+.checkpoint-info {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+.checkpoint-info-item {
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.checkpoint-dialog-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 20px;
+}
+
+.checkpoint-cancel-btn,
+.checkpoint-create-btn {
+  padding: 8px 16px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.checkpoint-cancel-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.checkpoint-cancel-btn:hover:not(:disabled) {
+  border-color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.7);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.checkpoint-create-btn {
+  background: rgba(0, 255, 255, 0.1);
+  border: 1px solid rgba(0, 255, 255, 0.3);
+  color: rgba(0, 255, 255, 0.9);
+}
+
+.checkpoint-create-btn:hover:not(:disabled) {
+  background: rgba(0, 255, 255, 0.15);
+  border-color: rgba(0, 255, 255, 0.4);
+  color: cyan;
+}
+
+.checkpoint-create-btn:disabled,
+.checkpoint-cancel-btn:disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}

@@ -59,6 +59,7 @@
   },
   "dependencies": {
     "@tabler/icons-react": "^3.34.1",
+    "@tanstack/react-virtual": "^3.13.12",
     "@tauri-apps/api": "^2.7.0",
     "@tauri-apps/plugin-dialog": "^2.3.2",
     "cors": "^2.8.5",

@@ -4,7 +4,7 @@ import {
   IconPhoto, IconRotateClockwise, IconCrown, IconInfoCircle,
   IconWebhook, IconCommand, IconDatabase, IconBrain,
   IconTrash, IconDownload, IconUpload, IconAlertTriangle,
-  IconCheck, IconEdit
+  IconCheck, IconEdit, IconSparkles
 } from '@tabler/icons-react';
 import './SettingsModal.css';
 import './SettingsModalTabbed.css';
@@ -294,85 +294,58 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       case 'general':
         return (
           <>
-            {/* Main content area - centered buttons */}
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              height: '100%',
-              gap: '20px',
-              padding: '40px'
-            }}>
-              {/* Upgrade button if not licensed */}
-              {!isLicensed && (
-                <button 
-                  className="settings-action-btn upgrade" 
-                  onClick={() => {
-                    onClose();
-                    window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-                      detail: { reason: 'trial' } 
-                    }));
-                  }}
-                  style={{
-                    background: 'rgba(153, 187, 255, 0.1)',
-                    border: '1px solid rgba(153, 187, 255, 0.3)',
-                    color: '#99bbff',
-                    padding: '10px 20px',
-                    borderRadius: '4px',
-                    fontSize: '12px',
-                    cursor: 'default',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '8px'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.background = 'rgba(153, 187, 255, 0.15)';
-                    e.currentTarget.style.borderColor = '#99bbff';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.background = 'rgba(153, 187, 255, 0.1)';
-                    e.currentTarget.style.borderColor = 'rgba(153, 187, 255, 0.3)';
-                  }}
-                >
-                  <IconSparkles size={14} />
-                  upgrade to pro
-                </button>
-              )}
+            {/* Options */}
+            <div className="settings-section">
+              <h4>options</h4>
               
-              {/* About button */}
-              <button 
-                className="settings-action-btn about"
-                onClick={() => setShowAboutModal(true)}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid rgba(255, 255, 255, 0.2)',
-                  color: 'rgba(255, 255, 255, 0.6)',
-                  padding: '10px 20px',
-                  borderRadius: '4px',
-                  fontSize: '12px',
-                  cursor: 'default',
-                  transition: 'all 0.2s',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '8px'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
-                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.background = 'transparent';
-                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
-                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
-                }}
-              >
-                <IconInfoCircle size={14} />
-                about
-              </button>
+              <div className="checkbox-setting">
+                <span className="checkbox-label">remember tabs on restart</span>
+                <input 
+                  type="checkbox" 
+                  className="checkbox-input"
+                  id="rememberTabs"
+                  checked={rememberTabs}
+                  onChange={(e) => setRememberTabs(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="rememberTabs" className={`toggle-switch ${rememberTabs ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="checkbox-setting">
+                <span className="checkbox-label">auto-generate tab titles</span>
+                <input 
+                  type="checkbox" 
+                  className="checkbox-input"
+                  id="autoGenerateTitle"
+                  checked={autoGenerateTitle}
+                  onChange={(e) => setAutoGenerateTitle(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="autoGenerateTitle" className={`toggle-switch ${autoGenerateTitle ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+
+              {/* Claude CLI Configuration */}
+              <ClaudeSelector onSettingsChange={(settings) => {
+                console.log('Claude settings updated:', settings);
+              }} />
+              
+              {/* System Prompt Configuration */}
+              <SystemPromptSelector onSettingsChange={(settings) => {
+                console.log('System prompt settings updated:', settings);
+              }} />
             </div>
+
+            {/* Actions removed from general tab - now in bottom controls */}
           </>
         );
 
@@ -946,13 +919,49 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
             {renderTabContent()}
           </div>
 
-          {/* Bottom controls - only show on theme tab */}
-          {activeTab === 'theme' && (
+          {/* Bottom controls - show upgrade/about on general, zoom/watermark on theme */}
+          {(activeTab === 'general' || activeTab === 'theme') && (
             <div className="settings-bottom-controls">
               <div className="settings-bottom-left">
-                <div>
-                  <h4>zoom</h4>
-                  <div className="zoom-controls compact">
+                {activeTab === 'general' && !isLicensed && (
+                  <button 
+                    className="settings-action-btn upgrade" 
+                    onClick={() => {
+                      onClose();
+                      window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                        detail: { reason: 'trial' } 
+                      }));
+                    }}
+                    style={{
+                      background: 'rgba(153, 187, 255, 0.1)',
+                      border: '1px solid rgba(153, 187, 255, 0.3)',
+                      color: '#99bbff',
+                      padding: '4px 12px',
+                      fontSize: '11px',
+                      borderRadius: '2px',
+                      cursor: 'default',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.background = 'rgba(153, 187, 255, 0.2)';
+                      e.currentTarget.style.borderColor = '#99bbff';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.background = 'rgba(153, 187, 255, 0.1)';
+                      e.currentTarget.style.borderColor = 'rgba(153, 187, 255, 0.3)';
+                    }}
+                  >
+                    <IconCrown size={12} />
+                    <span>upgrade</span>
+                  </button>
+                )}
+                {activeTab === 'theme' && (
+                  <div>
+                    <h4>zoom</h4>
+                    <div className="zoom-controls compact">
                     <button 
                       className="zoom-btn small"
                       onClick={handleZoomOut}
@@ -977,11 +986,42 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     <span className="zoom-level compact">{zoomLevel > 0 ? `+${Math.round(zoomLevel * 10)}%` : zoomLevel === 0 ? '±0%' : `${Math.round(zoomLevel * 10)}%`}</span>
                   </div>
                 </div>
+                )}
               </div>
 
               <div className="settings-bottom-right">
-                {/* Watermark controls */}
-                <div>
+                {activeTab === 'general' && (
+                  <button 
+                    className="settings-action-btn about" 
+                    onClick={() => setShowAboutModal(true)}
+                    style={{
+                      background: 'transparent',
+                      border: '1px solid rgba(255, 255, 255, 0.15)',
+                      color: '#666',
+                      padding: '4px 12px',
+                      fontSize: '11px',
+                      borderRadius: '2px',
+                      cursor: 'default',
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '4px',
+                      transition: 'all 0.2s'
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.borderColor = 'var(--accent-color)';
+                      e.currentTarget.style.color = 'var(--accent-color)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                      e.currentTarget.style.color = '#666';
+                    }}
+                  >
+                    <IconInfoCircle size={12} />
+                    <span>about</span>
+                  </button>
+                )}
+                {activeTab === 'theme' && (
+                  <div>
                   <h4>watermark image</h4>
                   <div className="watermark-controls">
                     <input
@@ -1024,6 +1064,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     )}
                   </div>
                 </div>
+                )}
               </div>
             </div>
           )}

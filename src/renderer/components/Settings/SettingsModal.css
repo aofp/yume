@@ -790,13 +790,9 @@ input[type="checkbox"].checkbox-input {
   pointer-events: none;
 }
 
-.platform-win32 .toggle-switch-slider {
-  transform: translateY(-2);
-}
-
 .platform-darwin .toggle-switch-slider {
-    top: -1px;
-  }
+  top: -2px;
+}
 
 .toggle-switch.active .toggle-switch-slider {
   transform: translateX(60px);  /* Move by 60px to align with right side */

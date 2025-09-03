@@ -29,8 +29,10 @@ import {
   IconMicrophoneOff,
   IconFlare,
   IconArrowsMinimize,
+  IconGitBranch,
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
+import { VirtualizedMessageList } from './VirtualizedMessageList';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
@@ -39,6 +41,11 @@ import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete'
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { Watermark } from '../Watermark/Watermark';
+// Lazy load heavy components to avoid breaking production build
+const CheckpointButton = React.lazy(() => import('../Checkpoint/CheckpointButton').then(m => ({ default: m.CheckpointButton })));
+const TimelineNavigator = React.lazy(() => import('../Timeline/TimelineNavigator').then(m => ({ default: m.TimelineNavigator })));
+const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
+import { FEATURE_FLAGS } from '../../config/features';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -145,6 +152,8 @@ export const ClaudeChat: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
+  const [showTimeline, setShowTimeline] = useState(false);
+  const [showAgentExecutor, setShowAgentExecutor] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
   const [searchMatches, setSearchMatches] = useState<number[]>([]);
   const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
@@ -2158,6 +2167,20 @@ export const ClaudeChat: React.FC = () => {
             }
           }
           
+          // Use virtualization for better performance with many messages
+          if (FEATURE_FLAGS.USE_VIRTUALIZATION && filteredMessages.length > 20) {
+            return (
+              <VirtualizedMessageList
+                messages={filteredMessages}
+                sessionId={currentSessionId || ''}
+                isStreaming={currentSession?.streaming || false}
+                lastAssistantMessageIds={currentSession?.lastAssistantMessageIds || []}
+                className="virtualized-messages-container"
+              />
+            );
+          }
+          
+          // Fallback to regular rendering for small message lists or when flag is disabled
           return filteredMessages.map((message, idx) => {
             const isHighlighted = searchMatches.includes(idx) && searchMatches[searchIndex] === idx;
             // Only mark as last if it's the last user/assistant message
@@ -2214,6 +2237,32 @@ export const ClaudeChat: React.FC = () => {
         )}
         <div ref={messagesEndRef} />
       </div>
+      
+      {/* Timeline Navigator */}
+      {showTimeline && currentSessionId && FEATURE_FLAGS.SHOW_TIMELINE && (
+        <React.Suspense fallback={<div>Loading timeline...</div>}>
+          <TimelineNavigator
+            sessionId={currentSessionId}
+            currentMessageCount={currentSession?.messages?.length || 0}
+            onRestoreCheckpoint={(checkpointId) => {
+              console.log('Restoring checkpoint:', checkpointId);
+              // TODO: Implement actual restoration
+            }}
+            onClose={() => setShowTimeline(false)}
+          />
+        </React.Suspense>
+      )}
+      
+      {/* Agent Executor */}
+      {currentSessionId && FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && (
+        <React.Suspense fallback={<div>Loading agent executor...</div>}>
+          <AgentExecutor
+            sessionId={currentSessionId}
+            isOpen={showAgentExecutor}
+            onClose={() => setShowAgentExecutor(false)}
+          />
+        </React.Suspense>
+      )}
       
       {/* Pending followup indicator */}
       {pendingFollowupMessage && (
@@ -2402,6 +2451,41 @@ export const ClaudeChat: React.FC = () => {
         {/* Context info bar */}
         <div className="context-bar">
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+          
+          {/* Checkpoint button */}
+          {FEATURE_FLAGS.ENABLE_CHECKPOINTS && currentSessionId && (
+            <React.Suspense fallback={null}>
+              <CheckpointButton
+                sessionId={currentSessionId}
+                messageCount={currentSession?.messages?.length || 0}
+                onCheckpointCreated={(checkpoint) => {
+                  console.log('Checkpoint created:', checkpoint);
+                }}
+              />
+            </React.Suspense>
+          )}
+          
+          {/* Timeline toggle button */}
+          {FEATURE_FLAGS.SHOW_TIMELINE && currentSessionId && (
+            <button
+              className="btn-timeline"
+              onClick={() => setShowTimeline(!showTimeline)}
+              title="Toggle timeline"
+            >
+              <IconGitBranch size={16} />
+            </button>
+          )}
+          
+          {/* Agent executor button */}
+          {FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && currentSessionId && (
+            <button
+              className="btn-agent"
+              onClick={() => setShowAgentExecutor(!showAgentExecutor)}
+              title="Execute agent"
+            >
+              <IconRobot size={16} />
+            </button>
+          )}
           
           {/* Dictation button */}
           <button
