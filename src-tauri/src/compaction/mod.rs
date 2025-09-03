@@ -17,7 +17,7 @@ pub struct CompactionConfig {
 impl Default for CompactionConfig {
     fn default() -> Self {
         Self {
-            auto_threshold: 0.96,
+            auto_threshold: 0.97,
             force_threshold: 0.98,
             preserve_context: true,
             generate_manifest: true,
@@ -145,8 +145,6 @@ impl CompactionManager {
             CompactionAction::AutoTrigger
         } else if usage >= 0.90 {
             CompactionAction::Warning
-        } else if usage >= 0.75 {
-            CompactionAction::Notice
         } else {
             CompactionAction::None
         }

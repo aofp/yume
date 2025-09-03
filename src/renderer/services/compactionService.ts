@@ -61,7 +61,7 @@ class CompactionService {
       case 'None':
         return '';
       case 'Notice':
-        return 'Context usage at 75%. Consider organizing your conversation.';
+        return ''; // Notice level removed - no action at 75%
       case 'Warning':
         return 'Context usage at 90%. Preparing for auto-compact at 97%.';
       case 'AutoTrigger':
@@ -110,7 +110,7 @@ class CompactionService {
       // Handle different action types
       switch (action.type) {
         case 'Notice':
-          console.log(`[Compaction] 📢 Notice: ${action.message}`);
+          // Notice level removed - do nothing at 75%
           break;
 
         case 'Warning':

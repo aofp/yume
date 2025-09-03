@@ -1,84 +1,339 @@
-# Yurucode TODO - Path to Commercial Release
+# Yurucode Production TODO
 
-Last Updated: 2025-01-03
+Last Updated: 2025-01-03  
+**Target Release:** End of January 2025  
+**Platforms:** macOS (Priority 1) | Windows (Priority 2)
 
-## 🚀 Release Timeline: 2-4 Weeks
+## 🚨 CRITICAL BLOCKERS (Must Fix Before Any Release)
 
-### Week 1-2: Stability Sprint (CRITICAL)
-- [ ] **Memory Management**
-  - Fix memory leaks in message buffering (buffer can grow unbounded)
-  - Implement message pagination (don't load entire history at once)
-  - Clean up old session data automatically
+### Memory & Process Management
+- [ ] **Fix process cleanup** - Global `SERVER_PROCESS` mutex leaking child processes
+  - Location: `src-tauri/src/logged_server.rs:24,194-196`
+  - Risk: Zombie Node.js processes accumulating
+- [ ] **Fix memory leaks** - Message buffer growing unbounded
+  - Location: Embedded server buffer management
+  - Risk: App crash after extended use
+- [ ] **Add process termination handler** - Cleanup on panic/crash
+  - Implement Drop trait for ServerProcess
+  - Add signal handlers for graceful shutdown
 
-- [ ] **Session Robustness**
-  - Add validation before attempting session resume
-  - Handle invalid/corrupted sessions gracefully
-  - Implement auto-retry on transient failures
-  - Better error messages for users
+### Security
+- [ ] **Enable Content Security Policy**
+  - Location: `tauri.conf.json:16` - CSP is null
+  - Risk: XSS attacks, code injection
+  - Fix: Add proper CSP headers
+- [ ] **Add null pointer validation**
+  - Location: `src/lib.rs:195-275` - Windows WndProc
+  - Risk: Memory corruption crashes
+- [ ] **Remove hardcoded secrets** - Check for any API keys/tokens
 
-- [ ] **Compaction Polish**
-  - Add visual indicator when session has been compacted
-  - Show tokens saved in UI after compaction
-  - Test compaction thoroughly across all platforms
+### Error Handling
+- [ ] **Add React Error Boundaries**
+  - Wrap major UI sections
+  - Implement fallback UI
+  - Add error reporting
+- [ ] **Handle promise rejections**
+  - Location: `main.tsx:131-137`
+  - Add global unhandledRejection handler
+- [ ] **Improve error messages** - Make user-friendly
+  - Replace technical errors with actionable messages
+  - Add "how to fix" suggestions
 
-### Week 3-4: Commercial Polish
-- [ ] **Data Persistence**
-  - Migrate from localStorage to SQLite for sessions
-  - Implement session export/import
-  - Add session backup/restore functionality
+## 🎯 Production Requirements (Pre-Release)
 
-- [ ] **Documentation**
-  - Create user manual
-  - Record demo videos
-  - Write troubleshooting guide
-  - Update website with features
+### Logging & Monitoring
+- [ ] **Remove all console.log statements**
+  - Found in 10+ files
+  - Replace with conditional logging system
+- [ ] **Implement structured logging**
+  - Add log levels (debug, info, warn, error)
+  - Implement log rotation
+  - Max log file size limits
+- [ ] **Add crash reporting (Sentry)**
+  - Frontend error tracking
+  - Backend panic tracking
+  - Performance monitoring
+- [ ] **Add telemetry (opt-in)**
+  - Usage analytics
+  - Feature tracking
+  - Performance metrics
 
-## ✅ Completed Features (DONE)
-- ✅ Auto-compact at 96% context usage
-- ✅ Multi-tier context warnings
-- ✅ Token tracking with accurate costs
-- ✅ Session lazy reconnection (performance fix)
-- ✅ Tab persistence across restarts
-- ✅ Unified modal styles
-- ✅ Analytics with cost breakdown
-- ✅ License system integration
-- ✅ Settings modal with tabs
-- ✅ Claude CLI auto-detection
-- ✅ System prompt management
-- ✅ Wrapper module integration
+### Platform: macOS
+- [ ] **Code signing setup**
+  - Get Apple Developer certificate ($99/year)
+  - Configure signing in `tauri.conf.json`
+  - Test on fresh macOS install
+- [ ] **Notarization process**
+  - Submit for Apple notarization
+  - Handle notarization in CI/CD
+- [ ] **Universal binary**
+  - Build for both Intel and Apple Silicon
+  - Test on both architectures
+- [ ] **DMG improvements**
+  - Add background image
+  - Include license agreement
+  - Add Applications folder symlink
 
-## 🎯 Commercial Launch Checklist
-- [ ] Run beta with 10-20 power users
-- [ ] Fix all critical bugs from beta
-- [ ] Set up customer support system
-- [ ] Prepare marketing materials
-- [ ] Create pricing page
-- [ ] Set up payment processing
-- [ ] Launch with "Beta" badge initially
+### Platform: Windows  
+- [ ] **Code signing certificate**
+  - Get EV certificate for instant SmartScreen reputation
+  - Configure signing in build process
+- [ ] **Fix WSL edge cases**
+  - Location: `logged_server.rs:3234-3285`
+  - Better error messages for WSL issues
+  - Fallback for non-WSL Windows
+- [ ] **Windows installer improvements**
+  - Add uninstaller
+  - Registry cleanup
+  - Start menu shortcuts
+- [ ] **Test on Windows versions**
+  - Windows 10 (multiple builds)
+  - Windows 11
+  - Windows Server (optional)
 
-## 💡 Future Enhancements (Post-Launch)
-- Checkpoint system (like opcode)
-- Voice dictation support
-- Plugin system for extensions
-- Team collaboration features
-- Cloud sync for settings/sessions
-- Mobile companion app
+### Auto-Update System
+- [ ] **Implement Tauri updater**
+  - Update endpoint setup
+  - Delta updates
+  - Signature verification
+- [ ] **Update UI**
+  - Download progress
+  - Release notes display
+  - Restart prompt
+- [ ] **Rollback mechanism**
+  - Keep previous version
+  - Allow manual rollback
 
-## 🏆 Key Selling Points
-1. **"Never hit context limits"** - Auto-compact at 97%
-2. **"Know your costs exactly"** - Accurate token tracking
-3. **"Zero setup required"** - Embedded server
-4. **"Faster than opcode"** - Optimized performance
-5. **"Beautiful OLED theme"** - Minimal, professional UI
+## 🚀 User Experience (Week 1 Polish)
+
+### Onboarding
+- [ ] **First-run experience**
+  - Welcome screen
+  - Claude CLI detection
+  - Quick tutorial
+- [ ] **Setup wizard**
+  - Check Claude CLI installation
+  - Verify API key configuration
+  - Test connection
+- [ ] **Sample projects**
+  - Include demo conversations
+  - Show key features
+
+### UI/UX Polish
+- [ ] **Loading states**
+  - Skeleton screens
+  - Progress indicators
+  - Meaningful loading messages
+- [ ] **Empty states**
+  - No sessions message
+  - No Claude CLI message
+  - Connection error states
+- [ ] **Tooltips and help**
+  - Add tooltips to all buttons
+  - Contextual help system
+  - Keyboard shortcuts guide
+- [ ] **Accessibility**
+  - ARIA labels
+  - Keyboard navigation
+  - Screen reader support
+  - High contrast mode
+
+### Performance
+- [ ] **Message pagination**
+  - Load messages in chunks
+  - Virtual scrolling for long conversations
+  - Lazy loading of old messages
+- [ ] **Async file operations**
+  - Convert sync fs operations to async
+  - Show progress for large files
+- [ ] **Bundle optimization**
+  - Code splitting
+  - Tree shaking
+  - Minimize bundle size
+- [ ] **Startup time**
+  - Splash screen
+  - Lazy load non-critical components
+  - Optimize initial bundle
+
+## 📦 Data & Storage
+
+### Session Management
+- [ ] **Migrate to SQLite**
+  - Replace localStorage
+  - Better performance
+  - Data integrity
+- [ ] **Session export/import**
+  - JSON export format
+  - Backup functionality
+  - Share sessions
+- [ ] **Session cleanup**
+  - Auto-delete old sessions
+  - Configurable retention
+  - Manual cleanup tools
+
+### Settings & Configuration
+- [ ] **Settings migration**
+  - Version settings schema
+  - Handle upgrades gracefully
+- [ ] **Configuration profiles**
+  - Multiple configurations
+  - Quick switching
+- [ ] **Cloud sync (optional)**
+  - Settings sync
+  - Session sync
+  - Cross-device support
+
+## 🧪 Testing & Quality
+
+### Testing Coverage
+- [ ] **Unit tests**
+  - Critical functions
+  - State management
+  - Utility functions
+- [ ] **Integration tests**
+  - Claude CLI integration
+  - WebSocket communication
+  - File operations
+- [ ] **E2E tests**
+  - Key user workflows
+  - Cross-platform tests
+- [ ] **Performance tests**
+  - Memory usage
+  - CPU usage
+  - Startup time
+
+### Quality Assurance
+- [ ] **Beta testing program**
+  - Recruit 20-50 beta testers
+  - Feedback collection system
+  - Bug tracking process
+- [ ] **Stress testing**
+  - Long sessions (8+ hours)
+  - Large messages (10MB+)
+  - Many tabs (20+)
+- [ ] **Security audit**
+  - Dependency scanning
+  - Code review
+  - Penetration testing (optional)
+
+## 📚 Documentation
+
+### User Documentation
+- [ ] **User manual**
+  - Getting started guide
+  - Feature documentation
+  - FAQ section
+- [ ] **Video tutorials**
+  - Installation walkthrough
+  - Key features demo
+  - Tips and tricks
+- [ ] **Troubleshooting guide**
+  - Common issues
+  - Debug steps
+  - Support contact
+
+### Developer Documentation
+- [ ] **API documentation**
+  - WebSocket protocol
+  - Tauri commands
+  - State management
+- [ ] **Plugin development guide**
+  - Extension points
+  - API reference
+  - Example plugins
+- [ ] **Contributing guide**
+  - Development setup
+  - Code style
+  - PR process
+
+## 🚦 Launch Preparation
+
+### Marketing & Sales
+- [ ] **Website updates**
+  - Feature list
+  - Screenshots/videos
+  - Pricing page
+- [ ] **Payment processing**
+  - Stripe/Paddle integration
+  - License key system
+  - Refund policy
+- [ ] **Marketing materials**
+  - Product hunt launch
+  - Twitter/X announcement
+  - Blog post
+
+### Support Infrastructure
+- [ ] **Support system**
+  - Email support
+  - Discord server
+  - Knowledge base
+- [ ] **Issue tracking**
+  - GitHub issues template
+  - Bug report form
+  - Feature request process
+- [ ] **Analytics dashboard**
+  - User metrics
+  - Feature usage
+  - Error tracking
 
 ## 📊 Success Metrics
-- Crash rate < 0.1%
-- Session recovery rate > 99%
-- Auto-compact success rate > 99.9%
-- User satisfaction > 4.5/5 stars
+
+### Quality Targets
+- **Crash rate:** < 0.1% of sessions
+- **Memory usage:** < 500MB for typical session
+- **Startup time:** < 3 seconds
+- **Auto-compact success:** > 99.9%
+
+### User Satisfaction
+- **App Store rating:** > 4.5 stars
+- **Support tickets:** < 5% of users
+- **Retention:** > 70% after 30 days
+- **NPS score:** > 50
+
+## 🎯 Priority Order
+
+### Week 1: Critical Fixes
+1. Process cleanup & memory leaks
+2. Error boundaries & handling
+3. Security fixes (CSP, validation)
+4. Remove debug code
+
+### Week 2: Platform Specifics
+1. macOS code signing
+2. Windows installer fixes
+3. Auto-update system
+4. Platform testing
+
+### Week 3: UX Polish
+1. Onboarding flow
+2. Loading/empty states
+3. Performance optimization
+4. Accessibility
+
+### Week 4: Launch Prep
+1. Documentation
+2. Beta testing
+3. Marketing materials
+4. Support setup
+
+## 💰 Budget Requirements
+
+### Essential Costs
+- **Apple Developer:** $99/year
+- **Windows EV Certificate:** $300-600/year
+- **Crash Reporting:** $29/month (Sentry)
+- **Domain/Hosting:** $20/month
+
+### Optional Costs
+- **Security Audit:** $5,000-10,000
+- **Professional Icons:** $500
+- **Marketing:** $1,000-5,000
 
 ---
 
-**Target Price**: $29-39 (one-time purchase)
-**Target Launch**: End of January 2025
-**Platform Priority**: macOS → Windows → Linux
+**Total Estimated Time:** 4-6 weeks with 1-2 developers  
+**Minimum Viable Release:** 2-3 weeks (critical fixes only)  
+**Recommended Release:** 4 weeks (with polish)  
+**Target Price:** $29-39 one-time purchase  
+
+⚠️ **Note:** Auto-compact threshold changed from 96% to 97% in latest build
