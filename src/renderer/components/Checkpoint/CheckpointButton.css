@@ -1,38 +1,6 @@
-/* Checkpoint button styles - Ultra-minimal black theme */
+/* Checkpoint button styles - Uses dictation button classes */
 
-.checkpoint-button {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.5);
-  padding: 6px;
-  border-radius: 4px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  min-width: 32px;
-  height: 32px;
-}
-
-.checkpoint-button:hover:not(:disabled) {
-  border-color: rgba(0, 255, 255, 0.3);
-  color: rgba(0, 255, 255, 0.8);
-  background: rgba(0, 255, 255, 0.05);
-}
-
-.checkpoint-button:disabled {
-  opacity: 0.3;
-  cursor: not-allowed;
-}
-
-.checkpoint-button.creating {
-  border-color: rgba(255, 0, 255, 0.3);
-  color: rgba(255, 0, 255, 0.8);
-  background: rgba(255, 0, 255, 0.05);
-}
-
-.checkpoint-button.checkpoint-success {
+.checkpoint-success {
   animation: checkpointSuccess 1.5s ease;
 }
 
@@ -115,7 +83,7 @@
 }
 
 .checkpoint-dialog-title {
-  color: rgba(0, 255, 255, 0.9);
+  color: var(--accent-color);
   font-size: 14px;
   font-weight: 500;
   margin: 0 0 16px 0;
@@ -136,8 +104,8 @@
 }
 
 .checkpoint-description-input:focus {
-  border-color: rgba(0, 255, 255, 0.3);
-  background: rgba(0, 255, 255, 0.02);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  background: rgba(var(--accent-rgb), 0.02);
 }
 
 .checkpoint-description-input::placeholder {
@@ -199,15 +167,15 @@
 }
 
 .checkpoint-create-btn {
-  background: rgba(0, 255, 255, 0.1);
-  border: 1px solid rgba(0, 255, 255, 0.3);
-  color: rgba(0, 255, 255, 0.9);
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
 }
 
 .checkpoint-create-btn:hover:not(:disabled) {
-  background: rgba(0, 255, 255, 0.15);
-  border-color: rgba(0, 255, 255, 0.4);
-  color: cyan;
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent-color);
 }
 
 .checkpoint-create-btn:disabled,

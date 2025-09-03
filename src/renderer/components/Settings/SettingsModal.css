@@ -791,7 +791,7 @@ input[type="checkbox"].checkbox-input {
 }
 
 .platform-darwin .toggle-switch-slider {
-  top: -2px;
+  top: -1px;
 }
 
 .toggle-switch.active .toggle-switch-slider {

@@ -35,7 +35,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  color: rgba(255, 0, 255, 0.8);
+  color: var(--accent-color);
   font-size: 12px;
   font-family: var(--font-mono);
 }
@@ -64,9 +64,9 @@
 }
 
 .timeline-control-btn:hover {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.6);
-  background: rgba(255, 255, 255, 0.02);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.05);
 }
 
 .timeline-error {
@@ -113,9 +113,9 @@
   height: 2px;
   background: linear-gradient(
     90deg,
-    rgba(255, 0, 255, 0.2) 0%,
-    rgba(0, 255, 255, 0.2) 50%,
-    rgba(255, 0, 255, 0.2) 100%
+    rgba(var(--accent-rgb), 0.2) 0%,
+    rgba(var(--accent-rgb), 0.4) 50%,
+    rgba(var(--accent-rgb), 0.2) 100%
   );
   transform: translateY(-50%);
 }
@@ -143,16 +143,16 @@
 }
 
 .timeline-node:hover .timeline-node-icon {
-  border-color: rgba(0, 255, 255, 0.5);
-  color: rgba(0, 255, 255, 0.8);
-  background: rgba(0, 255, 255, 0.05);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.05);
   transform: scale(1.1);
 }
 
 .timeline-node.selected .timeline-node-icon {
-  border-color: rgba(255, 0, 255, 0.5);
-  color: rgba(255, 0, 255, 0.9);
-  background: rgba(255, 0, 255, 0.1);
+  border-color: rgba(var(--accent-rgb), 0.7);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.15);
 }
 
 .timeline-node.current .timeline-node-icon {
@@ -241,9 +241,9 @@
 }
 
 .timeline-action-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.7);
+  background: rgba(var(--accent-rgb), 0.05);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
 }
 
 .timeline-action-btn:disabled {

@@ -20,6 +20,9 @@ mod db;             // SQLite database for persistent storage
 mod hooks;          // Hook system for intercepting and modifying Claude behavior
 mod compaction;     // Context compaction management for auto-trigger at 96%
 mod mcp;            // Model Context Protocol (MCP) server management
+mod config;         // Production configuration management
+mod crash_recovery; // Crash recovery and session restoration
+mod agents;         // Agent management for AI assistants
 
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tauri::{Manager, Listener};
@@ -27,6 +30,7 @@ use tracing::{info, error};
 
 use claude::ClaudeManager;
 use state::AppState;
+use config::ProductionConfig;
 
 /// Main entry point for the Tauri application
 /// This function sets up the entire application infrastructure:
@@ -81,6 +85,15 @@ pub fn run() {
             // Register app state with Tauri's state management system
             // This makes it accessible to all command handlers
             app.manage(app_state);
+            
+            // Initialize production configuration
+            let production_config = config::init_production_config();
+            app.manage(production_config.clone());
+            
+            // Initialize crash recovery system
+            let crash_recovery_manager = crash_recovery::init_crash_recovery(&app.handle());
+            app.manage(crash_recovery_manager);
+            
             
             // Development mode: Wait for Vite dev server to fully initialize
             // This prevents the window from opening before the frontend is ready
@@ -193,35 +206,59 @@ pub fn run() {
                     static INIT: std::sync::Mutex<bool> = std::sync::Mutex::new(false);
                     
                     unsafe {
-                        // Custom window procedure to enforce minimum size
+                        // Custom window procedure to enforce minimum size with comprehensive error handling
                         unsafe extern "system" fn wndproc(
                             hwnd: HWND,
                             msg: u32,
                             wparam: WPARAM,
                             lparam: LPARAM,
                         ) -> LRESULT {
+                            // Validate hwnd is not null
+                            if hwnd.0 == 0 {
+                                return LRESULT(0);
+                            }
+                            
                             match msg {
                                 WM_GETMINMAXINFO => {
+                                    // Validate lparam before casting
+                                    if lparam.0 == 0 {
+                                        return LRESULT(0);
+                                    }
+                                    
                                     // Enforce minimum size through MINMAXINFO
                                     let info = lparam.0 as *mut MINMAXINFO;
                                     if !info.is_null() {
-                                        (*info).ptMinTrackSize.x = 516;
-                                        (*info).ptMinTrackSize.y = 509;
+                                        // Additional validation: check if pointer is aligned
+                                        if (info as usize) % std::mem::align_of::<MINMAXINFO>() == 0 {
+                                            (*info).ptMinTrackSize.x = 516;
+                                            (*info).ptMinTrackSize.y = 509;
+                                        }
                                     }
                                     LRESULT(0)
                                 }
                                 WM_SIZING => {
+                                    // Validate lparam before casting
+                                    if lparam.0 == 0 {
+                                        return LRESULT(0);
+                                    }
+                                    
                                     // Enforce minimum size during resize dragging
                                     let rect = lparam.0 as *mut RECT;
                                     if !rect.is_null() {
-                                        let width = (*rect).right - (*rect).left;
-                                        let height = (*rect).bottom - (*rect).top;
-                                        
-                                        if width < 516 {
-                                            (*rect).right = (*rect).left + 516;
-                                        }
-                                        if height < 509 {
-                                            (*rect).bottom = (*rect).top + 509;
+                                        // Additional validation: check if pointer is aligned
+                                        if (rect as usize) % std::mem::align_of::<RECT>() == 0 {
+                                            let width = (*rect).right - (*rect).left;
+                                            let height = (*rect).bottom - (*rect).top;
+                                            
+                                            // Validate reasonable dimensions
+                                            if width >= 0 && width < 10000 && height >= 0 && height < 10000 {
+                                                if width < 516 {
+                                                    (*rect).right = (*rect).left + 516;
+                                                }
+                                                if height < 509 {
+                                                    (*rect).bottom = (*rect).top + 509;
+                                                }
+                                            }
                                         }
                                     }
                                     LRESULT(1) // TRUE to indicate we modified the rect
@@ -229,13 +266,18 @@ pub fn run() {
                                 _ => {
                                     // Call the original window procedure for other messages
                                     if let Some(original) = ORIGINAL_WNDPROC {
-                                        CallWindowProcW(
-                                            Some(std::mem::transmute(original)),
-                                            hwnd,
-                                            msg,
-                                            wparam,
-                                            lparam
-                                        )
+                                        // Validate the original procedure pointer
+                                        if original != 0 {
+                                            CallWindowProcW(
+                                                Some(std::mem::transmute(original)),
+                                                hwnd,
+                                                msg,
+                                                wparam,
+                                                lparam
+                                            )
+                                        } else {
+                                            LRESULT(0)
+                                        }
                                     } else {
                                         LRESULT(0)
                                     }
@@ -636,6 +678,11 @@ pub fn run() {
             commands::mcp::mcp_test_connection,
             commands::mcp::mcp_import_claude_desktop,
             commands::mcp::mcp_export_config,
+            // Agent operations
+            agents::list_agents,
+            agents::load_default_agents,
+            agents::create_agent,
+            agents::delete_agent,
         ])
         .on_window_event(|app_handle, event| {
             // Global window event handler for app-level lifecycle

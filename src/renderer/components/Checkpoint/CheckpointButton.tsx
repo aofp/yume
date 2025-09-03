@@ -51,7 +51,7 @@ export const CheckpointButton: React.FC<CheckpointButtonProps> = ({
       }
       
       // Show success animation
-      const button = document.querySelector('.checkpoint-button');
+      const button = document.querySelector('.btn-dictation');
       if (button) {
         button.classList.add('checkpoint-success');
         setTimeout(() => {
@@ -69,15 +69,15 @@ export const CheckpointButton: React.FC<CheckpointButtonProps> = ({
   return (
     <>
       <button
-        className={`checkpoint-button ${isCreating ? 'creating' : ''}`}
+        className={`btn-dictation ${isCreating ? 'active' : ''}`}
         onClick={() => setShowDialog(true)}
         disabled={disabled || isCreating}
         title="Create checkpoint"
       >
         {isCreating ? (
-          <IconCameraFilled size={16} className="checkpoint-icon spinning" />
+          <IconCameraFilled size={14} />
         ) : (
-          <IconCamera size={16} className="checkpoint-icon" />
+          <IconCamera size={14} />
         )}
       </button>
       

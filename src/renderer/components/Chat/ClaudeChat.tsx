@@ -42,9 +42,10 @@ import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { Watermark } from '../Watermark/Watermark';
 // Lazy load heavy components to avoid breaking production build
-const CheckpointButton = React.lazy(() => import('../Checkpoint/CheckpointButton').then(m => ({ default: m.CheckpointButton })));
-const TimelineNavigator = React.lazy(() => import('../Timeline/TimelineNavigator').then(m => ({ default: m.TimelineNavigator })));
-const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
+// REMOVED: These features were overengineered and unnecessary - just use chat instead
+// const CheckpointButton = React.lazy(() => import('../Checkpoint/CheckpointButton').then(m => ({ default: m.CheckpointButton })));
+// const TimelineNavigator = React.lazy(() => import('../Timeline/TimelineNavigator').then(m => ({ default: m.TimelineNavigator })));
+// const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
 import { FEATURE_FLAGS } from '../../config/features';
 import './ClaudeChat.css';
 
@@ -152,8 +153,8 @@ export const ClaudeChat: React.FC = () => {
   const recognitionRef = useRef<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
-  const [showTimeline, setShowTimeline] = useState(false);
-  const [showAgentExecutor, setShowAgentExecutor] = useState(false);
+  // const [showTimeline, setShowTimeline] = useState(false);  // REMOVED: Unnecessary feature
+  // const [showAgentExecutor, setShowAgentExecutor] = useState(false);  // REMOVED: Just use chat
   const [searchIndex, setSearchIndex] = useState(0);
   const [searchMatches, setSearchMatches] = useState<number[]>([]);
   const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
@@ -2238,8 +2239,8 @@ export const ClaudeChat: React.FC = () => {
         <div ref={messagesEndRef} />
       </div>
       
-      {/* Timeline Navigator */}
-      {showTimeline && currentSessionId && FEATURE_FLAGS.SHOW_TIMELINE && (
+      {/* Timeline Navigator - REMOVED: Unnecessary complexity */}
+      {/* {showTimeline && currentSessionId && FEATURE_FLAGS.SHOW_TIMELINE && (
         <React.Suspense fallback={<div>Loading timeline...</div>}>
           <TimelineNavigator
             sessionId={currentSessionId}
@@ -2251,10 +2252,10 @@ export const ClaudeChat: React.FC = () => {
             onClose={() => setShowTimeline(false)}
           />
         </React.Suspense>
-      )}
+      )} */}
       
-      {/* Agent Executor */}
-      {currentSessionId && FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && (
+      {/* Agent Executor - REMOVED: Just use chat instead */}
+      {/* {currentSessionId && FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && (
         <React.Suspense fallback={<div>Loading agent executor...</div>}>
           <AgentExecutor
             sessionId={currentSessionId}
@@ -2262,7 +2263,7 @@ export const ClaudeChat: React.FC = () => {
             onClose={() => setShowAgentExecutor(false)}
           />
         </React.Suspense>
-      )}
+      )} */}
       
       {/* Pending followup indicator */}
       {pendingFollowupMessage && (
@@ -2452,50 +2453,63 @@ export const ClaudeChat: React.FC = () => {
         <div className="context-bar">
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
           
-          {/* Checkpoint button */}
-          {FEATURE_FLAGS.ENABLE_CHECKPOINTS && currentSessionId && (
-            <React.Suspense fallback={null}>
-              <CheckpointButton
-                sessionId={currentSessionId}
-                messageCount={currentSession?.messages?.length || 0}
-                onCheckpointCreated={(checkpoint) => {
-                  console.log('Checkpoint created:', checkpoint);
-                }}
-              />
-            </React.Suspense>
-          )}
-          
-          {/* Timeline toggle button */}
-          {FEATURE_FLAGS.SHOW_TIMELINE && currentSessionId && (
+          {/* Button group - all buttons together */}
+          <div className="dictation-button-group" style={{
+            position: 'absolute',
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 1,
+            display: 'flex',
+            gap: '4px',
+            alignItems: 'center'
+          }}>
+            {/* Checkpoint button - REMOVED: Overengineered feature */}
+            {/* {FEATURE_FLAGS.ENABLE_CHECKPOINTS && currentSessionId && (
+              <React.Suspense fallback={null}>
+                <CheckpointButton
+                  sessionId={currentSessionId}
+                  messageCount={currentSession?.messages?.length || 0}
+                  onCheckpointCreated={(checkpoint) => {
+                    console.log('Checkpoint created:', checkpoint);
+                  }}
+                />
+              </React.Suspense>
+            )} */}
+            
+            {/* Timeline toggle button - REMOVED: Unnecessary complexity */}
+            {/* {FEATURE_FLAGS.SHOW_TIMELINE && currentSessionId && (
+              <button
+                className={`btn-dictation ${showTimeline ? 'active' : ''}`}
+                onClick={() => setShowTimeline(!showTimeline)}
+                title="Toggle timeline"
+                disabled={currentSession?.readOnly}
+              >
+                <IconGitBranch size={14} />
+              </button>
+            )} */}
+            
+            {/* Agent executor button - REMOVED: Just ask in chat instead */}
+            {/* {FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && currentSessionId && (
+              <button
+                className={`btn-dictation ${showAgentExecutor ? 'active' : ''}`}
+                onClick={() => setShowAgentExecutor(!showAgentExecutor)}
+                title="Execute agent"
+                disabled={currentSession?.readOnly}
+              >
+                <IconRobot size={14} />
+              </button>
+            )} */}
+            
+            {/* Dictation button */}
             <button
-              className="btn-timeline"
-              onClick={() => setShowTimeline(!showTimeline)}
-              title="Toggle timeline"
+              className={`btn-dictation ${isDictating ? 'active' : ''}`}
+              onClick={toggleDictation}
+              title={isDictating ? "stop dictation (ctrl+e)" : "start dictation (ctrl+e)"}
+              disabled={currentSession?.readOnly}
             >
-              <IconGitBranch size={16} />
+              {isDictating ? <IconMicrophone size={14} /> : <IconMicrophoneOff size={14} />}
             </button>
-          )}
-          
-          {/* Agent executor button */}
-          {FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && currentSessionId && (
-            <button
-              className="btn-agent"
-              onClick={() => setShowAgentExecutor(!showAgentExecutor)}
-              title="Execute agent"
-            >
-              <IconRobot size={16} />
-            </button>
-          )}
-          
-          {/* Dictation button */}
-          <button
-            className={`btn-dictation ${isDictating ? 'active' : ''}`}
-            onClick={toggleDictation}
-            title={isDictating ? "stop dictation (ctrl+e)" : "start dictation (ctrl+e)"}
-            disabled={currentSession?.readOnly}
-          >
-            {isDictating ? <IconMicrophone size={14} /> : <IconMicrophoneOff size={14} />}
-          </button>
+          </div>
           
           <div className="context-info">
             {(() => {

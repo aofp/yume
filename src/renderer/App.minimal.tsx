@@ -18,6 +18,7 @@ import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { useLicenseStore } from './services/licenseManager';
 import { platformBridge } from './services/platformBridge';
 import { claudeCodeClient } from './services/claudeCodeClient';
+import ErrorBoundary from './components/common/ErrorBoundary';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
@@ -632,13 +633,21 @@ export const App: React.FC = () => {
       onDragLeave={handleGlobalDragLeave}
       onContextMenu={handleGlobalContextMenu}
     >
-      <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} onAgentsClick={() => setShowAgentsModal(true)} onAnalyticsClick={() => {
-        setAnalyticsProject(undefined);
-        setShowAnalytics(true);
-      }} />
-      <TitleBar onSettingsClick={() => setShowSettings(true)} />
-      <SessionTabs />
-      <ConnectionStatus />
+      <ErrorBoundary name="WindowControls">
+        <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} onAgentsClick={() => setShowAgentsModal(true)} onAnalyticsClick={() => {
+          setAnalyticsProject(undefined);
+          setShowAnalytics(true);
+        }} />
+      </ErrorBoundary>
+      <ErrorBoundary name="TitleBar">
+        <TitleBar onSettingsClick={() => setShowSettings(true)} />
+      </ErrorBoundary>
+      <ErrorBoundary name="SessionTabs">
+        <SessionTabs />
+      </ErrorBoundary>
+      <ErrorBoundary name="ConnectionStatus">
+        <ConnectionStatus />
+      </ErrorBoundary>
       {isDragging && (
         <div className="drag-overlay">
           <div className="drag-overlay-content">
@@ -653,7 +662,9 @@ export const App: React.FC = () => {
       )}
       <div className="app-content">
         <div className="main-chat-area">
-          <ClaudeChat />
+          <ErrorBoundary name="ClaudeChat">
+            <ClaudeChat />
+          </ErrorBoundary>
         </div>
         {/* File changes sidebar - DISABLED
         {showFileChanges && (
@@ -839,25 +850,42 @@ export const App: React.FC = () => {
         </div>
       )}
       
-      {showSettings && <SettingsModalTabbed onClose={() => setShowSettings(false)} />}
-      {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} onShowUpgrade={() => {
-        setShowAbout(false);
-        setUpgradeReason('trial');
-        setShowUpgradeModal(true);
-      }} />}
-      {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
-      <ServerLogs isOpen={showServerLogs} onClose={() => setShowServerLogs(false)} />
-      <RecentProjectsModal
-        isOpen={showRecentModal}
-        onClose={() => setShowRecentModal(false)}
-        onProjectSelect={(path) => {
-          const name = path.split(/[/\\]/).pop() || path;
-          createSession(name, path);
-        }}
-      />
-      <ProjectsModal
-        isOpen={showProjectsModal}
-        onClose={() => setShowProjectsModal(false)}
+      {showSettings && (
+        <ErrorBoundary name="SettingsModal">
+          <SettingsModalTabbed onClose={() => setShowSettings(false)} />
+        </ErrorBoundary>
+      )}
+      {showAbout && (
+        <ErrorBoundary name="AboutModal">
+          <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} onShowUpgrade={() => {
+            setShowAbout(false);
+            setUpgradeReason('trial');
+            setShowUpgradeModal(true);
+          }} />
+        </ErrorBoundary>
+      )}
+      {showHelpModal && (
+        <ErrorBoundary name="KeyboardShortcuts">
+          <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />
+        </ErrorBoundary>
+      )}
+      <ErrorBoundary name="ServerLogs">
+        <ServerLogs isOpen={showServerLogs} onClose={() => setShowServerLogs(false)} />
+      </ErrorBoundary>
+      <ErrorBoundary name="RecentProjectsModal">
+        <RecentProjectsModal
+          isOpen={showRecentModal}
+          onClose={() => setShowRecentModal(false)}
+          onProjectSelect={(path) => {
+            const name = path.split(/[/\\]/).pop() || path;
+            createSession(name, path);
+          }}
+        />
+      </ErrorBoundary>
+      <ErrorBoundary name="ProjectsModal">
+        <ProjectsModal
+          isOpen={showProjectsModal}
+          onClose={() => setShowProjectsModal(false)}
         onSelectSession={async (projectPath, sessionId, sessionTitle, sessionMessageCount?) => {
           // If no sessionId, create a new session in the project
           if (!sessionId) {
@@ -1020,9 +1048,11 @@ export const App: React.FC = () => {
           // setAnalyticsProject(projectName);
           // setShowAnalytics(true);
         }}
-      />
-      <AgentsModal
-        isOpen={showAgentsModal}
+        />
+      </ErrorBoundary>
+      <ErrorBoundary name="AgentsModal">
+        <AgentsModal
+          isOpen={showAgentsModal}
         onClose={() => setShowAgentsModal(false)}
         onSelectAgent={(agent) => {
           // Apply selected agent to the store
@@ -1031,23 +1061,32 @@ export const App: React.FC = () => {
           console.log('[App] Selected agent:', agent.name);
           setShowAgentsModal(false);
         }}
-      />
-      <AnalyticsModal
-        isOpen={showAnalytics}
+        />
+      </ErrorBoundary>
+      <ErrorBoundary name="AnalyticsModal">
+        <AnalyticsModal
+          isOpen={showAnalytics}
         onClose={() => {
           setShowAnalytics(false);
           setAnalyticsProject(undefined);
         }}
         initialProject={analyticsProject}
-      />
-      {showUpgradeModal && (
-        <UpgradeModal
-          isOpen={showUpgradeModal}
-          onClose={() => setShowUpgradeModal(false)}
-          reason={upgradeReason}
         />
+      </ErrorBoundary>
+      {showUpgradeModal && (
+        <ErrorBoundary name="UpgradeModal">
+          <UpgradeModal
+            isOpen={showUpgradeModal}
+            onClose={() => setShowUpgradeModal(false)}
+            reason={upgradeReason}
+          />
+        </ErrorBoundary>
       )}
-      {claudeNotDetected && connectionCheckDone && <ClaudeNotDetected />}
+      {claudeNotDetected && connectionCheckDone && (
+        <ErrorBoundary name="ClaudeNotDetected">
+          <ClaudeNotDetected />
+        </ErrorBoundary>
+      )}
     </div>
   );
 };

@@ -8,11 +8,26 @@ import {
   IconChevronUp,
   IconBolt,
   IconCheck,
-  IconX
+  IconX,
+  IconRefresh
 } from '@tabler/icons-react';
 import { agentExecutionService, AgentConfig } from '../../services/agentExecutionService';
 import { FEATURE_FLAGS } from '../../config/features';
+import { invoke } from '@tauri-apps/api/core';
 import './AgentExecutor.css';
+
+// Agent type from backend
+interface Agent {
+  id?: number;
+  name: string;
+  icon: string;
+  system_prompt: string;
+  default_task?: string;
+  model: string;
+  hooks?: string;
+  created_at: string;
+  updated_at: string;
+}
 
 interface AgentExecutorProps {
   sessionId: string;
@@ -25,7 +40,8 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
   isOpen,
   onClose,
 }) => {
-  const [selectedTemplate, setSelectedTemplate] = useState<string>('codeReviewer');
+  const [agents, setAgents] = useState<Agent[]>([]);
+  const [selectedAgentId, setSelectedAgentId] = useState<number | null>(null);
   const [customPrompt, setCustomPrompt] = useState('');
   const [task, setTask] = useState('');
   const [isRunning, setIsRunning] = useState(false);
@@ -34,12 +50,33 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
   const [metrics, setMetrics] = useState<any>(null);
   const [error, setError] = useState<string | null>(null);
   const [showAdvanced, setShowAdvanced] = useState(false);
+  const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
   
-  // Don't render if feature is disabled
-  if (!FEATURE_FLAGS.ENABLE_AGENT_EXECUTION || !isOpen) {
-    return null;
-  }
+  // Load agents from database
+  useEffect(() => {
+    const loadAgents = async () => {
+      if (!isOpen) return;
+      
+      setIsLoadingAgents(true);
+      try {
+        const agentList = await invoke<Agent[]>('list_agents');
+        setAgents(agentList);
+        
+        // Select first agent by default
+        if (agentList.length > 0 && !selectedAgentId) {
+          setSelectedAgentId(agentList[0].id || null);
+        }
+      } catch (err) {
+        console.error('Failed to load agents:', err);
+        setError('Failed to load agents');
+      } finally {
+        setIsLoadingAgents(false);
+      }
+    };
+    
+    loadAgents();
+  }, [isOpen]);
   
   useEffect(() => {
     // Listen for agent events
@@ -86,24 +123,35 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
     };
   }, [currentRunId]);
   
+  // Don't render if feature is disabled
+  if (!FEATURE_FLAGS.ENABLE_AGENT_EXECUTION || !isOpen) {
+    return null;
+  }
+  
   const handleExecute = async () => {
+    const selectedAgent = agents.find(a => a.id === selectedAgentId);
+    if (!selectedAgent) {
+      setError('Please select an agent');
+      return;
+    }
+    
     setIsRunning(true);
     setError(null);
     setOutput([]);
     setMetrics(null);
     
     try {
-      const template = (agentExecutionService.constructor as any).AGENT_TEMPLATES[selectedTemplate];
-      
       const config: AgentConfig = {
-        ...template,
-        task: task || undefined,
-        systemPrompt: customPrompt || template.systemPrompt,
+        name: selectedAgent.name,
+        systemPrompt: customPrompt || selectedAgent.system_prompt,
+        task: task || selectedAgent.default_task || undefined,
+        model: selectedAgent.model as 'opus' | 'sonnet' | 'haiku',
+        createCheckpoint: true,
       };
       
       const runId = await agentExecutionService.executeAgent(sessionId, config);
       setCurrentRunId(runId);
-      setOutput([`🤖 Starting ${template.name}...`]);
+      setOutput([`🤖 Starting ${selectedAgent.name}...`]);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to execute agent');
       setIsRunning(false);
@@ -122,8 +170,7 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
     }
   };
   
-  const templates = Object.entries((agentExecutionService.constructor as any).AGENT_TEMPLATES || {});
-  const selectedTemplateData = (agentExecutionService.constructor as any).AGENT_TEMPLATES?.[selectedTemplate];
+  const selectedAgent = agents.find(a => a.id === selectedAgentId);
   
   return (
     <div className="agent-executor-overlay">
@@ -141,18 +188,57 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
         <div className="agent-content">
           <div className="agent-config">
             <div className="agent-template-selector">
-              <label>Select Agent Template:</label>
-              <select 
-                value={selectedTemplate}
-                onChange={(e) => setSelectedTemplate(e.target.value)}
-                disabled={isRunning}
-              >
-                {templates.map(([key, template]) => (
-                  <option key={key} value={key}>
-                    {(template as any).name}
-                  </option>
-                ))}
-              </select>
+              <label>Select Agent:</label>
+              {isLoadingAgents ? (
+                <div style={{ padding: '8px', color: 'rgba(255, 255, 255, 0.5)' }}>
+                  Loading agents...
+                </div>
+              ) : agents.length === 0 ? (
+                <div style={{ padding: '8px' }}>
+                  <div style={{ color: 'rgba(255, 255, 255, 0.5)', marginBottom: '8px' }}>
+                    No agents found. Would you like to load the default agents?
+                  </div>
+                  <button 
+                    onClick={async () => {
+                      try {
+                        await invoke('load_default_agents');
+                        // Reload agents
+                        const agentList = await invoke<Agent[]>('list_agents');
+                        setAgents(agentList);
+                        if (agentList.length > 0) {
+                          setSelectedAgentId(agentList[0].id || null);
+                        }
+                      } catch (err) {
+                        setError('Failed to load default agents');
+                      }
+                    }}
+                    style={{
+                      padding: '4px 12px',
+                      background: 'transparent',
+                      border: '1px solid var(--accent-color)',
+                      color: 'var(--accent-color)',
+                      borderRadius: '4px',
+                      fontSize: '10px',
+                      cursor: 'pointer'
+                    }}
+                  >
+                    Load Default Agents
+                  </button>
+                </div>
+              ) : (
+                <select 
+                  value={selectedAgentId || ''}
+                  onChange={(e) => setSelectedAgentId(Number(e.target.value))}
+                  disabled={isRunning}
+                >
+                  <option value="">Select an agent...</option>
+                  {agents.map((agent) => (
+                    <option key={agent.id} value={agent.id}>
+                      {agent.icon} {agent.name} ({agent.model})
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
             
             <div className="agent-task-input">
@@ -179,14 +265,19 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
             
             {showAdvanced && (
               <div className="agent-advanced">
-                <label>Custom System Prompt:</label>
+                <label>Custom System Prompt (overrides agent prompt):</label>
                 <textarea
-                  placeholder={selectedTemplateData?.systemPrompt}
+                  placeholder={selectedAgent?.system_prompt || 'Enter custom system prompt...'}
                   value={customPrompt}
                   onChange={(e) => setCustomPrompt(e.target.value)}
                   disabled={isRunning}
                   rows={5}
                 />
+                {selectedAgent && (
+                  <div style={{ marginTop: '8px', fontSize: '10px', color: 'rgba(255, 255, 255, 0.4)' }}>
+                    Default prompt: {selectedAgent.system_prompt.substring(0, 100)}...
+                  </div>
+                )}
               </div>
             )}
           </div>

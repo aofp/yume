@@ -52,7 +52,7 @@
   display: flex;
   align-items: center;
   gap: 10px;
-  color: rgba(0, 255, 255, 0.9);
+  color: var(--accent-color);
   font-size: 16px;
   font-weight: 500;
   font-family: var(--font-mono);
@@ -72,9 +72,9 @@
 }
 
 .agent-close-btn:hover {
-  border-color: rgba(255, 100, 100, 0.3);
-  color: rgba(255, 100, 100, 0.8);
-  background: rgba(255, 100, 100, 0.05);
+  border-color: rgba(var(--negative-rgb), 0.3);
+  color: var(--negative-color);
+  background: rgba(var(--negative-rgb), 0.05);
 }
 
 .agent-content {
@@ -117,8 +117,8 @@
 }
 
 .agent-template-selector select:focus {
-  border-color: rgba(0, 255, 255, 0.3);
-  background: rgba(0, 255, 255, 0.02);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  background: rgba(var(--accent-rgb), 0.02);
 }
 
 .agent-template-selector select:disabled {
@@ -143,8 +143,8 @@
 
 .agent-task-input textarea:focus,
 .agent-advanced textarea:focus {
-  border-color: rgba(0, 255, 255, 0.3);
-  background: rgba(0, 255, 255, 0.02);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  background: rgba(var(--accent-rgb), 0.02);
 }
 
 .agent-task-input textarea:disabled,
@@ -171,9 +171,9 @@
 }
 
 .agent-advanced-toggle button:hover:not(:disabled) {
-  border-color: rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.7);
-  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.05);
 }
 
 .agent-advanced-toggle button:disabled {
@@ -245,14 +245,14 @@
 }
 
 .agent-metrics .metric-error {
-  color: rgba(255, 100, 100, 0.8);
+  color: var(--negative-color);
 }
 
 .agent-error {
   padding: 12px 20px;
-  background: rgba(255, 0, 0, 0.05);
-  border-top: 1px solid rgba(255, 0, 0, 0.1);
-  color: rgba(255, 100, 100, 0.9);
+  background: rgba(var(--negative-rgb), 0.05);
+  border-top: 1px solid rgba(var(--negative-rgb), 0.1);
+  color: var(--negative-color);
   font-size: 12px;
   font-family: var(--font-mono);
 }
@@ -279,27 +279,27 @@
 }
 
 .agent-execute-btn {
-  background: rgba(0, 255, 0, 0.1);
-  border: 1px solid rgba(0, 255, 0, 0.3);
-  color: rgba(0, 255, 0, 0.9);
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
 }
 
 .agent-execute-btn:hover {
-  background: rgba(0, 255, 0, 0.15);
-  border-color: rgba(0, 255, 0, 0.4);
-  color: lime;
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent-color);
   transform: translateY(-1px);
 }
 
 .agent-stop-btn {
-  background: rgba(255, 100, 100, 0.1);
-  border: 1px solid rgba(255, 100, 100, 0.3);
-  color: rgba(255, 100, 100, 0.9);
+  background: rgba(var(--negative-rgb), 0.1);
+  border: 1px solid rgba(var(--negative-rgb), 0.3);
+  color: var(--negative-color);
 }
 
 .agent-stop-btn:hover {
-  background: rgba(255, 100, 100, 0.15);
-  border-color: rgba(255, 100, 100, 0.4);
-  color: #ff6666;
+  background: rgba(var(--negative-rgb), 0.15);
+  border-color: rgba(var(--negative-rgb), 0.4);
+  color: var(--negative-color);
   transform: translateY(-1px);
 }

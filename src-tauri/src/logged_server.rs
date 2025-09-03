@@ -13,6 +13,8 @@ use std::fs::{self, OpenOptions};
 use std::io::Write;
 use std::path::PathBuf;
 use tracing::info;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::collections::VecDeque;
 
 // SIMPLE FLAG TO CONTROL CONSOLE VISIBILITY AND DEVTOOLS
 // Set to true during development to see server console output and force DevTools open
@@ -21,8 +23,104 @@ pub const YURUCODE_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AN
 // Global handle to the server process and port
 // We use Arc<Mutex<>> for thread-safe access to the child process
 // This allows us to kill the specific server process on shutdown
-static SERVER_PROCESS: Mutex<Option<Arc<Mutex<Child>>>> = Mutex::new(None);
+static SERVER_PROCESS: Mutex<Option<Arc<ServerProcessGuard>>> = Mutex::new(None);
 static SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
+static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
+
+// Maximum buffer size for stdout/stderr (10MB)
+const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+
+/// Process guard that ensures cleanup on drop
+struct ServerProcessGuard {
+    child: Mutex<Child>,
+    pid: u32,
+    stdout_buffer: Mutex<VecDeque<String>>,
+    stderr_buffer: Mutex<VecDeque<String>>,
+    shutdown_flag: AtomicBool,
+}
+
+impl ServerProcessGuard {
+    fn new(child: Child) -> Self {
+        let pid = child.id();
+        info!("Creating ServerProcessGuard for PID: {}", pid);
+        Self {
+            child: Mutex::new(child),
+            pid,
+            stdout_buffer: Mutex::new(VecDeque::with_capacity(1000)),
+            stderr_buffer: Mutex::new(VecDeque::with_capacity(1000)),
+            shutdown_flag: AtomicBool::new(false),
+        }
+    }
+    
+    fn kill(&self) -> std::io::Result<()> {
+        self.shutdown_flag.store(true, Ordering::Relaxed);
+        if let Ok(mut child) = self.child.lock() {
+            info!("Attempting to kill process PID: {}", self.pid);
+            
+            // Try normal kill first
+            match child.kill() {
+                Ok(()) => {
+                    info!("Process killed successfully");
+                    // Wait for process to exit
+                    let _ = child.wait();
+                    Ok(())
+                }
+                Err(e) => {
+                    info!("Failed to kill process: {}", e);
+                    // Try platform-specific force kill
+                    Self::force_kill(self.pid);
+                    Err(e)
+                }
+            }
+        } else {
+            Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to lock child process"))
+        }
+    }
+    
+    #[cfg(target_os = "windows")]
+    fn force_kill(pid: u32) {
+        info!("Force killing Windows process PID: {}", pid);
+        let _ = Command::new("taskkill")
+            .args(&["/F", "/PID", &pid.to_string()])
+            .output();
+    }
+    
+    #[cfg(not(target_os = "windows"))]
+    fn force_kill(pid: u32) {
+        info!("Force killing Unix process PID: {}", pid);
+        let _ = Command::new("kill")
+            .args(&["-9", &pid.to_string()])
+            .output();
+    }
+    
+    fn add_stdout_line(&self, line: String) {
+        if let Ok(mut buffer) = self.stdout_buffer.lock() {
+            // Limit buffer size
+            while buffer.len() > 1000 {
+                buffer.pop_front();
+            }
+            buffer.push_back(line);
+        }
+    }
+    
+    fn add_stderr_line(&self, line: String) {
+        if let Ok(mut buffer) = self.stderr_buffer.lock() {
+            // Limit buffer size
+            while buffer.len() > 1000 {
+                buffer.pop_front();
+            }
+            buffer.push_back(line);
+        }
+    }
+}
+
+impl Drop for ServerProcessGuard {
+    fn drop(&mut self) {
+        info!("ServerProcessGuard dropping for PID: {}", self.pid);
+        // Ensure process is killed when guard is dropped
+        let _ = self.kill();
+    }
+}
 
 /// Returns the platform-specific path for server log files
 /// - macOS: ~/Library/Logs/yurucode/server.log
@@ -6191,36 +6289,29 @@ pub fn get_server_port() -> Option<u16> {
 pub fn stop_logged_server() {
     info!("Stopping server for THIS instance only...");
     
+    // Set running flag to false first
+    SERVER_RUNNING.store(false, Ordering::Relaxed);
+    
     if let Ok(mut process_guard) = SERVER_PROCESS.try_lock() {
         if let Some(process_arc) = process_guard.take() {
-            if let Ok(mut process) = process_arc.try_lock() {
-                let pid = process.id();
-                info!("Killing server process with PID: {}", pid);
-                
-                // Try normal kill first
-                if let Err(e) = process.kill() {
-                    info!("Normal kill failed: {}, trying force kill", e);
-                    
-                    // On Windows, use taskkill for this specific PID only
-                    #[cfg(target_os = "windows")]
-                    {
-                        use std::process::Command;
-                        let _ = Command::new("taskkill")
-                            .args(&["/F", "/PID", &pid.to_string()])
-                            .output();
-                        info!("Force killed PID {}", pid);
-                    }
-                } else {
-                    info!("Server process killed successfully");
-                }
-            } else {
-                info!("Could not lock process");
+            info!("Stopping server process...");
+            // The ServerProcessGuard's Drop trait will handle killing the process
+            match process_arc.kill() {
+                Ok(()) => info!("Server process killed successfully"),
+                Err(e) => info!("Error killing server process: {}", e),
             }
+            // Drop the Arc to trigger cleanup
+            drop(process_arc);
         } else {
             info!("No server process to stop");
         }
     } else {
         info!("Could not lock SERVER_PROCESS");
+    }
+    
+    // Clear the port
+    if let Ok(mut port_guard) = SERVER_PORT.lock() {
+        *port_guard = None;
     }
 }
 
@@ -6378,45 +6469,82 @@ pub fn start_logged_server(port: u16) {
             
             match cmd.spawn() {
                 Ok(mut child) => {
-                    info!("✅ Server started with PID: {}", child.id());
-                    write_log(&format!("✅ Server started with PID: {}", child.id()));
+                    let pid = child.id();
+                    info!("✅ Server started with PID: {}", pid);
+                    write_log(&format!("✅ Server started with PID: {}", pid));
                     
-                    // Spawn threads to capture and log stdout/stderr
-                    if let Some(stdout) = child.stdout.take() {
+                    // Take stdout and stderr for monitoring
+                    let stdout = child.stdout.take();
+                    let stderr = child.stderr.take();
+                    
+                    // Create the process guard
+                    let guard = Arc::new(ServerProcessGuard::new(child));
+                    let guard_clone1 = Arc::clone(&guard);
+                    let guard_clone2 = Arc::clone(&guard);
+                    
+                    // Spawn threads to capture and log stdout/stderr with bounded buffers
+                    if let Some(stdout) = stdout {
                         std::thread::spawn(move || {
                             use std::io::{BufRead, BufReader};
                             let reader = BufReader::new(stdout);
+                            let mut total_bytes = 0;
+                            
                             for line in reader.lines() {
+                                // Check if we should stop
+                                if guard_clone1.shutdown_flag.load(Ordering::Relaxed) {
+                                    break;
+                                }
+                                
                                 if let Ok(line) = line {
-                                    write_log(&format!("[SERVER OUT] {}", line));
-                                    info!("[SERVER OUT] {}", line);
-                                    if YURUCODE_SHOW_CONSOLE {
-                                        println!("[SERVER OUT] {}", line);
+                                    total_bytes += line.len();
+                                    
+                                    // Limit total buffer size
+                                    if total_bytes < MAX_BUFFER_SIZE {
+                                        guard_clone1.add_stdout_line(line.clone());
+                                        write_log(&format!("[SERVER OUT] {}", line));
+                                        info!("[SERVER OUT] {}", line);
+                                        if YURUCODE_SHOW_CONSOLE {
+                                            println!("[SERVER OUT] {}", line);
+                                        }
                                     }
                                 }
                             }
                         });
                     }
                     
-                    if let Some(stderr) = child.stderr.take() {
+                    if let Some(stderr) = stderr {
                         std::thread::spawn(move || {
                             use std::io::{BufRead, BufReader};
                             let reader = BufReader::new(stderr);
+                            let mut total_bytes = 0;
+                            
                             for line in reader.lines() {
+                                // Check if we should stop
+                                if guard_clone2.shutdown_flag.load(Ordering::Relaxed) {
+                                    break;
+                                }
+                                
                                 if let Ok(line) = line {
-                                    write_log(&format!("[SERVER ERR] {}", line));
-                                    info!("[SERVER ERR] {}", line);
-                                    if YURUCODE_SHOW_CONSOLE {
-                                        eprintln!("[SERVER ERR] {}", line);
+                                    total_bytes += line.len();
+                                    
+                                    // Limit total buffer size
+                                    if total_bytes < MAX_BUFFER_SIZE {
+                                        guard_clone2.add_stderr_line(line.clone());
+                                        write_log(&format!("[SERVER ERR] {}", line));
+                                        info!("[SERVER ERR] {}", line);
+                                        if YURUCODE_SHOW_CONSOLE {
+                                            eprintln!("[SERVER ERR] {}", line);
+                                        }
                                     }
                                 }
                             }
                         });
                     }
                     
-                    let child_arc = Arc::new(Mutex::new(child));
+                    // Store the guarded process
                     if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
-                        *process_guard = Some(child_arc);
+                        *process_guard = Some(guard);
+                        SERVER_RUNNING.store(true, Ordering::Relaxed);
                     }
                     
                     return;
@@ -6540,39 +6668,76 @@ fn start_macos_server(port: u16) {
         write_log(&format!("Spawn command: node {:?}", &server_file));
         match cmd.spawn() {
             Ok(mut child) => {
-                write_log(&format!("✅ macOS server spawned with PID: {}", child.id()));
-                info!("✅ macOS server spawned with PID: {}", child.id());
+                let pid = child.id();
+                write_log(&format!("✅ macOS server spawned with PID: {}", pid));
+                info!("✅ macOS server spawned with PID: {}", pid);
                 
-                // Spawn threads to log stdout and stderr
-                if let Some(stdout) = child.stdout.take() {
+                // Take stdout and stderr for monitoring
+                let stdout = child.stdout.take();
+                let stderr = child.stderr.take();
+                
+                // Create the process guard
+                let guard = Arc::new(ServerProcessGuard::new(child));
+                let guard_clone1 = Arc::clone(&guard);
+                let guard_clone2 = Arc::clone(&guard);
+                
+                // Spawn threads to log stdout and stderr with bounded buffers
+                if let Some(stdout) = stdout {
                     std::thread::spawn(move || {
                         use std::io::{BufRead, BufReader};
                         let reader = BufReader::new(stdout);
+                        let mut total_bytes = 0;
+                        
                         for line in reader.lines() {
+                            // Check if we should stop
+                            if guard_clone1.shutdown_flag.load(Ordering::Relaxed) {
+                                break;
+                            }
+                            
                             if let Ok(line) = line {
-                                write_log(&format!("[SERVER OUT] {}", line));
-                                info!("[SERVER OUT] {}", line);
+                                total_bytes += line.len();
+                                
+                                // Limit total buffer size
+                                if total_bytes < MAX_BUFFER_SIZE {
+                                    guard_clone1.add_stdout_line(line.clone());
+                                    write_log(&format!("[SERVER OUT] {}", line));
+                                    info!("[SERVER OUT] {}", line);
+                                }
                             }
                         }
                     });
                 }
                 
-                if let Some(stderr) = child.stderr.take() {
+                if let Some(stderr) = stderr {
                     std::thread::spawn(move || {
                         use std::io::{BufRead, BufReader};
                         let reader = BufReader::new(stderr);
+                        let mut total_bytes = 0;
+                        
                         for line in reader.lines() {
+                            // Check if we should stop
+                            if guard_clone2.shutdown_flag.load(Ordering::Relaxed) {
+                                break;
+                            }
+                            
                             if let Ok(line) = line {
-                                write_log(&format!("[SERVER ERR] {}", line));
-                                info!("[SERVER ERR] {}", line);
+                                total_bytes += line.len();
+                                
+                                // Limit total buffer size
+                                if total_bytes < MAX_BUFFER_SIZE {
+                                    guard_clone2.add_stderr_line(line.clone());
+                                    write_log(&format!("[SERVER ERR] {}", line));
+                                    info!("[SERVER ERR] {}", line);
+                                }
                             }
                         }
                     });
                 }
                 
-                let child_arc = Arc::new(Mutex::new(child));
+                // Store the guarded process
                 if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
-                    *process_guard = Some(child_arc);
+                    *process_guard = Some(guard);
+                    SERVER_RUNNING.store(true, Ordering::Relaxed);
                 }
                 
                 info!("✅ macOS server process tracking set up");
@@ -6657,9 +6822,9 @@ fn start_macos_server(port: u16) {
                                 }
                                 
                                 // Store process handle
-                                let child_arc = Arc::new(Mutex::new(child));
+                                let guard = Arc::new(ServerProcessGuard::new(child));
                                 if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
-                                    *process_guard = Some(child_arc);
+                                    *process_guard = Some(guard);
                                 }
                                 
                                 return;

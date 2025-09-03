@@ -927,7 +927,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <button 
                     className="settings-action-btn upgrade" 
                     onClick={() => {
-                      onClose();
+                      // Don't close settings modal, just show upgrade modal on top
                       window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
                         detail: { reason: 'trial' } 
                       }));

@@ -2,6 +2,10 @@ import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { App } from './App.minimal';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
+import ErrorBoundary from './components/common/ErrorBoundary';
+import { log } from './utils/logger';
+import './utils/consoleOverride'; // Initialize console override for production
+import { perfMonitor } from './services/performanceMonitor'; // Initialize performance monitoring
 import './styles/embedded-fonts.css'; // Embedded fonts for Windows release
 import './styles/fonts.css';
 import './styles/global.css';
@@ -13,9 +17,10 @@ import { claudeCodeClient } from './services/claudeCodeClient';
 import { tauriClaudeClient } from './services/tauriClaudeClient';
 import './services/modalService';
 
-console.log('🟢 main.tsx loading...');
-console.log('🟢 tauriClaudeClient imported:', tauriClaudeClient);
-console.log('🟢 claudeCodeClient imported:', claudeCodeClient);
+const mainLogger = log.setContext('Main');
+mainLogger.info('main.tsx loading...');
+mainLogger.debug('tauriClaudeClient imported', { tauriClaudeClient });
+mainLogger.debug('claudeCodeClient imported', { claudeCodeClient });
 
 // Variables for sleep/wake detection and session persistence
 let lastActiveTime = Date.now();
@@ -30,6 +35,70 @@ if (platform.includes('mac')) {
 } else if (platform.includes('linux')) {
   document.body.classList.add('platform-linux');
 }
+
+// Global error handlers
+window.addEventListener('unhandledrejection', (event) => {
+  mainLogger.error('Unhandled promise rejection', {
+    reason: event.reason?.message || String(event.reason),
+    stack: event.reason?.stack
+  });
+  
+  // Log to localStorage for debugging
+  try {
+    const errors = JSON.parse(localStorage.getItem('yurucode_promise_errors') || '[]');
+    errors.push({
+      type: 'unhandled_rejection',
+      reason: event.reason?.message || String(event.reason),
+      stack: event.reason?.stack,
+      timestamp: new Date().toISOString()
+    });
+    // Keep only last 10 errors
+    if (errors.length > 10) {
+      errors.shift();
+    }
+    localStorage.setItem('yurucode_promise_errors', JSON.stringify(errors));
+  } catch (e) {
+    mainLogger.error('Failed to store promise rejection', { error: e });
+  }
+  
+  // Prevent default behavior (console error)
+  event.preventDefault();
+});
+
+window.addEventListener('error', (event) => {
+  mainLogger.error('Uncaught window error', {
+    message: event.message,
+    filename: event.filename,
+    lineno: event.lineno,
+    colno: event.colno,
+    error: event.error?.message || String(event.error),
+    stack: event.error?.stack
+  });
+  
+  // Log to localStorage for debugging  
+  try {
+    const errors = JSON.parse(localStorage.getItem('yurucode_window_errors') || '[]');
+    errors.push({
+      type: 'window_error',
+      message: event.message,
+      filename: event.filename,
+      lineno: event.lineno,
+      colno: event.colno,
+      error: event.error?.message || String(event.error),
+      stack: event.error?.stack,
+      timestamp: new Date().toISOString()
+    });
+    // Keep only last 10 errors
+    if (errors.length > 10) {
+      errors.shift();
+    }
+    localStorage.setItem('yurucode_window_errors', JSON.stringify(errors));
+  } catch (e) {
+    mainLogger.error('Failed to store window error', { error: e });
+  }
+  
+  // Don't prevent default to allow React error boundaries to work
+});
 
 // Clear any persisted sessions from localStorage on startup
 const store = useClaudeCodeStore.getState();
@@ -172,7 +241,9 @@ function initApp() {
   if (rootElement) {
     console.log('Creating React root...');
     ReactDOM.createRoot(rootElement).render(
-      <App />
+      <ErrorBoundary name="RootBoundary">
+        <App />
+      </ErrorBoundary>
     );
     console.log('React app rendered');
   } else {
