@@ -83,7 +83,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     globalWatermarkImage, setGlobalWatermark, 
     monoFont, sansFont, setMonoFont, setSansFont, 
     rememberTabs, setRememberTabs, 
-    autoGenerateTitle, setAutoGenerateTitle 
+    autoGenerateTitle, setAutoGenerateTitle,
+    backgroundOpacity, setBackgroundOpacity
   } = useClaudeCodeStore();
   
   
@@ -959,9 +960,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </button>
                 )}
                 {activeTab === 'theme' && (
-                  <div>
-                    <h4>zoom</h4>
-                    <div className="zoom-controls compact">
+                  <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
+                    <div>
+                      <h4>zoom</h4>
+                      <div className="zoom-controls compact">
                     <button 
                       className="zoom-btn small"
                       onClick={handleZoomOut}
@@ -986,6 +988,43 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     <span className="zoom-level compact">{zoomLevel > 0 ? `+${Math.round(zoomLevel * 10)}%` : zoomLevel === 0 ? '±0%' : `${Math.round(zoomLevel * 10)}%`}</span>
                   </div>
                 </div>
+                    
+                    {/* Transparency feature hidden until Tauri v2 supports it */}
+                    {/* <div>
+                      <h4>transparency</h4>
+                      <div className="opacity-controls" style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                        <input
+                          type="range"
+                          min="0"
+                          max="100"
+                          value={backgroundOpacity}
+                          onChange={(e) => {
+                            const value = Number(e.target.value);
+                            setBackgroundOpacity(value);
+                            // Also immediately apply for testing
+                            const alpha = value / 100;
+                            document.body.style.backgroundColor = `rgba(0, 0, 0, ${alpha})`;
+                            console.log('Set body background to:', `rgba(0, 0, 0, ${alpha})`);
+                          }}
+                          style={{
+                            width: '100px',
+                            height: '20px',
+                            background: 'transparent',
+                            outline: 'none',
+                            cursor: 'pointer'
+                          }}
+                        />
+                        <span style={{ 
+                          fontSize: '10px', 
+                          color: '#666',
+                          minWidth: '35px',
+                          textAlign: 'right'
+                        }}>
+                          {backgroundOpacity}%
+                        </span>
+                      </div>
+                    </div> */}
+                  </div>
                 )}
               </div>
 
@@ -1135,7 +1174,17 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       {showAboutModal && (
         <AboutModal 
           isOpen={true} 
-          onClose={() => setShowAboutModal(false)} 
+          onClose={() => setShowAboutModal(false)}
+          onShowUpgrade={() => {
+            // Close AboutModal first, then show UpgradeModal
+            setShowAboutModal(false);
+            // Small delay to ensure AboutModal closes before UpgradeModal opens
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                detail: { reason: 'trial' } 
+              }));
+            }, 100);
+          }}
         />
       )}
     </>

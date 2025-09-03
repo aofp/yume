@@ -6,11 +6,19 @@
   box-sizing: border-box;
 }
 
-/* CSS variables removed - using direct values */
+/* CSS variables for dynamic theming */
+:root {
+  --bg-color: rgba(0, 0, 0, 1);
+  --bg-opacity: 1;
+}
+
+html {
+  background: transparent !important;
+}
 
 body {
   font-family: 'Helvetica Neue', 'Helvetica', 'Inter', 'Segoe UI', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
-  background: #000000;
+  background: var(--bg-color, rgba(0, 0, 0, 1)) !important;
   color: #ffffff;
   overflow: hidden;
 }
@@ -20,7 +28,7 @@ body {
   flex-direction: column;
   height: 100vh;
   max-height: 100vh;
-  background: #000000;
+  background: transparent !important; /* Make app container transparent to show body background */
   padding-top: 0; /* No padding needed - controls are positioned absolutely */
   overflow: hidden;
 }

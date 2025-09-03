@@ -22,7 +22,7 @@ import ErrorBoundary from './components/common/ErrorBoundary';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, rememberTabs, restoreTabs /* , restoreToMessage */ } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -64,8 +64,20 @@ export const App: React.FC = () => {
       document.documentElement.style.setProperty('--font-sans', sansFont);
     }
     
+    // Apply saved background opacity
+    const savedOpacity = localStorage.getItem('yurucode-bg-opacity');
+    if (savedOpacity) {
+      const opacity = Number(savedOpacity);
+      if (!isNaN(opacity) && opacity >= 50 && opacity <= 100) {
+        setBackgroundOpacity(opacity);
+      }
+    } else {
+      // Initialize with default
+      setBackgroundOpacity(100);
+    }
+    
     return () => clearTimeout(checkConnection);
-  }, [loadSessionMappings, monoFont, sansFont]);
+  }, [loadSessionMappings, monoFont, sansFont, setBackgroundOpacity]);
   
   // Restore tabs after store is hydrated from persistence
   useEffect(() => {

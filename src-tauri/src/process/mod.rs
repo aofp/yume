@@ -6,8 +6,5 @@ pub mod registry;
 
 pub use registry::{
     ProcessRegistry,
-    ProcessRegistryState,
     ProcessType,
-    ProcessInfo,
-    ProcessHandle,
 };

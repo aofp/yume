@@ -236,6 +236,10 @@ interface ClaudeCodeStore {
   setMonoFont: (font: string) => void;
   setSansFont: (font: string) => void;
   
+  // Background transparency
+  backgroundOpacity: number;
+  setBackgroundOpacity: (opacity: number) => void;
+  
   // Tab persistence
   setRememberTabs: (remember: boolean) => void;
   saveTabs: () => void;
@@ -456,6 +460,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   isDraggingTab: false, // No tab is being dragged initially
   agents: [], // No agents initially, will load from localStorage
   currentAgentId: null, // No agent selected initially
+  backgroundOpacity: 100, // Default to 100% opacity (fully opaque)
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],
@@ -3539,6 +3544,27 @@ ${content}`;
     // Save to localStorage
     localStorage.setItem('yurucode-sans-font', font);
     console.log('[Store] Set sans font:', font);
+  },
+  
+  setBackgroundOpacity: (opacity: number) => {
+    // Keep at 100% until Tauri v2 supports transparency
+    const fixedOpacity = 100;
+    set({ backgroundOpacity: fixedOpacity });
+    
+    // Apply solid black background
+    const alpha = 1; // Always fully opaque
+    document.documentElement.style.setProperty('--bg-opacity', alpha.toString());
+    
+    // For OLED black background, use solid black
+    const bgColor = 'rgba(0, 0, 0, 1)';
+    document.documentElement.style.setProperty('--bg-color', bgColor);
+    
+    // Also apply directly to body for immediate effect
+    document.body.style.backgroundColor = bgColor;
+    
+    // Save to localStorage (always 100 for now)
+    localStorage.setItem('yurucode-bg-opacity', fixedOpacity.toString());
+    console.log('[Store] Set background opacity:', fixedOpacity, 'alpha:', alpha, 'color:', bgColor);
   },
   
   // Tab persistence

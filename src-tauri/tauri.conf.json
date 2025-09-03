@@ -21,6 +21,7 @@
         "titleBarStyle": "Overlay",
         "decorations": false,
         "transparent": true,
+        "backgroundColor": "#00000000",
         "x": 150,
         "y": 150,
         "width": 516,
@@ -62,7 +63,7 @@
       "minimumSystemVersion": "10.13",
       "exceptionDomain": "",
       "signingIdentity": null,
-      "entitlements": null
+      "entitlements": "entitlements.plist"
     },
     "windows": {
       "certificateThumbprint": null,

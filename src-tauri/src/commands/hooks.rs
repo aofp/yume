@@ -1,6 +1,5 @@
-use crate::hooks::{HookConfig, HookExecutor, HookInput, HookResponse};
+use crate::hooks::{HookExecutor, HookInput, HookResponse};
 use serde_json::Value;
-use tauri::State;
 
 /// Execute a hook with the given configuration and input
 #[tauri::command]

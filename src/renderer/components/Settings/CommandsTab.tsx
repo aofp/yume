@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { invoke } from '@tauri-apps/api/core';
+import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import {
   IconPlus,
   IconTrash,
@@ -257,27 +259,62 @@ export const CommandsTab: React.FC = () => {
   const [newCategory, setNewCategory] = useState<Command['category']>('custom');
   const [newHasParams, setNewHasParams] = useState(false);
   
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDangerous?: boolean;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
+  
   useEffect(() => {
     loadCommands();
   }, []);
   
-  const loadCommands = () => {
-    const saved = localStorage.getItem('yurucode_commands');
-    if (saved) {
-      setCommands(JSON.parse(saved));
-    } else {
-      // Initialize with defaults
-      setCommands(DEFAULT_COMMANDS);
-      localStorage.setItem('yurucode_commands', JSON.stringify(DEFAULT_COMMANDS));
+  const loadCommands = async () => {
+    try {
+      // Try to load from localStorage first (as cache)
+      const saved = localStorage.getItem('yurucode_commands');
+      const cachedCommands = saved ? JSON.parse(saved) : DEFAULT_COMMANDS;
+      
+      // Load all commands (merges file system with cache)
+      const allCommands = await invoke<Command[]>('load_all_commands', {
+        cachedCommands: cachedCommands
+      });
+      
+      setCommands(allCommands);
+      
+      // Update localStorage cache
+      localStorage.setItem('yurucode_commands', JSON.stringify(allCommands));
+      
+      // Migrate any cached-only commands to file system
+      const toMigrate = allCommands.filter(cmd => cmd.id.startsWith('cached-'));
+      if (toMigrate.length > 0) {
+        await invoke('migrate_commands_to_filesystem', { commands: toMigrate });
+      }
+    } catch (err) {
+      console.error('Failed to load commands:', err);
+      // Fallback to localStorage if Tauri commands fail
+      const saved = localStorage.getItem('yurucode_commands');
+      if (saved) {
+        setCommands(JSON.parse(saved));
+      } else {
+        setCommands(DEFAULT_COMMANDS);
+      }
     }
   };
   
-  const saveCommands = (newCommands: Command[]) => {
+  const saveCommands = async (newCommands: Command[]) => {
     setCommands(newCommands);
+    // Always update localStorage as cache
     localStorage.setItem('yurucode_commands', JSON.stringify(newCommands));
+    
+    // Note: Individual commands are saved to file system when added/edited
+    // This function now mainly updates the UI state and cache
   };
   
-  const addCommand = () => {
+  const addCommand = async () => {
     if (!newName) return;
     
     const newCommand: Command = {
@@ -290,8 +327,17 @@ export const CommandsTab: React.FC = () => {
       enabled: true
     };
     
-    const updated = [...commands, newCommand];
-    saveCommands(updated);
+    try {
+      // Save to file system
+      await invoke('save_custom_command', { command: newCommand });
+      
+      // Update local state
+      const updated = [...commands, newCommand];
+      await saveCommands(updated);
+    } catch (err) {
+      console.error('Failed to save command:', err);
+      alert('Failed to save command to file system');
+    }
     
     // Reset form
     setShowAddModal(false);
@@ -312,28 +358,47 @@ export const CommandsTab: React.FC = () => {
     setShowEditModal(true);
   };
   
-  const saveEditedCommand = () => {
+  const saveEditedCommand = async () => {
     if (!editingCommand || !newName) return;
     
-    const updated = commands.map(cmd => 
-      cmd.id === editingCommand.id 
-        ? { 
-            ...cmd, 
-            name: newName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
-            description: newDescription,
-            template: newTemplate,
-            category: newCategory,
-            hasParams: newHasParams
-          }
-        : cmd
-    );
+    const editedCommand = { 
+      ...editingCommand,
+      name: newName.toLowerCase().replace(/[^a-z0-9-]/g, '-'),
+      description: newDescription,
+      template: newTemplate,
+      category: newCategory,
+      hasParams: newHasParams,
+      has_params: newHasParams
+    };
     
-    saveCommands(updated);
-    setShowEditModal(false);
-    setEditingCommand(null);
+    try {
+      // Check if it's a default command (shouldn't save to file system)
+      const isDefault = DEFAULT_COMMANDS.find(d => d.id === editingCommand.id);
+      
+      if (!isDefault) {
+        // Delete old command file if name changed
+        if (editingCommand.name !== editedCommand.name) {
+          await invoke('delete_custom_command', { commandName: editingCommand.name });
+        }
+        // Save new/updated command file
+        await invoke('save_custom_command', { command: editedCommand });
+      }
+      
+      // Update local state
+      const updated = commands.map(cmd => 
+        cmd.id === editingCommand.id ? editedCommand : cmd
+      );
+      
+      await saveCommands(updated);
+      setShowEditModal(false);
+      setEditingCommand(null);
+    } catch (err) {
+      console.error('Failed to save edited command:', err);
+      alert('Failed to save command changes');
+    }
   };
   
-  const deleteCommand = (commandId: string) => {
+  const deleteCommand = async (commandId: string) => {
     // Don't allow deleting default commands
     const command = commands.find(c => c.id === commandId);
     if (command && DEFAULT_COMMANDS.find(d => d.id === commandId)) {
@@ -341,30 +406,86 @@ export const CommandsTab: React.FC = () => {
       return;
     }
     
-    // Use window.confirm explicitly and store result
-    const confirmDelete = window.confirm(`Are you sure you want to delete the command "${command?.trigger || 'this command'}"?`);
+    // Show confirmation modal
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Command',
+      message: `Are you sure you want to delete the command "${command?.name || 'this command'}"? This action cannot be undone.`,
+      isDangerous: true,
+      onConfirm: async () => {
+        console.log('Delete confirmed, removing command:', commandId);
+        
+        try {
+          // Delete from file system if it's a custom command
+          const isDefault = DEFAULT_COMMANDS.find(d => d.id === commandId);
+          if (!isDefault && command) {
+            await invoke('delete_custom_command', { commandName: command.name });
+          }
+          
+          // Update local state
+          const updated = commands.filter(cmd => cmd.id !== commandId);
+          await saveCommands(updated);
+        } catch (err) {
+          console.error('Failed to delete command:', err);
+          alert('Failed to delete command from file system');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
+  };
+  
+  const toggleCommand = async (commandId: string) => {
+    const command = commands.find(c => c.id === commandId);
+    if (!command) return;
     
-    if (!confirmDelete) {
-      console.log('Delete cancelled');
-      return;
+    const toggledCommand = { ...command, enabled: !command.enabled };
+    
+    try {
+      // Save to file system if it's a custom command
+      const isDefault = DEFAULT_COMMANDS.find(d => d.id === commandId);
+      if (!isDefault) {
+        await invoke('save_custom_command', { command: toggledCommand });
+      }
+      
+      // Update local state
+      const updated = commands.map(cmd => 
+        cmd.id === commandId ? toggledCommand : cmd
+      );
+      await saveCommands(updated);
+    } catch (err) {
+      console.error('Failed to toggle command:', err);
     }
-    
-    console.log('Delete confirmed, removing command:', commandId);
-    const updated = commands.filter(cmd => cmd.id !== commandId);
-    saveCommands(updated);
   };
   
-  const toggleCommand = (commandId: string) => {
-    const updated = commands.map(cmd => 
-      cmd.id === commandId ? { ...cmd, enabled: !cmd.enabled } : cmd
-    );
-    saveCommands(updated);
-  };
-  
-  const resetToDefaults = () => {
-    if (!confirm('Reset all commands to defaults? Your custom commands will be lost.')) return;
-    
-    saveCommands(DEFAULT_COMMANDS);
+  const resetToDefaults = async () => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Reset to Defaults',
+      message: 'Reset all commands to defaults? Your custom commands will be permanently deleted.',
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          // Delete all custom command files
+          const customCommands = commands.filter(cmd => !DEFAULT_COMMANDS.find(d => d.id === cmd.id));
+          for (const cmd of customCommands) {
+            try {
+              await invoke('delete_custom_command', { commandName: cmd.name });
+            } catch (err) {
+              console.error('Failed to delete command file:', cmd.name, err);
+            }
+          }
+          
+          // Reset to defaults
+          await saveCommands(DEFAULT_COMMANDS);
+        } catch (err) {
+          console.error('Failed to reset commands:', err);
+          alert('Failed to reset commands');
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
   
   const getCategoryIcon = (category: string) => {
@@ -402,12 +523,23 @@ export const CommandsTab: React.FC = () => {
   
   return (
     <>
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous={confirmModal.isDangerous}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
           <div>
             <h4 style={{ fontSize: '12px', color: '#fff', margin: '0 0 4px 0' }}>Custom Commands</h4>
             <p style={{ fontSize: '10px', color: '#666', margin: 0 }}>
-              Define slash commands like Claudia (.claude/commands/)
+              Commands are stored in ~/.claude/commands/
             </p>
           </div>
           <div style={{ display: 'flex', gap: '6px' }}>
@@ -552,7 +684,8 @@ export const CommandsTab: React.FC = () => {
                           onClick={(e) => {
                             e.preventDefault();
                             e.stopPropagation();
-                            deleteCommand(command.id);
+                            // Add small delay to prevent accidental clicks
+                            setTimeout(() => deleteCommand(command.id), 100);
                           }}
                           style={{
                             background: 'transparent',

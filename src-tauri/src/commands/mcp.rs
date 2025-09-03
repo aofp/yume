@@ -1,6 +1,5 @@
 use crate::mcp::{MCPManager, MCPServer, AddServerResult, ImportResult};
 use std::collections::HashMap;
-use tauri::State;
 
 #[tauri::command]
 pub async fn mcp_list(app: tauri::AppHandle) -> Result<Vec<MCPServer>, String> {

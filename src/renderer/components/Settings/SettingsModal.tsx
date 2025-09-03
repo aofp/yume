@@ -623,7 +623,20 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
         />
       )}
       {showAboutModal && (
-        <AboutModal isOpen={showAboutModal} onClose={() => setShowAboutModal(false)} />
+        <AboutModal 
+          isOpen={showAboutModal} 
+          onClose={() => setShowAboutModal(false)} 
+          onShowUpgrade={() => {
+            // Close AboutModal first, then show UpgradeModal
+            setShowAboutModal(false);
+            // Small delay to ensure AboutModal closes before UpgradeModal opens
+            setTimeout(() => {
+              window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                detail: { reason: 'trial' } 
+              }));
+            }, 100);
+          }}
+        />
       )}
     </>
   );

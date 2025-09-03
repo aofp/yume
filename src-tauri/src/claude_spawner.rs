@@ -1,17 +1,14 @@
 use anyhow::{anyhow, Result};
-use std::path::Path;
 use std::process::Stdio;
 use std::sync::Arc;
-use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
+use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
 use tauri::{AppHandle, Emitter};
 use tracing::{debug, error, info, warn};
-use tokio::sync::Mutex;
 
 use crate::claude_binary::{find_claude_binary, create_command_with_env};
 use crate::claude_session::{
-    SessionInfo, SessionIdResult, SessionManager,
-    extract_session_id_from_child, generate_synthetic_session_id,
+    SessionInfo, SessionManager, generate_synthetic_session_id,
 };
 use crate::process::{ProcessRegistry, ProcessType};
 use crate::stream_parser::{StreamProcessor, ClaudeStreamMessage};
@@ -78,7 +75,7 @@ impl ClaudeSpawner {
         info!("Spawning Claude with command: {:?}", cmd);
         
         // Spawn the process
-        let mut child = cmd
+        let child = cmd
             .spawn()
             .map_err(|e| anyhow!("Failed to spawn Claude process: {}", e))?;
 

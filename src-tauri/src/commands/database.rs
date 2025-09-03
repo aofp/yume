@@ -1,7 +1,3 @@
-/// Database commands for yurucode
-/// Provides SQLite persistence for sessions, messages, and analytics
-
-use serde::{Deserialize, Serialize};
 use tauri::State;
 use crate::db::{Database, Session, Message, Analytics};
 use crate::state::AppState;

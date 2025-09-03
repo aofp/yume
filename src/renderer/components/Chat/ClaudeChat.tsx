@@ -552,9 +552,34 @@ export const ClaudeChat: React.FC = () => {
   }, [currentSession?.runningBash, currentSession?.userBashRunning, currentSessionId, bashStartTimes[currentSessionId]]);
 
   // Speech recognition for dictation
-  const startDictation = useCallback(() => {
+  const startDictation = useCallback(async () => {
+    // Check if Speech Recognition API is available
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
-      console.error('[Dictation] Speech recognition not supported');
+      console.error('[Dictation] Speech recognition not supported in this environment');
+      
+      // Show user-friendly error
+      const errorMsg = 'Dictation is not available. On macOS, please ensure:\n\n' +
+                       '1. yurucode has microphone permission in System Settings > Privacy & Security > Microphone\n' +
+                       '2. Dictation is enabled in System Settings > Keyboard > Dictation\n' +
+                       '3. Restart the app after granting permissions';
+      alert(errorMsg);
+      return;
+    }
+
+    // Check microphone permission first
+    try {
+      // Request microphone permission if needed
+      if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+        console.log('[Dictation] Requesting microphone permission...');
+        await navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
+          // Stop the stream immediately, we just needed permission
+          stream.getTracks().forEach(track => track.stop());
+          console.log('[Dictation] Microphone permission granted');
+        });
+      }
+    } catch (err) {
+      console.error('[Dictation] Microphone permission error:', err);
+      alert('Microphone access denied. Please grant microphone permission to use dictation.');
       return;
     }
 
@@ -564,9 +589,10 @@ export const ClaudeChat: React.FC = () => {
     recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
+    recognition.maxAlternatives = 1;
     
     recognition.onstart = () => {
-      console.log('[Dictation] Started');
+      console.log('[Dictation] Started successfully');
       setIsDictating(true);
     };
     
@@ -588,11 +614,35 @@ export const ClaudeChat: React.FC = () => {
           const newText = prev + (prev && !prev.endsWith(' ') ? ' ' : '') + finalTranscript;
           return newText;
         });
+        console.log('[Dictation] Transcribed:', finalTranscript);
       }
     };
     
     recognition.onerror = (event: any) => {
-      console.error('[Dictation] Error:', event.error);
+      console.error('[Dictation] Error:', event.error, event);
+      
+      let errorMsg = 'Dictation error: ';
+      switch(event.error) {
+        case 'not-allowed':
+          errorMsg += 'Microphone access denied. Please grant permission in System Settings.';
+          break;
+        case 'no-speech':
+          errorMsg += 'No speech detected. Please try again.';
+          break;
+        case 'network':
+          errorMsg += 'Network error. Please check your internet connection.';
+          break;
+        case 'aborted':
+          errorMsg += 'Dictation was aborted.';
+          break;
+        default:
+          errorMsg += event.error;
+      }
+      
+      if (event.error !== 'no-speech' && event.error !== 'aborted') {
+        alert(errorMsg);
+      }
+      
       setIsDictating(false);
       recognitionRef.current = null;
     };
@@ -604,7 +654,16 @@ export const ClaudeChat: React.FC = () => {
     };
     
     recognitionRef.current = recognition;
-    recognition.start();
+    
+    try {
+      recognition.start();
+      console.log('[Dictation] Starting recognition...');
+    } catch (err) {
+      console.error('[Dictation] Failed to start:', err);
+      setIsDictating(false);
+      recognitionRef.current = null;
+      alert('Failed to start dictation. Please try again.');
+    }
   }, []);
   
   const stopDictation = useCallback(() => {
@@ -1814,20 +1873,24 @@ export const ClaudeChat: React.FC = () => {
       toggleModel();
     } else {
       // Check if this is a custom command
-      const customCommands = JSON.parse(localStorage.getItem('custom_commands') || '[]');
+      const customCommands = JSON.parse(localStorage.getItem('yurucode_commands') || '[]');
       const customCommand = customCommands.find((cmd: any) => {
-        const trigger = cmd.trigger.startsWith('/') ? cmd.trigger : '/' + cmd.trigger;
-        return trigger === command;
+        const trigger = cmd.name.startsWith('/') ? cmd.name : '/' + cmd.name;
+        return trigger === command && cmd.enabled;
       });
       
       if (customCommand) {
-        // Execute custom command script
+        // Execute custom command
         setInput('');
         setCommandTrigger(null);
         
-        // Replace the input with the script content and send it
-        if (customCommand.script) {
-          setInput(customCommand.script);
+        // Replace $ARGUMENTS placeholder with any arguments passed to the command
+        const args = arguments.length > 1 ? arguments.slice(1).join(' ') : '';
+        const template = customCommand.template || customCommand.script || '';
+        const finalContent = template.replace('$ARGUMENTS', args);
+        
+        if (finalContent) {
+          setInput(finalContent);
           setTimeout(() => {
             handleSend();
           }, 0);
@@ -2453,72 +2516,15 @@ export const ClaudeChat: React.FC = () => {
         <div className="context-bar">
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
           
-          {/* Button group - all buttons together */}
-          <div className="dictation-button-group" style={{
-            position: 'absolute',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 1,
-            display: 'flex',
-            gap: '4px',
-            alignItems: 'center'
-          }}>
-            {/* Checkpoint button - REMOVED: Overengineered feature */}
-            {/* {FEATURE_FLAGS.ENABLE_CHECKPOINTS && currentSessionId && (
-              <React.Suspense fallback={null}>
-                <CheckpointButton
-                  sessionId={currentSessionId}
-                  messageCount={currentSession?.messages?.length || 0}
-                  onCheckpointCreated={(checkpoint) => {
-                    console.log('Checkpoint created:', checkpoint);
-                  }}
-                />
-              </React.Suspense>
-            )} */}
-            
-            {/* Timeline toggle button - REMOVED: Unnecessary complexity */}
-            {/* {FEATURE_FLAGS.SHOW_TIMELINE && currentSessionId && (
-              <button
-                className={`btn-dictation ${showTimeline ? 'active' : ''}`}
-                onClick={() => setShowTimeline(!showTimeline)}
-                title="Toggle timeline"
-                disabled={currentSession?.readOnly}
-              >
-                <IconGitBranch size={14} />
-              </button>
-            )} */}
-            
-            {/* Agent executor button */}
-            {FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && currentSessionId && (
-              <button
-                className={`btn-dictation ${showAgentExecutor ? 'active' : ''}`}
-                onClick={() => setShowAgentExecutor(!showAgentExecutor)}
-                title="Execute agent"
-                disabled={currentSession?.readOnly}
-                style={{
-                  transition: 'color 0.2s ease',
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.color = 'var(--accent-color)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.color = showAgentExecutor ? 'var(--accent-color)' : '';
-                }}
-              >
-                <IconRobot size={14} />
-              </button>
-            )}
-            
-            {/* Dictation button */}
-            <button
-              className={`btn-dictation ${isDictating ? 'active' : ''}`}
-              onClick={toggleDictation}
-              title={isDictating ? "stop dictation (ctrl+e)" : "start dictation (ctrl+e)"}
-              disabled={currentSession?.readOnly}
-            >
-              {isDictating ? <IconMicrophone size={14} /> : <IconMicrophoneOff size={14} />}
-            </button>
-          </div>
+          {/* Dictation button */}
+          <button
+            className={`btn-dictation ${isDictating ? 'active' : ''}`}
+            onClick={toggleDictation}
+            title={isDictating ? "stop dictation (ctrl+e)" : "start dictation (ctrl+e)"}
+            disabled={currentSession?.readOnly}
+          >
+            {isDictating ? <IconMicrophone size={14} /> : <IconMicrophoneOff size={14} />}
+          </button>
           
           <div className="context-info">
             {(() => {
@@ -2545,9 +2551,9 @@ export const ClaudeChat: React.FC = () => {
               }
               
               // Determine usage class and auto-compact status
-              const usageClass = percentageNum >= 96 ? 'critical' : percentageNum >= 90 ? 'high' : 'low';
-              const willAutoCompact = percentageNum >= 96;
-              const approachingCompact = percentageNum >= 90 && percentageNum < 96;
+              const usageClass = percentageNum >= 97 ? 'critical' : percentageNum >= 90 ? 'high' : 'low';
+              const willAutoCompact = percentageNum >= 97;
+              const approachingCompact = percentageNum >= 90 && percentageNum < 97;
               
               const hasActivity = currentSession.messages.some(m => 
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
@@ -2595,7 +2601,7 @@ export const ClaudeChat: React.FC = () => {
                     onClick={() => setShowStatsModal(true)}
                     disabled={false}
                     title={hasActivity ? 
-                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 96%' : ''} - click for details (ctrl+.)` : 
+                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 97%' : ''} - click for details (ctrl+.)` : 
                       `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
                   >
                     {willAutoCompact ? '⚠️ ' : ''}{percentage}%

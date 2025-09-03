@@ -15,39 +15,10 @@ pub mod database;
 pub mod hooks;
 pub mod compaction;
 pub mod mcp;
+pub mod custom_commands;
 
-// Re-export all Claude commands for easier access
-pub use claude_commands::{
-    spawn_claude_session,
-    send_claude_message,
-    resume_claude_session,
-    interrupt_claude_session,
-    clear_claude_context,
-    get_session_info,
-    get_token_stats,
-    list_active_sessions,
-    get_session_output,
-};
-
-pub use claude_info::{
-    get_claude_binary_info,
-};
-
-// Re-export database commands
-pub use database::{
-    db_save_session,
-    db_load_session,
-    db_load_all_sessions,
-    db_delete_session,
-    db_save_message,
-    db_load_messages,
-    db_save_analytics,
-    db_load_analytics,
-    db_get_statistics,
-    db_clear_all_data,
-    db_export_data,
-    db_import_data,
-};
+// Re-export custom commands directly so they're available at commands:: level
+pub use custom_commands::*;
 
 use serde::{Deserialize, Serialize};
 use tauri::{State, Window, Emitter};
@@ -887,8 +858,7 @@ pub fn clear_server_logs() -> Result<(), String> {
 /// Load Claude agents from ~/.claude/agents directory (global agents)
 #[tauri::command]
 pub fn load_claude_agents() -> Result<Vec<ClaudeAgent>, String> {
-    use std::fs;
-    use std::path::Path;
+    // Imports cleaned up
     
     let home_dir = dirs::home_dir()
         .ok_or_else(|| "Could not determine home directory".to_string())?;

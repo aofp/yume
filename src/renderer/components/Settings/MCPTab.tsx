@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { 
   IconPlus, IconTrash, IconRefresh,
   IconAlertCircle, IconCheck, IconLoader2,
@@ -19,6 +20,15 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
   const [testingServer, setTestingServer] = useState<string | null>(null);
   const [removingServer, setRemovingServer] = useState<string | null>(null);
   const [notification, setNotification] = useState<{ message: string; type: 'error' | 'success' | 'info' } | null>(null);
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDangerous?: boolean;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
   
   // Form state for new server
   const [formData, setFormData] = useState({
@@ -114,22 +124,27 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
     }
   };
 
-  const handleRemoveServer = async (name: string) => {
-    if (!window.confirm(`Remove MCP server "${name}"?`)) {
-      return;
-    }
-    
-    try {
-      setRemovingServer(name);
-      await mcpService.removeServer(name);
-      await loadServers();
-      showNotification(`Server "${name}" removed`, 'success');
-    } catch (error) {
-      console.error('Failed to remove server:', error);
-      showNotification('Failed to remove server', 'error');
-    } finally {
-      setRemovingServer(null);
-    }
+  const handleRemoveServer = (name: string) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Remove MCP Server',
+      message: `Are you sure you want to remove the MCP server "${name}"?`,
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          setRemovingServer(name);
+          await mcpService.removeServer(name);
+          await loadServers();
+          showNotification(`Server "${name}" removed`, 'success');
+        } catch (error) {
+          console.error('Failed to remove server:', error);
+          showNotification('Failed to remove server', 'error');
+        } finally {
+          setRemovingServer(null);
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
+        }
+      }
+    });
   };
 
   const handleTestConnection = async (name: string) => {
@@ -207,6 +222,17 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
 
   return (
     <div className="mcp-tab">
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Remove"
+        cancelText="Cancel"
+        isDangerous={confirmModal.isDangerous}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
       {/* Notification */}
       {notification && (
         <div className={`mcp-notification ${notification.type}`}>

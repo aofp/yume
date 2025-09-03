@@ -1,6 +1,6 @@
 .titlebar-wrapper {
   height: 28px;
-  background: #000000;
+  background: transparent; /* Show body background through */
   display: flex !important;
   align-items: center;
   position: fixed;
@@ -178,7 +178,7 @@
   z-index: 9999;
   pointer-events: auto !important;
   /* Solid background to block drag */
-  background: #000000;
+  background: var(--bg-color, #000000);
   /* Isolate from parent drag */
   isolation: isolate;
 }
@@ -273,7 +273,7 @@
 }
 
 .stats-modal {
-  background: #000000;
+  background: var(--bg-color, #000000);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 8px;
   width: 400px;

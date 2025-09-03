@@ -1149,7 +1149,20 @@ export const SessionTabs: React.FC = () => {
       
       {/* RecentProjectsModal removed - handled by ClaudeChat component */}
       
-      {showAbout && <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} />}
+      {showAbout && <AboutModal 
+        isOpen={showAbout} 
+        onClose={() => setShowAbout(false)} 
+        onShowUpgrade={() => {
+          // Close AboutModal first, then show UpgradeModal
+          setShowAbout(false);
+          // Small delay to ensure AboutModal closes before UpgradeModal opens
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+              detail: { reason: 'trial' } 
+            }));
+          }, 100);
+        }}
+      />}
     </div>
   );
 };

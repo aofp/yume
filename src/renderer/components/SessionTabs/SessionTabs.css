@@ -1,5 +1,5 @@
 .session-tabs {
-  background: #000000;
+  background: transparent; /* Show body background through */
   border-bottom: 1px solid rgba(255, 255, 255, 0.2);
   height: 32px; /* Fixed height - no wrapping */
   display: flex;

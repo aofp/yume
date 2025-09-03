@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { 
   IconPlayerPlay,
   IconPlus,
@@ -36,6 +37,15 @@ export const HooksTab: React.FC<HooksTabProps> = ({
   const [customHookEvent, setCustomHookEvent] = useState('user_prompt_submit');
   const [customHookDescription, setCustomHookDescription] = useState('');
   const [customHookScript, setCustomHookScript] = useState('');
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDangerous?: boolean;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   useEffect(() => {
     loadCustomHooks();
@@ -165,44 +175,70 @@ export const HooksTab: React.FC<HooksTabProps> = ({
 
   const deleteCustomHook = (hookId: string) => {
     const hook = customHooks.find(h => h.id === hookId);
-    if (hook && confirm(`Delete custom hook "${hook.name}"?`)) {
-      const updated = customHooks.filter(h => h.id !== hookId);
-      setCustomHooks(updated);
-      localStorage.setItem('custom_hooks', JSON.stringify(updated));
-    }
+    if (!hook) return;
+    
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Custom Hook',
+      message: `Are you sure you want to delete the custom hook "${hook.name}"? This action cannot be undone.`,
+      isDangerous: true,
+      onConfirm: () => {
+        const updated = customHooks.filter(h => h.id !== hookId);
+        setCustomHooks(updated);
+        localStorage.setItem('custom_hooks', JSON.stringify(updated));
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
+    });
   };
 
   const resetAllToDefaults = () => {
-    if (!confirm('This will reset all yurucode hooks to their default scripts. Are you sure?')) {
-      return;
-    }
-    
-    // Reset all hooks to defaults
-    const defaultStates: any = {};
-    const defaultScripts: any = {};
-    
-    YURUCODE_HOOKS.forEach(hook => {
-      defaultStates[hook.id] = true; // All enabled by default
-      defaultScripts[hook.id] = hook.script;
-      
-      // Save to localStorage
-      localStorage.setItem(`hook_${hook.id}_enabled`, 'true');
-      localStorage.setItem(`hook_${hook.id}_script`, hook.script);
-      
-      // Save to hooksService
-      hooksService.saveHook(hook.id, { 
-        enabled: true, 
-        script: hook.script,
-        name: hook.name
-      });
+    setConfirmModal({
+      isOpen: true,
+      title: 'Reset Hooks to Defaults',
+      message: 'This will reset all yurucode hooks to their default scripts. Your custom hooks and modifications will be lost. Are you sure?',
+      isDangerous: true,
+      onConfirm: () => {
+        // Reset all hooks to defaults
+        const defaultStates: any = {};
+        const defaultScripts: any = {};
+        
+        YURUCODE_HOOKS.forEach(hook => {
+          defaultStates[hook.id] = true; // All enabled by default
+          defaultScripts[hook.id] = hook.script;
+          
+          // Save to localStorage
+          localStorage.setItem(`hook_${hook.id}_enabled`, 'true');
+          localStorage.setItem(`hook_${hook.id}_script`, hook.script);
+          
+          // Save to hooksService
+          hooksService.saveHook(hook.id, { 
+            enabled: true, 
+            script: hook.script,
+            name: hook.name
+          });
+        });
+        
+        setSelectedHooks(defaultStates);
+        setHookScripts(defaultScripts);
+        setConfirmModal(prev => ({ ...prev, isOpen: false }));
+      }
     });
-    
-    setSelectedHooks(defaultStates);
-    setHookScripts(defaultScripts);
   };
 
   return (
     <>
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText={confirmModal.title.includes('Delete') ? 'Delete' : 'Reset'}
+        cancelText="Cancel"
+        isDangerous={confirmModal.isDangerous}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
+      
       {/* Built-in Hooks */}
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>

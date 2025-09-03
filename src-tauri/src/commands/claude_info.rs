@@ -1,7 +1,7 @@
 /// Claude binary information command
 /// Provides info about Claude installations for display in settings
 
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tracing::info;
 use crate::claude_binary::{discover_claude_installations, ClaudeInstallation};
 

@@ -30,7 +30,6 @@ use tracing::{info, error};
 
 use claude::ClaudeManager;
 use state::AppState;
-use config::ProductionConfig;
 
 /// Main entry point for the Tauri application
 /// This function sets up the entire application infrastructure:
@@ -124,6 +123,33 @@ pub fn run() {
                 let app_handle = app.handle().clone();
                 tauri::async_runtime::block_on(async move {
                     restore_window_state(&window_clone, &app_handle).await;
+                });
+            }
+            
+            
+            // Add window event listener to configure transparency after page loads
+            {
+                let window_for_transparency = window.clone();
+                window.listen("DOMContentLoaded", move |_| {
+                    // Inject transparency styles after DOM is ready
+                    let _ = window_for_transparency.eval(r#"
+                        // Force webview transparency
+                        document.documentElement.style.setProperty('background', 'transparent', 'important');
+                        document.documentElement.style.setProperty('background-color', 'transparent', 'important');
+                        
+                        // Create observer to maintain transparency
+                        const observer = new MutationObserver(() => {
+                            if (document.documentElement.style.backgroundColor !== 'transparent') {
+                                document.documentElement.style.backgroundColor = 'transparent';
+                            }
+                        });
+                        observer.observe(document.documentElement, { 
+                            attributes: true, 
+                            attributeFilter: ['style'] 
+                        });
+                        
+                        console.log('Transparency enforced via DOMContentLoaded');
+                    "#);
                 });
             }
             
@@ -325,8 +351,10 @@ pub fn run() {
             // - Black OLED-optimized background
             #[cfg(target_os = "macos")]
             {
-                use cocoa::base::{id, YES, NO};
+                use cocoa::base::{id, nil, YES, NO};
                 use cocoa::appkit::NSWindowTitleVisibility;
+                use cocoa::foundation::NSString;
+                use std::ffi::CStr;
                 
                 let ns_window = window.ns_window().unwrap() as id;
                 
@@ -368,10 +396,49 @@ pub fn run() {
                     // Make the window transparent
                     let _: () = msg_send![ns_window, setOpaque: NO];
                     
-                    // Set the layer background to black
-                    let black: id = msg_send![class!(NSColor), blackColor];
-                    let black_cg: id = msg_send![black, CGColor];
-                    let _: () = msg_send![layer, setBackgroundColor: black_cg];
+                    // Set the layer background to clear for transparency
+                    // Do NOT set to black as it prevents transparency
+                    let clear_cg: id = msg_send![clear, CGColor];
+                    let _: () = msg_send![layer, setBackgroundColor: clear_cg];
+                    
+                    // CRITICAL: Configure the WKWebView for transparency
+                    // This is the missing piece that makes webview transparency work
+                    let subviews: id = msg_send![content_view, subviews];
+                    let count: usize = msg_send![subviews, count];
+                    
+                    // Find and configure the WKWebView
+                    for i in 0..count {
+                        let subview: id = msg_send![subviews, objectAtIndex:i];
+                        let class: id = msg_send![subview, class];
+                        let class_name: id = msg_send![class, description];
+                        let class_name_str: *const i8 = msg_send![class_name, UTF8String];
+                        
+                        if !class_name_str.is_null() {
+                            let class_name_rust = CStr::from_ptr(class_name_str).to_str().unwrap_or("");
+                            
+                            if class_name_rust.contains("WKWebView") {
+                                // Make WKWebView transparent
+                                let _: () = msg_send![subview, setOpaque: NO];
+                                
+                                // Set WKWebView layer for transparency
+                                let _: () = msg_send![subview, setWantsLayer: YES];
+                                let webview_layer: id = msg_send![subview, layer];
+                                let _: () = msg_send![webview_layer, setBackgroundColor: clear_cg];
+                                let _: () = msg_send![webview_layer, setOpaque: NO];
+                                
+                                // Use _drawsBackground and _backgroundColor for WKWebView
+                                // These are private properties that control the background
+                                let no_value: id = msg_send![class!(NSNumber), numberWithBool: NO];
+                                let _: () = msg_send![subview, setValue:no_value forKey:NSString::alloc(nil).init_str("_drawsBackground")];
+                                let _: () = msg_send![subview, setValue:clear forKey:NSString::alloc(nil).init_str("_backgroundColor")];
+                                
+                                info!("Configured WKWebView for transparency");
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // Note: WKWebView configuration happens in the window.eval() section below
                 }
             }
 
@@ -529,12 +596,38 @@ pub fn run() {
                 console.log('Document body:', document.body ? 'exists' : 'missing');
                 console.log('Root element:', document.getElementById('root'));
                 
+                // Set up transparency support with webkit-specific styles
+                document.documentElement.style.backgroundColor = 'transparent';
+                document.documentElement.style.background = 'transparent';
+                if (document.body) {
+                    document.body.style.backgroundColor = 'rgba(0, 0, 0, 1)';
+                    document.body.style.background = 'rgba(0, 0, 0, 1)';
+                }
+                
                 const style = document.createElement('style');
                 style.textContent = `
+                    :root {
+                        --bg-color: rgba(0, 0, 0, 1);
+                        --bg-opacity: 1;
+                    }
+                    
+                    html {
+                        background-color: transparent !important;
+                        background: transparent !important;
+                        -webkit-app-region: no-drag;
+                    }
+                    
                     body {
-                        background: #000000 !important;
+                        background: var(--bg-color, rgba(0, 0, 0, 1)) !important;
+                        background-color: var(--bg-color, rgba(0, 0, 0, 1)) !important;
                         -webkit-user-select: none;
                         user-select: none;
+                        -webkit-app-region: no-drag;
+                    }
+                    
+                    /* WebKit-specific transparency */
+                    ::-webkit-scrollbar-corner {
+                        background: transparent;
                     }
                     
                     ::-webkit-scrollbar {
@@ -683,6 +776,15 @@ pub fn run() {
             agents::load_default_agents,
             agents::create_agent,
             agents::delete_agent,
+            // Custom commands operations
+            commands::load_custom_commands,
+            commands::load_project_commands,
+            commands::save_custom_command,
+            commands::save_project_command,
+            commands::delete_custom_command,
+            commands::delete_project_command,
+            commands::load_all_commands,
+            commands::migrate_commands_to_filesystem,
         ])
         .on_window_event(|app_handle, event| {
             // Global window event handler for app-level lifecycle

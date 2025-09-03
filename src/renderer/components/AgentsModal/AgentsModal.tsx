@@ -19,6 +19,7 @@ import {
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { TabButton } from '../common/TabButton';
+import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import './AgentsModal.css';
 
 // Agent structure - simplified
@@ -63,6 +64,15 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     model: 'opus', // Default to latest model
     system_prompt: ''
   });
+  
+  // Confirmation modal state
+  const [confirmModal, setConfirmModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    message: string;
+    onConfirm: () => void;
+    isDangerous?: boolean;
+  }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
   // Get current agents based on scope
   const currentAgents = useMemo(() => {
@@ -157,29 +167,37 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   }, [formData, selectedAgent, agentScope, currentDirectory, globalAgents, projectAgents]);
 
   // Delete agent with confirmation
-  const handleDelete = useCallback(async (agent: Agent) => {
-    if (confirm(`Delete agent "${agent.name}"? This cannot be undone.`)) {
-      try {
-        // Delete from filesystem
-        if (agentScope === 'global') {
-          await invoke('delete_global_agent', { agentName: agent.name });
-          setGlobalAgents(globalAgents.filter(a => a.id !== agent.id));
-        } else if (currentDirectory) {
-          await invoke('delete_project_agent', { agentName: agent.name, directory: currentDirectory });
-          setProjectAgents(projectAgents.filter(a => a.id !== agent.id));
+  const handleDelete = useCallback((agent: Agent) => {
+    setConfirmModal({
+      isOpen: true,
+      title: 'Delete Agent',
+      message: `Are you sure you want to delete the agent "${agent.name}"? This action cannot be undone.`,
+      isDangerous: true,
+      onConfirm: async () => {
+        try {
+          // Delete from filesystem
+          if (agentScope === 'global') {
+            await invoke('delete_global_agent', { agentName: agent.name });
+            setGlobalAgents(globalAgents.filter(a => a.id !== agent.id));
+          } else if (currentDirectory) {
+            await invoke('delete_project_agent', { agentName: agent.name, directory: currentDirectory });
+            setProjectAgents(projectAgents.filter(a => a.id !== agent.id));
+          }
+          
+          if (selectedAgent?.id === agent.id) {
+            setSelectedAgent(null);
+            setEditMode(false);
+          }
+          
+          console.log('Agent deleted:', agent.name);
+        } catch (err) {
+          console.error('Failed to delete agent:', err);
+          alert(`Failed to delete agent: ${err}`);
+        } finally {
+          setConfirmModal(prev => ({ ...prev, isOpen: false }));
         }
-        
-        if (selectedAgent?.id === agent.id) {
-          setSelectedAgent(null);
-          setEditMode(false);
-        }
-        
-        console.log('Agent deleted:', agent.name);
-      } catch (err) {
-        console.error('Failed to delete agent:', err);
-        alert(`Failed to delete agent: ${err}`);
       }
-    }
+    });
   }, [agentScope, currentDirectory, globalAgents, projectAgents, selectedAgent]);
 
   // Duplicate an agent
@@ -331,8 +349,21 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   if (!isOpen) return null;
 
   return (
-    <div className="agents-modal-overlay" onClick={onClose}>
-      <div className="agents-modal" onClick={e => e.stopPropagation()}>
+    <>
+      {/* Confirmation Modal */}
+      <ConfirmModal
+        isOpen={confirmModal.isOpen}
+        title={confirmModal.title}
+        message={confirmModal.message}
+        confirmText="Delete"
+        cancelText="Cancel"
+        isDangerous={confirmModal.isDangerous}
+        onConfirm={confirmModal.onConfirm}
+        onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
+      />
+      
+      <div className="agents-modal-overlay" onClick={onClose}>
+        <div className="agents-modal" onClick={e => e.stopPropagation()}>
         <div className="agents-header" data-tauri-drag-region>
           <div className="agents-header-left" data-tauri-drag-region>
             <div className="agents-title" data-tauri-drag-region>
@@ -385,11 +416,11 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                 <div className="agents-empty">
                   {searchQuery ? 'no agents match your search' : (
                     <>
-                      <div>no agents yet</div>
+                      <div style={{ marginBottom: 20 }}>no agents yet</div>
                       <div
                         className="agent-item add-agent-item"
                         onClick={handleCreateNew}
-                        style={{ marginTop: 16, cursor: 'pointer' }}
+                        style={{ cursor: 'pointer' }}
                       >
                         <div className="agent-info">
                           <IconPlus size={14} style={{ marginRight: 8 }} />
@@ -528,5 +559,6 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
         </div>
       </div>
     </div>
+    </>
   );
 };

@@ -107,7 +107,7 @@ class HooksConfigService {
           notice: 70,
           warning: 85,
           critical: 95,
-          auto_compact: 96,
+          auto_compact: 97,
           force_compact: 98
         },
         metadata: {
@@ -359,7 +359,7 @@ class HooksConfigService {
     const growthRate = (recentUsage[recentUsage.length - 1] - recentUsage[0]) / recentUsage.length;
     
     const currentUsage = usage[usage.length - 1];
-    const threshold = this.config.context_guard?.thresholds?.auto_compact || 96;
+    const threshold = this.config.context_guard?.thresholds?.auto_compact || 97;
     
     if (growthRate <= 0) {
       return { willOverflow: false, timeRemaining: Infinity };

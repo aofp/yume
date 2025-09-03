@@ -8,10 +8,7 @@ use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
 use tracing::{debug, error, info};
 
-use crate::claude_session::SessionManager;
-use crate::claude_spawner::{ClaudeSpawner, SpawnOptions, SpawnResult};
-use crate::claude_binary::ClaudeInstallation;
-use crate::process::ProcessRegistry;
+use crate::claude_spawner::{ClaudeSpawner, SpawnOptions};
 use crate::state::AppState;
 
 /// Request structure for spawning a new Claude session

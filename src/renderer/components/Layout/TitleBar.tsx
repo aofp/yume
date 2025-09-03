@@ -115,7 +115,20 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
           </div>
         </div>
       </div>
-      <AboutModal isOpen={showAboutModal} onClose={() => setShowAboutModal(false)} />
+      <AboutModal 
+        isOpen={showAboutModal} 
+        onClose={() => setShowAboutModal(false)} 
+        onShowUpgrade={() => {
+          // Close AboutModal first, then show UpgradeModal
+          setShowAboutModal(false);
+          // Small delay to ensure AboutModal closes before UpgradeModal opens
+          setTimeout(() => {
+            window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+              detail: { reason: 'trial' } 
+            }));
+          }, 100);
+        }}
+      />
     </div>
   );
 };

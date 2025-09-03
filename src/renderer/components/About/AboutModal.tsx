@@ -67,8 +67,20 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
               }}
               onClick={() => {
                 if (!isLicensed && onShowUpgrade) {
+                  // If we have an onShowUpgrade callback, use it
+                  // This will close the AboutModal first when called from Settings
                   onShowUpgrade();
+                } else if (!isLicensed) {
+                  // If no callback but not licensed, close modal and show upgrade
+                  onClose();
+                  // Small delay to ensure modal closes before upgrade opens
+                  setTimeout(() => {
+                    window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                      detail: { reason: 'trial' } 
+                    }));
+                  }, 100);
                 } else {
+                  // If licensed, just close
                   onClose();
                 }
               }}
@@ -78,7 +90,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
                   clearLicense();
                 }
               }}
-              title={isLicensed ? 'right-click to forget license' : ''}
+              title={isLicensed ? 'right-click to forget license' : 'click to upgrade'}
             >[{isLicensed ? 'pro' : 'trial'}]</span>
           </div>
           

@@ -1,7 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
 
 /// Represents all possible message types from Claude's stream-json output

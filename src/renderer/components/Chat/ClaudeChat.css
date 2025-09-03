@@ -8,7 +8,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: #000000;
+  background: transparent; /* Show body background through */
   overflow: hidden; /* Prevent outer container from scrolling */
 }
 
@@ -134,7 +134,7 @@
   align-items: center;
   justify-content: center;
   height: calc(100vh - 28px - 32px); /* Minus compact title bar and session tabs */
-  background: #000000;
+  background: var(--bg-color, #000000);
 }
 
 .empty-content {
@@ -193,7 +193,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 24px;
-  background: #000000;
+  background: var(--bg-color, #000000);
   border-bottom: none;
   font-size: 11px;
   text-transform: lowercase;
@@ -300,7 +300,7 @@
 }
 
 .message-text pre {
-  background: #000000;
+  background: var(--bg-color, #000000);
   border: 1px solid rgba(255, 153, 153, 0.1);
   border-radius: 0 !important;
   padding: 12px;
@@ -635,7 +635,7 @@
 .chat-input-container {
   flex: 0 0 auto;
   padding: 2px 2px 3px 2px; /* Default padding */
-  background: #000000;
+  background: var(--bg-color, #000000);
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   transition: background 0.2s ease;
   min-height: 60px;
@@ -653,7 +653,7 @@
 .platform-win32 .chat-input-container {
   min-height: 60px;
   max-height: 40vh; /* Limit to 40% of viewport height */
-  background: #000000;
+  background: var(--bg-color, #000000);
   border-top: 1px solid rgba(255, 255, 255, 0.2);
   padding: 2px 2px 3px 2px;
   overflow-y: auto; /* Allow scrolling if content gets too tall */
@@ -786,7 +786,7 @@ textarea.context-full {
 
 .chat-input {
   flex: 1;
-  background: #000000;
+  background: var(--bg-color, #000000);
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: #ffffff;
   caret-color: var(--accent-color);
@@ -810,7 +810,7 @@ textarea.context-full {
 }
 
 .chat-input:focus {
-  background: #000000;
+  background: var(--bg-color, #000000);
   border-color: rgba(var(--accent-rgb), 1);
   overflow-y: auto; /* Show scrollbar on focus if content overflows */
 }
@@ -940,7 +940,7 @@ textarea.context-full {
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: #000000;
+  background: var(--bg-color, #000000);
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
@@ -1043,7 +1043,7 @@ textarea.context-full {
   padding: 0;
   margin-top: 2px;
   margin-bottom: 1px;
-  background: #000000;
+  background: var(--bg-color, #000000);
   flex-shrink: 0; /* Prevent shrinking */
   position: relative; /* For absolute positioning of dictation button */
 }
@@ -1207,7 +1207,7 @@ textarea.context-full {
   border-color: var(--negative-color);
 }
 
-/* Critical - auto-compact triggered at 96%+ */
+/* Critical - auto-compact triggered at 97%+ */
 .btn-stats.critical {
   color: #ff4444;
   border-color: #ff4444;
@@ -1258,7 +1258,7 @@ textarea.context-full {
   display: flex;
   gap: 4px;
   padding: 0;
-  background: #000000;
+  background: var(--bg-color, #000000);
   margin-bottom: 4px;
   flex-wrap: wrap;
 }
@@ -1271,7 +1271,7 @@ textarea.context-full {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background: #000000;
+  background: var(--bg-color, #000000);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 4px;
   transition: all 0.2s;

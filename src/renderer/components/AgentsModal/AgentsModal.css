@@ -6,13 +6,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: #000;
+  background: var(--bg-color, #000);
   z-index: 999999;
   cursor: default;
 }
 
 .agents-modal {
-  background: #000;
+  background: var(--bg-color, #000);
   width: 100%;
   height: 100%;
   display: flex;
@@ -201,6 +201,11 @@
   border-style: dashed;
   border-color: var(--accent-color);
   background: rgba(var(--accent-rgb), 0.05);
+  color: var(--accent-color);
+}
+
+.agent-item.add-agent-item:hover .agent-name {
+  color: var(--accent-color);
 }
 
 .agent-item.add-agent-item .agent-info {
@@ -402,7 +407,7 @@
 }
 
 .agent-model-select option {
-  background: #000;
+  background: var(--bg-color, #000);
   color: #fff;
 }
 

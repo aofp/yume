@@ -23,7 +23,7 @@ echo '{"action":"continue"}'`
     id: 'compaction_trigger',
     name: 'AutoCompaction',
     icon: IconRefresh,
-    description: 'Automatically compact at 96% context usage',
+    description: 'Automatically compact at 97% context usage',
     script: `#!/usr/bin/env python3
 import json
 import sys
@@ -38,7 +38,7 @@ try:
     action_type = input_data.get('data', {}).get('action_type', '')
     
     # Log the compaction event
-    if action_type == 'AutoTrigger' and usage >= 96:
+    if action_type == 'AutoTrigger' and usage >= 97:
         response = {
             "action": "continue",
             "message": f"🔄 Auto-compacting at {usage:.1f}% - /compact command will be sent automatically"
