@@ -1,0 +1,157 @@
+.claude-not-detected-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  z-index: 999999;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.claude-not-detected-modal {
+  background: #0a0a0a;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 32px;
+  max-width: 480px;
+  width: 90%;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.claude-not-detected-icon {
+  color: #ff9999;
+  margin-bottom: 16px;
+  animation: pulse 2s ease infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+.claude-not-detected-modal h2 {
+  color: #ffffff;
+  font-size: 20px;
+  font-weight: 500;
+  margin: 0 0 8px 0;
+  font-family: var(--font-sans);
+}
+
+.claude-not-detected-message {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  margin: 0 0 24px 0;
+  font-family: var(--font-sans);
+}
+
+.claude-not-detected-instructions {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 20px;
+  margin-bottom: 24px;
+  text-align: left;
+}
+
+.claude-not-detected-instructions h3 {
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0 0 12px 0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-family: var(--font-sans);
+}
+
+.install-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.install-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.install-step code {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #99bbff;
+}
+
+.step-number {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 50%;
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  flex-shrink: 0;
+}
+
+.install-note {
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 11px;
+  margin: 8px 0 0 24px;
+  font-style: italic;
+  font-family: var(--font-sans);
+}
+
+.claude-not-detected-footer {
+  display: flex;
+  justify-content: center;
+}
+
+.claude-download-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(153, 187, 255, 0.1);
+  border: 1px solid rgba(153, 187, 255, 0.3);
+  border-radius: 4px;
+  color: #99bbff;
+  text-decoration: none;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  transition: all 0.2s ease;
+}
+
+.claude-download-link:hover {
+  background: rgba(153, 187, 255, 0.15);
+  border-color: rgba(153, 187, 255, 0.5);
+  transform: translateY(-1px);
+}

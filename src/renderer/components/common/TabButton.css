@@ -1,0 +1,54 @@
+/* Unified Tab Button Styles */
+
+.tab-btn {
+  padding: 4px 12px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #666;
+  font-size: 11px;
+  cursor: default;
+  transition: all 0.2s;
+  border-radius: 2px;
+  text-transform: lowercase;
+  min-width: 60px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-family: var(--font-sans);
+  -webkit-app-region: no-drag;
+}
+
+/* Hover state with accent color - but not for active tabs */
+.tab-btn:hover:not(:disabled):not(.active) {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+/* Active state */
+.tab-btn.active {
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  cursor: default;
+}
+
+/* Disabled state */
+.tab-btn:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+/* Count label inside tab */
+.tab-count {
+  margin-left: 4px;
+  opacity: 0.7;
+}
+
+/* Tab container for header integration */
+.header-tabs {
+  display: flex;
+  gap: 8px;
+  margin-left: 16px;
+  -webkit-app-region: no-drag;
+}
