@@ -992,7 +992,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 }}>
                   browse sessions
                 </button>
-                {onProjectAnalytics && (
+                {/* {onProjectAnalytics && (
                   <button className="context-menu-item" onClick={() => {
                     // Open analytics for this project
                     setContextMenu(null);
@@ -1001,7 +1001,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                   }}>
                     project analytics
                   </button>
-                )}
+                )} */}
               </>
             )}
             {contextMenu.type === 'session' && (

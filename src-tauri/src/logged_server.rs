@@ -2642,12 +2642,91 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         res.end();
       }
     } else {
-      // Non-Windows implementation
-      res.json({ sessions: [] });
+      // macOS/Linux implementation - read from ~/.claude/projects
+      const projectPath = path.join(os.homedir(), '.claude', 'projects', projectName);
+      
+      try {
+        // Check if project directory exists
+        if (!fs.existsSync(projectPath)) {
+          console.log('Project directory not found:', projectPath);
+          res.write('data: {"done": true, "sessions": []}\n\n');
+          res.end();
+          return;
+        }
+        
+        // Get all .jsonl files
+        const files = fs.readdirSync(projectPath)
+          .filter(f => f.endsWith('.jsonl'))
+          .map(f => {
+            const fullPath = path.join(projectPath, f);
+            const stats = fs.statSync(fullPath);
+            return {
+              filename: f,
+              fullPath: fullPath,
+              timestamp: stats.mtimeMs
+            };
+          })
+          .sort((a, b) => b.timestamp - a.timestamp);
+        
+        console.log(\`Found \${files.length} sessions in project\`);
+        
+        if (files.length === 0) {
+          res.write('data: {"done": true, "sessions": []}\n\n');
+          res.end();
+          return;
+        }
+        
+        // Process each file and stream it
+        for (let i = 0; i < Math.min(files.length, 50); i++) {
+          const { filename, fullPath, timestamp } = files[i];
+          try {
+            // Read first line of the file
+            const firstLine = fs.readFileSync(fullPath, 'utf8').split('\n')[0];
+            if (!firstLine) continue;
+            
+            const metadata = JSON.parse(firstLine);
+            const sessionId = metadata.uuid || filename.replace('.jsonl', '');
+            
+            const session = {
+              id: sessionId,
+              name: metadata.project_path || 'Untitled',
+              createdAt: new Date(timestamp).toISOString(),
+              messageCount: 0,
+              projectName: projectName
+            };
+            
+            // Try to count messages (lines in file)
+            try {
+              const content = fs.readFileSync(fullPath, 'utf8');
+              session.messageCount = content.split('\n').filter(line => line.trim()).length;
+            } catch (e) {
+              // Ignore errors counting messages
+            }
+            
+            // Stream this session
+            res.write(\`data: \${JSON.stringify({ session, index: i, total: files.length })}\n\n\`);
+            console.log(\`  📄 Sent session \${i + 1}/\${files.length}: \${sessionId}\`);
+            
+          } catch (e) {
+            console.log(\`Error processing \${filename}:\`, e.message);
+          }
+        }
+        
+        // Send completion event
+        res.write('data: {"done": true}\n\n');
+        console.log(\`✅ Streamed all sessions\`);
+        res.end();
+        
+      } catch (e) {
+        console.error('Error loading sessions:', e.message);
+        res.write('data: {"error": true, "message": "' + e.message + '"}\n\n');
+        res.end();
+      }
     }
   } catch (error) {
     console.error('Error loading project sessions:', error);
-    res.status(500).json({ error: 'Failed to load sessions' });
+    res.write('data: {"error": true, "message": "Failed to load sessions"}\n\n');
+    res.end();
   }
 });
 
@@ -2691,8 +2770,20 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
       
       res.json({ projectName, lastModified });
     } else {
-      // Non-Windows implementation
-      res.json({ projectName, lastModified: Date.now() });
+      // macOS/Linux implementation
+      const projectPath = path.join(os.homedir(), '.claude', 'projects', projectName);
+      let lastModified = Date.now();
+      
+      try {
+        if (fs.existsSync(projectPath)) {
+          const stats = fs.statSync(projectPath);
+          lastModified = stats.mtimeMs;
+        }
+      } catch (e) {
+        console.log(\`  ⚠️ \${projectName}: Error getting date, using current time\`);
+      }
+      
+      res.json({ projectName, lastModified });
     }
   } catch (error) {
     console.error('Error getting project date:', error);

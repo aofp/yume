@@ -45,7 +45,7 @@ import { Watermark } from '../Watermark/Watermark';
 // REMOVED: These features were overengineered and unnecessary - just use chat instead
 // const CheckpointButton = React.lazy(() => import('../Checkpoint/CheckpointButton').then(m => ({ default: m.CheckpointButton })));
 // const TimelineNavigator = React.lazy(() => import('../Timeline/TimelineNavigator').then(m => ({ default: m.TimelineNavigator })));
-// const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
+const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
 import { FEATURE_FLAGS } from '../../config/features';
 import './ClaudeChat.css';
 
@@ -154,7 +154,7 @@ export const ClaudeChat: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
   // const [showTimeline, setShowTimeline] = useState(false);  // REMOVED: Unnecessary feature
-  // const [showAgentExecutor, setShowAgentExecutor] = useState(false);  // REMOVED: Just use chat
+  const [showAgentExecutor, setShowAgentExecutor] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
   const [searchMatches, setSearchMatches] = useState<number[]>([]);
   const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
@@ -2254,8 +2254,8 @@ export const ClaudeChat: React.FC = () => {
         </React.Suspense>
       )} */}
       
-      {/* Agent Executor - REMOVED: Just use chat instead */}
-      {/* {currentSessionId && FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && (
+      {/* Agent Executor */}
+      {currentSessionId && FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && (
         <React.Suspense fallback={<div>Loading agent executor...</div>}>
           <AgentExecutor
             sessionId={currentSessionId}
@@ -2263,7 +2263,7 @@ export const ClaudeChat: React.FC = () => {
             onClose={() => setShowAgentExecutor(false)}
           />
         </React.Suspense>
-      )} */}
+      )}
       
       {/* Pending followup indicator */}
       {pendingFollowupMessage && (
@@ -2488,17 +2488,26 @@ export const ClaudeChat: React.FC = () => {
               </button>
             )} */}
             
-            {/* Agent executor button - REMOVED: Just ask in chat instead */}
-            {/* {FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && currentSessionId && (
+            {/* Agent executor button */}
+            {FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && currentSessionId && (
               <button
                 className={`btn-dictation ${showAgentExecutor ? 'active' : ''}`}
                 onClick={() => setShowAgentExecutor(!showAgentExecutor)}
                 title="Execute agent"
                 disabled={currentSession?.readOnly}
+                style={{
+                  transition: 'color 0.2s ease',
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.color = 'var(--accent-color)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.color = showAgentExecutor ? 'var(--accent-color)' : '';
+                }}
               >
                 <IconRobot size={14} />
               </button>
-            )} */}
+            )}
             
             {/* Dictation button */}
             <button
