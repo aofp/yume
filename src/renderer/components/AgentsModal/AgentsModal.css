@@ -31,6 +31,13 @@
   user-select: none;
 }
 
+.agents-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  -webkit-app-region: drag;
+}
+
 .agents-title {
   display: flex;
   align-items: center;
@@ -92,47 +99,7 @@
   color: var(--negative-color);
 }
 
-/* Scope Toggle */
-.agents-scope-toggle {
-  display: flex;
-  gap: 8px;
-  padding: 8px 12px;
-  border-bottom: 1px solid #222;
-}
-
-.scope-btn {
-  padding: 4px 12px;
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #666;
-  font-size: 11px;
-  cursor: default;
-  transition: all 0.2s;
-  border-radius: 2px;
-  text-transform: lowercase;
-  min-width: 60px;
-  max-width: 200px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.scope-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--accent-color);
-  color: #999;
-}
-
-.scope-btn.active {
-  background: rgba(var(--accent-rgb), 0.1);
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-}
-
-.scope-btn:disabled {
-  opacity: 0.3;
-  cursor: default;
-}
+/* Scope toggle removed - now using unified TabButton in header */
 
 /* Search */
 .agents-search {

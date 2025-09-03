@@ -13,7 +13,8 @@ import {
   IconSettings,
   IconBolt,
   IconArrowsDiagonalMinimize2,
-  IconWashDrycleanOff
+  IconWashDrycleanOff,
+  IconWand
 } from '@tabler/icons-react';
 import './CommandAutocomplete.css';
 
@@ -30,14 +31,38 @@ interface Command {
   description: string;
   icon: React.ReactNode;
   handleLocally?: boolean; // If true, handle on our side instead of sending to Claude
+  isCustom?: boolean; // If true, this is a custom command from settings
+  script?: string; // Script for custom commands
 }
 
-const commands: Command[] = [
+// Built-in commands
+const builtInCommands: Command[] = [
   { name: 'clear', description: 'clear context and start fresh', icon: <IconWashDrycleanOff size={14} />, handleLocally: true },
   { name: 'model', description: 'switch model (opus/sonnet)', icon: <IconBolt size={14} />, handleLocally: true },
   { name: 'init', description: 'create/update claude.md file', icon: <IconSettings size={14} />, handleLocally: false },
   { name: 'compact', description: 'compress context to reduce token usage (uses sonnet)', icon: <IconArrowsDiagonalMinimize2 size={14} />, handleLocally: false },
 ];
+
+// Load custom commands from localStorage
+const loadCustomCommands = (): Command[] => {
+  try {
+    const saved = localStorage.getItem('custom_commands');
+    if (saved) {
+      const customCommands = JSON.parse(saved);
+      return customCommands.map((cmd: any) => ({
+        name: cmd.trigger.startsWith('/') ? cmd.trigger.slice(1) : cmd.trigger,
+        description: cmd.description || 'custom command',
+        icon: <IconWand size={14} />,
+        handleLocally: true,
+        isCustom: true,
+        script: cmd.script
+      }));
+    }
+  } catch (error) {
+    console.error('Failed to load custom commands:', error);
+  }
+  return [];
+};
 
 export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
   trigger,
@@ -46,10 +71,17 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
   onSelect,
   onClose
 }) => {
+  const [allCommands, setAllCommands] = useState<Command[]>([]);
   const [filteredCommands, setFilteredCommands] = useState<Command[]>([]);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
+
+  // Load commands (built-in + custom)
+  useEffect(() => {
+    const customCommands = loadCustomCommands();
+    setAllCommands([...builtInCommands, ...customCommands]);
+  }, []);
 
   // Parse the search query from the trigger
   const searchQuery = trigger.slice(1).toLowerCase(); // Remove / symbol
@@ -58,28 +90,31 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
   useEffect(() => {
     if (!searchQuery) {
       // Show all commands when just / is typed
-      setFilteredCommands(commands);
+      setFilteredCommands(allCommands);
     } else {
       // Filter commands that start with or contain the query
-      const filtered = commands.filter(cmd => 
+      const filtered = allCommands.filter(cmd => 
         cmd.name.toLowerCase().startsWith(searchQuery) ||
         cmd.name.toLowerCase().includes(searchQuery) ||
         cmd.description.toLowerCase().includes(searchQuery)
       );
       
-      // Sort by relevance (starts with > contains)
+      // Sort by relevance (starts with > contains, built-in > custom)
       filtered.sort((a, b) => {
         const aStartsWith = a.name.toLowerCase().startsWith(searchQuery);
         const bStartsWith = b.name.toLowerCase().startsWith(searchQuery);
         if (aStartsWith && !bStartsWith) return -1;
         if (!aStartsWith && bStartsWith) return 1;
+        // Prioritize built-in commands
+        if (!a.isCustom && b.isCustom) return -1;
+        if (a.isCustom && !b.isCustom) return 1;
         return a.name.localeCompare(b.name);
       });
       
       setFilteredCommands(filtered);
     }
     setSelectedIndex(0);
-  }, [searchQuery]);
+  }, [searchQuery, allCommands]);
 
   // Handle keyboard navigation
   useEffect(() => {

@@ -13,6 +13,7 @@ import { RecentProjectsModal } from './components/RecentProjectsModal/RecentProj
 import { ProjectsModal } from './components/ProjectsModal/ProjectsModal';
 import { AgentsModal } from './components/AgentsModal/AgentsModal';
 import { UpgradeModal } from './components/Upgrade/UpgradeModal';
+import { ClaudeNotDetected } from './components/ClaudeNotDetected/ClaudeNotDetected';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { useLicenseStore } from './services/licenseManager';
 import { platformBridge } from './services/platformBridge';
@@ -36,12 +37,23 @@ export const App: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
+  const [claudeNotDetected, setClaudeNotDetected] = useState(false);
+  const [connectionCheckDone, setConnectionCheckDone] = useState(false);
   
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
   
   // Load session mappings and initialize fonts on startup
   useEffect(() => {
     loadSessionMappings();
+    
+    // Check Claude CLI connection after a short delay
+    const checkConnection = setTimeout(() => {
+      if (!claudeCodeClient.isConnected()) {
+        console.error('Claude CLI not detected - unable to connect to server');
+        setClaudeNotDetected(true);
+      }
+      setConnectionCheckDone(true);
+    }, 3000); // Give 3 seconds for initial connection
     
     // Apply saved fonts from store (store loads from localStorage)
     if (monoFont) {
@@ -50,6 +62,8 @@ export const App: React.FC = () => {
     if (sansFont) {
       document.documentElement.style.setProperty('--font-sans', sansFont);
     }
+    
+    return () => clearTimeout(checkConnection);
   }, [loadSessionMappings, monoFont, sansFont]);
   
   // Restore tabs after store is hydrated from persistence
@@ -1033,6 +1047,7 @@ export const App: React.FC = () => {
           reason={upgradeReason}
         />
       )}
+      {claudeNotDetected && connectionCheckDone && <ClaudeNotDetected />}
     </div>
   );
 };

@@ -21,28 +21,40 @@ echo '{"action":"continue"}'`
   },
   {
     id: 'compaction_trigger',
-    name: 'Smart Compaction',
+    name: 'AutoCompaction',
     icon: IconRefresh,
-    description: 'auto-compact at 96% context usage',
+    description: 'Automatically compact at 96% context usage',
     script: `#!/usr/bin/env python3
 import json
 import sys
+
+# AutoCompaction Hook
+# This hook is called when context usage reaches certain thresholds
+# The compactionService will automatically send /compact when enabled
 
 try:
     input_data = json.load(sys.stdin)
     usage = input_data.get('data', {}).get('usage_percentage', 0)
     action_type = input_data.get('data', {}).get('action_type', '')
     
+    # Log the compaction event
     if action_type == 'AutoTrigger' and usage >= 96:
         response = {
             "action": "continue",
-            "message": f"🔄 Auto-compacting at {usage}%"
+            "message": f"🔄 Auto-compacting at {usage:.1f}% - /compact command will be sent automatically"
+        }
+        print(json.dumps(response))
+    elif action_type == 'Force' and usage >= 98:
+        response = {
+            "action": "continue",
+            "message": f"🚨 Force-compacting at {usage:.1f}% to prevent overflow"
         }
         print(json.dumps(response))
     else:
         print('{"action":"continue"}')
     sys.exit(0)
-except:
+except Exception as e:
+    # Always allow compaction to proceed
     print('{"action":"continue"}')
     sys.exit(0)`
   },

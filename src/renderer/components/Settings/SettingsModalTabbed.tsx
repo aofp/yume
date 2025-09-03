@@ -3,7 +3,8 @@ import {
   IconX, IconPlus, IconMinus, IconSettings, IconPalette, 
   IconPhoto, IconRotateClockwise, IconCrown, IconInfoCircle,
   IconWebhook, IconCommand, IconDatabase, IconBrain,
-  IconTrash, IconDownload, IconUpload, IconAlertTriangle
+  IconTrash, IconDownload, IconUpload, IconAlertTriangle,
+  IconCheck, IconEdit
 } from '@tabler/icons-react';
 import './SettingsModal.css';
 import './SettingsModalTabbed.css';
@@ -12,9 +13,12 @@ import { useLicenseStore } from '../../services/licenseManager';
 import { FontPickerModal } from '../FontPicker/FontPickerModal';
 import { AboutModal } from '../About/AboutModal';
 import { HooksTab } from './HooksTab';
+import { MCPTab } from './MCPTab';
 import { ClaudeSelector } from './ClaudeSelector';
+import { SystemPromptSelector } from './SystemPromptSelector';
 import { invoke } from '@tauri-apps/api/core';
 import { hooksService, HookConfig } from '../../services/hooksService';
+import { TabButton } from '../common/TabButton';
 
 // Access the electron API exposed by preload script
 declare global {
@@ -28,7 +32,7 @@ interface SettingsModalProps {
 }
 
 // Tab type definition
-type SettingsTab = 'general' | 'hooks' | 'commands';
+type SettingsTab = 'general' | 'theme' | 'hooks' | 'commands' | 'mcp';
 
 // Color swatches organized in 4 rows (same as original)
 const COLOR_ROWS = [
@@ -90,11 +94,26 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   
   // Commands tab state
   const [commands, setCommands] = useState<any[]>([]);
+  const [showAddCommand, setShowAddCommand] = useState(false);
+  const [editingCommandIndex, setEditingCommandIndex] = useState<number | null>(null);
+  const [newCommand, setNewCommand] = useState({ trigger: '', description: '', script: '' });
+  const [editingCommand, setEditingCommand] = useState({ trigger: '', description: '', script: '' });
 
   useEffect(() => {
     // Load hooks when hooks tab is active
     if (activeTab === 'hooks') {
       loadHooks();
+    }
+    // Load commands when commands tab is active
+    if (activeTab === 'commands') {
+      const saved = localStorage.getItem('custom_commands');
+      if (saved) {
+        try {
+          setCommands(JSON.parse(saved));
+        } catch (error) {
+          console.error('Failed to load commands:', error);
+        }
+      }
     }
   }, [activeTab]);
 
@@ -275,6 +294,101 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       case 'general':
         return (
           <>
+            {/* Main content area - centered buttons */}
+            <div style={{
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              height: '100%',
+              gap: '20px',
+              padding: '40px'
+            }}>
+              {/* Upgrade button if not licensed */}
+              {!isLicensed && (
+                <button 
+                  className="settings-action-btn upgrade" 
+                  onClick={() => {
+                    onClose();
+                    window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
+                      detail: { reason: 'trial' } 
+                    }));
+                  }}
+                  style={{
+                    background: 'rgba(153, 187, 255, 0.1)',
+                    border: '1px solid rgba(153, 187, 255, 0.3)',
+                    color: '#99bbff',
+                    padding: '10px 20px',
+                    borderRadius: '4px',
+                    fontSize: '12px',
+                    cursor: 'default',
+                    transition: 'all 0.2s',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '8px'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.background = 'rgba(153, 187, 255, 0.15)';
+                    e.currentTarget.style.borderColor = '#99bbff';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.background = 'rgba(153, 187, 255, 0.1)';
+                    e.currentTarget.style.borderColor = 'rgba(153, 187, 255, 0.3)';
+                  }}
+                >
+                  <IconSparkles size={14} />
+                  upgrade to pro
+                </button>
+              )}
+              
+              {/* About button */}
+              <button 
+                className="settings-action-btn about"
+                onClick={() => setShowAboutModal(true)}
+                style={{
+                  background: 'transparent',
+                  border: '1px solid rgba(255, 255, 255, 0.2)',
+                  color: 'rgba(255, 255, 255, 0.6)',
+                  padding: '10px 20px',
+                  borderRadius: '4px',
+                  fontSize: '12px',
+                  cursor: 'default',
+                  transition: 'all 0.2s',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '8px'
+                }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = 'rgba(255, 255, 255, 0.05)';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.3)';
+                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.8)';
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent';
+                  e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                  e.currentTarget.style.color = 'rgba(255, 255, 255, 0.6)';
+                }}
+              >
+                <IconInfoCircle size={14} />
+                about
+              </button>
+            </div>
+          </>
+        );
+
+      case 'hooks':
+        return (
+          <HooksTab 
+            selectedHooks={selectedHooks}
+            setSelectedHooks={setSelectedHooks}
+            hookScripts={hookScripts}
+            setHookScripts={setHookScripts}
+          />
+        );
+
+      case 'theme':
+        return (
+          <>
             {/* Color controls */}
             <div className="settings-section">
               <h4>theme colors</h4>
@@ -347,7 +461,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               </div>
             </div>
 
-
             {/* Font controls */}
             <div className="settings-section">
               <h4>fonts</h4>
@@ -393,94 +506,315 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               </div>
               </div>
             </div>
-
-            {/* Options */}
-            <div className="settings-section">
-              <h4>options</h4>
-              
-              <div className="checkbox-setting">
-                <span className="checkbox-label">remember tabs on restart</span>
-                <input 
-                  type="checkbox" 
-                  className="checkbox-input"
-                  id="rememberTabs"
-                  checked={rememberTabs}
-                  onChange={(e) => setRememberTabs(e.target.checked)}
-                />
-                <div className="toggle-switch-container">
-                  <label htmlFor="rememberTabs" className={`toggle-switch ${rememberTabs ? 'active' : ''}`}>
-                    <span className="toggle-switch-slider" />
-                    <span className="toggle-switch-label off">OFF</span>
-                    <span className="toggle-switch-label on">ON</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="checkbox-setting">
-                <span className="checkbox-label">auto-generate tab titles</span>
-                <input 
-                  type="checkbox" 
-                  className="checkbox-input"
-                  id="autoGenerateTitle"
-                  checked={autoGenerateTitle}
-                  onChange={(e) => setAutoGenerateTitle(e.target.checked)}
-                />
-                <div className="toggle-switch-container">
-                  <label htmlFor="autoGenerateTitle" className={`toggle-switch ${autoGenerateTitle ? 'active' : ''}`}>
-                    <span className="toggle-switch-slider" />
-                    <span className="toggle-switch-label off">OFF</span>
-                    <span className="toggle-switch-label on">ON</span>
-                  </label>
-                </div>
-              </div>
-
-              {/* Claude CLI Configuration */}
-              <ClaudeSelector onSettingsChange={(settings) => {
-                console.log('Claude settings updated:', settings);
-              }} />
-            </div>
-
-            {/* About */}
-            <div className="settings-actions">
-              <button className="settings-action-btn about" onClick={() => setShowAboutModal(true)}>
-                <IconInfoCircle size={12} />
-                <span>about</span>
-              </button>
-            </div>
           </>
-        );
-
-      case 'hooks':
-        return (
-          <HooksTab 
-            selectedHooks={selectedHooks}
-            setSelectedHooks={setSelectedHooks}
-            hookScripts={hookScripts}
-            setHookScripts={setHookScripts}
-          />
         );
 
       case 'commands':
         return (
           <div className="settings-section">
-            <div className="settings-section-title">custom commands</div>
+            {/* Header with add button */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+              <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>custom commands</h4>
+              {!showAddCommand && !editingCommandIndex && (
+                <button 
+                  onClick={() => setShowAddCommand(true)}
+                  style={{ 
+                    background: 'transparent',
+                    border: '1px solid rgba(255, 255, 255, 0.2)',
+                    color: 'rgba(255, 255, 255, 0.4)',
+                    padding: '2px 6px',
+                    borderRadius: '4px',
+                    fontSize: '10px',
+                    cursor: 'default',
+                    transition: 'all 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--accent-color)';
+                    e.currentTarget.style.color = 'var(--accent-color)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+                    e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)';
+                  }}
+                >
+                  + add command
+                </button>
+              )}
+            </div>
+
             <div className="commands-list">
-              <p className="settings-placeholder">
-                define custom slash commands for quick actions
-              </p>
-              <button className="add-command-btn">
-                <IconPlus size={14} />
-                add command
-              </button>
-              <div className="command-item">
-                <input type="text" placeholder="/command" className="command-trigger" />
-                <input type="text" placeholder="description" className="command-desc" />
-                <textarea 
-                  placeholder="action script..."
-                  className="command-script"
-                  rows={2}
-                />
-              </div>
+              {commands.length === 0 && !showAddCommand && (
+                <p style={{ fontSize: '10px', color: '#666' }}>
+                  no custom commands yet
+                </p>
+              )}
+              
+              {/* Existing commands */}
+              {commands.map((cmd, index) => (
+                <div key={index} style={{ marginBottom: '12px' }}>
+                  {editingCommandIndex === index ? (
+                    // Edit mode
+                    <div className="command-edit-form" style={{ 
+                      padding: '8px',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid rgba(255, 255, 255, 0.1)',
+                      borderRadius: '4px'
+                    }}>
+                      <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                        <input 
+                          type="text" 
+                          placeholder="/command" 
+                          className="command-trigger"
+                          style={{ flex: '0 0 120px' }}
+                          value={editingCommand.trigger}
+                          onChange={(e) => setEditingCommand({ ...editingCommand, trigger: e.target.value })}
+                        />
+                        <input 
+                          type="text" 
+                          placeholder="description" 
+                          className="command-desc"
+                          style={{ flex: '1' }}
+                          value={editingCommand.description}
+                          onChange={(e) => setEditingCommand({ ...editingCommand, description: e.target.value })}
+                        />
+                      </div>
+                      <textarea 
+                        placeholder="action script..."
+                        className="command-script"
+                        rows={3}
+                        value={editingCommand.script}
+                        onChange={(e) => setEditingCommand({ ...editingCommand, script: e.target.value })}
+                        style={{ marginBottom: '8px' }}
+                      />
+                      <div style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          onClick={() => {
+                            if (editingCommand.trigger && editingCommand.script) {
+                              const updated = [...commands];
+                              updated[index] = editingCommand;
+                              setCommands(updated);
+                              localStorage.setItem('custom_commands', JSON.stringify(updated));
+                              setEditingCommandIndex(null);
+                            }
+                          }}
+                          disabled={!editingCommand.trigger || !editingCommand.script}
+                          style={{
+                            flex: 1,
+                            background: 'rgba(153, 187, 255, 0.1)',
+                            border: '1px solid rgba(153, 187, 255, 0.3)',
+                            color: '#99bbff',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            cursor: editingCommand.trigger && editingCommand.script ? 'default' : 'not-allowed',
+                            opacity: editingCommand.trigger && editingCommand.script ? 1 : 0.5
+                          }}
+                        >
+                          <IconCheck size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                          save
+                        </button>
+                        <button
+                          onClick={() => setEditingCommandIndex(null)}
+                          style={{
+                            flex: 1,
+                            background: 'transparent',
+                            border: '1px solid rgba(255, 255, 255, 0.2)',
+                            color: 'rgba(255, 255, 255, 0.4)',
+                            padding: '4px 8px',
+                            borderRadius: '4px',
+                            fontSize: '11px',
+                            cursor: 'default'
+                          }}
+                        >
+                          <IconX size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                          cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    // View mode
+                    <div className="command-view" style={{ 
+                      padding: '6px 8px',
+                      background: 'rgba(255, 255, 255, 0.02)',
+                      border: '1px solid rgba(255, 255, 255, 0.08)',
+                      borderRadius: '4px'
+                    }}>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <div>
+                          <span style={{ 
+                            color: 'var(--accent-color)', 
+                            fontSize: '11px',
+                            fontFamily: 'var(--mono-font)'
+                          }}>
+                            {cmd.trigger}
+                          </span>
+                          {cmd.description && (
+                            <span style={{ 
+                              color: '#666', 
+                              fontSize: '10px',
+                              marginLeft: '8px'
+                            }}>
+                              — {cmd.description}
+                            </span>
+                          )}
+                        </div>
+                        <div style={{ display: 'flex', gap: '4px' }}>
+                          <button
+                            onClick={() => {
+                              setEditingCommand({ ...cmd });
+                              setEditingCommandIndex(index);
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#666',
+                              cursor: 'default',
+                              padding: '2px',
+                              fontSize: '10px',
+                              transition: 'color 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = 'var(--accent-color)';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = '#666';
+                            }}
+                          >
+                            <IconEdit size={10} />
+                          </button>
+                          <button
+                            onClick={() => {
+                              if (confirm(`Delete command "${cmd.trigger}"?`)) {
+                                const updated = commands.filter((_, i) => i !== index);
+                                setCommands(updated);
+                                localStorage.setItem('custom_commands', JSON.stringify(updated));
+                              }
+                            }}
+                            style={{
+                              background: 'transparent',
+                              border: 'none',
+                              color: '#666',
+                              cursor: 'default',
+                              padding: '2px',
+                              fontSize: '10px',
+                              transition: 'color 0.2s ease'
+                            }}
+                            onMouseEnter={(e) => {
+                              e.currentTarget.style.color = '#ff9999';
+                            }}
+                            onMouseLeave={(e) => {
+                              e.currentTarget.style.color = '#666';
+                            }}
+                          >
+                            <IconTrash size={10} />
+                          </button>
+                        </div>
+                      </div>
+                      {cmd.script && (
+                        <pre style={{ 
+                          margin: '4px 0 0 0',
+                          padding: '4px',
+                          background: 'rgba(0, 0, 0, 0.3)',
+                          borderRadius: '2px',
+                          fontSize: '9px',
+                          color: '#888',
+                          fontFamily: 'var(--mono-font)',
+                          whiteSpace: 'pre-wrap',
+                          wordBreak: 'break-all',
+                          maxHeight: '60px',
+                          overflow: 'auto'
+                        }}>
+                          {cmd.script}
+                        </pre>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ))}
+              
+              {/* Add new command form */}
+              {showAddCommand && (
+                <div className="command-edit-form" style={{ 
+                  padding: '8px',
+                  background: 'rgba(255, 255, 255, 0.02)',
+                  border: '1px solid rgba(255, 255, 255, 0.1)',
+                  borderRadius: '4px'
+                }}>
+                  <div style={{ display: 'flex', gap: '8px', marginBottom: '8px' }}>
+                    <input 
+                      type="text" 
+                      placeholder="/command" 
+                      className="command-trigger"
+                      style={{ flex: '0 0 120px' }}
+                      value={newCommand.trigger}
+                      onChange={(e) => setNewCommand({ ...newCommand, trigger: e.target.value })}
+                    />
+                    <input 
+                      type="text" 
+                      placeholder="description" 
+                      className="command-desc"
+                      style={{ flex: '1' }}
+                      value={newCommand.description}
+                      onChange={(e) => setNewCommand({ ...newCommand, description: e.target.value })}
+                    />
+                  </div>
+                  <textarea 
+                    placeholder="action script..."
+                    className="command-script"
+                    rows={3}
+                    value={newCommand.script}
+                    onChange={(e) => setNewCommand({ ...newCommand, script: e.target.value })}
+                    style={{ marginBottom: '8px' }}
+                  />
+                  <div style={{ display: 'flex', gap: '8px' }}>
+                    <button
+                      onClick={() => {
+                        if (newCommand.trigger && newCommand.script) {
+                          const updated = [...commands, newCommand];
+                          setCommands(updated);
+                          localStorage.setItem('custom_commands', JSON.stringify(updated));
+                          setNewCommand({ trigger: '', description: '', script: '' });
+                          setShowAddCommand(false);
+                        }
+                      }}
+                      disabled={!newCommand.trigger || !newCommand.script}
+                      style={{
+                        flex: 1,
+                        background: 'rgba(153, 187, 255, 0.1)',
+                        border: '1px solid rgba(153, 187, 255, 0.3)',
+                        color: '#99bbff',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        cursor: newCommand.trigger && newCommand.script ? 'default' : 'not-allowed',
+                        opacity: newCommand.trigger && newCommand.script ? 1 : 0.5
+                      }}
+                    >
+                      <IconCheck size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                      save
+                    </button>
+                    <button
+                      onClick={() => {
+                        setShowAddCommand(false);
+                        setNewCommand({ trigger: '', description: '', script: '' });
+                      }}
+                      style={{
+                        flex: 1,
+                        background: 'transparent',
+                        border: '1px solid rgba(255, 255, 255, 0.2)',
+                        color: 'rgba(255, 255, 255, 0.4)',
+                        padding: '4px 8px',
+                        borderRadius: '4px',
+                        fontSize: '11px',
+                        cursor: 'default'
+                      }}
+                    >
+                      <IconX size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+                      cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         );
@@ -558,6 +892,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
           </div>
         );
 
+      case 'mcp':
+        return <MCPTab />;
+
       default:
         return null;
     }
@@ -565,31 +902,38 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
   return (
     <>
-      <div className="settings-modal-overlay" onClick={onClose}>
-        <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="settings-header">
-            <div className="settings-header-left">
-              <h3>settings</h3>
+      <div className="settings-modal-overlay">
+        <div className="settings-modal">
+          <div className="settings-header" data-tauri-drag-region>
+            <div className="settings-header-left" data-tauri-drag-region>
+              <IconSettings size={16} stroke={1.5} style={{ color: 'var(--accent-color)', pointerEvents: 'none', userSelect: 'none' }} />
               {/* Tab navigation in header */}
-              <div className="settings-tabs-inline">
-                <button 
-                  className={`settings-tab-inline ${activeTab === 'general' ? 'active' : ''}`}
+              <div className="header-tabs">
+                <TabButton
+                  label="general"
+                  active={activeTab === 'general'}
                   onClick={() => setActiveTab('general')}
-                >
-                  general
-                </button>
-                <button 
-                  className={`settings-tab-inline ${activeTab === 'hooks' ? 'active' : ''}`}
+                />
+                <TabButton
+                  label="theme"
+                  active={activeTab === 'theme'}
+                  onClick={() => setActiveTab('theme')}
+                />
+                <TabButton
+                  label="hooks"
+                  active={activeTab === 'hooks'}
                   onClick={() => setActiveTab('hooks')}
-                >
-                  hooks
-                </button>
-                <button 
-                  className={`settings-tab-inline ${activeTab === 'commands' ? 'active' : ''}`}
+                />
+                <TabButton
+                  label="commands"
+                  active={activeTab === 'commands'}
                   onClick={() => setActiveTab('commands')}
-                >
-                  commands
-                </button>
+                />
+                <TabButton
+                  label="mcp"
+                  active={activeTab === 'mcp'}
+                  onClick={() => setActiveTab('mcp')}
+                />
               </div>
             </div>
             <button className="settings-close" onClick={onClose}>
@@ -602,8 +946,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
             {renderTabContent()}
           </div>
 
-          {/* Bottom controls - only show on general tab */}
-          {activeTab === 'general' && (
+          {/* Bottom controls - only show on theme tab */}
+          {activeTab === 'theme' && (
             <div className="settings-bottom-controls">
               <div className="settings-bottom-left">
                 <div>
@@ -616,7 +960,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     >
                       <IconMinus size={12} />
                     </button>
-                    <span className="zoom-level compact">{Math.round(zoomLevel)}%</span>
                     <button 
                       className="zoom-btn small"
                       onClick={handleZoomIn}
@@ -631,11 +974,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     >
                       <IconRotateClockwise size={12} />
                     </button>
+                    <span className="zoom-level compact">{zoomLevel > 0 ? `+${Math.round(zoomLevel * 10)}%` : zoomLevel === 0 ? '±0%' : `${Math.round(zoomLevel * 10)}%`}</span>
                   </div>
                 </div>
               </div>
 
               <div className="settings-bottom-right">
+                {/* Watermark controls */}
                 <div>
                   <h4>watermark image</h4>
                   <div className="watermark-controls">

@@ -170,26 +170,30 @@ else:
 "#.to_string(),
         ),
         (
-            "Smart Compaction".to_string(),
+            "AutoCompaction".to_string(),
             "compaction_trigger".to_string(),
             r#"#!/usr/bin/env python3
 import json
 import sys
 
-input_data = json.loads(sys.stdin.read())
-usage = input_data['data']['usage_percentage']
-action_type = input_data['data']['action_type']
+# AutoCompaction Hook
+# This hook is called when context usage reaches certain thresholds
+# The compactionService will automatically send /compact when enabled
 
-if action_type == 'AutoTrigger':
+input_data = json.loads(sys.stdin.read())
+usage = input_data.get('data', {}).get('usage_percentage', 0)
+action_type = input_data.get('data', {}).get('action_type', '')
+
+if action_type == 'AutoTrigger' and usage >= 96:
     response = {
         "action": "continue",
-        "message": f"Auto-compacting at {usage}%"
+        "message": f"🔄 Auto-compacting at {usage:.1f}% - /compact command will be sent automatically"
     }
     print(json.dumps(response))
-elif action_type == 'Force':
+elif action_type == 'Force' and usage >= 98:
     response = {
         "action": "continue",
-        "message": f"Force-compacting at {usage}%"
+        "message": f"🚨 Force-compacting at {usage:.1f}% to prevent overflow"
     }
     print(json.dumps(response))
 else:

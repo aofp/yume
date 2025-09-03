@@ -28,6 +28,12 @@
   cursor: default;
 }
 
+.analytics-header-left {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
 .analytics-title {
   display: flex;
   align-items: center;
@@ -86,37 +92,7 @@
   color: var(--negative-color);
 }
 
-.analytics-controls {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 12px;
-  border-bottom: 1px solid #222;
-}
-
-.time-range-selector {
-  display: flex;
-  gap: 6px;
-}
-
-.time-range-selector button {
-  background: none;
-  border: none;
-  color: #666;
-  padding: 2px 8px;
-  font-size: 11px;
-  cursor: default;
-  transition: all 0.2s;
-  letter-spacing: 0.3px;
-}
-
-.time-range-selector button.active {
-  color: var(--accent-color);
-}
-
-.time-range-selector button:hover:not(.active) {
-  color: #999;
-}
+/* Analytics controls removed - now using unified TabButton in header */
 
 
 .analytics-content {

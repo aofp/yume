@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { IconX, IconChartBar, IconCoin, IconClock, IconBrain, IconMessage, IconTool, IconArrowLeft, IconFolder } from '@tabler/icons-react';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
+import { TabButton } from '../common/TabButton';
 import './AnalyticsModal.css';
 
 interface AnalyticsModalProps {
@@ -251,61 +252,56 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
     <div className="analytics-modal-overlay" onClick={onClose}>
       <div className="analytics-modal" onClick={(e) => e.stopPropagation()}>
         <div className="analytics-header" data-tauri-drag-region>
-          <div className="analytics-title" data-tauri-drag-region>
-            {viewMode === 'project' ? (
-              <>
-                <button className="analytics-back-button" onClick={handleBackClick} title="back to all analytics">
-                  <IconArrowLeft size={14} />
-                  <span>back</span>
-                </button>
-                <IconFolder size={16} stroke={1.5} />
-                <span>{selectedProject}</span>
-                <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '11px', marginLeft: '8px' }}>
-                  analytics
-                </span>
-              </>
-            ) : (
-              <>
-                <IconChartBar size={16} stroke={1.5} />
-                <span>analytics</span>
-              </>
+          <div className="analytics-header-left" data-tauri-drag-region>
+            <div className="analytics-title" data-tauri-drag-region>
+              {viewMode === 'project' ? (
+                <>
+                  <button className="analytics-back-button" onClick={handleBackClick} title="back to all analytics">
+                    <IconArrowLeft size={14} />
+                    <span>back</span>
+                  </button>
+                  <IconFolder size={16} stroke={1.5} />
+                  <span>{selectedProject}</span>
+                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '11px', marginLeft: '8px' }}>
+                    analytics
+                  </span>
+                </>
+              ) : (
+                <>
+                  <IconChartBar size={16} stroke={1.5} />
+                  <span>analytics</span>
+                </>
+              )}
+            </div>
+            {viewMode === 'all' && (
+              <div className="header-tabs">
+                <TabButton
+                  label="7 days"
+                  active={timeRange === '7d'}
+                  onClick={() => setTimeRange('7d')}
+                />
+                <TabButton
+                  label="14 days"
+                  active={timeRange === '14d'}
+                  onClick={() => setTimeRange('14d')}
+                />
+                <TabButton
+                  label="30 days"
+                  active={timeRange === '30d'}
+                  onClick={() => setTimeRange('30d')}
+                />
+                <TabButton
+                  label="all time"
+                  active={timeRange === 'all'}
+                  onClick={() => setTimeRange('all')}
+                />
+              </div>
             )}
           </div>
           <button className="analytics-close" onClick={onClose}>
             <IconX size={16} stroke={1.5} />
           </button>
         </div>
-
-        {viewMode === 'all' && (
-          <div className="analytics-controls">
-            <div className="time-range-selector">
-              <button 
-                className={timeRange === '7d' ? 'active' : ''} 
-                onClick={() => setTimeRange('7d')}
-              >
-                7 days
-              </button>
-              <button 
-                className={timeRange === '14d' ? 'active' : ''} 
-                onClick={() => setTimeRange('14d')}
-              >
-                14 days
-              </button>
-              <button 
-                className={timeRange === '30d' ? 'active' : ''} 
-                onClick={() => setTimeRange('30d')}
-              >
-                30 days
-              </button>
-              <button 
-                className={timeRange === 'all' ? 'active' : ''} 
-                onClick={() => setTimeRange('all')}
-              >
-                all time
-              </button>
-            </div>
-          </div>
-        )}
 
         <div className="analytics-content">
           {loading && (

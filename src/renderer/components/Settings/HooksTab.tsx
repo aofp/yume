@@ -164,9 +164,12 @@ export const HooksTab: React.FC<HooksTabProps> = ({
   };
 
   const deleteCustomHook = (hookId: string) => {
-    const updated = customHooks.filter(h => h.id !== hookId);
-    setCustomHooks(updated);
-    localStorage.setItem('custom_hooks', JSON.stringify(updated));
+    const hook = customHooks.find(h => h.id === hookId);
+    if (hook && confirm(`Delete custom hook "${hook.name}"?`)) {
+      const updated = customHooks.filter(h => h.id !== hookId);
+      setCustomHooks(updated);
+      localStorage.setItem('custom_hooks', JSON.stringify(updated));
+    }
   };
 
   const resetAllToDefaults = () => {
@@ -203,9 +206,10 @@ export const HooksTab: React.FC<HooksTabProps> = ({
       {/* Built-in Hooks */}
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h5 style={{ fontSize: '11px', color: '#999', margin: 0 }}>built-in hooks</h5>
+          <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>built-in hooks</h4>
           <button 
             onClick={resetAllToDefaults}
+            className="reset-defaults-btn"
             style={{ 
               background: 'transparent',
               border: '1px solid rgba(255, 255, 255, 0.2)',
@@ -216,7 +220,16 @@ export const HooksTab: React.FC<HooksTabProps> = ({
               cursor: 'default',
               display: 'flex',
               alignItems: 'center',
-              gap: '4px'
+              gap: '4px',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--accent-color)';
+              e.currentTarget.style.color = 'var(--accent-color)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)';
             }}
           >
             <IconRotateClockwise size={10} />
@@ -257,7 +270,14 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                     color: '#666',
                     cursor: 'default',
                     padding: '2px',
-                    fontSize: '10px'
+                    fontSize: '10px',
+                    transition: 'color 0.2s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.color = 'var(--accent-color)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.color = '#666';
                   }}
                 >
                   <IconEdit size={10} />
@@ -271,7 +291,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
       {/* Custom Hooks */}
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h5 style={{ fontSize: '11px', color: '#999', margin: 0 }}>custom hooks</h5>
+          <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>custom hooks</h4>
           <button 
             onClick={() => setShowCustomModal(true)}
             style={{ 
@@ -281,7 +301,16 @@ export const HooksTab: React.FC<HooksTabProps> = ({
               padding: '2px 6px',
               borderRadius: '4px',
               fontSize: '10px',
-              cursor: 'default'
+              cursor: 'default',
+              transition: 'all 0.2s ease'
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = 'var(--accent-color)';
+              e.currentTarget.style.color = 'var(--accent-color)';
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+              e.currentTarget.style.color = 'rgba(255, 255, 255, 0.4)';
             }}
           >
             + add custom
@@ -317,7 +346,9 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                 </div>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <p style={{ fontSize: '9px', color: '#666', margin: '2px 0 0 0' }}>{hook.description}</p>
+                <p style={{ fontSize: '9px', color: '#666', margin: '2px 0 0 0' }}>
+                  {hook.description} • <span style={{ color: '#999' }}>{hook.event}</span>
+                </p>
                 <div style={{ display: 'flex', gap: '4px' }}>
                   {hook.enabled && (
                     <button
@@ -328,7 +359,14 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                         color: '#666',
                         cursor: 'default',
                         padding: '2px',
-                        fontSize: '10px'
+                        fontSize: '10px',
+                        transition: 'color 0.2s ease'
+                      }}
+                      onMouseEnter={(e) => {
+                        e.currentTarget.style.color = 'var(--accent-color)';
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.color = '#666';
                       }}
                     >
                       <IconEdit size={10} />
@@ -359,7 +397,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
         <div className="hook-modal-overlay" onClick={() => setShowEditModal(false)}>
           <div className="hook-modal" onClick={(e) => e.stopPropagation()}>
             <div className="hook-modal-header">
-              <h4>edit {editingHook.name}</h4>
+              <h4>edit {editingHook.name} <span style={{ fontSize: '10px', color: '#666', fontWeight: 'normal' }}>({editingHook.event || editingHook.id})</span></h4>
               <button onClick={() => setShowEditModal(false)}>
                 <IconX size={14} />
               </button>
@@ -610,6 +648,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
           justify-content: space-between;
           align-items: center;
           margin-bottom: 12px;
+          -webkit-app-region: drag;
         }
         
         .hook-modal-header h4 {
@@ -622,12 +661,13 @@ export const HooksTab: React.FC<HooksTabProps> = ({
           background: transparent;
           border: none;
           color: #666;
-          cursor: pointer;
+          cursor: default;
           padding: 4px;
+          -webkit-app-region: no-drag;
         }
         
-        .hook-modal-header button:hover {
-          color: #999;
+        .hook-modal-header h4 {
+          -webkit-app-region: no-drag;
         }
       `}</style>
     </>

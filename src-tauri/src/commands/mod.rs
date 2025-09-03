@@ -14,6 +14,7 @@ pub mod claude_detector;
 pub mod database;
 pub mod hooks;
 pub mod compaction;
+pub mod mcp;
 
 // Re-export all Claude commands for easier access
 pub use claude_commands::{
@@ -1494,4 +1495,66 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
     }
     
     Ok(())
+}
+
+/// Get Claude CLI version
+#[tauri::command]
+pub async fn get_claude_version() -> Result<String, String> {
+    use std::process::Command;
+    
+    // Try to get Claude version
+    let output = Command::new("claude")
+        .arg("--version")
+        .output()
+        .map_err(|e| format!("Failed to run claude --version: {}", e))?;
+    
+    if output.status.success() {
+        let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        Ok(version)
+    } else {
+        Ok("unknown".to_string())
+    }
+}
+
+/// Get Claude CLI binary path
+#[tauri::command]
+pub async fn get_claude_path() -> Result<String, String> {
+    use std::process::Command;
+    
+    // Try to find Claude binary path using which
+    #[cfg(not(target_os = "windows"))]
+    {
+        let output = Command::new("which")
+            .arg("claude")
+            .output()
+            .map_err(|e| format!("Failed to run which claude: {}", e))?;
+        
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            Ok(path)
+        } else {
+            // Default path on macOS
+            Ok("/usr/local/bin/claude".to_string())
+        }
+    }
+    
+    #[cfg(target_os = "windows")]
+    {
+        let output = Command::new("where")
+            .arg("claude")
+            .output()
+            .map_err(|e| format!("Failed to run where claude: {}", e))?;
+        
+        if output.status.success() {
+            let path = String::from_utf8_lossy(&output.stdout)
+                .lines()
+                .next()
+                .unwrap_or("claude")
+                .trim()
+                .to_string();
+            Ok(path)
+        } else {
+            Ok("claude".to_string())
+        }
+    }
 }

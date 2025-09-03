@@ -1,11 +1,27 @@
 /* Settings Modal Tabbed - Minimal OLED UI */
 
+/* Override settings-header to ensure draggability */
+.settings-header {
+  -webkit-app-region: drag;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.settings-header h3 {
+  -webkit-app-region: drag;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* Header with inline tabs */
 .settings-header-left {
   display: flex;
   align-items: center;
   gap: 20px;
   flex: 1;
+  -webkit-app-region: drag;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .settings-tabs-inline {
@@ -23,7 +39,7 @@
   transition: all 0.2s;
   font-size: 11px;
   text-transform: lowercase;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   position: relative;
   height: 100%;
   -webkit-app-region: no-drag;
@@ -93,34 +109,8 @@
   gap: 12px;
 }
 
-.add-command-btn {
-  background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #666;
-  padding: 6px 12px;
-  font-size: 11px;
-  cursor: pointer;
-  transition: all 0.2s;
-  border-radius: 2px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  width: fit-content;
-}
-
-.add-command-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-}
-
 .command-item {
-  display: grid;
-  grid-template-columns: 120px 1fr;
-  gap: 8px;
-  padding: 8px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
+  margin-bottom: 12px;
 }
 
 .command-trigger,
@@ -140,6 +130,8 @@
 .command-script {
   grid-column: 1 / -1;
   resize: vertical;
+  width: 100%;
+  box-sizing: border-box;
 }
 
 .command-trigger:focus,

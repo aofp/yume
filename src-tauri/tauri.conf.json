@@ -32,7 +32,7 @@
         "center": false,
         "alwaysOnTop": false,
         "focus": true,
-        "visible": true,
+        "visible": false,
         "acceptFirstMouse": true,
         "closable": true,
         "maximizable": true,

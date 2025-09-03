@@ -117,28 +117,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
           setHasLoaded(true);
           setLastLoadTime(Date.now());
           
-          // Now load session counts and dates progressively for each project
-          if (quickData.projects && quickData.projects.length > 0) {
-            quickData.projects.forEach(async (project: ClaudeProject) => {
-              try {
-                // Load session count
-                const countResponse = await fetch(`http://localhost:${serverPort}/claude-project-session-count/${encodeURIComponent(project.path)}`);
-                if (countResponse.ok) {
-                  const countData = await countResponse.json();
-                  // Update the specific project's session count
-                  setProjects(prev => prev.map(p => 
-                    p.path === countData.projectName 
-                      ? { ...p, sessionCount: countData.sessionCount }
-                      : p
-                  ));
-                }
-                
-                // No need to load dates anymore - we get them immediately from the server!
-              } catch (err) {
-                console.error(`Failed to load data for ${project.name}:`, err);
-              }
-            });
-          }
+          // Session counts are already included in quickData.projects from the server
+          // No need to fetch them separately anymore!
         })
         .catch(quickErr => {
           console.log('Quick load failed:', quickErr);
@@ -175,22 +155,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
         setProjectsOffset(prev => prev + newProjects.length);
         setHasMoreProjects(newProjects.length === 20);
         
-        // Load session counts for new projects
-        newProjects.forEach(async (project: ClaudeProject) => {
-          try {
-            const countResponse = await fetch(`http://localhost:${serverPort}/claude-project-session-count/${encodeURIComponent(project.path)}`);
-            if (countResponse.ok) {
-              const countData = await countResponse.json();
-              setProjects(prev => prev.map(p => 
-                p.path === countData.projectName 
-                  ? { ...p, sessionCount: countData.sessionCount }
-                  : p
-              ));
-            }
-          } catch (err) {
-            console.error(`Failed to load data for ${project.name}:`, err);
-          }
-        });
+        // Session counts are already included in newProjects from the server
+        // No need to fetch them separately anymore!
       }
     } catch (err) {
       console.error('Error loading more projects:', err);
@@ -885,8 +851,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                     <div className="project-meta">
                       <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                         <IconHash size={12} />
-                        {project.sessionCount !== null ? (
-                          <>{project.sessionCount} {typeof project.sessionCount === 'string' || project.sessionCount !== 1 ? 'sessions' : 'session'}</>
+                        {project.sessionCount !== null && project.sessionCount !== undefined ? (
+                          <>{project.sessionCount} {project.sessionCount !== 1 ? 'sessions' : 'session'}</>
                         ) : (
                           <LoadingIndicator size="small" />
                         )}

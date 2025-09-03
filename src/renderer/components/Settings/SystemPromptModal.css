@@ -1,0 +1,269 @@
+/* System Prompt Modal - Minimal OLED Design */
+.system-prompt-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(20px);
+}
+
+.system-prompt-modal {
+  background: #0a0a0a;
+  border: none;
+  border-radius: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.system-prompt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  flex-shrink: 0;
+  background: #0a0a0a;
+  -webkit-app-region: drag;
+}
+
+.system-prompt-header h3 {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.system-prompt-header .close-button {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+  padding: 2px;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+}
+
+.system-prompt-header .close-button:hover {
+  color: var(--negative-color);
+}
+
+.system-prompt-content {
+  padding: 8px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+/* Custom scrollbar for modal content */
+.system-prompt-content::-webkit-scrollbar {
+  width: 6px;
+}
+
+.system-prompt-content::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.system-prompt-content::-webkit-scrollbar-thumb {
+  background: rgba(var(--accent-rgb), 0.3);
+  border-radius: 3px;
+}
+
+.system-prompt-content::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--accent-rgb), 0.5);
+}
+
+/* Mode Selection */
+.prompt-mode-section {
+  margin-bottom: 12px;
+}
+
+.mode-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.mode-button {
+  flex: 1;
+  padding: 5px 10px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #666;
+  font-size: 10px;
+  cursor: default;
+  transition: all 0.2s;
+  border-radius: 2px;
+  text-transform: lowercase;
+}
+
+.mode-button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #999;
+}
+
+.mode-button.active {
+  background: rgba(153, 187, 255, 0.1);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Prompt Editor */
+.prompt-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.editor-label {
+  font-size: 9px;
+  color: #666;
+  text-transform: lowercase;
+}
+
+.char-count {
+  font-size: 9px;
+  color: #444;
+  font-family: var(--mono-font);
+}
+
+.char-count.over-limit {
+  color: var(--negative-color);
+}
+
+.prompt-editor {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 12px;
+  font-size: 11px;
+  font-family: var(--mono-font);
+  min-height: 80px;
+  max-height: 120px;
+  resize: vertical;
+  outline: none;
+  transition: all 0.2s;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.prompt-editor:focus {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: var(--accent-color);
+}
+
+.prompt-editor[readonly] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.warning-message {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 9px;
+  color: var(--negative-color);
+  margin-top: 2px;
+}
+
+/* Footer */
+.system-prompt-footer {
+  padding: 8px 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.15);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  background: #0a0a0a;
+}
+
+.reset-button {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #666;
+  font-size: 9px;
+  cursor: default;
+  transition: all 0.2s;
+  border-radius: 2px;
+}
+
+.reset-button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #999;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.cancel-button,
+.save-button {
+  padding: 4px 10px;
+  font-size: 9px;
+  cursor: default;
+  transition: all 0.2s;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.cancel-button {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: #666;
+}
+
+.cancel-button:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(255, 255, 255, 0.2);
+  color: #999;
+}
+
+.save-button {
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.save-button:hover {
+  background: rgba(var(--accent-rgb), 0.2);
+}
+
+.save-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

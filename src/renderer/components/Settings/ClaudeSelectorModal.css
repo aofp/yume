@@ -40,7 +40,7 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.3);
-  cursor: pointer;
+  cursor: default;
   padding: 2px;
   display: flex;
   align-items: center;

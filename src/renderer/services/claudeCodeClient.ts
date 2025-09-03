@@ -493,6 +493,17 @@ export class ClaudeCodeClient {
       console.error('[Hooks] Prompt blocked:', error);
       throw error;
     }
+    
+    // Get system prompt settings to pass to server
+    let systemPromptSettings = {};
+    try {
+      const stored = localStorage.getItem('system_prompt_settings');
+      if (stored) {
+        systemPromptSettings = JSON.parse(stored);
+      }
+    } catch (err) {
+      console.error('[Client] Failed to load system prompt settings:', err);
+    }
     // Wait for connection if socket exists but not connected yet
     if (this.socket && !this.socket.connected) {
       console.log('[Client] Socket exists but not connected, waiting for connection...');
@@ -539,7 +550,7 @@ export class ClaudeCodeClient {
         connected: this.connected
       });
 
-      this.socket.emit('sendMessage', { sessionId, content, model, autoGenerateTitle }, (response: any) => {
+      this.socket.emit('sendMessage', { sessionId, content, model, autoGenerateTitle, systemPromptSettings }, (response: any) => {
         console.log('[Client] Message send response:', response);
         if (response.success) {
           console.log('[Client] ✅ Message sent successfully');

@@ -1659,6 +1659,12 @@ app.get('/claude-analytics', async (req, res) => {
       totalMessages: 0,
       totalTokens: 0,
       totalCost: 0,
+      tokenBreakdown: {
+        input: 0,
+        output: 0,
+        cacheCreation: 0,
+        cacheRead: 0
+      },
       byModel: {
         opus: { sessions: 0, tokens: 0, cost: 0 },
         sonnet: { sessions: 0, tokens: 0, cost: 0 }
@@ -1760,10 +1766,9 @@ app.get('/claude-analytics', async (req, res) => {
                     try {
                       const data = JSON.parse(line);
                       
-                      // Claude CLI uses type: "assistant" for assistant messages with usage data
-                      if (data.type === 'assistant' && data.message && data.message.usage) {
-                        messageCount++;
-                        const usage = data.message.usage;
+                      // Claude CLI outputs token usage in 'result' messages
+                      if (data.type === 'result' && data.usage) {
+                        const usage = data.usage;
                         
                         // Count ALL tokens including cached ones - they all count towards 200k limit
                         const inputTokens = usage.input_tokens || 0;
@@ -1773,21 +1778,35 @@ app.get('/claude-analytics', async (req, res) => {
                         sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                         
                         // Detect model from message
-                        if (data.message.model) {
-                          sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
+                        if (data.model) {
+                          sessionModel = data.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                         }
                         
                         // Calculate cost based on model
-                        // Claude 3.5 Sonnet: $3/million input, $15/million output
-                        // Claude 3 Opus: $15/million input, $75/million output
+                        // Claude 4 Opus: $15/million input, $75/million output
+                        // Claude 4 Sonnet: $3/million input, $15/million output
+                        // Cache write: Opus $18.75/million, Sonnet $3.75/million
+                        // Cache read: Opus $1.50/million, Sonnet $0.30/million
                         const isOpus = sessionModel === 'opus';
-                        const inputRate = isOpus ? 0.000015 : 0.000003;
-                        const outputRate = isOpus ? 0.000075 : 0.000015;
-                        sessionCost += inputTokens * inputRate + outputTokens * outputRate;
+                        const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
+                        const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
+                        const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
+                        const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
+                        
+                        sessionCost += inputTokens * inputRate + 
+                                     outputTokens * outputRate + 
+                                     cacheCreationTokens * cacheWriteRate + 
+                                     cacheReadTokens * cacheReadRate;
+                        
+                        // Track individual token types for breakdown
+                        analytics.tokenBreakdown.input += inputTokens;
+                        analytics.tokenBreakdown.output += outputTokens;
+                        analytics.tokenBreakdown.cacheCreation += cacheCreationTokens;
+                        analytics.tokenBreakdown.cacheRead += cacheReadTokens;
                       }
                       
-                      // Count user messages too
-                      if (data.type === 'user') {
+                      // Count all message types
+                      if (data.type === 'user' || data.type === 'assistant') {
                         messageCount++;
                       }
                       
@@ -1909,10 +1928,9 @@ app.get('/claude-analytics', async (req, res) => {
                   try {
                     const data = JSON.parse(line);
                     
-                    // Claude CLI uses type: "assistant" for assistant messages with usage data
-                    if (data.type === 'assistant' && data.message && data.message.usage) {
-                      messageCount++;
-                      const usage = data.message.usage;
+                    // Claude CLI outputs token usage in 'result' messages
+                    if (data.type === 'result' && data.usage) {
+                      const usage = data.usage;
                       
                       // Count ALL tokens including cached ones - they all count towards 200k limit
                       const inputTokens = usage.input_tokens || 0;
@@ -1922,19 +1940,32 @@ app.get('/claude-analytics', async (req, res) => {
                       sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                       
                       // Detect model from message
-                      if (data.message.model) {
-                        sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
+                      if (data.model) {
+                        sessionModel = data.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                       }
                       
                       // Calculate cost based on model
+                      // Claude 4 pricing per million tokens
                       const isOpus = sessionModel === 'opus';
-                      const inputRate = isOpus ? 0.000015 : 0.000003;
-                      const outputRate = isOpus ? 0.000075 : 0.000015;
-                      sessionCost += inputTokens * inputRate + outputTokens * outputRate;
+                      const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
+                      const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
+                      const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
+                      const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
+                      
+                      sessionCost += inputTokens * inputRate + 
+                                   outputTokens * outputRate + 
+                                   cacheCreationTokens * cacheWriteRate + 
+                                   cacheReadTokens * cacheReadRate;
+                      
+                      // Track individual token types for breakdown
+                      analytics.tokenBreakdown.input += inputTokens;
+                      analytics.tokenBreakdown.output += outputTokens;
+                      analytics.tokenBreakdown.cacheCreation += cacheCreationTokens;
+                      analytics.tokenBreakdown.cacheRead += cacheReadTokens;
                     }
                     
-                    // Count user messages too
-                    if (data.type === 'user') {
+                    // Count all message types
+                    if (data.type === 'user' || data.type === 'assistant') {
                       messageCount++;
                     }
                     
@@ -2033,10 +2064,9 @@ app.get('/claude-analytics', async (req, res) => {
                 try {
                   const data = JSON.parse(line);
                   
-                  // Claude CLI uses type: "assistant" for assistant messages with usage data
-                  if (data.type === 'assistant' && data.message && data.message.usage) {
-                    messageCount++;
-                    const usage = data.message.usage;
+                  // Claude CLI outputs token usage in 'result' messages
+                  if (data.type === 'result' && data.usage) {
+                    const usage = data.usage;
                     
                     // Count ALL tokens including cached ones - they all count towards 200k limit
                     const inputTokens = usage.input_tokens || 0;
@@ -2046,19 +2076,32 @@ app.get('/claude-analytics', async (req, res) => {
                     sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                     
                     // Detect model from message
-                    if (data.message.model) {
-                      sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
+                    if (data.model) {
+                      sessionModel = data.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                     }
                     
                     // Calculate cost based on model
+                    // Claude 4 pricing per million tokens
                     const isOpus = sessionModel === 'opus';
-                    const inputRate = isOpus ? 0.000015 : 0.000003;
-                    const outputRate = isOpus ? 0.000075 : 0.000015;
-                    sessionCost += inputTokens * inputRate + outputTokens * outputRate;
+                    const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
+                    const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
+                    const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
+                    const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
+                    
+                    sessionCost += inputTokens * inputRate + 
+                                 outputTokens * outputRate + 
+                                 cacheCreationTokens * cacheWriteRate + 
+                                 cacheReadTokens * cacheReadRate;
+                    
+                    // Track individual token types for breakdown
+                    analytics.tokenBreakdown.input += inputTokens;
+                    analytics.tokenBreakdown.output += outputTokens;
+                    analytics.tokenBreakdown.cacheCreation += cacheCreationTokens;
+                    analytics.tokenBreakdown.cacheRead += cacheReadTokens;
                   }
                   
-                  // Count user messages too
-                  if (data.type === 'user') {
+                  // Count all message types
+                  if (data.type === 'user' || data.type === 'assistant') {
                     messageCount++;
                   }
                   
@@ -2595,8 +2638,22 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
         res.json({ projectName, sessionCount: 0 });
       }
     } else {
-      // Non-Windows implementation
-      res.json({ projectName, sessionCount: 0 });
+      // Non-Windows (macOS/Linux) implementation
+      const projectsDir = path.join(os.homedir(), '.claude', 'projects');
+      const projectPath = path.join(projectsDir, projectName);
+      
+      try {
+        // Count .jsonl files in the project directory
+        const files = await fs.promises.readdir(projectPath);
+        const sessionFiles = files.filter(f => f.endsWith('.jsonl'));
+        const sessionCount = sessionFiles.length;
+        
+        console.log(\`[Session Count] Project: \${projectName}, Count: \${sessionCount}\`);
+        res.json({ projectName, sessionCount });
+      } catch (error) {
+        console.error(\`[Session Count] Error counting sessions for \${projectName}:\`, error);
+        res.json({ projectName, sessionCount: 0 });
+      }
     }
   } catch (error) {
     res.status(500).json({ error: 'Failed to get session count' });
@@ -3065,13 +3122,57 @@ io.on('connection', (socket) => {
 
   socket.on('sendMessage', async (data, callback) => {
     console.log('📨 [sendMessage] Processing message in EMBEDDED SERVER');
-    const { sessionId, content: message, autoGenerateTitle } = data;
+    const { sessionId, content: message, autoGenerateTitle, systemPromptSettings } = data;
     let { model } = data; // Use let for model so we can reassign it for /compact
     const session = sessions.get(sessionId);
     
     if (!session) {
       console.error(`❌ Session not found: ${sessionId}`);
       if (callback) callback({ success: false, error: 'Session not found' });
+      return;
+    }
+    
+    // Check if this is the /test command
+    if (message && message.trim() === '/test') {
+      console.log(`🧪 [TEST] Test command received`);
+      
+      // Emit user message
+      socket.emit(`message:${sessionId}`, {
+        type: 'user',
+        message: { content: message },
+        timestamp: Date.now()
+      });
+      
+      // Send test response
+      const testMessageId = `test-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      socket.emit(`message:${sessionId}`, {
+        id: testMessageId,
+        type: 'assistant',
+        message: {
+          content: [
+            { type: 'text', text: '✅ test command works!\n\nyurucode is running properly.' }
+          ]
+        },
+        streaming: false,
+        timestamp: Date.now()
+      });
+      
+      // Also emit to Claude session if different
+      if (session.claudeSessionId && session.claudeSessionId !== sessionId) {
+        socket.emit(`message:${session.claudeSessionId}`, {
+          id: testMessageId,
+          type: 'assistant',
+          message: {
+            content: [
+              { type: 'text', text: '✅ test command works!\n\nyurucode is running properly.' }
+            ]
+          },
+          streaming: false,
+          timestamp: Date.now()
+        });
+      }
+      
+      if (callback) callback({ success: true });
       return;
     }
     
@@ -3531,9 +3632,34 @@ io.on('connection', (socket) => {
         '--print',
         '--output-format', 'stream-json', 
         '--verbose', 
-        '--dangerously-skip-permissions',
-        '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred. !!YOU MUST PLAN FIRST use THINK and TODO as MUCH AS POSSIBLE to break down everything, including planning into multiple steps and do edits in small chunks!!'
+        '--dangerously-skip-permissions'
       ];
+      
+      // Add system prompt if configured (passed from frontend or use default)
+      const promptSettings = systemPromptSettings || {};
+      const defaultPrompt = 'you are in yurucode ui. prefer lowercase, be extremely concise, never use formal language, no greetings or pleasantries, straight to the point. you must plan first - use think and todo as much as possible to break down everything, including planning into multiple steps and do edits in small chunks';
+      
+      if (promptSettings.enabled !== false) { // Default to enabled
+        let systemPrompt = '';
+        
+        if (promptSettings.mode === 'custom' && promptSettings.customPrompt) {
+          systemPrompt = promptSettings.customPrompt;
+        } else if (promptSettings.mode === 'preset' && promptSettings.selectedPreset) {
+          // Handle presets if needed
+          systemPrompt = defaultPrompt; // For now, use default
+        } else {
+          // Use default yurucode prompt
+          systemPrompt = defaultPrompt;
+        }
+        
+        if (systemPrompt) {
+          args.push('--append-system-prompt');
+          args.push(systemPrompt);
+          console.log(`🎯 [${sessionId}] Using system prompt mode: ${promptSettings.mode || 'default'} (${systemPrompt.length} chars)`);
+        }
+      } else {
+        console.log(`🎯 [${sessionId}] System prompt disabled`);
+      }
       
       // Auto-trigger compact if we're near the token limit (96% = 192k tokens)
       const currentTokens = session.totalTokens || 0;
@@ -5021,31 +5147,50 @@ Format as a clear, structured summary that preserves all important context.`;
         // Check if this is a "No conversation found" error
         if (error.includes('No conversation found with session ID')) {
           console.log(`🔄 Resume failed - session not found in Claude storage`);
-          console.log(`🔄 Clearing invalid session ID - will use fresh conversation on next message`);
+          console.log(`🔄 Clearing invalid session ID and will retry automatically`);
           if (session?.wasCompacted) {
             console.log(`🔄 This was expected - session was compacted and old ID is no longer valid`);
           }
           
           // Clear the invalid session ID
+          const oldSessionId = session.claudeSessionId;
           session.claudeSessionId = null;
           session.wasInterrupted = false;
           
-          // Send result message with checkpoint restore flag
-          const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
-          const errorResultMessage = {
-            id: errorResultId,
-            type: 'result',
-            subtype: 'error',
-            is_error: true,
-            error: 'Session not found - restoring from checkpoint',
-            requiresCheckpointRestore: true,
+          // Kill the current process
+          if (claudeProcess && !claudeProcess.killed) {
+            console.log(`🔄 Killing failed process before retry`);
+            try {
+              claudeProcess.kill();
+            } catch (e) {
+              console.error(`Failed to kill process: ${e.message}`);
+            }
+          }
+          
+          // Clear from active processes
+          activeProcesses.delete(sessionId);
+          
+          // Notify the user that we're retrying
+          const infoMessage = {
+            id: `info-retry-${Date.now()}`,
+            type: 'system',
+            subtype: 'info',
+            message: '🔄 Session not found. Starting fresh conversation...',
             streaming: false,
             timestamp: Date.now()
           };
-          const channel = `message:${sessionId}`;
-          console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore (stderr)`);
-          socket.emit(channel, errorResultMessage);
-          console.log(`📤 [${sessionId}] Sent checkpoint restore signal (stderr)`);
+          socket.emit(`message:${sessionId}`, infoMessage);
+          
+          // Schedule a retry without the resume flag
+          console.log(`🔄 Scheduling automatic retry without --resume flag`);
+          setTimeout(() => {
+            console.log(`🔄 Retrying message for session ${sessionId}`);
+            // The spawnRequest function will be called again
+            // Since session.claudeSessionId is now null, it won't use --resume
+            spawnRequest();
+          }, 500);
+          
+          return; // Don't emit error, we're handling it
         } else {
           // Emit other errors to client
           socket.emit(`message:${sessionId}`, { 

@@ -18,6 +18,7 @@ import {
   IconCopy
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { TabButton } from '../common/TabButton';
 import './AgentsModal.css';
 
 // Agent structure - simplified
@@ -333,9 +334,28 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     <div className="agents-modal-overlay" onClick={onClose}>
       <div className="agents-modal" onClick={e => e.stopPropagation()}>
         <div className="agents-header" data-tauri-drag-region>
-          <div className="agents-title" data-tauri-drag-region>
-            <IconRobot size={16} />
-            <span>claude agents</span>
+          <div className="agents-header-left" data-tauri-drag-region>
+            <div className="agents-title" data-tauri-drag-region>
+              <IconRobot size={16} />
+              <span>claude agents</span>
+            </div>
+            {!editMode && !createMode && (
+              <div className="header-tabs">
+                <TabButton
+                  label="global"
+                  active={agentScope === 'global'}
+                  onClick={() => setAgentScope('global')}
+                  count={globalAgents.length}
+                />
+                <TabButton
+                  label={projectName || 'project'}
+                  active={agentScope === 'project'}
+                  onClick={() => setAgentScope('project')}
+                  disabled={!currentDirectory}
+                  count={projectAgents.length}
+                />
+              </div>
+            )}
           </div>
           <div className="agents-header-actions">
             <button className="agents-close" onClick={onClose}>
@@ -343,25 +363,6 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
             </button>
           </div>
         </div>
-
-        {!editMode && !createMode && (
-          <div className="agents-scope-toggle">
-            <button 
-              className={`scope-btn ${agentScope === 'global' ? 'active' : ''}`}
-              onClick={() => setAgentScope('global')}
-            >
-              global ({globalAgents.length})
-            </button>
-            <button 
-              className={`scope-btn ${agentScope === 'project' ? 'active' : ''}`}
-              onClick={() => setAgentScope('project')}
-              disabled={!currentDirectory}
-              title={!currentDirectory ? 'no project open' : currentDirectory}
-            >
-              {projectName ? `${projectName} (${projectAgents.length})` : `project (${projectAgents.length})`}
-            </button>
-          </div>
-        )}
 
         {showSearch && !editMode && !createMode && (
           <div className="agents-search">

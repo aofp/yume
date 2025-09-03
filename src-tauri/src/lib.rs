@@ -19,6 +19,7 @@ mod port_manager;   // Dynamic port allocation for server instances
 mod db;             // SQLite database for persistent storage
 mod hooks;          // Hook system for intercepting and modifying Claude behavior
 mod compaction;     // Context compaction management for auto-trigger at 96%
+mod mcp;            // Model Context Protocol (MCP) server management
 
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tauri::{Manager, Listener};
@@ -114,16 +115,18 @@ pub fn run() {
             }
             
             // Delayed window display strategy
-            // The window starts hidden (configured in tauri.conf.json)
+            // The window starts hidden (configured in tauri.conf.json with visible: false)
             // We show it after a brief delay to ensure:
             // - WebView is fully loaded
             // - Styles are applied
+            // - Window position/size is restored
             // - No white flash on startup
             {
                 let window_clone = window.clone();
                 std::thread::spawn(move || {
-                    // Minimal delay for webview to load and apply styles
-                    std::thread::sleep(std::time::Duration::from_millis(50));
+                    // Increased delay to ensure window is fully ready
+                    // This prevents the brief flash of an improperly positioned window
+                    std::thread::sleep(std::time::Duration::from_millis(200));
                     let _ = window_clone.show();
                     let _ = window_clone.set_focus();
                     info!("Window shown and focused after initialization");
@@ -546,6 +549,9 @@ pub fn run() {
             commands::claude_detector::execute_command,
             commands::claude_detector::save_claude_settings,
             commands::claude_detector::load_claude_settings,
+            // Claude version and path commands
+            commands::get_claude_version,
+            commands::get_claude_path,
             // Legacy Claude commands (to be replaced)
             commands::send_message,
             commands::interrupt_session,
@@ -623,6 +629,13 @@ pub fn run() {
             commands::compaction::update_compaction_config,
             commands::compaction::get_compaction_config,
             commands::compaction::generate_context_manifest,
+            // MCP operations
+            commands::mcp::mcp_list,
+            commands::mcp::mcp_add,
+            commands::mcp::mcp_remove,
+            commands::mcp::mcp_test_connection,
+            commands::mcp::mcp_import_claude_desktop,
+            commands::mcp::mcp_export_config,
         ])
         .on_window_event(|app_handle, event| {
             // Global window event handler for app-level lifecycle

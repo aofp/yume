@@ -1803,7 +1803,27 @@ export const ClaudeChat: React.FC = () => {
       setCommandTrigger(null);
       toggleModel();
     } else {
-      // For other commands like /compact and /init, insert into input and optionally send
+      // Check if this is a custom command
+      const customCommands = JSON.parse(localStorage.getItem('custom_commands') || '[]');
+      const customCommand = customCommands.find((cmd: any) => {
+        const trigger = cmd.trigger.startsWith('/') ? cmd.trigger : '/' + cmd.trigger;
+        return trigger === command;
+      });
+      
+      if (customCommand) {
+        // Execute custom command script
+        setInput('');
+        setCommandTrigger(null);
+        
+        // Replace the input with the script content and send it
+        if (customCommand.script) {
+          setInput(customCommand.script);
+          setTimeout(() => {
+            handleSend();
+          }, 0);
+        }
+      } else {
+        // For other commands like /compact and /init, insert into input and optionally send
       const newValue = input.substring(0, start) + replacement + input.substring(end);
       setInput(newValue);
       setCommandTrigger(null);
@@ -1825,6 +1845,7 @@ export const ClaudeChat: React.FC = () => {
             }
           }, 0);
         }
+      }
       }
     }
   };
