@@ -2609,18 +2609,39 @@ io.on('connection', (socket) => {
         if (callback) callback({ success: true });
       } catch (error) {
         console.error('❌ Bash command failed:', error);
+        
+        // Extract actual output from the error
+        let output = '';
+        if (error.stdout) {
+          output += error.stdout;
+        }
+        if (error.stderr) {
+          if (output) output += '\n';
+          output += error.stderr;
+        }
+        
+        // If we have no output at all, use the error message
+        if (!output) {
+          output = error.message;
+        }
+        
+        // Format the error output properly
+        const exitCode = error.code || 'unknown';
+        const formattedOutput = `❌ Command failed with exit code ${exitCode}\n\n${output}`;
+        
         socket.emit(`message:${sessionId}`, {
           type: 'assistant',
           message: {
             content: [
-              { type: 'text', text: `Error executing command: ${error.message}` }
+              { type: 'text', text: `\`\`\`ansi\n${formattedOutput}\n\`\`\`` }
             ]
           },
           streaming: false,
           timestamp: Date.now()
         });
         
-        if (callback) callback({ success: false, error: error.message });
+        // Still report success since we sent the output as a message
+        if (callback) callback({ success: true });
       }
       
       return; // Don't process through Claude

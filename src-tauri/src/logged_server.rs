@@ -3281,6 +3281,7 @@ io.on('connection', (socket) => {
         messages: existingMessages,  // Use loaded messages if available
         createdAt: Date.now(),
         claudeSessionId: existingClaudeSessionId,  // Preserve Claude session ID
+        interruptedSessionId: null,  // Store interrupted session ID separately
         hasGeneratedTitle: existingMessages.length > 0,  // If we have messages, we likely have a title
         wasInterrupted: false,  // Track if last conversation was interrupted vs completed
         wasCompacted: existingSession?.wasCompacted || false  // Preserve compacted state
@@ -3780,7 +3781,12 @@ io.on('connection', (socket) => {
           
           // Mark session as interrupted since we killed the process
           session.wasInterrupted = true;
-          // Clear the session ID since the conversation was interrupted
+          // Store the interrupted session ID separately before clearing
+          if (session.claudeSessionId) {
+            session.interruptedSessionId = session.claudeSessionId;
+            console.log(`💾 Stored interrupted session ID: ${session.interruptedSessionId}`);
+          }
+          // Clear the active session ID since the conversation was interrupted
           session.claudeSessionId = null;
           console.log(`🔄 Marked session ${sessionId} as interrupted and cleared claudeSessionId`);
           
@@ -3954,6 +3960,13 @@ Format as a clear, structured summary that preserves all important context.`;
       
       // Determine if we're resuming or recreating
       let isResuming = false;
+      
+      // Check for interrupted session to restore
+      if (!session.claudeSessionId && session.interruptedSessionId && session.wasInterrupted) {
+        console.log(`🔄 Restoring interrupted session: ${session.interruptedSessionId}`);
+        session.claudeSessionId = session.interruptedSessionId;
+        session.interruptedSessionId = null;
+      }
       
       // Use --resume if we have a claudeSessionId (even after interrupt)
       isResuming = session.claudeSessionId;
