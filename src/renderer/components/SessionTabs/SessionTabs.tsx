@@ -721,6 +721,7 @@ export const SessionTabs: React.FC = () => {
             ) : (
               <button
                 className="tab-close"
+                tabIndex={-1}
                 onClick={async (e) => {
                   e.stopPropagation();
                   // If streaming, interrupt first then close

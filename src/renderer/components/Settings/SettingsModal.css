@@ -51,6 +51,7 @@
   justify-content: space-between; /* Space between icon and tabs */
   gap: 8px;
   flex: 1;
+  min-width: 0; /* Allow shrinking */
   -webkit-app-region: drag;
 }
 
@@ -58,7 +59,31 @@
   display: flex;
   gap: 0;
   margin-right: 10px;
+  overflow-x: auto; /* Allow horizontal scroll */
+  overflow-y: hidden;
+  max-width: calc(100% - 40px); /* Leave space for settings icon */
   -webkit-app-region: no-drag;
+  scrollbar-width: none; /* Hide scrollbar on Firefox */
+  -ms-overflow-style: none; /* Hide scrollbar on IE/Edge */
+}
+
+/* Hide scrollbar on Webkit browsers */
+.header-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.settings-close {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.4);
+  cursor: default;
+  padding: 2px;
+  transition: all 0.2s ease;
+  -webkit-app-region: no-drag;
+  flex-shrink: 0; /* Prevent close button from shrinking */
+  position: sticky;
+  right: 0;
+  z-index: 11; /* Above header */
 }
 
 .settings-header h3 {
