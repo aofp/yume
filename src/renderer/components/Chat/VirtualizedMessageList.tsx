@@ -42,6 +42,7 @@ export const VirtualizedMessageList: React.FC<VirtualizedMessageListProps> = ({
     // Thinking indicator has fixed height
     if (msg.type === 'thinking') {
       return 60;
+    }
     
     // Tool messages are typically taller
     if (msg.type === 'tool_use' || msg.tool_name) {

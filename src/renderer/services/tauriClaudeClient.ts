@@ -522,7 +522,8 @@ export class TauriClaudeClient {
           type: 'system',
           subtype: message.subtype,
           session_id: message.session_id,
-          message: message.message
+          message: message.message,
+          streaming: message.streaming // Pass through streaming state for system messages
         };
       } else if (message.type === 'interrupt') {
         // Interrupt signal

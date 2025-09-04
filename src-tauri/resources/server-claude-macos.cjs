@@ -2713,9 +2713,18 @@ io.on('connection', (socket) => {
           
           // Wait a bit for the process to fully terminate
           await new Promise(resolve => setTimeout(resolve, 500));
+          
+          // Emit a message to set streaming=true for the new request after interruption
+          // This ensures the UI shows the "thinking..." state when we interrupt and send a new message
+          console.log(`🔄 Emitting streaming=true after interruption for session ${sessionId}`);
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'streaming_resumed',
+            streaming: true,
+            timestamp: Date.now()
+          });
         }
 
-        // Don't modify streaming state here - let the UI continue showing streaming
         // The process exit handler will properly clean up when the old process dies
 
         // Validate session's working directory - NEVER use temp directories

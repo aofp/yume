@@ -812,6 +812,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               })
             }));
           }
+          // Special handling for streaming_resumed to set streaming state after interruption
+          else if (message.type === 'system' && message.subtype === 'streaming_resumed') {
+            console.log('[Store] 🔄 Streaming resumed after interruption - setting streaming state to true');
+            set(state => ({
+              sessions: state.sessions.map(s => {
+                if (s.id === sessionId) {
+                  return { 
+                    ...s, 
+                    streaming: true,
+                    // Don't reset thinkingStartTime - it should be maintained from the original send
+                  };
+                }
+                return s;
+              })
+            }));
+          }
           
           // Non-result messages should go through the main handler
           get().addMessageToSession(sessionId, message);
