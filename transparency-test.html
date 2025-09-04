@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Transparency Test</title>
+    <style>
+        :root {
+            --bg-color: rgba(0, 0, 0, 1);
+            --bg-opacity: 1;
+        }
+        
+        html {
+            background: transparent !important;
+        }
+        
+        body {
+            margin: 0;
+            padding: 20px;
+            background: var(--bg-color);
+            color: white;
+            font-family: monospace;
+        }
+        
+        .controls {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(255, 255, 255, 0.1);
+            padding: 20px;
+            border-radius: 8px;
+        }
+        
+        input[type="range"] {
+            width: 200px;
+        }
+        
+        .value {
+            display: inline-block;
+            width: 50px;
+            text-align: right;
+        }
+    </style>
+</head>
+<body>
+    <h1>Transparency Test</h1>
+    <p>This page tests if transparency is working in the webview.</p>
+    <p>Adjust the slider to change opacity. If transparency is working, you should see through the window at lower values.</p>
+    
+    <div class="controls">
+        <label>
+            Opacity: 
+            <input type="range" id="opacity" min="0" max="100" value="100">
+            <span class="value" id="value">100%</span>
+        </label>
+    </div>
+    
+    <script>
+        const slider = document.getElementById('opacity');
+        const value = document.getElementById('value');
+        
+        slider.addEventListener('input', (e) => {
+            const opacity = e.target.value / 100;
+            const color = `rgba(0, 0, 0, ${opacity})`;
+            
+            document.body.style.backgroundColor = color;
+            document.documentElement.style.setProperty('--bg-color', color);
+            document.documentElement.style.setProperty('--bg-opacity', opacity);
+            
+            value.textContent = e.target.value + '%';
+            
+            console.log('Set background to:', color);
+        });
+        
+        // Log initial state
+        console.log('HTML background:', getComputedStyle(document.documentElement).backgroundColor);
+        console.log('Body background:', getComputedStyle(document.body).backgroundColor);
+    </script>
+</body>
+</html>

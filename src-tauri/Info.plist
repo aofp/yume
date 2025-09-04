@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>yurucode needs access to your microphone for dictation and voice input features.</string>
+    <key>NSSpeechRecognitionUsageDescription</key>
+    <string>yurucode needs access to speech recognition to convert your voice to text.</string>
+    <key>NSAppleEventsUsageDescription</key>
+    <string>yurucode needs to control system events for enhanced functionality.</string>
+    <key>NSAccessibilityUsageDescription</key>
+    <string>yurucode needs accessibility permissions to support dictation and voice input.</string>
+</dict>
+</plist>
