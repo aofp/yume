@@ -87,6 +87,27 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     backgroundOpacity, setBackgroundOpacity
   } = useClaudeCodeStore();
   
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        // Close any sub-modals first
+        if (showColorPicker) {
+          setShowColorPicker(null);
+        } else if (showFontPicker) {
+          setShowFontPicker(null);
+        } else if (showAboutModal) {
+          setShowAboutModal(false);
+        } else {
+          onClose();
+        }
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose, showColorPicker, showFontPicker, showAboutModal]);
+  
   
   // Hooks tab state
   const [hooks, setHooks] = useState<HookConfig[]>([]);

@@ -86,6 +86,10 @@
   z-index: 11; /* Above header */
 }
 
+.settings-close:hover {
+  color: var(--negative-color);
+}
+
 .settings-header h3 {
   color: var(--accent-color);
   font-size: 12px;
@@ -94,20 +98,6 @@
   text-transform: lowercase;
   user-select: none;
   -webkit-user-select: none;
-}
-
-.settings-close {
-  background: transparent;
-  border: none;
-  color: rgba(255, 255, 255, 0.4);
-  cursor: default;
-  padding: 2px;
-  transition: all 0.2s ease;
-  -webkit-app-region: no-drag;
-}
-
-.settings-close:hover {
-  color: var(--negative-color);
 }
 
 .settings-content {

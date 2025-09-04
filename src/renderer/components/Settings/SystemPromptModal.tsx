@@ -22,6 +22,18 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
     if (settings.mode === 'none' || !settings.enabled) return '';
     return DEFAULT_PROMPT;
   });
+  
+  // Handle escape key
+  useEffect(() => {
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+    
+    document.addEventListener('keydown', handleEscape);
+    return () => document.removeEventListener('keydown', handleEscape);
+  }, [onClose]);
 
   const handleModeChange = (mode: 'default' | 'custom' | 'none') => {
     const newSettings = { 
