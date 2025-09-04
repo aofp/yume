@@ -13,21 +13,7 @@
   -webkit-user-select: none;
 }
 
-/* Header with inline tabs */
-.settings-header-left {
-  display: flex;
-  align-items: center;
-  flex: 1;
-  -webkit-app-region: drag;
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.settings-tabs-inline {
-  display: flex;
-  gap: 0;
-  margin-left: 20px;
-}
+/* Settings-specific overrides now in SettingsModal.css */
 
 .settings-tab-inline {
   padding: 0 12px;

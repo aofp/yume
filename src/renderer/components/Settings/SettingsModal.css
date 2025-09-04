@@ -45,6 +45,22 @@
   -webkit-app-region: drag;
 }
 
+.settings-header-left {
+  display: flex;
+  align-items: center;
+  justify-content: space-between; /* Space between icon and tabs */
+  gap: 8px;
+  flex: 1;
+  -webkit-app-region: drag;
+}
+
+.header-tabs {
+  display: flex;
+  gap: 0;
+  margin-right: 10px;
+  -webkit-app-region: no-drag;
+}
+
 .settings-header h3 {
   color: var(--accent-color);
   font-size: 12px;
