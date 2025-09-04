@@ -240,7 +240,7 @@ pub fn run() {
                             lparam: LPARAM,
                         ) -> LRESULT {
                             // Validate hwnd is not null
-                            if hwnd.0 == 0 {
+                            if hwnd.0.is_null() {
                                 return LRESULT(0);
                             }
                             

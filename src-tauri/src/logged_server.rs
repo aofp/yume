@@ -1864,9 +1864,9 @@ app.get('/claude-analytics', async (req, res) => {
                     try {
                       const data = JSON.parse(line);
                       
-                      // Claude CLI outputs token usage in 'result' messages
-                      if (data.type === 'result' && data.usage) {
-                        const usage = data.usage;
+                      // Claude CLI outputs token usage in assistant messages
+                      if (data.type === 'assistant' && data.message && data.message.usage) {
+                        const usage = data.message.usage;
                         
                         // Count ALL tokens including cached ones - they all count towards 200k limit
                         const inputTokens = usage.input_tokens || 0;
@@ -1876,8 +1876,8 @@ app.get('/claude-analytics', async (req, res) => {
                         sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                         
                         // Detect model from message
-                        if (data.model) {
-                          sessionModel = data.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
+                        if (data.message && data.message.model) {
+                          sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                         }
                         
                         // Calculate cost based on model
@@ -2027,8 +2027,8 @@ app.get('/claude-analytics', async (req, res) => {
                     const data = JSON.parse(line);
                     
                     // Claude CLI outputs token usage in 'result' messages
-                    if (data.type === 'result' && data.usage) {
-                      const usage = data.usage;
+                    if (data.type === 'assistant' && data.message && data.message.usage) {
+                      const usage = data.message.usage;
                       
                       // Count ALL tokens including cached ones - they all count towards 200k limit
                       const inputTokens = usage.input_tokens || 0;
@@ -2038,8 +2038,8 @@ app.get('/claude-analytics', async (req, res) => {
                       sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                       
                       // Detect model from message
-                      if (data.model) {
-                        sessionModel = data.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
+                      if (data.message && data.message.model) {
+                        sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                       }
                       
                       // Calculate cost based on model
@@ -2163,8 +2163,8 @@ app.get('/claude-analytics', async (req, res) => {
                   const data = JSON.parse(line);
                   
                   // Claude CLI outputs token usage in 'result' messages
-                  if (data.type === 'result' && data.usage) {
-                    const usage = data.usage;
+                  if (data.type === 'assistant' && data.message && data.message.usage) {
+                    const usage = data.message.usage;
                     
                     // Count ALL tokens including cached ones - they all count towards 200k limit
                     const inputTokens = usage.input_tokens || 0;
@@ -2174,8 +2174,8 @@ app.get('/claude-analytics', async (req, res) => {
                     sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                     
                     // Detect model from message
-                    if (data.model) {
-                      sessionModel = data.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
+                    if (data.message && data.message.model) {
+                      sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                     }
                     
                     // Calculate cost based on model
@@ -2668,7 +2668,7 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
           })
           .sort((a, b) => b.timestamp - a.timestamp);
         
-        console.log(\`Found \${files.length} sessions in project\`);
+        console.log(`Found ${files.length} sessions in project`);
         
         if (files.length === 0) {
           res.write('data: {"done": true, "sessions": []}\n\n');
@@ -2704,17 +2704,17 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
             }
             
             // Stream this session
-            res.write(\`data: \${JSON.stringify({ session, index: i, total: files.length })}\n\n\`);
-            console.log(\`  📄 Sent session \${i + 1}/\${files.length}: \${sessionId}\`);
+            res.write(`data: ${JSON.stringify({ session, index: i, total: files.length })}\n\n`);
+            console.log(`  📄 Sent session ${i + 1}/${files.length}: ${sessionId}`);
             
           } catch (e) {
-            console.log(\`Error processing \${filename}:\`, e.message);
+            console.log(`Error processing ${filename}:`, e.message);
           }
         }
         
         // Send completion event
         res.write('data: {"done": true}\n\n');
-        console.log(\`✅ Streamed all sessions\`);
+        console.log(`✅ Streamed all sessions`);
         res.end();
         
       } catch (e) {
@@ -2780,7 +2780,7 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
           lastModified = stats.mtimeMs;
         }
       } catch (e) {
-        console.log(\`  ⚠️ \${projectName}: Error getting date, using current time\`);
+        console.log(`  ⚠️ ${projectName}: Error getting date, using current time`);
       }
       
       res.json({ projectName, lastModified });
@@ -2837,10 +2837,10 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
         const sessionFiles = files.filter(f => f.endsWith('.jsonl'));
         const sessionCount = sessionFiles.length;
         
-        console.log(\`[Session Count] Project: \${projectName}, Count: \${sessionCount}\`);
+        console.log(`[Session Count] Project: ${projectName}, Count: ${sessionCount}`);
         res.json({ projectName, sessionCount });
       } catch (error) {
-        console.error(\`[Session Count] Error counting sessions for \${projectName}:\`, error);
+        console.error(`[Session Count] Error counting sessions for ${projectName}:`, error);
         res.json({ projectName, sessionCount: 0 });
       }
     }

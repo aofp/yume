@@ -242,7 +242,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
       {/* Built-in Hooks */}
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>built-in hooks</h4>
+          <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>yurucode hooks</h4>
           <button 
             onClick={resetAllToDefaults}
             className="reset-defaults-btn"
@@ -566,7 +566,6 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                 width: '100%',
                 padding: '6px 8px',
                 background: '#111',
-                backgroundImage: 'linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%)',
                 border: '1px solid #333',
                 color: '#fff',
                 fontSize: '11px',
