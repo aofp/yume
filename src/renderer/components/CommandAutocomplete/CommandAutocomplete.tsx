@@ -92,20 +92,22 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
       // Show all commands when just / is typed
       setFilteredCommands(allCommands);
     } else {
-      // Filter commands that start with or contain the query
-      const filtered = allCommands.filter(cmd => 
-        cmd.name.toLowerCase().startsWith(searchQuery) ||
-        cmd.name.toLowerCase().includes(searchQuery) ||
-        cmd.description.toLowerCase().includes(searchQuery)
-      );
+      // Filter commands - be stricter about matching
+      const filtered = allCommands.filter(cmd => {
+        const cmdName = cmd.name.toLowerCase();
+        const query = searchQuery.toLowerCase();
+        
+        // Only show commands that start with the query
+        // Don't do fuzzy matching on "contains" or description
+        return cmdName.startsWith(query);
+      });
       
-      // Sort by relevance (starts with > contains, built-in > custom)
+      // Sort alphabetically 
       filtered.sort((a, b) => {
-        const aStartsWith = a.name.toLowerCase().startsWith(searchQuery);
-        const bStartsWith = b.name.toLowerCase().startsWith(searchQuery);
-        if (aStartsWith && !bStartsWith) return -1;
-        if (!aStartsWith && bStartsWith) return 1;
-        // Prioritize built-in commands
+        // Prioritize exact matches
+        if (a.name.toLowerCase() === searchQuery) return -1;
+        if (b.name.toLowerCase() === searchQuery) return 1;
+        // Then prioritize built-in commands
         if (!a.isCustom && b.isCustom) return -1;
         if (a.isCustom && !b.isCustom) return 1;
         return a.name.localeCompare(b.name);
@@ -131,9 +133,21 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
           setSelectedIndex(prev => prev === 0 ? filteredCommands.length - 1 : prev - 1);
           break;
         case 'Tab':
-        case 'Enter':
           e.preventDefault();
-          handleSelect(filteredCommands[selectedIndex]);
+          if (filteredCommands.length > 0) {
+            handleSelect(filteredCommands[selectedIndex]);
+          }
+          break;
+        case 'Enter':
+          // Only autocomplete on Enter if there are matches
+          // Otherwise let the input be sent as-is
+          if (filteredCommands.length > 0) {
+            e.preventDefault();
+            handleSelect(filteredCommands[selectedIndex]);
+          } else {
+            // No matches - close autocomplete and let Enter send the command
+            onClose();
+          }
           break;
         case 'Escape':
           e.preventDefault();

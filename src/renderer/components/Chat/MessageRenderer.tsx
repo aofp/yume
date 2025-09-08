@@ -1526,6 +1526,9 @@ const MessageRendererBase: React.FC<{
         );
       }
       
+      // Check if this is a bash command
+      const isBashCommand = typeof displayText === 'string' && displayText.startsWith('!');
+      
       return (
         <div className="message user">
           <div className="message-actions user-actions">
@@ -1537,7 +1540,7 @@ const MessageRendererBase: React.FC<{
               <IconCopy size={12} stroke={1.5} />
             </button>
           </div>
-          <div className="message-bubble">
+          <div className={`message-bubble ${isBashCommand ? 'font-mono' : ''}`}>
             {typeof displayText === 'string' ? (
               displayText.includes('\n') ? (
                 <span dangerouslySetInnerHTML={{ 

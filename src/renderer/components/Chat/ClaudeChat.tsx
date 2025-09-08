@@ -1264,6 +1264,7 @@ export const ClaudeChat: React.FC = () => {
     }
     
     // Check for bash mode command (starts with !)
+    console.log('[ClaudeChat] Checking bash mode:', { bashCommandMode, startsWithBang: input.startsWith('!'), input: input.slice(0, 20) });
     if (bashCommandMode && input.startsWith('!')) {
       let bashCommand = input.slice(1).trim(); // Remove the ! prefix
       const originalCommand = bashCommand; // Store original for display
@@ -1361,6 +1362,8 @@ export const ClaudeChat: React.FC = () => {
     
     // Check for slash commands and special inputs
     const trimmedInput = input.trim();
+    console.log('[ClaudeChat] Checking slash commands, input:', trimmedInput, 'bashCommandMode:', bashCommandMode);
+    
     if (trimmedInput === '/clear') {
       console.log('[ClaudeChat] Clearing context for session:', currentSessionId);
       if (currentSessionId && !currentSession?.readOnly) {
@@ -1379,7 +1382,7 @@ export const ClaudeChat: React.FC = () => {
         return;
       }
     } else if (trimmedInput === '/model' || trimmedInput.startsWith('/model ')) {
-      console.log('[ClaudeChat] Toggling model');
+      console.log('[ClaudeChat] Detected /model command - toggling model');
       toggleModel();
       setInput('');
       // Reset textarea height
@@ -1387,6 +1390,7 @@ export const ClaudeChat: React.FC = () => {
         inputRef.current.style.height = '44px';
         inputRef.current.style.overflow = 'hidden';
       }
+      console.log('[ClaudeChat] /model command handled - returning early');
       return;
     }
     
