@@ -3253,6 +3253,15 @@ io.on('connection', (socket) => {
       // Validate working directory - NEVER use temp directories
       let workingDirectory = data.workingDirectory;
       
+      // Convert WSL paths to Windows paths when using native Windows mode
+      if (workingDirectory && isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
+        const originalPath = workingDirectory;
+        workingDirectory = wslToWindowsPath(workingDirectory);
+        if (originalPath !== workingDirectory) {
+          console.log(`🔄 [Session Creation] Converted WSL path to Windows path: ${originalPath} → ${workingDirectory}`);
+        }
+      }
+      
       // Check if this is a temp directory
       if (workingDirectory) {
         const lowerPath = workingDirectory.toLowerCase();
@@ -3814,6 +3823,25 @@ io.on('connection', (socket) => {
           }
         }
         
+        // Convert WSL paths to Windows paths when using native Windows mode
+        console.log(`🔍 Path conversion check:
+          - processWorkingDir: ${processWorkingDir}
+          - isWindows: ${isWindows}
+          - CLAUDE_EXECUTION_MODE: ${CLAUDE_EXECUTION_MODE}
+          - NATIVE_WINDOWS_CLAUDE_PATH: ${NATIVE_WINDOWS_CLAUDE_PATH}`);
+        
+        if (processWorkingDir && isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
+          const originalPath = processWorkingDir;
+          processWorkingDir = wslToWindowsPath(processWorkingDir);
+          if (originalPath !== processWorkingDir) {
+            console.log(`🔄 Converted WSL path to Windows path: ${originalPath} → ${processWorkingDir}`);
+          } else {
+            console.log(`ℹ️ Path unchanged (not WSL format): ${processWorkingDir}`);
+          }
+        } else {
+          console.log(`⏭️ Skipping path conversion (conditions not met)`);
+        }
+        
         // Use session's working directory, fallback to home directory (NOT temp directory)
         if (!processWorkingDir) {
           processWorkingDir = homedir();
@@ -4014,11 +4042,6 @@ Format as a clear, structured summary that preserves all important context.`;
       enhancedEnv.CLAUDE_SESSION_ID = sessionId;
       enhancedEnv.CLAUDE_INSTANCE = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
       
-      // Explicitly set PWD environment variable for Claude's bash commands
-      enhancedEnv.PWD = processWorkingDir;
-      enhancedEnv.HOME = homedir(); // Ensure HOME is set correctly
-      console.log(`🔧 Set PWD=${processWorkingDir} and HOME=${homedir()} in environment`);
-      
       // Add small delay to prevent race conditions with multiple Claude instances
       if (isSpawningProcess) {
         console.log(`⏳ Waiting for previous Claude process to initialize...`);
@@ -4026,6 +4049,21 @@ Format as a clear, structured summary that preserves all important context.`;
       }
       
       isSpawningProcess = true;
+      
+      // Convert WSL paths to Windows paths when using native Windows mode (for validation)
+      if (processWorkingDir && isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
+        const originalPath = processWorkingDir;
+        const convertedPath = wslToWindowsPath(processWorkingDir);
+        if (originalPath !== convertedPath) {
+          console.log(`🔄 Converting WSL path for validation: ${originalPath} → ${convertedPath}`);
+          processWorkingDir = convertedPath;
+        }
+      }
+      
+      // Explicitly set PWD environment variable for Claude's bash commands (AFTER conversion)
+      enhancedEnv.PWD = processWorkingDir;
+      enhancedEnv.HOME = homedir(); // Ensure HOME is set correctly
+      console.log(`🔧 Set PWD=${processWorkingDir} and HOME=${homedir()} in environment`);
       
       // Ensure the directory exists before spawning
       if (!existsSync(processWorkingDir)) {
