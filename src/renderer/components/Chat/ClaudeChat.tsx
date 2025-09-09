@@ -2236,16 +2236,19 @@ export const ClaudeChat: React.FC = () => {
           }
           
           // Use virtualization for better performance with many messages
-          if (FEATURE_FLAGS.USE_VIRTUALIZATION && filteredMessages.length > 20) {
+          const useVirtualization = FEATURE_FLAGS.USE_VIRTUALIZATION && filteredMessages.length > 20;
+          const isStreaming = currentSession?.streaming === true;
+          
+          if (useVirtualization) {
             return (
               <>
                 <VirtualizedMessageList
                   messages={filteredMessages}
                   sessionId={currentSessionId || ''}
-                  isStreaming={currentSession?.streaming || false}
+                  isStreaming={isStreaming}
                   lastAssistantMessageIds={currentSession?.lastAssistantMessageIds || []}
                   className="virtualized-messages-container"
-                  showThinking={currentSession?.streaming || false}
+                  showThinking={isStreaming}
                   thinkingElapsed={currentSessionId && thinkingElapsed[currentSessionId] || 0}
                 />
                 <div ref={messagesEndRef} />
@@ -2278,9 +2281,9 @@ export const ClaudeChat: React.FC = () => {
         })()}
         {/* Show thinking indicator only when actually streaming - but not when using virtualization */}
         {(() => {
-          // Removed spammy thinking indicator log
-          const useVirtualization = FEATURE_FLAGS.USE_VIRTUALIZATION && currentSession?.messages.length > 20;
-          return currentSession?.streaming && !useVirtualization;
+          const useVirtualization = FEATURE_FLAGS.USE_VIRTUALIZATION && filteredMessages.length > 20;
+          const isStreaming = currentSession?.streaming === true;
+          return isStreaming && !useVirtualization;
         })() && (
           <div className="message assistant">
             <div className="message-content">
