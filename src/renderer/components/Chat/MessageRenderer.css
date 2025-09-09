@@ -180,6 +180,10 @@
   display: inline-block;
 }
 
+.message.user .message-bubble.font-mono {
+  font-family: var(--font-mono);
+}
+
 .message.assistant .message-bubble {
   background: rgba(128, 128, 128, 0.15);
   border: none;
