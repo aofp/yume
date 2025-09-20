@@ -2134,6 +2134,7 @@ export const ClaudeChat: React.FC = () => {
         ref={chatContainerRef}
       >
         {(() => {
+          // Process all messages once at the beginning
           const processedMessages = currentSession.messages
             .reduce((acc, message, index, array) => {
             // Group messages by type and only show final versions
@@ -2281,6 +2282,18 @@ export const ClaudeChat: React.FC = () => {
         })()}
         {/* Show thinking indicator only when actually streaming - but not when using virtualization */}
         {(() => {
+          // Need to recalculate filteredMessages here since it's out of scope from the previous IIFE
+          const processedMessages = currentSession.messages
+            .reduce((acc, message) => {
+              // Simple deduplication for the indicator check
+              if (message.type === 'user' || message.type === 'assistant' || 
+                  message.type === 'tool_use' || message.type === 'tool_result' || 
+                  message.type === 'system' || message.type === 'result') {
+                acc.push(message);
+              }
+              return acc;
+            }, [] as typeof currentSession.messages);
+          const filteredMessages = processedMessages;
           const useVirtualization = FEATURE_FLAGS.USE_VIRTUALIZATION && filteredMessages.length > 20;
           const isStreaming = currentSession?.streaming === true;
           return isStreaming && !useVirtualization;

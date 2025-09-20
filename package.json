@@ -23,7 +23,8 @@
     "tauri:build:mac": "npm run bundle:macos && tauri build --target aarch64-apple-darwin",
     "open:dmg": "node scripts/open-dmg.js",
     "tauri:build:mac:universal": "tauri build --target universal-apple-darwin",
-    "tauri:build:win": "npm run build && tauri build --target x86_64-pc-windows-msvc",
+    "bundle:windows": "node scripts/bundle-windows-server.js",
+    "tauri:build:win": "npm run build && npm run bundle:windows && tauri build --target x86_64-pc-windows-msvc",
     "tauri:build:linux": "tauri build --target x86_64-unknown-linux-gnu",
     "test:session-loading": "node test-session-loading.js"
   },
