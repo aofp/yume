@@ -1493,20 +1493,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         // cache_read is the TOTAL conversation history (a snapshot, not incremental)
                         // input_tokens and output_tokens are NEW tokens for this turn
                         const previousTotal = analytics.tokens.total;
-                        
-                        // ALL tokens count towards the 200k context limit
-                        // This includes cache_read and cache_creation
-                        const actualContextInUse = cacheReadTokens + cacheCreationTokens + regularInputTokens + outputTokens;
-                        
-                        // For tracking purposes, accumulate only the NEW tokens added
+
+                        // Accumulate NEW tokens added this turn
                         analytics.tokens.input += regularInputTokens; // New input
                         analytics.tokens.output += outputTokens; // New output
                         analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens; // Accumulate cache creation
-                        
-                        // The total should reflect the actual context in use (ALL tokens)
-                        analytics.tokens.total = actualContextInUse; // Total context in use
-                        
-                        // Cache size is a snapshot of conversation history
+
+                        // Total is the accumulated sum of all tokens (not including cache_read which is just a snapshot)
+                        analytics.tokens.total += (regularInputTokens + outputTokens + cacheCreationTokens);
+
+                        // Cache size is a snapshot of conversation history (not part of accumulation)
                         analytics.tokens.cacheSize = cacheReadTokens;
                         
                         console.log(`📊 [TOKEN UPDATE] Context usage:`);
@@ -1514,7 +1510,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         console.log(`   Cache creation: ${cacheCreationTokens} tokens`);
                         console.log(`   New input this turn: ${regularInputTokens} tokens`);
                         console.log(`   New output this turn: ${outputTokens} tokens`);
-                        console.log(`   TOTAL CONTEXT IN USE: ${actualContextInUse} / 200000 (${(actualContextInUse / 200000 * 100).toFixed(2)}%)`);
+                        console.log(`   TOTAL CONTEXT IN USE: ${analytics.tokens.total} / 200000 (${(analytics.tokens.total / 200000 * 100).toFixed(2)}%)`);
                         console.log(`   Previous total was: ${previousTotal}`);
                       }
                       
@@ -2396,6 +2392,11 @@ ${content}`;
     set({ persistedSessionId: sessionId });
     localStorage.setItem('yurucode-current-session', sessionId);
     
+    // Save tabs if remember tabs is enabled (to track active tab)
+    if (state.rememberTabs) {
+      state.saveTabs();
+    }
+    
     // Notify server of directory change if needed
     if (session.workingDirectory) {
       await claudeClient.setWorkingDirectory(sessionId, session.workingDirectory);
@@ -2922,6 +2923,12 @@ ${content}`;
       newSessions.splice(toIndex, 0, movedSession);
       return { sessions: newSessions };
     });
+    
+    // Save tabs if remember tabs is enabled
+    const storeState = get();
+    if (storeState.rememberTabs) {
+      storeState.saveTabs();
+    }
   },
   
   renameSession: (sessionId: string, newTitle: string) => {
@@ -2940,6 +2947,11 @@ ${content}`;
     // Save title to localStorage for persistence
     const state = get();
     const session = state.sessions.find(s => s.id === sessionId);
+    
+    // Save tabs if remember tabs is enabled
+    if (state.rememberTabs) {
+      state.saveTabs();
+    }
     if (session && session.claudeSessionId) {
       localStorage.setItem(`session-title-${session.claudeSessionId}`, newTitle.trim().toLowerCase());
     }
@@ -3604,26 +3616,50 @@ ${content}`;
     const state = get();
     if (!state.rememberTabs) return;
     
-    // Save project directories of all open tabs
-    const tabPaths = state.sessions
+    // Save enhanced tab information
+    const tabData = state.sessions
       .filter(s => s.workingDirectory)
-      .map(s => s.workingDirectory!);
+      .map((s, index) => ({
+        path: s.workingDirectory!,
+        title: s.claudeTitle || s.name,
+        isActive: s.id === state.currentSessionId,
+        order: index,
+        createdAt: s.createdAt?.toISOString(),
+        userRenamed: s.userRenamed || false
+      }));
     
+    // Store as both legacy format (for backward compatibility) and enhanced format
+    const tabPaths = tabData.map(t => t.path);
     set({ savedTabs: tabPaths });
+    
     localStorage.setItem('yurucode-saved-tabs', JSON.stringify(tabPaths));
-    console.log('[Store] Saved tabs:', tabPaths);
+    localStorage.setItem('yurucode-saved-tabs-enhanced', JSON.stringify(tabData));
+    console.log('[Store] Saved enhanced tab data:', tabData);
   },
   
   restoreTabs: async () => {
     const state = get();
     if (!state.rememberTabs) return;
     
-    const stored = localStorage.getItem('yurucode-saved-tabs');
-    if (!stored) return;
+    // Try to load enhanced format first, fall back to legacy format
+    const enhancedStored = localStorage.getItem('yurucode-saved-tabs-enhanced');
+    const legacyStored = localStorage.getItem('yurucode-saved-tabs');
+    
+    if (!enhancedStored && !legacyStored) return;
     
     try {
-      const tabPaths = JSON.parse(stored) as string[];
-      console.log('[Store] Restoring tabs:', tabPaths);
+      let tabData: Array<{ path: string; title?: string; isActive?: boolean; order?: number; userRenamed?: boolean }>;
+      
+      if (enhancedStored) {
+        // Use enhanced format with full tab information
+        tabData = JSON.parse(enhancedStored);
+        console.log('[Store] Restoring enhanced tabs:', tabData);
+      } else {
+        // Fall back to legacy format (just paths)
+        const tabPaths = JSON.parse(legacyStored) as string[];
+        tabData = tabPaths.map((path, index) => ({ path, order: index }));
+        console.log('[Store] Restoring legacy tabs:', tabPaths);
+      }
       
       // Wait for socket connection before creating sessions
       const maxAttempts = 30; // 3 seconds
@@ -3641,13 +3677,45 @@ ${content}`;
       
       console.log('[Store] Socket connected, restoring tabs now');
       
-      // Simply create new sessions for each saved path
-      // Don't try to restore Claude sessions - just create fresh tabs
-      for (let i = 0; i < tabPaths.length; i++) {
-        const path = tabPaths[i];
-        // Call the regular createSession function which will create a fresh session
-        await get().createSession(undefined, path);
-        console.log('[Store] Created new tab for path:', path);
+      // Sort tabs by order if available
+      tabData.sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+      
+      let activeSessionId: string | null = null;
+      
+      // Create sessions with enhanced information
+      for (let i = 0; i < tabData.length; i++) {
+        const tab = tabData[i];
+        // Create a fresh session
+        const sessionId = await get().createSession(undefined, tab.path);
+        
+        // If we have a title and sessionId, update the session
+        if (sessionId && tab.title) {
+          set(state => ({
+            sessions: state.sessions.map(s => {
+              if (s.id === sessionId) {
+                return {
+                  ...s,
+                  claudeTitle: tab.title!,
+                  userRenamed: tab.userRenamed || false
+                };
+              }
+              return s;
+            })
+          }));
+        }
+        
+        // Track which session should be active
+        if (tab.isActive && sessionId) {
+          activeSessionId = sessionId;
+        }
+        
+        console.log('[Store] Restored tab:', tab.path, 'with title:', tab.title || 'default');
+      }
+      
+      // Set the active tab after all tabs are created
+      if (activeSessionId) {
+        set({ currentSessionId: activeSessionId });
+        console.log('[Store] Restored active tab:', activeSessionId);
       }
     } catch (err) {
       console.error('[Store] Failed to restore tabs:', err);

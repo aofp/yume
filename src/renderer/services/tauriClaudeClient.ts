@@ -58,7 +58,8 @@ export class TauriClaudeClient {
       // Map our model IDs to Claude model names
       const modelMap: Record<string, string> = {
         'opus': 'claude-opus-4-1-20250805',
-        'sonnet': 'claude-sonnet-4-20250514'
+        'sonnet': 'claude-sonnet-4-20250514',
+        'sonnet-4.5': 'claude-sonnet-4-5-20250929'
       };
       const model = options?.model || 'claude-opus-4-1-20250805';
       const mappedModel = modelMap[model] || model;
@@ -180,7 +181,8 @@ export class TauriClaudeClient {
         const sessionData = sessionStore[sessionId];
         const modelMap: Record<string, string> = {
           'opus': 'claude-opus-4-1-20250805',
-          'sonnet': 'claude-sonnet-4-20250514'
+          'sonnet': 'claude-sonnet-4-20250514',
+          'sonnet-4.5': 'claude-sonnet-4-5-20250929'
         };
         const mappedModel = model ? (modelMap[model] || model) : sessionData.model;
         

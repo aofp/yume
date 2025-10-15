@@ -11,13 +11,16 @@
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: rgba(255, 255, 255, 0.4);
-  padding: 3px 8px 3px 8px;
+  padding: 3px 8px;
   border-radius: 4px;
   font-size: 10px;
   font-family: var(--font-mono);
   text-transform: lowercase;
   transition: all 0.2s ease;
   cursor: default;
+  display: flex;
+  align-items: center;
+  gap: 4px;
 }
 
 .model-selector-trigger:hover,
@@ -25,6 +28,77 @@
   background: rgba(255, 255, 255, 0.05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
+}
+
+.chevron-up {
+  opacity: 0.6;
+  transition: transform 0.2s ease;
+}
+
+.model-dropdown {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 0;
+  margin-bottom: 0;
+  background: #2a2a2a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 8px;
+  padding: 6px;
+  min-width: 200px;
+  z-index: 1000000; /* High z-index to ensure dropdown appears above chat and app window */
+  box-shadow:
+    0 -8px 24px rgba(0, 0, 0, 0.6),
+    0 -2px 8px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  animation: dropupFadeIn 0.15s ease-out;
+  transform-origin: bottom center;
+  backdrop-filter: blur(8px);
+}
+
+/* Fixed positioning for dropdown to escape overflow:hidden containers */
+.model-dropdown-fixed {
+  position: fixed;
+  bottom: auto;
+  transform: translateY(-100%);
+}
+
+.model-option {
+  padding: 8px 12px;
+  border-radius: 5px;
+  cursor: default;
+  transition: all 0.15s ease;
+  border: 1px solid transparent;
+  margin-bottom: 2px;
+}
+
+.model-option:last-child {
+  margin-bottom: 0;
+}
+
+.model-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.15);
+}
+
+.model-option.selected {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.25);
+}
+
+.model-name {
+  font-size: 12px;
+  font-family: var(--font-mono);
+  color: rgba(255, 255, 255, 1);
+  text-transform: lowercase;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+}
+
+.model-description {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 3px;
+  opacity: 0.9;
 }
 
 /* Windows-specific positioning */
@@ -41,4 +115,16 @@
 /* macOS-specific positioning on welcome screen */
 .platform-darwin .welcome-screen .model-selector-trigger {
   top: -1px;
+}
+
+/* Animation for dropup */
+@keyframes dropupFadeIn {
+  from {
+    opacity: 0.8;
+    transform: translateY(8px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

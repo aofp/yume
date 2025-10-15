@@ -2630,7 +2630,7 @@ export const ClaudeChat: React.FC = () => {
                       `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 97%' : ''} - click for details (ctrl+.)` : 
                       `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
                   >
-                    {willAutoCompact ? '⚠️ ' : ''}{percentage}%
+                    {percentage}%
                   </button>
                 </>
               );

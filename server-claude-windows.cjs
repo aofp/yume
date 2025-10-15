@@ -161,35 +161,41 @@ function processWrapperLine(line, sessionId) {
       }
     }
     
-    // Update tokens if usage present
-    if (data.usage) {
+    // Update tokens if usage present (but skip during compact operations)
+    // During compact, we'll reset tokens instead of accumulating
+    const isCompactOperation = session.compactInProgress || session.isCompacting;
+
+    if (data.usage && !isCompactOperation) {
       const input = data.usage.input_tokens || 0;
       const output = data.usage.output_tokens || 0;
       const cacheCreation = data.usage.cache_creation_input_tokens || 0;
       const cacheRead = data.usage.cache_read_input_tokens || 0;
-      
+
       // Track actual input/output separately from cache
       session.inputTokens += input;
       session.outputTokens += output;
-      
+
       // Cache tokens should be set to the max value seen, not accumulated
       // Cache represents the total cached context, not additive per turn
       session.cacheCreationTokens = Math.max(session.cacheCreationTokens || 0, cacheCreation);
       session.cacheReadTokens = Math.max(session.cacheReadTokens || 0, cacheRead);
-      
+
       // Total context = actual new tokens this session + current cache size
       const prevTotal = session.totalTokens;
-      session.totalTokens = session.inputTokens + session.outputTokens + 
+      session.totalTokens = session.inputTokens + session.outputTokens +
                            session.cacheCreationTokens + session.cacheReadTokens;
-      
+
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;
-      
+
       const totalThisTurn = input + output + cacheCreation + cacheRead;
       console.log(`📊 [WRAPPER] TOKENS +${totalThisTurn} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
       if (cacheCreation > 0 || cacheRead > 0) {
         console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead} (included in total)`);
       }
+    } else if (data.usage && isCompactOperation) {
+      // During compact, just log but don't accumulate
+      console.log(`🗜️ [WRAPPER] Compact operation tokens (not accumulated):`, data.usage);
     }
     
     // Track if this is during a compact operation
@@ -3218,8 +3224,10 @@ io.on('connection', (socket) => {
             // Use cmd.exe for Windows native commands
             console.log(`🐚 [CMD] Running Windows command: ${bashCommand}`);
             console.log(`🐚 [CMD] Working directory: ${workingDir}`);
-            
-            bashProcess = spawn('cmd.exe', ['/c', bashCommand], {
+
+            // Use /S /C with quotes for proper quote handling in cmd.exe
+            // /S modifies the treatment of quotes to handle commands with quotes correctly
+            bashProcess = spawn('cmd.exe', ['/S', '/C', `"${bashCommand}"`], {
               cwd: workingDir,        // Use Windows path directly
               windowsHide: true,      // Hide console window
               detached: false,        // Stay attached to parent

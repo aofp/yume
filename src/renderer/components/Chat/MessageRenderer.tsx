@@ -1029,8 +1029,8 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 // Fallback: parse the output to show line numbers
                 const parsedLines: DiffLine[] = [];
                 diffLines.forEach(line => {
-                  // Check if line has format "123→  content"
-                  const match = line.match(/^\s*(\d+)→\s*(.*)$/);
+                  // Check if line has format "123→  content" (preserving whitespace)
+                  const match = line.match(/^\s*(\d+)→(.*)$/);
                   if (match) {
                     parsedLines.push({
                       type: 'context' as const,
