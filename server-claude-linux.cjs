@@ -167,28 +167,30 @@ function processWrapperLine(line, sessionId) {
       const output = data.usage.output_tokens || 0;
       const cacheCreation = data.usage.cache_creation_input_tokens || 0;
       const cacheRead = data.usage.cache_read_input_tokens || 0;
-      
-      // Track actual input/output separately from cache
-      session.inputTokens += input;
-      session.outputTokens += output;
-      
-      // Cache tokens should be set to the max value seen, not accumulated
-      // Cache represents the total cached context, not additive per turn
-      session.cacheCreationTokens = Math.max(session.cacheCreationTokens || 0, cacheCreation);
-      session.cacheReadTokens = Math.max(session.cacheReadTokens || 0, cacheRead);
-      
-      // Total context = actual new tokens this session + current cache size
+
+      // IMPORTANT: Claude API returns TOTAL context window usage, not deltas!
+      // We should SET these values, not accumulate them.
+      // The input_tokens value already includes all previous context.
       const prevTotal = session.totalTokens;
-      session.totalTokens = session.inputTokens + session.outputTokens + 
-                           session.cacheCreationTokens + session.cacheReadTokens;
-      
+
+      // Set current values (not accumulate)
+      session.inputTokens = input;
+      session.outputTokens = output;
+      session.cacheCreationTokens = cacheCreation;
+      session.cacheReadTokens = cacheRead;
+
+      // Total context = input + output (which already includes everything)
+      // Cache creation is already included in input_tokens by the API
+      // Cache reads don't count towards the 200k limit (they're "free" cached tokens)
+      session.totalTokens = input + output;
+
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;
-      
-      const totalThisTurn = input + output + cacheCreation + cacheRead;
-      console.log(`📊 [WRAPPER] TOKENS +${totalThisTurn} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
+
+      // Show the delta for this turn
+      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
       if (cacheCreation > 0 || cacheRead > 0) {
-        console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead} (included in total)`);
+        console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead} (cache_read doesn't count toward 200k limit)`);
       }
     }
     
@@ -933,7 +935,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       '-p', titlePrompt,  // Pass prompt via -p flag
       '--print',  // Non-interactive mode
       '--output-format', 'json',
-      '--model', 'claude-3-5-sonnet-20241022'
+      '--model', 'claude-sonnet-4-5-20250929'
     ];
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
@@ -4377,6 +4379,24 @@ Format as a clear, structured summary that preserves all important context.`;
           
           // Don't store ANY session IDs during a compact operation
           if (jsonData.session_id && !isCompactCommand) {
+            // Check if this is a NEW Claude session (different session_id)
+            const previousClaudeSessionId = session.claudeSessionId;
+            const isNewClaudeSession = previousClaudeSessionId && previousClaudeSessionId !== jsonData.session_id;
+
+            if (isNewClaudeSession) {
+              // New Claude session detected - reset wrapper token counters
+              // Each Claude session has its own 200k context window
+              const wrapperSession = getWrapperSession(sessionId);
+              const oldTokens = wrapperSession.totalTokens;
+              wrapperSession.totalTokens = 0;
+              wrapperSession.inputTokens = 0;
+              wrapperSession.outputTokens = 0;
+              wrapperSession.cacheCreationTokens = 0;
+              wrapperSession.cacheReadTokens = 0;
+              console.log(`🔄 [${sessionId}] NEW Claude session detected (${previousClaudeSessionId} → ${jsonData.session_id})`);
+              console.log(`🔄 [${sessionId}] Reset wrapper tokens: ${oldTokens} → 0 (each session has independent 200k limit)`);
+            }
+
             session.claudeSessionId = jsonData.session_id;
             console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
           } else if (isCompactCommand && jsonData.session_id) {
@@ -4863,7 +4883,7 @@ Format as a clear, structured summary that preserves all important context.`;
                 },
                 streaming: false,
                 id: `result-${sessionId}-${Date.now()}-${Math.random()}`,
-                model: jsonData.model || model || 'claude-3-5-sonnet-20241022',
+                model: jsonData.model || model || 'claude-sonnet-4-5-20250929',
                 timestamp: Date.now()
               };
               
@@ -4945,8 +4965,8 @@ Format as a clear, structured summary that preserves all important context.`;
               const output = jsonData.usage.output_tokens || 0;
               const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
               const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
-              const totalContext = input + output + cacheCreation + cacheRead;
-              
+              const totalContext = input + output + cacheCreation; // FIX: Don't include cacheRead
+
               console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
               console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
               console.log(`   │ Type            │ Input    │ Cache Read   │ Cache New  │`);
@@ -4959,7 +4979,7 @@ Format as a clear, structured summary that preserves all important context.`;
               console.log(`   │ Subtotal        │ ${String(input + output).padEnd(8)} │ ${String(cacheRead).padEnd(12)} │ ${String(cacheCreation).padEnd(10)} │`);
               console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
               console.log(`   TOTAL CONTEXT: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
-              console.log(`   Note: ALL tokens count towards the 200k context limit`);
+              console.log(`   Note: Cache reads don't count - only new tokens count toward the 200k limit`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
@@ -4999,15 +5019,15 @@ Format as a clear, structured summary that preserves all important context.`;
               resultMessage.usage = jsonData.usage;
               
               // Also add wrapper tokens for enhanced analytics
-              // ALL tokens count towards the 200k context limit
+              // FIX: Only NEW tokens count - cache reads are reused and don't consume context
               resultMessage.wrapper = {
                 tokens: {
                   input: jsonData.usage.input_tokens || 0,
                   output: jsonData.usage.output_tokens || 0,
-                  total: (jsonData.usage.input_tokens || 0) + 
-                         (jsonData.usage.output_tokens || 0) + 
-                         (jsonData.usage.cache_creation_input_tokens || 0) + 
-                         (jsonData.usage.cache_read_input_tokens || 0),  // ALL tokens count
+                  total: (jsonData.usage.input_tokens || 0) +
+                         (jsonData.usage.output_tokens || 0) +
+                         (jsonData.usage.cache_creation_input_tokens || 0),
+                         // Removed cache_read_input_tokens - they don't count!
                   cache_read: jsonData.usage.cache_read_input_tokens || 0,
                   cache_creation: jsonData.usage.cache_creation_input_tokens || 0
                 }

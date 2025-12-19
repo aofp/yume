@@ -52,7 +52,7 @@ interface LicenseStore extends LicenseState {
 // trial features
 const TRIAL_FEATURES: LicenseFeatures = {
   maxTabs: 2,
-  allowedModels: ['claude-3-5-sonnet-20241022'],
+  allowedModels: ['claude-sonnet-4-5-20250929'],
   maxTokensPerSession: 100000,
   watermarkEnabled: true,
   customThemes: false,
@@ -64,7 +64,7 @@ const TRIAL_FEATURES: LicenseFeatures = {
 // licensed features - all unlimited for pro
 const LICENSED_FEATURES: LicenseFeatures = {
   maxTabs: 99,
-  allowedModels: ['claude-3-5-sonnet-20241022', 'claude-3-opus-20240229'],
+  allowedModels: ['claude-opus-4-5-20251101', 'claude-sonnet-4-5-20250929'],
   maxTokensPerSession: -1, // unlimited
   watermarkEnabled: false,
   customThemes: true,

@@ -4,6 +4,11 @@
   position: relative;
   margin-bottom: 1px;
   animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* System error messages */
@@ -228,6 +233,10 @@
   width: 100%;
   padding-left: 0;
   display: block;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Markdown Content */
@@ -236,6 +245,12 @@
   font-size: 13px;
   line-height: 1.5;
   padding-left: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
 }
 
 .markdown-content p {
@@ -253,6 +268,11 @@
   border-radius: 4px;
   font-size: 8pt;
   font-family: var(--font-mono);
+  max-width: 100%;
+  display: inline-block;
+  overflow-x: auto;
+  overflow-wrap: normal;
+  word-break: normal;
 }
 
 .markdown-content pre {
@@ -261,15 +281,21 @@
   border-radius: 2px !important;
   padding: 2px;
   margin: 0;
-  overflow-x: visible;
-  white-space: pre-wrap;
-  word-break: break-all;
+  overflow-x: auto;
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .markdown-content pre code {
   background: none;
   color: #e0e0e0;
   padding: 0;
+  max-width: 100%;
+  display: block;
+  overflow-x: auto;
 }
 
 /* Code block with copy button */
@@ -278,8 +304,11 @@
   padding: 0;
   border: none !important;
   border-radius: 2px;
-  overflow: hidden;
+  overflow-x: auto;
+  overflow-y: visible;
   background: transparent;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .code-block-header {
@@ -523,7 +552,12 @@ ol {
 
 .thinking-content {
   /* no max-height - show all thinking content */
-  overflow: visible;
+  overflow-x: hidden;
+  overflow-y: visible;
+  max-width: 100%;
+  box-sizing: border-box;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
 }
 
 /* Thinking block code formatting */
@@ -566,7 +600,9 @@ ol {
 .thinking-code-pre {
   margin: 0;
   padding: 8px;
-  overflow-x: visible;
+  overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .thinking-code {
@@ -836,7 +872,9 @@ pre.edit-diff {
   color: #999;
   background: transparent;
   border: none;
-  overflow-x: visible;
+  overflow-x: auto;
+  max-width: 100%;
+  box-sizing: border-box;
 }
 
 .diff-section {
@@ -983,11 +1021,13 @@ pre.edit-diff {
   font-family: var(--font-mono);
   font-size: 10px;
   opacity: 1;
-  max-width: 600px;
-  overflow: visible;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
   white-space: pre-wrap;
   word-wrap: break-word;
   word-break: break-all;
+  box-sizing: border-box;
   position: relative;
 }
 

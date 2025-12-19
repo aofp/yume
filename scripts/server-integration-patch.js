@@ -47,7 +47,7 @@ socket.on('sendMessage', async (data) => {
       messages: [],
       claudeSessionId: null,
       tempId: sessionId,
-      activeModel: model || 'claude-3-5-sonnet-20241022',
+      activeModel: model || 'claude-sonnet-4-5-20250929',
       streaming: false,
       lastAssistantMessageIds: [],
       wasCompacted: false
@@ -83,7 +83,7 @@ socket.on('sendMessage', async (data) => {
     
     // Model selection
     if (message && message.trim() === '/compact') {
-      args.push('--model', 'claude-3-5-sonnet-20241022');
+      args.push('--model', 'claude-sonnet-4-5-20250929');
     } else if (model) {
       args.push('--model', model);
     }
@@ -213,7 +213,7 @@ socket.on('triggerCompact', async (data) => {
   socket.emit('sendMessage', {
     message: '/compact',
     sessionId,
-    model: 'claude-3-5-sonnet-20241022'
+    model: 'claude-sonnet-4-5-20250929'
   });
 });
 

@@ -120,7 +120,7 @@ async function generateTitle(sessionId, userMessage, socket) {
     // Spawn a separate claude process just for title generation
     const titleArgs = [
       '--output-format', 'json',
-      '--model', 'claude-3-5-sonnet-20241022',
+      '--model', 'claude-sonnet-4-5-20250929',
       '--print'  // Non-interactive mode
     ];
     

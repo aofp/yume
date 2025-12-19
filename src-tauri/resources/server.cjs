@@ -354,7 +354,7 @@ async function generateTitle(sessionId, userMessage, socket, onSuccess) {
     const titleArgs = [
       '--print',  // Non-interactive mode
       '--output-format', 'json',
-      '--model', 'claude-3-5-sonnet-20241022'
+      '--model', 'claude-sonnet-4-5-20250929'
     ];
     
     const titlePrompt = `user message: "${userMessage.substring(0, 200)}"

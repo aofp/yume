@@ -449,7 +449,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   currentSessionId: null, // No current session on startup
   persistedSessionId: null,
   sessionMappings: {},
-  selectedModel: 'claude-opus-4-1-20250805',
+  selectedModel: 'claude-opus-4-5-20251101',
   claudeMdTokens: 0, // Will be calculated on first use
   globalWatermarkImage: null,
   monoFont: 'Fira Code', // Default monospace font
@@ -590,7 +590,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             percentage: 0,
             remaining: 200000
           },
-          model: 'claude-3-opus-20240229'
+          model: 'claude-opus-4-5-20251101'
         }
       };
       
@@ -617,21 +617,21 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         // Map our model IDs to Claude Code SDK model names
         const { selectedModel } = get();
         const modelMap: Record<string, string> = {
-          'opus': 'claude-opus-4-1-20250805',
-          'sonnet': 'claude-sonnet-4-20250514'
+          'opus': 'claude-opus-4-5-20251101',
+          'sonnet': 'claude-sonnet-4-5-20250929'
         };
-        
+
         // Create or resume session using Claude Code Client
         // Only pass claudeSessionId if we're reconnecting an existing session (not creating new)
         // AND the session wasn't compacted (compacted sessions can't be resumed)
-        const claudeSessionIdToResume = existingSessionId && !existingSession?.wasCompacted 
-          ? existingSession?.claudeSessionId 
+        const claudeSessionIdToResume = existingSessionId && !existingSession?.wasCompacted
+          ? existingSession?.claudeSessionId
           : undefined;
-        
+
         if (existingSessionId && existingSession?.wasCompacted) {
           console.log(`🗜️ [Store] Session ${existingSessionId} was compacted - ignoring old Claude ID`);
         }
-        
+
         const result = await claudeClient.createSession(sessionName, workingDirectory, {
           allowedTools: [
             'Read', 'Write', 'Edit', 'MultiEdit',
@@ -642,7 +642,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           ],
           permissionMode: 'default',
           maxTurns: 30,
-          model: modelMap[selectedModel] || 'claude-opus-4-1-20250805',
+          model: modelMap[selectedModel] || 'claude-opus-4-5-20251101',
           sessionId: existingSessionId || tempSessionId, // Pass the sessionId for consistency
           claudeSessionId: claudeSessionIdToResume, // Pass claudeSessionId only if resuming existing session
           messages: existingSessionId ? (existingSession?.messages || []) : [] // Pass messages only if resuming
@@ -1222,20 +1222,32 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     };
                     
                     // If this is an assistant message being marked as not streaming, update session streaming state
+                    // CRITICAL: Only clear streaming if NO pending tools (tools still executing)
                     if (message.type === 'assistant' && message.streaming === false) {
-                      console.log(`🔴 [STREAMING] Assistant message ${message.id} updated to streaming=false, clearing session streaming state`);
-                      s.streaming = false;
-                      s.thinkingStartTime = undefined;
+                      const hasPendingTools = s.pendingToolIds && s.pendingToolIds.size > 0;
+                      if (hasPendingTools) {
+                        console.log(`🔄 [STREAMING-FIX] Assistant message ${message.id} streaming=false but ${s.pendingToolIds?.size} tools still pending - keeping streaming=true`);
+                      } else {
+                        console.log(`🔴 [STREAMING] Assistant message ${message.id} updated to streaming=false, clearing session streaming state`);
+                        s.streaming = false;
+                        s.thinkingStartTime = undefined;
+                      }
                     }
                     
                   } else {
                     existingMessages[existingIndex] = message;
-                    
+
                     // Also check here for assistant streaming updates
+                    // CRITICAL: Only clear streaming if NO pending tools (tools still executing)
                     if (message.type === 'assistant' && message.streaming === false) {
-                      console.log(`🔴 [STREAMING] Assistant message ${message.id} replaced with streaming=false, clearing session streaming state`);
-                      s.streaming = false;
-                      s.thinkingStartTime = undefined;
+                      const hasPendingTools = s.pendingToolIds && s.pendingToolIds.size > 0;
+                      if (hasPendingTools) {
+                        console.log(`🔄 [STREAMING-FIX] Assistant message ${message.id} replaced with streaming=false but ${s.pendingToolIds?.size} tools still pending - keeping streaming=true`);
+                      } else {
+                        console.log(`🔴 [STREAMING] Assistant message ${message.id} replaced with streaming=false, clearing session streaming state`);
+                        s.streaming = false;
+                        s.thinkingStartTime = undefined;
+                      }
                     }
                     
                   }
@@ -1728,7 +1740,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             });
             
             // Update streaming state based on message type
-            if (message.type === 'assistant' || message.type === 'tool_result') {
+            if (message.type === 'assistant' || message.type === 'tool_result' || message.type === 'thinking') {
               // Update streaming state based on the message's streaming flag
               console.log(`[THINKING TIME DEBUG] ${message.type} message - streaming: ${message.streaming}, sessionId: ${sessionId}`);
               if (message.streaming === true) {
@@ -1740,17 +1752,23 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               } else if (message.streaming === false) {
                 // Check if there's a recent user message indicating a new request is being sent
                 const session = sessions.find(s => s.id === sessionId);
-                const recentUserMessage = session?.messages?.slice(-3).find(m => 
-                  m.role === 'user' && 
-                  m.timestamp && 
+                const recentUserMessage = session?.messages?.slice(-3).find(m =>
+                  m.role === 'user' &&
+                  m.timestamp &&
                   (Date.now() - m.timestamp) < 3000 // Within last 3 seconds
                 );
-                
+
+                // CRITICAL: Check if there are pending tools before clearing streaming
+                const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+
                 if (recentUserMessage) {
                   // User sent a followup message while streaming, keep streaming state
                   console.log(`🔄 [STREAMING] Keeping streaming=true due to recent user message (interrupt + followup scenario)`);
+                } else if (hasPendingTools) {
+                  // Tools still executing, keep streaming state active
+                  console.log(`🔄 [STREAMING-FIX] ${message.type} message ${message.id} streaming=false but ${session?.pendingToolIds?.size} tools still pending - keeping streaming=true`);
                 } else {
-                  // When explicitly marked as streaming=false, clear streaming
+                  // When explicitly marked as streaming=false AND no pending tools, clear streaming
                   // The server marks messages as streaming=false when complete
                   console.log(`🔴 [STREAMING] ${message.type} message ${message.id} marked as streaming=false, clearing streaming state for session ${sessionId}`);
                   sessions = sessions.map(s => {
@@ -2651,7 +2669,7 @@ ${content}`;
             percentage: 0,
             remaining: 200000
           },
-          model: 'claude-3-opus-20240229'
+          model: 'claude-opus-4-5-20251101'
         }
       };
       
@@ -3120,7 +3138,7 @@ ${content}`;
                   percentage: 0,
                   remaining: 200000
                 },
-                model: 'claude-3-opus-20240229'
+                model: 'claude-opus-4-5-20251101'
               },
               updatedAt: new Date()
             }
@@ -3213,11 +3231,11 @@ ${content}`;
   
   toggleModel: () => {
     const currentModel = get().selectedModel;
-    const newModel = currentModel.includes('opus') ? 
-      'claude-sonnet-4-20250514' : 
-      'claude-opus-4-1-20250805';
+    const newModel = currentModel.includes('opus') ?
+      'claude-sonnet-4-5-20250929' :
+      'claude-opus-4-5-20251101';
     set({ selectedModel: newModel });
-    console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus 4.1' : 'Sonnet 4.0'}`);
+    console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus 4.5' : 'Sonnet 4.5'}`);
   },
 
   addMessageToSession: (sessionId: string, message: SDKMessage) => {

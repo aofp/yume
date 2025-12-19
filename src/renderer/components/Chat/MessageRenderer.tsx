@@ -2506,8 +2506,8 @@ const MessageRendererBase: React.FC<{
               {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
               {message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
               {message.model && ` • ${
-                message.model === 'opus' || message.model === 'claude-opus-4-1-20250805' ? 'opus 4.1' : 
-                message.model === 'sonnet' || message.model === 'claude-sonnet-4-20250514' ? 'sonnet 4.0' : 
+                message.model.includes('opus') ? 'opus 4.5' :
+                message.model.includes('sonnet') ? 'sonnet 4.5' :
                 message.model
               }`}
             </div>

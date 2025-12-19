@@ -25,14 +25,12 @@ import {
   IconBrain,
   IconChartDots,
   IconMessage,
-  IconMicrophone,
-  IconMicrophoneOff,
   IconFlare,
   IconArrowsMinimize,
   IconGitBranch,
 } from '@tabler/icons-react';
 import { MessageRenderer } from './MessageRenderer';
-import { VirtualizedMessageList } from './VirtualizedMessageList';
+import { VirtualizedMessageList, VirtualizedMessageListRef } from './VirtualizedMessageList';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
@@ -180,6 +178,7 @@ export const ClaudeChat: React.FC = () => {
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
+  const virtualizedMessageListRef = useRef<VirtualizedMessageListRef>(null);
   const previousSessionIdRef = useRef<string | null>(null);
   const isTabSwitchingRef = useRef(false);
   const streamingStartTimeRef = useRef<{ [sessionId: string]: number }>({});
@@ -217,9 +216,38 @@ export const ClaudeChat: React.FC = () => {
   // NO auto-selection - user must explicitly choose or create a session
   
   // Removed bash warmup - it was causing the focus issue it was trying to prevent
-  
+
   // Bash warmup removed - it was causing focus issues
-  
+
+  // Helper to determine if virtualization should be used
+  // IMPORTANT: This must match the logic used in the render section
+  const shouldUseVirtualization = useCallback((processedMessageCount: number) => {
+    return FEATURE_FLAGS.USE_VIRTUALIZATION && processedMessageCount > 20;
+  }, []);
+
+  // Helper function to scroll to bottom - uses the correct container based on virtualization
+  const scrollToBottomHelper = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
+    // Determine if we should use virtualization
+    // Use a rough estimate - the actual count will be close enough for this check
+    const estimatedProcessedCount = currentSession?.messages?.length || 0;
+    const useVirtualization = shouldUseVirtualization(estimatedProcessedCount);
+
+    if (useVirtualization && virtualizedMessageListRef.current) {
+      // Use the virtualized list's scroll method
+      virtualizedMessageListRef.current.scrollToBottom(behavior);
+    } else if (chatContainerRef.current) {
+      // Fallback to regular scroll container
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+
+      // Double-check after brief delay for dynamic content
+      setTimeout(() => {
+        if (chatContainerRef.current) {
+          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+        }
+      }, 50);
+    }
+  }, [currentSession?.messages?.length, shouldUseVirtualization]);
+
   // Track viewport and input container changes for zoom
   useEffect(() => {
     const handleResize = () => {
@@ -296,19 +324,19 @@ export const ClaudeChat: React.FC = () => {
     const handleScroll = () => {
       if (chatContainerRef.current && currentSessionId) {
         const container = chatContainerRef.current;
-        
-        // More reliable bottom detection
+
+        // More reliable bottom detection with 5px threshold
         const scrollTop = container.scrollTop;
         const scrollHeight = container.scrollHeight;
         const clientHeight = container.clientHeight;
-        const atBottom = scrollHeight - scrollTop - clientHeight < 1;
-        
+        const atBottom = scrollHeight - scrollTop - clientHeight < 5;
+
         // Update isAtBottom state for this session
         setIsAtBottom(prev => ({
           ...prev,
           [currentSessionId]: atBottom
         }));
-        
+
         // Save scroll position
         if (atBottom) {
           setScrollPositions(prev => ({
@@ -343,26 +371,24 @@ export const ClaudeChat: React.FC = () => {
         // Tab switched - restore position immediately without animation
         // Use requestAnimationFrame to ensure DOM is ready
         requestAnimationFrame(() => {
-          if (chatContainerRef.current) {
-            const savedPosition = scrollPositions[currentSessionId];
-            if (savedPosition !== undefined) {
-              if (savedPosition === -1) {
-                // Special value: user was at bottom, scroll to bottom
-                chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-              } else {
-                // Restore exact saved position
-                chatContainerRef.current.scrollTop = savedPosition;
-              }
-            } else {
-              // New session, check if has messages
-              if (currentSession?.messages?.length > 0) {
-                // Has messages, scroll to bottom instantly
-                chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-              }
-              // No messages, stay at top
+          const savedPosition = scrollPositions[currentSessionId];
+          if (savedPosition !== undefined) {
+            if (savedPosition === -1) {
+              // Special value: user was at bottom, scroll to bottom
+              scrollToBottomHelper('auto');
+            } else if (chatContainerRef.current) {
+              // Restore exact saved position (only works for non-virtualized scroll)
+              chatContainerRef.current.scrollTop = savedPosition;
             }
+          } else {
+            // New session, check if has messages
+            if (currentSession?.messages?.length > 0) {
+              // Has messages, scroll to bottom instantly
+              scrollToBottomHelper('auto');
+            }
+            // No messages, stay at top
           }
-          
+
           // Clear the tab switching flag after a short delay
           setTimeout(() => {
             isTabSwitchingRef.current = false;
@@ -377,32 +403,30 @@ export const ClaudeChat: React.FC = () => {
   // AUTO-SCROLL - only scroll if user is at bottom
   useEffect(() => {
     if (!chatContainerRef.current || !currentSession || !currentSessionId) return;
-    
+
     // Skip auto-scroll if we're switching tabs
     if (isTabSwitchingRef.current) return;
-    
+
     // Check if we should auto-scroll (only if already at bottom)
     const shouldScroll = isAtBottom[currentSessionId] !== false; // Default to true for new sessions
-    
-    if (shouldScroll) {
-      // Force scroll to bottom
+
+    if (shouldScroll && !isTabSwitchingRef.current) {
+      // Force scroll to bottom using the helper
       requestAnimationFrame(() => {
-        if (chatContainerRef.current && !isTabSwitchingRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
+        scrollToBottomHelper('auto');
       });
     }
-  }, [currentSession?.messages, currentSession?.streaming, currentSessionId, isAtBottom]);
+  }, [currentSession?.messages, currentSession?.streaming, currentSessionId, isAtBottom, scrollToBottomHelper]);
   
   // Force scroll to bottom when user sends a message
   useEffect(() => {
     if (!currentSession || !currentSessionId) return;
-    
+
     // Skip if we're switching tabs
     if (isTabSwitchingRef.current) return;
-    
+
     const lastMessage = currentSession.messages[currentSession.messages.length - 1];
-    
+
     // If the last message is from the user, force scroll to bottom and set isAtBottom
     if (lastMessage?.type === 'user') {
       // Mark as at bottom
@@ -410,40 +434,45 @@ export const ClaudeChat: React.FC = () => {
         ...prev,
         [currentSessionId]: true
       }));
-      
-      // Force scroll
-      requestAnimationFrame(() => {
-        if (chatContainerRef.current && !isTabSwitchingRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
-      });
+
+      // Force scroll with the helper
+      if (!isTabSwitchingRef.current) {
+        requestAnimationFrame(() => {
+          scrollToBottomHelper('auto');
+        });
+      }
     }
-  }, [currentSession?.messages?.length, currentSessionId]);
+  }, [currentSession?.messages?.length, currentSessionId, scrollToBottomHelper]);
 
   // MutationObserver for more reliable autoscroll during streaming
   useEffect(() => {
     if (!chatContainerRef.current || !currentSessionId) return;
-    
+
     const container = chatContainerRef.current;
-    
+
     const observer = new MutationObserver(() => {
       // Skip if switching tabs
       if (isTabSwitchingRef.current) return;
-      
+
       // Only scroll if we're at bottom
       if (isAtBottom[currentSessionId] !== false) {
-        container.scrollTop = container.scrollHeight;
+        // Use requestAnimationFrame to ensure DOM is ready
+        requestAnimationFrame(() => {
+          if (!isTabSwitchingRef.current && isAtBottom[currentSessionId] !== false) {
+            scrollToBottomHelper('auto');
+          }
+        });
       }
     });
-    
+
     observer.observe(container, {
       childList: true,
       subtree: true,
       characterData: true
     });
-    
+
     return () => observer.disconnect();
-  }, [currentSessionId, isAtBottom]);
+  }, [currentSessionId, isAtBottom, scrollToBottomHelper]);
 
   // Track thinking time per session and clean up streaming start times
   useEffect(() => {
@@ -630,7 +659,7 @@ export const ClaudeChat: React.FC = () => {
           errorMsg += 'No speech detected. Please try again.';
           break;
         case 'network':
-          errorMsg += 'Network error. Please check your internet connection.';
+          errorMsg += 'Network error. Browser speech recognition requires an active internet connection (uses Google Cloud services).';
           break;
         case 'aborted':
           errorMsg += 'Dictation was aborted.';
@@ -1053,12 +1082,10 @@ export const ClaudeChat: React.FC = () => {
         ...prev,
         [sessionId]: true
       }));
-      
-      // Force scroll to bottom
+
+      // Force scroll to bottom with the helper
       requestAnimationFrame(() => {
-        if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
+        scrollToBottomHelper('auto');
       });
     } catch (error) {
       console.error('[ClaudeChat] Failed to send delayed message:', error);
@@ -1119,7 +1146,7 @@ export const ClaudeChat: React.FC = () => {
           // Store the message to send later
           const messageToSend = input;
           const attachmentsToSend = [...attachments];
-          
+
           // Clear input immediately to show user we got their message
           setInput('');
           setAttachments([]);
@@ -1127,10 +1154,7 @@ export const ClaudeChat: React.FC = () => {
             inputRef.current.style.height = '44px';
             inputRef.current.style.overflow = 'hidden';
           }
-          
-          // Show pending indicator
-          setPendingFollowupMessage(`waiting for claude to respond (${Math.ceil(remainingDelay / 1000)}s)...`)
-          
+
           // Add to message history
           if (input.trim() && currentSessionId) {
             setMessageHistory(prev => ({
@@ -1139,7 +1163,7 @@ export const ClaudeChat: React.FC = () => {
             }));
             setHistoryIndex(-1);
           }
-          
+
           // Schedule the actual send with countdown
           let countdownActive = true;
           const updateCountdown = () => {
@@ -1152,10 +1176,10 @@ export const ClaudeChat: React.FC = () => {
               setPendingFollowupMessage(null);
             }
           };
-          
+
           // Start countdown updates
           setTimeout(updateCountdown, 500);
-          
+
           // Schedule the actual send
           const timeoutId = setTimeout(() => {
             console.log('[ClaudeChat] Sending delayed followup message now');
@@ -1165,14 +1189,20 @@ export const ClaudeChat: React.FC = () => {
             // Call handleDelayedSend - it will also clear the pending message
             handleDelayedSend(messageToSend, attachmentsToSend, currentSessionId);
           }, remainingDelay);
-          
+
+          // Set the pending ref FIRST before showing the indicator
+          // This ensures the preview component has data when it renders
           pendingFollowupRef.current = {
             sessionId: currentSessionId,
             content: messageToSend,
             attachments: attachmentsToSend,
             timeoutId
           };
-          
+
+          // Show pending indicator AFTER setting the ref
+          // This ensures pendingFollowupRef.current is populated when the component renders
+          setPendingFollowupMessage(`waiting for claude to respond (${Math.ceil(remainingDelay / 1000)}s)...`);
+
           return;
         }
       } else if (hasAssistantResponse) {
@@ -1476,12 +1506,10 @@ export const ClaudeChat: React.FC = () => {
           [currentSessionId]: true
         }));
       }
-      
-      // Force scroll to bottom
+
+      // Force scroll to bottom with the helper
       requestAnimationFrame(() => {
-        if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
+        scrollToBottomHelper('auto');
       });
     } catch (error) {
       console.error('[ClaudeChat] Failed to send message:', error);
@@ -2024,8 +2052,8 @@ export const ClaudeChat: React.FC = () => {
     // Check if we're at bottom before resizing
     const container = chatContainerRef.current;
     const wasAtBottom = container && currentSessionId &&
-      (isAtBottom[currentSessionId] !== false || 
-       (container.scrollHeight - container.scrollTop - container.clientHeight < 1));
+      (isAtBottom[currentSessionId] !== false ||
+       (container.scrollHeight - container.scrollTop - container.clientHeight < 5));
     
     // Store the current height before resetting
     const currentHeight = textarea.offsetHeight;
@@ -2049,9 +2077,9 @@ export const ClaudeChat: React.FC = () => {
     textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
     
     // If we were at bottom, maintain scroll position at bottom
-    if (wasAtBottom && container) {
+    if (wasAtBottom) {
       requestAnimationFrame(() => {
-        container.scrollTop = container.scrollHeight;
+        scrollToBottomHelper('auto');
       });
     }
   };
@@ -2129,8 +2157,8 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       )}
-      <div 
-        className="chat-messages" 
+      <div
+        className="chat-messages"
         ref={chatContainerRef}
       >
         {(() => {
@@ -2237,13 +2265,14 @@ export const ClaudeChat: React.FC = () => {
           }
           
           // Use virtualization for better performance with many messages
-          const useVirtualization = FEATURE_FLAGS.USE_VIRTUALIZATION && filteredMessages.length > 20;
+          const useVirtualization = shouldUseVirtualization(filteredMessages.length);
           const isStreaming = currentSession?.streaming === true;
-          
+
           if (useVirtualization) {
             return (
               <>
                 <VirtualizedMessageList
+                  ref={virtualizedMessageListRef}
                   messages={filteredMessages}
                   sessionId={currentSessionId || ''}
                   isStreaming={isStreaming}
@@ -2294,7 +2323,7 @@ export const ClaudeChat: React.FC = () => {
               return acc;
             }, [] as typeof currentSession.messages);
           const filteredMessages = processedMessages;
-          const useVirtualization = FEATURE_FLAGS.USE_VIRTUALIZATION && filteredMessages.length > 20;
+          const useVirtualization = shouldUseVirtualization(filteredMessages.length);
           const isStreaming = currentSession?.streaming === true;
           return isStreaming && !useVirtualization;
         })() && (
@@ -2354,10 +2383,23 @@ export const ClaudeChat: React.FC = () => {
         </React.Suspense>
       )}
       
-      {/* Pending followup indicator */}
-      {pendingFollowupMessage && (
+      {/* Pending followup indicator with message preview */}
+      {pendingFollowupMessage && pendingFollowupRef.current && (
         <div className="pending-followup-indicator">
-          <span className="pending-followup-text">{pendingFollowupMessage}</span>
+          <div className="pending-followup-header">
+            <span className="pending-followup-status">{pendingFollowupMessage}</span>
+          </div>
+          <div className="pending-followup-preview">
+            <div className="pending-followup-label">next user message:</div>
+            <div className="pending-followup-content">
+              {pendingFollowupRef.current.content}
+            </div>
+            {pendingFollowupRef.current.attachments && pendingFollowupRef.current.attachments.length > 0 && (
+              <div className="pending-followup-attachments">
+                {pendingFollowupRef.current.attachments.length} attachment{pendingFollowupRef.current.attachments.length > 1 ? 's' : ''}
+              </div>
+            )}
+          </div>
         </div>
       )}
       
@@ -2541,16 +2583,6 @@ export const ClaudeChat: React.FC = () => {
         {/* Context info bar */}
         <div className="context-bar">
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-          
-          {/* Dictation button */}
-          <button
-            className={`btn-dictation ${isDictating ? 'active' : ''}`}
-            onClick={toggleDictation}
-            title={isDictating ? "stop dictation (ctrl+e)" : "start dictation (ctrl+e)"}
-            disabled={currentSession?.readOnly}
-          >
-            {isDictating ? <IconMicrophone size={14} /> : <IconMicrophoneOff size={14} />}
-          </button>
           
           <div className="context-info">
             {(() => {

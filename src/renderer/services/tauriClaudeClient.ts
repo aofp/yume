@@ -57,11 +57,10 @@ export class TauriClaudeClient {
     try {
       // Map our model IDs to Claude model names
       const modelMap: Record<string, string> = {
-        'opus': 'claude-opus-4-1-20250805',
-        'sonnet': 'claude-sonnet-4-20250514',
-        'sonnet-4.5': 'claude-sonnet-4-5-20250929'
+        'opus': 'claude-opus-4-5-20251101',
+        'sonnet': 'claude-sonnet-4-5-20250929'
       };
-      const model = options?.model || 'claude-opus-4-1-20250805';
+      const model = options?.model || 'claude-opus-4-5-20251101';
       const mappedModel = modelMap[model] || model;
 
       // If we're creating a new session without a prompt, don't spawn Claude yet
@@ -180,9 +179,8 @@ export class TauriClaudeClient {
         
         const sessionData = sessionStore[sessionId];
         const modelMap: Record<string, string> = {
-          'opus': 'claude-opus-4-1-20250805',
-          'sonnet': 'claude-sonnet-4-20250514',
-          'sonnet-4.5': 'claude-sonnet-4-5-20250929'
+          'opus': 'claude-opus-4-5-20251101',
+          'sonnet': 'claude-sonnet-4-5-20250929'
         };
         const mappedModel = model ? (modelMap[model] || model) : sessionData.model;
         
@@ -394,7 +392,8 @@ export class TauriClaudeClient {
         transformedMessage = {
           type: 'thinking',
           is_thinking: message.is_thinking,
-          thought: message.thought
+          thought: message.thought,
+          streaming: true // Set streaming state for thinking indicator
         };
       } else if (message.type === 'assistant') {
         // Full assistant message from Claude

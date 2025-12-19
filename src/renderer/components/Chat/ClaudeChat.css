@@ -238,14 +238,27 @@
   padding: 4px 0 4px 4px;
   scroll-behavior: auto;
   min-height: 0;
+  max-width: 100%;
+  box-sizing: border-box;
   user-select: text;
   -webkit-user-select: text;
+  display: flex;
+  flex-direction: column;
+}
+
+/* When virtualized list is present, disable scroll on parent to prevent nested scrolling */
+.chat-messages:has(> .virtualized-messages-container) {
+  overflow: hidden;
+  padding: 0;
 }
 
 .message {
   margin-bottom: 8px;
   margin-right: 8px;
   animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  max-width: 100%;
+  box-sizing: border-box;
+  overflow-x: hidden;
 }
 
 @keyframes messageSlide {
@@ -1972,19 +1985,76 @@ textarea.context-full {
 /* Pending followup indicator */
 .pending-followup-indicator {
   display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 6px 12px;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
   background: rgba(var(--accent-rgb), 0.02);
   border-top: 1px solid rgba(var(--accent-rgb), 0.08);
   animation: bashPulse 2s ease-in-out infinite;
 }
 
-.pending-followup-text {
+.pending-followup-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.pending-followup-status {
   font-size: 11px;
   color: var(--accent-color);
   font-style: italic;
   opacity: 0.9;
+}
+
+.pending-followup-preview {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(var(--accent-rgb), 0.15);
+  border-radius: 4px;
+  padding: 8px 10px;
+  max-height: 120px;
+  overflow: hidden;
+}
+
+.pending-followup-label {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 500;
+}
+
+.pending-followup-content {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.85);
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 80px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;
+}
+
+.pending-followup-content::-webkit-scrollbar {
+  width: 4px;
+}
+
+.pending-followup-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.pending-followup-content::-webkit-scrollbar-thumb {
+  background: rgba(var(--accent-rgb), 0.3);
+  border-radius: 2px;
+}
+
+.pending-followup-attachments {
+  font-size: 10px;
+  color: rgba(255, 255, 255, 0.4);
+  font-style: italic;
 }
 
 .bash-running-text {
@@ -2020,6 +2090,7 @@ textarea.context-full {
   min-height: 0; /* Important for proper flex behavior */
   width: 100%;
   padding-right: 0;
+  margin-top: 60px; /* Match parent's margin-top when virtualization is active */
 }
 
 .messages-virtualized {

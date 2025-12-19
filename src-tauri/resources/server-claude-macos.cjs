@@ -110,17 +110,30 @@ function processWrapperLine(line, sessionId) {
       const output = data.usage.output_tokens || 0;
       const cacheCreation = data.usage.cache_creation_input_tokens || 0;
       const cacheRead = data.usage.cache_read_input_tokens || 0;
-      
-      session.inputTokens += input + cacheCreation + cacheRead;
-      session.outputTokens += output;
-      
+
+      // IMPORTANT: Claude API returns TOTAL context window usage, not deltas!
+      // We should SET these values, not accumulate them.
+      // The input_tokens value already includes all previous context.
       const prevTotal = session.totalTokens;
-      session.totalTokens = session.inputTokens + session.outputTokens;
-      
+
+      // Set current values (not accumulate)
+      session.inputTokens = input;
+      session.outputTokens = output;
+      session.cacheCreationTokens = cacheCreation;
+      session.cacheReadTokens = cacheRead;
+
+      // Total context = input + output (which already includes everything)
+      // Cache creation is already included in input_tokens by the API
+      // Cache reads don't count towards the 200k limit (they're "free" cached tokens)
+      session.totalTokens = input + output;
+
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;
-      
-      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/100000 (${Math.round(session.totalTokens/1000)}%)`);
+
+      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
+      if (cacheCreation > 0 || cacheRead > 0) {
+        console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead} (cache_read doesn't count toward 200k limit)`);
+      }
     }
     
     // Detect compaction - Claude's /compact returns 0 tokens 
@@ -409,7 +422,7 @@ function createWslClaudeCommand(args, workingDir, message) {
     }
     
     // For title generation, use direct WSL with full path
-    const script = `cat | ${claudePath} --print --output-format json --model claude-3-5-sonnet-20241022 2>&1`;
+    const script = `cat | ${claudePath} --print --output-format json --model claude-sonnet-4-5-20250929 2>&1`;
     
     console.log(`🔍 WSL script (title gen)`);
     return [wslPath, ['-e', 'bash', '-c', script], false];
@@ -559,7 +572,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       '-p', titlePrompt,  // Pass prompt via -p flag
       '--print',  // Non-interactive mode
       '--output-format', 'json',
-      '--model', 'claude-3-5-sonnet-20241022'
+      '--model', 'claude-sonnet-4-5-20250929'
     ];
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
@@ -2764,8 +2777,8 @@ io.on('connection', (socket) => {
       // Add model flag if specified
       // Force sonnet for /compact command
       if (message && message.trim() === '/compact') {
-        args.push('--model', 'claude-3-5-sonnet-20241022');
-        console.log(`🤖 Using model: claude-3-5-sonnet-20241022 (forced for /compact)`);
+        args.push('--model', 'claude-sonnet-4-5-20250929');
+        console.log(`🤖 Using model: claude-sonnet-4-5-20250929 (forced for /compact)`);
       } else if (model) {
         args.push('--model', model);
         console.log(`🤖 Using model: ${model}`);
@@ -3711,22 +3724,23 @@ io.on('connection', (socket) => {
               console.log(`   Note: ALL tokens count towards the 200k context limit`);
             }
             
-            // If we have a last assistant message, send an update to mark it as done streaming
-            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-            if (lastAssistantMessageId) {
-              console.log(`✅ Marking assistant message ${lastAssistantMessageId} as streaming=false (result received)`);
-              const session = sessions.get(sessionId);
-              const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
-              
-              socket.emit(`message:${sessionId}`, {
-                type: 'assistant',
-                id: lastAssistantMessageId,
-                message: lastAssistantMsg?.message || { content: '' },
-                streaming: false,
-                timestamp: Date.now()
-              });
-              lastAssistantMessageIds.delete(sessionId); // Reset
-            }
+            // DON'T clear streaming state here - the agent may still be actively working
+            // The 'result' message indicates one turn is complete, but in multi-tool scenarios
+            // or when using --resume mode, the Claude process continues and more content may stream
+            // Streaming state should only be cleared when:
+            // 1. The Claude process explicitly exits (handled in process.on('close'))
+            // 2. A stream_end system message is received
+            // 3. An explicit error/interruption occurs
+            //
+            // Leaving this commented for reference - the old buggy behavior was:
+            // const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+            // if (lastAssistantMessageId) {
+            //   socket.emit(`message:${sessionId}`, { type: 'assistant', id: lastAssistantMessageId, streaming: false, ... });
+            //   lastAssistantMessageIds.delete(sessionId);
+            // }
+            //
+            // This caused the UI to show streaming=false while tools were still executing
+            console.log(`📊 [${sessionId}] Result received - keeping streaming state active (process still running)`);
             
             // Just send the result message with model info and session ID
             // Model is available from the outer scope (sendMessage handler)

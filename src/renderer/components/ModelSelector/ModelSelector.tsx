@@ -3,8 +3,8 @@ import { IconChevronUp } from '@tabler/icons-react';
 import './ModelSelector.css';
 
 const models = [
-  { id: 'claude-opus-4-1-20250805', name: 'opus 4.1', description: 'most capable model' },
-  { id: 'claude-sonnet-4-5-20250929', name: 'sonnet 4.5', description: 'fastest model' },
+  { id: 'claude-opus-4-5-20251101', name: 'opus 4.5', description: 'most capable' },
+  { id: 'claude-sonnet-4-5-20250929', name: 'sonnet 4.5', description: 'fast & smart' },
 ];
 
 interface ModelSelectorProps {
@@ -13,7 +13,7 @@ interface ModelSelectorProps {
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
-  value = 'claude-opus-4-1-20250805',
+  value = 'claude-opus-4-5-20251101',
   onChange
 }) => {
   const [isHighlighted, setIsHighlighted] = useState(false);

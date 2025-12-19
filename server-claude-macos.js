@@ -409,7 +409,7 @@ function createWslClaudeCommand(args, workingDir, message) {
     }
     
     // For title generation, use direct WSL with full path
-    const script = `cat | ${claudePath} --print --output-format json --model claude-3-5-sonnet-20241022 2>&1`;
+    const script = `cat | ${claudePath} --print --output-format json --model claude-sonnet-4-5-20250929 2>&1`;
     
     console.log(`🔍 WSL script (title gen)`);
     return [wslPath, ['-e', 'bash', '-c', script], false];
@@ -559,7 +559,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       '-p', titlePrompt,  // Pass prompt via -p flag
       '--print',  // Non-interactive mode
       '--output-format', 'json',
-      '--model', 'claude-3-5-sonnet-20241022'
+      '--model', 'claude-sonnet-4-5-20250929'
     ];
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
@@ -2764,8 +2764,8 @@ io.on('connection', (socket) => {
       // Add model flag if specified
       // Force sonnet for /compact command
       if (message && message.trim() === '/compact') {
-        args.push('--model', 'claude-3-5-sonnet-20241022');
-        console.log(`🤖 Using model: claude-3-5-sonnet-20241022 (forced for /compact)`);
+        args.push('--model', 'claude-sonnet-4-5-20250929');
+        console.log(`🤖 Using model: claude-sonnet-4-5-20250929 (forced for /compact)`);
       } else if (model) {
         args.push('--model', model);
         console.log(`🤖 Using model: ${model}`);
