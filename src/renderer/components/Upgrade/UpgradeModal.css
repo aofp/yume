@@ -18,7 +18,7 @@
 
 .upgrade-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 8px;
   width: 90%;
   max-width: 320px;
@@ -32,7 +32,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 .upgrade-header h3 {
@@ -148,7 +148,7 @@
   flex: 1;
   padding: 6px 8px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: var(--accent-color);
   font-size: 9px;
   font-family: var(--font-mono);

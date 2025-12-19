@@ -1,5 +1,6 @@
 import React, { memo, useState, useCallback } from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { DiffViewer, DiffDisplay, DiffLine } from './DiffViewer';
 import { 
@@ -475,8 +476,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
         // If it's a plain object with a text field, extract and display it
         if (parsed.text && typeof parsed.text === 'string') {
           return (
-            <ReactMarkdown 
+            <ReactMarkdown
               className="markdown-content"
+              remarkPlugins={[remarkGfm]}
               components={{
                 code({ node, inline, className, children, ...props }) {
                   if (inline) {
@@ -497,6 +499,13 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                     return <>{children}</>;
                   }
                   return <p {...props}>{children}</p>;
+                },
+                table({ node, children, ...props }) {
+                  return (
+                    <div className="table-wrapper">
+                      <table className="markdown-table" {...props}>{children}</table>
+                    </div>
+                  );
                 }
               }}
             >
@@ -532,8 +541,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
     }
     
     return (
-      <ReactMarkdown 
+      <ReactMarkdown
         className="markdown-content"
+        remarkPlugins={[remarkGfm]}
         components={{
           code({ node, inline, className, children, ...props }) {
             if (inline) {
@@ -556,6 +566,13 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               return <>{children}</>;
             }
             return <p {...props}>{children}</p>;
+          },
+          table({ node, children, ...props }) {
+            return (
+              <div className="table-wrapper">
+                <table className="markdown-table" {...props}>{children}</table>
+              </div>
+            );
           }
         }}
       >
@@ -610,7 +627,18 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           }
           return (
             <div key={idx} className="content-text">
-              <ReactMarkdown>{block.text || ''}</ReactMarkdown>
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  table({ node, children, ...props }) {
+                    return (
+                      <div className="table-wrapper">
+                        <table className="markdown-table" {...props}>{children}</table>
+                      </div>
+                    );
+                  }
+                }}
+              >{block.text || ''}</ReactMarkdown>
             </div>
           );
           
@@ -762,7 +790,14 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
           // Check if this is a TodoWrite operation
           const isTodoWriteOperation = prevBlock?.type === 'tool_use' && prevBlock.name === 'TodoWrite';
-          
+
+          // Hide AskUserQuestion and plan mode tool results completely
+          const isHiddenTool = prevBlock?.type === 'tool_use' &&
+            (prevBlock.name === 'AskUserQuestion' || prevBlock.name === 'EnterPlanMode' || prevBlock.name === 'ExitPlanMode');
+          if (isHiddenTool) {
+            return null;
+          }
+
           // Handle Bash command output
           if (isBashOperation && resultContent) {
             // For Bash commands, show the full output (or first 50 lines)
@@ -966,63 +1001,88 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               if (oldString && newString) {
                 const oldLines = oldString.split('\n');
                 const newLines = newString.split('\n');
-                
+
+                // Extract the starting line number from the result output
+                // The format is like "     7→CHANGED line 7!"
+                let extractedLineNum = 1;
+                for (const line of diffLines) {
+                  const match = line.match(/^\s*(\d+)[→ ]/);
+                  if (match) {
+                    extractedLineNum = parseInt(match[1], 10);
+                    break;
+                  }
+                }
+
                 // Create a hunk showing the change
                 const hunk = {
-                  startLine: toolInput?.line_number || 1,
-                  endLine: (toolInput?.line_number || 1) + Math.max(oldLines.length, newLines.length),
+                  startLine: extractedLineNum,
+                  endLine: extractedLineNum + Math.max(oldLines.length, newLines.length),
                   lines: [] as DiffLine[]
                 };
-                
+
                 // Add removed lines
                 oldLines.forEach((line, i) => {
                   hunk.lines.push({
                     type: 'remove' as const,
                     content: line,
-                    lineNumber: (toolInput?.line_number || 1) + i
+                    lineNumber: extractedLineNum + i
                   });
                 });
-                
+
                 // Add added lines
                 newLines.forEach((line, i) => {
                   hunk.lines.push({
                     type: 'add' as const,
                     content: line,
-                    lineNumber: (toolInput?.line_number || 1) + i
+                    lineNumber: extractedLineNum + i
                   });
                 });
-                
+
                 diffDisplay.hunks.push(hunk);
               } else if (edits.length > 0) {
-                // Handle MultiEdit
+                // Handle MultiEdit - extract line numbers from diffLines output
+                const lineNumMatches: number[] = [];
+                for (const line of diffLines) {
+                  const match = line.match(/^\s*(\d+)[→ ]/);
+                  if (match) {
+                    const num = parseInt(match[1], 10);
+                    if (!lineNumMatches.includes(num)) {
+                      lineNumMatches.push(num);
+                    }
+                  }
+                }
+
                 edits.forEach((edit: any, editIdx: number) => {
                   const oldLines = (edit.old_string || '').split('\n');
                   const newLines = (edit.new_string || '').split('\n');
-                  
+
+                  // Use extracted line number if available
+                  const startLine = lineNumMatches[editIdx] || (editIdx * 10 + 1);
+
                   const hunk = {
-                    startLine: edit.line_number || (editIdx * 10 + 1),
-                    endLine: (edit.line_number || (editIdx * 10 + 1)) + Math.max(oldLines.length, newLines.length),
+                    startLine: startLine,
+                    endLine: startLine + Math.max(oldLines.length, newLines.length),
                     lines: [] as DiffLine[]
                   };
-                  
+
                   // Add removed lines
                   oldLines.forEach((line, i) => {
                     hunk.lines.push({
                       type: 'remove' as const,
                       content: line,
-                      lineNumber: (edit.line_number || (editIdx * 10 + 1)) + i
+                      lineNumber: startLine + i
                     });
                   });
-                  
+
                   // Add added lines
                   newLines.forEach((line, i) => {
                     hunk.lines.push({
                       type: 'add' as const,
                       content: line,
-                      lineNumber: (edit.line_number || (editIdx * 10 + 1)) + i
+                      lineNumber: startLine + i
                     });
                   });
-                  
+
                   diffDisplay.hunks.push(hunk);
                 });
               } else {
@@ -1682,8 +1742,9 @@ const MessageRendererBase: React.FC<{
           
           {/* Render tool uses separately outside the message bubble */}
           {toolUses && toolUses.map((toolBlock, idx) => {
-            // Hide Read tool displays completely
-            if (toolBlock.name === 'Read') {
+            // Hide Read, AskUserQuestion, and plan mode tool displays completely
+            if (toolBlock.name === 'Read' || toolBlock.name === 'AskUserQuestion' ||
+                toolBlock.name === 'EnterPlanMode' || toolBlock.name === 'ExitPlanMode') {
               return null;
             }
             
@@ -1936,12 +1997,27 @@ const MessageRendererBase: React.FC<{
       contentStr = contentStr.replace(/\n+$/, '');
       
       // Check if we should preserve formatting (for Read and Search operations)
-      // Look for the most recent tool_use message before this tool_result
+      // Look for the associated tool_use message for this tool_result
       let associatedToolUse = null;
-      for (let i = index - 1; i >= 0; i--) {
-        if (sessionMessages[i]?.type === 'tool_use') {
-          associatedToolUse = sessionMessages[i];
-          break;
+
+      // First try to find by tool_use_id (most reliable)
+      const toolUseId = message.message?.tool_use_id;
+      if (toolUseId) {
+        associatedToolUse = sessionMessages.find(m =>
+          m.type === 'tool_use' &&
+          (m.message?.id === toolUseId || m.id === toolUseId)
+        );
+      }
+
+      // Fallback: look for the most recent tool_use message before this tool_result
+      if (!associatedToolUse) {
+        const currentIndex = sessionMessages.findIndex(m => m.id === message.id);
+        const searchIndex = currentIndex >= 0 ? currentIndex : (index ?? sessionMessages.length);
+        for (let i = searchIndex - 1; i >= 0; i--) {
+          if (sessionMessages[i]?.type === 'tool_use') {
+            associatedToolUse = sessionMessages[i];
+            break;
+          }
         }
       }
       
@@ -1960,20 +2036,11 @@ const MessageRendererBase: React.FC<{
         contentStr = contentStr.trim();
       }
       
-      // Check if this is an Edit result - they contain "has been updated" or "Applied" for MultiEdit
-      const isEditResult = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
+      // Check if this is an Edit result - detect by associated tool name (more reliable)
+      const isEditResultByContent = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
                           (contentStr.includes('Applied') && (contentStr.includes('edit to') || contentStr.includes('edits to')));
-      
-      // Debug Edit result detection
-      console.log('[Edit Debug] Tool result check:', {
-        isEditResult,
-        hasAssociatedToolUse: !!associatedToolUse,
-        toolName: associatedToolUse?.message?.name,
-        hasInput: !!associatedToolUse?.message?.input,
-        hasOldString: !!associatedToolUse?.message?.input?.old_string,
-        hasNewString: !!associatedToolUse?.message?.input?.new_string,
-        contentPreview: contentStr.substring(0, 100)
-      });
+      // Use tool name detection as primary, content detection as fallback
+      const isEditResult = isEditOperation || isEditResultByContent;
       
       // Check if this is a Read operation result (already have associatedToolUse from above)
       const isReadResult = isReadOperation;
@@ -2000,42 +2067,57 @@ const MessageRendererBase: React.FC<{
         // For MultiEdit, generate diff from tool input
         if (isMultiEdit && associatedToolUse?.message?.input?.edits) {
           const edits = associatedToolUse.message.input.edits || [];
-          
+
+          // Extract line numbers from the output content
+          // The format shows lines like "     7→content"
+          const lineNumMatches: number[] = [];
+          const lineNumRegex = /^\s*(\d+)[→ ]/gm;
+          let match;
+          while ((match = lineNumRegex.exec(contentStr)) !== null) {
+            const num = parseInt(match[1], 10);
+            if (!lineNumMatches.includes(num)) {
+              lineNumMatches.push(num);
+            }
+          }
+
           // Create diff display using the edits
           const diffDisplay: DiffDisplay = {
             file: filePath,
             hunks: []
           };
-          
+
           // Generate hunks from edits
           edits.forEach((edit: any, editIdx: number) => {
             const oldLines = (edit.old_string || '').split('\n');
             const newLines = (edit.new_string || '').split('\n');
-            
+
+            // Use extracted line number if available, otherwise use a sequential fallback
+            const startLine = lineNumMatches[editIdx] || (editIdx * 10 + 1);
+
             const hunk = {
-              startLine: edit.line_number || (editIdx * 10 + 1),
-              endLine: (edit.line_number || (editIdx * 10 + 1)) + Math.max(oldLines.length, newLines.length),
+              startLine: startLine,
+              endLine: startLine + Math.max(oldLines.length, newLines.length),
               lines: [] as DiffLine[]
             };
-            
+
             // Add removed lines
             oldLines.forEach((line, i) => {
               hunk.lines.push({
                 type: 'remove' as const,
                 content: line,
-                lineNumber: (edit.line_number || (editIdx * 10 + 1)) + i
+                lineNumber: startLine + i
               });
             });
-            
+
             // Add added lines
             newLines.forEach((line, i) => {
               hunk.lines.push({
                 type: 'add' as const,
                 content: line,
-                lineNumber: (edit.line_number || (editIdx * 10 + 1)) + i
+                lineNumber: startLine + i
               });
             });
-            
+
             diffDisplay.hunks.push(hunk);
           });
           
@@ -2055,43 +2137,51 @@ const MessageRendererBase: React.FC<{
         if (!isMultiEdit && associatedToolUse?.message?.input) {
           const oldString = associatedToolUse.message.input.old_string || '';
           const newString = associatedToolUse.message.input.new_string || '';
-          
+
           if (oldString && newString) {
+            // Try to extract the starting line number from the result output
+            // The output format is like "     7→CHANGED line 7!"
+            let startLineNum = 1;
+            const lineNumMatch = contentStr.match(/^\s*(\d+)[→ ]/m);
+            if (lineNumMatch) {
+              startLineNum = parseInt(lineNumMatch[1], 10);
+            }
+
             // Create diff display using the edits
             const diffDisplay: DiffDisplay = {
               file: filePath,
               hunks: []
             };
-            
+
             const oldLines = oldString.split('\n');
             const newLines = newString.split('\n');
-            
+
             const hunk = {
-              startLine: associatedToolUse.message.input.line_number || 1,
-              endLine: (associatedToolUse.message.input.line_number || 1) + Math.max(oldLines.length, newLines.length),
+              startLine: startLineNum,
+              endLine: startLineNum + Math.max(oldLines.length, newLines.length),
               lines: [] as DiffLine[]
             };
-            
+
             // Add removed lines
             oldLines.forEach((line, i) => {
               hunk.lines.push({
                 type: 'remove' as const,
                 content: line,
-                lineNumber: (associatedToolUse.message.input.line_number || 1) + i
+                lineNumber: startLineNum + i
               });
             });
-            
+
             // Add added lines
             newLines.forEach((line, i) => {
               hunk.lines.push({
                 type: 'add' as const,
                 content: line,
-                lineNumber: (associatedToolUse.message.input.line_number || 1) + i
+                lineNumber: startLineNum + i
               });
             });
-            
+
             diffDisplay.hunks.push(hunk);
-            
+
             // Use DiffViewer component
             return (
               <div className="message tool-result-message">
@@ -2217,7 +2307,7 @@ const MessageRendererBase: React.FC<{
       }
       
       // Also check for fallback edit results without tool association
-      if (isEditResult && !isEditTool) {
+      if (isEditResult && !isEditOperation) {
         // Try to show as simple text if we couldn't parse it
         return (
           <div className="message tool-result-message">
@@ -2227,93 +2317,67 @@ const MessageRendererBase: React.FC<{
           </div>
         );
       }
-      
-      // Check if this is a search operation result
-      const isSearchResult = associatedToolUse?.type === 'tool_use' && 
-        (associatedToolUse?.message?.name === 'Grep' || 
-         associatedToolUse?.message?.name === 'Glob' || 
-         associatedToolUse?.message?.name === 'LS' || 
-         associatedToolUse?.message?.name === 'WebSearch');
-      
-      // Check if this is a TodoWrite result and hide success messages
-      const isTodoWriteResult = associatedToolUse?.type === 'tool_use' && 
-        associatedToolUse?.message?.name === 'TodoWrite';
-      
-      if (isTodoWriteResult && (
-        contentStr.includes('Todos have been modified successfully') ||
-        contentStr.includes('Ensure that you continue to use the todo list') ||
-        contentStr.includes('Please proceed with the current tasks if applicable')
-      )) {
-        return null;
-      }
-      
-      // Apply truncation for Read operations AND all tool results
-      if (contentStr) {
-        // Process search results to convert absolute paths to relative
-        let processedContent = contentStr;
-        if (isSearchResult) {
-          // Get the current working directory
-          const store = useClaudeCodeStore.getState();
-          const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
-          const workingDir = currentSession?.workingDirectory;
-          
-          if (workingDir) {
-            // Process each line to convert paths
-            const lines = contentStr.split('\n');
-            processedContent = lines.map(line => {
-              // Search results typically have format: /absolute/path/file.ext:linenum:content
-              // or: /absolute/path/file.ext-content
-              const colonIndex = line.indexOf(':');
-              const dashIndex = line.indexOf('-');
-              const separatorIndex = colonIndex > 0 && (dashIndex < 0 || colonIndex < dashIndex) ? colonIndex : dashIndex;
-              
-              if (separatorIndex > 0) {
-                const pathPart = line.substring(0, separatorIndex);
-                // Check if this looks like a path
-                if (pathPart.startsWith('/') || pathPart.match(/^[A-Z]:/)) {
-                  const relativePath = formatPath(pathPart);
-                  return relativePath + line.substring(separatorIndex);
-                }
-              }
-              return line;
-            }).join('\n');
-          }
-        }
-        
-        const allLines = processedContent.split('\n');
+
+      // Get associated tool name for specific handling
+      const resultToolName = associatedToolUse?.message?.name;
+
+      // ===== WRITE TOOL =====
+      if (resultToolName === 'Write') {
+        const filePath = formatPath(associatedToolUse?.message?.input?.file_path || 'file');
+        const writtenContent = associatedToolUse?.message?.input?.content || '';
+        const allLines = writtenContent.split('\n');
         const MAX_LINES = 10;
         const visibleLines = allLines.slice(0, MAX_LINES);
         const hiddenCount = allLines.length - MAX_LINES;
         const hasMore = hiddenCount > 0;
-        
-        // Choose appropriate styling based on operation type
-        const isWriteOperation = associatedToolUse?.type === 'tool_use' && 
-          associatedToolUse?.message?.name === 'Write';
-        const className = isSearchResult ? 'search-output' : 
-                          isWriteOperation ? 'write-output' : 
-                          'generic-output';
-        
-        // Check if this is a standalone TodoWrite success message and hide it
-        if (className === 'generic-output' && (
-          contentStr.includes('Todos have been modified successfully') ||
-          contentStr.includes('Ensure that you continue to use the todo list') ||
-          contentStr.includes('Please proceed with the current tasks if applicable')
-        )) {
-          console.log('[TodoFilter] Filtering standalone todo success message:', contentStr.substring(0, 100));
-          return null;
-        }
-        
+
         return (
           <div className="message tool-result-message">
-            <div className={`tool-result standalone ${className}`}>
-              <pre className="result-content">
+            <div className="tool-result standalone write-output">
+              <div className="write-header">
+                <IconCheck size={12} stroke={2} className="result-icon success" />
+                <span className="write-path">{filePath}</span>
+                <span className="write-info">{allLines.length} lines written</span>
+              </div>
+              {writtenContent && (
+                <pre className="write-preview">
+                  {visibleLines.map((line, i) => (
+                    <div key={i} className="write-line">
+                      <span className="line-number">{(i + 1).toString().padStart(4, ' ')}</span>
+                      <span className="line-text">{line}</span>
+                    </div>
+                  ))}
+                </pre>
+              )}
+              {hasMore && (
+                <div className="result-more">+ {hiddenCount} more lines</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ===== BASH TOOL =====
+      if (resultToolName === 'Bash' || resultToolName === 'BashOutput') {
+        const command = associatedToolUse?.message?.input?.command || '';
+        const allLines = contentStr.split('\n');
+        const MAX_LINES = 15;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
+        const hasMore = hiddenCount > 0;
+
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone bash-output">
+              {command && (
+                <div className="bash-command">
+                  <span className="bash-prompt">$</span>
+                  <span className="bash-cmd">{formatCommand(command)}</span>
+                </div>
+              )}
+              <pre className="bash-content">
                 {visibleLines.map((line, i) => (
-                  <div key={i} className={isSearchResult ? 'search-line' : 'result-line'}>
-                    <span className="line-number">
-                      {(i + 1).toString().padStart(4, ' ')}
-                    </span>
-                    <span className="line-text">{line}</span>
-                  </div>
+                  <div key={i} className="bash-line">{line}</div>
                 ))}
               </pre>
               {hasMore && (
@@ -2323,7 +2387,259 @@ const MessageRendererBase: React.FC<{
           </div>
         );
       }
-      
+
+      // ===== TODOWRITE TOOL - Hide success messages =====
+      if (resultToolName === 'TodoWrite') {
+        if (contentStr.includes('Todos have been modified successfully') ||
+            contentStr.includes('Ensure that you continue to use the todo list') ||
+            contentStr.includes('Please proceed with the current tasks if applicable')) {
+          return null;
+        }
+      }
+
+      // ===== GREP TOOL =====
+      if (resultToolName === 'Grep') {
+        const pattern = associatedToolUse?.message?.input?.pattern || '';
+        const allLines = contentStr.split('\n').map(line => {
+          // Convert absolute paths to relative
+          const colonIndex = line.indexOf(':');
+          if (colonIndex > 0) {
+            const pathPart = line.substring(0, colonIndex);
+            if (pathPart.startsWith('/') || pathPart.match(/^[A-Z]:/)) {
+              return formatPath(pathPart) + line.substring(colonIndex);
+            }
+          }
+          return line;
+        });
+        const MAX_LINES = 12;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
+        const hasMore = hiddenCount > 0;
+
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone search-output">
+              <div className="search-header">
+                <IconSearch size={12} stroke={1.5} />
+                <span className="search-pattern">"{pattern}"</span>
+                <span className="search-count">{allLines.filter(l => l.trim()).length} matches</span>
+              </div>
+              <pre className="search-content">
+                {visibleLines.map((line, i) => (
+                  <div key={i} className="search-line">{line}</div>
+                ))}
+              </pre>
+              {hasMore && (
+                <div className="result-more">+ {hiddenCount} more matches</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ===== GLOB TOOL =====
+      if (resultToolName === 'Glob') {
+        const pattern = associatedToolUse?.message?.input?.pattern || '';
+        const allLines = contentStr.split('\n').filter(l => l.trim()).map(line => formatPath(line));
+        const MAX_LINES = 12;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
+        const hasMore = hiddenCount > 0;
+
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone file-list">
+              <div className="file-list-header">
+                <IconFileSearch size={12} stroke={1.5} />
+                <span className="file-pattern">{pattern}</span>
+                <span className="file-count">{allLines.length} files</span>
+              </div>
+              <pre className="file-list-content">
+                {visibleLines.map((line, i) => (
+                  <div key={i} className="file-item">{line}</div>
+                ))}
+              </pre>
+              {hasMore && (
+                <div className="result-more">+ {hiddenCount} more files</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ===== LS TOOL =====
+      if (resultToolName === 'LS') {
+        const path = formatPath(associatedToolUse?.message?.input?.path || '.');
+        const allLines = contentStr.split('\n').filter(l => l.trim());
+        const MAX_LINES = 15;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
+        const hasMore = hiddenCount > 0;
+
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone dir-listing">
+              <div className="dir-header">
+                <IconFolderOpen size={12} stroke={1.5} />
+                <span className="dir-path">{path}</span>
+                <span className="dir-count">{allLines.length} items</span>
+              </div>
+              <pre className="dir-content">
+                {visibleLines.map((line, i) => (
+                  <div key={i} className="dir-item">{line}</div>
+                ))}
+              </pre>
+              {hasMore && (
+                <div className="result-more">+ {hiddenCount} more items</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ===== WEBSEARCH TOOL =====
+      if (resultToolName === 'WebSearch') {
+        const query = associatedToolUse?.message?.input?.query || '';
+        const allLines = contentStr.split('\n').filter(l => l.trim());
+        const MAX_LINES = 10;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
+        const hasMore = hiddenCount > 0;
+
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone web-search">
+              <div className="web-search-header">
+                <IconWorld size={12} stroke={1.5} />
+                <span className="web-query">"{query}"</span>
+              </div>
+              <pre className="web-search-content">
+                {visibleLines.map((line, i) => (
+                  <div key={i} className="web-result-line">{line}</div>
+                ))}
+              </pre>
+              {hasMore && (
+                <div className="result-more">+ {hiddenCount} more results</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ===== WEBFETCH TOOL =====
+      if (resultToolName === 'WebFetch') {
+        const url = formatUrl(associatedToolUse?.message?.input?.url || '');
+        const allLines = contentStr.split('\n');
+        const MAX_LINES = 10;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
+        const hasMore = hiddenCount > 0;
+
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone web-fetch">
+              <div className="web-fetch-header">
+                <IconDownload size={12} stroke={1.5} />
+                <span className="web-url">{url}</span>
+              </div>
+              <pre className="web-fetch-content">
+                {visibleLines.map((line, i) => (
+                  <div key={i} className="web-line">{line}</div>
+                ))}
+              </pre>
+              {hasMore && (
+                <div className="result-more">+ {hiddenCount} more lines</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ===== TASK TOOL =====
+      if (resultToolName === 'Task') {
+        const description = associatedToolUse?.message?.input?.description || 'task';
+        const subagentType = associatedToolUse?.message?.input?.subagent_type || 'agent';
+        const allLines = contentStr.split('\n');
+        const MAX_LINES = 15;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
+        const hasMore = hiddenCount > 0;
+
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone task-result">
+              <div className="task-header">
+                <IconRobot size={12} stroke={1.5} />
+                <span className="task-desc">{description}</span>
+                <span className="task-type">{subagentType}</span>
+              </div>
+              <pre className="task-content">
+                {visibleLines.map((line, i) => (
+                  <div key={i} className="task-line">{line}</div>
+                ))}
+              </pre>
+              {hasMore && (
+                <div className="result-more">+ {hiddenCount} more lines</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ===== EXITPLANMODE / KILLBASH - Simple confirmation =====
+      if (resultToolName === 'ExitPlanMode') {
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone simple-confirm">
+              <IconCheck size={12} stroke={2} className="result-icon success" />
+              <span className="result-text">plan mode exited</span>
+            </div>
+          </div>
+        );
+      }
+
+      if (resultToolName === 'KillBash') {
+        const shellId = associatedToolUse?.message?.input?.shell_id || 'session';
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone simple-confirm">
+              <IconPlayerStop size={12} stroke={1.5} className="result-icon" />
+              <span className="result-text">bash {shellId} stopped</span>
+            </div>
+          </div>
+        );
+      }
+
+      // ===== GENERIC FALLBACK - Clean display without line numbers =====
+      if (contentStr) {
+        const allLines = contentStr.split('\n');
+        const MAX_LINES = 10;
+        const visibleLines = allLines.slice(0, MAX_LINES);
+        const hiddenCount = allLines.length - MAX_LINES;
+        const hasMore = hiddenCount > 0;
+
+        // Hide TodoWrite success messages in generic fallback too
+        if (contentStr.includes('Todos have been modified successfully') ||
+            contentStr.includes('Ensure that you continue to use the todo list')) {
+          return null;
+        }
+
+        return (
+          <div className="message tool-result-message">
+            <div className="tool-result standalone generic-output">
+              <pre className="result-content">
+                {visibleLines.map((line, i) => (
+                  <div key={i} className="result-line">{line}</div>
+                ))}
+              </pre>
+              {hasMore && (
+                <div className="result-more">+ {hiddenCount} more lines</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
       // If we get here and still have no content, return null
       return null;
       
@@ -2424,6 +2740,7 @@ const MessageRendererBase: React.FC<{
                 <div className="message-content">
                   <ReactMarkdown
                     className="markdown-content"
+                    remarkPlugins={[remarkGfm]}
                     components={{
                       code: ({node, inline, className, children, ...props}) => {
                         const match = /language-(\w+)/.exec(className || '');
@@ -2548,12 +2865,57 @@ const MessageRendererBase: React.FC<{
   }
 };
 
+// Efficient content comparison without JSON.stringify
+const areContentsEqual = (prevContent: any, nextContent: any): boolean => {
+  // Same reference = same content
+  if (prevContent === nextContent) return true;
+
+  // Different types = different content
+  if (typeof prevContent !== typeof nextContent) return false;
+
+  // String comparison
+  if (typeof prevContent === 'string') {
+    return prevContent === nextContent;
+  }
+
+  // Array comparison (for ContentBlock[])
+  if (Array.isArray(prevContent) && Array.isArray(nextContent)) {
+    // Different lengths = different content
+    if (prevContent.length !== nextContent.length) return false;
+
+    // Empty arrays are equal
+    if (prevContent.length === 0) return true;
+
+    // For streaming, the last block changes most frequently
+    // Check last block first for early bailout
+    const lastPrev = prevContent[prevContent.length - 1];
+    const lastNext = nextContent[nextContent.length - 1];
+
+    // Compare text content of last blocks (most common case during streaming)
+    if (lastPrev?.type !== lastNext?.type) return false;
+    if (lastPrev?.text !== lastNext?.text) return false;
+
+    // For short arrays, do full comparison
+    if (prevContent.length <= 3) {
+      for (let i = 0; i < prevContent.length - 1; i++) {
+        if (prevContent[i]?.type !== nextContent[i]?.type) return false;
+        if (prevContent[i]?.text !== nextContent[i]?.text) return false;
+      }
+    }
+
+    return true;
+  }
+
+  // Fallback: assume different (will trigger re-render to be safe)
+  return false;
+};
+
 // Export memoized version for performance
 export const MessageRenderer = memo(MessageRendererBase, (prevProps, nextProps) => {
   // Custom comparison - only re-render if message content or streaming state changes
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.streaming === nextProps.message.streaming &&
-    JSON.stringify(prevProps.message.message?.content) === JSON.stringify(nextProps.message.message?.content)
+    areContentsEqual(prevProps.message.message?.content, nextProps.message.message?.content)
   );
 });

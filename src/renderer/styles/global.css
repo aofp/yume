@@ -1,8 +1,8 @@
 /* CSS Variables - Minimal Black Theme */
 :root {
   /* Background Color - can be changed via settings */
-  --background-color: #000000;
-  --background-rgb: 0, 0, 0;
+  --background-color: #0a0a0a;
+  --background-rgb: 10, 10, 10;
 
   /* Foreground Color - can be changed via settings */
   /* Used for text, borders, etc. at varying opacities */
@@ -19,8 +19,8 @@
   --fg-40: rgba(var(--foreground-rgb), 0.4);     /* Disabled/hint text */
   --fg-30: rgba(var(--foreground-rgb), 0.3);     /* Strong borders */
   --fg-25: rgba(var(--foreground-rgb), 0.25);    /* Default borders */
-  --fg-20: rgba(var(--foreground-rgb), 0.2);     /* Subtle borders */
-  --fg-15: rgba(var(--foreground-rgb), 0.15);    /* Very subtle borders */
+  --fg-20: rgba(var(--foreground-rgb), 0.1);     /* Subtle borders */
+  --fg-15: rgba(var(--foreground-rgb), 0.1);     /* Very subtle borders */
   --fg-10: rgba(var(--foreground-rgb), 0.1);     /* Faint borders/backgrounds */
   --fg-08: rgba(var(--foreground-rgb), 0.08);    /* Hover backgrounds */
   --fg-05: rgba(var(--foreground-rgb), 0.05);    /* Subtle hover */
@@ -263,7 +263,7 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: all var(--transition-fast);
+  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
 }
 
 button:disabled {
@@ -278,10 +278,10 @@ textarea {
   font-size: inherit;
   color: inherit;
   background: var(--background-color);
-  border: 1px solid var(--color-border-subtle);
+  border: 1px solid rgba(var(--accent-rgb), 0.38);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
-  transition: all var(--transition-fast);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 input:focus,

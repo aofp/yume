@@ -344,7 +344,7 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'default',
     name: 'default',
-    backgroundColor: '#000000',
+    backgroundColor: '#0a0a0a',
     foregroundColor: '#ffffff',
     accentColor: '#99bbff',
     positiveColor: '#99ff99',
@@ -699,7 +699,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const { isLicensed } = useLicenseStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('theme');
   const [zoomLevel, setZoomLevel] = useState(0);
-  const [backgroundColor, setBackgroundColor] = useState('#000000');
+  const [backgroundColor, setBackgroundColor] = useState('#0a0a0a');
   const [foregroundColor, setForegroundColor] = useState('#ffffff');
   const [accentColor, setAccentColor] = useState('#99bbff');
   const [positiveColor, setPositiveColor] = useState('#99ff99');
@@ -731,6 +731,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     showAnalyticsMenu, setShowAnalyticsMenu,
     showCommandsSettings, setShowCommandsSettings,
     showMcpSettings, setShowMcpSettings,
+    showHooksSettings, setShowHooksSettings,
     backgroundOpacity, setBackgroundOpacity
   } = useClaudeCodeStore();
   
@@ -815,7 +816,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     getZoom();
 
     // Get saved colors and apply them
-    const savedBackgroundColor = localStorage.getItem('backgroundColor') || '#000000';
+    const savedBackgroundColor = localStorage.getItem('backgroundColor') || '#0a0a0a';
     setBackgroundColor(savedBackgroundColor);
     document.documentElement.style.setProperty('--background-color', savedBackgroundColor);
     const bgHex = savedBackgroundColor.replace('#', '');
@@ -1229,14 +1230,14 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   };
 
   const handleResetAllTheme = () => {
-    handleBackgroundColorChange('#000000');
+    handleBackgroundColorChange('#0a0a0a');
     handleForegroundColorChange('#ffffff');
     handleAccentColorChange('#99bbff');
     handlePositiveColorChange('#99ff99');
     handleNegativeColorChange('#ff9999');
   };
 
-  const isDefaultTheme = backgroundColor === '#000000' &&
+  const isDefaultTheme = backgroundColor === '#0a0a0a' &&
                          foregroundColor === '#ffffff' &&
                          accentColor === '#99bbff' &&
                          positiveColor === '#99ff99' &&
@@ -1265,11 +1266,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
             {/* Options */}
             <div className="settings-section">
               <h4>options</h4>
-              
+
               <div className="checkbox-setting">
                 <span className="checkbox-label">remember tabs on restart</span>
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="checkbox-input"
                   id="rememberTabs"
                   checked={rememberTabs}
@@ -1301,9 +1302,14 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </label>
                 </div>
               </div>
+            </div>
+
+            {/* Menu visibility */}
+            <div className="settings-section">
+              <h4>menu</h4>
 
               <div className="checkbox-setting">
-                <span className="checkbox-label">show projects in menu</span>
+                <span className="checkbox-label">projects</span>
                 <input
                   type="checkbox"
                   className="checkbox-input"
@@ -1321,7 +1327,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               </div>
 
               <div className="checkbox-setting">
-                <span className="checkbox-label">show agents in menu</span>
+                <span className="checkbox-label">agents</span>
                 <input
                   type="checkbox"
                   className="checkbox-input"
@@ -1339,7 +1345,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               </div>
 
               <div className="checkbox-setting">
-                <span className="checkbox-label">show analytics in menu</span>
+                <span className="checkbox-label">analytics</span>
                 <input
                   type="checkbox"
                   className="checkbox-input"
@@ -1355,9 +1361,14 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </label>
                 </div>
               </div>
+            </div>
+
+            {/* Settings visibility */}
+            <div className="settings-section">
+              <h4>settings</h4>
 
               <div className="checkbox-setting">
-                <span className="checkbox-label">show commands in settings</span>
+                <span className="checkbox-label">commands</span>
                 <input
                   type="checkbox"
                   className="checkbox-input"
@@ -1375,7 +1386,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               </div>
 
               <div className="checkbox-setting">
-                <span className="checkbox-label">show mcp in settings</span>
+                <span className="checkbox-label">mcp</span>
                 <input
                   type="checkbox"
                   className="checkbox-input"
@@ -1392,12 +1403,31 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 </div>
               </div>
 
-              {/* Claude CLI Configuration */}
+              <div className="checkbox-setting">
+                <span className="checkbox-label">hooks</span>
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  id="showHooksSettings"
+                  checked={showHooksSettings}
+                  onChange={(e) => setShowHooksSettings(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="showHooksSettings" className={`toggle-switch ${showHooksSettings ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            {/* Claude Code Configuration */}
+            <div className="settings-section">
+              <h4>claude code</h4>
               <ClaudeSelector onSettingsChange={(settings) => {
                 console.log('Claude settings updated:', settings);
               }} />
-              
-              {/* System Prompt Configuration */}
               <SystemPromptSelector onSettingsChange={(settings) => {
                 console.log('System prompt settings updated:', settings);
               }} />
@@ -1421,8 +1451,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
         return (
           <>
             {/* Theme selector at top */}
-            <div className="settings-section" style={{ marginBottom: '12px' }}>
-              <h4>theme</h4>
+            <div className="settings-section" style={{ marginBottom: '12px', textAlign: 'center' }}>
+              <h4 style={{ textAlign: 'left' }}>theme</h4>
               <button
                 onClick={() => setShowThemeDropdown(true)}
                 style={{
@@ -1602,8 +1632,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 <div className="color-controls">
                   <button
                     className="color-reset"
-                    onClick={() => handleBackgroundColorChange('#000000')}
-                    disabled={backgroundColor === '#000000'}
+                    onClick={() => handleBackgroundColorChange('#0a0a0a')}
+                    disabled={backgroundColor === '#0a0a0a'}
                   >
                     <IconRotateClockwise size={12} />
                   </button>
@@ -2494,11 +2524,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   active={activeTab === 'general'}
                   onClick={() => setActiveTab('general')}
                 />
-                <TabButton
-                  label="hooks"
-                  active={activeTab === 'hooks'}
-                  onClick={() => setActiveTab('hooks')}
-                />
+                {showHooksSettings && (
+                  <TabButton
+                    label="hooks"
+                    active={activeTab === 'hooks'}
+                    onClick={() => setActiveTab('hooks')}
+                  />
+                )}
                 {showCommandsSettings && (
                   <TabButton
                     label="commands"

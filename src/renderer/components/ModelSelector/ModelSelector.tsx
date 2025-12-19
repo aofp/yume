@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { IconChevronUp } from '@tabler/icons-react';
+import { getModelsForSelector, DEFAULT_MODEL_ID } from '../../config/models';
 import './ModelSelector.css';
 
-const models = [
-  { id: 'claude-opus-4-5-20251101', name: 'opus 4.5', description: 'most capable' },
-  { id: 'claude-sonnet-4-5-20250929', name: 'sonnet 4.5', description: 'fast & smart' },
-];
+// Get models from centralized config
+const models = getModelsForSelector();
 
 interface ModelSelectorProps {
   value?: string;
@@ -23,14 +22,14 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // Find selected model - default to first if value doesn't match any model
-  const currentValue = value || models[0].id;
+  // Find selected model - default to DEFAULT_MODEL_ID if value doesn't match any model
+  const currentValue = value || DEFAULT_MODEL_ID;
   const selectedModel = models.find(m => m.id === currentValue) || models[0];
 
   // Ensure store is updated if value was invalid
   useEffect(() => {
     if (value && !models.find(m => m.id === value)) {
-      onChange?.(models[0].id);
+      onChange?.(DEFAULT_MODEL_ID);
     }
   }, [value, onChange]);
 

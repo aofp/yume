@@ -9,7 +9,8 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: var(--background-color);
+  /* Theme background at 50% blended with black */
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
   animation: fadeIn 0.3s ease;
   user-select: none;
   -webkit-user-select: none;

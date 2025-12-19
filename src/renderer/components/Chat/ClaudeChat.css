@@ -23,7 +23,7 @@
   position: fixed;
   top: 70px; /* Below title bar and tabs */
   right: 20px;
-  background: var(--bg-90);
+  background: var(--bg-95);
   border: 1px solid var(--fg-05);
   border-radius: 4px;
   padding: 6px 10px;
@@ -32,7 +32,6 @@
   gap: 8px;
   z-index: 9999;
   animation: slideIn 0.15s ease;
-  backdrop-filter: blur(8px);
   min-width: 320px; /* Fixed minimum width to prevent jumping */
 }
 
@@ -310,7 +309,7 @@
   color: var(--fg-80);
   padding: 2px 6px;
   border-radius: 3px;
-  font-size: 12px;
+  font-size: 10px;
   font-family: var(--font-mono);
 }
 
@@ -802,7 +801,7 @@ textarea.context-full {
 .chat-input {
   flex: 1;
   background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
-  border: 1px solid var(--fg-20);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
   color: var(--foreground-color);
   caret-color: var(--accent-color);
   padding: 4px;
@@ -1425,6 +1424,16 @@ textarea.context-full {
 
 .confirm-buttons button.confirm-danger:hover {
   filter: brightness(1.1);
+}
+
+.confirm-buttons button.selected {
+  outline: 2px solid var(--accent-color, #6366f1);
+  outline-offset: 2px;
+}
+
+.confirm-buttons button.confirm-danger.selected {
+  outline: 2px solid var(--foreground-color);
+  outline-offset: 2px;
 }
 
 /* Help Modal (Keyboard Shortcuts) */
@@ -2172,7 +2181,6 @@ textarea.context-full {
   min-height: 0; /* Important for proper flex behavior */
   width: 100%;
   padding-right: 0;
-  margin-top: 60px; /* Match parent's margin-top when virtualization is active */
 }
 
 .messages-virtualized {

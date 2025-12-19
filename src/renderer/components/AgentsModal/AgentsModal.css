@@ -239,7 +239,7 @@
   font-weight: 600;
   letter-spacing: 0.5px;
   padding: 2px 6px;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2px;
 }
 
@@ -257,7 +257,7 @@
 .agent-action {
   padding: 4px 6px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #666;
   cursor: default;
@@ -297,7 +297,7 @@
 
 .btn-back {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #666;
   padding: 4px 8px;
   font-size: 11px;
@@ -345,7 +345,7 @@
 .form-group select,
 .form-group textarea {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: rgba(255, 255, 255, 0.9);
   padding: 8px;
@@ -383,7 +383,7 @@
 
 .agent-model-select {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: rgba(255, 255, 255, 0.9);
   padding: 8px;
@@ -435,7 +435,7 @@
 
 .btn-cancel {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: #999;
 }
 

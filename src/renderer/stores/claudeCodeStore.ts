@@ -8,6 +8,7 @@ import { persist } from 'zustand/middleware';
 import { claudeCodeClient } from '../services/claudeCodeClient';
 import { tauriClaudeClient } from '../services/tauriClaudeClient';
 import { useLicenseStore } from '../services/licenseManager';
+import { DEFAULT_MODEL_ID, MODEL_ID_MAP, resolveModelId, getModelByFamily } from '../config/models';
 
 // Use Tauri client if available, otherwise fall back to Socket.IO
 // On Windows, always use Socket.IO because Claude runs in WSL
@@ -180,6 +181,7 @@ interface ClaudeCodeStore {
   showAnalyticsMenu: boolean; // Whether to show analytics button in menu
   showCommandsSettings: boolean; // Whether to show commands tab in settings
   showMcpSettings: boolean; // Whether to show mcp tab in settings
+  showHooksSettings: boolean; // Whether to show hooks tab in settings
 
   // UI state
   isDraggingTab: boolean; // Whether a tab is currently being dragged
@@ -261,6 +263,7 @@ interface ClaudeCodeStore {
   setShowAnalyticsMenu: (show: boolean) => void;
   setShowCommandsSettings: (show: boolean) => void;
   setShowMcpSettings: (show: boolean) => void;
+  setShowHooksSettings: (show: boolean) => void;
 
   // UI state
   setIsDraggingTab: (isDragging: boolean) => void;
@@ -463,7 +466,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   currentSessionId: null, // No current session on startup
   persistedSessionId: null,
   sessionMappings: {},
-  selectedModel: 'claude-opus-4-5-20251101',
+  selectedModel: DEFAULT_MODEL_ID, // Default to Sonnet 4.5 (see config/models.ts)
   claudeMdTokens: 0, // Will be calculated on first use
   globalWatermarkImage: null,
   monoFont: 'Fira Code', // Default monospace font
@@ -476,6 +479,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   showAnalyticsMenu: false, // Default to hidden
   showCommandsSettings: false, // Default to hidden
   showMcpSettings: false, // Default to hidden
+  showHooksSettings: false, // Default to hidden
   isDraggingTab: false, // No tab is being dragged initially
   agents: [], // No agents initially, will load from localStorage
   currentAgentId: null, // No agent selected initially
@@ -621,10 +625,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             percentage: 0,
             remaining: 200000
           },
-          model: 'claude-opus-4-5-20251101'
+          model: get().selectedModel || DEFAULT_MODEL_ID
         }
       };
-      
+
       // Add pending session to store immediately so tab appears (or update existing)
       console.log('[Store] Adding/updating session:', tempSessionId);
       if (existingSession) {
@@ -645,12 +649,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       
       // STEP 2: Initialize Claude SDK session in background
       try {
-        // Map our model IDs to Claude Code SDK model names
+        // Get the selected model and resolve to full ID if needed
         const { selectedModel } = get();
-        const modelMap: Record<string, string> = {
-          'opus': 'claude-opus-4-5-20251101',
-          'sonnet': 'claude-sonnet-4-5-20250929'
-        };
 
         // Create or resume session using Claude Code Client
         // Pass claudeSessionId if:
@@ -679,7 +679,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           ],
           permissionMode: 'default',
           maxTurns: 30,
-          model: modelMap[selectedModel] || 'claude-opus-4-5-20251101',
+          model: resolveModelId(selectedModel),
           sessionId: actualExistingSessionId || tempSessionId, // Pass the sessionId for consistency
           claudeSessionId: claudeSessionIdToResume, // Pass claudeSessionId for resuming
           messages: actualExistingSessionId ? (existingSession?.messages || []) : [] // Pass messages only if resuming yurucode session
@@ -2706,10 +2706,10 @@ ${content}`;
             percentage: 0,
             remaining: 200000
           },
-          model: 'claude-opus-4-5-20251101'
+          model: get().selectedModel || DEFAULT_MODEL_ID
         }
       };
-      
+
       // Listen for title updates
       const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
         console.log('[Store] Received title for resumed session:', sessionId, title);
@@ -3175,7 +3175,7 @@ ${content}`;
                   percentage: 0,
                   remaining: 200000
                 },
-                model: 'claude-opus-4-5-20251101'
+                model: get().selectedModel || DEFAULT_MODEL_ID
               },
               updatedAt: new Date()
             }
@@ -3268,11 +3268,14 @@ ${content}`;
   
   toggleModel: () => {
     const currentModel = get().selectedModel;
-    const newModel = currentModel.includes('opus') ?
-      'claude-sonnet-4-5-20250929' :
-      'claude-opus-4-5-20251101';
+    // Toggle between opus and sonnet using centralized config
+    const opusModel = getModelByFamily('opus');
+    const sonnetModel = getModelByFamily('sonnet');
+    const newModel = currentModel.includes('opus')
+      ? (sonnetModel?.id || DEFAULT_MODEL_ID)
+      : (opusModel?.id || DEFAULT_MODEL_ID);
     set({ selectedModel: newModel });
-    console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus 4.5' : 'Sonnet 4.5'}`);
+    console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus' : 'Sonnet'}`);
   },
 
   addMessageToSession: (sessionId: string, message: SDKMessage) => {
@@ -3788,6 +3791,11 @@ ${content}`;
     localStorage.setItem('yurucode-show-mcp-settings', JSON.stringify(show));
   },
 
+  setShowHooksSettings: (show: boolean) => {
+    set({ showHooksSettings: show });
+    localStorage.setItem('yurucode-show-hooks-settings', JSON.stringify(show));
+  },
+
   setIsDraggingTab: (isDragging: boolean) => {
     set({ isDraggingTab: isDragging });
   },
@@ -3993,6 +4001,7 @@ ${content}`;
         showAnalyticsMenu: state.showAnalyticsMenu,
         showCommandsSettings: state.showCommandsSettings,
         showMcpSettings: state.showMcpSettings,
+        showHooksSettings: state.showHooksSettings,
         agents: state.agents,
         currentAgentId: state.currentAgentId
         // Do NOT persist sessionId - sessions should not survive app restarts

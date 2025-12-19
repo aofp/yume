@@ -176,7 +176,7 @@
   padding: 8px 12px;
   border-radius: 12px 12px 4px 12px;
   min-width: 60px;
-  font-size: 12px;
+  font-size: 11px;
   line-height: 1.5;
   max-width: 100%;
   width: auto;
@@ -196,13 +196,15 @@
   padding: 8px 12px;
   border-radius: 12px 12px 12px 4px;
   min-width: 60px;
-  font-size: 12px;
+  max-width: 100%;
+  font-size: 11px;
   line-height: 1.5;
   box-shadow: none;
   width: auto;
   display: inline-block;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  box-sizing: border-box;
 }
 
 /* Assistant Messages */
@@ -234,7 +236,7 @@
   padding-left: 0;
   display: block;
   box-sizing: border-box;
-  overflow-x: hidden;
+  overflow-x: visible;
   word-wrap: break-word;
   overflow-wrap: break-word;
 }
@@ -242,12 +244,11 @@
 /* Markdown Content */
 .markdown-content {
   color: #ffffff;
-  font-size: 13px;
+  font-size: 11px;
   line-height: 1.5;
   padding-left: 0;
   max-width: 100%;
   box-sizing: border-box;
-  overflow-x: hidden;
   word-wrap: break-word;
   overflow-wrap: break-word;
   word-break: break-word;
@@ -266,7 +267,7 @@
   color: #ffffff;
   padding: 2px;
   border-radius: 4px;
-  font-size: 8pt;
+  font-size: 10px;
   font-family: var(--font-mono);
   max-width: 100%;
   display: inline-block;
@@ -296,6 +297,7 @@
   max-width: 100%;
   display: block;
   overflow-x: auto;
+  font-size: 10px;
 }
 
 /* Code block with copy button */
@@ -343,7 +345,7 @@
 }
 
 .code-copy-btn:hover {
-  background: rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.1);
   color: #ffffff;
 }
 
@@ -789,21 +791,21 @@ ol {
   color: rgba(255, 255, 255, 1);
 }
 
-/* Simple pastel colors for removed/added */
+/* Visible colors for removed/added */
 .diff-line.added {
-  background: rgba(var(--positive-rgb), 0.08);
+  background: rgba(var(--positive-rgb), 0.18);
 }
 
 .diff-line.added .line-content {
-  color: #fff;
+  color: var(--positive-color);
 }
 
 .diff-line.removed {
-  background: rgba(var(--negative-rgb), 0.08);
+  background: rgba(var(--negative-rgb), 0.18);
 }
 
 .diff-line.removed .line-content {
-  color: #fff;
+  color: var(--negative-color);
 }
 
 .diff-summary {
@@ -917,12 +919,12 @@ pre.edit-diff {
 
 .diff-line.removed .diff-marker,
 .diff-line.removed .diff-text {
-  color: var(--color-magenta) !important;
+  color: var(--negative-color) !important;
 }
 
 .diff-line.added .diff-marker,
 .diff-line.added .diff-text {
-  color: var(--color-cyan) !important;
+  color: var(--positive-color) !important;
 }
 
 .diff-line.context .diff-marker,
@@ -931,18 +933,18 @@ pre.edit-diff {
 }
 
 .diff-line.context .line-number {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.1);
 }
 
 /* Edit tool diff colors */
 .edit-diff .diff-line.removed .diff-marker,
 .edit-diff .diff-line.removed .diff-text {
-  color: var(--color-magenta) !important;
+  color: var(--negative-color) !important;
 }
 
 .edit-diff .diff-line.added .diff-marker,
 .edit-diff .diff-line.added .diff-text {
-  color: var(--color-cyan) !important;
+  color: var(--positive-color) !important;
 }
 
 /* Enhanced diff with context lines */
@@ -1218,7 +1220,6 @@ body.platform-win32 .tool-detail {
   background: rgba(255, 255, 255, 0.02);
   padding: 8px;
   border-radius: 4px;
-  border-left: 2px solid var(--accent-color);
 }
 
 .bash-more {
@@ -1231,21 +1232,329 @@ body.platform-win32 .tool-detail {
 
 .read-more, .search-more, .result-more {
   display: block;
-  margin-top: 2px;
+  margin-top: 4px;
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.4);
   font-family: var(--font-mono);
   cursor: default;
-  opacity: 1;
 }
 
 .result-icon {
   font-size: 12px;
 }
 
+.result-icon.success {
+  color: var(--positive-color);
+}
+
 .result-text {
   font-family: var(--font-mono);
   font-size: 8pt;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* ===== TOOL-SPECIFIC RESULT STYLES ===== */
+
+/* Write Output with Preview */
+.tool-result.write-output {
+  display: block;
+}
+
+.write-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.write-path {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: var(--positive-color);
+}
+
+.write-info {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
+.write-preview {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  background: rgba(var(--positive-rgb), 0.05);
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.write-line {
+  display: flex;
+  line-height: 1.4;
+}
+
+.write-line .line-number {
+  color: rgba(255, 255, 255, 0.3);
+  margin-right: 8px;
+  user-select: none;
+}
+
+.write-line .line-text {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+/* Bash Output */
+.tool-result.bash-output .bash-command {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 4px;
+}
+
+.bash-prompt {
+  color: var(--accent-color);
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  font-weight: 600;
+}
+
+.bash-cmd {
+  color: rgba(255, 255, 255, 0.8);
+  font-family: var(--font-mono);
+  font-size: 8pt;
+}
+
+.bash-line {
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 8pt;
+  line-height: 1.4;
+}
+
+/* Search Output (Grep) */
+.tool-result.search-output .search-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.search-pattern {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: var(--accent-color);
+}
+
+.search-count {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
+.search-line {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* File List (Glob) */
+.tool-result.file-list {
+  display: block;
+}
+
+.file-list-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.file-pattern {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: var(--accent-color);
+}
+
+.file-count {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
+.file-list-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+}
+
+.file-item {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Directory Listing (LS) */
+.tool-result.dir-listing {
+  display: block;
+}
+
+.dir-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.dir-path {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: var(--accent-color);
+}
+
+.dir-count {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(255, 255, 255, 0.4);
+  margin-left: auto;
+}
+
+.dir-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+}
+
+.dir-item {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Web Search */
+.tool-result.web-search {
+  display: block;
+}
+
+.web-search-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.web-query {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: var(--accent-color);
+}
+
+.web-search-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+}
+
+.web-result-line {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Web Fetch */
+.tool-result.web-fetch {
+  display: block;
+}
+
+.web-fetch-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.web-url {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: var(--accent-color);
+}
+
+.web-fetch-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+}
+
+.web-line {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Task Result */
+.tool-result.task-result {
+  display: block;
+}
+
+.task-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+.task-desc {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: var(--accent-color);
+}
+
+.task-type {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(255, 255, 255, 0.4);
+  padding: 1px 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  margin-left: auto;
+}
+
+.task-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+}
+
+.task-line {
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
+}
+
+/* Simple Confirmation (ExitPlanMode, KillBash) */
+.tool-result.simple-confirm {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 0;
+}
+
+.tool-result.simple-confirm .result-text {
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* Generic Output - Clean without line numbers */
+.tool-result.generic-output .result-line {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(255, 255, 255, 0.7);
+  line-height: 1.4;
 }
 
 /* Result Messages */
@@ -1614,4 +1923,113 @@ code *::-moz-selection {
 
 .rate-limit-message svg {
   color: var(--color-magenta);
+}
+
+/* Markdown Table Styles */
+.table-wrapper {
+  overflow-x: auto;
+  overflow-y: hidden;
+  margin: 8px 0;
+  max-width: 100%;
+  width: 100%;
+  display: block;
+}
+
+.markdown-table {
+  border-collapse: collapse;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.markdown-table th,
+.markdown-table td {
+  padding: 6px 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-align: left;
+}
+
+.markdown-table th {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.9);
+  font-weight: 600;
+}
+
+.markdown-table td {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.markdown-table tr:nth-child(even) td {
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.markdown-table tr:hover td {
+  background: rgba(var(--accent-rgb), 0.05);
+}
+
+/* Thin scrollbars (3px) for all elements in chat message area */
+.table-wrapper::-webkit-scrollbar,
+.messages-virtualized::-webkit-scrollbar,
+.markdown-content::-webkit-scrollbar,
+.code-block-wrapper::-webkit-scrollbar,
+.result-content::-webkit-scrollbar,
+.tool-result::-webkit-scrollbar,
+.file-list-content::-webkit-scrollbar,
+.search-output::-webkit-scrollbar,
+.bash-output::-webkit-scrollbar,
+.message-content::-webkit-scrollbar,
+.message-bubble::-webkit-scrollbar,
+.message::-webkit-scrollbar,
+pre::-webkit-scrollbar {
+  height: 3px;
+  width: 3px;
+}
+
+.table-wrapper::-webkit-scrollbar-track,
+.messages-virtualized::-webkit-scrollbar-track,
+.markdown-content::-webkit-scrollbar-track,
+.code-block-wrapper::-webkit-scrollbar-track,
+.result-content::-webkit-scrollbar-track,
+.tool-result::-webkit-scrollbar-track,
+.file-list-content::-webkit-scrollbar-track,
+.search-output::-webkit-scrollbar-track,
+.bash-output::-webkit-scrollbar-track,
+.message-content::-webkit-scrollbar-track,
+.message-bubble::-webkit-scrollbar-track,
+.message::-webkit-scrollbar-track,
+pre::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb,
+.messages-virtualized::-webkit-scrollbar-thumb,
+.markdown-content::-webkit-scrollbar-thumb,
+.code-block-wrapper::-webkit-scrollbar-thumb,
+.result-content::-webkit-scrollbar-thumb,
+.tool-result::-webkit-scrollbar-thumb,
+.file-list-content::-webkit-scrollbar-thumb,
+.search-output::-webkit-scrollbar-thumb,
+.bash-output::-webkit-scrollbar-thumb,
+.message-content::-webkit-scrollbar-thumb,
+.message-bubble::-webkit-scrollbar-thumb,
+.message::-webkit-scrollbar-thumb,
+pre::-webkit-scrollbar-thumb {
+  background: rgba(var(--accent-rgb), 0.3);
+  border-radius: 2px;
+}
+
+.table-wrapper::-webkit-scrollbar-thumb:hover,
+.messages-virtualized::-webkit-scrollbar-thumb:hover,
+.markdown-content::-webkit-scrollbar-thumb:hover,
+.code-block-wrapper::-webkit-scrollbar-thumb:hover,
+.result-content::-webkit-scrollbar-thumb:hover,
+.tool-result::-webkit-scrollbar-thumb:hover,
+.file-list-content::-webkit-scrollbar-thumb:hover,
+.search-output::-webkit-scrollbar-thumb:hover,
+.bash-output::-webkit-scrollbar-thumb:hover,
+.message-content::-webkit-scrollbar-thumb:hover,
+.message-bubble::-webkit-scrollbar-thumb:hover,
+.message::-webkit-scrollbar-thumb:hover,
+pre::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--accent-rgb), 0.5);
 }

@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
+import { useShallow } from 'zustand/react/shallow';
 import { 
   IconSend, 
   IconPlayerStop, 
@@ -175,6 +176,7 @@ export const ClaudeChat: React.FC = () => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showCompactConfirm, setShowCompactConfirm] = useState(false);
+  const [confirmDialogSelection, setConfirmDialogSelection] = useState(1); // 0 = cancel, 1 = confirm (default)
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [bashStartTimes, setBashStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashElapsedTimes, setBashElapsedTimes] = useState<{ [sessionId: string]: number }>({});
@@ -187,8 +189,12 @@ export const ClaudeChat: React.FC = () => {
   const previousSessionIdRef = useRef<string | null>(null);
   const isTabSwitchingRef = useRef(false);
   const streamingStartTimeRef = useRef<{ [sessionId: string]: number }>({});
+  const userScrolledUpRef = useRef<{ [sessionId: string]: number }>({}); // Timestamp when user scrolled up
+  const SCROLL_COOLDOWN_MS = 5000; // 5 seconds cooldown after user scrolls up
   const pendingFollowupRef = useRef<{ sessionId: string; content: string; attachments: Attachment[]; timeoutId?: NodeJS.Timeout } | null>(null);
   
+  // Use shallow comparison to prevent re-renders when object references change
+  // but values remain the same (e.g., when other parts of the store update)
   const {
     sessions,
     currentSessionId,
@@ -206,7 +212,24 @@ export const ClaudeChat: React.FC = () => {
     updateSessionDraft,
     addMessageToSession,
     renameSession
-  } = useClaudeCodeStore();
+  } = useClaudeCodeStore(useShallow(state => ({
+    sessions: state.sessions,
+    currentSessionId: state.currentSessionId,
+    persistedSessionId: state.persistedSessionId,
+    createSession: state.createSession,
+    deleteSession: state.deleteSession,
+    sendMessage: state.sendMessage,
+    resumeSession: state.resumeSession,
+    interruptSession: state.interruptSession,
+    clearContext: state.clearContext,
+    selectedModel: state.selectedModel,
+    setSelectedModel: state.setSelectedModel,
+    toggleModel: state.toggleModel,
+    loadPersistedSession: state.loadPersistedSession,
+    updateSessionDraft: state.updateSessionDraft,
+    addMessageToSession: state.addMessageToSession,
+    renameSession: state.renameSession
+  })));
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
   
@@ -231,28 +254,53 @@ export const ClaudeChat: React.FC = () => {
     return FEATURE_FLAGS.USE_VIRTUALIZATION && processedMessageCount > 20;
   }, []);
 
+  // Check if user has recently scrolled up (within cooldown period)
+  const isUserScrolledUp = useCallback(() => {
+    if (!currentSessionId) return false;
+    const scrolledAt = userScrolledUpRef.current[currentSessionId];
+    if (!scrolledAt) return false;
+    return Date.now() - scrolledAt < SCROLL_COOLDOWN_MS;
+  }, [currentSessionId, SCROLL_COOLDOWN_MS]);
+
   // Helper function to scroll to bottom - uses the correct container based on virtualization
+  // This respects the user's scroll position - won't scroll if user has scrolled up
   const scrollToBottomHelper = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
+    // DON'T scroll if user has recently scrolled up
+    if (isUserScrolledUp()) {
+      console.log('[Scroll] Blocked - user scrolled up recently');
+      return;
+    }
+
     // Determine if we should use virtualization
-    // Use a rough estimate - the actual count will be close enough for this check
     const estimatedProcessedCount = currentSession?.messages?.length || 0;
     const useVirtualization = shouldUseVirtualization(estimatedProcessedCount);
 
     if (useVirtualization && virtualizedMessageListRef.current) {
-      // Use the virtualized list's scroll method
+      // Use the virtualized list's scroll method (respects user scroll position)
       virtualizedMessageListRef.current.scrollToBottom(behavior);
     } else if (chatContainerRef.current) {
       // Fallback to regular scroll container
       chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-
-      // Double-check after brief delay for dynamic content
-      setTimeout(() => {
-        if (chatContainerRef.current) {
-          chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-        }
-      }, 50);
     }
-  }, [currentSession?.messages?.length, shouldUseVirtualization]);
+  }, [currentSession?.messages?.length, shouldUseVirtualization, isUserScrolledUp]);
+
+  // Force scroll to bottom - always scrolls regardless of user scroll position
+  // Use this when user sends a message
+  const forceScrollToBottomHelper = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
+    // Clear the user scrolled up flag
+    if (currentSessionId) {
+      userScrolledUpRef.current[currentSessionId] = 0;
+    }
+
+    const estimatedProcessedCount = currentSession?.messages?.length || 0;
+    const useVirtualization = shouldUseVirtualization(estimatedProcessedCount);
+
+    if (useVirtualization && virtualizedMessageListRef.current) {
+      virtualizedMessageListRef.current.forceScrollToBottom(behavior);
+    } else if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
+    }
+  }, [currentSession?.messages?.length, shouldUseVirtualization, currentSessionId]);
 
   // Track viewport and input container changes for zoom
   useEffect(() => {
@@ -331,11 +379,22 @@ export const ClaudeChat: React.FC = () => {
       if (chatContainerRef.current && currentSessionId) {
         const container = chatContainerRef.current;
 
-        // More reliable bottom detection with 5px threshold
+        // More reliable bottom detection with 50px threshold
         const scrollTop = container.scrollTop;
         const scrollHeight = container.scrollHeight;
         const clientHeight = container.clientHeight;
-        const atBottom = scrollHeight - scrollTop - clientHeight < 5;
+        const atBottom = scrollHeight - scrollTop - clientHeight < 50;
+
+        // Track when user scrolls up (away from bottom)
+        const wasAtBottom = isAtBottom[currentSessionId] !== false;
+        if (wasAtBottom && !atBottom) {
+          // User scrolled up - record the timestamp
+          userScrolledUpRef.current[currentSessionId] = Date.now();
+          console.log('[Scroll] User scrolled up - blocking auto-scroll for 5s');
+        } else if (atBottom && !wasAtBottom) {
+          // User scrolled back to bottom - clear the flag
+          userScrolledUpRef.current[currentSessionId] = 0;
+        }
 
         // Update isAtBottom state for this session
         setIsAtBottom(prev => ({
@@ -407,22 +466,18 @@ export const ClaudeChat: React.FC = () => {
   }, [currentSessionId, scrollPositions, currentSession?.messages?.length]);
 
   // AUTO-SCROLL - only scroll if user is at bottom
-  useEffect(() => {
-    if (!chatContainerRef.current || !currentSession || !currentSessionId) return;
-
-    // Skip auto-scroll if we're switching tabs
-    if (isTabSwitchingRef.current) return;
-
-    // Check if we should auto-scroll (only if already at bottom)
-    const shouldScroll = isAtBottom[currentSessionId] !== false; // Default to true for new sessions
-
-    if (shouldScroll && !isTabSwitchingRef.current) {
-      // Force scroll to bottom using the helper
-      requestAnimationFrame(() => {
-        scrollToBottomHelper('auto');
-      });
-    }
-  }, [currentSession?.messages, currentSession?.streaming, currentSessionId, isAtBottom, scrollToBottomHelper]);
+  // Auto-scroll effect disabled - VirtualizedMessageList handles its own scrolling
+  // This was causing conflicts with user scroll tracking
+  // useEffect(() => {
+  //   if (!chatContainerRef.current || !currentSession || !currentSessionId) return;
+  //   if (isTabSwitchingRef.current) return;
+  //   const shouldScroll = isAtBottom[currentSessionId] !== false;
+  //   if (shouldScroll && !isTabSwitchingRef.current) {
+  //     requestAnimationFrame(() => {
+  //       scrollToBottomHelper('auto');
+  //     });
+  //   }
+  // }, [currentSession?.messages, currentSession?.streaming, currentSessionId, isAtBottom, scrollToBottomHelper]);
   
   // Force scroll to bottom when user sends a message
   useEffect(() => {
@@ -441,44 +496,33 @@ export const ClaudeChat: React.FC = () => {
         [currentSessionId]: true
       }));
 
-      // Force scroll with the helper
+      // Force scroll with the helper - this resets user scroll tracking
       if (!isTabSwitchingRef.current) {
         requestAnimationFrame(() => {
-          scrollToBottomHelper('auto');
+          forceScrollToBottomHelper('auto');
         });
       }
     }
-  }, [currentSession?.messages?.length, currentSessionId, scrollToBottomHelper]);
+  }, [currentSession?.messages?.length, currentSessionId, forceScrollToBottomHelper]);
 
-  // MutationObserver for more reliable autoscroll during streaming
-  useEffect(() => {
-    if (!chatContainerRef.current || !currentSessionId) return;
-
-    const container = chatContainerRef.current;
-
-    const observer = new MutationObserver(() => {
-      // Skip if switching tabs
-      if (isTabSwitchingRef.current) return;
-
-      // Only scroll if we're at bottom
-      if (isAtBottom[currentSessionId] !== false) {
-        // Use requestAnimationFrame to ensure DOM is ready
-        requestAnimationFrame(() => {
-          if (!isTabSwitchingRef.current && isAtBottom[currentSessionId] !== false) {
-            scrollToBottomHelper('auto');
-          }
-        });
-      }
-    });
-
-    observer.observe(container, {
-      childList: true,
-      subtree: true,
-      characterData: true
-    });
-
-    return () => observer.disconnect();
-  }, [currentSessionId, isAtBottom, scrollToBottomHelper]);
+  // MutationObserver disabled - was causing scroll issues by constantly forcing scroll to bottom
+  // The content change effects handle auto-scroll adequately
+  // useEffect(() => {
+  //   if (!chatContainerRef.current || !currentSessionId) return;
+  //   const container = chatContainerRef.current;
+  //   const observer = new MutationObserver(() => {
+  //     if (isTabSwitchingRef.current) return;
+  //     if (isAtBottom[currentSessionId] !== false) {
+  //       requestAnimationFrame(() => {
+  //         if (!isTabSwitchingRef.current && isAtBottom[currentSessionId] !== false) {
+  //           scrollToBottomHelper('auto');
+  //         }
+  //       });
+  //     }
+  //   });
+  //   observer.observe(container, { childList: true, subtree: true, characterData: true });
+  //   return () => observer.disconnect();
+  // }, [currentSessionId, isAtBottom, scrollToBottomHelper]);
 
   // Track thinking time per session and clean up streaming start times
   useEffect(() => {
@@ -758,6 +802,49 @@ export const ClaudeChat: React.FC = () => {
     }
     setShowCompactConfirm(false);
   }, [currentSessionId, sendMessage]);
+
+  // Keyboard handler for confirmation dialogs
+  useEffect(() => {
+    if (!showClearConfirm && !showCompactConfirm) return;
+
+    // Reset selection to confirm button when dialog opens
+    setConfirmDialogSelection(1);
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        setShowClearConfirm(false);
+        setShowCompactConfirm(false);
+        return;
+      }
+
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowRight' || e.key === 'Tab') {
+        e.preventDefault();
+        setConfirmDialogSelection(prev => prev === 0 ? 1 : 0);
+        return;
+      }
+
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault();
+        if (confirmDialogSelection === 1) {
+          // Confirm action
+          if (showClearConfirm) {
+            confirmClearContext();
+          } else if (showCompactConfirm) {
+            confirmCompactContext();
+          }
+        } else {
+          // Cancel
+          setShowClearConfirm(false);
+          setShowCompactConfirm(false);
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showClearConfirm, showCompactConfirm, confirmDialogSelection, confirmClearContext, confirmCompactContext]);
 
   // Handle resume conversation selection from modal
   const handleResumeConversation = useCallback(async (conversation: any) => {
@@ -1218,9 +1305,9 @@ export const ClaudeChat: React.FC = () => {
         [sessionId]: true
       }));
 
-      // Force scroll to bottom with the helper
+      // Force scroll to bottom with the helper (user sent a message)
       requestAnimationFrame(() => {
-        scrollToBottomHelper('auto');
+        forceScrollToBottomHelper('auto');
       });
     } catch (error) {
       console.error('[ClaudeChat] Failed to send delayed message:', error);
@@ -1643,9 +1730,9 @@ export const ClaudeChat: React.FC = () => {
         }));
       }
 
-      // Force scroll to bottom with the helper
+      // Force scroll to bottom with the helper (user sent a message)
       requestAnimationFrame(() => {
-        scrollToBottomHelper('auto');
+        forceScrollToBottomHelper('auto');
       });
     } catch (error) {
       console.error('[ClaudeChat] Failed to send message:', error);
@@ -1887,6 +1974,24 @@ export const ClaudeChat: React.FC = () => {
               const wslPath = convertToWSLPath(path);
               console.log('Creating session for folder:', path, '->', wslPath);
               const sessionName = path.split(/[/\\]/).pop() || 'new session';
+
+              // Add to recent projects
+              const newProject = { path: wslPath, name: sessionName, lastOpened: Date.now(), accessCount: 1 };
+              const stored = localStorage.getItem('yurucode-recent-projects');
+              let recentProjects = [];
+              try {
+                if (stored) {
+                  recentProjects = JSON.parse(stored);
+                }
+              } catch (err) {
+                console.error('Failed to parse recent projects:', err);
+              }
+              const updated = [
+                newProject,
+                ...recentProjects.filter((p: any) => p.path !== wslPath)
+              ].slice(0, 8);
+              localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+
               await createSession(sessionName, wslPath);
               return;
             }
@@ -2294,7 +2399,7 @@ export const ClaudeChat: React.FC = () => {
         className="chat-messages"
         ref={chatContainerRef}
       >
-        {/* Show resume button for empty sessions */}
+        {/* Show resume button for empty sessions - disabled for now
         {currentSession.messages.length === 0 && !currentSession.streaming && (
           <div className="empty-chat-state">
             <button
@@ -2305,6 +2410,7 @@ export const ClaudeChat: React.FC = () => {
             </button>
           </div>
         )}
+        */}
         {(() => {
           // Process all messages once at the beginning
           const processedMessages = currentSession.messages
@@ -2374,9 +2480,33 @@ export const ClaudeChat: React.FC = () => {
               return acc;
             }
             
-            // Always show tool messages - users need to see what's happening
-            // Don't skip them even during streaming
+            // Show tool messages but deduplicate by ID
             if (message.type === 'tool_use' || message.type === 'tool_result') {
+              // Check for duplicate by ID
+              if (message.id) {
+                const existingIndex = acc.findIndex(m =>
+                  (m.type === 'tool_use' || m.type === 'tool_result') &&
+                  m.id === message.id
+                );
+                if (existingIndex >= 0) {
+                  // Update existing message
+                  acc[existingIndex] = message;
+                  return acc;
+                }
+              }
+
+              // Also check for duplicate by tool_use_id for tool_result
+              if (message.type === 'tool_result' && message.message?.tool_use_id) {
+                const existingIndex = acc.findIndex(m =>
+                  m.type === 'tool_result' &&
+                  m.message?.tool_use_id === message.message.tool_use_id
+                );
+                if (existingIndex >= 0) {
+                  acc[existingIndex] = message;
+                  return acc;
+                }
+              }
+
               acc.push(message);
               return acc;
             }
@@ -2424,6 +2554,11 @@ export const ClaudeChat: React.FC = () => {
                   className="virtualized-messages-container"
                   showThinking={isStreaming}
                   thinkingElapsed={currentSessionId && thinkingElapsed[currentSessionId] || 0}
+                  onScrollStateChange={(atBottom) => {
+                    if (currentSessionId) {
+                      setIsAtBottom(prev => ({ ...prev, [currentSessionId]: atBottom }));
+                    }
+                  }}
                 />
                 <div ref={messagesEndRef} />
               </>
@@ -3016,8 +3151,14 @@ export const ClaudeChat: React.FC = () => {
           <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
             <p>clear context?</p>
             <div className="confirm-buttons">
-              <button onClick={() => setShowClearConfirm(false)}>cancel</button>
-              <button className="confirm-danger" onClick={confirmClearContext}>clear</button>
+              <button
+                className={confirmDialogSelection === 0 ? 'selected' : ''}
+                onClick={() => setShowClearConfirm(false)}
+              >cancel</button>
+              <button
+                className={`confirm-danger ${confirmDialogSelection === 1 ? 'selected' : ''}`}
+                onClick={confirmClearContext}
+              >clear</button>
             </div>
           </div>
         </div>
@@ -3029,8 +3170,14 @@ export const ClaudeChat: React.FC = () => {
           <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
             <p>compact context?</p>
             <div className="confirm-buttons">
-              <button onClick={() => setShowCompactConfirm(false)}>cancel</button>
-              <button className="confirm-danger" onClick={confirmCompactContext}>compact</button>
+              <button
+                className={confirmDialogSelection === 0 ? 'selected' : ''}
+                onClick={() => setShowCompactConfirm(false)}
+              >cancel</button>
+              <button
+                className={`confirm-danger ${confirmDialogSelection === 1 ? 'selected' : ''}`}
+                onClick={confirmCompactContext}
+              >compact</button>
             </div>
           </div>
         </div>

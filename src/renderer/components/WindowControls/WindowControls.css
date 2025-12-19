@@ -58,7 +58,7 @@
   width: 24px;
   height: 21px;
   background: transparent;
-  border: 1px solid var(--fg-20);
+  border: 1px solid transparent;
   color: var(--fg-40);
   padding: 0;
   border-radius: 4px;

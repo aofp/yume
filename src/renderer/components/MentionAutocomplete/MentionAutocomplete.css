@@ -1,7 +1,7 @@
 .mention-autocomplete {
   position: fixed;
   background: #000;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   z-index: 9000;
   left: 4px;

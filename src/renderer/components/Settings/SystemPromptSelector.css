@@ -24,7 +24,7 @@
   left: calc(100% + 4px);
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.1);
   font-family: var(--font-mono);
   font-size: 7pt;
   line-height: 1;
@@ -49,7 +49,7 @@
   max-width: 160px;
   height: 23px;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   padding: 0 8px;
   font-size: 10px;

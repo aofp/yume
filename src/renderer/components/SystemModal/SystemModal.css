@@ -17,7 +17,7 @@
 
 .system-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 6px;
   min-width: 240px;
   max-width: 400px;
@@ -45,7 +45,7 @@
 
 .system-modal-button {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.7);
   padding: 6px 16px;
   border-radius: 4px;

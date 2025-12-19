@@ -8,6 +8,7 @@ console.log('🔥🔥🔥 TAURI CLIENT FILE LOADING 🔥🔥🔥');
 import { invoke, type Event } from '@tauri-apps/api/core';
 import { listen, emit, type UnlistenFn } from '@tauri-apps/api/event';
 import { processWrapperMessage, mapSessionIds } from './wrapperIntegration';
+import { resolveModelId, DEFAULT_MODEL_ID } from '../config/models';
 
 // Force wrapper module to load
 console.log('[TauriClient] Wrapper module imported, processWrapperMessage:', typeof processWrapperMessage);
@@ -55,13 +56,9 @@ export class TauriClaudeClient {
     });
 
     try {
-      // Map our model IDs to Claude model names
-      const modelMap: Record<string, string> = {
-        'opus': 'claude-opus-4-5-20251101',
-        'sonnet': 'claude-sonnet-4-5-20250929'
-      };
-      const model = options?.model || 'claude-opus-4-5-20251101';
-      const mappedModel = modelMap[model] || model;
+      // Resolve model ID using centralized config
+      const model = options?.model || DEFAULT_MODEL_ID;
+      const mappedModel = resolveModelId(model);
 
       // If we're creating a new session without a prompt, don't spawn Claude yet
       // The session will be spawned when the first message is sent
@@ -178,11 +175,7 @@ export class TauriClaudeClient {
         console.log('[TauriClient] Session needs spawn - including prompt with spawn command');
         
         const sessionData = sessionStore[sessionId];
-        const modelMap: Record<string, string> = {
-          'opus': 'claude-opus-4-5-20251101',
-          'sonnet': 'claude-sonnet-4-5-20250929'
-        };
-        const mappedModel = model ? (modelMap[model] || model) : sessionData.model;
+        const mappedModel = model ? resolveModelId(model) : sessionData.model;
         
         // Spawn Claude with the first message as the prompt
         const spawnRequest = {

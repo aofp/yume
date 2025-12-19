@@ -3641,9 +3641,10 @@ io.on('connection', (socket) => {
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
       const args = [
         '--print',
-        '--output-format', 'stream-json', 
-        '--verbose', 
-        '--dangerously-skip-permissions'
+        '--output-format', 'stream-json',
+        '--verbose',
+        '--dangerously-skip-permissions',
+        '--disallowed-tools', 'AskUserQuestion,EnterPlanMode,ExitPlanMode'
       ];
       
       // Add system prompt if configured (passed from frontend or use default)

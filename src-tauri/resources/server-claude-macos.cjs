@@ -2945,9 +2945,10 @@ io.on('connection', (socket) => {
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
       const args = [
         '--print',
-        '--output-format', 'stream-json', 
-        '--verbose', 
+        '--output-format', 'stream-json',
+        '--verbose',
         '--dangerously-skip-permissions',
+        '--disallowed-tools', 'AskUserQuestion,EnterPlanMode,ExitPlanMode',
         '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred. !!FOR COMPLEX TASKS: YOU MUST PLAN FIRST use THINK and TODO as MUCH AS POSSIBLE to break down everything, including planning into multiple steps and do edits in small chunks!!'
       ];
       

@@ -80,10 +80,16 @@
   font-family: inherit;
 }
 
-.diff-add .line-content,
-.diff-remove .line-content,
-.diff-context .line-content { 
-  color: #fff; 
+.diff-add .line-content {
+  color: var(--positive-color);
+}
+
+.diff-remove .line-content {
+  color: var(--negative-color);
+}
+
+.diff-context .line-content {
+  color: rgba(255, 255, 255, 0.6);
 }
 
 .diff-context .line-marker { 
@@ -91,9 +97,9 @@
 }
 
 .diff-add {
-  background: rgba(var(--positive-rgb), 0.08);
+  background: rgba(var(--positive-rgb), 0.18);
 }
 
 .diff-remove {
-  background: rgba(var(--negative-rgb), 0.08);
+  background: rgba(var(--negative-rgb), 0.18);
 }

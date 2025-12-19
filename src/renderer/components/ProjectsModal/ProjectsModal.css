@@ -263,7 +263,7 @@
 }
 
 .header-separator {
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.1);
   margin: 0 8px;
   font-size: 12px;
   pointer-events: none;

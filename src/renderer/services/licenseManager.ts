@@ -6,6 +6,7 @@
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
+import { LATEST_MODELS, getModelByFamily } from '../config/models';
 
 // license validation API endpoint
 const VALIDATION_API_URL = 'https://yuru.be/api/license/validate.php';
@@ -49,10 +50,10 @@ interface LicenseStore extends LicenseState {
   clearLicense: () => void;
 }
 
-// trial features
+// trial features - uses centralized model config
 const TRIAL_FEATURES: LicenseFeatures = {
   maxTabs: 2,
-  allowedModels: ['claude-sonnet-4-5-20250929'],
+  allowedModels: [getModelByFamily('sonnet')?.id].filter(Boolean) as string[],
   maxTokensPerSession: 100000,
   watermarkEnabled: true,
   customThemes: false,
@@ -61,10 +62,10 @@ const TRIAL_FEATURES: LicenseFeatures = {
   prioritySupport: false
 };
 
-// licensed features - all unlimited for pro
+// licensed features - all models available for pro
 const LICENSED_FEATURES: LicenseFeatures = {
   maxTabs: 99,
-  allowedModels: ['claude-opus-4-5-20251101', 'claude-sonnet-4-5-20250929'],
+  allowedModels: LATEST_MODELS.map(m => m.id),
   maxTokensPerSession: -1, // unlimited
   watermarkEnabled: false,
   customThemes: true,

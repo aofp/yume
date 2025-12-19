@@ -89,7 +89,7 @@
 .timeline-empty p {
   margin: 8px 0 0 0;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.2);
+  color: rgba(255, 255, 255, 0.1);
 }
 
 .timeline-content {
@@ -133,7 +133,7 @@
   width: 24px;
   height: 24px;
   background: #000;
-  border: 2px solid rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
   display: flex;
   align-items: center;

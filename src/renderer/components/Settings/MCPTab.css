@@ -13,7 +13,7 @@
   top: -8px;
   right: 0;
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   padding: 6px 10px;
   font-size: 11px;
@@ -73,7 +73,7 @@
 
 .mcp-action-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.4);
   padding: 2px 6px;
   border-radius: 4px;
@@ -174,7 +174,7 @@
 
 .form-field input {
   background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2px;
   color: rgba(255, 255, 255, 0.9);
   padding: 6px 8px;
@@ -297,7 +297,7 @@
 
 .form-btn.cancel {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.4);
 }
 

@@ -11,11 +11,13 @@ interface VirtualizedMessageListProps {
   lastAssistantMessageIds?: string[];
   showThinking?: boolean;
   thinkingElapsed?: number;
+  onScrollStateChange?: (isAtBottom: boolean) => void;
 }
 
 export interface VirtualizedMessageListRef {
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   isAtBottom: () => boolean;
+  forceScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
 }
 
 export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, VirtualizedMessageListProps>(({
@@ -25,14 +27,19 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   isStreaming = false,
   lastAssistantMessageIds = [],
   showThinking = false,
-  thinkingElapsed = 0
+  thinkingElapsed = 0,
+  onScrollStateChange
 }, ref) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
   const lastContentHashRef = useRef('');
   const userHasScrolledRef = useRef(false); // Track if user has manually scrolled
+  const userScrolledAtRef = useRef(0); // Timestamp when user scrolled up
   const previousMessageCountRef = useRef(0);
   const scrollToBottomRequestedRef = useRef(false);
+
+  // Cooldown period after user scrolls up (don't auto-scroll for this long)
+  const SCROLL_COOLDOWN_MS = 3000;
 
   // Add thinking message if streaming
   const displayMessages = useMemo(() => {
@@ -91,17 +98,27 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     }, [displayMessages]),
   });
 
-  // Check if we're at bottom - more reliable with smaller threshold
+  // Check if we're at bottom
   const checkIfAtBottom = useCallback(() => {
     if (!parentRef.current) return false;
     const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
-    // Use 10px threshold for more reliable detection
-    return scrollHeight - scrollTop - clientHeight < 10;
+    // Use 50px threshold for more reliable detection
+    return scrollHeight - scrollTop - clientHeight < 50;
   }, []);
+
+  // Check if we're in cooldown period after user scroll
+  const isInScrollCooldown = useCallback(() => {
+    if (!userHasScrolledRef.current) return false;
+    const elapsed = Date.now() - userScrolledAtRef.current;
+    return elapsed < SCROLL_COOLDOWN_MS;
+  }, [SCROLL_COOLDOWN_MS]);
 
   // Scroll to bottom function using virtualizer API
   const scrollToBottom = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
     if (!parentRef.current || displayMessages.length === 0) return;
+
+    // Don't force scroll if user has manually scrolled up (with cooldown)
+    if (userHasScrolledRef.current && isInScrollCooldown()) return;
 
     const lastIndex = displayMessages.length - 1;
 
@@ -110,51 +127,67 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       align: 'end',
       behavior: behavior === 'smooth' ? 'smooth' : 'auto',
     });
+  }, [displayMessages.length, virtualizer, isInScrollCooldown]);
 
-    // Mark that we requested scroll to bottom
-    scrollToBottomRequestedRef.current = true;
-
-    // Fallback: directly set scrollTop as well to ensure we're at bottom
-    // This helps in edge cases where scrollToIndex might not fully scroll
-    requestAnimationFrame(() => {
-      if (parentRef.current) {
-        parentRef.current.scrollTop = parentRef.current.scrollHeight;
-
-        // Double-check after virtualizer has time to measure
-        setTimeout(() => {
-          if (parentRef.current && scrollToBottomRequestedRef.current) {
-            parentRef.current.scrollTop = parentRef.current.scrollHeight;
-            scrollToBottomRequestedRef.current = false;
-          }
-        }, 100);
-      }
-    });
-  }, [displayMessages.length, virtualizer]);
+  // Track last scroll position to detect scroll direction
+  const lastScrollTopRef = useRef(0);
 
   // Update isAtBottom on scroll and detect user scrolling
   const handleScroll = useCallback(() => {
+    if (!parentRef.current) return;
+
+    const currentScrollTop = parentRef.current.scrollTop;
+    const scrollingUp = currentScrollTop < lastScrollTopRef.current;
+    lastScrollTopRef.current = currentScrollTop;
+
     const atBottom = checkIfAtBottom();
-    const wasAtBottom = isAtBottomRef.current;
     isAtBottomRef.current = atBottom;
 
-    // If user scrolls up from bottom, mark that they've manually scrolled
-    if (wasAtBottom && !atBottom) {
+    // If user is scrolling UP, always mark as manually scrolled
+    if (scrollingUp && !atBottom) {
       userHasScrolledRef.current = true;
+      userScrolledAtRef.current = Date.now();
+      console.log('[VirtualizedList] User scrolling UP - blocking auto-scroll');
+      onScrollStateChange?.(false);
     }
 
     // If user scrolls back to bottom, clear the manual scroll flag
     if (atBottom) {
       userHasScrolledRef.current = false;
+      userScrolledAtRef.current = 0;
+      onScrollStateChange?.(true);
     }
-  }, [checkIfAtBottom]);
+  }, [checkIfAtBottom, onScrollStateChange]);
 
   // Expose scroll methods to parent components
   useImperativeHandle(ref, () => ({
     scrollToBottom: (behavior: 'auto' | 'smooth' = 'auto') => {
-      scrollToBottom(behavior);
+      // DON'T scroll if user has manually scrolled up (with cooldown)
+      if (userHasScrolledRef.current) {
+        const elapsed = Date.now() - userScrolledAtRef.current;
+        if (elapsed < SCROLL_COOLDOWN_MS) return;
+      }
+
+      if (!parentRef.current || displayMessages.length === 0) return;
+      const lastIndex = displayMessages.length - 1;
+      virtualizer.scrollToIndex(lastIndex, {
+        align: 'end',
+        behavior: behavior === 'smooth' ? 'smooth' : 'auto',
+      });
     },
     isAtBottom: () => checkIfAtBottom(),
-  }), [scrollToBottom, checkIfAtBottom]);
+    forceScrollToBottom: (behavior: 'auto' | 'smooth' = 'auto') => {
+      // Force scroll and reset user scroll flag (for user-initiated actions like sending a message)
+      userHasScrolledRef.current = false;
+      userScrolledAtRef.current = 0;
+      if (!parentRef.current || displayMessages.length === 0) return;
+      const lastIndex = displayMessages.length - 1;
+      virtualizer.scrollToIndex(lastIndex, {
+        align: 'end',
+        behavior: behavior === 'smooth' ? 'smooth' : 'auto',
+      });
+    },
+  }), [displayMessages.length, virtualizer, checkIfAtBottom, SCROLL_COOLDOWN_MS]);
 
   // Reset user scroll flag when starting a new chat or message count increases from 0
   useEffect(() => {
@@ -169,23 +202,46 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     previousMessageCountRef.current = messageCount;
   }, [displayMessages.length]);
 
-  // Auto-scroll to bottom when content changes
+  // Auto-scroll to bottom when content changes - ONLY if user hasn't manually scrolled up
   useEffect(() => {
     const contentChanged = contentHash !== lastContentHashRef.current;
     lastContentHashRef.current = contentHash;
 
     if (!contentChanged || displayMessages.length === 0) return;
 
-    // Always scroll if user hasn't manually scrolled up, OR if we're at bottom
-    const shouldAutoScroll = !userHasScrolledRef.current || isAtBottomRef.current;
+    // Only auto-scroll if user hasn't manually scrolled up (ignore isAtBottom check)
+    if (!userHasScrolledRef.current) {
+      const doScroll = () => {
+        if (!parentRef.current) return;
+        const lastIndex = displayMessages.length - 1;
+        virtualizer.scrollToIndex(lastIndex, { align: 'end', behavior: 'auto' });
+      };
 
-    if (shouldAutoScroll) {
-      // Use requestAnimationFrame to ensure DOM has updated
-      requestAnimationFrame(() => {
-        scrollToBottom('auto');
-      });
+      // Multiple scroll attempts to ensure we catch virtualizer updates
+      requestAnimationFrame(doScroll);
+      setTimeout(doScroll, 50);
+      setTimeout(doScroll, 150);
     }
-  }, [contentHash, displayMessages.length, scrollToBottom]);
+  }, [contentHash, displayMessages.length, virtualizer]);
+
+  // Continuous auto-scroll during streaming/thinking
+  useEffect(() => {
+    if (!isStreaming && !showThinking) return;
+    if (userHasScrolledRef.current) return;
+
+    const scrollInterval = setInterval(() => {
+      if (userHasScrolledRef.current) {
+        clearInterval(scrollInterval);
+        return;
+      }
+      if (!parentRef.current || displayMessages.length === 0) return;
+
+      const lastIndex = displayMessages.length - 1;
+      virtualizer.scrollToIndex(lastIndex, { align: 'end', behavior: 'auto' });
+    }, 200);
+
+    return () => clearInterval(scrollInterval);
+  }, [isStreaming, showThinking, displayMessages.length, virtualizer]);
   
   // Memoize virtual items to prevent re-renders
   const virtualItems = virtualizer.getVirtualItems();
@@ -197,13 +253,14 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       onScroll={handleScroll}
       style={{
         height: '100%',
-        overflow: 'auto',
-        overflowX: 'hidden', // Prevent horizontal scroll
+        overflowY: 'scroll',
+        overflowX: 'hidden',
+        overscrollBehavior: 'contain',
         position: 'relative',
         flex: 1,
-        paddingLeft: '4px', // Match parent's padding
+        paddingLeft: '4px',
         paddingRight: 0,
-        maxWidth: '100%', // Constrain to container width
+        maxWidth: '100%',
         boxSizing: 'border-box',
       }}
     >
@@ -237,7 +294,6 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                   maxWidth: '100%',
                   transform: `translateY(${virtualItem.start}px)`,
                   boxSizing: 'border-box',
-                  overflowX: 'hidden',
                 }}
               >
                 <div className="message assistant">
@@ -286,7 +342,6 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                 maxWidth: '100%',
                 transform: `translateY(${virtualItem.start}px)`,
                 boxSizing: 'border-box',
-                overflowX: 'hidden',
               }}
             >
               <MessageRenderer
