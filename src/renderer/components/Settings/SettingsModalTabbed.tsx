@@ -70,7 +70,7 @@ const ALL_COLORS = COLOR_ROWS.flat();
 
 export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { isLicensed } = useLicenseStore();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('theme');
   const [zoomLevel, setZoomLevel] = useState(0);
   const [accentColor, setAccentColor] = useState('#99bbff');
   const [positiveColor, setPositiveColor] = useState('#99ff99');
@@ -79,11 +79,16 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const [showFontPicker, setShowFontPicker] = useState<'monospace' | 'sans-serif' | null>(null);
   const [showAboutModal, setShowAboutModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { 
-    globalWatermarkImage, setGlobalWatermark, 
-    monoFont, sansFont, setMonoFont, setSansFont, 
-    rememberTabs, setRememberTabs, 
+  const {
+    globalWatermarkImage, setGlobalWatermark,
+    monoFont, sansFont, setMonoFont, setSansFont,
+    rememberTabs, setRememberTabs,
     autoGenerateTitle, setAutoGenerateTitle,
+    showProjectsMenu, setShowProjectsMenu,
+    showAgentsMenu, setShowAgentsMenu,
+    showAnalyticsMenu, setShowAnalyticsMenu,
+    showCommandsSettings, setShowCommandsSettings,
+    showMcpSettings, setShowMcpSettings,
     backgroundOpacity, setBackgroundOpacity
   } = useClaudeCodeStore();
   
@@ -340,8 +345,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
               <div className="checkbox-setting">
                 <span className="checkbox-label">auto-generate tab titles</span>
-                <input 
-                  type="checkbox" 
+                <input
+                  type="checkbox"
                   className="checkbox-input"
                   id="autoGenerateTitle"
                   checked={autoGenerateTitle}
@@ -349,6 +354,96 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 />
                 <div className="toggle-switch-container">
                   <label htmlFor="autoGenerateTitle" className={`toggle-switch ${autoGenerateTitle ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="checkbox-setting">
+                <span className="checkbox-label">show projects in menu</span>
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  id="showProjectsMenu"
+                  checked={showProjectsMenu}
+                  onChange={(e) => setShowProjectsMenu(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="showProjectsMenu" className={`toggle-switch ${showProjectsMenu ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="checkbox-setting">
+                <span className="checkbox-label">show agents in menu</span>
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  id="showAgentsMenu"
+                  checked={showAgentsMenu}
+                  onChange={(e) => setShowAgentsMenu(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="showAgentsMenu" className={`toggle-switch ${showAgentsMenu ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="checkbox-setting">
+                <span className="checkbox-label">show analytics in menu</span>
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  id="showAnalyticsMenu"
+                  checked={showAnalyticsMenu}
+                  onChange={(e) => setShowAnalyticsMenu(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="showAnalyticsMenu" className={`toggle-switch ${showAnalyticsMenu ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="checkbox-setting">
+                <span className="checkbox-label">show commands in settings</span>
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  id="showCommandsSettings"
+                  checked={showCommandsSettings}
+                  onChange={(e) => setShowCommandsSettings(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="showCommandsSettings" className={`toggle-switch ${showCommandsSettings ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="checkbox-setting">
+                <span className="checkbox-label">show mcp in settings</span>
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  id="showMcpSettings"
+                  checked={showMcpSettings}
+                  onChange={(e) => setShowMcpSettings(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="showMcpSettings" className={`toggle-switch ${showMcpSettings ? 'active' : ''}`}>
                     <span className="toggle-switch-slider" />
                     <span className="toggle-switch-label off">OFF</span>
                     <span className="toggle-switch-label on">ON</span>
@@ -905,30 +1000,34 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               {/* Tab navigation in header */}
               <div className="header-tabs">
                 <TabButton
-                  label="general"
-                  active={activeTab === 'general'}
-                  onClick={() => setActiveTab('general')}
-                />
-                <TabButton
                   label="theme"
                   active={activeTab === 'theme'}
                   onClick={() => setActiveTab('theme')}
+                />
+                <TabButton
+                  label="general"
+                  active={activeTab === 'general'}
+                  onClick={() => setActiveTab('general')}
                 />
                 <TabButton
                   label="hooks"
                   active={activeTab === 'hooks'}
                   onClick={() => setActiveTab('hooks')}
                 />
-                <TabButton
-                  label="commands"
-                  active={activeTab === 'commands'}
-                  onClick={() => setActiveTab('commands')}
-                />
-                <TabButton
-                  label="mcp"
-                  active={activeTab === 'mcp'}
-                  onClick={() => setActiveTab('mcp')}
-                />
+                {showCommandsSettings && (
+                  <TabButton
+                    label="commands"
+                    active={activeTab === 'commands'}
+                    onClick={() => setActiveTab('commands')}
+                  />
+                )}
+                {showMcpSettings && (
+                  <TabButton
+                    label="mcp"
+                    active={activeTab === 'mcp'}
+                    onClick={() => setActiveTab('mcp')}
+                  />
+                )}
               </div>
             </div>
             <button className="settings-close" onClick={onClose}>

@@ -15,11 +15,14 @@ interface WindowControlsProps {
 export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick, onHelpClick, onProjectsClick, onAgentsClick, onAnalyticsClick }) => {
   // Show on all platforms when using frameless window
   const isMac = navigator.platform.toLowerCase().includes('mac');
-  const isWindows = navigator.platform.toLowerCase().includes('win') || 
+  const isWindows = navigator.platform.toLowerCase().includes('win') ||
                    navigator.userAgent.toLowerCase().includes('windows');
-  
+
   const { isLicensed } = useLicenseStore();
   const isDraggingTab = useClaudeCodeStore(state => state.isDraggingTab);
+  const showProjectsMenu = useClaudeCodeStore(state => state.showProjectsMenu);
+  const showAgentsMenu = useClaudeCodeStore(state => state.showAgentsMenu);
+  const showAnalyticsMenu = useClaudeCodeStore(state => state.showAnalyticsMenu);
   
   // Removed spammy platform detection log
   
@@ -159,17 +162,17 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             </button>
           ) : (
             <>
-              {onProjectsClick && (
+              {showProjectsMenu && onProjectsClick && (
                 <button className="window-control projects" onClick={onProjectsClick} title="projects (cmd+p)">
                   <IconFolder size={10} stroke={2} />
                 </button>
               )}
-              {onAgentsClick && (
+              {showAgentsMenu && onAgentsClick && (
                 <button className="window-control agents" onClick={onAgentsClick} title="agents (cmd+g)">
                   <IconRobot size={10} stroke={2} />
                 </button>
               )}
-              {onAnalyticsClick && (
+              {showAnalyticsMenu && onAnalyticsClick && (
                 <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (cmd+y)">
                   <IconTrendingUp size={10} stroke={2} />
                 </button>
@@ -205,17 +208,17 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           </button>
         ) : (
           <>
-            {onProjectsClick && (
+            {showProjectsMenu && onProjectsClick && (
               <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
                 <IconFolder size={10} stroke={2} />
               </button>
             )}
-            {onAgentsClick && (
+            {showAgentsMenu && onAgentsClick && (
               <button className="window-control agents" onClick={onAgentsClick} title="agents (ctrl+n)">
                 <IconRobot size={10} stroke={2} />
               </button>
             )}
-            {onAnalyticsClick && (
+            {showAnalyticsMenu && onAnalyticsClick && (
               <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (ctrl+y)">
                 <IconTrendingUp size={10} stroke={2} />
               </button>

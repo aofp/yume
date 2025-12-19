@@ -6,7 +6,7 @@ export interface SystemPromptSettings {
 
 const STORAGE_KEY = 'system_prompt_settings';
 
-const DEFAULT_PROMPT = `you are in yurucode ui. prefer lowercase, be extremely concise, never use formal language, no greetings or pleasantries, straight to the point. you must plan first - use think and todo as much as possible to break down everything, including planning into multiple steps and do edits in small chunks`;
+const DEFAULT_PROMPT = `you are in yurucode ui. prefer lowercase, be concise, skip greetings. break work into small steps and make incremental edits.`;
 
 class SystemPromptService {
   private settings: SystemPromptSettings | null = null;

@@ -3236,6 +3236,24 @@ io.on('connection', (socket) => {
           const isCompactResult = isCompactCommand && jsonData.type === 'result';
           
           if (jsonData.session_id && !isCompactResult) {
+            // Check if this is a NEW Claude session (different session_id)
+            const previousClaudeSessionId = session.claudeSessionId;
+            const isNewClaudeSession = previousClaudeSessionId && previousClaudeSessionId !== jsonData.session_id;
+
+            if (isNewClaudeSession) {
+              // New Claude session detected - reset wrapper token counters
+              // Each Claude session has its own 200k context window
+              const wrapperSession = getWrapperSession(sessionId);
+              const oldTokens = wrapperSession.totalTokens;
+              wrapperSession.totalTokens = 0;
+              wrapperSession.inputTokens = 0;
+              wrapperSession.outputTokens = 0;
+              wrapperSession.cacheCreationTokens = 0;
+              wrapperSession.cacheReadTokens = 0;
+              console.log(`🔄 [${sessionId}] NEW Claude session detected (${previousClaudeSessionId} → ${jsonData.session_id})`);
+              console.log(`🔄 [${sessionId}] Reset wrapper tokens: ${oldTokens} → 0 (each session has independent 200k limit)`);
+            }
+
             session.claudeSessionId = jsonData.session_id;
             console.log(`📌 [${sessionId}] Claude session ID: ${session.claudeSessionId}`);
           } else if (isCompactResult && jsonData.session_id) {
@@ -3707,8 +3725,8 @@ io.on('connection', (socket) => {
               const output = jsonData.usage.output_tokens || 0;
               const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
               const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
-              const totalContext = input + output + cacheCreation + cacheRead;
-              
+              const totalContext = input + output + cacheCreation; // FIX: Don't include cacheRead
+
               console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
               console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
               console.log(`   │ Type            │ Input    │ Cache Read   │ Cache New  │`);
@@ -3721,26 +3739,25 @@ io.on('connection', (socket) => {
               console.log(`   │ Subtotal        │ ${String(input + output).padEnd(8)} │ ${String(cacheRead).padEnd(12)} │ ${String(cacheCreation).padEnd(10)} │`);
               console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
               console.log(`   TOTAL CONTEXT: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
-              console.log(`   Note: ALL tokens count towards the 200k context limit`);
+              console.log(`   Note: Cache reads don't count - only new tokens count toward the 200k limit`);
             }
             
-            // DON'T clear streaming state here - the agent may still be actively working
-            // The 'result' message indicates one turn is complete, but in multi-tool scenarios
-            // or when using --resume mode, the Claude process continues and more content may stream
-            // Streaming state should only be cleared when:
-            // 1. The Claude process explicitly exits (handled in process.on('close'))
-            // 2. A stream_end system message is received
-            // 3. An explicit error/interruption occurs
-            //
-            // Leaving this commented for reference - the old buggy behavior was:
-            // const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-            // if (lastAssistantMessageId) {
-            //   socket.emit(`message:${sessionId}`, { type: 'assistant', id: lastAssistantMessageId, streaming: false, ... });
-            //   lastAssistantMessageIds.delete(sessionId);
-            // }
-            //
-            // This caused the UI to show streaming=false while tools were still executing
-            console.log(`📊 [${sessionId}] Result received - keeping streaming state active (process still running)`);
+            // If we have a last assistant message, send an update to mark it as done streaming
+            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+            if (lastAssistantMessageId) {
+              console.log(`✅ Marking assistant message ${lastAssistantMessageId} as streaming=false (result received)`);
+              const session = sessions.get(sessionId);
+              const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+              
+              socket.emit(`message:${sessionId}`, {
+                type: 'assistant',
+                id: lastAssistantMessageId,
+                message: lastAssistantMsg?.message || { content: '' },
+                streaming: false,
+                timestamp: Date.now()
+              });
+              lastAssistantMessageIds.delete(sessionId); // Reset
+            }
             
             // Just send the result message with model info and session ID
             // Model is available from the outer scope (sendMessage handler)
@@ -3762,11 +3779,13 @@ io.on('connection', (socket) => {
               resultMessage.usage = jsonData.usage;
               
               // Also add wrapper tokens for enhanced analytics
+              // FIX: Only NEW tokens count - cache reads are reused and don't consume context
               resultMessage.wrapper = {
                 tokens: {
                   input: jsonData.usage.input_tokens || 0,
                   output: jsonData.usage.output_tokens || 0,
-                  total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0) + (jsonData.usage.cache_read_input_tokens || 0),
+                  total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0),
+                  // Removed cache_read_input_tokens - they don't count!
                   cache_read: jsonData.usage.cache_read_input_tokens || 0,
                   cache_creation: jsonData.usage.cache_creation_input_tokens || 0
                 }

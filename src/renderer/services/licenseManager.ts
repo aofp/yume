@@ -8,7 +8,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 // license validation API endpoint
-const VALIDATION_API_URL = 'https://yurucode.com/validate-license-api.php';
+const VALIDATION_API_URL = 'https://yuru.be/api/license/validate.php';
 
 // simple format check only - real validation is server-side
 const LICENSE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';

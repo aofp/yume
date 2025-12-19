@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useRef } from 'react';
 import { IconChevronUp } from '@tabler/icons-react';
 import './ModelSelector.css';
 
@@ -13,7 +13,7 @@ interface ModelSelectorProps {
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
-  value = 'claude-opus-4-5-20251101',
+  value,
   onChange
 }) => {
   const [isHighlighted, setIsHighlighted] = useState(false);
@@ -23,7 +23,16 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   const dropdownRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  const selectedModel = models.find(m => m.id === value) || models[0];
+  // Find selected model - default to first if value doesn't match any model
+  const currentValue = value || models[0].id;
+  const selectedModel = models.find(m => m.id === currentValue) || models[0];
+
+  // Ensure store is updated if value was invalid
+  useEffect(() => {
+    if (value && !models.find(m => m.id === value)) {
+      onChange?.(models[0].id);
+    }
+  }, [value, onChange]);
 
   // Listen for Ctrl+O to highlight the selector and open dropdown
   useEffect(() => {
@@ -54,12 +63,32 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   }, []);
 
   // Calculate dropdown position when opening
-  useEffect(() => {
+  useLayoutEffect(() => {
     if (isOpen && buttonRef.current) {
-      const rect = buttonRef.current.getBoundingClientRect();
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      // Position above button with 8px gap, but ensure it stays on screen
+      const estimatedDropdownHeight = 100;
+      let top = buttonRect.top - estimatedDropdownHeight - 8;
+      // Ensure dropdown doesn't go above viewport
+      if (top < 8) top = 8;
       setDropdownPosition({
-        top: rect.top - 8, // 8px gap above button
-        left: rect.left
+        top,
+        left: buttonRect.left
+      });
+    }
+  }, [isOpen]);
+
+  // Refine position after dropdown renders
+  useEffect(() => {
+    if (isOpen && buttonRef.current && dropdownRef.current) {
+      const buttonRect = buttonRef.current.getBoundingClientRect();
+      const dropdownHeight = dropdownRef.current.offsetHeight;
+      let top = buttonRect.top - dropdownHeight - 8;
+      // Ensure dropdown doesn't go above viewport
+      if (top < 8) top = 8;
+      setDropdownPosition({
+        top,
+        left: buttonRect.left
       });
     }
   }, [isOpen]);
@@ -101,16 +130,12 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       {isOpen && (
         <div
           ref={dropdownRef}
-          className="model-dropdown model-dropdown-fixed"
-          style={{
-            top: `${dropdownPosition.top}px`,
-            left: `${dropdownPosition.left}px`
-          }}
+          className="model-dropdown"
         >
           {models.map(model => (
             <div
               key={model.id}
-              className={`model-option ${model.id === value ? 'selected' : ''}`}
+              className={`model-option ${model.id === currentValue ? 'selected' : ''}`}
               onClick={() => handleSelectModel(model.id)}
             >
               <div className="model-name">{model.name}</div>

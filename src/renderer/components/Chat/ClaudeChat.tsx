@@ -199,7 +199,8 @@ export const ClaudeChat: React.FC = () => {
     toggleModel,
     loadPersistedSession,
     updateSessionDraft,
-    addMessageToSession
+    addMessageToSession,
+    renameSession
   } = useClaudeCodeStore();
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -1422,8 +1423,21 @@ export const ClaudeChat: React.FC = () => {
       }
       console.log('[ClaudeChat] /model command handled - returning early');
       return;
+    } else if (trimmedInput.startsWith('/title ')) {
+      // Handle /title command - set tab title manually
+      const newTitle = trimmedInput.slice(7).trim(); // Remove '/title ' prefix
+      if (newTitle && currentSessionId) {
+        renameSession(currentSessionId, newTitle);
+      }
+      setInput('');
+      // Reset textarea height
+      if (inputRef.current) {
+        inputRef.current.style.height = '44px';
+        inputRef.current.style.overflow = 'hidden';
+      }
+      return;
     }
-    
+
     try {
       // Don't create a new session here - sessions should only be created via the new tab button
       if (!currentSessionId) {
@@ -1903,6 +1917,14 @@ export const ClaudeChat: React.FC = () => {
       setInput('');
       setCommandTrigger(null);
       toggleModel();
+    } else if (command.startsWith('/title ') || command === '/title') {
+      // Handle title command locally - set tab title manually
+      setInput('');
+      setCommandTrigger(null);
+      const newTitle = command.slice(7).trim(); // Remove '/title ' prefix
+      if (newTitle && currentSessionId) {
+        renameSession(currentSessionId, newTitle);
+      }
     } else {
       // Check if this is a custom command
       const customCommands = JSON.parse(localStorage.getItem('yurucode_commands') || '[]');
@@ -2583,44 +2605,79 @@ export const ClaudeChat: React.FC = () => {
         {/* Context info bar */}
         <div className="context-bar">
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-          
+
+          {/* Center - compact button */}
+          <div className="context-center">
+            {(() => {
+              const hasActivity = currentSession?.messages?.some(m =>
+                m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
+              );
+              return (
+                <button
+                  className="btn-context-icon btn-compact-center"
+                  onClick={() => {
+                    if (currentSessionId && !currentSession?.readOnly && hasActivity) {
+                      sendMessage('/compact');
+                    }
+                  }}
+                  disabled={currentSession?.readOnly || !hasActivity}
+                  title="compact context (ctrl+m)"
+                  style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
+                >
+                  <IconArrowsMinimize size={12} stroke={1.5} />
+                </button>
+              );
+            })()}
+          </div>
+
+          {/* Right - stats and clear */}
           <div className="context-info">
             {(() => {
               // tokens.total already includes all tokens (input + output + cache)
               const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
               const cacheTokens = currentSession?.analytics?.tokens?.cacheSize || 0;
-              
+
               // Disabled spammy token indicator log
-              
+
               // Opus 4.1 has 200k context window
-              // Sonnet 4.0 has 200k context window 
+              // Sonnet 4.0 has 200k context window
               // Both models have the same 200k context window
               const contextWindowTokens = 200000;
-              
+
               // Calculate percentage using total context tokens
               const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
               const percentageNum = Math.min(100, rawPercentage);
               // Format: always show 2 decimal places
               const percentage = percentageNum.toFixed(2);
-              
+
               // Log warning if tokens exceed context window
               if (rawPercentage > 100) {
                 console.warn(`[TOKEN WARNING] Tokens (${totalContextTokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
               }
-              
+
               // Determine usage class and auto-compact status
               const usageClass = percentageNum >= 97 ? 'critical' : percentageNum >= 90 ? 'high' : 'low';
               const willAutoCompact = percentageNum >= 97;
               const approachingCompact = percentageNum >= 90 && percentageNum < 97;
-              
-              const hasActivity = currentSession.messages.some(m => 
+
+              const hasActivity = currentSession.messages.some(m =>
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
               );
-              
+
               return (
                 <>
-                  <button 
-                    className="btn-context-icon"
+                  <button
+                    className={`btn-stats ${usageClass}`}
+                    onClick={() => setShowStatsModal(true)}
+                    disabled={false}
+                    title={hasActivity ?
+                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 97%' : ''} - click for details (ctrl+.)` :
+                      `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
+                  >
+                    {percentage}%
+                  </button>
+                  <button
+                    className="btn-context-icon btn-clear-right"
                     onClick={() => {
                       if (currentSessionId && hasActivity && !currentSession?.readOnly) {
                         clearContext(currentSessionId);
@@ -2640,29 +2697,6 @@ export const ClaudeChat: React.FC = () => {
                     style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
                   >
                     <IconFlare size={12} stroke={1.5} />
-                  </button>
-                  <button 
-                    className="btn-context-icon"
-                    onClick={() => {
-                      if (currentSessionId && !currentSession?.readOnly && hasActivity) {
-                        sendMessage('/compact');
-                      }
-                    }}
-                    disabled={currentSession?.readOnly || !hasActivity}
-                    title="compact context (ctrl+m)"
-                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
-                  >
-                    <IconArrowsMinimize size={12} stroke={1.5} />
-                  </button>
-                  <button 
-                    className={`btn-stats ${usageClass}`} 
-                    onClick={() => setShowStatsModal(true)}
-                    disabled={false}
-                    title={hasActivity ? 
-                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 97%' : ''} - click for details (ctrl+.)` : 
-                      `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
-                  >
-                    {percentage}%
                   </button>
                 </>
               );

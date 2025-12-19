@@ -173,7 +173,14 @@ interface ClaudeCodeStore {
   
   // Title generation
   autoGenerateTitle: boolean; // Whether to auto-generate titles for new sessions
-  
+
+  // Menu visibility
+  showProjectsMenu: boolean; // Whether to show projects button in menu
+  showAgentsMenu: boolean; // Whether to show agents button in menu
+  showAnalyticsMenu: boolean; // Whether to show analytics button in menu
+  showCommandsSettings: boolean; // Whether to show commands tab in settings
+  showMcpSettings: boolean; // Whether to show mcp tab in settings
+
   // UI state
   isDraggingTab: boolean; // Whether a tab is currently being dragged
   
@@ -247,7 +254,14 @@ interface ClaudeCodeStore {
   
   // Title generation
   setAutoGenerateTitle: (autoGenerate: boolean) => void;
-  
+
+  // Menu visibility
+  setShowProjectsMenu: (show: boolean) => void;
+  setShowAgentsMenu: (show: boolean) => void;
+  setShowAnalyticsMenu: (show: boolean) => void;
+  setShowCommandsSettings: (show: boolean) => void;
+  setShowMcpSettings: (show: boolean) => void;
+
   // UI state
   setIsDraggingTab: (isDragging: boolean) => void;
   
@@ -457,6 +471,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
   autoGenerateTitle: true, // Default to auto-generating titles (enabled by default)
+  showProjectsMenu: false, // Default to hidden
+  showAgentsMenu: false, // Default to hidden
+  showAnalyticsMenu: false, // Default to hidden
+  showCommandsSettings: true, // Default to shown
+  showMcpSettings: true, // Default to shown
   isDraggingTab: false, // No tab is being dragged initially
   agents: [], // No agents initially, will load from localStorage
   currentAgentId: null, // No agent selected initially
@@ -3633,26 +3652,22 @@ ${content}`;
   saveTabs: () => {
     const state = get();
     if (!state.rememberTabs) return;
-    
-    // Save enhanced tab information
+
+    // Save only project paths (no titles since these are new conversations)
     const tabData = state.sessions
       .filter(s => s.workingDirectory)
       .map((s, index) => ({
         path: s.workingDirectory!,
-        title: s.claudeTitle || s.name,
         isActive: s.id === state.currentSessionId,
-        order: index,
-        createdAt: s.createdAt?.toISOString(),
-        userRenamed: s.userRenamed || false
+        order: index
       }));
-    
-    // Store as both legacy format (for backward compatibility) and enhanced format
+
     const tabPaths = tabData.map(t => t.path);
     set({ savedTabs: tabPaths });
-    
+
     localStorage.setItem('yurucode-saved-tabs', JSON.stringify(tabPaths));
     localStorage.setItem('yurucode-saved-tabs-enhanced', JSON.stringify(tabData));
-    console.log('[Store] Saved enhanced tab data:', tabData);
+    console.log('[Store] Saved tab paths:', tabPaths);
   },
   
   restoreTabs: async () => {
@@ -3700,34 +3715,18 @@ ${content}`;
       
       let activeSessionId: string | null = null;
       
-      // Create sessions with enhanced information
+      // Create sessions (fresh conversations, no titles restored)
       for (let i = 0; i < tabData.length; i++) {
         const tab = tabData[i];
         // Create a fresh session
         const sessionId = await get().createSession(undefined, tab.path);
-        
-        // If we have a title and sessionId, update the session
-        if (sessionId && tab.title) {
-          set(state => ({
-            sessions: state.sessions.map(s => {
-              if (s.id === sessionId) {
-                return {
-                  ...s,
-                  claudeTitle: tab.title!,
-                  userRenamed: tab.userRenamed || false
-                };
-              }
-              return s;
-            })
-          }));
-        }
-        
+
         // Track which session should be active
         if (tab.isActive && sessionId) {
           activeSessionId = sessionId;
         }
-        
-        console.log('[Store] Restored tab:', tab.path, 'with title:', tab.title || 'default');
+
+        console.log('[Store] Restored tab for project:', tab.path);
       }
       
       // Set the active tab after all tabs are created
@@ -3745,7 +3744,32 @@ ${content}`;
     localStorage.setItem('yurucode-auto-generate-title', JSON.stringify(autoGenerate));
     console.log('[Store] Auto-generate title:', autoGenerate);
   },
-  
+
+  setShowProjectsMenu: (show: boolean) => {
+    set({ showProjectsMenu: show });
+    localStorage.setItem('yurucode-show-projects-menu', JSON.stringify(show));
+  },
+
+  setShowAgentsMenu: (show: boolean) => {
+    set({ showAgentsMenu: show });
+    localStorage.setItem('yurucode-show-agents-menu', JSON.stringify(show));
+  },
+
+  setShowAnalyticsMenu: (show: boolean) => {
+    set({ showAnalyticsMenu: show });
+    localStorage.setItem('yurucode-show-analytics-menu', JSON.stringify(show));
+  },
+
+  setShowCommandsSettings: (show: boolean) => {
+    set({ showCommandsSettings: show });
+    localStorage.setItem('yurucode-show-commands-settings', JSON.stringify(show));
+  },
+
+  setShowMcpSettings: (show: boolean) => {
+    set({ showMcpSettings: show });
+    localStorage.setItem('yurucode-show-mcp-settings', JSON.stringify(show));
+  },
+
   setIsDraggingTab: (isDragging: boolean) => {
     set({ isDraggingTab: isDragging });
   },
@@ -3946,6 +3970,11 @@ ${content}`;
         sansFont: state.sansFont,
         rememberTabs: state.rememberTabs,
         autoGenerateTitle: state.autoGenerateTitle,
+        showProjectsMenu: state.showProjectsMenu,
+        showAgentsMenu: state.showAgentsMenu,
+        showAnalyticsMenu: state.showAnalyticsMenu,
+        showCommandsSettings: state.showCommandsSettings,
+        showMcpSettings: state.showMcpSettings,
         agents: state.agents,
         currentAgentId: state.currentAgentId
         // Do NOT persist sessionId - sessions should not survive app restarts

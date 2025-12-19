@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
-import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { tauriApi } from '../../services/tauriApi';
 import './WelcomeScreen.css';
 
@@ -13,7 +12,7 @@ interface RecentProject {
 }
 
 export const WelcomeScreen: React.FC = () => {
-  const { createSession, selectedModel, setSelectedModel } = useClaudeCodeStore();
+  const { createSession } = useClaudeCodeStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
 
@@ -254,11 +253,6 @@ export const WelcomeScreen: React.FC = () => {
       
       {/* Help Modal - using shared component */}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
-      
-      {/* Model Selector - bottom left */}
-      <div className="model-selector-container">
-        <ModelSelector value={selectedModel} onChange={setSelectedModel} />
-      </div>
     </div>
   );
 };

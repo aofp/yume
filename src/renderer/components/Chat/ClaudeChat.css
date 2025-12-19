@@ -1060,6 +1060,7 @@ textarea.context-full {
   background: var(--bg-color, #000000);
   flex-shrink: 0; /* Prevent shrinking */
   position: relative; /* For absolute positioning of dictation button */
+  overflow: visible; /* Allow model dropdown to escape */
 }
 
 /* Windows release build specific adjustment - buttons need to go down 1px */
@@ -1068,6 +1069,19 @@ textarea.context-full {
   margin-top: 1px;
   margin-bottom: 0;
   top: 1px; /* Move buttons down 1px in Windows builds */
+}
+
+.context-center {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  z-index: 1;
+}
+
+.btn-compact-center {
+  margin-right: 0 !important;
 }
 
 .context-info {
@@ -1080,6 +1094,11 @@ textarea.context-full {
   text-transform: lowercase;
   user-select: none;
   -webkit-user-select: none;
+}
+
+.btn-clear-right {
+  margin-right: 0 !important;
+  margin-left: 1px;
 }
 
 .btn-clear-context, .btn-stats, .btn-help, .btn-dictation, .btn-context-menu, .btn-context-icon {
