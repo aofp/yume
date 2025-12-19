@@ -2779,40 +2779,61 @@ export const ClaudeChat: React.FC = () => {
             const percentageNum = (totalContextTokens / contextWindowTokens * 100);
             const isContextFull = percentageNum > 95;
             
+            // Check if input contains ultrathink (case insensitive)
+            const hasUltrathink = /ultrathink/i.test(input);
+
+            // Render text with ultrathink highlighted
+            const renderStyledText = (text: string) => {
+              if (!hasUltrathink) return text;
+              const parts = text.split(/(ultrathink)/gi);
+              return parts.map((part, i) =>
+                /ultrathink/i.test(part)
+                  ? <span key={i} className="ultrathink-wrapper"><span className="ultrathink-text">{part}</span></span>
+                  : part
+              );
+            };
+
             return (
               <>
-                <textarea
-                  ref={inputRef}
-                  className={`chat-input ${bashCommandMode ? 'bash-mode' : ''} ${isContextFull ? 'context-full' : ''}`}
-                  placeholder={(() => {
-                    const projectName = currentSession?.workingDirectory?.split(/[/\\]/).pop() || 'project';
-                    if (isContextFull) return "context full - compact or clear required";
-                    if (currentSession?.readOnly) return "read-only session";
-                    if (bashCommandMode) return "bash command...";
-                    if (currentSession?.streaming) return `append message for ${projectName}...`;
-                    return `code prompt for ${projectName}...`;
-                  })()}
-                  value={currentSession?.readOnly || isContextFull ? '' : input}
-                  onChange={handleTextareaChange}
-                  onKeyDown={handleKeyDown}
-                  onPaste={handlePaste}
-                  style={{ 
-                    height: '44px',
-                    paddingRight: currentSession?.streaming ? '48px' : undefined
-                  }}
-                  disabled={currentSession?.readOnly || isContextFull}
-                  onFocus={() => setIsTextareaFocused(true)}
-                  onBlur={() => {
-                    // Close autocomplete when textarea loses focus
-                    setMentionTrigger(null);
-                    setCommandTrigger(null);
-                    setIsTextareaFocused(false);
-                  }}
-                  onContextMenu={(e) => {
-                    // Allow default context menu for right-click paste
-                    e.stopPropagation();
-                  }}
-                />
+                <div className="input-text-wrapper">
+                  {hasUltrathink && (
+                    <div className="input-text-overlay">
+                      {renderStyledText(input)}
+                    </div>
+                  )}
+                  <textarea
+                    ref={inputRef}
+                    className={`chat-input ${bashCommandMode ? 'bash-mode' : ''} ${isContextFull ? 'context-full' : ''} ${hasUltrathink ? 'has-ultrathink' : ''}`}
+                    placeholder={(() => {
+                      const projectName = currentSession?.workingDirectory?.split(/[/\\]/).pop() || 'project';
+                      if (isContextFull) return "context full - compact or clear required";
+                      if (currentSession?.readOnly) return "read-only session";
+                      if (bashCommandMode) return "bash command...";
+                      if (currentSession?.streaming) return `append message for ${projectName}...`;
+                      return `code prompt for ${projectName}...`;
+                    })()}
+                    value={currentSession?.readOnly || isContextFull ? '' : input}
+                    onChange={handleTextareaChange}
+                    onKeyDown={handleKeyDown}
+                    onPaste={handlePaste}
+                    style={{
+                      height: '44px',
+                      paddingRight: currentSession?.streaming ? '48px' : undefined
+                    }}
+                    disabled={currentSession?.readOnly || isContextFull}
+                    onFocus={() => setIsTextareaFocused(true)}
+                    onBlur={() => {
+                      // Close autocomplete when textarea loses focus
+                      setMentionTrigger(null);
+                      setCommandTrigger(null);
+                      setIsTextareaFocused(false);
+                    }}
+                    onContextMenu={(e) => {
+                      // Allow default context menu for right-click paste
+                      e.stopPropagation();
+                    }}
+                  />
+                </div>
                 {isContextFull && (
                   <div className="context-full-overlay">
                     <div className="context-full-message">
