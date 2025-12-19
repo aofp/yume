@@ -556,8 +556,26 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showHelpModal, showServerLogs, showAbout, showSettings, showRecentModal, showProjectsModal, sessions, setCurrentSession]);
 
-  // Apply accent color, zoom level, and window state from localStorage on mount
+  // Apply theme colors, zoom level, and window state from localStorage on mount
   useEffect(() => {
+    // Apply background color
+    const savedBackgroundColor = localStorage.getItem('backgroundColor') || '#000000';
+    document.documentElement.style.setProperty('--background-color', savedBackgroundColor);
+    const bgHex = savedBackgroundColor.replace('#', '');
+    const bgR = parseInt(bgHex.substr(0, 2), 16);
+    const bgG = parseInt(bgHex.substr(2, 2), 16);
+    const bgB = parseInt(bgHex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--background-rgb', `${bgR}, ${bgG}, ${bgB}`);
+
+    // Apply foreground color
+    const savedForegroundColor = localStorage.getItem('foregroundColor') || '#ffffff';
+    document.documentElement.style.setProperty('--foreground-color', savedForegroundColor);
+    const fgHex = savedForegroundColor.replace('#', '');
+    const fgR = parseInt(fgHex.substr(0, 2), 16);
+    const fgG = parseInt(fgHex.substr(2, 2), 16);
+    const fgB = parseInt(fgHex.substr(4, 2), 16);
+    document.documentElement.style.setProperty('--foreground-rgb', `${fgR}, ${fgG}, ${fgB}`);
+
     // Apply accent color - use the same default as SettingsModal (#99bbff)
     const savedAccentColor = localStorage.getItem('accentColor') || '#99bbff';
     document.documentElement.style.setProperty('--accent-color', savedAccentColor);
@@ -566,7 +584,7 @@ export const App: React.FC = () => {
     const accentG = parseInt(accentHex.substr(2, 2), 16);
     const accentB = parseInt(accentHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${accentR}, ${accentG}, ${accentB}`);
-    
+
     // Apply positive color - use the same default as SettingsModal (#99ff99)
     const savedPositiveColor = localStorage.getItem('positiveColor') || '#99ff99';
     document.documentElement.style.setProperty('--positive-color', savedPositiveColor);
@@ -575,7 +593,7 @@ export const App: React.FC = () => {
     const positiveG = parseInt(positiveHex.substr(2, 2), 16);
     const positiveB = parseInt(positiveHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--positive-rgb', `${positiveR}, ${positiveG}, ${positiveB}`);
-    
+
     // Apply negative color - use the same default as SettingsModal (#ff9999)
     const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff9999';
     document.documentElement.style.setProperty('--negative-color', savedNegativeColor);

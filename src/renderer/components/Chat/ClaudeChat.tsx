@@ -34,6 +34,7 @@ import { VirtualizedMessageList, VirtualizedMessageListRef } from './Virtualized
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
+import { RecentConversationsModal } from '../RecentConversationsModal';
 import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete';
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
@@ -45,6 +46,7 @@ import { Watermark } from '../Watermark/Watermark';
 // const TimelineNavigator = React.lazy(() => import('../Timeline/TimelineNavigator').then(m => ({ default: m.TimelineNavigator })));
 const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
 import { FEATURE_FLAGS } from '../../config/features';
+import { claudeCodeClient } from '../../services/claudeCodeClient';
 import './ClaudeChat.css';
 
 // Helper function to format tool displays
@@ -171,6 +173,9 @@ export const ClaudeChat: React.FC = () => {
   const [isAtBottom, setIsAtBottom] = useState<{ [sessionId: string]: boolean }>({});
   const [pendingFollowupMessage, setPendingFollowupMessage] = useState<string | null>(null);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showClearConfirm, setShowClearConfirm] = useState(false);
+  const [showCompactConfirm, setShowCompactConfirm] = useState(false);
+  const [showResumeModal, setShowResumeModal] = useState(false);
   const [bashStartTimes, setBashStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashElapsedTimes, setBashElapsedTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashDotCounts, setBashDotCounts] = useState<{ [sessionId: string]: number }>({});
@@ -712,6 +717,153 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [isDictating, startDictation, stopDictation]);
 
+  // Clear context with confirmation
+  const handleClearContextRequest = useCallback(() => {
+    if (currentSessionId && !currentSession?.readOnly) {
+      setShowClearConfirm(true);
+    }
+  }, [currentSessionId, currentSession?.readOnly]);
+
+  const confirmClearContext = useCallback(() => {
+    if (currentSessionId) {
+      clearContext(currentSessionId);
+      setIsAtBottom(prev => ({
+        ...prev,
+        [currentSessionId]: true
+      }));
+      setScrollPositions(prev => {
+        const newPositions = { ...prev };
+        delete newPositions[currentSessionId];
+        return newPositions;
+      });
+      setInput('');
+      if (inputRef.current) {
+        inputRef.current.style.height = '44px';
+        inputRef.current.style.overflow = 'hidden';
+      }
+    }
+    setShowClearConfirm(false);
+  }, [currentSessionId, clearContext, setIsAtBottom, setScrollPositions]);
+
+  // Compact context with confirmation
+  const handleCompactContextRequest = useCallback(() => {
+    if (currentSessionId && !currentSession?.readOnly) {
+      setShowCompactConfirm(true);
+    }
+  }, [currentSessionId, currentSession?.readOnly]);
+
+  const confirmCompactContext = useCallback(() => {
+    if (currentSessionId) {
+      sendMessage('/compact');
+    }
+    setShowCompactConfirm(false);
+  }, [currentSessionId, sendMessage]);
+
+  // Handle resume conversation selection from modal
+  const handleResumeConversation = useCallback(async (conversation: any) => {
+    console.log('[ClaudeChat] Resuming conversation:', conversation);
+
+    // Decode the project path to get the working directory
+    let workingDirectory = '/';
+    try {
+      // Project paths are encoded like -Users-yuru-projectname
+      workingDirectory = conversation.projectPath.replace(/^-/, '/').replace(/-/g, '/');
+    } catch (e) {
+      console.error('Failed to decode project path:', e);
+    }
+
+    // Get project name for tab title
+    const projectName = conversation.projectName || 'resumed';
+
+    try {
+      // Load the session data from server first
+      const serverPort = claudeCodeClient.getServerPort();
+      if (!serverPort) {
+        console.error('[ClaudeChat] Server port not available for resume');
+        return;
+      }
+
+      console.log('[ClaudeChat] Loading session data for resume:', conversation.id);
+      const response = await fetch(
+        `http://localhost:${serverPort}/claude-session/${encodeURIComponent(conversation.projectPath)}/${encodeURIComponent(conversation.id)}`
+      );
+
+      if (!response.ok) {
+        throw new Error(`Failed to load session: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log('[ClaudeChat] Session data loaded:', data.messages?.length || 0, 'messages');
+
+      // Delete the current empty session
+      if (currentSessionId) {
+        deleteSession(currentSessionId);
+      }
+
+      // Generate unique session ID
+      const timestamp = Date.now().toString(36);
+      const random1 = Math.random().toString(36).substring(2, 8);
+      const newSessionId = `session-${timestamp}-${random1}`;
+
+      // Get tab title from conversation or first message
+      let tabTitle = conversation.title || projectName;
+      if (tabTitle.length > 25) {
+        tabTitle = tabTitle.substring(0, 25) + '...';
+      }
+
+      // Parse messages from session data
+      const messagesToLoad = (data.messages || []).map((msg: any) => ({
+        ...msg,
+        timestamp: msg.timestamp || Date.now()
+      }));
+
+      // Create session with loaded messages via client
+      await claudeCodeClient.createSession(tabTitle, workingDirectory, {
+        sessionId: newSessionId,
+        existingSessionId: newSessionId,
+        claudeSessionId: conversation.id,
+        messages: messagesToLoad
+      });
+
+      // Add session to store with messages
+      const restoredSession = {
+        id: newSessionId,
+        name: tabTitle,
+        claudeTitle: tabTitle,
+        status: 'active' as const,
+        messages: messagesToLoad,
+        workingDirectory: workingDirectory,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+        claudeSessionId: conversation.id,
+        readOnly: false,
+        analytics: {
+          totalMessages: messagesToLoad.length,
+          userMessages: messagesToLoad.filter((m: any) => m.role === 'user').length,
+          assistantMessages: messagesToLoad.filter((m: any) => m.role === 'assistant').length,
+          toolUses: 0,
+          tokens: { input: 0, output: 0, total: 0 },
+          cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+          duration: 0,
+          lastActivity: new Date(),
+          thinkingTime: 0
+        },
+        pendingToolIds: new Set(),
+        modifiedFiles: []
+      };
+
+      useClaudeCodeStore.setState((state: any) => ({
+        sessions: [...state.sessions, restoredSession],
+        currentSessionId: newSessionId
+      }));
+
+      console.log('[ClaudeChat] Session restored with', messagesToLoad.length, 'messages');
+
+    } catch (error) {
+      console.error('[ClaudeChat] Failed to resume conversation:', error);
+    }
+  }, [currentSessionId, deleteSession]);
+
   // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -731,28 +883,15 @@ export const ClaudeChat: React.FC = () => {
         setSearchVisible(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
         e.preventDefault();
-        if (currentSessionId && !currentSession?.readOnly) {
-          clearContext(currentSessionId);
-          // Reset to stick to bottom for this session
-          setIsAtBottom(prev => ({
-            ...prev,
-            [currentSessionId]: true
-          }));
-          setScrollPositions(prev => ({
-            ...prev,
-            [currentSessionId]: -1
-          }));
-        }
+        handleClearContextRequest();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
         // Toggle dictation
         toggleDictation();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
         e.preventDefault();
-        // Trigger compact command
-        if (currentSessionId && !currentSession?.readOnly) {
-          sendMessage('/compact');
-        }
+        // Trigger compact command with confirmation
+        handleCompactContextRequest();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
         e.preventDefault();
         // Dispatch event to open recent modal in App
@@ -824,7 +963,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, clearContext, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, toggleDictation]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, toggleDictation]);
 
 
 
@@ -1397,21 +1536,9 @@ export const ClaudeChat: React.FC = () => {
     
     if (trimmedInput === '/clear') {
       console.log('[ClaudeChat] Clearing context for session:', currentSessionId);
-      if (currentSessionId && !currentSession?.readOnly) {
-        clearContext(currentSessionId);
-        setInput('');
-        // Reset textarea height when clearing context
-        if (inputRef.current) {
-          inputRef.current.style.height = '44px'; // Reset to min-height
-          inputRef.current.style.overflow = 'hidden';
-        }
-        // Reset scroll position to "stick to bottom" for this session
-        setScrollPositions(prev => ({
-          ...prev,
-          [currentSessionId]: -1
-        }));
-        return;
-      }
+      setInput('');
+      handleClearContextRequest();
+      return;
     } else if (trimmedInput === '/model' || trimmedInput.startsWith('/model ')) {
       console.log('[ClaudeChat] Detected /model command - toggling model');
       toggleModel();
@@ -1897,21 +2024,10 @@ export const ClaudeChat: React.FC = () => {
     const command = replacement.trim();
     
     if (command === '/clear') {
-      // Handle clear command locally
+      // Handle clear command locally with confirmation
       setInput('');
       setCommandTrigger(null);
-      if (currentSessionId && !currentSession?.readOnly) {
-        clearContext(currentSessionId);
-        // Reset to stick to bottom for this session
-        setIsAtBottom(prev => ({
-          ...prev,
-          [currentSessionId]: true
-        }));
-        setScrollPositions(prev => ({
-          ...prev,
-          [currentSessionId]: -1
-        }));
-      }
+      handleClearContextRequest();
     } else if (command === '/model') {
       // Handle model command locally - toggle between opus and sonnet
       setInput('');
@@ -2183,6 +2299,17 @@ export const ClaudeChat: React.FC = () => {
         className="chat-messages"
         ref={chatContainerRef}
       >
+        {/* Show resume button for empty sessions */}
+        {currentSession.messages.length === 0 && !currentSession.streaming && (
+          <div className="empty-chat-state">
+            <button
+              className="resume-conversation-btn"
+              onClick={() => setShowResumeModal(true)}
+            >
+              resume?
+            </button>
+          </div>
+        )}
         {(() => {
           // Process all messages once at the beginning
           const processedMessages = currentSession.messages
@@ -2562,23 +2689,20 @@ export const ClaudeChat: React.FC = () => {
                       context {percentageNum.toFixed(0)}% full
                     </div>
                     <div className="context-full-actions">
-                      <button 
+                      <button
                         className="btn-compact"
                         onClick={() => {
-                          setInput('/compact');
-                          handleSend();
+                          handleCompactContextRequest();
                         }}
                         title="compress context to continue"
                       >
                         compact
                       </button>
-                      <button 
+                      <button
                         className="btn-clear"
                         onClick={() => {
-                          if (currentSessionId) {
-                            clearContext(currentSessionId);
-                            setInput('');
-                          }
+                          setInput('');
+                          handleClearContextRequest();
                         }}
                         title="clear all messages"
                       >
@@ -2617,7 +2741,7 @@ export const ClaudeChat: React.FC = () => {
                   className="btn-context-icon btn-compact-center"
                   onClick={() => {
                     if (currentSessionId && !currentSession?.readOnly && hasActivity) {
-                      sendMessage('/compact');
+                      handleCompactContextRequest();
                     }
                   }}
                   disabled={currentSession?.readOnly || !hasActivity}
@@ -2678,20 +2802,7 @@ export const ClaudeChat: React.FC = () => {
                   </button>
                   <button
                     className="btn-context-icon btn-clear-right"
-                    onClick={() => {
-                      if (currentSessionId && hasActivity && !currentSession?.readOnly) {
-                        clearContext(currentSessionId);
-                        setIsAtBottom(prev => ({
-                          ...prev,
-                          [currentSessionId]: true
-                        }));
-                        setScrollPositions(prev => {
-                          const newPositions = { ...prev };
-                          delete newPositions[currentSessionId];
-                          return newPositions;
-                        });
-                      }
-                    }}
+                    onClick={handleClearContextRequest}
                     disabled={currentSession?.readOnly || !hasActivity}
                     title="clear context (ctrl+l)"
                     style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
@@ -2903,6 +3014,39 @@ export const ClaudeChat: React.FC = () => {
         </div>
       )}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
+
+      {/* Clear context confirmation dialog */}
+      {showClearConfirm && (
+        <div className="modal-overlay" onClick={() => setShowClearConfirm(false)}>
+          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+            <p>clear context?</p>
+            <div className="confirm-buttons">
+              <button onClick={() => setShowClearConfirm(false)}>cancel</button>
+              <button className="confirm-danger" onClick={confirmClearContext}>clear</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Compact context confirmation dialog */}
+      {showCompactConfirm && (
+        <div className="modal-overlay" onClick={() => setShowCompactConfirm(false)}>
+          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
+            <p>compact context?</p>
+            <div className="confirm-buttons">
+              <button onClick={() => setShowCompactConfirm(false)}>cancel</button>
+              <button className="confirm-danger" onClick={confirmCompactContext}>compact</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Resume conversations modal */}
+      <RecentConversationsModal
+        isOpen={showResumeModal}
+        onClose={() => setShowResumeModal(false)}
+        onConversationSelect={handleResumeConversation}
+      />
     </div>
   );
 };

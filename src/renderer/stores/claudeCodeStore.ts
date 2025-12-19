@@ -474,8 +474,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   showProjectsMenu: false, // Default to hidden
   showAgentsMenu: false, // Default to hidden
   showAnalyticsMenu: false, // Default to hidden
-  showCommandsSettings: true, // Default to shown
-  showMcpSettings: true, // Default to shown
+  showCommandsSettings: false, // Default to hidden
+  showMcpSettings: false, // Default to hidden
   isDraggingTab: false, // No tab is being dragged initially
   agents: [], // No agents initially, will load from localStorage
   currentAgentId: null, // No agent selected initially
@@ -493,24 +493,36 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   createSession: async (name?: string, directory?: string, existingSessionId?: string) => {
     console.log('[Store] createSession called:', { name, directory, existingSessionId });
     console.trace('[Store] Stack trace for createSession');
-    
+
     try {
       // License check: Enforce tab limit for trial users
       const currentState = get();
-      const existingSession = existingSessionId ? 
-        currentState.sessions.find(s => s.id === existingSessionId) : 
+
+      // Check if existingSessionId is a Claude session ID (26 chars, alphanumeric with _/-)
+      // Claude session IDs: exactly 26 characters, used for --resume flag
+      // Yurucode session IDs: variable format like 'session-xxx' or 'temp-xxx'
+      const isClaudeSessionId = existingSessionId &&
+        existingSessionId.length === 26 &&
+        /^[a-zA-Z0-9_-]+$/.test(existingSessionId);
+
+      // If it's a Claude session ID, we're doing a direct resume from .claude/projects
+      const directResumeClaudeId = isClaudeSessionId ? existingSessionId : undefined;
+      const actualExistingSessionId = isClaudeSessionId ? undefined : existingSessionId;
+
+      const existingSession = actualExistingSessionId ?
+        currentState.sessions.find(s => s.id === actualExistingSessionId) :
         null;
       
       const licenseStore = useLicenseStore.getState();
       const features = licenseStore.getFeatures();
       const maxTabs = features.maxTabs;
       
-      // Only enforce for new sessions, not existing ones
-      if (!existingSession && currentState.sessions.length >= maxTabs) {
+      // Only enforce for new sessions, not existing ones (direct resume counts as new)
+      if (!existingSession && !directResumeClaudeId && currentState.sessions.length >= maxTabs) {
         console.log('[Store] Tab limit reached for trial mode:', maxTabs);
         // Dispatch event to show upgrade modal
-        window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-          detail: { reason: 'tabLimit', currentTabs: currentState.sessions.length, maxTabs } 
+        window.dispatchEvent(new CustomEvent('showUpgradeModal', {
+          detail: { reason: 'tabLimit', currentTabs: currentState.sessions.length, maxTabs }
         }));
         return; // Don't create the session
       }
@@ -641,14 +653,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         };
 
         // Create or resume session using Claude Code Client
-        // Only pass claudeSessionId if we're reconnecting an existing session (not creating new)
-        // AND the session wasn't compacted (compacted sessions can't be resumed)
-        const claudeSessionIdToResume = existingSessionId && !existingSession?.wasCompacted
-          ? existingSession?.claudeSessionId
-          : undefined;
+        // Pass claudeSessionId if:
+        // 1. We're reconnecting an existing yurucode session (not compacted)
+        // 2. OR we're doing a direct resume from .claude/projects
+        const claudeSessionIdToResume = directResumeClaudeId ||
+          (actualExistingSessionId && !existingSession?.wasCompacted
+            ? existingSession?.claudeSessionId
+            : undefined);
 
-        if (existingSessionId && existingSession?.wasCompacted) {
-          console.log(`🗜️ [Store] Session ${existingSessionId} was compacted - ignoring old Claude ID`);
+        if (actualExistingSessionId && existingSession?.wasCompacted) {
+          console.log(`🗜️ [Store] Session ${actualExistingSessionId} was compacted - ignoring old Claude ID`);
+        }
+
+        if (directResumeClaudeId) {
+          console.log(`📂 [Store] Direct resume from Claude session: ${directResumeClaudeId}`);
         }
 
         const result = await claudeClient.createSession(sessionName, workingDirectory, {
@@ -662,9 +680,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           permissionMode: 'default',
           maxTurns: 30,
           model: modelMap[selectedModel] || 'claude-opus-4-5-20251101',
-          sessionId: existingSessionId || tempSessionId, // Pass the sessionId for consistency
-          claudeSessionId: claudeSessionIdToResume, // Pass claudeSessionId only if resuming existing session
-          messages: existingSessionId ? (existingSession?.messages || []) : [] // Pass messages only if resuming
+          sessionId: actualExistingSessionId || tempSessionId, // Pass the sessionId for consistency
+          claudeSessionId: claudeSessionIdToResume, // Pass claudeSessionId for resuming
+          messages: actualExistingSessionId ? (existingSession?.messages || []) : [] // Pass messages only if resuming yurucode session
         });
         
         const sessionId = result.sessionId || tempSessionId;

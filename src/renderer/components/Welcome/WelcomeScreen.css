@@ -9,7 +9,7 @@
   align-items: center;
   justify-content: center;
   padding: 0;
-  background: #000000;
+  background: var(--background-color);
   animation: fadeIn 0.3s ease;
   user-select: none;
   -webkit-user-select: none;
@@ -48,7 +48,7 @@
 }
 
 .welcome-title .yuru {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   font-weight: 700;
 }
 
@@ -125,10 +125,10 @@
   justify-content: center;
   gap: 6px;
   padding: 0;
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--fg-08);
   border: none;
   border-radius: 8px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
   font-size: 12px;
   transition: all 0.2s ease;
   cursor: default;
@@ -146,7 +146,7 @@
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--fg-20);
   transform: translate(-50%, -50%);
   pointer-events: none;
   z-index: 10;
@@ -197,8 +197,8 @@
 }
 
 .recent-modal {
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--background-color);
+  border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -228,12 +228,12 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--fg-15);
   margin-bottom: 0;
   flex-shrink: 0;
   position: sticky;
   top: 0;
-  background: #0a0a0a;
+  background: var(--background-color);
   z-index: 1;
 }
 
@@ -260,7 +260,7 @@
 .clear-all-icon {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   padding: 4px;
   display: flex;
   align-items: center;
@@ -278,7 +278,7 @@
 .modal-close {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   width: 20px;
   height: 20px;
   display: flex;
@@ -320,7 +320,7 @@
   border-radius: 4px;
   transition: background 0.15s ease;
   cursor: default;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--fg-80);
 }
 
 .recent-item:hover {
@@ -331,7 +331,7 @@
 .recent-item-number {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   min-width: 12px;
   text-align: center;
 }
@@ -345,7 +345,7 @@
   background: transparent;
   border: none;
   border-radius: 3px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   cursor: default;
   opacity: 0;
   transition: all 0.15s ease;
@@ -367,7 +367,7 @@
 
 .recent-item-name {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--fg-80);
   text-transform: lowercase;
   font-weight: 500;
   display: flex;
@@ -377,7 +377,7 @@
 
 .recent-item-path {
   font-size: 7px;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--fg-20);
   font-family: var(--font-mono);
   white-space: nowrap;
   overflow: hidden;
@@ -389,7 +389,7 @@
 .no-recent {
   padding: 20px;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   text-align: center;
   text-transform: lowercase;
 }
@@ -401,7 +401,7 @@
 }
 
 .modal-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--fg-02);
   border-radius: 4px;
 }
 
@@ -427,7 +427,7 @@
 .recent-projects h2 {
   font-size: 14px;
   font-weight: 400;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
   margin-bottom: 24px;
   text-transform: lowercase;
 }
@@ -443,7 +443,7 @@
   align-items: center;
   gap: 16px;
   padding: 16px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--fg-02);
   border: none;
   border-radius: 8px;
   transition: all 0.2s ease;
@@ -463,7 +463,7 @@
 }
 
 .project-card:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   transform: translateY(-2px);
 }
 
@@ -486,7 +486,7 @@
 .project-name {
   font-size: 14px;
   font-weight: 500;
-  color: #fff;
+  color: var(--foreground-color);
   margin-bottom: 4px;
   text-transform: lowercase;
   white-space: nowrap;
@@ -496,7 +496,7 @@
 
 .project-path {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   margin-bottom: 8px;
   white-space: nowrap;
   overflow: hidden;
@@ -509,7 +509,7 @@
   align-items: center;
   gap: 4px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
 }
 
 /* Help button container - positioned like in chat */
@@ -528,8 +528,8 @@
 /* Import btn-help styles from ClaudeChat.css */
 .btn-help {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--fg-15);
+  color: var(--fg-40);
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 10px;
@@ -540,7 +540,7 @@
 }
 
 .btn-help:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 0.2);
 }

@@ -1141,6 +1141,151 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   }
 });
 
+// Get recent conversations across all projects - returns 5 most recent
+app.get('/claude-recent-conversations', async (req, res) => {
+  console.log('📂 Loading recent conversations across all projects...');
+
+  try {
+    const claudeDir = join(homedir(), '.claude', 'projects');
+
+    if (!existsSync(claudeDir)) {
+      console.log('Claude projects directory not found:', claudeDir);
+      return res.json({ conversations: [] });
+    }
+
+    const { readdir, stat, readFile } = await import('fs/promises');
+    const allConversations = [];
+
+    // Get all project directories
+    const projectDirs = await readdir(claudeDir);
+
+    // Process each project
+    for (const projectDir of projectDirs) {
+      if (projectDir.startsWith('.')) continue;
+
+      const projectPath = join(claudeDir, projectDir);
+      try {
+        const projectStats = await stat(projectPath);
+        if (!projectStats.isDirectory()) continue;
+
+        // Get session files in this project
+        const sessionFiles = await readdir(projectPath);
+        const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
+
+        for (const sessionFile of jsonlFiles) {
+          const sessionPath = join(projectPath, sessionFile);
+          try {
+            const sessionStats = await stat(sessionPath);
+            const sessionId = sessionFile.replace('.jsonl', '');
+
+            // Read first and last lines for title/summary
+            const content = await readFile(sessionPath, 'utf8');
+            const lines = content.split(/\r?\n/).filter(line => line.trim());
+
+            if (lines.length === 0) continue;
+
+            let title = null;
+            let summary = 'Untitled conversation';
+            let firstUserMessage = '';
+            let messageCount = lines.length;
+
+            // Check last line for title metadata
+            try {
+              const lastData = JSON.parse(lines[lines.length - 1]);
+              if (lastData.type === 'title' && lastData.title) {
+                title = lastData.title;
+              } else if (lastData.type === 'metadata' && lastData.title) {
+                title = lastData.title;
+              } else if (lastData.title && !lastData.role) {
+                title = lastData.title;
+              }
+            } catch (e) {}
+
+            // Check first few lines for summary or user message
+            for (let i = 0; i < Math.min(10, lines.length); i++) {
+              try {
+                const data = JSON.parse(lines[i]);
+                if (data.summary && !title) {
+                  title = data.summary;
+                  summary = data.summary;
+                }
+                if (data.title && !title) {
+                  title = data.title;
+                }
+                // Get first user message as fallback
+                if (data.type === 'user' && data.message?.content && !firstUserMessage) {
+                  const content = data.message.content;
+                  if (typeof content === 'string') {
+                    firstUserMessage = content.substring(0, 120);
+                  } else if (Array.isArray(content)) {
+                    const textBlock = content.find(c => c.type === 'text');
+                    if (textBlock?.text) {
+                      firstUserMessage = textBlock.text.substring(0, 120);
+                    }
+                  }
+                }
+                // Legacy format
+                if (data.role === 'user' && data.content && !firstUserMessage) {
+                  if (typeof data.content === 'string') {
+                    firstUserMessage = data.content.substring(0, 120);
+                  }
+                }
+              } catch (e) {}
+            }
+
+            // Use first user message as title if no title found
+            if (!title && firstUserMessage) {
+              title = firstUserMessage + (firstUserMessage.length >= 120 ? '...' : '');
+            }
+            if (!title) {
+              title = summary;
+            }
+
+            // Decode project name from path encoding
+            let projectName = projectDir;
+            try {
+              // Project dirs are often encoded like -Users-yuru-projectname
+              projectName = projectDir.replace(/^-/, '/').replace(/-/g, '/');
+              // Get just the last part (actual project name)
+              const parts = projectName.split('/').filter(Boolean);
+              projectName = parts[parts.length - 1] || projectDir;
+            } catch (e) {
+              projectName = projectDir;
+            }
+
+            allConversations.push({
+              id: sessionId,
+              title: title,
+              summary: firstUserMessage || summary,
+              projectPath: projectDir,
+              projectName: projectName,
+              timestamp: sessionStats.mtime.getTime(),
+              messageCount: messageCount,
+              filePath: sessionPath
+            });
+
+          } catch (err) {
+            console.error('Error processing session:', sessionFile, err.message);
+          }
+        }
+      } catch (err) {
+        console.error('Error processing project:', projectDir, err.message);
+      }
+    }
+
+    // Sort by timestamp (newest first) and take top 5
+    allConversations.sort((a, b) => b.timestamp - a.timestamp);
+    const recentConversations = allConversations.slice(0, 5);
+
+    console.log(`📂 Found ${allConversations.length} total conversations, returning ${recentConversations.length} recent`);
+    res.json({ conversations: recentConversations });
+
+  } catch (error) {
+    console.error('Error loading recent conversations:', error);
+    res.status(500).json({ error: 'Failed to load recent conversations', details: error.message });
+  }
+});
+
 // Analytics endpoint - reads all Claude sessions and extracts token usage
 app.get('/claude-analytics', async (req, res) => {
   console.log('📊 Loading analytics from all Claude sessions...');

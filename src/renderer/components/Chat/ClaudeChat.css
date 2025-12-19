@@ -8,7 +8,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: transparent; /* Show body background through */
+  /* Theme background at 50% blended with black */
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
   overflow: hidden; /* Prevent outer container from scrolling */
 }
 
@@ -22,8 +23,8 @@
   position: fixed;
   top: 70px; /* Below title bar and tabs */
   right: 20px;
-  background: rgba(0, 0, 0, 0.9);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--bg-90);
+  border: 1px solid var(--fg-05);
   border-radius: 4px;
   padding: 6px 10px;
   display: flex;
@@ -49,7 +50,7 @@
 .search-input {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--fg-80);
   font-size: 11px;
   font-family: var(--font-mono);
   outline: none;
@@ -58,7 +59,7 @@
 }
 
 .search-input::placeholder {
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--fg-25);
   text-transform: lowercase;
   font-style: italic;
 }
@@ -73,7 +74,7 @@
 
 .search-count {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   font-family: var(--font-mono);
   margin-right: 6px;
   width: 45px; /* Fixed width to prevent jumping */
@@ -83,7 +84,7 @@
 .search-btn {
   background: transparent;
   border: none;
-  color: #808080;
+  color: var(--fg-50);
   cursor: default;
   padding: 4px;
   border-radius: 2px;
@@ -105,7 +106,7 @@
 }
 
 .search-btn.close {
-  color: #808080;
+  color: var(--fg-50);
   margin-left: 4px;
 }
 
@@ -118,7 +119,7 @@
 /* Search highlight in messages */
 .search-highlight {
   background: rgba(var(--accent-rgb), 0.25);
-  color: #ffffff;
+  color: var(--foreground-color);
   border-radius: 2px;
   padding: 1px 2px;
   font-weight: 500;
@@ -134,7 +135,7 @@
   align-items: center;
   justify-content: center;
   height: calc(100vh - 28px - 32px); /* Minus compact title bar and session tabs */
-  background: var(--bg-color, #000000);
+  background: var(--background-color);
 }
 
 .empty-content {
@@ -153,7 +154,7 @@
 }
 
 .empty-content p {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   margin-bottom: 12px;
   font-size: 12px;
   text-transform: lowercase;
@@ -170,20 +171,20 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  background: rgba(255, 153, 204, 0.06);
+  background: rgba(var(--accent-rgb), 0.06);
   border: none;
   color: var(--accent-color);
   padding: 8px 16px;
   border-radius: 8px;
   font-size: 12px;
   font-weight: 500;
-  
+
   transition: background 0.2s ease;
   text-transform: lowercase;
 }
 
 .btn-folder:hover {
-  background: rgba(255, 153, 204, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 
@@ -193,7 +194,7 @@
   align-items: center;
   gap: 8px;
   padding: 8px 24px;
-  background: var(--bg-color, #000000);
+  background: var(--background-color);
   border-bottom: none;
   font-size: 11px;
   text-transform: lowercase;
@@ -205,7 +206,7 @@
 
 .header-path {
   flex: 1;
-  color: #cccccc;
+  color: var(--fg-80);
   font-family: var(--font-mono);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -213,19 +214,19 @@
 }
 
 .btn-change-folder {
-  background: rgba(255, 153, 204, 0.04);
+  background: rgba(var(--accent-rgb), 0.04);
   border: none;
-  color: rgba(255, 153, 204, 0.5);
+  color: rgba(var(--accent-rgb), 0.5);
   padding: 4px 12px;
   border-radius: 6px;
   font-size: 10px;
-  
+
   transition: background 0.2s ease;
   text-transform: lowercase;
 }
 
 .btn-change-folder:hover {
-  background: rgba(255, 153, 204, 0.08);
+  background: rgba(var(--accent-rgb), 0.08);
   color: var(--accent-color);
 }
 
@@ -305,8 +306,8 @@
 }
 
 .message-text code {
-  background: rgba(152, 204, 255, 0.08);
-  color: rgba(255, 255, 255, 0.8);
+  background: rgba(var(--accent-rgb), 0.08);
+  color: var(--fg-80);
   padding: 2px 6px;
   border-radius: 3px;
   font-size: 12px;
@@ -314,7 +315,7 @@
 }
 
 .message-text pre {
-  background: var(--bg-color, #000000);
+  background: var(--background-color, #000000);
   border: 1px solid rgba(255, 153, 153, 0.1);
   border-radius: 0 !important;
   padding: 12px;
@@ -324,14 +325,14 @@
 
 .message-text pre code {
   background: none;
-  color: #cccccc;
+  color: var(--fg-80);
   padding: 0;
 }
 
 .message-text h1,
 .message-text h2,
 .message-text h3 {
-  color: #ff9999;
+  color: var(--accent-color);
   margin: 16px 0 8px 0;
   font-weight: 500;
 }
@@ -394,16 +395,16 @@
 }
 
 .message-text blockquote {
-  border-left: 3px solid #ff99cc;
+  border-left: 3px solid var(--accent-color);
   padding-left: 12px;
   margin: 8px 0;
-  color: #cccccc;
+  color: var(--fg-80);
   font-style: italic;
 }
 
 .message-text hr {
   border: none;
-  border-top: 1px solid rgba(255, 153, 153, 0.1);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.1);
   margin: 16px 0;
 }
 
@@ -512,7 +513,7 @@
 
 /* System and result messages */
 .message.system {
-  color: #606060;
+  color: var(--fg-40);
   font-size: 11px;
   padding: 8px 0;
   opacity: 0.6;
@@ -550,7 +551,7 @@
   align-items: center;
   gap: 6px;
   padding: 0;
-  color: #d0d0d0;
+  color: var(--fg-80);
   font-size: 12px;
   font-family: var(--font-sans);
 }
@@ -649,8 +650,8 @@
 .chat-input-container {
   flex: 0 0 auto;
   padding: 2px 2px 3px 2px; /* Default padding */
-  background: var(--bg-color, #000000);
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--background-color);
+  border-top: 1px solid var(--fg-20);
   transition: background 0.2s ease;
   min-height: 60px;
   max-height: 40vh;
@@ -667,8 +668,8 @@
 .platform-win32 .chat-input-container {
   min-height: 60px;
   max-height: 40vh; /* Limit to 40% of viewport height */
-  background: var(--bg-color, #000000);
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--background-color);
+  border-top: 1px solid var(--fg-20);
   padding: 2px 2px 3px 2px;
   overflow-y: auto; /* Allow scrolling if content gets too tall */
 }
@@ -715,9 +716,9 @@
   justify-content: center;
   padding: 2px 7px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--fg-20);
   border-radius: 4px;
-  color: #444;
+  color: var(--fg-30);
   font-size: 10px;
   font-family: var(--font-mono);
   text-transform: lowercase;
@@ -727,7 +728,7 @@
 
 .context-full-actions .btn-compact:hover,
 .context-full-actions .btn-clear:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
@@ -800,9 +801,9 @@ textarea.context-full {
 
 .chat-input {
   flex: 1;
-  background: var(--bg-color, #000000);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+  border: 1px solid var(--fg-20);
+  color: var(--foreground-color);
   caret-color: var(--accent-color);
   padding: 4px;
   margin-bottom: 0;
@@ -824,7 +825,7 @@ textarea.context-full {
 }
 
 .chat-input:focus {
-  background: var(--bg-color, #000000);
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
   border-color: rgba(var(--accent-rgb), 1);
   overflow-y: auto; /* Show scrollbar on focus if content overflows */
 }
@@ -954,7 +955,7 @@ textarea.context-full {
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: var(--bg-color, #000000);
+  background: var(--background-color, #000000);
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
@@ -980,8 +981,8 @@ textarea.context-full {
   height: 60px;
   border-radius: 8px;
   overflow: hidden;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: var(--fg-02);
+  border: 1px solid var(--fg-05);
 }
 
 .attached-image img {
@@ -998,7 +999,7 @@ textarea.context-full {
   background: rgba(0, 0, 0, 0.8);
   padding: 2px 4px;
   font-size: 7pt;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
   text-transform: lowercase;
 }
 
@@ -1057,7 +1058,7 @@ textarea.context-full {
   padding: 0;
   margin-top: 2px;
   margin-bottom: 1px;
-  background: var(--bg-color, #000000);
+  background: var(--background-color);
   flex-shrink: 0; /* Prevent shrinking */
   position: relative; /* For absolute positioning of dictation button */
   overflow: visible; /* Allow model dropdown to escape */
@@ -1090,7 +1091,7 @@ textarea.context-full {
   align-items: center;
   font-size: 10px;
   font-family: var(--font-mono);
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   text-transform: lowercase;
   user-select: none;
   -webkit-user-select: none;
@@ -1103,8 +1104,8 @@ textarea.context-full {
 
 .btn-clear-context, .btn-stats, .btn-help, .btn-dictation, .btn-context-menu, .btn-context-icon {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--fg-20);
+  color: var(--fg-40);
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 10px;
@@ -1129,13 +1130,13 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   padding: 3px 7px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: var(--accent-rgb);
 }
 
 .btn-clear-context:hover:not(:disabled), .btn-stats:hover, .btn-help:hover, .btn-dictation:hover:not(:disabled):not(.active), .btn-context-menu:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
@@ -1189,14 +1190,14 @@ textarea.context-full {
 
 .btn-clear-context:disabled:hover {
   background: transparent;
-  color: rgba(255, 255, 255, 0.4);
-  border-color: rgba(255, 255, 255, 0.2);
+  color: var(--fg-40);
+  border-color: var(--fg-20);
 }
 
 .btn-help-icon {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--fg-15);
+  color: var(--fg-40);
   padding: 6px;
   border-radius: 4px;
   display: flex;
@@ -1209,7 +1210,7 @@ textarea.context-full {
 }
 
 .btn-help-icon:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
@@ -1220,11 +1221,11 @@ textarea.context-full {
 
 /* Color coding for token usage levels - grey until 90%, then custom negative color */
 .btn-stats.low {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
 }
 
 .btn-stats.low:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
@@ -1265,7 +1266,7 @@ textarea.context-full {
 }
 
 .context-tokens {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   font-family: var(--font-mono);
   margin-right: 4px;
 }
@@ -1276,7 +1277,7 @@ textarea.context-full {
 }
 
 .context-usage.low {
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
 }
 
 .context-usage.medium {
@@ -1292,7 +1293,7 @@ textarea.context-full {
   display: flex;
   gap: 4px;
   padding: 0;
-  background: var(--bg-color, #000000);
+  background: var(--background-color, #000000);
   margin-bottom: 4px;
   flex-wrap: wrap;
 }
@@ -1305,8 +1306,8 @@ textarea.context-full {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  background: var(--bg-color, #000000);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--background-color, #000000);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;
   transition: all 0.2s;
   user-select: none;
@@ -1320,7 +1321,7 @@ textarea.context-full {
 
 .attachment-text {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--fg-90);
   font-family: var(--font-mono);
   opacity: 1;
 }
@@ -1328,7 +1329,7 @@ textarea.context-full {
 .attachment-remove {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--fg-60);
   padding: 0;
   display: flex;
   align-items: center;
@@ -1351,17 +1352,79 @@ textarea.context-full {
   padding: 4px 8px;
   margin-top: 8px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
   font-family: var(--font-mono);
 }
 
 .message-attachment-preview .attachment-text {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
   opacity: 1;
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+/* Confirm Dialog */
+.confirm-dialog {
+  background: var(--background-color);
+  border: 1px solid var(--fg-15);
+  border-radius: 8px;
+  padding: 16px 20px;
+  text-align: center;
+  min-width: 200px;
+}
+
+.confirm-dialog p {
+  margin: 0 0 16px 0;
+  color: var(--fg-70);
+  font-size: 13px;
+}
+
+.confirm-buttons {
+  display: flex;
+  gap: 8px;
+  justify-content: center;
+}
+
+.confirm-buttons button {
+  padding: 6px 16px;
+  border-radius: 4px;
+  border: 1px solid var(--fg-15);
+  background: transparent;
+  color: var(--fg-70);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.confirm-buttons button:hover {
+  background: var(--fg-05);
+  color: var(--foreground-color);
+}
+
+.confirm-buttons button.confirm-danger {
+  background: var(--negative-color);
+  border-color: var(--negative-color);
+  color: var(--background-color);
+}
+
+.confirm-buttons button.confirm-danger:hover {
+  filter: brightness(1.1);
 }
 
 /* Help Modal (Keyboard Shortcuts) */
@@ -1380,7 +1443,7 @@ textarea.context-full {
 
 .help-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 90%;
   max-width: 450px;
@@ -1394,7 +1457,7 @@ textarea.context-full {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--fg-15);
 }
 
 .help-header h3 {
@@ -1408,7 +1471,7 @@ textarea.context-full {
 .help-close {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   cursor: default;
   padding: 2px;
   transition: all 0.2s ease;
@@ -1459,7 +1522,7 @@ textarea.context-full {
 .key-btn {
   display: inline-block;
   background: rgba(128, 128, 128, 0.2);
-  color: rgba(255, 255, 255, 0.8);
+  color: var(--fg-80);
   padding: 1px 4px;
   border-radius: 3px;
   font-family: var(--font-mono);
@@ -1470,7 +1533,7 @@ textarea.context-full {
 }
 
 .key-plus {
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   font-size: 7pt;
   padding: 0 1px;
   user-select: none;
@@ -1479,7 +1542,7 @@ textarea.context-full {
 .shortcut-dots {
   flex: 1;
   margin: 0 3px;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--fg-20);
   overflow: hidden;
   line-height: 1;
   align-self: flex-end;
@@ -1495,7 +1558,7 @@ textarea.context-full {
 }
 
 .shortcut-desc {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--fg-60);
   text-transform: lowercase;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1519,7 +1582,7 @@ textarea.context-full {
 
 .stats-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -1533,7 +1596,7 @@ textarea.context-full {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--fg-15);
   margin-bottom: 0;
 }
 
@@ -1548,7 +1611,7 @@ textarea.context-full {
 .stats-close {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   cursor: default;
   padding: 2px;
   transition: all 0.2s ease;
@@ -1628,7 +1691,7 @@ textarea.context-full {
 }
 
 .stat-name {
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
   font-size: 10px;
   text-transform: lowercase;
 }
@@ -1636,7 +1699,7 @@ textarea.context-full {
 .stat-dots {
   flex: 1;
   margin: 0 6px;
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--fg-20);
   overflow: hidden;
   line-height: 1;
   align-self: flex-end;
@@ -1651,7 +1714,7 @@ textarea.context-full {
 }
 
 .stat-desc {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--fg-60);
   text-transform: lowercase;
   white-space: nowrap;
   flex-shrink: 0;
@@ -1662,7 +1725,7 @@ textarea.context-full {
 
 .breakdown-bar {
   height: 12px;
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   border-radius: 4px;
   overflow: hidden;
   margin-top: 4px;
@@ -1733,7 +1796,7 @@ textarea.context-full {
 
 .recent-modal {
   background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
@@ -1765,7 +1828,7 @@ textarea.context-full {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--fg-15);
   margin-bottom: 0;
   flex-shrink: 0;
   position: sticky;
@@ -1797,7 +1860,7 @@ textarea.context-full {
 .clear-all-icon {
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   padding: 4px;
   display: flex;
   align-items: center;
@@ -1821,7 +1884,7 @@ textarea.context-full {
 .no-recent {
   padding: 20px;
   text-align: center;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   font-size: 12px;
   text-transform: lowercase;
 }
@@ -1874,13 +1937,13 @@ textarea.context-full {
   gap: 8px;
   align-items: center;
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.25);
+  color: var(--fg-25);
   margin-top: 1px;
 }
 
 .recent-item-time {
   font-size: 7pt;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   white-space: nowrap;
   margin-left: 8px;
   font-family: var(--font-sans);
@@ -1914,7 +1977,7 @@ textarea.context-full {
 
 .recent-item-path {
   font-size: 7pt;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   white-space: nowrap;
   overflow-x: auto;
   overflow-y: hidden;
@@ -1941,7 +2004,7 @@ textarea.context-full {
   padding: 0;
   background: none;
   border: none;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   cursor: default;
   transition: all 0.15s ease;
   border-radius: 4px;
@@ -1954,7 +2017,7 @@ textarea.context-full {
 
 .recent-item-container:hover .recent-item-time,
 .recent-item-container:hover .recent-item-path {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
 }
 
 .recent-item-remove:hover {
@@ -1965,7 +2028,7 @@ textarea.context-full {
 .recent-item-number {
   font-family: var(--font-mono);
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.3);
+  color: var(--fg-30);
   width: 18px;
   text-align: right;
   transition: color 0.15s ease;
@@ -1984,7 +2047,7 @@ textarea.context-full {
   justify-content: space-between;
   padding: 6px 12px;
   background: transparent;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  border-top: 1px solid var(--fg-20);
 }
 
 .bash-running-dots {
@@ -1996,7 +2059,7 @@ textarea.context-full {
 
 .bash-running-time {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
   font-family: var(--font-mono);
   margin-left: 8px;
 }
@@ -2039,7 +2102,7 @@ textarea.context-full {
 
 .pending-followup-label {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 500;
@@ -2047,7 +2110,7 @@ textarea.context-full {
 
 .pending-followup-content {
   font-size: 12px;
-  color: rgba(255, 255, 255, 0.85);
+  color: var(--fg-80);
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -2072,7 +2135,7 @@ textarea.context-full {
 
 .pending-followup-attachments {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   font-style: italic;
 }
 
@@ -2114,7 +2177,7 @@ textarea.context-full {
 
 .messages-virtualized {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.1) transparent;
+  scrollbar-color: var(--fg-10) transparent;
   padding-right: 0;
 }
 
@@ -2127,18 +2190,18 @@ textarea.context-full {
 }
 
 .messages-virtualized::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--fg-10);
   border-radius: 4px;
 }
 
 .messages-virtualized::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.2);
+  background: var(--fg-20);
 }
 
 /* Timeline button */
 .btn-timeline {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--fg-10);
   color: rgba(255, 0, 255, 0.5);
   padding: 6px;
   border-radius: 4px;
@@ -2160,7 +2223,7 @@ textarea.context-full {
 /* Agent executor button */
 .btn-agent {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--fg-10);
   color: rgba(0, 255, 255, 0.5);
   padding: 6px;
   border-radius: 4px;
@@ -2177,4 +2240,32 @@ textarea.context-full {
   border-color: rgba(0, 255, 255, 0.3);
   color: rgba(0, 255, 255, 0.8);
   background: rgba(0, 255, 255, 0.05);
+}
+
+/* Empty chat state - resume button */
+.empty-chat-state {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 200px;
+}
+
+.resume-conversation-btn {
+  background: transparent;
+  border: 1px solid var(--fg-10, var(--fg-10));
+  color: var(--fg-40, var(--fg-40));
+  font-size: 13px;
+  font-family: var(--font-mono);
+  padding: 10px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: lowercase;
+}
+
+.resume-conversation-btn:hover {
+  border-color: var(--accent-color, #ff9999);
+  color: var(--accent-color, #ff9999);
+  background: rgba(255, 153, 153, 0.05);
 }

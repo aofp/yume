@@ -1,48 +1,82 @@
 /* CSS Variables - Minimal Black Theme */
 :root {
+  /* Background Color - can be changed via settings */
+  --background-color: #000000;
+  --background-rgb: 0, 0, 0;
+
+  /* Foreground Color - can be changed via settings */
+  /* Used for text, borders, etc. at varying opacities */
+  --foreground-color: #ffffff;
+  --foreground-rgb: 255, 255, 255;
+
+  /* Foreground opacity variants - derived from foreground color */
+  --fg-100: rgba(var(--foreground-rgb), 1);      /* Primary text */
+  --fg-90: rgba(var(--foreground-rgb), 0.9);     /* Near-primary text */
+  --fg-80: rgba(var(--foreground-rgb), 0.8);     /* Strong text */
+  --fg-70: rgba(var(--foreground-rgb), 0.7);     /* Secondary text */
+  --fg-60: rgba(var(--foreground-rgb), 0.6);     /* Tertiary text */
+  --fg-50: rgba(var(--foreground-rgb), 0.5);     /* Muted text */
+  --fg-40: rgba(var(--foreground-rgb), 0.4);     /* Disabled/hint text */
+  --fg-30: rgba(var(--foreground-rgb), 0.3);     /* Strong borders */
+  --fg-25: rgba(var(--foreground-rgb), 0.25);    /* Default borders */
+  --fg-20: rgba(var(--foreground-rgb), 0.2);     /* Subtle borders */
+  --fg-15: rgba(var(--foreground-rgb), 0.15);    /* Very subtle borders */
+  --fg-10: rgba(var(--foreground-rgb), 0.1);     /* Faint borders/backgrounds */
+  --fg-08: rgba(var(--foreground-rgb), 0.08);    /* Hover backgrounds */
+  --fg-05: rgba(var(--foreground-rgb), 0.05);    /* Subtle hover */
+  --fg-02: rgba(var(--foreground-rgb), 0.02);    /* Very subtle backgrounds */
+
+  /* Background opacity variants - derived from background color */
+  --bg-100: rgba(var(--background-rgb), 1);      /* Solid background */
+  --bg-90: rgba(var(--background-rgb), 0.9);     /* Near-solid */
+  --bg-80: rgba(var(--background-rgb), 0.8);     /* Strong overlay */
+  --bg-60: rgba(var(--background-rgb), 0.6);     /* Medium overlay */
+  --bg-50: rgba(var(--background-rgb), 0.5);     /* Half overlay */
+  --bg-30: rgba(var(--background-rgb), 0.3);     /* Light overlay */
+
   /* Accent Color - can be changed via settings */
   --accent-color: #ff9999;
   --accent-rgb: 255, 153, 153;
-  
+
   /* Positive/Negative Colors - can be changed via settings */
   --positive-color: #99ff99;  /* default green for additions/success */
   --positive-rgb: 153, 255, 153;
   --negative-color: #ff9999;  /* default red for removals/changes */
   --negative-rgb: 255, 153, 153;
-  
+
   /* Legacy aliases for compatibility */
   --color-cyan: var(--positive-color);
   --color-magenta: var(--negative-color);
   --color-cyan-rgb: var(--positive-rgb);
   --color-magenta-rgb: var(--negative-rgb);
-  
-  /* Base Colors */
-  --color-bg-primary: #000000;
-  --color-bg-secondary: #050505;
-  --color-bg-tertiary: #0A0A0A;
-  --color-bg-elevated: #0F0F0F;
-  
-  /* Borders */
-  --color-border-subtle: #1A1A1A;
-  --color-border-default: #2A2A2A;
-  --color-border-strong: #3A3A3A;
-  
-  /* Text */
-  --color-text-primary: #FFFFFF;
-  --color-text-secondary: #A0A0A0;
-  --color-text-tertiary: #606060;
-  --color-text-disabled: #404040;
-  
+
+  /* Base Colors - now derived from background */
+  --color-bg-primary: var(--background-color);
+  --color-bg-secondary: var(--background-color);
+  --color-bg-tertiary: var(--background-color);
+  --color-bg-elevated: var(--background-color);
+
+  /* Borders - now derived from foreground */
+  --color-border-subtle: var(--fg-10);
+  --color-border-default: var(--fg-15);
+  --color-border-strong: var(--fg-25);
+
+  /* Text - now derived from foreground */
+  --color-text-primary: var(--fg-100);
+  --color-text-secondary: var(--fg-60);
+  --color-text-tertiary: var(--fg-40);
+  --color-text-disabled: var(--fg-25);
+
   /* Accent Colors */
   --color-accent-blue: #3B82F6;
   --color-accent-green: #10B981;
   --color-accent-red: #EF4444;
   --color-accent-yellow: #F59E0B;
   --color-accent-purple: #8B5CF6;
-  
-  /* Interactive States */
-  --color-hover: rgba(255, 255, 255, 0.05);
-  --color-active: rgba(255, 255, 255, 0.15);
+
+  /* Interactive States - now derived from foreground */
+  --color-hover: var(--fg-05);
+  --color-active: var(--fg-15);
   --color-focus: rgba(59, 130, 246, 0.5);
   --color-selection: rgba(var(--accent-rgb), 0.2);
   
@@ -131,7 +165,7 @@ body {
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   color: var(--color-text-primary);
-  background: #000000;
+  background: var(--background-color);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   border-radius: 4px;
@@ -194,7 +228,7 @@ body {
 }
 
 ::-webkit-scrollbar-corner {
-  background: #000000;
+  background: var(--background-color);
 }
 
 /* Selection */
@@ -243,7 +277,7 @@ textarea {
   font-family: inherit;
   font-size: inherit;
   color: inherit;
-  background: #000000;
+  background: var(--background-color);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
   padding: var(--space-2) var(--space-3);
@@ -270,7 +304,7 @@ a:hover {
 code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  background: #000000;
+  background: var(--background-color);
   padding: 0;
   border-radius: var(--radius-sm);
 }
@@ -279,7 +313,7 @@ pre {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   line-height: normal;
-  background: #000000;
+  background: var(--background-color);
   padding: 0;
   border-radius: 2px !important;
   overflow-x: auto;

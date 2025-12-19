@@ -6,7 +6,7 @@
   left: 0;
   width: 100%;
   height: 100%;
-  background: rgba(0, 0, 0, 0.8);
+  background: var(--background-color, #000000);
   z-index: 100001;
   animation: fadeIn 0.2s ease;
   overflow: hidden;
@@ -16,7 +16,7 @@
 }
 
 .settings-modal {
-  background: #0a0a0a;
+  background: var(--background-color);
   border: none;
   border-radius: 0;
   width: 100%;
@@ -36,11 +36,11 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--fg-15);
   flex-shrink: 0;
   position: sticky;
   top: 0;
-  background: #0a0a0a;
+  background: var(--background-color);
   z-index: 10;
   -webkit-app-region: drag;
 }
@@ -75,7 +75,7 @@
 .settings-close {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   cursor: default;
   padding: 2px;
   transition: all 0.2s ease;
@@ -152,10 +152,10 @@
 .zoom-btn {
   width: 32px;
   height: 32px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
   border-radius: 6px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--fg-60);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -170,7 +170,7 @@
 }
 
 .zoom-btn:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: var(--accent-color);
 }
@@ -186,7 +186,7 @@
   font-family: var(--font-mono);
   font-size: 14px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--fg-60);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -215,7 +215,7 @@
 
 .color-label {
   font-size: 11px;
-  color: #999999;
+  color: var(--fg-60);
   position: relative;
   white-space: nowrap;
 }
@@ -226,7 +226,7 @@
   left: calc(100% + 4px);
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--fg-20);
   font-family: var(--font-mono);
   font-size: 7pt;
   line-height: 1;
@@ -242,16 +242,16 @@
   gap: 4px;
   position: relative;
   z-index: 1;
-  background: #0a0a0a;
+  background: var(--background-color);
 }
 
 .color-reset {
   width: 22px;
   height: 22px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--fg-60);
   cursor: default;
   transition: all 0.2s ease;
   display: flex;
@@ -260,7 +260,7 @@
 }
 
 .color-reset:hover:not(:disabled) {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: var(--accent-color);
 }
@@ -284,8 +284,8 @@
   gap: 6px;
   width: 120px;  /* Match font-input width */
   height: 23px;  /* Match font-input height */
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;  /* Match font-input border-radius */
   cursor: default;
   transition: all 0.2s ease;
@@ -294,7 +294,7 @@
 }
 
 .color-preview:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: var(--accent-color);
 }
@@ -303,7 +303,7 @@
   width: 16px;
   height: 16px;
   border-radius: 3px;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid var(--fg-20);
 }
 
 .color-preview.compact .color-square {
@@ -315,7 +315,7 @@
 .color-preview .color-value {
   font-family: var(--font-mono);
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
   text-transform: lowercase;
   font-weight: 500;
 }
@@ -332,16 +332,17 @@
   -webkit-user-select: none;
   max-width: 90vw;
   max-height: 90vh;
-  overflow: auto;
+  overflow: visible;
 }
 
 /* Color Picker Dropdown */
 .color-picker-dropdown {
-  background: #0a0a0a;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--background-color);
+  border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 444px;
-  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.9);
+  box-shadow: 0 4px 24px var(--bg-90);
+  overflow: visible;
 }
 
 .color-picker-header {
@@ -349,11 +350,11 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--fg-15);
 }
 
 .color-picker-header h4 {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
   font-size: 10px;
   font-weight: 500;
   margin: 0;
@@ -362,10 +363,32 @@
   -webkit-user-select: none;
 }
 
+.color-preview-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 12px;
+}
+
+.color-preview-indicator .preview-swatch {
+  width: 14px;
+  height: 14px;
+  border-radius: 3px;
+  border: 1px solid var(--fg-30);
+}
+
+.color-preview-indicator .preview-hex {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-60);
+  text-transform: lowercase;
+}
+
 .color-picker-close {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   cursor: default;
   padding: 2px;
   transition: all 0.2s ease;
@@ -377,16 +400,22 @@
 
 .color-picker-content {
   padding: 12px;
+  overflow: visible;
 }
 
 .color-row {
   display: flex;
   gap: 2px;
   margin-bottom: 2px;
+  overflow: visible;
 }
 
 .color-row:last-child {
   margin-bottom: 0;
+}
+
+.color-row:first-child {
+  padding-top: 4px; /* Extra room for tooltips on first row */
 }
 
 /* Fixed size for all color swatches */
@@ -403,12 +432,32 @@
 
 .color-swatch:hover {
   transform: scale(1.2);
-  border-color: rgba(255, 255, 255, 0.4);
+  border-color: var(--fg-40);
   z-index: 10;
 }
 
+/* Instant tooltip on hover */
+.color-swatch[title]:hover::before {
+  content: attr(title);
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--background-color);
+  border: 1px solid var(--fg-20);
+  color: var(--fg-80);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  z-index: 100;
+  text-transform: lowercase;
+  pointer-events: none;
+}
+
 .color-swatch.active {
-  border-color: rgba(255, 255, 255, 0.8);
+  border-color: var(--fg-80);
 }
 
 .color-swatch.active::after {
@@ -420,6 +469,14 @@
   color: #000;
   font-size: 10px;
   font-weight: bold;
+}
+
+.color-swatch.bg-swatch {
+  border-color: var(--fg-10) !important;
+}
+
+.color-swatch.bg-swatch.active::after {
+  color: #fff;
 }
 
 @keyframes fadeIn {
@@ -478,17 +535,17 @@
   justify-content: center;
   width: 48px;
   height: 48px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--fg-02);
+  border: 1px solid var(--fg-10);
   border-radius: 4px;
-  color: #999;
+  color: var(--fg-60);
   font-size: 12px;
   cursor: default;
   transition: all 0.2s;
 }
 
 .watermark-upload-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   border-color: var(--accent-color);
   color: var(--accent-color);
 }
@@ -504,8 +561,8 @@
   height: 48px;
   object-fit: contain;
   object-position: bottom right;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--fg-02);
+  border: 1px solid var(--fg-10);
   border-radius: 4px;
   padding: 4px;
 }
@@ -516,8 +573,8 @@
   display: flex;
   justify-content: space-between;
   padding: 8px;
-  background: #0a0a0a;
-  /* border-top: 1px solid rgba(255, 255, 255, 0.15); */
+  background: var(--background-color);
+  /* border-top: 1px solid var(--fg-15); */
   flex-shrink: 0;
   position: sticky;
   bottom: 0;
@@ -574,9 +631,9 @@
 }
 
 .settings-action-btn.about {
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #999999;
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
+  color: var(--fg-60);
 }
 
 .settings-action-btn.about:hover {
@@ -599,11 +656,11 @@
   align-items: center;
   gap: 8px;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--fg-02);
+  border: 1px solid var(--fg-08);
   border-radius: 4px;
   font-size: 11px;
-  color: #999999;
+  color: var(--fg-60);
 }
 
 .license-status.licensed {
@@ -667,11 +724,11 @@
   gap: 4px;
   position: relative;
   z-index: 1;
-  background: #0a0a0a;
+  background: var(--background-color);
 }
 
 .font-label {
-  color: #999999;
+  color: var(--fg-60);
   font-size: 11px;
   text-transform: lowercase;
   position: relative;
@@ -684,7 +741,7 @@
   left: calc(100% + 4px);
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--fg-20);
   font-family: var(--font-mono);
   font-size: 7pt;
   line-height: 1;
@@ -697,10 +754,10 @@
 .font-input {
   width: 120px;
   height: 23px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;
-  color: #ffffff;
+  color: var(--foreground-color);
   font-size: 11px;
   padding: 4px 8px;
   text-transform: none;
@@ -720,7 +777,7 @@
 .font-input:focus {
   outline: none;
   border-color: var(--accent-color);
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--fg-08);
 }
 
 /* Checkbox Settings */
@@ -747,11 +804,11 @@ input[type="checkbox"].checkbox-input {
 /* Toggle switch container with background */
 .toggle-switch-container {
   display: inline-block;
-  background: #111;  /* Dark background container */
+  background: var(--background-color);
   border-radius: 4px;
   height: 23px;
   z-index: 2;
-  border: 1px solid rgba(255, 255, 255, 0.15)
+  border: 1px solid var(--fg-15);
 }
 
 .toggle-switch-container:hover {
@@ -792,7 +849,7 @@ input[type="checkbox"].checkbox-input {
 }
 
 .toggle-switch-label.off {
-  color: rgba(255, 255, 255, 0.5);
+  color: var(--fg-50);
   opacity: 1;
 }
 
@@ -815,7 +872,7 @@ input[type="checkbox"].checkbox-input {
   top: -2px;
   width: calc(58px);  /* Adjust width for padding */
   height: calc(23px - 2px);  /* Adjust height for padding */
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   border-radius: 3px;  /* Smaller radius for inner slider */
   transition: transform 0.2s ease;
   pointer-events: none;
@@ -835,11 +892,11 @@ input[type="checkbox"].checkbox-input {
 }
 
 .toggle-switch:hover .toggle-switch-slider {
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--fg-15);
 }
 
 .checkbox-label {
-  color: #999999;
+  color: var(--fg-60);
   font-size: 11px;
   text-transform: lowercase;
   user-select: none;
@@ -853,7 +910,7 @@ input[type="checkbox"].checkbox-input {
   left: calc(100% + 4px);
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.2);
+  color: var(--fg-20);
   font-family: var(--font-mono);
   font-size: 7pt;
   line-height: 1;
@@ -863,3 +920,72 @@ input[type="checkbox"].checkbox-input {
   width: 1000px;
 }
 
+/* Color Variable Tooltip */
+.color-var-tooltip {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  background: var(--background-color);
+  border: 1px solid var(--fg-20);
+  border-radius: 4px;
+  padding: 8px 10px;
+  z-index: 1000;
+  min-width: 180px;
+  box-shadow: 0 4px 12px var(--bg-80);
+  animation: fadeInTooltip 0.15s ease;
+  pointer-events: none;
+}
+
+@keyframes fadeInTooltip {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.color-var-desc {
+  font-size: 10px;
+  color: var(--fg-50);
+  margin-bottom: 6px;
+  text-transform: lowercase;
+}
+
+.color-var-list {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.color-var-list code {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  color: var(--accent-color);
+  background: var(--fg-05);
+  padding: 2px 4px;
+  border-radius: 2px;
+  display: inline-block;
+}
+
+/* Theme Modal Header - draggable */
+.theme-modal-header {
+  -webkit-app-region: drag;
+  app-region: drag;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: default;
+}
+
+.theme-modal-header * {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.theme-modal-close {
+  -webkit-app-region: no-drag;
+  app-region: no-drag;
+  cursor: default;
+}

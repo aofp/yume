@@ -1,6 +1,6 @@
 .titlebar-wrapper {
   height: 28px;
-  background: transparent; /* Show body background through */
+  background: var(--background-color); /* Use theme background */
   display: flex !important;
   align-items: center;
   position: fixed;
@@ -32,9 +32,9 @@
   width: 24px;
   height: 20px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -46,7 +46,7 @@
 }
 
 .titlebar-settings:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
@@ -119,7 +119,7 @@
   padding: 0;
   user-select: none;
   -webkit-user-select: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   position: relative;
   top: -3px;
 }
@@ -164,8 +164,8 @@
 }
 
 .titlebar-action:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: #ffffff;
+  background: var(--fg-15);
+  color: var(--foreground-color);
 }
 
 .titlebar-controls {
@@ -178,7 +178,7 @@
   z-index: 9999;
   pointer-events: auto !important;
   /* Solid background to block drag */
-  background: var(--bg-color, #000000);
+  background: var(--background-color, #000000);
   /* Isolate from parent drag */
   isolation: isolate;
 }
@@ -189,7 +189,7 @@
   justify-content: center;
   width: 46px;
   height: 100%;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--fg-90);
   transition: background 0.1s ease;
   /* FORCE NO DRAG ON EACH BUTTON */
   -webkit-app-region: no-drag !important;
@@ -203,8 +203,8 @@
 
 .control-minimize:hover,
 .control-maximize:hover {
-  background: rgba(255, 255, 255, 0.15);
-  color: white;
+  background: var(--fg-15);
+  color: var(--foreground-color);
 }
 
 .control-close:hover {
@@ -236,23 +236,23 @@
 
 .stats-text {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   font-family: var(--font-mono);
 }
 
 .stats-btn {
   padding: 3px 8px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;
-  color: #606060;
+  color: var(--fg-40);
   font-size: 10px;
   cursor: default;
   transition: all 0.2s ease;
 }
 
 .stats-btn:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
@@ -273,8 +273,8 @@
 }
 
 .stats-modal {
-  background: var(--bg-color, #000000);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--background-color);
+  border: 1px solid var(--fg-20);
   border-radius: 8px;
   width: 400px;
   padding: 16px;
@@ -298,7 +298,7 @@
   align-items: center;
   margin-bottom: 16px;
   padding-bottom: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid var(--fg-15);
 }
 
 .stats-header h3 {
@@ -316,13 +316,13 @@
   justify-content: center;
   background: transparent;
   border: none;
-  color: #606060;
+  color: var(--fg-40);
   font-size: 16px;
   cursor: default;
 }
 
 .stats-close:hover {
-  color: #ff9999;
+  color: var(--negative-color);
 }
 
 .stats-content {
@@ -336,7 +336,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px;
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--fg-02);
   border-radius: 4px;
 }
 

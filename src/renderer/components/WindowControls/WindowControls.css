@@ -58,8 +58,8 @@
   width: 24px;
   height: 21px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--fg-20);
+  color: var(--fg-40);
   padding: 0;
   border-radius: 4px;
   font-size: 10px;
@@ -77,7 +77,7 @@
 }
 
 .window-control-toggle:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
@@ -111,7 +111,7 @@
 }
 
 .mac-control.close {
-  background: #222;
+  background: var(--fg-15);
 }
 
 .mac-control.close:hover {
@@ -120,34 +120,33 @@
 }
 
 .mac-control.minimize {
-  background: #222;
+  background: var(--fg-15);
 }
 
 .mac-control.minimize:hover {
-  background: #444;
+  background: var(--fg-30);
 }
 
 .mac-control.maximize {
-  background: #222;
+  background: var(--fg-15);
 }
 
 .mac-control.maximize:hover {
-  background: #444;
+  background: var(--fg-30);
 }
 
 /* Grey out all buttons when window is inactive */
 .mac-controls.inactive .mac-control {
-  background: #222;
+  background: var(--fg-15);
 }
 
-/* Keep close button grey when inactive */
+/* Keep close button same as others when inactive */
 .mac-controls.inactive .mac-control.close {
-  background: #222;
-  opacity: 0.6;
+  background: var(--fg-15);
 }
 
 .mac-controls.inactive .mac-control:hover {
-  background: #444;
+  background: var(--fg-30);
   opacity: 1;
 }
 
@@ -161,7 +160,7 @@
   height: 28px;
   border: none;
   background: transparent;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
   cursor: default;
   display: flex;
   align-items: center;
@@ -170,16 +169,16 @@
 }
 
 .window-control:hover {
-  background-color: rgba(255, 255, 255, 0.15);
-  color: rgba(255, 255, 255, 1);
+  background-color: var(--fg-15);
+  color: var(--foreground-color);
 }
 
 .window-control.settings, .window-control.help, .window-control.projects, .window-control.agents, .window-control.analytics, .window-control.refresh {
   width: 24px;
   height: 21px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--fg-20);
+  color: var(--fg-50);
   padding: 0;
   border-radius: 4px;
   font-size: 10px;
@@ -191,7 +190,7 @@
 }
 
 .window-control.settings:hover, .window-control.help:hover, .window-control.projects:hover, .window-control.agents:hover, .window-control.analytics:hover, .window-control.refresh:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
@@ -212,7 +211,7 @@
 
 .window-control.close {
   background-color: transparent;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
 }
 
 .window-control.close:hover {
@@ -222,7 +221,7 @@
 }
 
 .window-control:active {
-  background-color: rgba(255, 255, 255, 0.2);
+  background-color: var(--fg-20);
 }
 
 /* Make room for window controls in the layout */

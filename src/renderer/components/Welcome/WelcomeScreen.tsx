@@ -195,9 +195,9 @@ export const WelcomeScreen: React.FC = () => {
   return (
     <div className="welcome-screen">
       <div className="welcome-content">
-        
+
         <div className="welcome-buttons">
-          <button 
+          <button
             className="welcome-new-button"
             onClick={handleNewSession}
             title="new tab (ctrl+t)"
@@ -205,7 +205,7 @@ export const WelcomeScreen: React.FC = () => {
             <IconPlus size={20} />
           </button>
 
-          <button 
+          <button
             className="action-button"
             onClick={(e) => {
               // Add ripple effect
@@ -213,7 +213,7 @@ export const WelcomeScreen: React.FC = () => {
               const rect = target.getBoundingClientRect();
               const x = e.clientX - rect.left;
               const y = e.clientY - rect.top;
-              
+
               // Create ripple element directly in DOM
               const ripple = document.createElement('div');
               ripple.style.cssText = `
@@ -230,7 +230,7 @@ export const WelcomeScreen: React.FC = () => {
                 animation: welcome-ripple-expand 1s ease-out forwards;
               `;
               target.appendChild(ripple);
-              
+
               // Remove ripple after animation completes
               setTimeout(() => {
                 if (ripple.parentNode) {
@@ -249,8 +249,8 @@ export const WelcomeScreen: React.FC = () => {
           </button>
         </div>
       </div>
-      
-      
+
+
       {/* Help Modal - using shared component */}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
     </div>

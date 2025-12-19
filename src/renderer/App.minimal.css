@@ -8,7 +8,7 @@
 
 /* CSS variables for dynamic theming */
 :root {
-  --bg-color: rgba(0, 0, 0, 1);
+  --bg-color: var(--background-color, #000000);
   --bg-opacity: 1;
 }
 
@@ -18,8 +18,8 @@ html {
 
 body {
   font-family: 'Helvetica Neue', 'Helvetica', 'Inter', 'Segoe UI', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
-  background: var(--bg-color, rgba(0, 0, 0, 1)) !important;
-  color: #ffffff;
+  background: var(--background-color, #000000) !important;
+  color: var(--foreground-color, #ffffff);
   overflow: hidden;
 }
 
@@ -63,7 +63,7 @@ body {
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
+  background: var(--bg-60);
   backdrop-filter: blur(4px);
   display: flex;
   align-items: center;
@@ -155,7 +155,7 @@ ul {
 }
 
 ::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: var(--background-color);
 }
 
 ::-webkit-scrollbar-thumb {
@@ -169,12 +169,12 @@ ul {
 
 /* Global Context Menu - matching tab-context-menu style */
 .global-context-menu {
-  background: #1a1a1a;
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: var(--background-color);
+  border: 1px solid var(--fg-20);
   border-radius: 6px;
   padding: 4px;
   min-width: 150px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 12px var(--bg-50);
   z-index: 200000; /* Above all modals including upgrade modal */
 }
 
@@ -187,7 +187,7 @@ ul {
   padding: 6px 12px;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.7);
+  color: var(--fg-70);
   font-size: 11px;
   cursor: default;
   border-radius: 4px;
@@ -203,6 +203,6 @@ ul {
 
 .global-context-menu .context-menu-separator {
   height: 1px;
-  background: rgba(255, 255, 255, 0.15);
+  background: var(--fg-15);
   margin: 2px;
 }
