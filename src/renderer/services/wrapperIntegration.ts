@@ -258,9 +258,10 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     session.cacheReadTokens = cacheRead; // REPLACE, don't accumulate!
     
     const prevTotal = session.totalTokens;
-    // Total context in use = cached history + new tokens
-    // This is what counts against the 200k limit
-    session.totalTokens = session.cacheReadTokens + session.inputTokens + session.outputTokens;
+    // Total context = accumulated input + accumulated output
+    // Note: input_tokens from API excludes cached content, so accumulating gives correct total
+    // Do NOT add cacheReadTokens here - it's already included in the accumulation
+    session.totalTokens = session.inputTokens + session.outputTokens;
     session.lastUpdateTime = Date.now();
     
     const delta = session.totalTokens - prevTotal;

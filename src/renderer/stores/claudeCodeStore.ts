@@ -1546,10 +1546,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         // Accumulate NEW tokens added this turn
                         analytics.tokens.input += regularInputTokens; // New input
                         analytics.tokens.output += outputTokens; // New output
-                        analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens; // Accumulate cache creation
+                        analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens; // Track for billing (NOT context)
 
-                        // Total is the accumulated sum of all tokens (not including cache_read which is just a snapshot)
-                        analytics.tokens.total += (regularInputTokens + outputTokens + cacheCreationTokens);
+                        // CONTEXT WINDOW = accumulated input + accumulated output
+                        // cache_creation is a BILLING metric for tokens written to cache, NOT additional context!
+                        // The cached content is already counted in input_tokens when it was first sent
+                        analytics.tokens.total += (regularInputTokens + outputTokens);
 
                         // Cache size is a snapshot of conversation history (not part of accumulation)
                         analytics.tokens.cacheSize = cacheReadTokens;

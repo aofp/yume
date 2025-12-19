@@ -2731,7 +2731,9 @@ const MessageRendererBase: React.FC<{
           }
         }
         
-        const showResultText = resultText && !hasAssistantMessage;
+        // Always show compact results, otherwise only show if no assistant message
+        const isCompactResult = message.wrapper_compact || resultText.includes('Conversation compacted');
+        const showResultText = resultText && (isCompactResult || !hasAssistantMessage);
         
         return (
           <div className="message result-success">
