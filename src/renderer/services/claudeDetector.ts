@@ -30,9 +30,19 @@ export interface ClaudeSettings {
   autoDetect: boolean;
 }
 
+// Interface for Windows paths from Tauri backend
+interface WindowsPaths {
+  userprofile?: string;
+  appdata?: string;
+  localappdata?: string;
+  path_dirs?: string[];
+  home?: string;
+}
+
 class ClaudeDetectorService {
   private detectionCache: ClaudeDetectionResult | null = null;
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
+  private windowsPathsCache: WindowsPaths | null = null;
 
   /**
    * Get cached detection results or perform new detection
@@ -85,40 +95,74 @@ class ClaudeDetectorService {
   }
 
   /**
+   * Get Windows paths from Tauri backend (cached)
+   */
+  private async getWindowsPaths(): Promise<WindowsPaths> {
+    if (this.windowsPathsCache) {
+      return this.windowsPathsCache;
+    }
+
+    try {
+      const paths = await invoke<WindowsPaths>('get_windows_paths');
+      this.windowsPathsCache = paths;
+      return paths;
+    } catch (error) {
+      console.warn('Failed to get Windows paths from backend:', error);
+      return {};
+    }
+  }
+
+  /**
    * Detect native Windows Claude installation
    */
   private async detectNativeWindows(): Promise<ClaudeInstallation | null> {
+    // Get Windows paths from Tauri backend
+    const winPaths = await this.getWindowsPaths();
+    const userProfile = winPaths.userprofile;
+    const appData = winPaths.appdata;
+    const pathDirs = winPaths.path_dirs || [];
+
     // Common Windows installation paths
-    const possiblePaths = [
-      // User-specific installations
-      `${process.env.USERPROFILE}\\.claude\\local\\claude.exe`,
-      `${process.env.USERPROFILE}\\AppData\\Local\\Programs\\claude\\claude.exe`,
-      `${process.env.USERPROFILE}\\AppData\\Local\\Claude\\claude.exe`,
-      
-      // npm global installations
-      `${process.env.APPDATA}\\npm\\claude.cmd`,
-      `${process.env.APPDATA}\\npm\\claude.exe`,
-      `${process.env.APPDATA}\\npm\\node_modules\\@anthropic-ai\\claude-cli\\bin\\claude.js`,
-      
-      // Program Files installations
+    const possiblePaths: string[] = [];
+
+    // User-specific installations (only if userProfile is available)
+    if (userProfile) {
+      possiblePaths.push(
+        `${userProfile}\\.claude\\local\\claude.exe`,
+        `${userProfile}\\AppData\\Local\\Programs\\claude\\claude.exe`,
+        `${userProfile}\\AppData\\Local\\Claude\\claude.exe`,
+        // Scoop
+        `${userProfile}\\scoop\\apps\\claude\\current\\claude.exe`,
+        `${userProfile}\\scoop\\shims\\claude.exe`
+      );
+    }
+
+    // npm global installations (only if appData is available)
+    if (appData) {
+      possiblePaths.push(
+        `${appData}\\npm\\claude.cmd`,
+        `${appData}\\npm\\claude.exe`,
+        `${appData}\\npm\\node_modules\\@anthropic-ai\\claude-cli\\bin\\claude.js`
+      );
+    }
+
+    // Program Files installations
+    possiblePaths.push(
       'C:\\Program Files\\Claude\\claude.exe',
       'C:\\Program Files (x86)\\Claude\\claude.exe',
-      
       // Chocolatey
-      'C:\\ProgramData\\chocolatey\\bin\\claude.exe',
-      
-      // Scoop
-      `${process.env.USERPROFILE}\\scoop\\apps\\claude\\current\\claude.exe`,
-      `${process.env.USERPROFILE}\\scoop\\shims\\claude.exe`,
-      
-      // Check PATH environment variable
-      ...this.getPathDirectories().map(dir => `${dir}\\claude.exe`),
-      ...this.getPathDirectories().map(dir => `${dir}\\claude.cmd`)
-    ];
+      'C:\\ProgramData\\chocolatey\\bin\\claude.exe'
+    );
+
+    // Check PATH directories
+    for (const dir of pathDirs) {
+      possiblePaths.push(`${dir}\\claude.exe`);
+      possiblePaths.push(`${dir}\\claude.cmd`);
+    }
 
     // Remove duplicates and undefined values
     const uniquePaths = [...new Set(possiblePaths.filter(p => p))];
-    
+
     console.log('🔍 Checking native Windows paths:', uniquePaths.length, 'locations');
 
     for (const path of uniquePaths) {
@@ -281,16 +325,6 @@ class ClaudeDetectorService {
       console.log('⚠️ Could not get version for:', path);
     }
     return undefined;
-  }
-
-  /**
-   * Get directories from PATH environment variable
-   */
-  private getPathDirectories(): string[] {
-    const pathEnv = process.env.PATH || '';
-    // Use correct separator based on platform (Windows uses ;, Unix/macOS uses :)
-    const separator = navigator.platform.toLowerCase().includes('win') ? ';' : ':';
-    return pathEnv.split(separator).filter(dir => dir.trim());
   }
 
   /**

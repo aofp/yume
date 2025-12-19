@@ -53,18 +53,18 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
             <button 
               className="upgrade-button"
               onClick={async () => {
-                // Open yurucode.com in default browser
+                // Open yuru.be/yurucode in default browser
                 if (window.__TAURI__) {
                   const { invoke } = await import('@tauri-apps/api/core');
                   // Use our custom command to open URL in default browser
-                  await invoke('open_external', { url: 'https://yurucode.com' }).catch(() => {
+                  await invoke('open_external', { url: 'https://yuru.be/yurucode' }).catch(() => {
                     // Fallback to window.open if command fails
-                    window.open('https://yurucode.com', '_blank');
+                    window.open('https://yuru.be/yurucode', '_blank');
                   });
                 } else if (window.electronAPI?.openExternal) {
-                  window.electronAPI.openExternal('https://yurucode.com');
+                  window.electronAPI.openExternal('https://yuru.be/yurucode');
                 } else {
-                  window.open('https://yurucode.com', '_blank');
+                  window.open('https://yuru.be/yurucode', '_blank');
                 }
               }}
             >

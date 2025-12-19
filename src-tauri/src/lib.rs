@@ -684,6 +684,8 @@ pub fn run() {
             commands::claude_detector::execute_command,
             commands::claude_detector::save_claude_settings,
             commands::claude_detector::load_claude_settings,
+            commands::claude_detector::get_env_var,
+            commands::claude_detector::get_windows_paths,
             // Claude version and path commands
             commands::get_claude_version,
             commands::get_claude_path,

@@ -48,12 +48,16 @@ pub fn get_wsl_username() -> Result<String, String> {
             .map_err(|e| format!("Failed to get WSL username: {}", e))?;
         
         if output.status.success() {
-            Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+            // Normalize CRLF to LF for Windows compatibility, then trim
+            Ok(String::from_utf8_lossy(&output.stdout)
+                .replace("\r\n", "\n")
+                .trim()
+                .to_string())
         } else {
             Err("Failed to get WSL username".to_string())
         }
     }
-    
+
     #[cfg(not(target_os = "windows"))]
     {
         Err("WSL is not available on this platform".to_string())
@@ -175,16 +179,72 @@ pub fn save_claude_settings(settings: serde_json::Value) -> Result<(), String> {
 pub fn load_claude_settings() -> Result<serde_json::Value, String> {
     let app_data_dir = dirs::config_dir()
         .ok_or_else(|| "Could not determine config directory".to_string())?;
-    
+
     let settings_file = app_data_dir.join("yurucode").join("claude_settings.json");
-    
+
     if !settings_file.exists() {
         return Ok(serde_json::json!(null));
     }
-    
+
     let content = std::fs::read_to_string(settings_file)
         .map_err(|e| format!("Failed to read settings: {}", e))?;
-    
+
     serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse settings: {}", e))
+}
+
+/// Get an environment variable value
+#[tauri::command]
+pub fn get_env_var(name: String) -> Result<Option<String>, String> {
+    Ok(std::env::var(&name).ok())
+}
+
+/// Get Windows-specific paths for Claude detection
+/// Returns a JSON object with common Windows paths
+#[tauri::command]
+pub fn get_windows_paths() -> Result<serde_json::Value, String> {
+    use std::path::PathBuf;
+
+    let mut paths = serde_json::Map::new();
+
+    // Get USERPROFILE
+    if let Ok(userprofile) = std::env::var("USERPROFILE") {
+        paths.insert("userprofile".to_string(), serde_json::Value::String(userprofile));
+    }
+
+    // Get APPDATA
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        paths.insert("appdata".to_string(), serde_json::Value::String(appdata));
+    }
+
+    // Get LOCALAPPDATA
+    if let Ok(localappdata) = std::env::var("LOCALAPPDATA") {
+        paths.insert("localappdata".to_string(), serde_json::Value::String(localappdata));
+    }
+
+    // Get PATH directories
+    if let Ok(path_env) = std::env::var("PATH") {
+        #[cfg(target_os = "windows")]
+        let separator = ';';
+        #[cfg(not(target_os = "windows"))]
+        let separator = ':';
+
+        let path_dirs: Vec<String> = path_env
+            .split(separator)
+            .map(|s| s.to_string())
+            .filter(|s| !s.is_empty())
+            .collect();
+        paths.insert("path_dirs".to_string(), serde_json::Value::Array(
+            path_dirs.into_iter().map(serde_json::Value::String).collect()
+        ));
+    }
+
+    // Get home directory using dirs crate
+    if let Some(home) = dirs::home_dir() {
+        paths.insert("home".to_string(), serde_json::Value::String(
+            home.to_string_lossy().to_string()
+        ));
+    }
+
+    Ok(serde_json::Value::Object(paths))
 }

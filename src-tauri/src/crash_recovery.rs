@@ -112,7 +112,13 @@ impl CrashRecoveryManager {
             let appdata = std::env::var("APPDATA")
                 .unwrap_or_else(|_| {
                     std::env::var("USERPROFILE")
-                        .map(|p| format!("{}\\AppData\\Roaming", p))
+                        .map(|p| {
+                            PathBuf::from(p)
+                                .join("AppData")
+                                .join("Roaming")
+                                .to_string_lossy()
+                                .to_string()
+                        })
                         .unwrap_or_else(|_| ".".to_string())
                 });
             PathBuf::from(appdata)

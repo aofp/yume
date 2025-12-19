@@ -3,6 +3,8 @@
  * Provides centralized configuration, state management, and logging for hooks
  */
 
+import { isWindows } from './platformUtils';
+
 export interface HookConfig {
   enabled: boolean;
   level?: 'strict' | 'moderate' | 'permissive';
@@ -59,15 +61,14 @@ class HooksConfigService {
   }
 
   private initializeDefaults() {
-    // Determine platform-appropriate default paths
-    const isWindows = typeof window !== 'undefined' &&
-                      navigator.platform.toLowerCase().includes('win');
+    // Determine platform-appropriate default paths using centralized utility
+    const onWindows = isWindows();
 
     // Default whitelist: current working directory (if available) or user's home
-    const defaultWhitelist = isWindows ? [] : [];
+    const defaultWhitelist: string[] = [];
 
     // Default blacklist: system directories that should never be modified
-    const defaultBlacklist = isWindows
+    const defaultBlacklist = onWindows
       ? ['C:\\Windows', 'C:\\Program Files', 'C:\\Program Files (x86)']
       : ['/System', '/etc', '/usr', '/bin', '/sbin'];
 

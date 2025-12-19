@@ -49,7 +49,7 @@
 }
 
 .interrupted-message {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   padding: 0;
   margin: 0;
   background: transparent;
@@ -88,10 +88,10 @@
 
 .action-btn {
   padding: 0;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--foreground-rgb), 0.03);
   border: none;
   border-radius: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
   cursor: default;
   transition: all 0.15s ease;
   display: inline-flex;
@@ -102,7 +102,7 @@
 }
 
 .action-btn:hover {
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--foreground-rgb), 0.08);
   color: var(--accent-color);
 }
 
@@ -116,7 +116,7 @@
   align-items: center;
   gap: 4px;
   padding: 6px 0;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--foreground-rgb), 0.6);
   font-size: 11px;
 }
 
@@ -128,7 +128,7 @@
 
 .init-text {
   font-weight: normal;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--foreground-rgb), 0.6);
 }
 
 .init-folder {
@@ -136,7 +136,7 @@
   align-items: center;
   gap: 4px;
   padding: 2px 8px;
-  background: rgba(255, 255, 255, 0.08);
+  background: rgba(var(--foreground-rgb), 0.08);
   border: none;
   border-radius: 12px;
   margin-left: 0;
@@ -154,7 +154,7 @@
 
 .init-path {
   font-family: var(--font-mono);
-  color: #606060;
+  color: var(--fg-40);
   opacity: 0.5;
   font-size: 10px;
   margin-left: 4px;
@@ -172,7 +172,7 @@
 .message.user .message-bubble {
   background: rgba(var(--accent-rgb), 0.15);
   border: none;
-  color: #ffffff;
+  color: var(--fg-100);
   padding: 8px 12px;
   border-radius: 12px 12px 4px 12px;
   min-width: 60px;
@@ -192,7 +192,7 @@
 .message.assistant .message-bubble {
   background: rgba(128, 128, 128, 0.15);
   border: none;
-  color: #ffffff;
+  color: var(--fg-100);
   padding: 8px 12px;
   border-radius: 12px 12px 12px 4px;
   min-width: 60px;
@@ -243,7 +243,7 @@
 
 /* Markdown Content */
 .markdown-content {
-  color: #ffffff;
+  color: var(--fg-100);
   font-size: 11px;
   line-height: 1.5;
   padding-left: 0;
@@ -264,7 +264,7 @@
 
 .markdown-content code {
   background: rgba(0, 0, 0, 0.5);
-  color: #ffffff;
+  color: var(--fg-100);
   padding: 2px;
   border-radius: 4px;
   font-size: 10px;
@@ -277,7 +277,7 @@
 }
 
 .markdown-content pre {
-  background: #0a0a0a;
+  background: var(--background-color);
   border: none !important;
   border-radius: 2px !important;
   padding: 2px;
@@ -292,7 +292,7 @@
 
 .markdown-content pre code {
   background: none;
-  color: #e0e0e0;
+  color: var(--fg-90);
   padding: 0;
   max-width: 100%;
   display: block;
@@ -323,7 +323,7 @@
 }
 
 .code-language {
-  color: #808080;
+  color: var(--fg-50);
   font-size: 10px;
   font-family: var(--font-mono);
   text-transform: lowercase;
@@ -336,7 +336,7 @@
   justify-content: center;
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   padding: 2px;
   border-radius: 4px;
   font-size: 11px;
@@ -345,8 +345,8 @@
 }
 
 .code-copy-btn:hover {
-  background: rgba(255, 255, 255, 0.1);
-  color: #ffffff;
+  background: rgba(var(--foreground-rgb), 0.1);
+  color: var(--fg-100);
 }
 
 .code-copy-btn:active {
@@ -368,7 +368,7 @@
 }
 
 .markdown-content h3 {
-  color: #808080;
+  color: var(--fg-50);
   margin: 0;
   padding: 0;
   font-weight: 500;
@@ -473,7 +473,7 @@ ol {
   word-break: break-word;
   margin: 0;
   padding: 0;
-  color: rgba(255, 255, 255, 0.55);
+  color: rgba(var(--foreground-rgb), 0.55);
   font-style: italic;
   letter-spacing: 0.2px;
 }
@@ -504,7 +504,7 @@ ol {
 /* Simple thinking block - always fully visible */
 .thinking-block {
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.95);
+  color: rgba(var(--foreground-rgb), 0.95);
 }
 
 .thinking-block.streaming {
@@ -532,7 +532,7 @@ ol {
 
 .thinking-stats {
   font-size: 10px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
 
@@ -549,7 +549,7 @@ ol {
   word-break: break-word;
   margin: 0;
   padding: 0;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--foreground-rgb), 0.6);
 }
 
 .thinking-content {
@@ -567,7 +567,7 @@ ol {
   font-family: var(--font-sans);
   font-size: 8pt;
   line-height: 1.5;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--foreground-rgb), 0.8);
   white-space: pre-wrap;
   word-break: break-word;
 }
@@ -576,7 +576,7 @@ ol {
 .thinking-inline-code {
   font-family: var(--font-mono);
   font-size: 9px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(var(--foreground-rgb), 0.1);
   padding: 1px 4px;
   border-radius: 3px;
   color: var(--color-cyan);
@@ -593,7 +593,7 @@ ol {
 .thinking-code-lang {
   font-family: var(--font-mono);
   font-size: 8px;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   padding: 4px 8px;
   background: rgba(0, 0, 0, 0.2);
   text-transform: lowercase;
@@ -611,7 +611,7 @@ ol {
   font-family: var(--font-mono);
   font-size: 9px;
   line-height: 1.4;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--foreground-rgb), 0.8);
   white-space: pre;
 }
 
@@ -707,7 +707,7 @@ ol {
   padding: 0;
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--foreground-rgb), 0.8);
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 400px;
@@ -747,7 +747,7 @@ ol {
 }
 
 .diff-file-path {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   font-family: var(--font-mono);
   font-size: 8pt;
   line-height: 1.4;
@@ -776,7 +776,7 @@ ol {
 .diff-line .line-number {
   display: inline-block;
   min-width: 35px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--foreground-rgb), 0.3);
   text-align: right;
   flex-shrink: 0;
   font-size: 8pt;
@@ -788,7 +788,7 @@ ol {
   word-wrap: break-word;
   word-break: break-all;
   overflow-wrap: anywhere;
-  color: rgba(255, 255, 255, 1);
+  color: rgba(var(--foreground-rgb), 1);
 }
 
 /* Visible colors for removed/added */
@@ -811,7 +811,7 @@ ol {
 .diff-summary {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
   margin: 2px 0;
   padding-left: 20px;
 }
@@ -835,7 +835,7 @@ ol {
   align-items: center;
   gap: 6px;
   margin-bottom: 0;
-  color: #666;
+  color: var(--fg-40);
   font-size: 10px;
 }
 
@@ -847,7 +847,7 @@ ol {
 }
 
 .edit-file {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--foreground-rgb), 0.9);
   font-family: var(--font-mono);
   font-size: 8pt;
   display: block;
@@ -871,7 +871,7 @@ pre.edit-diff {
   white-space: pre-wrap;
   word-wrap: break-word;
   word-break: break-all;
-  color: #999;
+  color: var(--fg-60);
   background: transparent;
   border: none;
   overflow-x: auto;
@@ -899,7 +899,7 @@ pre.edit-diff {
   width: 40px;
   flex-shrink: 0;
   text-align: right;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--foreground-rgb), 0.3);
   font-size: 8pt;
   font-family: var(--font-mono);
 }
@@ -929,11 +929,11 @@ pre.edit-diff {
 
 .diff-line.context .diff-marker,
 .diff-line.context .diff-text {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
 }
 
 .diff-line.context .line-number {
-  color: rgba(255, 255, 255, 0.1);
+  color: rgba(var(--foreground-rgb), 0.1);
 }
 
 /* Edit tool diff colors */
@@ -955,24 +955,24 @@ pre.edit-diff {
 }
 
 .edit-diff .diff-line-context {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   display: block;
 }
 
 .edit-diff .diff-line-separator {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--foreground-rgb), 0.3);
   display: block;
   text-align: center;
   margin: 2px 0;
 }
 
 .diff-separator {
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
   font-size: 8pt;
   font-family: var(--font-mono);
   margin: 8px 0 4px 0;
   padding: 2px 0;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(var(--foreground-rgb), 0.1);
   text-transform: lowercase;
   opacity: 0.7;
 }
@@ -1019,7 +1019,7 @@ pre.edit-diff {
 }
 
 .tool-detail {
-  color: #ffffff;
+  color: var(--fg-100);
   font-family: var(--font-mono);
   font-size: 10px;
   opacity: 1;
@@ -1041,7 +1041,7 @@ body.platform-win32 .tool-detail {
 
 /* Line info display for edit results */
 .tool-line-info {
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   font-family: var(--font-mono);
   font-size: 9px;
   margin-left: 6px;
@@ -1070,8 +1070,8 @@ body.platform-win32 .tool-detail {
 }
 
 .elapsed-time {
-  color: #808080;
-  font-size: 8pt;
+  color: var(--fg-40);
+  font-size: 8px;
   font-family: var(--font-mono);
   padding: 2px 0 !important;
   margin: 0 0 4px 0 !important;
@@ -1085,7 +1085,7 @@ body.platform-win32 .tool-detail {
 
 .tool-result.success {
   background: transparent;
-  color: #00ff88;
+  color: var(--positive-color);
 }
 
 .tool-result.error {
@@ -1095,13 +1095,13 @@ body.platform-win32 .tool-detail {
 
 .tool-result.collapsed {
   background: transparent;
-  color: #606060;
+  color: var(--fg-40);
   font-style: italic;
 }
 
 .tool-result.minimal {
   background: transparent;
-  color: #606060;
+  color: var(--fg-40);
   opacity: 0.6;
   font-size: 8pt;
   padding: 0;
@@ -1120,7 +1120,7 @@ body.platform-win32 .tool-detail {
   margin: 0;
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--foreground-rgb), 0.6);
   white-space: pre-wrap;
 }
 
@@ -1138,7 +1138,7 @@ body.platform-win32 .tool-detail {
   width: 40px;
   text-align: right;
   padding-right: 8px;
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--foreground-rgb), 0.3);
   flex-shrink: 0;
   font-size: 8pt;
   font-family: var(--font-mono);
@@ -1167,7 +1167,7 @@ body.platform-win32 .tool-detail {
   padding: 0;
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.85);
+  color: rgba(var(--foreground-rgb), 0.85);
   white-space: pre-wrap;
   word-break: break-all;
   max-height: 400px;
@@ -1200,7 +1200,7 @@ body.platform-win32 .tool-detail {
   margin: 0;
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--foreground-rgb), 0.6);
   white-space: pre-wrap;
   word-break: break-all;
 }
@@ -1214,10 +1214,10 @@ body.platform-win32 .tool-detail {
   margin: 0;
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--foreground-rgb), 0.8);
   white-space: pre-wrap;
   word-break: break-all;
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--foreground-rgb), 0.02);
   padding: 8px;
   border-radius: 4px;
 }
@@ -1226,7 +1226,7 @@ body.platform-win32 .tool-detail {
   display: block;
   margin-top: 4px;
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
   font-family: var(--font-mono);
 }
 
@@ -1234,7 +1234,7 @@ body.platform-win32 .tool-detail {
   display: block;
   margin-top: 4px;
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   font-family: var(--font-mono);
   cursor: default;
 }
@@ -1250,7 +1250,7 @@ body.platform-win32 .tool-detail {
 .result-text {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
 }
 
 /* ===== TOOL-SPECIFIC RESULT STYLES ===== */
@@ -1276,7 +1276,7 @@ body.platform-win32 .tool-detail {
 .write-info {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
 
@@ -1295,13 +1295,13 @@ body.platform-win32 .tool-detail {
 }
 
 .write-line .line-number {
-  color: rgba(255, 255, 255, 0.3);
+  color: rgba(var(--foreground-rgb), 0.3);
   margin-right: 8px;
   user-select: none;
 }
 
 .write-line .line-text {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
 }
 
 /* Bash Output */
@@ -1311,7 +1311,7 @@ body.platform-win32 .tool-detail {
   gap: 6px;
   margin-bottom: 4px;
   padding: 4px 8px;
-  background: rgba(255, 255, 255, 0.03);
+  background: rgba(var(--foreground-rgb), 0.03);
   border-radius: 4px;
 }
 
@@ -1323,13 +1323,13 @@ body.platform-win32 .tool-detail {
 }
 
 .bash-cmd {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--foreground-rgb), 0.8);
   font-family: var(--font-mono);
   font-size: 8pt;
 }
 
 .bash-line {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   font-size: 8pt;
   line-height: 1.4;
 }
@@ -1340,7 +1340,7 @@ body.platform-win32 .tool-detail {
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .search-pattern {
@@ -1352,14 +1352,14 @@ body.platform-win32 .tool-detail {
 .search-count {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
 
 .search-line {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
 
@@ -1373,7 +1373,7 @@ body.platform-win32 .tool-detail {
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .file-pattern {
@@ -1385,7 +1385,7 @@ body.platform-win32 .tool-detail {
 .file-count {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
 
@@ -1396,7 +1396,7 @@ body.platform-win32 .tool-detail {
 }
 
 .file-item {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
 
@@ -1410,7 +1410,7 @@ body.platform-win32 .tool-detail {
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .dir-path {
@@ -1422,7 +1422,7 @@ body.platform-win32 .tool-detail {
 .dir-count {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
 
@@ -1433,7 +1433,7 @@ body.platform-win32 .tool-detail {
 }
 
 .dir-item {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
 
@@ -1447,7 +1447,7 @@ body.platform-win32 .tool-detail {
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .web-query {
@@ -1463,7 +1463,7 @@ body.platform-win32 .tool-detail {
 }
 
 .web-result-line {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
 
@@ -1477,7 +1477,7 @@ body.platform-win32 .tool-detail {
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .web-url {
@@ -1493,7 +1493,7 @@ body.platform-win32 .tool-detail {
 }
 
 .web-line {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
 
@@ -1507,7 +1507,7 @@ body.platform-win32 .tool-detail {
   align-items: center;
   gap: 6px;
   margin-bottom: 4px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .task-desc {
@@ -1519,9 +1519,9 @@ body.platform-win32 .tool-detail {
 .task-type {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.4);
+  color: rgba(var(--foreground-rgb), 0.4);
   padding: 1px 6px;
-  background: rgba(255, 255, 255, 0.05);
+  background: rgba(var(--foreground-rgb), 0.05);
   border-radius: 3px;
   margin-left: auto;
 }
@@ -1533,7 +1533,7 @@ body.platform-win32 .tool-detail {
 }
 
 .task-line {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
 
@@ -1546,14 +1546,14 @@ body.platform-win32 .tool-detail {
 }
 
 .tool-result.simple-confirm .result-text {
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(var(--foreground-rgb), 0.6);
 }
 
 /* Generic Output - Clean without line numbers */
 .tool-result.generic-output .result-line {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
 
@@ -1564,15 +1564,15 @@ body.platform-win32 .tool-detail {
   align-items: flex-start;
   gap: 4px;
   padding: 12px 0;
-  color: #ffb3d9;
+  color: var(--accent-color);
   font-size: 11px;
-  border-top: 1px solid rgba(255, 153, 204, 0.1);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.1);
   margin-top: 12px;
   animation: resultSlide 0.4s ease;
 }
 
 .result-text-content {
-  color: rgba(255, 255, 255, 0.9);
+  color: rgba(var(--foreground-rgb), 0.9);
   font-size: 12px;
   font-family: var(--font-mono);
   margin-bottom: 4px;
@@ -1637,7 +1637,7 @@ body.platform-win32 .tool-detail {
   gap: 6px;
   padding: 4px 8px;
   font-size: 11px;
-  color: #a0a0a0;
+  color: var(--fg-60);
   opacity: 0.7;
 }
 
@@ -1656,7 +1656,7 @@ body.platform-win32 .tool-detail {
 /* Streaming Indicator */
 .streaming-loader {
   display: inline-block;
-  color: #666666;
+  color: var(--fg-40);
   opacity: 1;
   animation: spin 1s linear infinite;
   margin-left: 6px;
@@ -1726,7 +1726,7 @@ body.platform-win32 .tool-detail {
   font-family: var(--font-mono);
   font-size: 8pt;
   line-height: 1.4;
-  color: #a0a0a0;
+  color: var(--fg-60);
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
@@ -1778,7 +1778,7 @@ body.platform-win32 .tool-detail {
   border-radius: 4px;
   font-size: 11px;
   transition: all 0.2s ease;
-  color: #d0d0d0;
+  color: var(--fg-80);
 }
 
 .todo-icon {
@@ -1794,7 +1794,7 @@ body.platform-win32 .tool-detail {
 }
 
 .todo-icon.pending {
-  color: #666666; /* grey for pending tasks */
+  color: var(--fg-40); /* grey for pending tasks */
 }
 
 .todo-item.completed {
@@ -1820,7 +1820,7 @@ body.platform-win32 .tool-detail {
 }
 
 .todo-item.pending .todo-content {
-  color: #cccccc;
+  color: var(--fg-80);
 }
 
 .todo-content {
@@ -1836,7 +1836,7 @@ body.platform-win32 .tool-detail {
 }
 
 .tool-use.todo-write .tool-detail {
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(var(--foreground-rgb), 0.8);
   font-family: var(--font-mono);
   font-size: 10px;
   opacity: 1;
@@ -1900,9 +1900,9 @@ code *::-moz-selection {
   padding: 4px 8px;
   border-radius: 4px;
   font-size: 11px;
-  color: #a0a0a0;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--fg-60);
+  background: rgba(var(--foreground-rgb), 0.03);
+  border: 1px solid rgba(var(--foreground-rgb), 0.05);
 }
 
 .compact-message {
@@ -1945,22 +1945,22 @@ code *::-moz-selection {
 .markdown-table th,
 .markdown-table td {
   padding: 6px 12px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(var(--foreground-rgb), 0.1);
   text-align: left;
 }
 
 .markdown-table th {
-  background: rgba(255, 255, 255, 0.05);
-  color: rgba(255, 255, 255, 0.9);
+  background: rgba(var(--foreground-rgb), 0.05);
+  color: rgba(var(--foreground-rgb), 0.9);
   font-weight: 600;
 }
 
 .markdown-table td {
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(var(--foreground-rgb), 0.7);
 }
 
 .markdown-table tr:nth-child(even) td {
-  background: rgba(255, 255, 255, 0.02);
+  background: rgba(var(--foreground-rgb), 0.02);
 }
 
 .markdown-table tr:hover td {

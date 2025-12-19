@@ -1479,7 +1479,11 @@ pub async fn get_claude_version() -> Result<String, String> {
         .map_err(|e| format!("Failed to run claude --version: {}", e))?;
     
     if output.status.success() {
-        let version = String::from_utf8_lossy(&output.stdout).trim().to_string();
+        // Normalize CRLF to LF for Windows compatibility, then trim
+        let version = String::from_utf8_lossy(&output.stdout)
+            .replace("\r\n", "\n")
+            .trim()
+            .to_string();
         Ok(version)
     } else {
         Ok("unknown".to_string())
@@ -1500,14 +1504,18 @@ pub async fn get_claude_path() -> Result<String, String> {
             .map_err(|e| format!("Failed to run which claude: {}", e))?;
         
         if output.status.success() {
-            let path = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            // Normalize CRLF to LF for Windows compatibility, then trim
+            let path = String::from_utf8_lossy(&output.stdout)
+                .replace("\r\n", "\n")
+                .trim()
+                .to_string();
             Ok(path)
         } else {
             // Default path on macOS
             Ok("/usr/local/bin/claude".to_string())
         }
     }
-    
+
     #[cfg(target_os = "windows")]
     {
         let output = Command::new("where")

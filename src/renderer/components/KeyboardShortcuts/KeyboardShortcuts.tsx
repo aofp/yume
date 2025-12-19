@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { IconX, IconKeyboard } from '@tabler/icons-react';
+import { isMacOS } from '../../services/platformUtils';
 import './KeyboardShortcuts.css';
 
 interface KeyboardShortcutsProps {
@@ -7,9 +8,8 @@ interface KeyboardShortcutsProps {
 }
 
 export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose }) => {
-  // Detect if we're on macOS
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0 || 
-                navigator.userAgent.toUpperCase().indexOf('MAC') >= 0;
+  // Use centralized platform detection
+  const isMac = isMacOS();
   const modKey = isMac ? 'cmd' : 'ctrl';
   
   // Handle keyboard shortcuts

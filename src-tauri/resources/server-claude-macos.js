@@ -2628,6 +2628,7 @@ io.on('connection', (socket) => {
         // Send the result back
         const output = stdout || stderr || '(no output)';
         socket.emit(`message:${sessionId}`, {
+          id: `bash-response-${Date.now()}`,
           type: 'assistant',
           message: {
             content: [
@@ -2662,6 +2663,7 @@ io.on('connection', (socket) => {
         const formattedOutput = `❌ Command failed with exit code ${exitCode}\n\n${output}`;
         
         socket.emit(`message:${sessionId}`, {
+          id: `bash-response-${Date.now()}`,
           type: 'assistant',
           message: {
             content: [
@@ -2671,7 +2673,7 @@ io.on('connection', (socket) => {
           streaming: false,
           timestamp: Date.now()
         });
-        
+
         // Still report success since we sent the output as a message
         if (callback) callback({ success: true });
       }

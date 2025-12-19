@@ -1340,17 +1340,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 const content = typeof m.message === 'object' ? m.message?.content : m.message;
                 return typeof content === 'string' && content.startsWith('!');
               });
-              
+
               // Also exclude assistant messages that are bash responses (id starts with 'bash-')
-              const nonBashAssistantMessages = existingMessages.filter(m => 
-                m.type === 'assistant' && 
+              const nonBashAssistantMessages = existingMessages.filter(m =>
+                m.type === 'assistant' &&
                 !m.id?.startsWith?.('bash-')
               );
-              const bashResponses = existingMessages.filter(m => 
-                m.type === 'assistant' && 
+              const bashResponses = existingMessages.filter(m =>
+                m.type === 'assistant' &&
                 m.id?.startsWith?.('bash-')
               );
-              
+
               analytics.totalMessages = existingMessages.length - bashCommands.length - bashResponses.length;
               analytics.userMessages = nonBashUserMessages.length;
               analytics.assistantMessages = nonBashAssistantMessages.length;

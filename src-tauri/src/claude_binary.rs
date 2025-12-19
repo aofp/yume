@@ -153,7 +153,11 @@ fn try_which_command() -> Option<ClaudeInstallation> {
 
     match Command::new("which").arg("claude").output() {
         Ok(output) if output.status.success() => {
-            let output_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+            // Normalize CRLF to LF for Windows compatibility, then trim
+            let output_str = String::from_utf8_lossy(&output.stdout)
+                .replace("\r\n", "\n")
+                .trim()
+                .to_string();
 
             if output_str.is_empty() {
                 return None;
@@ -281,14 +285,20 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
     #[cfg(target_os = "windows")]
     {
         if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
+            let path = PathBuf::from(&appdata)
+                .join("Claude")
+                .join("claude.exe");
             paths_to_check.push((
-                format!("{}\\Claude\\claude.exe", appdata),
+                path.to_string_lossy().to_string(),
                 "windows-local".to_string(),
             ));
         }
         if let Ok(programfiles) = std::env::var("ProgramFiles") {
+            let path = PathBuf::from(&programfiles)
+                .join("Claude")
+                .join("claude.exe");
             paths_to_check.push((
-                format!("{}\\Claude\\claude.exe", programfiles),
+                path.to_string_lossy().to_string(),
                 "windows-program".to_string(),
             ));
         }
