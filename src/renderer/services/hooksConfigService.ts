@@ -59,12 +59,24 @@ class HooksConfigService {
   }
 
   private initializeDefaults() {
+    // Determine platform-appropriate default paths
+    const isWindows = typeof window !== 'undefined' &&
+                      navigator.platform.toLowerCase().includes('win');
+
+    // Default whitelist: current working directory (if available) or user's home
+    const defaultWhitelist = isWindows ? [] : [];
+
+    // Default blacklist: system directories that should never be modified
+    const defaultBlacklist = isWindows
+      ? ['C:\\Windows', 'C:\\Program Files', 'C:\\Program Files (x86)']
+      : ['/System', '/etc', '/usr', '/bin', '/sbin'];
+
     const defaults: Record<string, HookConfig> = {
       tool_shield: {
         enabled: true,
         level: 'strict',
-        whitelist: ['/Users/yuru/yurucode'],
-        blacklist: ['/System', '/etc', '/usr', '/bin', '/sbin'],
+        whitelist: defaultWhitelist,
+        blacklist: defaultBlacklist,
         patterns: {
           dangerous_commands: [
             'rm -rf /',

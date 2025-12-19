@@ -641,35 +641,13 @@ export class TauriClaudeClient {
       console.log(`[TauriClient] 📊 Setting up token listener on ${tokenChannel}`);
       
       listen(tokenChannel, (event: Event<any>) => {
-        console.log('[TauriClient] 📊 Token update received:', event.payload);
-        const tokenData = event.payload;
-        
-        // Process through wrapper with token data
-        if (tokenData?.tokens) {
-          const tokenMessage = {
-            type: 'result',
-            usage: {
-              input_tokens: tokenData.tokens.input || 0,
-              output_tokens: tokenData.tokens.output || 0,
-              cache_creation_input_tokens: tokenData.tokens.cache_creation || 0,
-              cache_read_input_tokens: tokenData.tokens.cache_read || 0
-            },
-            rust_tokens: tokenData.tokens, // Keep original for debugging
-            source: 'token-listener' // Mark source for debugging
-          };
-          
-          console.log('[TauriClient] 📊 TOKEN LISTENER creating synthetic result:', {
-            input: tokenData.tokens.input,
-            output: tokenData.tokens.output,
-            total: tokenData.tokens.total,
-            sessionId: currentSessionId,
-            source: 'token-listener'
-          });
-          
-          // Process through wrapper before sending to handler
-          const processed = processWrapperMessage(tokenMessage, currentSessionId);
-          handler(processed);
-        }
+        // DEBUG ONLY - tokens are already processed via the main message channel
+        // The raw JSON with usage data goes through processWrapperMessage which accumulates tokens
+        // This listener is for debugging/monitoring only to avoid double-counting
+        console.log('[TauriClient] 📊 Token update (debug only):', {
+          sessionId: currentSessionId,
+          tokens: event.payload?.tokens
+        });
       }).then(unlisten => {
         tokenUnlisten = unlisten;
         activeListeners.set(tokenChannel, unlisten);
@@ -679,41 +657,15 @@ export class TauriClaudeClient {
     // Set up initial token listener
     setupTokenListener(sessionId);
     
-    // Also listen globally for ANY token events (for debugging)
+    // Global token listener - DEBUG ONLY, does not call handler to avoid double-counting
+    // The session-specific listener above handles actual token processing
     listen('claude-tokens', (event: Event<any>) => {
-      console.log('[TauriClient] 📊🔥 GLOBAL token event received:', {
-        payload: event.payload,
-        currentSessionId,
-        originalSessionId: sessionId,
-        tokenSessionId: event.payload?.session_id,
-        matches: event.payload?.session_id === currentSessionId || event.payload?.session_id === sessionId
+      // Debug logging only - don't process to avoid double-counting with session-specific listener
+      console.log('[TauriClient] 📊 GLOBAL token event (debug only):', {
+        sessionId: event.payload?.session_id,
+        tokens: event.payload?.tokens,
+        currentSessionId
       });
-      const tokenData = event.payload;
-      
-      // TEMPORARILY: Process ALL token events for debugging
-      // if (tokenData?.session_id === currentSessionId || tokenData?.session_id === sessionId) {
-      if (true) { // TEMP: Process all token events
-        console.log('[TauriClient] 📊✅ Processing token event (TEMP: processing all)');
-        
-        if (tokenData?.tokens) {
-          const tokenMessage = {
-            type: 'result',
-            usage: {
-              input_tokens: tokenData.tokens.input || 0,
-              output_tokens: tokenData.tokens.output || 0,
-              cache_creation_input_tokens: tokenData.tokens.cache_creation || 0,
-              cache_read_input_tokens: tokenData.tokens.cache_read || 0
-            },
-            rust_tokens: tokenData.tokens // Keep original for debugging
-          };
-          
-          console.log('[TauriClient] 📊 Sending global token message to handler:', tokenMessage);
-          
-          // Process through wrapper before sending to handler
-          const processed = processWrapperMessage(tokenMessage, currentSessionId);
-          handler(processed);
-        }
-      }
     }).then(unlisten => {
       activeListeners.set('claude-tokens-global', unlisten);
     });

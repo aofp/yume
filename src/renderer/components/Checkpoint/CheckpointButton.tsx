@@ -72,7 +72,7 @@ export const CheckpointButton: React.FC<CheckpointButtonProps> = ({
         className={`btn-dictation ${isCreating ? 'active' : ''}`}
         onClick={() => setShowDialog(true)}
         disabled={disabled || isCreating}
-        title="Create checkpoint"
+        title="create checkpoint"
       >
         {isCreating ? (
           <IconCameraFilled size={14} />

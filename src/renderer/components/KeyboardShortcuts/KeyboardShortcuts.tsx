@@ -110,7 +110,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">
-                <span className="key-btn">ctrl</span>
+                <span className="key-btn">{modKey}</span>
                 <span className="key-plus">+</span>
                 <span className="key-btn">1-9</span>
               </div>
@@ -156,6 +156,24 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               </div>
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">agents</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">{modKey}</span>
+                <span className="key-plus">+</span>
+                <span className="key-btn">e</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">files panel</span>
+            </div>
+            <div className="shortcut-item">
+              <div className="shortcut-keys">
+                <span className="key-btn">{modKey}</span>
+                <span className="key-plus">+</span>
+                <span className="key-btn">g</span>
+              </div>
+              <span className="shortcut-dots"></span>
+              <span className="shortcut-desc">git panel</span>
             </div>
             <div className="shortcut-item">
               <div className="shortcut-keys">

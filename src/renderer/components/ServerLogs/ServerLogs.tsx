@@ -74,7 +74,7 @@ export const ServerLogs: React.FC<ServerLogsProps> = ({ isOpen, onClose }) => {
             <button className="server-logs-copy" onClick={copyLogs} title="copy all">
               <IconCopy size={16} />
             </button>
-            <button className="server-logs-close" onClick={onClose} title="close (Esc)">
+            <button className="server-logs-close" onClick={onClose} title="close (esc)">
               <IconX size={16} />
             </button>
           </div>

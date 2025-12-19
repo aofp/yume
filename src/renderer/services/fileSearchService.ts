@@ -257,16 +257,16 @@ export async function getGitChangedFiles(workingDirectory: string): Promise<File
         results.push({
           type: 'file',
           path: `${workingDirectory}/${file}`,
-          name: file.split('/').pop() || file,
+          name: file.split(/[/\\]/).pop() || file,
           relativePath: file
         });
       }
-      
+
       for (const file of status.added) {
         results.push({
           type: 'file',
           path: `${workingDirectory}/${file}`,
-          name: file.split('/').pop() || file,
+          name: file.split(/[/\\]/).pop() || file,
           relativePath: file
         });
       }
@@ -316,7 +316,7 @@ function getMockResults(query: string, workingDirectory: string): FileSearchResu
     .map(file => ({
       type: 'file' as const,
       path: `${normalizedWorkingDir}/${file}`,
-      name: file.split('/').pop() || file,
+      name: file.split(/[/\\]/).pop() || file,
       relativePath: file
     }));
 }

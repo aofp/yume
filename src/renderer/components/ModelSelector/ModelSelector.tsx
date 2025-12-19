@@ -15,6 +15,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
   value,
   onChange
 }) => {
+  // Platform detection for keyboard shortcuts
+  const isMac = navigator.platform.toLowerCase().includes('mac');
+  const modKey = isMac ? 'cmd' : 'ctrl';
+
   const [isHighlighted, setIsHighlighted] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
@@ -120,7 +124,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         ref={buttonRef}
         className={`model-selector-trigger ${isHighlighted ? 'highlighted' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
-        title="switch model (ctrl+o)"
+        title={`switch model (${modKey}+o)`}
       >
         {selectedModel.name}
         <IconChevronUp size={12} className="chevron-up" />

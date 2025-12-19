@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useShallow } from 'zustand/react/shallow';
-import { 
-  IconSend, 
-  IconPlayerStop, 
+import { invoke } from '@tauri-apps/api/core';
+import {
+  IconSend,
+  IconPlayerStop,
   IconBook,
   IconPencil,
   IconScissors,
@@ -29,7 +30,10 @@ import {
   IconFlare,
   IconArrowsMinimize,
   IconGitBranch,
+  IconFile,
+  IconChevronRight,
 } from '@tabler/icons-react';
+import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
 import { VirtualizedMessageList, VirtualizedMessageListRef } from './VirtualizedMessageList';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -134,6 +138,141 @@ const getToolDisplay = (name: string, input: any) => {
   return displays[name || ''] ? displays[name || ''](input) : defaultDisplay;
 };
 
+// Recursive FileTreeNode component for nested folder navigation
+interface FileTreeNodeProps {
+  item: any;
+  depth: number;
+  selectedFile: string | null;
+  expandedFolders: Set<string>;
+  gitStatus: { modified: string[]; added: string[]; deleted: string[] } | null;
+  workingDirectory: string;
+  focusedPath: string | null;
+  onToggleFolder: (path: string) => void;
+  onFileClick: (path: string, hasGitChanges: boolean) => void;
+  onContextMenu: (e: React.MouseEvent, path: string) => void;
+}
+
+const FileTreeNode: React.FC<FileTreeNodeProps> = ({
+  item,
+  depth,
+  selectedFile,
+  expandedFolders,
+  gitStatus,
+  workingDirectory,
+  focusedPath,
+  onToggleFolder,
+  onFileClick,
+  onContextMenu,
+}) => {
+  // Backend serializes as "type" not "file_type" due to serde rename
+  const isDirectory = item.type === 'directory';
+  const isExpanded = expandedFolders.has(item.path);
+  const isSelected = selectedFile === item.path;
+  const isFocused = focusedPath === item.path;
+
+  // Get relative path for git status matching (normalize path separators for cross-platform)
+  const normalizedPath = item.path.replace(/\\/g, '/');
+  const normalizedWorkDir = workingDirectory.replace(/\\/g, '/');
+  const relativePath = normalizedPath.replace(normalizedWorkDir, '').replace(/^\//, '');
+
+  // Check git status for files
+  const isModified = gitStatus?.modified.includes(relativePath) || false;
+  const isAdded = gitStatus?.added.includes(relativePath) || false;
+  const isDeleted = gitStatus?.deleted.includes(relativePath) || false;
+  const hasGitChanges = isModified || isAdded || isDeleted;
+
+  // For directories, check if any children have git changes
+  const folderPrefix = relativePath ? `${relativePath}/` : '';
+  const hasModifiedChildren = isDirectory && gitStatus?.modified.some(f => f.startsWith(folderPrefix));
+  const hasAddedChildren = isDirectory && gitStatus?.added.some(f => f.startsWith(folderPrefix));
+  const hasDeletedChildren = isDirectory && gitStatus?.deleted.some(f => f.startsWith(folderPrefix));
+  const hasChangedChildren = hasModifiedChildren || hasAddedChildren || hasDeletedChildren;
+
+  // Get git status indicator
+  const getGitIndicator = () => {
+    if (isModified) return <span className="file-git-status modified">M</span>;
+    if (isAdded) return <span className="file-git-status added">A</span>;
+    if (isDeleted) return <span className="file-git-status deleted">D</span>;
+    // For folders with changed children, show a dot indicator
+    if (hasChangedChildren) return <span className="file-git-status folder-changed">•</span>;
+    return null;
+  };
+
+  // Get git status class for coloring - files use their status, folders use children status
+  const getGitClass = () => {
+    if (isModified) return 'git-modified';
+    if (isAdded) return 'git-added';
+    if (isDeleted) return 'git-deleted';
+    // Folders: prioritize added (green) over modified (accent)
+    if (hasAddedChildren) return 'git-added';
+    if (hasModifiedChildren) return 'git-modified';
+    if (hasDeletedChildren) return 'git-deleted';
+    return '';
+  };
+  const gitClass = getGitClass();
+
+  return (
+    <React.Fragment>
+      <div
+        className={`file-tree-item ${isDirectory ? 'directory' : ''} ${isSelected ? 'selected' : ''} ${isFocused ? 'focused' : ''} ${gitClass}`}
+        style={{ paddingLeft: `${6 + depth * 16}px` }}
+        onClick={() => {
+          if (isDirectory) {
+            onToggleFolder(item.path);
+          } else {
+            onFileClick(item.path, hasGitChanges);
+          }
+        }}
+        onContextMenu={(e) => {
+          if (!isDirectory) {
+            onContextMenu(e, item.path);
+          }
+        }}
+      >
+        {isDirectory ? (
+          <>
+            <IconChevronRight
+              size={10}
+              stroke={1.5}
+              style={{
+                transform: isExpanded ? 'rotate(90deg)' : 'none',
+                transition: 'transform 0.15s ease'
+              }}
+            />
+            <IconFolder size={12} stroke={1.5} />
+          </>
+        ) : (
+          <>
+            <span style={{ width: 10 }} />
+            <IconFile size={12} stroke={1.5} />
+          </>
+        )}
+        <span className="file-tree-name">{item.name}</span>
+        {getGitIndicator()}
+      </div>
+      {isDirectory && isExpanded && item.children && (
+        <div className="file-tree-children">
+          {item.children.map((child: any) => (
+            <FileTreeNode
+              key={child.path}
+              item={child}
+              depth={depth + 1}
+              selectedFile={selectedFile}
+              expandedFolders={expandedFolders}
+              gitStatus={gitStatus}
+              workingDirectory={workingDirectory}
+              focusedPath={focusedPath}
+              onToggleFolder={onToggleFolder}
+              onFileClick={onFileClick}
+              onContextMenu={onContextMenu}
+            />
+          ))}
+        </div>
+      )}
+    </React.Fragment>
+  );
+};
+
 interface Attachment {
   id: string;
   type: 'image' | 'text' | 'file';
@@ -144,6 +283,10 @@ interface Attachment {
 }
 
 export const ClaudeChat: React.FC = () => {
+  // Platform detection for keyboard shortcuts
+  const isMac = navigator.platform.toLowerCase().includes('mac');
+  const modKey = isMac ? 'cmd' : 'ctrl';
+
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
@@ -178,6 +321,27 @@ export const ClaudeChat: React.FC = () => {
   const [showCompactConfirm, setShowCompactConfirm] = useState(false);
   const [confirmDialogSelection, setConfirmDialogSelection] = useState(1); // 0 = cancel, 1 = confirm (default)
   const [showResumeModal, setShowResumeModal] = useState(false);
+  // Per-session panel states (derived values set after store destructuring)
+  const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; git: boolean } }>({});
+  // File browser state
+  const [fileTree, setFileTree] = useState<any[]>([]);
+  const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
+  const [selectedFile, setSelectedFile] = useState<string | null>(null);
+  const [fileContent, setFileContent] = useState<string>('');
+  const [fileLoading, setFileLoading] = useState(false);
+  const [fileFullyLoaded, setFileFullyLoaded] = useState(false);
+  const [fileTruncated, setFileTruncated] = useState(false);
+  // Git panel state
+  const [gitBranch, setGitBranch] = useState<string>('');
+  const [gitStatus, setGitStatus] = useState<{ modified: string[]; added: string[]; deleted: string[]; untracked: string[] } | null>(null);
+  const [gitLineStats, setGitLineStats] = useState<{ [file: string]: { added: number; deleted: number } }>({});
+  const [gitDiff, setGitDiff] = useState<DiffDisplay | null>(null);
+  const [selectedGitFile, setSelectedGitFile] = useState<string | null>(null);
+  const [gitLoading, setGitLoading] = useState(false);
+  const [isGitRepo, setIsGitRepo] = useState(false);
+  const [previewCollapsed, setPreviewCollapsed] = useState(true); // Start collapsed
+  const [focusedFileIndex, setFocusedFileIndex] = useState<number>(-1);
+  const [focusedGitIndex, setFocusedGitIndex] = useState<number>(-1);
   const [bashStartTimes, setBashStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashElapsedTimes, setBashElapsedTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashDotCounts, setBashDotCounts] = useState<{ [sessionId: string]: number }>({});
@@ -232,7 +396,27 @@ export const ClaudeChat: React.FC = () => {
   })));
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
-  
+
+  // Per-session panel state derived values and setters
+  const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
+  const showGitPanel = currentSessionId ? panelStates[currentSessionId]?.git ?? false : false;
+  const setShowFilesPanel = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+    if (!currentSessionId) return;
+    setPanelStates(prev => {
+      const current = prev[currentSessionId] ?? { files: false, git: false };
+      const newFiles = typeof value === 'function' ? value(current.files) : value;
+      return { ...prev, [currentSessionId]: { ...current, files: newFiles, git: newFiles ? false : current.git } };
+    });
+  }, [currentSessionId]);
+  const setShowGitPanel = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+    if (!currentSessionId) return;
+    setPanelStates(prev => {
+      const current = prev[currentSessionId] ?? { files: false, git: false };
+      const newGit = typeof value === 'function' ? value(current.git) : value;
+      return { ...prev, [currentSessionId]: { ...current, git: newGit, files: newGit ? false : current.files } };
+    });
+  }, [currentSessionId]);
+
   // DEBUG: Log current session messages length
   React.useEffect(() => {
     console.log(`[DEBUG] Current session ${currentSessionId} has ${currentSession?.messages?.length || 0} messages`);
@@ -1016,6 +1200,26 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Toggle model between opus and sonnet
         toggleModel();
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+        e.preventDefault();
+        // Toggle files panel
+        if (currentSession?.workingDirectory) {
+          setShowFilesPanel(prev => !prev);
+          setShowGitPanel(false);
+          setFocusedFileIndex(-1);
+          setFocusedGitIndex(-1);
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
+        e.preventDefault();
+        // Toggle git panel (only if git repo)
+        if (currentSession?.workingDirectory && isGitRepo) {
+          setShowGitPanel(prev => !prev);
+          setShowFilesPanel(false);
+          setSelectedGitFile(null);
+          setGitDiff(null);
+          setFocusedFileIndex(-1);
+          setFocusedGitIndex(-1);
+        }
       } else if (e.key === 'Escape') {
         // First check if we're streaming or bash is running
         if (currentSession?.streaming || currentSession?.userBashRunning) {
@@ -1062,13 +1266,65 @@ export const ClaudeChat: React.FC = () => {
           setSearchQuery('');
           setSearchMatches([]);
           setSearchIndex(0);
+        } else if (showFilesPanel || showGitPanel) {
+          // Close side panels on Escape and clear focus
+          setShowFilesPanel(false);
+          setShowGitPanel(false);
+          setFocusedFileIndex(-1);
+          setFocusedGitIndex(-1);
+        }
+      } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
+        // Panel keyboard navigation
+        if (showFilesPanel && fileTree.length > 0) {
+          e.preventDefault();
+          // Inline calculation of visible files count
+          const countVisibleFiles = (items: any[]): number => {
+            let count = 0;
+            for (const item of items) {
+              count++;
+              if (item.type === 'directory' && expandedFolders.has(item.path) && item.children) {
+                count += countVisibleFiles(item.children);
+              }
+            }
+            return count;
+          };
+          const totalFiles = countVisibleFiles(fileTree);
+          if (totalFiles === 0) return;
+
+          if (e.key === 'ArrowDown') {
+            setFocusedFileIndex(prev => Math.min(prev + 1, totalFiles - 1));
+          } else if (e.key === 'ArrowUp') {
+            setFocusedFileIndex(prev => Math.max(prev - 1, 0));
+          } else if (e.key === 'Enter' && focusedFileIndex >= 0) {
+            // Find and click the focused element
+            const focusedEl = document.querySelector('.file-tree-item.focused');
+            if (focusedEl) {
+              (focusedEl as HTMLElement).click();
+            }
+          }
+        } else if (showGitPanel && gitStatus) {
+          e.preventDefault();
+          const totalGitFiles = gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length;
+          if (totalGitFiles === 0) return;
+
+          if (e.key === 'ArrowDown') {
+            setFocusedGitIndex(prev => Math.min(prev + 1, totalGitFiles - 1));
+          } else if (e.key === 'ArrowUp') {
+            setFocusedGitIndex(prev => Math.max(prev - 1, 0));
+          } else if (e.key === 'Enter' && focusedGitIndex >= 0) {
+            // Find and click the focused element
+            const focusedEl = document.querySelector('.git-file-item.focused');
+            if (focusedEl) {
+              (focusedEl as HTMLElement).click();
+            }
+          }
         }
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus]);
 
 
 
@@ -1124,14 +1380,394 @@ export const ClaudeChat: React.FC = () => {
 
   // Track the previous session ID to know when we're actually switching sessions
   const prevSessionIdRef = useRef<string | null>(null);
-  
+
+  // Check if current working directory is a git repo when session changes
+  useEffect(() => {
+    const checkGitRepo = async () => {
+      if (!currentSession?.workingDirectory) {
+        setIsGitRepo(false);
+        return;
+      }
+      try {
+        await invoke('get_git_status', { directory: currentSession.workingDirectory });
+        setIsGitRepo(true);
+      } catch {
+        setIsGitRepo(false);
+      }
+    };
+    checkGitRepo();
+  }, [currentSession?.workingDirectory]);
+
+  // Load file tree when files panel is opened, also load git status if available
+  useEffect(() => {
+    const loadFileTree = async () => {
+      if (!showFilesPanel || !currentSession?.workingDirectory) return;
+      setFileLoading(true);
+      try {
+        const files = await invoke('get_folder_contents', {
+          folderPath: currentSession.workingDirectory,
+          maxResults: 100
+        }) as any[];
+        setFileTree(files);
+
+        // Also load git status for file indicators (if git repo)
+        if (isGitRepo) {
+          try {
+            const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
+            setGitStatus({
+              modified: status.modified || [],
+              added: status.added || [],
+              deleted: status.deleted || [],
+              untracked: []
+            });
+          } catch {
+            // Silently fail - not critical for file browser
+          }
+        }
+      } catch (error) {
+        console.error('Failed to load file tree:', error);
+        setFileTree([]);
+      } finally {
+        setFileLoading(false);
+      }
+    };
+    loadFileTree();
+  }, [showFilesPanel, currentSession?.workingDirectory, isGitRepo]);
+
+  // Load git status when git panel is opened, and refresh every 30s while open
+  useEffect(() => {
+    // Helper to fetch and parse line stats
+    const fetchLineStats = async (workingDir: string) => {
+      try {
+        const numstatResult = await invoke('execute_bash', {
+          command: 'git diff --numstat',
+          workingDir
+        }) as string;
+        const stats: { [file: string]: { added: number; deleted: number } } = {};
+        for (const line of numstatResult.trim().split('\n')) {
+          if (!line) continue;
+          const parts = line.split('\t');
+          if (parts.length >= 3) {
+            const added = parts[0] === '-' ? 0 : parseInt(parts[0], 10) || 0;
+            const deleted = parts[1] === '-' ? 0 : parseInt(parts[1], 10) || 0;
+            const file = parts[2];
+            stats[file] = { added, deleted };
+          }
+        }
+        return stats;
+      } catch {
+        return {};
+      }
+    };
+
+    // Silent refresh - doesn't show loading or clear current state
+    const refreshGitStatus = async () => {
+      if (!showGitPanel || !currentSession?.workingDirectory) return;
+      try {
+        const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
+        setGitStatus({
+          modified: status.modified || [],
+          added: status.added || [],
+          deleted: status.deleted || [],
+          untracked: []
+        });
+
+        const [branchResult, lineStats] = await Promise.all([
+          invoke('execute_bash', {
+            command: 'git rev-parse --abbrev-ref HEAD',
+            workingDir: currentSession.workingDirectory
+          }) as Promise<string>,
+          fetchLineStats(currentSession.workingDirectory)
+        ]);
+        setGitBranch(branchResult.trim());
+        setGitLineStats(lineStats);
+      } catch (error) {
+        console.error('Failed to refresh git status:', error);
+        // Don't clear state on silent refresh failure
+      }
+    };
+
+    // Initial load with loading state
+    const loadGitStatus = async () => {
+      if (!showGitPanel || !currentSession?.workingDirectory) return;
+      setGitLoading(true);
+      try {
+        const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
+        setGitStatus({
+          modified: status.modified || [],
+          added: status.added || [],
+          deleted: status.deleted || [],
+          untracked: []
+        });
+
+        const [branchResult, lineStats] = await Promise.all([
+          invoke('execute_bash', {
+            command: 'git rev-parse --abbrev-ref HEAD',
+            workingDir: currentSession.workingDirectory
+          }) as Promise<string>,
+          fetchLineStats(currentSession.workingDirectory)
+        ]);
+        setGitBranch(branchResult.trim());
+        setGitLineStats(lineStats);
+      } catch (error) {
+        console.error('Failed to load git status:', error);
+        setGitStatus(null);
+        setGitBranch('');
+        setGitLineStats({});
+      } finally {
+        setGitLoading(false);
+      }
+    };
+
+    // Load immediately when panel opens (with loading state)
+    loadGitStatus();
+
+    // Auto-refresh every 30 seconds while panel is open (silent, no loading state)
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    if (showGitPanel && currentSession?.workingDirectory) {
+      intervalId = setInterval(refreshGitStatus, 30000);
+    }
+
+    return () => {
+      if (intervalId) clearInterval(intervalId);
+    };
+  }, [showGitPanel, currentSession?.workingDirectory]);
+
+  // Helper to get flat list of visible files from tree (for keyboard navigation)
+  const getVisibleFiles = useCallback((items: any[], expanded: Set<string>): { path: string; isDirectory: boolean; hasGitChanges: boolean }[] => {
+    const result: { path: string; isDirectory: boolean; hasGitChanges: boolean }[] = [];
+    // Normalize path separators for cross-platform compatibility
+    const workDir = (currentSession?.workingDirectory || '').replace(/\\/g, '/');
+
+    const traverse = (nodes: any[]) => {
+      for (const node of nodes) {
+        const normalizedPath = node.path.replace(/\\/g, '/');
+        const relativePath = normalizedPath.replace(workDir, '').replace(/^\//, '');
+        const isModified = gitStatus?.modified.includes(relativePath) || false;
+        const isAdded = gitStatus?.added.includes(relativePath) || false;
+        const isDeleted = gitStatus?.deleted.includes(relativePath) || false;
+
+        result.push({
+          path: node.path,
+          isDirectory: node.type === 'directory',
+          hasGitChanges: isModified || isAdded || isDeleted
+        });
+
+        if (node.type === 'directory' && expanded.has(node.path) && node.children) {
+          traverse(node.children);
+        }
+      }
+    };
+
+    traverse(items);
+    return result;
+  }, [currentSession?.workingDirectory, gitStatus]);
+
+  // Get flat git file list for keyboard navigation
+  const getGitFileList = useCallback((): string[] => {
+    if (!gitStatus) return [];
+    return [...gitStatus.modified, ...gitStatus.added, ...gitStatus.deleted];
+  }, [gitStatus]);
+
+  // Load file content when a file is selected in file browser
+  // Binary/non-text file extensions that shouldn't be previewed
+  const binaryExtensions = new Set([
+    // Images
+    'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'svg', 'tiff', 'tif', 'psd', 'raw', 'heic', 'heif',
+    // Videos
+    'mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'webm', 'm4v', 'mpeg', 'mpg', '3gp',
+    // Audio
+    'mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma', 'aiff',
+    // Archives
+    'zip', 'tar', 'gz', 'rar', '7z', 'bz2', 'xz', 'dmg', 'iso',
+    // Binaries
+    'exe', 'dll', 'so', 'dylib', 'bin', 'app', 'msi', 'deb', 'rpm',
+    // Documents (binary formats)
+    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp',
+    // Fonts
+    'ttf', 'otf', 'woff', 'woff2', 'eot',
+    // Other binary
+    'pyc', 'pyo', 'class', 'o', 'obj', 'lib', 'a', 'node', 'wasm'
+  ]);
+
+  const loadFileContent = useCallback(async (filePath: string, fullFile: boolean = false) => {
+    setSelectedFile(filePath);
+
+    // Check if file is a binary type
+    const ext = filePath.split('.').pop()?.toLowerCase() || '';
+    if (binaryExtensions.has(ext)) {
+      setFileContent(`[Binary file: .${ext}]\n\nThis file type cannot be previewed.`);
+      setFileLoading(false);
+      setFileFullyLoaded(true);
+      setFileTruncated(false);
+      return;
+    }
+
+    setFileLoading(true);
+    try {
+      const isWindows = navigator.platform.toLowerCase().includes('win');
+      const LINE_LIMIT = 400;
+
+      let content: string;
+      let isTruncated = false;
+
+      try {
+        if (fullFile) {
+          // Load full file
+          content = await invoke('execute_bash', {
+            command: `cat "${filePath}"`,
+            workingDir: currentSession?.workingDirectory
+          }) as string;
+        } else {
+          // Load first N lines, check if there's more
+          const headContent = await invoke('execute_bash', {
+            command: `head -n ${LINE_LIMIT} "${filePath}"`,
+            workingDir: currentSession?.workingDirectory
+          }) as string;
+
+          // Check if file has more lines
+          const lineCount = await invoke('execute_bash', {
+            command: `wc -l < "${filePath}"`,
+            workingDir: currentSession?.workingDirectory
+          }) as string;
+
+          const totalLines = parseInt(lineCount.trim()) || 0;
+          isTruncated = totalLines > LINE_LIMIT;
+          content = headContent;
+        }
+      } catch {
+        // Fallback for Windows or if head/wc fails
+        if (isWindows) {
+          const windowsPath = filePath.replace(/\//g, '\\');
+          content = await invoke('execute_bash', {
+            command: `type "${windowsPath}"`,
+            workingDir: currentSession?.workingDirectory
+          }) as string;
+        } else {
+          // Try full cat as fallback
+          content = await invoke('execute_bash', {
+            command: `cat "${filePath}"`,
+            workingDir: currentSession?.workingDirectory
+          }) as string;
+        }
+      }
+
+      setFileContent(content);
+      setFileFullyLoaded(fullFile || !isTruncated);
+      setFileTruncated(isTruncated && !fullFile);
+    } catch (error) {
+      setFileContent(`Error loading file: ${error}`);
+      setFileFullyLoaded(true);
+      setFileTruncated(false);
+    } finally {
+      setFileLoading(false);
+    }
+  }, [currentSession?.workingDirectory]);
+
+  // Load folder contents when expanded
+  const loadFolderContents = useCallback(async (folderPath: string) => {
+    try {
+      const files = await invoke('get_folder_contents', {
+        folderPath: folderPath,
+        maxResults: 100
+      }) as any[];
+      return files;
+    } catch (error) {
+      console.error('Failed to load folder contents:', error);
+      return [];
+    }
+  }, []);
+
+  // Helper function to recursively update nested folder children
+  const updateFolderChildren = (items: any[], folderPath: string, children: any[]): any[] => {
+    return items.map(item => {
+      if (item.path === folderPath) {
+        return { ...item, children };
+      }
+      if (item.children) {
+        return { ...item, children: updateFolderChildren(item.children, folderPath, children) };
+      }
+      return item;
+    });
+  };
+
+  // Toggle folder expansion
+  const toggleFolder = useCallback(async (folderPath: string) => {
+    const newExpanded = new Set(expandedFolders);
+    if (newExpanded.has(folderPath)) {
+      newExpanded.delete(folderPath);
+    } else {
+      newExpanded.add(folderPath);
+      // Load contents if not already loaded
+      const contents = await loadFolderContents(folderPath);
+      // Recursively update the folder's children in the tree
+      setFileTree(prev => updateFolderChildren(prev, folderPath, contents));
+    }
+    setExpandedFolders(newExpanded);
+  }, [expandedFolders, loadFolderContents]);
+
+  // Load git diff for a file
+  const loadGitDiff = useCallback(async (filePath: string) => {
+    setSelectedGitFile(filePath);
+    setGitLoading(true);
+    try {
+      const diffResult = await invoke('execute_bash', {
+        command: `git diff "${filePath}"`,
+        workingDir: currentSession?.workingDirectory
+      }) as string;
+
+      // Parse diff output into our DiffDisplay format
+      const lines = diffResult.split('\n');
+      const hunks: DiffHunk[] = [];
+      let currentHunk: DiffHunk | null = null;
+      let oldLineNum = 0;
+      let newLineNum = 0;
+
+      for (const line of lines) {
+        if (line.startsWith('@@')) {
+          // New hunk - parse both old and new line numbers: @@ -oldStart,oldCount +newStart,newCount @@
+          const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)/);
+          currentHunk = {
+            startLine: match ? parseInt(match[1]) : 1,
+            endLine: 0,
+            lines: []
+          };
+          hunks.push(currentHunk);
+          oldLineNum = match ? parseInt(match[1]) : 1;
+          newLineNum = match ? parseInt(match[2]) : 1;
+        } else if (currentHunk) {
+          if (line.startsWith('+') && !line.startsWith('+++')) {
+            currentHunk.lines.push({ type: 'add', content: line.substring(1), lineNumber: newLineNum++ });
+          } else if (line.startsWith('-') && !line.startsWith('---')) {
+            currentHunk.lines.push({ type: 'remove', content: line.substring(1), lineNumber: oldLineNum++ });
+          } else if (!line.startsWith('diff ') && !line.startsWith('index ') && !line.startsWith('---') && !line.startsWith('+++')) {
+            currentHunk.lines.push({ type: 'context', content: line.substring(1) || '', lineNumber: newLineNum++ });
+            oldLineNum++; // Context lines exist in both old and new
+          }
+        }
+      }
+
+      setGitDiff({
+        file: filePath,
+        hunks: hunks.length > 0 ? hunks : [{ startLine: 1, endLine: 1, lines: [{ type: 'context', content: 'No changes' }] }]
+      });
+    } catch (error) {
+      setGitDiff({
+        file: filePath,
+        hunks: [{ startLine: 1, endLine: 1, lines: [{ type: 'context', content: `Error: ${error}` }] }]
+      });
+    } finally {
+      setGitLoading(false);
+    }
+  }, [currentSession?.workingDirectory]);
+
   // Add effect to handle Ctrl+Arrow shortcuts at capture phase
   useEffect(() => {
     const handleGlobalKeyDown = (e: KeyboardEvent) => {
       // Only handle if textarea is focused
       if (document.activeElement !== inputRef.current) return;
       
-      if (e.ctrlKey && !e.shiftKey && !e.altKey) {
+      if ((e.ctrlKey || e.metaKey) && !e.shiftKey && !e.altKey) {
         if (e.key === 'ArrowLeft') {
           e.preventDefault();
           e.stopPropagation();
@@ -1808,13 +2444,13 @@ export const ClaudeChat: React.FC = () => {
       // Clear entire input when textarea is focused
       e.preventDefault();
       setInput('');
-    } else if (e.ctrlKey && e.key === 'ArrowLeft') {
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowLeft') {
       // Override default word navigation - go to start
       e.preventDefault();
       textarea.selectionStart = 0;
       textarea.selectionEnd = 0;
       return false;
-    } else if (e.ctrlKey && e.key === 'ArrowRight') {
+    } else if ((e.ctrlKey || e.metaKey) && e.key === 'ArrowRight') {
       // Override default word navigation - go to end
       e.preventDefault();
       textarea.selectionStart = textarea.value.length;
@@ -2418,6 +3054,241 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       )}
+      {/* Tool Panel (replaces chat when active) */}
+      {(showFilesPanel || showGitPanel) ? (
+        <div className="tool-panel">
+          <div className="tool-panel-header">
+            <span className="tool-panel-title">
+              {showFilesPanel ? <><IconFolder size={12} stroke={1.5} /> files</> : <><IconGitBranch size={12} stroke={1.5} /> {gitBranch || 'git'}</>}
+              <span className="tool-panel-hint">right-click to @ref</span>
+            </span>
+            <button
+              className="tool-panel-close"
+              onClick={() => {
+                setShowFilesPanel(false);
+                setShowGitPanel(false);
+                setSelectedFile(null);
+                setFileContent('');
+                setSelectedGitFile(null);
+                setGitDiff(null);
+                setPreviewCollapsed(true);
+              }}
+            >
+              <IconX size={12} stroke={1.5} /> esc
+            </button>
+          </div>
+          <div className="tool-panel-body">
+            {/* Files Panel */}
+            {showFilesPanel && (
+              <>
+                <div className="tool-panel-list">
+                  {fileLoading && !fileTree.length ? (
+                    <div className="tool-panel-loading">loading...</div>
+                  ) : fileTree.length === 0 ? (
+                    <div className="tool-panel-empty">no files</div>
+                  ) : (
+                    <div className="file-tree">
+                      {(() => {
+                        const visibleFiles = getVisibleFiles(fileTree, expandedFolders);
+                        const focusedPath = focusedFileIndex >= 0 && focusedFileIndex < visibleFiles.length
+                          ? visibleFiles[focusedFileIndex].path
+                          : null;
+                        return fileTree.map((item) => (
+                        <FileTreeNode
+                          key={item.path}
+                          item={item}
+                          depth={0}
+                          selectedFile={selectedFile}
+                          expandedFolders={expandedFolders}
+                          gitStatus={gitStatus}
+                          workingDirectory={currentSession?.workingDirectory || ''}
+                          focusedPath={focusedPath}
+                          onToggleFolder={toggleFolder}
+                          onFileClick={(path, hasGitChanges) => {
+                            loadFileContent(path);
+                            setPreviewCollapsed(false);
+                            // Load git diff if file has changes
+                            if (hasGitChanges) {
+                              // Normalize path separators for cross-platform compatibility
+                              const normalizedPath = path.replace(/\\/g, '/');
+                              const normalizedWorkDir = (currentSession?.workingDirectory || '').replace(/\\/g, '/');
+                              const relativePath = normalizedPath.replace(normalizedWorkDir, '').replace(/^\//, '');
+                              loadGitDiff(relativePath);
+                            } else {
+                              setGitDiff(null);
+                              setSelectedGitFile(null);
+                            }
+                          }}
+                          onContextMenu={(e, path) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            // Normalize path separators for cross-platform compatibility
+                            const normalizedPath = path.replace(/\\/g, '/');
+                            const normalizedWorkDir = (currentSession?.workingDirectory || '').replace(/\\/g, '/');
+                            const relativePath = normalizedPath.replace(normalizedWorkDir, '').replace(/^\//, '');
+                            setInput(prev => prev + (prev.endsWith(' ') || !prev ? '' : ' ') + `@${relativePath} `);
+                            setShowFilesPanel(false);
+                            inputRef.current?.focus();
+                          }}
+                        />
+                      ));
+                      })()}
+                    </div>
+                  )}
+                </div>
+                {!previewCollapsed && selectedFile && (
+                  <div className="tool-panel-preview">
+                    <div className="tool-panel-preview-header">
+                      <span className="tool-panel-preview-filename">
+                        {selectedFile.replace(/\\/g, '/').replace((currentSession?.workingDirectory || '').replace(/\\/g, '/'), '').replace(/^\//, '')}
+                        {gitDiff && <span className="preview-diff-indicator">diff</span>}
+                      </span>
+                      <button
+                        className="tool-panel-preview-close"
+                        onClick={() => {
+                          setPreviewCollapsed(true);
+                          setSelectedFile(null);
+                          setFileContent('');
+                          setGitDiff(null);
+                          setSelectedGitFile(null);
+                        }}
+                      >
+                        <IconX size={10} stroke={1.5} />
+                      </button>
+                    </div>
+                    {gitDiff ? (
+                      <div className="tool-panel-preview-diff">
+                        <DiffViewer diff={gitDiff} />
+                      </div>
+                    ) : (
+                      <pre
+                        className="tool-panel-preview-content"
+                        onScroll={(e) => {
+                          if (fileTruncated && !fileFullyLoaded && selectedFile) {
+                            const el = e.currentTarget;
+                            const nearBottom = el.scrollHeight - el.scrollTop - el.clientHeight < 100;
+                            if (nearBottom) {
+                              loadFileContent(selectedFile, true);
+                            }
+                          }
+                        }}
+                      >
+                        {fileLoading ? 'loading...' : fileContent}
+                        {fileTruncated && !fileFullyLoaded && (
+                          <span className="file-truncated-indicator">{'\n\n'}↓ scroll to load more...</span>
+                        )}
+                      </pre>
+                    )}
+                  </div>
+                )}
+              </>
+            )}
+            {/* Git Panel */}
+            {showGitPanel && (
+              <>
+                <div className="tool-panel-list">
+                  {gitLoading && !gitStatus ? (
+                    <div className="tool-panel-loading">loading...</div>
+                  ) : !gitStatus ? (
+                    <div className="tool-panel-empty">not a git repo</div>
+                  ) : (
+                    <div className="git-file-list">
+                      {gitStatus.modified.length === 0 && gitStatus.added.length === 0 && gitStatus.deleted.length === 0 ? (
+                        <div className="tool-panel-empty">no changes</div>
+                      ) : (
+                        <>
+                          {gitStatus.modified.map((file, idx) => {
+                            const stats = gitLineStats[file];
+                            return (
+                            <div
+                              key={file}
+                              className={`git-file-item ${selectedGitFile === file ? 'selected' : ''} ${focusedGitIndex === idx ? 'focused' : ''}`}
+                              onClick={() => loadGitDiff(file)}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setInput(prev => prev + (prev.endsWith(' ') || !prev ? '' : ' ') + `@${file} `);
+                                setShowGitPanel(false);
+                                inputRef.current?.focus();
+                              }}
+                            >
+                              <span className="git-status modified">M</span>
+                              <span className="git-file-name">{file}</span>
+                              {stats && <span className="git-line-stats"><span className="git-lines-added">+{stats.added}</span><span className="git-lines-deleted">-{stats.deleted}</span></span>}
+                            </div>
+                            );
+                          })}
+                          {gitStatus.added.map((file, idx) => {
+                            const stats = gitLineStats[file];
+                            return (
+                            <div
+                              key={file}
+                              className={`git-file-item ${selectedGitFile === file ? 'selected' : ''} ${focusedGitIndex === gitStatus.modified.length + idx ? 'focused' : ''}`}
+                              onClick={() => loadGitDiff(file)}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setInput(prev => prev + (prev.endsWith(' ') || !prev ? '' : ' ') + `@${file} `);
+                                setShowGitPanel(false);
+                                inputRef.current?.focus();
+                              }}
+                            >
+                              <span className="git-status added">A</span>
+                              <span className="git-file-name">{file}</span>
+                              {stats && <span className="git-line-stats"><span className="git-lines-added">+{stats.added}</span><span className="git-lines-deleted">-{stats.deleted}</span></span>}
+                            </div>
+                            );
+                          })}
+                          {gitStatus.deleted.map((file, idx) => {
+                            const stats = gitLineStats[file];
+                            return (
+                            <div
+                              key={file}
+                              className={`git-file-item ${selectedGitFile === file ? 'selected' : ''} ${focusedGitIndex === gitStatus.modified.length + gitStatus.added.length + idx ? 'focused' : ''}`}
+                              onClick={() => loadGitDiff(file)}
+                              onContextMenu={(e) => {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                setInput(prev => prev + (prev.endsWith(' ') || !prev ? '' : ' ') + `@${file} `);
+                                setShowGitPanel(false);
+                                inputRef.current?.focus();
+                              }}
+                            >
+                              <span className="git-status deleted">D</span>
+                              <span className="git-file-name">{file}</span>
+                              {stats && <span className="git-line-stats"><span className="git-lines-added">+{stats.added}</span><span className="git-lines-deleted">-{stats.deleted}</span></span>}
+                            </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+                {selectedGitFile && gitDiff && (
+                  <div className="tool-panel-preview">
+                    <div className="tool-panel-preview-header">
+                      <span className="tool-panel-preview-filename">{selectedGitFile}</span>
+                      <button
+                        className="tool-panel-preview-close"
+                        onClick={() => {
+                          setSelectedGitFile(null);
+                          setGitDiff(null);
+                        }}
+                      >
+                        <IconX size={10} stroke={1.5} />
+                      </button>
+                    </div>
+                    <div className="tool-panel-preview-diff">
+                      <DiffViewer diff={gitDiff} />
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      ) : (
       <div
         className="chat-messages"
         ref={chatContainerRef}
@@ -2658,7 +3529,8 @@ export const ClaudeChat: React.FC = () => {
         )}
         <div ref={messagesEndRef} />
       </div>
-      
+      )}
+
       {/* Timeline Navigator - REMOVED: Unnecessary complexity */}
       {/* {showTimeline && currentSessionId && FEATURE_FLAGS.SHOW_TIMELINE && (
         <React.Suspense fallback={<div>Loading timeline...</div>}>
@@ -2904,28 +3776,41 @@ export const ClaudeChat: React.FC = () => {
         <div className="context-bar">
           <ModelSelector value={selectedModel} onChange={setSelectedModel} />
 
-          {/* Center - compact button */}
+          {/* Center - tools group */}
           <div className="context-center">
-            {(() => {
-              const hasActivity = currentSession?.messages?.some(m =>
-                m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
-              );
-              return (
-                <button
-                  className="btn-context-icon btn-compact-center"
-                  onClick={() => {
-                    if (currentSessionId && !currentSession?.readOnly && hasActivity) {
-                      handleCompactContextRequest();
-                    }
-                  }}
-                  disabled={currentSession?.readOnly || !hasActivity}
-                  title="compact context (ctrl+m)"
-                  style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
-                >
-                  <IconArrowsMinimize size={12} stroke={1.5} />
-                </button>
-              );
-            })()}
+            {/* Files button */}
+            <button
+              className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
+              onClick={() => {
+                setShowFilesPanel(!showFilesPanel);
+                setShowGitPanel(false);
+                setSelectedFile(null);
+                setFileContent('');
+                setFocusedFileIndex(-1);
+                setFocusedGitIndex(-1);
+              }}
+              disabled={!currentSession?.workingDirectory}
+              title={`files (${modKey}+e)`}
+            >
+              <IconFolder size={12} stroke={1.5} />
+            </button>
+
+            {/* Git button */}
+            <button
+              className={`btn-context-icon ${showGitPanel ? 'active' : ''}`}
+              onClick={() => {
+                setShowGitPanel(!showGitPanel);
+                setShowFilesPanel(false);
+                setSelectedGitFile(null);
+                setGitDiff(null);
+                setFocusedFileIndex(-1);
+                setFocusedGitIndex(-1);
+              }}
+              disabled={!currentSession?.workingDirectory || !isGitRepo}
+              title={isGitRepo ? `git (${modKey}+g)` : "not a git repo"}
+            >
+              <IconGitBranch size={12} stroke={1.5} />
+            </button>
           </div>
 
           {/* Right - stats and clear */}
@@ -2965,23 +3850,36 @@ export const ClaudeChat: React.FC = () => {
               return (
                 <>
                   <button
+                    className="btn-context-icon"
+                    onClick={handleClearContextRequest}
+                    disabled={currentSession?.readOnly || !hasActivity}
+                    title={`clear context (${modKey}+l)`}
+                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
+                  >
+                    <IconFlare size={12} stroke={1.5} />
+                  </button>
+                  <button
+                    className="btn-context-icon"
+                    onClick={() => {
+                      if (currentSessionId && !currentSession?.readOnly && hasActivity) {
+                        handleCompactContextRequest();
+                      }
+                    }}
+                    disabled={currentSession?.readOnly || !hasActivity}
+                    title={`compact context (${modKey}+m)`}
+                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
+                  >
+                    <IconArrowsMinimize size={12} stroke={1.5} />
+                  </button>
+                  <button
                     className={`btn-stats ${usageClass}`}
                     onClick={() => setShowStatsModal(true)}
                     disabled={false}
                     title={hasActivity ?
-                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 97%' : ''} - click for details (ctrl+.)` :
-                      `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (ctrl+.)`}
+                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 97%' : ''} - click for details (${modKey}+.)` :
+                      `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (${modKey}+.)`}
                   >
                     {percentage}%
-                  </button>
-                  <button
-                    className="btn-context-icon btn-clear-right"
-                    onClick={handleClearContextRequest}
-                    disabled={currentSession?.readOnly || !hasActivity}
-                    title="clear context (ctrl+l)"
-                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
-                  >
-                    <IconFlare size={12} stroke={1.5} />
                   </button>
                 </>
               );

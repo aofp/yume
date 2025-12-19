@@ -168,7 +168,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                 </button>
               )}
               {showAgentsMenu && onAgentsClick && (
-                <button className="window-control agents" onClick={onAgentsClick} title="agents (cmd+g)">
+                <button className="window-control agents" onClick={onAgentsClick} title="agents (cmd+n)">
                   <IconRobot size={10} stroke={2} />
                 </button>
               )}

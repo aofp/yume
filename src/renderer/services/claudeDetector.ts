@@ -288,7 +288,9 @@ class ClaudeDetectorService {
    */
   private getPathDirectories(): string[] {
     const pathEnv = process.env.PATH || '';
-    return pathEnv.split(';').filter(dir => dir.trim());
+    // Use correct separator based on platform (Windows uses ;, Unix/macOS uses :)
+    const separator = navigator.platform.toLowerCase().includes('win') ? ';' : ':';
+    return pathEnv.split(separator).filter(dir => dir.trim());
   }
 
   /**

@@ -167,7 +167,7 @@ export const CompactIndicator: React.FC = () => {
             <button
               style={styles.compactButton}
               onClick={handleManualCompact}
-              title="Manually trigger context compaction"
+              title="manually trigger context compaction"
             >
               compact now
             </button>

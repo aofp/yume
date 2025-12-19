@@ -16,6 +16,10 @@ export const WelcomeScreen: React.FC = () => {
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
 
+  // Platform detection for keyboard shortcuts
+  const isMac = navigator.platform.toLowerCase().includes('mac');
+  const modKey = isMac ? 'cmd' : 'ctrl';
+
   useEffect(() => {
     // Load recent projects from localStorage
     const loadRecentProjects = () => {
@@ -200,7 +204,7 @@ export const WelcomeScreen: React.FC = () => {
           <button
             className="welcome-new-button"
             onClick={handleNewSession}
-            title="new tab (ctrl+t)"
+            title={`new tab (${modKey}+t)`}
           >
             <IconPlus size={20} />
           </button>
@@ -242,7 +246,7 @@ export const WelcomeScreen: React.FC = () => {
               window.dispatchEvent(event);
             }}
             disabled={recentProjects.length === 0}
-            title={`recent projects (ctrl+r)`}
+            title={`recent projects (${modKey}+r)`}
           >
             <span>{recentProjects.length}</span>
             <IconChevronDown size={16} stroke={1.5} />

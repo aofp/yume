@@ -291,10 +291,10 @@ const formatPath = (path?: string) => {
       if (!unixPath) {
         unixPath = '.';
       }
-    } 
+    }
     // 2. Handle macOS/Unix absolute paths - check if path contains project name
     else if (unixPath.startsWith('/')) {
-      const projectName = workingDir.split('/').pop() || '';
+      const projectName = unixWorkingDir.split('/').pop() || '';
       const projectIdx = unixPath.toLowerCase().indexOf('/' + projectName.toLowerCase() + '/');
       if (projectIdx !== -1) {
         unixPath = unixPath.slice(projectIdx + projectName.length + 2);
@@ -302,7 +302,7 @@ const formatPath = (path?: string) => {
     }
     // 3. Handle Windows absolute paths (C:\, D:\, etc)
     else if (/^[A-Z]:/i.test(unixPath)) {
-      const projectName = workingDir.split('/').pop() || '';
+      const projectName = unixWorkingDir.split('/').pop() || '';
       const projectIdx = unixPath.toLowerCase().indexOf('/' + projectName.toLowerCase() + '/');
       if (projectIdx !== -1) {
         unixPath = unixPath.slice(projectIdx + projectName.length + 2);
@@ -310,7 +310,7 @@ const formatPath = (path?: string) => {
     }
     // 4. Handle WSL paths
     else if (unixPath.startsWith('/mnt/')) {
-      const projectName = workingDir.split('/').pop() || '';
+      const projectName = unixWorkingDir.split('/').pop() || '';
       const projectIdx = unixPath.toLowerCase().indexOf('/' + projectName.toLowerCase() + '/');
       if (projectIdx !== -1) {
         unixPath = unixPath.slice(projectIdx + projectName.length + 2);

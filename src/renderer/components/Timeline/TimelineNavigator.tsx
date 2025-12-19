@@ -179,7 +179,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
                   handleRestore(checkpoint.id);
                 }}
                 disabled={isLoading || isCurrent}
-                title="Restore to this checkpoint"
+                title="restore to this checkpoint"
               >
                 <IconRestore size={14} />
               </button>
@@ -190,7 +190,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
                   handleFork(checkpoint.id);
                 }}
                 disabled={isLoading}
-                title="Fork from this checkpoint"
+                title="fork from this checkpoint"
               >
                 <IconGitFork size={14} />
               </button>
@@ -207,7 +207,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
         <button
           className="timeline-expand-btn"
           onClick={() => setIsCollapsed(false)}
-          title="Expand timeline"
+          title="expand timeline"
         >
           <IconGitBranch size={16} />
           <span className="timeline-checkpoint-count">{checkpoints.length}</span>
@@ -228,7 +228,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
           <button
             className="timeline-control-btn"
             onClick={() => setIsCollapsed(true)}
-            title="Collapse timeline"
+            title="collapse timeline"
           >
             <IconChevronLeft size={14} />
           </button>
@@ -236,7 +236,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
             <button
               className="timeline-control-btn"
               onClick={onClose}
-              title="Close timeline"
+              title="close timeline"
             >
               <IconX size={14} />
             </button>

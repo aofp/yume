@@ -8,10 +8,10 @@ import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import './SessionTabs.css';
 
 export const SessionTabs: React.FC = () => {
-  const { 
-    sessions, 
-    currentSessionId, 
-    createSession, 
+  const {
+    sessions,
+    currentSessionId,
+    createSession,
     deleteSession,
     deleteAllSessions,
     resumeSession,
@@ -22,6 +22,10 @@ export const SessionTabs: React.FC = () => {
     claudeMdTokens,
     calculateClaudeMdTokens
   } = useClaudeCodeStore();
+
+  // Platform detection for keyboard shortcuts
+  const isMac = navigator.platform.toLowerCase().includes('mac');
+  const modKey = isMac ? 'cmd' : 'ctrl';
 
   const [showNewMenu, setShowNewMenu] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
@@ -820,7 +824,7 @@ export const SessionTabs: React.FC = () => {
                 setDragOverNewTab(false);
               }
             }}
-            title={draggedTab ? "drop to duplicate" : "new tab (ctrl+t)"}
+            title={draggedTab ? "drop to duplicate" : `new tab (${modKey}+t)`}
             onMouseEnter={() => {
               if (isDragging && draggedTab) {
                 setDragOverNewTab(true);
@@ -935,7 +939,7 @@ export const SessionTabs: React.FC = () => {
                   setDragOverRecent(true);
                 }
               }}
-              title={"recent projects (ctrl+r)"}
+              title={`recent projects (${modKey}+r)`}
             >
               <IconChevronDown size={16} stroke={1.5} />
             </button>
