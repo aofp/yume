@@ -776,56 +776,50 @@ export const ClaudeChat: React.FC = () => {
     const projectName = conversation.projectName || 'resumed';
 
     try {
-      // Load the session data from server first
+      // Load the session data from server
       const serverPort = claudeCodeClient.getServerPort();
       if (!serverPort) {
         console.error('[ClaudeChat] Server port not available for resume');
         return;
       }
 
-      console.log('[ClaudeChat] Loading session data for resume:', conversation.id);
+      console.log('[ClaudeChat] Loading session data for resume:', conversation.id, 'from project:', conversation.projectPath);
       const response = await fetch(
         `http://localhost:${serverPort}/claude-session/${encodeURIComponent(conversation.projectPath)}/${encodeURIComponent(conversation.id)}`
       );
 
       if (!response.ok) {
+        const errorText = await response.text();
+        console.error('[ClaudeChat] Server response error:', response.status, errorText);
         throw new Error(`Failed to load session: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log('[ClaudeChat] Session data loaded:', data.messages?.length || 0, 'messages');
+      console.log('[ClaudeChat] Session data loaded:', {
+        messageCount: data.messages?.length || 0,
+        title: data.title,
+        sessionId: data.sessionId
+      });
 
-      // Delete the current empty session
-      if (currentSessionId) {
-        deleteSession(currentSessionId);
+      if (!data.messages || data.messages.length === 0) {
+        console.warn('[ClaudeChat] No messages in session data');
       }
 
-      // Generate unique session ID
+      // Generate unique session ID for the restored session
       const timestamp = Date.now().toString(36);
       const random1 = Math.random().toString(36).substring(2, 8);
-      const newSessionId = `session-${timestamp}-${random1}`;
+      const newSessionId = `restored-${timestamp}-${random1}`;
 
       // Get tab title from conversation or first message
-      let tabTitle = conversation.title || projectName;
+      let tabTitle = conversation.title || data.title || projectName;
       if (tabTitle.length > 25) {
         tabTitle = tabTitle.substring(0, 25) + '...';
       }
 
-      // Parse messages from session data
-      const messagesToLoad = (data.messages || []).map((msg: any) => ({
-        ...msg,
-        timestamp: msg.timestamp || Date.now()
-      }));
+      // Messages are already transformed by the server
+      const messagesToLoad = data.messages || [];
 
-      // Create session with loaded messages via client
-      await claudeCodeClient.createSession(tabTitle, workingDirectory, {
-        sessionId: newSessionId,
-        existingSessionId: newSessionId,
-        claudeSessionId: conversation.id,
-        messages: messagesToLoad
-      });
-
-      // Add session to store with messages
+      // Create the restored session object
       const restoredSession = {
         id: newSessionId,
         name: tabTitle,
@@ -836,11 +830,11 @@ export const ClaudeChat: React.FC = () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         claudeSessionId: conversation.id,
-        readOnly: false,
+        readOnly: true, // Mark as read-only since it's a historical view
         analytics: {
           totalMessages: messagesToLoad.length,
-          userMessages: messagesToLoad.filter((m: any) => m.role === 'user').length,
-          assistantMessages: messagesToLoad.filter((m: any) => m.role === 'assistant').length,
+          userMessages: messagesToLoad.filter((m: any) => m.type === 'user').length,
+          assistantMessages: messagesToLoad.filter((m: any) => m.type === 'assistant').length,
           toolUses: 0,
           tokens: { input: 0, output: 0, total: 0 },
           cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
@@ -852,17 +846,18 @@ export const ClaudeChat: React.FC = () => {
         modifiedFiles: []
       };
 
+      // Add session directly to store (no socket needed for historical view)
       useClaudeCodeStore.setState((state: any) => ({
         sessions: [...state.sessions, restoredSession],
         currentSessionId: newSessionId
       }));
 
-      console.log('[ClaudeChat] Session restored with', messagesToLoad.length, 'messages');
+      console.log('[ClaudeChat] Session restored successfully with', messagesToLoad.length, 'messages');
 
     } catch (error) {
       console.error('[ClaudeChat] Failed to resume conversation:', error);
     }
-  }, [currentSessionId, deleteSession]);
+  }, []);
 
   // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {

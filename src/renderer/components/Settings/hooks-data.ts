@@ -1,183 +1,178 @@
-import { IconShield, IconGitBranch, IconFolderOff, IconPlayerPause } from '@tabler/icons-react';
+import { IconShield } from '@tabler/icons-react';
 
 export const YURUCODE_HOOKS = [
   {
-    id: 'tool_shield',
-    name: 'Tool Shield',
+    id: 'yurucode_guard',
+    name: 'Yurucode Guard',
     icon: IconShield,
-    description: 'block dangerous bash commands (rm -rf, dd, mkfs, etc)',
+    description: 'comprehensive protection for full-permission agent',
     script: `#!/usr/bin/env python3
 import json
 import sys
 import re
-
-# Tool Shield - Block dangerous bash commands
-# Catches: rm -rf, rm -r -f, sudo rm, dd if=, mkfs, chmod 777, etc.
-
-DANGEROUS_PATTERNS = [
-    r'\\brm\\s+(-[^\\s]*r[^\\s]*\\s+-[^\\s]*f|−[^\\s]*f[^\\s]*\\s+-[^\\s]*r|--recursive.*--force|--force.*--recursive)',
-    r'\\brm\\s+-rf\\b',
-    r'\\brm\\s+-fr\\b',
-    r'\\bsudo\\s+rm\\b',
-    r'\\bdd\\s+if=',
-    r'\\bmkfs\\.',
-    r'\\b:(){ :|:& };:',  # fork bomb
-    r'\\bchmod\\s+(-[^\\s]*\\s+)?777\\b',
-    r'\\bchown\\s+(-[^\\s]*\\s+)?root:',
-    r'>/dev/sd[a-z]',
-    r'\\bformat\\s+[a-z]:',  # windows format
-    r'\\bdel\\s+/[sfq]',  # windows del with dangerous flags
-]
-
-try:
-    input_data = json.load(sys.stdin)
-    tool = input_data.get('data', {}).get('tool', '')
-
-    if tool == 'Bash':
-        command = input_data.get('data', {}).get('input', {}).get('command', '')
-        command_lower = command.lower()
-
-        for pattern in DANGEROUS_PATTERNS:
-            if re.search(pattern, command_lower, re.IGNORECASE):
-                response = {
-                    "action": "block",
-                    "message": f"⚠️ Dangerous command blocked: pattern matched. Review and run manually if needed."
-                }
-                print(json.dumps(response))
-                sys.exit(2)
-
-    print('{"action":"continue"}')
-    sys.exit(0)
-except Exception as e:
-    print('{"action":"continue"}')
-    sys.exit(0)`
-  },
-  {
-    id: 'git_guard',
-    name: 'Git Guard',
-    icon: IconGitBranch,
-    description: 'block dangerous git operations (force push, hard reset)',
-    script: `#!/usr/bin/env python3
-import json
-import sys
-import re
-
-# Git Guard - Block dangerous git operations
-# Catches: push --force, reset --hard, clean -fd, etc.
-
-DANGEROUS_GIT_PATTERNS = [
-    r'git\\s+push\\s+.*--force',
-    r'git\\s+push\\s+-f\\b',
-    r'git\\s+reset\\s+--hard',
-    r'git\\s+clean\\s+.*-f.*-d',
-    r'git\\s+clean\\s+-fd',
-    r'git\\s+checkout\\s+--\\s+\\.',  # discard all changes
-    r'git\\s+branch\\s+-D\\s+main',
-    r'git\\s+branch\\s+-D\\s+master',
-]
-
-try:
-    input_data = json.load(sys.stdin)
-    tool = input_data.get('data', {}).get('tool', '')
-
-    if tool == 'Bash':
-        command = input_data.get('data', {}).get('input', {}).get('command', '')
-
-        for pattern in DANGEROUS_GIT_PATTERNS:
-            if re.search(pattern, command, re.IGNORECASE):
-                response = {
-                    "action": "block",
-                    "message": f"⚠️ Dangerous git operation blocked. Run manually if you're sure."
-                }
-                print(json.dumps(response))
-                sys.exit(2)
-
-    print('{"action":"continue"}')
-    sys.exit(0)
-except Exception as e:
-    print('{"action":"continue"}')
-    sys.exit(0)`
-  },
-  {
-    id: 'system_path_guard',
-    name: 'System Path Guard',
-    icon: IconFolderOff,
-    description: 'block writes to system directories (/usr, /etc, /bin)',
-    script: `#!/usr/bin/env python3
-import json
-import sys
 import os
 
-# System Path Guard - Block writes to system directories
-# Protects: /usr, /etc, /bin, /sbin, /var, /boot, /lib, /opt, C:\\Windows, etc.
+# Yurucode Guard - Maximum protection for full-permission agent
+# Blocks: destructive commands, privilege escalation, system modifications
+# SECURITY: Fails closed - any error blocks the operation
 
-PROTECTED_PATHS = [
-    '/usr/', '/etc/', '/bin/', '/sbin/', '/var/', '/boot/',
-    '/lib/', '/lib64/', '/opt/', '/root/', '/sys/', '/proc/',
-    'C:\\\\Windows', 'C:\\\\Program Files', 'C:\\\\System32',
+DESTRUCTIVE_COMMANDS = [
+    # file destruction
+    r'\\brm\\s+(-[^\\s]*r|--recursive)', r'\\brm\\s+-rf', r'\\brm\\s+-fr',
+    r'\\bsudo\\s+rm\\b', r'\\brmdir\\s+--ignore-fail',
+    r'\\bshred\\b', r'\\btruncate\\b',
+    r'\\bfind\\s+.*-delete', r'\\bfind\\s+.*-exec\\s+rm',
+    r'\\bxargs\\s+rm', r'\\bxargs\\s+.*\\brm\\b',
+    # disk operations
+    r'\\bdd\\s+', r'\\bmkfs\\.', r'\\bfdisk\\b', r'\\bparted\\b',
+    r'>/dev/sd', r'>/dev/nvme', r'>/dev/hd',
+    # fork bomb patterns
+    r':\\(\\)\\s*\\{', r':\\s*\\|\\s*:',
 ]
 
-def is_protected_path(file_path):
-    if not file_path:
-        return False
-    normalized = file_path.replace('\\\\', '/')
-    for protected in PROTECTED_PATHS:
-        protected_norm = protected.replace('\\\\', '/')
-        if normalized.startswith(protected_norm) or normalized.lower().startswith(protected_norm.lower()):
+PRIVILEGE_ESCALATION = [
+    r'\\bsudo\\s+', r'\\bsu\\s+-', r'\\bdoas\\s+', r'\\bpkexec\\b',
+    r'\\bchmod\\s+[0-7]*7[0-7]*', r'\\bchmod\\s+[ugo]?\\+s',
+    r'\\bchown\\s+root', r'\\bchgrp\\s+(root|wheel)',
+    r'\\bsetuid\\b', r'\\bsetgid\\b',
+    r'\\bvisudo\\b', r'/etc/sudoers',
+]
+
+SYSTEM_MODIFICATION = [
+    # system control
+    r'\\bshutdown\\b', r'\\breboot\\b', r'\\bhalt\\b', r'\\bpoweroff\\b',
+    r'\\binit\\s+[0-6]', r'\\bsystemctl\\s+(disable|mask|stop|enable)\\s+',
+    r'\\blaunchctl\\s+(unload|remove|disable)', r'\\blaunchctl\\s+load.*-F',
+    r'\\bdefaults\\s+write', r'\\bdefaults\\s+delete',
+    # network/firewall
+    r'\\biptables\\b', r'\\bufw\\b', r'\\bfirewall-cmd\\b', r'\\bpfctl\\b',
+    r'\\bnc\\s+-l', r'\\bnetcat\\s+-l',
+    # process killing
+    r'\\bkillall\\b', r'\\bpkill\\s+-9', r'\\bkill\\s+-9\\s+-1',
+    # cron/scheduled tasks
+    r'\\bcrontab\\s+-[re]', r'crontab.*\\|',
+    r'\\bat\\b.*<<', r'\\bbatch\\b',
+]
+
+REMOTE_CODE_EXEC = [
+    r'curl.*\\|.*sh', r'wget.*\\|.*sh', r'curl.*\\|.*bash', r'wget.*\\|.*bash',
+    r'\\beval\\s+.*\\$', r'\\bexec\\s+.*\\$',
+    r'python.*-c.*exec', r'python.*-c.*eval', r'perl\\s+-e',
+    r'\\bnc\\s+.*-e', r'\\bbash\\s+-i.*>/dev/tcp',
+    # command substitution with dangerous commands
+    r'\\$\\(.*\\brm\\b', r'\\$\\(.*\\bdd\\b', r'\\$\\(.*\\bsudo\\b',
+    r'\`.*\\brm\\b.*\`', r'\`.*\\bdd\\b.*\`', r'\`.*\\bsudo\\b.*\`',
+]
+
+DANGEROUS_GIT = [
+    r'git\\s+push\\s+.*(-f|--force)', r'git\\s+push\\s+-f',
+    r'git\\s+reset\\s+--hard', r'git\\s+clean\\s+-[dfx]',
+    r'git\\s+checkout\\s+--\\s+\\.', r'git\\s+stash\\s+drop',
+    r'git\\s+branch\\s+-D\\s+(main|master|develop|production)',
+    r'git\\s+push\\s+.*:(main|master|develop|production)',
+]
+
+WINDOWS_DANGEROUS = [
+    r'\\bformat\\s+[a-z]:', r'\\bdel\\s+/[sfq]', r'\\brd\\s+/s',
+    r'\\breg\\s+(delete|add)', r'\\bnet\\s+user.*/(delete|add)',
+    r'\\bdiskpart\\b', r'\\bbcdedit\\b',
+    r'powershell.*-e(nc|ncodedcommand)', r'powershell.*bypass',
+    r'\\bwmic\\b', r'\\bschtasks\\s+/(create|delete)',
+    r'\\bsc\\s+(delete|create|config)',
+]
+
+PROTECTED_SYSTEM_PATHS = [
+    '/usr/', '/etc/', '/bin/', '/sbin/', '/var/', '/boot/',
+    '/lib/', '/lib64/', '/opt/', '/root/', '/sys/', '/proc/',
+    '/dev/', '/run/', '/snap/', '/home/',
+    '/applications/', '/library/', '/system/',  # macOS
+]
+
+PROTECTED_USER_PATHS = [
+    '.ssh/', '.gnupg/', '.aws/', '.kube/', '.docker/',
+    '.bashrc', '.zshrc', '.profile', '.bash_profile', '.zprofile',
+    '.netrc', '.npmrc', '.pypirc', '.gem/credentials',
+    '.gitconfig', '.git-credentials',
+    '.config/gcloud', '.config/gh/',
+    '.local/share/keyrings',
+    'id_rsa', 'id_ed25519', 'id_ecdsa',  # SSH keys
+]
+
+PROTECTED_WINDOWS_PATHS = [
+    'c:/windows', 'c:/program files', 'c:/programdata',
+    'c:/users/*/appdata/roaming/microsoft',
+    'c:/users/*/ntuser.dat',
+    'system32', 'syswow64',
+]
+
+def normalize_path(path):
+    """Normalize path to catch traversal attempts"""
+    if not path: return ''
+    # normalize separators
+    p = path.lower().replace('\\\\', '/')
+    # resolve .. and . components
+    parts = []
+    for part in p.split('/'):
+        if part == '..':
+            if parts and parts[-1] != '':
+                parts.pop()
+        elif part and part != '.':
+            parts.append(part)
+    return '/' + '/'.join(parts) if p.startswith('/') else '/'.join(parts)
+
+def is_protected_path(path):
+    if not path: return False
+    p = normalize_path(path)
+
+    # check for path traversal attempts
+    if '..' in path:
+        return True  # block any traversal attempts
+
+    # system paths (unix/mac)
+    for sp in PROTECTED_SYSTEM_PATHS:
+        if p.startswith(sp) or p.startswith(sp.lstrip('/')): return True
+
+    # user sensitive paths (substring match)
+    for up in PROTECTED_USER_PATHS:
+        if up.lower() in p: return True
+
+    # windows paths
+    for wp in PROTECTED_WINDOWS_PATHS:
+        wp_clean = wp.replace('*', '')
+        if wp_clean in p: return True
+
+    return False
+
+def check_command(cmd):
+    all_patterns = (DESTRUCTIVE_COMMANDS + PRIVILEGE_ESCALATION +
+                   SYSTEM_MODIFICATION + REMOTE_CODE_EXEC +
+                   DANGEROUS_GIT + WINDOWS_DANGEROUS)
+    for pattern in all_patterns:
+        if re.search(pattern, cmd, re.IGNORECASE):
             return True
     return False
 
 try:
-    input_data = json.load(sys.stdin)
-    tool = input_data.get('data', {}).get('tool', '')
-    tool_input = input_data.get('data', {}).get('input', {})
+    data = json.load(sys.stdin).get('data', {})
+    tool = data.get('tool', '')
+    inp = data.get('input', {})
 
-    if tool in ['Write', 'Edit', 'MultiEdit']:
-        file_path = tool_input.get('file_path', '')
-        if is_protected_path(file_path):
-            response = {
-                "action": "block",
-                "message": f"⚠️ Cannot write to system directory: {file_path}"
-            }
-            print(json.dumps(response))
+    if tool == 'Bash':
+        cmd = inp.get('command', '')
+        if check_command(cmd):
+            print(json.dumps({"action": "block", "message": "⛔ blocked by yurucode guard - dangerous command"}))
+            sys.exit(2)
+
+    if tool in ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']:
+        path = inp.get('file_path', '') or inp.get('notebook_path', '')
+        if is_protected_path(path):
+            print(json.dumps({"action": "block", "message": "⛔ blocked by yurucode guard - protected path"}))
             sys.exit(2)
 
     print('{"action":"continue"}')
-    sys.exit(0)
 except Exception as e:
-    print('{"action":"continue"}')
-    sys.exit(0)`
-  },
-  {
-    id: 'pause_mode',
-    name: 'Pause Mode',
-    icon: IconPlayerPause,
-    description: 'block all file changes (discussion only)',
-    script: `#!/usr/bin/env python3
-import json
-import sys
-
-# Pause Mode - Block all file modifications
-# Use when you want Claude to discuss/plan without making changes
-
-BLOCKED_TOOLS = ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']
-
-try:
-    input_data = json.load(sys.stdin)
-    tool = input_data.get('data', {}).get('tool', '')
-
-    if tool in BLOCKED_TOOLS:
-        response = {
-            "action": "block",
-            "message": "⏸️ Pause mode active - file changes blocked. Disable this hook to allow edits."
-        }
-        print(json.dumps(response))
-        sys.exit(2)
-
-    print('{"action":"continue"}')
-    sys.exit(0)
-except Exception as e:
-    print('{"action":"continue"}')
-    sys.exit(0)`
+    # SECURITY: Fail closed - block on any error
+    print(json.dumps({"action": "block", "message": "⛔ yurucode guard error - operation blocked for safety"}))
+    sys.exit(2)`
   }
 ];

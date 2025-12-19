@@ -9,7 +9,7 @@ interface SystemPromptModalProps {
   onClose: () => void;
 }
 
-const DEFAULT_PROMPT = `you are in yurucode ui. prefer lowercase, be extremely concise, never use formal language, no greetings or pleasantries, straight to the point. you must plan first - use think and todo as much as possible to break down everything, including planning into multiple steps and do edits in small chunks`;
+const DEFAULT_PROMPT = `yurucode coding agent. lowercase, concise. read before edit. plan with think/todo, break into small steps, incremental edits.`;
 
 export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ 
   settings, 

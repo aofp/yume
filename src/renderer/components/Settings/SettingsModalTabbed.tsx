@@ -1422,15 +1422,15 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
           <>
             {/* Theme selector at top */}
             <div className="settings-section" style={{ marginBottom: '12px' }}>
+              <h4>theme</h4>
               <button
                 onClick={() => setShowThemeDropdown(true)}
                 style={{
-                  width: '100%',
-                  display: 'flex',
+                  display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '10px',
-                  padding: '10px 12px',
-                  background: 'var(--fg-02)',
+                  gap: '8px',
+                  padding: '6px 10px',
+                  background: 'transparent',
                   border: '1px solid var(--fg-15)',
                   borderRadius: '4px',
                   cursor: 'default',
@@ -1442,18 +1442,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 }}
                 onMouseLeave={(e) => {
                   e.currentTarget.style.borderColor = 'var(--fg-15)';
-                  e.currentTarget.style.background = 'var(--fg-02)';
+                  e.currentTarget.style.background = 'transparent';
                 }}
               >
-                <div style={{ display: 'flex', gap: '3px' }}>
-                  <span style={{ width: '12px', height: '12px', borderRadius: '2px', background: backgroundColor, border: '1px solid var(--fg-20)' }} />
-                  <span style={{ width: '12px', height: '12px', borderRadius: '2px', background: foregroundColor, border: '1px solid var(--fg-10)' }} />
-                  <span style={{ width: '12px', height: '12px', borderRadius: '2px', background: accentColor }} />
-                  <span style={{ width: '12px', height: '12px', borderRadius: '2px', background: positiveColor }} />
-                  <span style={{ width: '12px', height: '12px', borderRadius: '2px', background: negativeColor }} />
+                <div style={{ display: 'flex', gap: '2px' }}>
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: backgroundColor, border: '1px solid var(--fg-20)' }} />
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: foregroundColor, border: '1px solid var(--fg-10)' }} />
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: accentColor }} />
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: positiveColor }} />
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: negativeColor }} />
                 </div>
                 <span style={{
-                  fontSize: '12px',
+                  fontSize: '11px',
                   fontWeight: 'bold',
                   background: `linear-gradient(90deg, ${foregroundColor}, ${accentColor}, ${positiveColor}, ${negativeColor})`,
                   WebkitBackgroundClip: 'text',
@@ -1462,7 +1462,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 }}>
                   {getCurrentThemeDisplayName()}
                 </span>
-                <IconPalette size={14} style={{ marginLeft: 'auto', color: 'var(--fg-40)' }} />
               </button>
             </div>
 
@@ -1771,10 +1770,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       background: 'var(--background-color)',
                       border: 'none',
                       borderRadius: '0',
-                      padding: '12px',
                       width: '100%',
                       height: '100%',
-                      overflowY: 'auto'
+                      display: 'flex',
+                      flexDirection: 'column',
+                      overflow: 'hidden'
                     }}
                     onClick={(e) => e.stopPropagation()}
                   >
@@ -1784,8 +1784,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                         display: 'flex',
                         justifyContent: 'space-between',
                         alignItems: 'center',
-                        marginBottom: '12px',
-                        padding: '8px 4px'
+                        padding: '8px 12px',
+                        borderBottom: '1px solid var(--fg-15)',
+                        flexShrink: 0
                       }}>
                       <span style={{ fontSize: '11px', color: 'var(--accent-color)', fontWeight: 500 }}>
                         <IconPalette size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
@@ -1807,9 +1808,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           alignItems: 'center'
                         }}
                       >
-                        <IconX size={14} />
+                        <IconX size={16} />
                       </button>
                     </div>
+                    <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
                     {/* Built-in themes - 5 column grid */}
                     <div style={{
                       display: 'grid',
@@ -2074,6 +2076,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                         )}
                       </>
                     )}
+                    </div>
                   </div>
                   </div>
                 )}
