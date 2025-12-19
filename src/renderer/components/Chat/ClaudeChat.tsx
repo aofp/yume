@@ -966,10 +966,33 @@ export const ClaudeChat: React.FC = () => {
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'l') {
         e.preventDefault();
         handleClearContextRequest();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
         e.preventDefault();
-        // Toggle dictation
-        toggleDictation();
+        // Insert ultrathink into chat
+        if (inputRef.current && document.activeElement === inputRef.current) {
+          const textarea = inputRef.current;
+          const cursorPos = textarea.selectionStart;
+          const textBefore = input.substring(0, cursorPos);
+          const textAfter = input.substring(textarea.selectionEnd);
+
+          // Check if there's whitespace before cursor
+          const needsSpace = textBefore.length > 0 && !/\s$/.test(textBefore);
+          const insertText = needsSpace ? ' ultrathink' : 'ultrathink';
+
+          setInput(textBefore + insertText + textAfter);
+          // Set cursor position after inserted text
+          setTimeout(() => {
+            if (inputRef.current) {
+              const newPos = cursorPos + insertText.length;
+              inputRef.current.selectionStart = newPos;
+              inputRef.current.selectionEnd = newPos;
+            }
+          }, 0);
+        } else {
+          // Textarea not focused - insert at end with period
+          setInput(prev => prev ? prev + ' ultrathink.' : 'ultrathink.');
+          inputRef.current?.focus();
+        }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
         e.preventDefault();
         // Trigger compact command with confirmation
@@ -1045,7 +1068,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, toggleDictation]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input]);
 
 
 
