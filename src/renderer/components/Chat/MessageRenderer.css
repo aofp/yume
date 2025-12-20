@@ -3,7 +3,7 @@
 .message {
   position: relative;
   margin-bottom: 1px;
-  animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* animation removed - conflicts with virtualizer transform positioning */
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -669,8 +669,7 @@ ol {
   border-radius: 16px;
   font-size: 11px;
   margin: 4px 4px 4px 0;
-  animation: toolSlide 0.3s ease;
-  transition: all 0.2s ease;
+  /* animation removed - transform conflicts with virtualizer */
 }
 
 /* Standalone tool messages */
@@ -1039,7 +1038,7 @@ pre.edit-diff {
   align-items: center;
   margin-right: 0px;
   color: var(--accent-color);
-  animation: iconBounce 0.5s ease;
+  /* animation removed - transform conflicts with virtualizer */
 }
 
 @keyframes iconBounce {
@@ -1092,7 +1091,7 @@ body.platform-win32 .tool-detail {
   border-radius: 0;
   font-size: 9px;
   margin: 0;
-  animation: resultFade 0.3s ease;
+  /* animation removed - conflicts with virtualizer */
 }
 
 /* Result completion time */

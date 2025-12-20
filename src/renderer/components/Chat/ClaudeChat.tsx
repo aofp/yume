@@ -3137,7 +3137,7 @@ export const ClaudeChat: React.FC = () => {
 
       particle.style.cssText = `
         position: fixed;
-        left: ${x}px;
+        left: ${x + 5}px;
         top: ${y + 8}px;
         width: ${size}px;
         height: ${size}px;

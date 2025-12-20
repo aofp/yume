@@ -11,6 +11,9 @@
   /* Theme background at 50% blended with black */
   background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
   overflow: hidden; /* Prevent outer container from scrolling */
+  /* Isolate from external layout changes (particles, etc) */
+  contain: layout style;
+  isolation: isolate;
 }
 
 /* Windows-specific fix for zoom issues */
@@ -244,6 +247,8 @@
   -webkit-user-select: text;
   display: flex;
   flex-direction: column;
+  /* isolate from external layout changes */
+  contain: layout style;
 }
 
 /* When virtualized list is present, disable scroll on parent to prevent nested scrolling */
@@ -255,7 +260,7 @@
 .message {
   margin-bottom: 8px;
   margin-right: 8px;
-  animation: messageSlide 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  /* animation removed - conflicts with virtualizer transform positioning */
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
@@ -418,8 +423,7 @@
   border-radius: 12px;
   font-size: 7pt;
   margin: 4px 4px 4px 0;
-  animation: toolFade 0.3s ease;
-  transition: all 0.2s ease;
+  /* animations removed - transform conflicts with virtualizer */
 }
 
 /* Multi-edit label styling */
@@ -889,6 +893,10 @@ textarea.context-full {
   pointer-events: none;
   overflow: visible;
   z-index: 9998;
+  /* CRITICAL: fully isolate from layout - prevents chat flicker when particles animate */
+  contain: strict;
+  isolation: isolate;
+  transform: translateZ(0); /* GPU layer */
 }
 
 /* Particle fade animation - uses CSS vars for random direction */
@@ -2303,6 +2311,13 @@ textarea.context-full {
   scrollbar-color: var(--fg-10) transparent;
   padding-right: 0;
   padding-top: 7px;
+  /* prevent layout thrashing from particles/animations outside */
+  contain: layout style paint;
+  will-change: scroll-position;
+  /* GPU acceleration for smooth scrolling */
+  transform: translateZ(0);
+  /* prevent scroll anchor jumping */
+  overflow-anchor: none;
 }
 
 .messages-virtualized::-webkit-scrollbar {
