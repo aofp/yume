@@ -692,6 +692,41 @@ ol {
   line-height: 1;
 }
 
+/* Subagent tool messages - nested visual indicator */
+.tool-message.subagent {
+  margin-left: 16px;
+  opacity: 0.75;
+}
+
+.tool-use.subagent-tool {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.subagent-indicator {
+  color: var(--color-accent);
+  font-size: 10px;
+  margin-right: 2px;
+  opacity: 0.8;
+}
+
+/* Animate subagent tools appearing */
+.tool-message.subagent .tool-use {
+  animation: subagentSlide 0.2s ease-out;
+}
+
+@keyframes subagentSlide {
+  from {
+    opacity: 0;
+    transform: translateX(-8px);
+  }
+  to {
+    opacity: 0.75;
+    transform: translateX(0);
+  }
+}
+
 .tool-result.standalone {
   background: transparent;
   border: none;

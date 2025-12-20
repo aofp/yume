@@ -3379,7 +3379,7 @@ io.on('connection', (socket) => {
                   }
                   
                   // Send tool use as separate message immediately
-                  socket.emit(`message:${sessionId}`, {
+                  const toolUseMessage = {
                     type: 'tool_use',
                     message: {
                       name: block.name,
@@ -3388,7 +3388,13 @@ io.on('connection', (socket) => {
                     },
                     timestamp: Date.now(),
                     id: `tool-${sessionId}-${Date.now()}`
-                  });
+                  };
+                  // Include parent_tool_use_id if this is a subagent message
+                  if (jsonData.parent_tool_use_id) {
+                    toolUseMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
+                    console.log(`🤖 [${sessionId}] Subagent tool_use (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...): ${block.name}`);
+                  }
+                  socket.emit(`message:${sessionId}`, toolUseMessage);
                 }
               }
               
@@ -3397,7 +3403,7 @@ io.on('connection', (socket) => {
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
                 console.log(`📝 [${sessionId}] Emitting assistant message ${messageId} with streaming=true`);
                 console.log(`📝 [${sessionId}] Content blocks: ${contentBlocks.length} (types: ${contentBlocks.map(b => b.type).join(', ')})`);
-                socket.emit(`message:${sessionId}`, {
+                const assistantMessage = {
                   type: 'assistant',
                   id: messageId,
                   message: {
@@ -3406,7 +3412,13 @@ io.on('connection', (socket) => {
                   },
                   streaming: true,  // Set streaming to true during active streaming
                   timestamp: Date.now()
-                });
+                };
+                // Include parent_tool_use_id if this is a subagent message
+                if (jsonData.parent_tool_use_id) {
+                  assistantMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
+                  console.log(`🤖 [${sessionId}] Subagent assistant message (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
+                }
+                socket.emit(`message:${sessionId}`, assistantMessage);
                 
                 // Save to session with memory management
                 session.messages.push({
@@ -3573,7 +3585,7 @@ io.on('connection', (socket) => {
                   }
                 }
                 
-                socket.emit(`message:${sessionId}`, {
+                const toolResultMessage = {
                   type: 'tool_result',
                   message: {
                     tool_use_id: block.tool_use_id,
@@ -3582,7 +3594,13 @@ io.on('connection', (socket) => {
                   },
                   timestamp: Date.now(),
                   id: `toolresult-${sessionId}-${Date.now()}`
-                });
+                };
+                // Include parent_tool_use_id if this is a subagent message
+                if (jsonData.parent_tool_use_id) {
+                  toolResultMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
+                  console.log(`🤖 [${sessionId}] Subagent tool_result (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
+                }
+                socket.emit(`message:${sessionId}`, toolResultMessage);
               }
             }
             

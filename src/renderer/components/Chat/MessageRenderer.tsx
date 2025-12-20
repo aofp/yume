@@ -74,6 +74,9 @@ export interface ClaudeMessage {
   // UI fields
   id?: string;
   streaming?: boolean;
+
+  // Subagent tracking
+  parent_tool_use_id?: string;  // ID of the parent Task tool use (for subagent messages)
 }
 
 interface ContentBlock {
@@ -1805,12 +1808,18 @@ const MessageRendererBase: React.FC<{
       // Standalone tool use message
       const toolName = message.message?.name || 'unknown tool';
       const toolInput = message.message?.input || {};
-      
-      // Hide Read tool displays completely
+      const isSubagentMessage = !!(message as any).parent_tool_use_id;
+
+      // Hide Read tool displays completely (for both main agent and subagent)
       if (toolName === 'Read') {
         return null;
       }
-      
+
+      // Hide noisy tools from subagent (Glob, TodoWrite - but show main agent versions)
+      if (isSubagentMessage && (toolName === 'Glob' || toolName === 'TodoWrite')) {
+        return null;
+      }
+
       const tool = TOOL_DISPLAYS[toolName];
       const mcpDisplay = !tool ? getMCPToolDisplay(toolName, toolInput) : null;
       const display = tool ? tool(toolInput) : mcpDisplay || {
@@ -1853,8 +1862,9 @@ const MessageRendererBase: React.FC<{
       if (toolName === 'Edit') {
         const filePath = formatPath(toolInput.file_path || 'file');
         return (
-          <div className="message tool-message">
-            <div className="tool-use standalone">
+          <div className={`message tool-message${isSubagentMessage ? ' subagent' : ''}`}>
+            <div className={`tool-use standalone${isSubagentMessage ? ' subagent-tool' : ''}`}>
+              {isSubagentMessage && <span className="subagent-indicator">↳</span>}
               <IconEdit size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing</span>
               <span className="tool-detail">{filePath}</span>
@@ -1868,8 +1878,9 @@ const MessageRendererBase: React.FC<{
         const filePath = formatPath(toolInput.file_path || 'file');
         const edits = toolInput.edits || [];
         return (
-          <div className="message tool-message">
-            <div className="tool-use standalone">
+          <div className={`message tool-message${isSubagentMessage ? ' subagent' : ''}`}>
+            <div className={`tool-use standalone${isSubagentMessage ? ' subagent-tool' : ''}`}>
+              {isSubagentMessage && <span className="subagent-indicator">↳</span>}
               <IconEditCircle size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing</span>
               <span className="tool-detail">{filePath} ({edits.length} edits)</span>
@@ -1883,8 +1894,9 @@ const MessageRendererBase: React.FC<{
         const filePath = formatPath(toolInput.notebook_path || 'notebook');
         const editMode = toolInput.edit_mode || 'replace';
         return (
-          <div className="message tool-message">
-            <div className="tool-use standalone">
+          <div className={`message tool-message${isSubagentMessage ? ' subagent' : ''}`}>
+            <div className={`tool-use standalone${isSubagentMessage ? ' subagent-tool' : ''}`}>
+              {isSubagentMessage && <span className="subagent-indicator">↳</span>}
               <IconNotebook size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing notebook</span>
               <span className="tool-detail">{filePath} ({editMode})</span>
@@ -1893,6 +1905,20 @@ const MessageRendererBase: React.FC<{
         );
       }
       
+      // Subagent tool_use: show with a nested visual indicator
+      if (isSubagentMessage) {
+        return (
+          <div className="message tool-message subagent">
+            <div className="tool-use standalone subagent-tool">
+              <span className="subagent-indicator">↳</span>
+              {display.icon && <span className="tool-icon">{display.icon}</span>}
+              <span className="tool-action">{display.action}</span>
+              {display.detail && <span className="tool-detail">{display.detail}</span>}
+            </div>
+          </div>
+        );
+      }
+
       return (
         <div className="message tool-message">
           <div className="tool-use standalone">
@@ -1902,7 +1928,7 @@ const MessageRendererBase: React.FC<{
           </div>
         </div>
       );
-      
+
     case 'tool_result':
       // Standalone tool result message
       const resultContent = message.message?.content || message.message || '';
