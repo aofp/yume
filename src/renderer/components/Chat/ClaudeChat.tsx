@@ -369,6 +369,7 @@ export const ClaudeChat: React.FC = () => {
   const [searchMatches, setSearchMatches] = useState<number[]>([]);
   const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
   const [historyIndex, setHistoryIndex] = useState(-1);
+  const [draftMessage, setDraftMessage] = useState<{ [sessionId: string]: string }>({});
   const [thinkingStartTimes, setThinkingStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [thinkingElapsed, setThinkingElapsed] = useState<{ [sessionId: string]: number }>({});
   const [scrollPositions, setScrollPositions] = useState<{ [sessionId: string]: number }>({});
@@ -413,6 +414,8 @@ export const ClaudeChat: React.FC = () => {
   const [bashDotCounts, setBashDotCounts] = useState<{ [sessionId: string]: number }>({});
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputOverlayRef = useRef<HTMLDivElement>(null);
+  const particleContainerRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const virtualizedMessageListRef = useRef<VirtualizedMessageListRef>(null);
@@ -441,7 +444,8 @@ export const ClaudeChat: React.FC = () => {
     loadPersistedSession,
     updateSessionDraft,
     addMessageToSession,
-    renameSession
+    renameSession,
+    particlesEnabled
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -458,7 +462,8 @@ export const ClaudeChat: React.FC = () => {
     loadPersistedSession: state.loadPersistedSession,
     updateSessionDraft: state.updateSessionDraft,
     addMessageToSession: state.addMessageToSession,
-    renameSession: state.renameSession
+    renameSession: state.renameSession,
+    particlesEnabled: state.particlesEnabled
   })));
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -499,9 +504,9 @@ export const ClaudeChat: React.FC = () => {
   // Bash warmup removed - it was causing focus issues
 
   // Helper to determine if virtualization should be used
-  // IMPORTANT: This must match the logic used in the render section
-  const shouldUseVirtualization = useCallback((processedMessageCount: number) => {
-    return FEATURE_FLAGS.USE_VIRTUALIZATION && processedMessageCount > 20;
+  // IMPORTANT: Always use virtualization for consistent scrollbar styling
+  const shouldUseVirtualization = useCallback((_processedMessageCount: number) => {
+    return FEATURE_FLAGS.USE_VIRTUALIZATION;
   }, []);
 
   // Check if user has recently scrolled up (within cooldown period)
@@ -2499,6 +2504,22 @@ export const ClaudeChat: React.FC = () => {
       return;
     }
     
+    // Spawn negative particles on backspace/delete
+    if ((e.key === 'Backspace' || e.key === 'Delete') && input.length > 0 && particlesEnabled && inputRef.current) {
+      const textarea = inputRef.current;
+      const selectionLength = Math.abs(textarea.selectionEnd - textarea.selectionStart);
+
+      if (selectionLength > 0) {
+        // For bulk delete (selection), spawn at selection start position
+        const { x, y } = getCaretCoordinates(textarea);
+        const particleCount = Math.min(8, 3 + Math.floor(selectionLength / 5)); // scale with selection size
+        spawnNegativeParticles(x, y, particleCount);
+      } else {
+        const { x, y } = getCaretCoordinates(textarea);
+        spawnNegativeParticles(x, y);
+      }
+    }
+
     if (e.key === 'Enter' && !e.shiftKey) {
       // Don't send if autocomplete is open - let autocomplete handle it
       if (mentionTrigger !== null || commandTrigger !== null) {
@@ -2526,11 +2547,15 @@ export const ClaudeChat: React.FC = () => {
       // Only navigate history if cursor is at the beginning of the text
       if (cursorPos === 0 && textarea.selectionEnd === 0 && currentSessionId) {
         e.preventDefault();
-        
+
         const sessionHistory = messageHistory[currentSessionId] || [];
-        
+
         // Navigate up in history
         if (historyIndex < sessionHistory.length - 1) {
+          // Save current input as draft when first entering history mode
+          if (historyIndex === -1) {
+            setDraftMessage(prev => ({ ...prev, [currentSessionId]: input }));
+          }
           const newIndex = historyIndex + 1;
           setHistoryIndex(newIndex);
           const historyValue = sessionHistory[sessionHistory.length - 1 - newIndex];
@@ -2560,10 +2585,11 @@ export const ClaudeChat: React.FC = () => {
             // Update bash mode if retrieved command starts with !
             setBashCommandMode(historyValue.startsWith('!'));
           } else if (historyIndex === 0) {
-            // Return to the original input
+            // Return to the draft message
             setHistoryIndex(-1);
-            setInput('');
-            setBashCommandMode(false);
+            const draft = draftMessage[currentSessionId] || '';
+            setInput(draft);
+            setBashCommandMode(draft.startsWith('!'));
           }
         }
       }
@@ -3038,7 +3064,7 @@ export const ClaudeChat: React.FC = () => {
     
     // Show scrollbar only when content exceeds max height
     textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
-    
+
     // If we were at bottom, maintain scroll position at bottom
     if (wasAtBottom) {
       requestAnimationFrame(() => {
@@ -3046,6 +3072,137 @@ export const ClaudeChat: React.FC = () => {
       });
     }
   };
+
+  // Get caret coordinates relative to textarea
+  const getCaretCoordinates = useCallback((textarea: HTMLTextAreaElement): { x: number; y: number } => {
+    const pos = textarea.selectionStart;
+
+    // Create a mirror div to measure text
+    const mirror = document.createElement('div');
+    const computed = window.getComputedStyle(textarea);
+
+    mirror.style.cssText = `
+      position: absolute;
+      visibility: hidden;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow: hidden;
+      width: ${textarea.clientWidth}px;
+      font: ${computed.font};
+      padding: ${computed.padding};
+      line-height: ${computed.lineHeight};
+    `;
+
+    const textBeforeCaret = textarea.value.substring(0, pos);
+    mirror.textContent = textBeforeCaret;
+
+    // Add a span at caret position
+    const caretSpan = document.createElement('span');
+    caretSpan.textContent = '|';
+    mirror.appendChild(caretSpan);
+
+    document.body.appendChild(mirror);
+
+    const x = caretSpan.offsetLeft;
+    const y = caretSpan.offsetTop - textarea.scrollTop;
+
+    document.body.removeChild(mirror);
+
+    return { x: Math.min(x, textarea.clientWidth - 10), y: Math.min(y, 36) };
+  }, []);
+
+  // Spawn typing particles
+  const spawnParticles = useCallback((relX: number, relY: number) => {
+    if (!particlesEnabled || !particleContainerRef.current || !inputRef.current) return;
+
+    // Convert relative coords to viewport coords
+    const rect = inputRef.current.getBoundingClientRect();
+    const x = rect.left + relX;
+    const y = rect.top + relY;
+
+    const count = 3 + Math.floor(Math.random() * 3); // 3-5 particles
+    const container = particleContainerRef.current;
+
+    for (let i = 0; i < count; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'typing-particle';
+
+      const size = 1 + Math.random() * 1.5;
+
+      // Random direction with strong right bias (typing moves right)
+      const angle = (Math.random() - 0.5) * Math.PI * 0.5; // -45° to +45° centered on right
+      const distance = 15 + Math.random() * 20;
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+
+      particle.style.cssText = `
+        position: fixed;
+        left: ${x}px;
+        top: ${y + 8}px;
+        width: ${size}px;
+        height: ${size}px;
+        background: var(--accent-color);
+        border-radius: 50%;
+        opacity: 0.5;
+        pointer-events: none;
+        z-index: 99999;
+        --dx: ${dx}px;
+        --dy: ${dy}px;
+        animation: particleFade 0.6s ease-out forwards;
+      `;
+
+      container.appendChild(particle);
+
+      // Remove particle after animation
+      setTimeout(() => particle.remove(), 600);
+    }
+  }, [particlesEnabled]);
+
+  // Spawn negative particles for backspace
+  const spawnNegativeParticles = useCallback((relX: number, relY: number, bulkCount?: number) => {
+    if (!particlesEnabled || !particleContainerRef.current || !inputRef.current) return;
+
+    // Convert relative coords to viewport coords
+    const rect = inputRef.current.getBoundingClientRect();
+    const x = rect.left + relX;
+    const y = rect.top + relY;
+
+    const count = bulkCount || (2 + Math.floor(Math.random() * 2)); // 2-3 particles normally
+    const container = particleContainerRef.current;
+
+    for (let i = 0; i < count; i++) {
+      const particle = document.createElement('div');
+      particle.className = 'typing-particle';
+
+      const size = 1 + Math.random() * 1;
+
+      // Random direction with strong right bias (same as typing)
+      const angle = (Math.random() - 0.5) * Math.PI * 0.5; // -45° to +45° centered on right
+      const distance = 15 + Math.random() * 20;
+      const dx = Math.cos(angle) * distance;
+      const dy = Math.sin(angle) * distance;
+
+      particle.style.cssText = `
+        position: fixed;
+        left: ${x}px;
+        top: ${y + 8}px;
+        width: ${size}px;
+        height: ${size}px;
+        background: var(--negative-color);
+        border-radius: 50%;
+        opacity: 0.6;
+        pointer-events: none;
+        z-index: 99999;
+        --dx: ${dx}px;
+        --dy: ${dy}px;
+        animation: particleFade 0.5s ease-out forwards;
+      `;
+
+      container.appendChild(particle);
+
+      setTimeout(() => particle.remove(), 500);
+    }
+  }, [particlesEnabled]);
 
   // Update input container height when it changes
   useEffect(() => {
@@ -3501,6 +3658,9 @@ export const ClaudeChat: React.FC = () => {
           // Use virtualization for better performance with many messages
           const useVirtualization = shouldUseVirtualization(filteredMessages.length);
           const isStreaming = currentSession?.streaming === true;
+          const hasPendingTools = (currentSession?.pendingToolIds?.size || 0) > 0;
+          const isRunningBash = currentSession?.runningBash === true;
+          const shouldShowThinking = isStreaming || hasPendingTools || isRunningBash;
 
           if (useVirtualization) {
             return (
@@ -3512,7 +3672,7 @@ export const ClaudeChat: React.FC = () => {
                   isStreaming={isStreaming}
                   lastAssistantMessageIds={currentSession?.lastAssistantMessageIds || []}
                   className="virtualized-messages-container"
-                  showThinking={isStreaming}
+                  showThinking={shouldShowThinking}
                   thinkingElapsed={currentSessionId && thinkingElapsed[currentSessionId] || 0}
                   onScrollStateChange={(atBottom) => {
                     if (currentSessionId) {
@@ -3564,7 +3724,10 @@ export const ClaudeChat: React.FC = () => {
           const filteredMessages = processedMessages;
           const useVirtualization = shouldUseVirtualization(filteredMessages.length);
           const isStreaming = currentSession?.streaming === true;
-          return isStreaming && !useVirtualization;
+          const hasPendingTools = (currentSession?.pendingToolIds?.size || 0) > 0;
+          const isRunningBash = currentSession?.runningBash === true;
+          const shouldShowThinking = isStreaming || hasPendingTools || isRunningBash;
+          return shouldShowThinking && !useVirtualization;
         })() && (
           <div className="message assistant">
             <div className="message-content">
@@ -3758,7 +3921,15 @@ export const ClaudeChat: React.FC = () => {
               <>
                 <div className="input-text-wrapper">
                   {hasUltrathink && (
-                    <div className="input-text-overlay">
+                    <div
+                      ref={inputOverlayRef}
+                      className="input-text-overlay"
+                      style={{
+                        height: inputRef.current ? `${inputRef.current.clientHeight}px` : '44px',
+                        minHeight: '44px',
+                        maxHeight: '106px'
+                      }}
+                    >
                       {renderStyledText(input)}
                     </div>
                   )}
@@ -3777,6 +3948,21 @@ export const ClaudeChat: React.FC = () => {
                     onChange={handleTextareaChange}
                     onKeyDown={handleKeyDown}
                     onPaste={handlePaste}
+                    onInput={(e) => {
+                      // Spawn particles on character input (not deletions)
+                      const inputEvent = e.nativeEvent as InputEvent;
+                      const isInsertion = inputEvent.inputType?.startsWith('insert');
+                      if (isInsertion && particlesEnabled && inputRef.current) {
+                        const { x, y } = getCaretCoordinates(inputRef.current);
+                        spawnParticles(x, y);
+                      }
+                    }}
+                    onScroll={() => {
+                      // Sync overlay scroll with textarea scroll
+                      if (inputOverlayRef.current && inputRef.current) {
+                        inputOverlayRef.current.scrollTop = inputRef.current.scrollTop;
+                      }
+                    }}
                     style={{
                       height: '44px',
                       paddingRight: currentSession?.streaming ? '48px' : undefined
@@ -3795,6 +3981,7 @@ export const ClaudeChat: React.FC = () => {
                       e.stopPropagation();
                     }}
                   />
+                  {/* particle container moved outside input-text-wrapper */}
                 </div>
                 {isContextFull && (
                   <div className="context-full-overlay">
@@ -3955,7 +4142,10 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
+      {/* Particle container - positioned fixed over the input area */}
+      <div ref={particleContainerRef} className="particle-container" />
+
       {/* Mention Autocomplete */}
       {mentionTrigger !== null && (
         <MentionAutocomplete

@@ -525,6 +525,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                   }
                   return <p {...props}>{children}</p>;
                 },
+                a({ children }) {
+                  return <>{children}</>;
+                },
                 table({ node, children, ...props }) {
                   return (
                     <div className="table-wrapper">
@@ -592,6 +595,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             }
             return <p {...props}>{children}</p>;
           },
+          a({ children }) {
+            return <>{children}</>;
+          },
           table({ node, children, ...props }) {
             return (
               <div className="table-wrapper">
@@ -655,6 +661,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               <ReactMarkdown
                 remarkPlugins={[remarkGfm]}
                 components={{
+                  a({ children }) {
+                    return <>{children}</>;
+                  },
                   table({ node, children, ...props }) {
                     return (
                       <div className="table-wrapper">
@@ -2853,16 +2862,8 @@ const MessageRendererBase: React.FC<{
                           </code>
                         );
                       },
-                      a: ({node, children, href, ...props}) => (
-                        <a
-                          href={href}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="markdown-link"
-                          {...props}
-                        >
-                          {children}
-                        </a>
+                      a: ({children}) => (
+                        <>{children}</>
                       ),
                       blockquote: ({node, children, ...props}) => (
                         <blockquote className="markdown-blockquote" {...props}>

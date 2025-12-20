@@ -210,6 +210,9 @@ interface ClaudeCodeStore {
   // Title generation
   autoGenerateTitle: boolean; // Whether to auto-generate titles for new sessions
 
+  // Visual effects
+  particlesEnabled: boolean; // Whether to show typing particles
+
   // Menu visibility
   showProjectsMenu: boolean; // Whether to show projects button in menu
   showAgentsMenu: boolean; // Whether to show agents button in menu
@@ -291,6 +294,9 @@ interface ClaudeCodeStore {
   
   // Title generation
   setAutoGenerateTitle: (autoGenerate: boolean) => void;
+
+  // Visual effects
+  setParticlesEnabled: (enabled: boolean) => void;
 
   // Menu visibility
   setShowProjectsMenu: (show: boolean) => void;
@@ -509,6 +515,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
   autoGenerateTitle: true, // Default to auto-generating titles (enabled by default)
+  particlesEnabled: localStorage.getItem('yurucode-particles-enabled') !== 'false', // Default to enabled
   showProjectsMenu: false, // Default to hidden
   showAgentsMenu: false, // Default to hidden
   showAnalyticsMenu: false, // Default to hidden
@@ -1293,35 +1300,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       streaming: message.streaming // Explicitly preserve streaming flag
                     };
                     
-                    // If this is an assistant message being marked as not streaming, update session streaming state
-                    // CRITICAL: Only clear streaming if NO pending tools (tools still executing)
-                    if (message.type === 'assistant' && message.streaming === false) {
-                      const hasPendingTools = s.pendingToolIds && s.pendingToolIds.size > 0;
-                      if (hasPendingTools) {
-                        console.log(`🔄 [STREAMING-FIX] Assistant message ${message.id} streaming=false but ${s.pendingToolIds?.size} tools still pending - keeping streaming=true`);
-                      } else {
-                        console.log(`🔴 [STREAMING] Assistant message ${message.id} updated to streaming=false, clearing session streaming state`);
-                        s.streaming = false;
-                        s.thinkingStartTime = undefined;
-                      }
-                    }
-                    
+                    // NOTE: Don't clear session streaming here on assistant message streaming=false
+                    // Session streaming should only be cleared by streaming_end message
+
                   } else {
                     existingMessages[existingIndex] = message;
+                    // NOTE: Don't clear session streaming here - wait for streaming_end message
 
-                    // Also check here for assistant streaming updates
-                    // CRITICAL: Only clear streaming if NO pending tools (tools still executing)
-                    if (message.type === 'assistant' && message.streaming === false) {
-                      const hasPendingTools = s.pendingToolIds && s.pendingToolIds.size > 0;
-                      if (hasPendingTools) {
-                        console.log(`🔄 [STREAMING-FIX] Assistant message ${message.id} replaced with streaming=false but ${s.pendingToolIds?.size} tools still pending - keeping streaming=true`);
-                      } else {
-                        console.log(`🔴 [STREAMING] Assistant message ${message.id} replaced with streaming=false, clearing session streaming state`);
-                        s.streaming = false;
-                        s.thinkingStartTime = undefined;
-                      }
-                    }
-                    
                   }
                 } else {
                   // Add new message only if it doesn't exist
@@ -3804,6 +3789,11 @@ ${content}`;
     set({ autoGenerateTitle: autoGenerate });
     localStorage.setItem('yurucode-auto-generate-title', JSON.stringify(autoGenerate));
     console.log('[Store] Auto-generate title:', autoGenerate);
+  },
+
+  setParticlesEnabled: (enabled: boolean) => {
+    set({ particlesEnabled: enabled });
+    localStorage.setItem('yurucode-particles-enabled', JSON.stringify(enabled));
   },
 
   setShowProjectsMenu: (show: boolean) => {

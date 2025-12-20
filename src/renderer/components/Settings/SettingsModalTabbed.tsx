@@ -726,6 +726,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     monoFont, sansFont, setMonoFont, setSansFont,
     rememberTabs, setRememberTabs,
     autoGenerateTitle, setAutoGenerateTitle,
+    particlesEnabled, setParticlesEnabled,
     showProjectsMenu, setShowProjectsMenu,
     showAgentsMenu, setShowAgentsMenu,
     showAnalyticsMenu, setShowAnalyticsMenu,
@@ -1707,39 +1708,20 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               </div>
             </div>
 
-            {/* Reset buttons */}
-            <div style={{ display: 'flex', justifyContent: 'center', gap: '12px', marginTop: '8px' }}>
-              <button
-                onClick={handleResetAllTheme}
-                disabled={isDefaultTheme}
-                style={{
-                  background: 'transparent',
-                  border: '1px solid var(--fg-20)',
-                  color: isDefaultTheme ? 'var(--fg-25)' : 'var(--fg-50)',
-                  padding: '4px 12px',
-                  borderRadius: '4px',
-                  fontSize: '10px',
-                  cursor: 'default',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  transition: 'all 0.2s ease',
-                  opacity: isDefaultTheme ? 0.5 : 1
-                }}
-                onMouseEnter={(e) => {
-                  if (!isDefaultTheme) {
-                    e.currentTarget.style.borderColor = 'var(--accent-color)';
-                    e.currentTarget.style.color = 'var(--accent-color)';
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--fg-20)';
-                  e.currentTarget.style.color = isDefaultTheme ? 'var(--fg-25)' : 'var(--fg-50)';
-                }}
-              >
-                <IconRotateClockwise size={10} />
-                reset colors
-              </button>
+            {/* Reset buttons and particles */}
+            <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <input
+                  type="checkbox"
+                  id="particlesEnabled"
+                  checked={particlesEnabled}
+                  onChange={(e) => setParticlesEnabled(e.target.checked)}
+                  className="accent-checkbox"
+                />
+                <label htmlFor="particlesEnabled" style={{ fontSize: '10px', color: 'var(--fg-50)', cursor: 'default' }}>
+                  particles
+                </label>
+              </div>
               <button
                 onClick={handleResetAllFonts}
                 disabled={isDefaultFonts}

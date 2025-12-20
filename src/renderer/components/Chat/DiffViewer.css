@@ -35,7 +35,7 @@
 
 .line-number {
   color: #666;
-  min-width: 32px;
+  min-width: 24px;
   text-align: right;
   user-select: none;
   font-size: 8px;

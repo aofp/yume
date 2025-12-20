@@ -263,6 +263,14 @@
   accent-color: var(--accent-color);
 }
 
+/* Accent colored checkbox */
+.accent-checkbox {
+  width: 12px;
+  height: 12px;
+  accent-color: var(--accent-color);
+  cursor: default;
+}
+
 /* Loading state */
 .loading {
   color: #666;

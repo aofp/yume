@@ -851,6 +851,7 @@ textarea.context-full {
   position: relative;
   flex: 1;
   display: flex;
+  overflow: visible;
 }
 
 /* Text overlay that renders styled text on top of textarea */
@@ -859,7 +860,6 @@ textarea.context-full {
   top: 1px;
   left: 1px;
   right: 1px;
-  bottom: 1px;
   padding: 4px;
   font-size: 12px;
   line-height: 18px;
@@ -867,10 +867,40 @@ textarea.context-full {
   color: transparent;
   white-space: pre-wrap;
   word-wrap: break-word;
-  overflow: hidden;
+  overflow-y: auto;
+  overflow-x: hidden;
   pointer-events: none;
   z-index: 3;
   box-sizing: border-box;
+  scrollbar-width: none; /* Firefox */
+}
+
+.input-text-overlay::-webkit-scrollbar {
+  display: none; /* Chrome/Safari */
+}
+
+/* Particle container for typing effects */
+.particle-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  pointer-events: none;
+  overflow: visible;
+  z-index: 9998;
+}
+
+/* Particle fade animation - uses CSS vars for random direction */
+@keyframes particleFade {
+  0% {
+    opacity: 0.5;
+    transform: translate(0, 0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(var(--dx, 0px), var(--dy, -15px)) scale(0.5);
+  }
 }
 
 /* Textarea text stays visible - only ultrathink gets overlaid */
@@ -2272,6 +2302,7 @@ textarea.context-full {
   scrollbar-width: thin;
   scrollbar-color: var(--fg-10) transparent;
   padding-right: 0;
+  padding-top: 7px;
 }
 
 .messages-virtualized::-webkit-scrollbar {
