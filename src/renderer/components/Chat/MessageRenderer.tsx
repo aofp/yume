@@ -265,24 +265,18 @@ const handleCopyCode = (code: string) => {
   });
 };
 
-// Helper functions
-const formatPath = (path?: string) => {
-  if (!path) return '';
-  
+// Cache for formatPath results to avoid repeated computations
+const formatPathCache = new Map<string, string>();
+
+// Helper function to format paths - memoized with cache
+const formatPathWithWorkingDir = (path: string, workingDir?: string): string => {
   // Convert Windows paths to Unix format
   let unixPath = path.replace(/\\/g, '/');
-  
-  // Get the current session's working directory from the store
-  const store = useClaudeCodeStore.getState();
-  const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
-  const workingDir = currentSession?.workingDirectory;
-  
+
   if (workingDir) {
     // Convert working directory to Unix format too
     const unixWorkingDir = workingDir.replace(/\\/g, '/');
-    
-    // Try multiple strategies to make path relative
-    
+
     // 1. Direct match - path starts with working directory
     if (unixPath.toLowerCase().startsWith(unixWorkingDir.toLowerCase())) {
       unixPath = unixPath.slice(unixWorkingDir.length);
@@ -320,7 +314,7 @@ const formatPath = (path?: string) => {
       }
     }
   }
-  
+
   // Remove any remaining absolute path prefixes
   if (unixPath.startsWith('/mnt/c/')) {
     const parts = unixPath.split('/');
@@ -330,7 +324,7 @@ const formatPath = (path?: string) => {
       unixPath = parts.slice(projectIdx + 1).join('/');
     }
   }
-  
+
   // If still absolute, try to make it relative
   if (unixPath.startsWith('/')) {
     const parts = unixPath.split('/');
@@ -338,8 +332,36 @@ const formatPath = (path?: string) => {
       return '.../' + parts.slice(-2).join('/');
     }
   }
-  
+
   return unixPath || '.';
+};
+
+// Helper functions - memoized
+const formatPath = (path?: string) => {
+  if (!path) return '';
+
+  // Get the current session's working directory from the store
+  const store = useClaudeCodeStore.getState();
+  const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
+  const workingDir = currentSession?.workingDirectory;
+
+  // Create cache key
+  const cacheKey = `${path}|${workingDir || ''}`;
+  const cached = formatPathCache.get(cacheKey);
+  if (cached !== undefined) {
+    return cached;
+  }
+
+  const result = formatPathWithWorkingDir(path, workingDir);
+
+  // Keep cache size manageable
+  if (formatPathCache.size > 1000) {
+    const firstKey = formatPathCache.keys().next().value;
+    if (firstKey) formatPathCache.delete(firstKey);
+  }
+
+  formatPathCache.set(cacheKey, result);
+  return result;
 };
 
 const formatCommand = (cmd?: string) => {
@@ -1591,12 +1613,36 @@ const MessageRendererBase: React.FC<{
       
       // Check if this is a bash command
       const isBashCommand = typeof displayText === 'string' && displayText.startsWith('!');
-      
+
+      // Helper to render text with ultrathink rainbow animation
+      const renderWithUltrathink = (text: string): React.ReactNode => {
+        if (!/ultrathink/i.test(text)) {
+          return highlightText(text, searchQuery, isCurrentMatch);
+        }
+        const parts = text.split(/(ultrathink)/gi);
+        return parts.map((part, i) =>
+          /ultrathink/i.test(part)
+            ? <span key={i} className="ultrathink-text">{part}</span>
+            : part
+        );
+      };
+
+      // Helper to render multiline text with ultrathink rainbow animation
+      const renderMultilineWithUltrathink = (text: string): React.ReactNode => {
+        const lines = text.split('\n');
+        return lines.map((line, lineIdx) => (
+          <React.Fragment key={lineIdx}>
+            {lineIdx > 0 && <br />}
+            {renderWithUltrathink(line)}
+          </React.Fragment>
+        ));
+      };
+
       return (
         <div className="message user">
           <div className="message-actions user-actions">
-            <button 
-              onClick={() => handleCopy(getMessageText(message.message?.content))} 
+            <button
+              onClick={() => handleCopy(getMessageText(message.message?.content))}
               className="action-btn"
               title="copy"
             >
@@ -1606,14 +1652,9 @@ const MessageRendererBase: React.FC<{
           <div className={`message-bubble ${isBashCommand ? 'font-mono' : ''}`}>
             {typeof displayText === 'string' ? (
               displayText.includes('\n') ? (
-                <span dangerouslySetInnerHTML={{ 
-                  __html: displayText
-                    .split('\n')
-                    .map(line => line.replace(/</g, '&lt;').replace(/>/g, '&gt;'))
-                    .join('<br>') 
-                }} />
+                <span>{renderMultilineWithUltrathink(displayText)}</span>
               ) : (
-                <span>{highlightText(displayText, searchQuery, isCurrentMatch)}</span>
+                <span>{renderWithUltrathink(displayText)}</span>
               )
             ) : (
               displayText
@@ -1930,6 +1971,12 @@ const MessageRendererBase: React.FC<{
       );
 
     case 'tool_result':
+      // Check if this tool result is an error - if so, don't display it
+      // (the error will be shown via the associated tool_use or result message)
+      if (message.message?.is_error) {
+        return null;
+      }
+
       // Standalone tool result message
       const resultContent = message.message?.content || message.message || '';
       
@@ -2680,11 +2727,12 @@ const MessageRendererBase: React.FC<{
         hasDuration: !!message.duration_ms
       });
       
-      // Check if this is actually a success (even if subtype says error_during_execution)
-      // Note: Claude CLI sends is_error:false for success, not success:true
-      const isSuccess = message.subtype === 'success' || 
-                       (message.subtype === 'error_during_execution' && (message.success === true || message.is_error === false)) ||
-                       (!message.subtype && message.is_error === false);
+      // Check if this is actually a success
+      // Claude CLI uses is_error:false for success - this is the primary indicator
+      // Also check explicit success subtype or success field
+      const isSuccess = message.is_error === false ||
+                       message.subtype === 'success' ||
+                       message.success === true;
       
       if (isSuccess) {
         // Debug log to see what fields we have

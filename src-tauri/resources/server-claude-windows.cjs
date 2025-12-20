@@ -3227,9 +3227,9 @@ io.on('connection', (socket) => {
             console.log(`🐚 [CMD] Running Windows command: ${bashCommand}`);
             console.log(`🐚 [CMD] Working directory: ${workingDir}`);
 
-            // Use /S /C with quotes for proper quote handling in cmd.exe
-            // /S modifies the treatment of quotes to handle commands with quotes correctly
-            bashProcess = spawn('cmd.exe', ['/S', '/C', `"${bashCommand}"`], {
+            // Use /C with the command directly - no extra quotes needed for simple commands
+            // Node.js spawn handles argument passing correctly
+            bashProcess = spawn('cmd.exe', ['/C', bashCommand], {
               cwd: workingDir,        // Use Windows path directly
               windowsHide: true,      // Hide console window
               detached: false,        // Stay attached to parent
@@ -3240,34 +3240,25 @@ io.on('connection', (socket) => {
             console.log(`🐚 [CMD] Process spawned`);
             activeBashProcesses.set(sessionId, bashProcess);
           } else {
-            // Use WSL for bash commands
-            // Convert Windows path to WSL path if needed
-            let wslWorkingDir = workingDir;
-            if (workingDir && workingDir.match(/^[A-Z]:\\/)) {
-              const driveLetter = workingDir[0].toLowerCase();
-              const pathWithoutDrive = workingDir.substring(2).replace(/\\/g, '/');
-              wslWorkingDir = `/mnt/${driveLetter}${pathWithoutDrive}`;
-              console.log(`🐚 [BASH] Path conversion: "${workingDir}" → "${wslWorkingDir}"`);
-            }
-            
-            // Build command to run in WSL
-            const wslCommand = `cd '${wslWorkingDir}' && ${bashCommand}`;
-            console.log(`🐚 [BASH] WSL command: ${wslCommand}`);
-            
-            // Use wsl.exe directly with proper quoting
-            bashProcess = spawn('wsl.exe', [
-              '-e', 
-              'bash', 
-              '-c',
-              wslCommand
+            // Use PowerShell for normal commands (single ! prefix)
+            console.log(`🐚 [POWERSHELL] Running command: ${bashCommand}`);
+            console.log(`🐚 [POWERSHELL] Working directory: ${workingDir}`);
+
+            // Use PowerShell with -Command flag
+            bashProcess = spawn('powershell.exe', [
+              '-NoProfile',
+              '-NonInteractive',
+              '-Command',
+              bashCommand
             ], {
+              cwd: workingDir,        // Use Windows path directly
               windowsHide: true,      // Hide console window
               detached: false,        // Stay attached to parent
-              shell: false,           // Don't use cmd.exe
+              shell: false,           // Don't use another shell
               stdio: ['ignore', 'pipe', 'pipe']  // Capture output
             });
-            
-            console.log(`🐚 [BASH] Process spawned`);
+
+            console.log(`🐚 [POWERSHELL] Process spawned`);
             activeBashProcesses.set(sessionId, bashProcess);
           }
           
@@ -3641,9 +3632,10 @@ io.on('connection', (socket) => {
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
       const args = [
         '--print',
-        '--output-format', 'stream-json', 
-        '--verbose', 
-        '--dangerously-skip-permissions'
+        '--output-format', 'stream-json',
+        '--verbose',
+        '--dangerously-skip-permissions',
+        '--disallowed-tools', 'AskUserQuestion,EnterPlanMode,ExitPlanMode'
       ];
       
       // Add system prompt if configured (passed from frontend or use default)
@@ -4454,7 +4446,7 @@ Format as a clear, structured summary that preserves all important context.`;
                   }
                   
                   // Send tool use as separate message immediately (without line number enhancements)
-                  socket.emit(`message:${sessionId}`, {
+                  const toolUseMessage = {
                     type: 'tool_use',
                     message: {
                       name: block.name,
@@ -4463,7 +4455,13 @@ Format as a clear, structured summary that preserves all important context.`;
                     },
                     timestamp: Date.now(),
                     id: `tool-${sessionId}-${Date.now()}`
-                  });
+                  };
+                  // Include parent_tool_use_id if this is a subagent message
+                  if (jsonData.parent_tool_use_id) {
+                    toolUseMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
+                    console.log(`🤖 [${sessionId}] Subagent tool_use (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...): ${block.name}`);
+                  }
+                  socket.emit(`message:${sessionId}`, toolUseMessage);
                 }
               }
               
@@ -4472,7 +4470,7 @@ Format as a clear, structured summary that preserves all important context.`;
                 lastAssistantMessageIds.set(sessionId, messageId); // Track this message ID
                 console.log(`📝 [${sessionId}] Emitting assistant message ${messageId} with streaming=true`);
                 console.log(`📝 [${sessionId}] Content blocks: ${contentBlocks.length} (types: ${contentBlocks.map(b => b.type).join(', ')})`);
-                socket.emit(`message:${sessionId}`, {
+                const assistantMessage = {
                   type: 'assistant',
                   id: messageId,
                   message: {
@@ -4481,7 +4479,13 @@ Format as a clear, structured summary that preserves all important context.`;
                   },
                   streaming: true,  // Set streaming to true during active streaming
                   timestamp: Date.now()
-                });
+                };
+                // Include parent_tool_use_id if this is a subagent message
+                if (jsonData.parent_tool_use_id) {
+                  assistantMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
+                  console.log(`🤖 [${sessionId}] Subagent assistant message (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
+                }
+                socket.emit(`message:${sessionId}`, assistantMessage);
                 
                 // Save to session with memory management
                 session.messages.push({
@@ -4688,7 +4692,7 @@ Format as a clear, structured summary that preserves all important context.`;
                   }
                 }
                 
-                socket.emit(`message:${sessionId}`, {
+                const toolResultMessage = {
                   type: 'tool_result',
                   message: {
                     tool_use_id: block.tool_use_id,
@@ -4698,7 +4702,13 @@ Format as a clear, structured summary that preserves all important context.`;
                   streaming: true,  // Keep streaming true during tool execution
                   timestamp: Date.now(),
                   id: `toolresult-${sessionId}-${Date.now()}`
-                });
+                };
+                // Include parent_tool_use_id if this is a subagent message
+                if (jsonData.parent_tool_use_id) {
+                  toolResultMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
+                  console.log(`🤖 [${sessionId}] Subagent tool_result (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
+                }
+                socket.emit(`message:${sessionId}`, toolResultMessage);
               }
             }
             
@@ -4973,7 +4983,8 @@ Format as a clear, structured summary that preserves all important context.`;
               const output = jsonData.usage.output_tokens || 0;
               const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
               const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
-              const totalContext = input + output + cacheCreation; // FIX: Don't include cacheRead
+              // FIXED: Context = input + output ONLY (cache_creation is billing metric, not context)
+              const totalContext = input + output;
 
               console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
               console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
@@ -4982,12 +4993,12 @@ Format as a clear, structured summary that preserves all important context.`;
               console.log(`   │ User Message    │ ${String(input).padEnd(8)} │              │            │`);
               console.log(`   │ Assistant Reply │ ${String(output).padEnd(8)} │              │            │`);
               console.log(`   │ Context History │          │ ${String(cacheRead).padEnd(12)} │            │`);
-              console.log(`   │ New Cache       │          │              │ ${String(cacheCreation).padEnd(10)} │`);
+              console.log(`   │ Cache Created   │          │              │ ${String(cacheCreation).padEnd(10)} │`);
               console.log(`   ├─────────────────┼──────────┼──────────────┼────────────┤`);
-              console.log(`   │ Subtotal        │ ${String(input + output).padEnd(8)} │ ${String(cacheRead).padEnd(12)} │ ${String(cacheCreation).padEnd(10)} │`);
+              console.log(`   │ New Tokens      │ ${String(input + output).padEnd(8)} │ (billing)    │ (billing)  │`);
               console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
-              console.log(`   TOTAL CONTEXT: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
-              console.log(`   Note: Cache reads don't count - only new tokens count toward the 200k limit`);
+              console.log(`   CONTEXT USAGE: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
+              console.log(`   Note: New tokens (input+output) count toward 200k. Cache values are for billing.`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
@@ -5027,15 +5038,19 @@ Format as a clear, structured summary that preserves all important context.`;
               resultMessage.usage = jsonData.usage;
               
               // Also add wrapper tokens for enhanced analytics
-              // FIX: Only NEW tokens count - cache reads are reused and don't consume context
+              // FIX: Context = input + output ONLY
+              // cache_creation is a BILLING metric (cost of writing to cache), NOT additional context
+              // cache_read is conversation history (already included in the model's context)
+              // For context window tracking, we only count new tokens added this turn
               resultMessage.wrapper = {
                 tokens: {
                   input: jsonData.usage.input_tokens || 0,
                   output: jsonData.usage.output_tokens || 0,
+                  // CRITICAL FIX: Do NOT include cache_creation in total
+                  // cache_creation represents tokens being cached, not new context
+                  // The actual context per-turn is just new input + output
                   total: (jsonData.usage.input_tokens || 0) +
-                         (jsonData.usage.output_tokens || 0) +
-                         (jsonData.usage.cache_creation_input_tokens || 0),
-                         // Removed cache_read_input_tokens - they don't count!
+                         (jsonData.usage.output_tokens || 0),
                   cache_read: jsonData.usage.cache_read_input_tokens || 0,
                   cache_creation: jsonData.usage.cache_creation_input_tokens || 0
                 }
@@ -5056,17 +5071,15 @@ Format as a clear, structured summary that preserves all important context.`;
             console.log(`   - Model in result message: ${resultMessage.model}`);
             console.log(`   - Session ID in result message: ${resultMessage.session_id || '(cleared after compact)'}`);
             if (resultMessage.usage) {
+              // FIXED: Context = input + output ONLY (cache values are for billing)
               const totalContext = (resultMessage.usage.input_tokens || 0) +
-                                  (resultMessage.usage.output_tokens || 0) +
-                                  (resultMessage.usage.cache_creation_input_tokens || 0);
-                                  // FIX: Removed cache_read_input_tokens - they don't count!
+                                  (resultMessage.usage.output_tokens || 0);
               console.log(`   - Usage breakdown:`);
               console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0}`);
               console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0}`);
-              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0}`);
-              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0} (cached, doesn't count)`);
-              console.log(`     • TOTAL CONTEXT SIZE: ${totalContext} / 200000`);
-              console.log(`     • Note: Only NEW tokens count - cache reads are reused and don't consume context`);
+              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0} (billing only)`);
+              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0} (billing only)`);
+              console.log(`     • CONTEXT USAGE: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
             }
             
             // Debug log the full resultMessage before emitting
@@ -5594,10 +5607,13 @@ Format as a clear, structured summary that preserves all important context.`;
       activeProcesses.delete(sessionId);
       activeProcessStartTimes.delete(sessionId);
       
-      // Mark session as interrupted for proper resume handling
+      // When user explicitly stops, prevent auto-resume by clearing session state
+      // This ensures any new message starts a fresh Claude session, not a resume
       if (session) {
-        session.wasInterrupted = true;
-        console.log(`🔄 Session ${sessionId} interrupted - marked wasInterrupted=true for followup`);
+        session.wasInterrupted = false;  // Don't allow auto-resume
+        session.claudeSessionId = null;  // Clear so next message starts fresh
+        session.interruptedSessionId = null;  // Clear interrupted session too
+        console.log(`🛑 Session ${sessionId} stopped by user - cleared session state to prevent auto-resume`);
       }
       
       // If we have a last assistant message, mark it as done streaming

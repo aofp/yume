@@ -54,6 +54,30 @@ import { FEATURE_FLAGS } from '../../config/features';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import './ClaudeChat.css';
 
+// Cached custom commands to avoid parsing localStorage on every command execution
+let cachedCustomCommands: any[] | null = null;
+let cachedCommandsTimestamp = 0;
+
+const getCachedCustomCommands = () => {
+  // Refresh cache every 5 seconds or on first access
+  const now = Date.now();
+  if (!cachedCustomCommands || now - cachedCommandsTimestamp > 5000) {
+    try {
+      cachedCustomCommands = JSON.parse(localStorage.getItem('yurucode_commands') || '[]');
+      cachedCommandsTimestamp = now;
+    } catch {
+      cachedCustomCommands = [];
+    }
+  }
+  return cachedCustomCommands;
+};
+
+// Call this when commands are updated to invalidate cache
+export const invalidateCommandsCache = () => {
+  cachedCustomCommands = null;
+  cachedCommandsTimestamp = 0;
+};
+
 // Helper function to format tool displays
 const getToolDisplay = (name: string, input: any) => {
   const displays: Record<string, (input: any) => { icon: React.ReactNode; name: string; detail: string }> = {
@@ -152,7 +176,8 @@ interface FileTreeNodeProps {
   onContextMenu: (e: React.MouseEvent, path: string) => void;
 }
 
-const FileTreeNode: React.FC<FileTreeNodeProps> = ({
+// Memoized FileTreeNode to prevent unnecessary re-renders of the entire tree
+const FileTreeNode: React.FC<FileTreeNodeProps> = React.memo(({
   item,
   depth,
   selectedFile,
@@ -271,7 +296,48 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = ({
       )}
     </React.Fragment>
   );
-};
+}, (prevProps, nextProps) => {
+  // Custom comparison for performance
+  // Only re-render if the item itself changed or relevant state changed
+  if (prevProps.item !== nextProps.item) return false;
+  if (prevProps.depth !== nextProps.depth) return false;
+  if (prevProps.selectedFile !== nextProps.selectedFile) return false;
+  if (prevProps.focusedPath !== nextProps.focusedPath) return false;
+  if (prevProps.workingDirectory !== nextProps.workingDirectory) return false;
+
+  // Check if this item's expanded state changed
+  const itemPath = prevProps.item.path;
+  if (prevProps.expandedFolders.has(itemPath) !== nextProps.expandedFolders.has(itemPath)) {
+    return false;
+  }
+
+  // Check if git status changed for this item (shallow check)
+  if (prevProps.gitStatus !== nextProps.gitStatus) {
+    // Only re-render if the change affects this item or its children
+    const relativePath = itemPath.replace(prevProps.workingDirectory, '').replace(/^[/\\]/, '');
+    const folderPrefix = relativePath ? `${relativePath}/` : '';
+
+    const prevModified = prevProps.gitStatus?.modified || [];
+    const nextModified = nextProps.gitStatus?.modified || [];
+    const prevAdded = prevProps.gitStatus?.added || [];
+    const nextAdded = nextProps.gitStatus?.added || [];
+
+    // Check if this file's status changed
+    const prevHasChange = prevModified.includes(relativePath) || prevAdded.includes(relativePath);
+    const nextHasChange = nextModified.includes(relativePath) || nextAdded.includes(relativePath);
+    if (prevHasChange !== nextHasChange) return false;
+
+    // For directories, check if any children's status changed
+    if (prevProps.item.type === 'directory') {
+      const prevChildrenModified = prevModified.some(f => f.startsWith(folderPrefix));
+      const nextChildrenModified = nextModified.some(f => f.startsWith(folderPrefix));
+      if (prevChildrenModified !== nextChildrenModified) return false;
+    }
+  }
+
+  // Callbacks are stable (created with useCallback in parent)
+  return true;
+});
 
 interface Attachment {
   id: string;
@@ -2801,8 +2867,8 @@ export const ClaudeChat: React.FC = () => {
         renameSession(currentSessionId, newTitle);
       }
     } else {
-      // Check if this is a custom command
-      const customCommands = JSON.parse(localStorage.getItem('yurucode_commands') || '[]');
+      // Check if this is a custom command (using cached version to avoid JSON.parse on every command)
+      const customCommands = getCachedCustomCommands();
       const customCommand = customCommands.find((cmd: any) => {
         const trigger = cmd.name.startsWith('/') ? cmd.name : '/' + cmd.name;
         return trigger === command && cmd.enabled;
@@ -3716,6 +3782,7 @@ export const ClaudeChat: React.FC = () => {
                       paddingRight: currentSession?.streaming ? '48px' : undefined
                     }}
                     disabled={currentSession?.readOnly || isContextFull}
+                    spellCheck={false}
                     onFocus={() => setIsTextareaFocused(true)}
                     onBlur={() => {
                       // Close autocomplete when textarea loses focus
@@ -3828,8 +3895,9 @@ export const ClaudeChat: React.FC = () => {
               const contextWindowTokens = 200000;
 
               // Calculate percentage using total context tokens
+              // Don't cap at 100% - show real value for context awareness
               const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
-              const percentageNum = Math.min(100, rawPercentage);
+              const percentageNum = rawPercentage; // Use raw percentage, don't cap
               // Format: always show 2 decimal places
               const percentage = percentageNum.toFixed(2);
 
@@ -3838,10 +3906,10 @@ export const ClaudeChat: React.FC = () => {
                 console.warn(`[TOKEN WARNING] Tokens (${totalContextTokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
               }
 
-              // Determine usage class and auto-compact status
-              const usageClass = percentageNum >= 97 ? 'critical' : percentageNum >= 90 ? 'high' : 'low';
-              const willAutoCompact = percentageNum >= 97;
-              const approachingCompact = percentageNum >= 90 && percentageNum < 97;
+              // Determine usage class and auto-compact status (use raw percentage)
+              const usageClass = rawPercentage >= 97 ? 'critical' : rawPercentage >= 90 ? 'high' : 'low';
+              const willAutoCompact = rawPercentage >= 97;
+              const approachingCompact = rawPercentage >= 90 && rawPercentage < 97;
 
               const hasActivity = currentSession.messages.some(m =>
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
@@ -3940,7 +4008,8 @@ export const ClaudeChat: React.FC = () => {
                 const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
                 const contextWindowTokens = 200000;
                 const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
-                const percentageNum = Math.min(100, rawPercentage);
+                // Don't cap at 100% - show real percentage for context usage awareness
+                const percentageNum = rawPercentage;
                 const percentage = percentageNum.toFixed(2);
                 
                 return (
@@ -3954,7 +4023,7 @@ export const ClaudeChat: React.FC = () => {
                           </div>
                           <span className="stat-dots"></span>
                           <span className="stat-desc" style={{ fontWeight: 600, color: 'var(--accent-color)' }}>
-                            {(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k ({Math.min(100, ((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100)).toFixed(1)}%)
+                            {(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k ({((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100).toFixed(1)}%)
                           </span>
                         </div>
                         <div className="stat-row">

@@ -18,9 +18,6 @@ import { tauriClaudeClient } from './services/tauriClaudeClient';
 import './services/modalService';
 
 const mainLogger = log.setContext('Main');
-mainLogger.info('main.tsx loading...');
-mainLogger.debug('tauriClaudeClient imported', { tauriClaudeClient });
-mainLogger.debug('claudeCodeClient imported', { claudeCodeClient });
 
 // Variables for sleep/wake detection and session persistence
 let lastActiveTime = Date.now();
@@ -115,23 +112,17 @@ for (let i = 0; i < localStorage.length; i++) {
   }
 }
 keysToRemove.forEach(key => localStorage.removeItem(key));
-console.log('Cleared any persisted sessions on startup');
 
 // Set up listener for auto-created sessions from server and Tauri client
-const sessionCreatedHandler = (data) => {
-  console.log('[App] Session created/spawned:', data);
-  
+const sessionCreatedHandler = (data: any) => {
   // Handle deferred spawn case (when tempSessionId and realSessionId are provided)
   if (data.tempSessionId && data.realSessionId) {
-    console.log('[App] Deferred spawn completed:', data.tempSessionId, '->', data.realSessionId);
-    
     // Call the store method to handle the deferred spawn
     store.handleDeferredSpawn(data.tempSessionId, data.realSessionId);
     return;
   }
-  
+
   // Original logic for server auto-created sessions
-  console.log('[App] Restoring', data.messages?.length || 0, 'messages from disk');
   
   // Update the session in the store to mark it as active and restore messages
   const state = store;
@@ -154,7 +145,6 @@ const sessionCreatedHandler = (data) => {
     useClaudeCodeStore.setState({ sessions });
   } else {
     // Create new session if it doesn't exist
-    console.log('[App] Session not found in store, creating new session with restored data');
     const newSession = {
       id: data.sessionId,
       name: 'restored session',
@@ -186,32 +176,25 @@ const sessionCreatedHandler = (data) => {
 // Register the handler for both clients
 claudeCodeClient.onSessionCreated(sessionCreatedHandler);
 tauriClaudeClient.onSessionCreated(sessionCreatedHandler);
-console.log('[App] Registered sessionCreated handlers for both Socket.IO and Tauri clients');
 
 // Auto-reconnect restored sessions after app starts
 setTimeout(() => {
   const { sessions, currentSessionId } = store;
-  console.log(`[App] Checking ${sessions.length} restored sessions for reconnection`);
-  
+
   sessions.forEach(async (session) => {
     // Only reconnect sessions that have a claudeSessionId (were active before)
     if (session.claudeSessionId) {
-      console.log(`[App] Reconnecting session ${session.id} with claudeSessionId ${session.claudeSessionId}`);
       try {
         // Reconnect the session - server will use --resume flag
         await store.createSession(session.name, session.workingDirectory, session.id);
-        console.log(`[App] Successfully reconnected session ${session.id}`);
       } catch (err) {
-        console.error(`[App] Failed to reconnect session ${session.id}:`, err);
+        // Failed to reconnect, will create fresh on first message
       }
-    } else {
-      console.log(`[App] Session ${session.id} has no claudeSessionId, will create fresh on first message`);
     }
   });
-  
+
   // Restore the current session if it exists
   if (currentSessionId && sessions.find(s => s.id === currentSessionId)) {
-    console.log(`[App] Restoring current session: ${currentSessionId}`);
     store.setCurrentSession(currentSessionId);
   }
 }, 2000); // Wait 2 seconds for socket connection to establish
@@ -236,18 +219,14 @@ setTimeout(() => {
 // Wait for DOM to be ready
 function initApp() {
   const rootElement = document.getElementById('root');
-  console.log('Root element:', rootElement);
 
   if (rootElement) {
-    console.log('Creating React root...');
     ReactDOM.createRoot(rootElement).render(
       <ErrorBoundary name="RootBoundary">
         <App />
       </ErrorBoundary>
     );
-    console.log('React app rendered');
   } else {
-    console.error('Root element not found!');
     // Try again in 100ms if root not found
     setTimeout(initApp, 100);
   }
@@ -263,8 +242,6 @@ if (document.readyState === 'loading') {
 
 // Clear all sessions when window is about to close
 window.addEventListener('beforeunload', () => {
-  console.log('Window closing, clearing all sessions...');
-  const store = useClaudeCodeStore.getState();
   // Clear the persistence interval
   if (persistenceInterval) {
     clearInterval(persistenceInterval);
@@ -274,7 +251,7 @@ window.addEventListener('beforeunload', () => {
   localStorage.removeItem('yurucode-sessions-timestamp');
   localStorage.removeItem('yurucode-session-mappings');
   // Clear all session checkpoints
-  const keysToRemove = [];
+  const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
     if (key && key.startsWith('yurucode-checkpoint-')) {
@@ -282,14 +259,11 @@ window.addEventListener('beforeunload', () => {
     }
   }
   keysToRemove.forEach(key => localStorage.removeItem(key));
-  console.log('Cleared all sessions and checkpoints from localStorage');
 });
 
 // Listen for app quit event from Electron main process
 if (window.electronAPI && window.electronAPI.ipcRenderer) {
   window.electronAPI.ipcRenderer.on('app-before-quit', () => {
-    console.log('App quitting, clearing all sessions...');
-    const store = useClaudeCodeStore.getState();
     // Clear the persistence interval
     if (persistenceInterval) {
       clearInterval(persistenceInterval);
@@ -299,7 +273,7 @@ if (window.electronAPI && window.electronAPI.ipcRenderer) {
     localStorage.removeItem('yurucode-sessions-timestamp');
     localStorage.removeItem('yurucode-session-mappings');
     // Clear all session checkpoints
-    const keysToRemove = [];
+    const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
       if (key && key.startsWith('yurucode-checkpoint-')) {
@@ -307,60 +281,47 @@ if (window.electronAPI && window.electronAPI.ipcRenderer) {
       }
     }
     keysToRemove.forEach(key => localStorage.removeItem(key));
-    console.log('Cleared all sessions and checkpoints from localStorage');
   });
 }
 
 // Handle window focus/blur for better session management
 window.addEventListener('focus', () => {
-  // Removed spammy log
   const store = useClaudeCodeStore.getState();
   const { sessions, currentSessionId } = store;
-  
+
   // Check if current session needs refresh
   const currentSession = sessions.find(s => s.id === currentSessionId);
   if (currentSession && currentSession.status === 'paused') {
-    console.log('[App] Current session is paused, attempting to reactivate');
     if (currentSession.claudeSessionId) {
       store.createSession(currentSession.name, currentSession.workingDirectory, currentSession.id)
-        .then(() => console.log('[App] Reactivated current session'))
-        .catch(err => console.log('[App] Session already active or reconnection not needed'));
+        .catch(() => { /* Session already active or reconnection not needed */ });
     }
   }
 });
 
 window.addEventListener('blur', () => {
-  console.log('[App] Window blurred');
   // Don't persist sessions anymore - they should be ephemeral
 });
 
 // Detect system wake from sleep and recover
 document.addEventListener('visibilitychange', () => {
   const now = Date.now();
-  
+
   if (document.hidden) {
-    // Page is being hidden, record the time 
+    // Page is being hidden, record the time
     lastActiveTime = now;
-    console.log('[App] Window hidden');
-    // Don't persist sessions anymore
   } else {
     // Page is becoming visible, check if we need to restore
     const timeDiff = now - lastActiveTime;
-    
-    if (timeDiff > 600000) { // 10 minutes
-      console.log(`⚠️ Page visible after ${Math.round(timeDiff/1000)}s gap`);
-      // Don't restore sessions - they should be ephemeral
-    } else if (timeDiff > 60000) { // 1 minute - just refresh connections
-      console.log(`[App] Page visible after ${Math.round(timeDiff/1000)}s, refreshing connections`);
-      
+
+    if (timeDiff > 60000) { // 1 minute - just refresh connections
       // Just ensure sessions are still connected
       store.sessions.forEach(async (session) => {
         if (session.claudeSessionId && session.status === 'paused') {
           try {
             await store.createSession(session.name, session.workingDirectory, session.id);
-            console.log(`[App] Refreshed connection for session ${session.id}`);
           } catch (err) {
-            console.log(`[App] Session ${session.id} connection refresh not needed`);
+            // Connection refresh not needed
           }
         }
       });
@@ -369,25 +330,17 @@ document.addEventListener('visibilitychange', () => {
 });
 
 
-// Add keyboard shortcuts
-document.addEventListener('keydown', (e) => {
+// Keyboard shortcut handler
+const keyboardHandler = (e: KeyboardEvent) => {
   // F12 - Toggle DevTools (works regardless of input field)
   if (e.key === 'F12') {
     e.preventDefault();
-    // Try to toggle devtools if available
-    if ((window as any).__TAURI__) {
-      import('@tauri-apps/api/window').then(({ appWindow }) => {
-        // There's no direct toggle method, but we can try to emit an event
-        console.log('F12 pressed - DevTools should be open automatically in dev mode');
-      });
-    }
     return;
   }
-  
+
   // Ctrl + Tab - Next tab (works regardless of input field)
   if (e.ctrlKey && e.key === 'Tab' && !e.shiftKey) {
     e.preventDefault();
-    console.log('Keyboard shortcut: Next tab');
     const { sessions, currentSessionId, setCurrentSession } = useClaudeCodeStore.getState();
     if (sessions.length > 1) {
       const currentIndex = sessions.findIndex(s => s.id === currentSessionId);
@@ -396,11 +349,10 @@ document.addEventListener('keydown', (e) => {
     }
     return;
   }
-  
+
   // Ctrl + Shift + Tab - Previous tab (works regardless of input field)
   if (e.ctrlKey && e.shiftKey && e.key === 'Tab') {
     e.preventDefault();
-    console.log('Keyboard shortcut: Previous tab');
     const { sessions, currentSessionId, setCurrentSession } = useClaudeCodeStore.getState();
     if (sessions.length > 1) {
       const currentIndex = sessions.findIndex(s => s.id === currentSessionId);
@@ -409,22 +361,22 @@ document.addEventListener('keydown', (e) => {
     }
     return;
   }
-  
+
   // Don't intercept keyboard shortcuts when typing in input fields
   const target = e.target as HTMLElement;
-  const isInputField = target.tagName === 'INPUT' || 
-                       target.tagName === 'TEXTAREA' || 
+  const isInputField = target.tagName === 'INPUT' ||
+                       target.tagName === 'TEXTAREA' ||
                        target.contentEditable === 'true';
-  
+
   if (isInputField) {
     return;
   }
-  
+
   // Escape - Stop streaming response (only if no modals are open)
   if (e.key === 'Escape') {
     // Check if any modals are open first - they have priority
-    const hasOpenModal = 
-      document.querySelector('.modal-overlay') || 
+    const hasOpenModal =
+      document.querySelector('.modal-overlay') ||
       document.querySelector('.projects-modal') ||
       document.querySelector('.recent-projects-modal') ||
       document.querySelector('.settings-modal') ||
@@ -433,23 +385,21 @@ document.addEventListener('keydown', (e) => {
       document.querySelector('.server-logs') ||
       document.querySelector('.autocomplete-popup') ||
       document.querySelector('.mention-autocomplete');
-    
+
     // Only handle streaming interruption if no modals are open
     if (!hasOpenModal) {
       const { sessions, currentSessionId, interruptSession } = useClaudeCodeStore.getState();
       const currentSession = sessions.find(s => s.id === currentSessionId);
       if (currentSession?.streaming) {
         e.preventDefault();
-        console.log('Keyboard shortcut: Interrupting stream');
         interruptSession();
       }
     }
   }
-  
+
   // Cmd/Ctrl + T - New tab (session)
   if ((e.metaKey || e.ctrlKey) && e.key === 't') {
     e.preventDefault();
-    console.log('Keyboard shortcut: Creating new tab');
     const { createSession } = useClaudeCodeStore.getState();
     // Open folder selector if in Electron, otherwise use root
     if (window.electronAPI?.folder?.select) {
@@ -467,17 +417,15 @@ document.addEventListener('keydown', (e) => {
   // Cmd/Ctrl + W - Close current tab
   if ((e.metaKey || e.ctrlKey) && e.key === 'w') {
     e.preventDefault();
-    console.log('Keyboard shortcut: Closing current tab');
     const { currentSessionId, deleteSession } = useClaudeCodeStore.getState();
     if (currentSessionId) {
       deleteSession(currentSessionId);
     }
   }
-  
+
   // Cmd/Ctrl + Q - Quit application
   if ((e.metaKey || e.ctrlKey) && e.key === 'q') {
     e.preventDefault();
-    console.log('Keyboard shortcut: Quitting application');
     if (window.electronAPI?.window?.close) {
       window.electronAPI.window.close();
     } else {
@@ -485,20 +433,26 @@ document.addEventListener('keydown', (e) => {
       window.close();
     }
   }
-  
-  
+
   // Cmd/Ctrl + 1-9 - Switch to specific tab
   if ((e.metaKey || e.ctrlKey) && e.key >= '1' && e.key <= '9') {
     e.preventDefault();
     const tabIndex = parseInt(e.key) - 1;
-    console.log(`Keyboard shortcut: Switch to tab ${tabIndex + 1}`);
     const { sessions, setCurrentSession } = useClaudeCodeStore.getState();
     if (tabIndex < sessions.length) {
       setCurrentSession(sessions[tabIndex].id);
     }
   }
-  
+
   // Help shortcuts are now handled in ClaudeChat component
+};
+
+// Add the keyboard listener
+document.addEventListener('keydown', keyboardHandler);
+
+// Cleanup on unload (for hot reload in dev mode)
+window.addEventListener('unload', () => {
+  document.removeEventListener('keydown', keyboardHandler);
 });
 
 // Track if help is open

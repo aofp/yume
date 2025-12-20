@@ -3,6 +3,9 @@ import React, { useRef, useEffect, useCallback, useMemo, useImperativeHandle, fo
 import { MessageRenderer } from './MessageRenderer';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 
+// Pre-computed thinking characters to avoid splitting on every render
+const THINKING_CHARS = 'thinking'.split('');
+
 interface VirtualizedMessageListProps {
   messages: any[];
   sessionId: string;
@@ -37,6 +40,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const userScrolledAtRef = useRef(0); // Timestamp when user scrolled up
   const previousMessageCountRef = useRef(0);
   const scrollToBottomRequestedRef = useRef(false);
+  const pendingScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cooldown period after user scrolls up (don't auto-scroll for this long)
   const SCROLL_COOLDOWN_MS = 3000;
@@ -49,13 +53,14 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     return messages;
   }, [messages, showThinking]);
 
-  // Create a hash of message content to detect changes
+  // Create a simple hash of message content to detect changes
+  // Uses count + last message ID + streaming state instead of JSON.stringify for performance
   const contentHash = useMemo(() => {
-    return JSON.stringify(displayMessages.map(m => ({
-      id: m.id,
-      len: m.content?.length || m.text?.length || 0,
-      type: m.type
-    })));
+    const lastMsg = displayMessages[displayMessages.length - 1];
+    const lastId = lastMsg?.id || '';
+    const lastLen = lastMsg?.content?.length || lastMsg?.text?.length || 0;
+    const isStreaming = lastMsg?.streaming ? 1 : 0;
+    return `${displayMessages.length}:${lastId}:${lastLen}:${isStreaming}`;
   }, [displayMessages]);
 
   // Estimate message heights based on content
@@ -147,7 +152,6 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     if (scrollingUp && !atBottom) {
       userHasScrolledRef.current = true;
       userScrolledAtRef.current = Date.now();
-      console.log('[VirtualizedList] User scrolling UP - blocking auto-scroll');
       onScrollStateChange?.(false);
     }
 
@@ -203,6 +207,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   }, [displayMessages.length]);
 
   // Auto-scroll to bottom when content changes - ONLY if user hasn't manually scrolled up
+  // Uses a debounced approach: cancel pending scrolls and schedule a single scroll after content stabilizes
   useEffect(() => {
     const contentChanged = contentHash !== lastContentHashRef.current;
     lastContentHashRef.current = contentHash;
@@ -211,37 +216,32 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
 
     // Only auto-scroll if user hasn't manually scrolled up (ignore isAtBottom check)
     if (!userHasScrolledRef.current) {
-      const doScroll = () => {
-        if (!parentRef.current) return;
+      // Cancel any pending scroll to avoid jitter from multiple scroll attempts
+      if (pendingScrollTimeoutRef.current) {
+        clearTimeout(pendingScrollTimeoutRef.current);
+        pendingScrollTimeoutRef.current = null;
+      }
+
+      // Use RAF for smooth scrolling tied to repaint cycles
+      requestAnimationFrame(() => {
+        if (!parentRef.current || userHasScrolledRef.current) return;
         const lastIndex = displayMessages.length - 1;
         virtualizer.scrollToIndex(lastIndex, { align: 'end', behavior: 'auto' });
-      };
-
-      // Multiple scroll attempts to ensure we catch virtualizer updates
-      requestAnimationFrame(doScroll);
-      setTimeout(doScroll, 50);
-      setTimeout(doScroll, 150);
+      });
     }
   }, [contentHash, displayMessages.length, virtualizer]);
 
-  // Continuous auto-scroll during streaming/thinking
+  // Cleanup pending scroll on unmount
   useEffect(() => {
-    if (!isStreaming && !showThinking) return;
-    if (userHasScrolledRef.current) return;
-
-    const scrollInterval = setInterval(() => {
-      if (userHasScrolledRef.current) {
-        clearInterval(scrollInterval);
-        return;
+    return () => {
+      if (pendingScrollTimeoutRef.current) {
+        clearTimeout(pendingScrollTimeoutRef.current);
       }
-      if (!parentRef.current || displayMessages.length === 0) return;
+    };
+  }, []);
 
-      const lastIndex = displayMessages.length - 1;
-      virtualizer.scrollToIndex(lastIndex, { align: 'end', behavior: 'auto' });
-    }, 200);
-
-    return () => clearInterval(scrollInterval);
-  }, [isStreaming, showThinking, displayMessages.length, virtualizer]);
+  // Auto-scroll during streaming is now handled by the contentHash effect above
+  // which triggers on actual content changes rather than a fixed interval
   
   // Memoize virtual items to prevent re-renders
   const virtualItems = virtualizer.getVirtualItems();
@@ -302,11 +302,11 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                       <LoadingIndicator size="small" color="red" />
                       <span className="thinking-text-wrapper">
                         <span className="thinking-text">
-                          {'thinking'.split('').map((char, i) => (
-                            <span 
-                              key={i} 
-                              className="thinking-char" 
-                              style={{ 
+                          {THINKING_CHARS.map((char, i) => (
+                            <span
+                              key={i}
+                              className="thinking-char"
+                              style={{
                                 animationDelay: `${i * 0.05}s`
                               }}
                             >

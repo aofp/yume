@@ -741,7 +741,7 @@ ol {
   margin: 0 0 2px 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 9px;
   color: rgba(var(--foreground-rgb), 0.8);
   white-space: pre-wrap;
   word-break: break-all;
@@ -749,9 +749,9 @@ ol {
   overflow-y: auto;
 }
 
-/* Smaller font for Write tool output */
+/* Write tool output */
 .tool-result.standalone.write-output .result-content {
-  font-size: 8pt;
+  font-size: 9px;
 }
 
 .tool-result.standalone.file-diff .result-content {
@@ -1090,7 +1090,7 @@ body.platform-win32 .tool-detail {
   gap: 6px;
   padding: 0;
   border-radius: 0;
-  font-size: 8pt;
+  font-size: 9px;
   margin: 0;
   animation: resultFade 0.3s ease;
 }
@@ -1268,7 +1268,7 @@ body.platform-win32 .tool-detail {
 .read-more, .search-more, .result-more {
   display: block;
   margin-top: 4px;
-  font-size: 8pt;
+  font-size: 9px;
   color: rgba(var(--foreground-rgb), 0.4);
   font-family: var(--font-mono);
   cursor: default;
@@ -1386,7 +1386,7 @@ body.platform-win32 .tool-detail {
 
 .search-count {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 9px;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1419,7 +1419,7 @@ body.platform-win32 .tool-detail {
 
 .file-count {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 9px;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1456,7 +1456,7 @@ body.platform-win32 .tool-detail {
 
 .dir-count {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 9px;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1964,7 +1964,7 @@ code *::-moz-selection {
 .table-wrapper {
   overflow-x: auto;
   overflow-y: hidden;
-  margin: 8px 0;
+  margin: 4px 0;
   max-width: 100%;
   width: 100%;
   display: block;
@@ -1979,7 +1979,7 @@ code *::-moz-selection {
 
 .markdown-table th,
 .markdown-table td {
-  padding: 6px 12px;
+  padding: 2px 6px;
   border: 1px solid rgba(var(--foreground-rgb), 0.1);
   text-align: left;
 }
@@ -2067,4 +2067,85 @@ pre::-webkit-scrollbar-thumb {
 .message::-webkit-scrollbar-thumb:hover,
 pre::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--accent-rgb), 0.5);
+}
+
+/* Tool output font size override - 9px for all tool results, 8px for line numbers */
+.tool-result,
+.tool-result .result-content,
+.tool-result .bash-line,
+.tool-result .bash-command-text,
+.tool-result .read-line,
+.tool-result .search-line,
+.tool-result .result-line,
+.tool-result .file-item,
+.tool-result .dir-item,
+.tool-result .web-result-line,
+.tool-result .web-line,
+.tool-result .task-line,
+.tool-result .result-text,
+.tool-result .search-pattern,
+.tool-result .bash-content,
+.tool-result .read-content,
+.tool-result .search-content,
+.tool-result .file-list-content,
+.tool-result .dir-content,
+.tool-result .web-search-content,
+.tool-result .web-fetch-content,
+.tool-result .task-content,
+.diff-line,
+.diff-content,
+.diff-container,
+.line-content,
+.code-block-wrapper,
+.code-block-wrapper code,
+.code-block-wrapper pre,
+pre code,
+.thinking-code-block,
+.thinking-code-block code {
+  font-size: 9px !important;
+}
+
+/* Line numbers - 8px */
+.tool-result .line-number,
+.read-line .line-number,
+.bash-line .line-number,
+.search-line .line-number,
+.result-line .line-number,
+.diff-line .line-number,
+.line-number,
+.react-syntax-highlighter-line-number,
+.linenumber {
+  font-size: 8px !important;
+}
+
+/* Rainbow gradient animation for ultrathink in user messages */
+.ultrathink-text {
+  background: linear-gradient(
+    90deg,
+    #ff9999,
+    #ffbb99,
+    #ffdd99,
+    #ffff99,
+    #99ff99,
+    #99ffdd,
+    #99ffff,
+    #99bbff,
+    #bb99ff,
+    #ff99dd,
+    #ff9999
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: rainbow-flow 3s linear infinite;
+}
+
+@keyframes rainbow-flow {
+  0% {
+    background-position: 0% 50%;
+  }
+  100% {
+    background-position: 300% 50%;
+  }
 }

@@ -4,8 +4,43 @@
  */
 
 import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
+import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { claudeCodeClient } from '../services/claudeCodeClient';
+
+// Debounced storage to prevent UI freezes when toggling settings
+// Writes are batched and done asynchronously after 100ms of inactivity
+const createDebouncedStorage = (): StateStorage => {
+  let writeTimeout: ReturnType<typeof setTimeout> | null = null;
+  let pendingValue: string | null = null;
+  let pendingKey: string | null = null;
+
+  return {
+    getItem: (name: string): string | null => {
+      return localStorage.getItem(name);
+    },
+    setItem: (name: string, value: string): void => {
+      pendingKey = name;
+      pendingValue = value;
+
+      if (writeTimeout) {
+        clearTimeout(writeTimeout);
+      }
+
+      // Debounce writes by 100ms and do them async
+      writeTimeout = setTimeout(() => {
+        if (pendingKey && pendingValue !== null) {
+          localStorage.setItem(pendingKey, pendingValue);
+        }
+        writeTimeout = null;
+        pendingKey = null;
+        pendingValue = null;
+      }, 100);
+    },
+    removeItem: (name: string): void => {
+      localStorage.removeItem(name);
+    },
+  };
+};
 import { tauriClaudeClient } from '../services/tauriClaudeClient';
 import { useLicenseStore } from '../services/licenseManager';
 import { DEFAULT_MODEL_ID, MODEL_ID_MAP, resolveModelId, getModelByFamily } from '../config/models';
@@ -1567,15 +1602,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       
                       // Update new analytics fields to match Claude Code
                       // Context window shows ALL tokens (including cache) as they all count towards the limit
+                      // NOTE: Do NOT cap percentage at 100% - we need real value for auto-compaction
+                      const rawPercentage = (analytics.tokens.total / 200000 * 100);
                       analytics.contextWindow = {
                         used: analytics.tokens.total,
                         limit: 200000,
-                        percentage: Math.min(100, (analytics.tokens.total / 200000 * 100)),
+                        percentage: rawPercentage, // Real percentage, can exceed 100%
                         remaining: Math.max(0, 200000 - analytics.tokens.total)
                       };
-                      
+
                       // Check for context warnings and auto-compaction
-                      if (analytics.contextWindow.percentage >= 90) {
+                      // Use raw percentage so auto-compact triggers correctly even over 100%
+                      if (rawPercentage >= 90) {
                         // Process context warning hooks at 90%
                         import('../services/hooksService').then(({ hooksService }) => {
                           hooksService.processContextWarning(
@@ -3990,6 +4028,7 @@ ${content}`;
 }),
     {
       name: 'claude-code-storage',
+      storage: createJSONStorage(() => createDebouncedStorage()),
       partialize: (state) => ({
         // Only persist model selection and watermark - sessions should be ephemeral
         selectedModel: state.selectedModel,

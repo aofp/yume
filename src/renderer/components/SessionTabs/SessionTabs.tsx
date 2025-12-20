@@ -644,36 +644,40 @@ export const SessionTabs: React.FC = () => {
                   // tokens.total already includes all tokens (input + output + cache)
                   const totalTokens = (session as any).analytics?.tokens?.total || 0;
                   const contextMax = 200000; // 200k context window
-                  const percentage = Math.min((totalTokens / contextMax) * 100, 100);
-                  
+                  // Calculate real percentage (can exceed 100%)
+                  const rawPercentage = (totalTokens / contextMax) * 100;
+                  // For visual bar, cap at 100%
+                  const barPercentage = Math.min(rawPercentage, 100);
+
                   // Debug logging for token tracking (can be disabled by setting window.debugTokens = false)
                   if ((window as any).debugTokens !== false) {
                     console.log(`[TAB-TOKENS] Session ${session.id} token display:`, {
                       sessionId: session.id,
                       totalTokens,
-                      percentage: percentage.toFixed(2) + '%',
+                      percentage: rawPercentage.toFixed(2) + '%',
                       hasAnalytics: !!(session as any).analytics,
                       analyticsTokens: (session as any).analytics?.tokens,
                       fullAnalytics: (session as any).analytics
                     });
                   }
-                  
-                  // Color gradient: grey until 90%, then custom negative color
+
+                  // Color gradient: grey until 90%, red when over 100%, orange at 90-100%
                   const getColor = (pct: number) => {
-                    if (pct < 90) return 'rgba(150, 150, 150, 0.8)'; // Grey
-                    return 'rgba(var(--negative-rgb), 0.8)'; // Custom negative color
+                    if (pct >= 100) return 'rgba(var(--negative-rgb), 1.0)'; // Full red when over 100%
+                    if (pct >= 90) return 'rgba(var(--negative-rgb), 0.8)'; // Orange/red at 90-100%
+                    return 'rgba(150, 150, 150, 0.8)'; // Grey below 90%
                   };
-                  
+
                   return (
                     <>
-                      <div 
-                        className="context-bar-fill" 
-                        style={{ 
-                          height: `${percentage}%`,
-                          background: getColor(percentage)
+                      <div
+                        className="context-bar-fill"
+                        style={{
+                          height: `${barPercentage}%`,
+                          background: getColor(rawPercentage)
                         }}
                       />
-                      <div className="context-bar-text">{percentage.toFixed(2)}%</div>
+                      <div className="context-bar-text">{rawPercentage.toFixed(1)}%</div>
                     </>
                   );
                 })()}

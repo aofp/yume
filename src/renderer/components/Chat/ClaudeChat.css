@@ -801,7 +801,7 @@ textarea.context-full {
 .chat-input {
   flex: 1;
   background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  border: 1px solid rgba(var(--accent-rgb), 0.6);
   color: var(--foreground-color);
   caret-color: var(--accent-color);
   padding: 4px;
@@ -1029,6 +1029,20 @@ textarea.context-full {
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
   background: rgba(var(--accent-rgb), 0.7);
+}
+
+/* Windows horizontal scrollbar - slim 3px height */
+.platform-win32 .claude-chat ::-webkit-scrollbar:horizontal {
+  height: 3px;
+}
+
+.platform-win32 .claude-chat ::-webkit-scrollbar-thumb:horizontal {
+  background: rgba(var(--accent-rgb), 0.3);
+  border-radius: 0;
+}
+
+.platform-win32 .claude-chat ::-webkit-scrollbar-thumb:horizontal:hover {
+  background: rgba(var(--accent-rgb), 0.5);
 }
 
 /* Image attachments */
