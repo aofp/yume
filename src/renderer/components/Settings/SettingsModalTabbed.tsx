@@ -1486,10 +1486,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 <span style={{
                   fontSize: '11px',
                   fontWeight: 'bold',
-                  background: `linear-gradient(90deg, ${foregroundColor}, ${accentColor}, ${positiveColor}, ${negativeColor})`,
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
-                  backgroundClip: 'text'
+                  color: foregroundColor
                 }}>
                   {getCurrentThemeDisplayName()}
                 </span>
@@ -1875,10 +1872,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                             flex: 1,
                             fontSize: '10px',
                             fontWeight: 'bold',
-                            background: `linear-gradient(90deg, ${theme.foregroundColor}, ${theme.accentColor}, ${theme.positiveColor}, ${theme.negativeColor})`,
-                            WebkitBackgroundClip: 'text',
-                            WebkitTextFillColor: 'transparent',
-                            backgroundClip: 'text',
+                            color: theme.foregroundColor,
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap'
@@ -1951,10 +1945,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                                 flex: 1,
                                 fontSize: '10px',
                                 fontWeight: 'bold',
-                                background: `linear-gradient(90deg, ${theme.foregroundColor}, ${theme.accentColor}, ${theme.positiveColor}, ${theme.negativeColor})`,
-                                WebkitBackgroundClip: 'text',
-                                WebkitTextFillColor: 'transparent',
-                                backgroundClip: 'text',
+                                color: theme.foregroundColor,
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'
