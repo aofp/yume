@@ -162,6 +162,11 @@ const getToolDisplay = (name: string, input: any) => {
   return displays[name || ''] ? displays[name || ''](input) : defaultDisplay;
 };
 
+// Helper to check if text starts with bash mode prefix ($ or !)
+const isBashPrefix = (text: string): boolean => {
+  return text.startsWith('$') || text.startsWith('!');
+};
+
 // Recursive FileTreeNode component for nested folder navigation
 interface FileTreeNodeProps {
   item: any;
@@ -2250,8 +2255,8 @@ export const ClaudeChat: React.FC = () => {
     }
     
     // Check for bash mode command (starts with $)
-    console.log('[ClaudeChat] Checking bash mode:', { bashCommandMode, startsWithDollar: input.startsWith('$'), input: input.slice(0, 20) });
-    if (bashCommandMode && input.startsWith('$')) {
+    console.log('[ClaudeChat] Checking bash mode:', { bashCommandMode, startsWithBashPrefix: isBashPrefix(input), input: input.slice(0, 20) });
+    if (bashCommandMode && isBashPrefix(input)) {
       let bashCommand = input.slice(1).trim(); // Remove the $ prefix
       const originalCommand = bashCommand; // Store original for display
       
@@ -2544,7 +2549,7 @@ export const ClaudeChat: React.FC = () => {
           const historyValue = sessionHistory[sessionHistory.length - 1 - newIndex];
           setInput(historyValue);
           // Update bash mode if retrieved command starts with $
-          setBashCommandMode(historyValue.startsWith('$'));
+          setBashCommandMode(isBashPrefix(historyValue));
         }
       }
     } else if (e.key === 'ArrowDown') {
@@ -2566,13 +2571,13 @@ export const ClaudeChat: React.FC = () => {
             const historyValue = sessionHistory[sessionHistory.length - 1 - newIndex];
             setInput(historyValue);
             // Update bash mode if retrieved command starts with $
-            setBashCommandMode(historyValue.startsWith('$'));
+            setBashCommandMode(isBashPrefix(historyValue));
           } else if (historyIndex === 0) {
             // Return to the draft message
             setHistoryIndex(-1);
             const draft = draftMessage[currentSessionId] || '';
             setInput(draft);
-            setBashCommandMode(draft.startsWith('$'));
+            setBashCommandMode(isBashPrefix(draft));
           }
         }
       }
@@ -2945,7 +2950,7 @@ export const ClaudeChat: React.FC = () => {
     
     // Check for bash mode (starts with $)
     const wasInBashMode = bashCommandMode;
-    const isNowBashMode = newValue.startsWith('$');
+    const isNowBashMode = isBashPrefix(newValue);
     
     if (wasInBashMode !== isNowBashMode) {
       setBashCommandMode(isNowBashMode);

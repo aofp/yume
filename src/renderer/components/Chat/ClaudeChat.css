@@ -1137,6 +1137,11 @@ textarea.context-full {
 .chat-input.bash-mode {
   padding-left: 4px;
   font-family: var(--font-mono);
+  border-color: rgba(var(--negative-rgb), 0.6);
+}
+
+.chat-input.bash-mode:focus {
+  border-color: rgba(var(--negative-rgb), 1);
 }
 
 /* Context bar - stats section */

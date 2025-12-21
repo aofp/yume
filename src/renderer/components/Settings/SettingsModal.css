@@ -642,6 +642,17 @@
   color: var(--accent-color);
 }
 
+.settings-action-btn.upgrade {
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid rgba(var(--accent-rgb), 0.3);
+  color: var(--accent-color);
+}
+
+.settings-action-btn.upgrade:hover {
+  background: rgba(var(--accent-rgb), 0.2);
+  border-color: var(--accent-color);
+}
+
 .settings-action-btn span {
   font-weight: 500;
 }

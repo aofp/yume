@@ -53,6 +53,11 @@ const isMacOS = navigator.platform.toLowerCase().includes('mac');
 const USE_TAURI_BACKEND = false; // Always use Socket.IO for now since server handles everything
 const claudeClient = USE_TAURI_BACKEND ? tauriClaudeClient : claudeCodeClient;
 
+// Helper to check if text starts with bash mode prefix ($ or !)
+const isBashPrefix = (text: string): boolean => {
+  return text.startsWith('$') || text.startsWith('!');
+};
+
 export type SDKMessage = any; // Type from Claude Code SDK
 
 // Agent structure
@@ -1346,12 +1351,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               const nonBashUserMessages = existingMessages.filter(m => {
                 if (m.type !== 'user') return false;
                 const content = typeof m.message === 'object' ? m.message?.content : m.message;
-                return !(typeof content === 'string' && content.startsWith('$'));
+                return !(typeof content === 'string' && isBashPrefix(content));
               });
               const bashCommands = existingMessages.filter(m => {
                 if (m.type !== 'user') return false;
                 const content = typeof m.message === 'object' ? m.message?.content : m.message;
-                return typeof content === 'string' && content.startsWith('$');
+                return typeof content === 'string' && isBashPrefix(content);
               });
 
               // Also exclude assistant messages that are bash responses (id starts with 'bash-')
@@ -2370,7 +2375,7 @@ ${content}`;
           // ALWAYS set streaming to true when sending a message (even during followup)
           // This ensures the UI shows streaming state after interrupting and sending a new message
           // Only skip for bash commands which don't need thinking indicator
-          const isBashCommand = content.startsWith('$');
+          const isBashCommand = isBashPrefix(content);
           updates.streaming = !isBashCommand;
           if (!isBashCommand && !updates.streaming) {
             console.warn('[Store] BUG: streaming should be true after sending message!');
@@ -3426,12 +3431,12 @@ ${content}`;
         const nonBashUserMessages = updatedMessages.filter(m => {
           if (m.type !== 'user') return false;
           const content = typeof m.message === 'object' ? m.message?.content : m.message;
-          return !(typeof content === 'string' && content.startsWith('$'));
+          return !(typeof content === 'string' && isBashPrefix(content));
         });
         const bashCommands = updatedMessages.filter(m => {
           if (m.type !== 'user') return false;
           const content = typeof m.message === 'object' ? m.message?.content : m.message;
-          return typeof content === 'string' && content.startsWith('$');
+          return typeof content === 'string' && isBashPrefix(content);
         });
         
         // Also exclude assistant messages that are bash responses (id starts with 'bash-')

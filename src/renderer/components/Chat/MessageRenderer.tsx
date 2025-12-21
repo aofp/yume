@@ -33,6 +33,26 @@ import {
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
 
+// pre-compiled regex patterns (avoid re-creation in render)
+const CODE_BLOCK_REGEX = /```([\w]*)?[\r\n]+([\s\S]*?)```/g;
+const INLINE_CODE_REGEX = /`([^`]+)`/g;
+
+// static style objects (avoid re-creation in render)
+const ERROR_MESSAGE_STYLE: React.CSSProperties = {
+  color: '#ff6b6b',
+  backgroundColor: 'rgba(255, 107, 107, 0.1)',
+  padding: '12px',
+  borderRadius: '8px',
+  border: '1px solid rgba(255, 107, 107, 0.2)',
+  fontFamily: 'monospace',
+  fontSize: '12px',
+  whiteSpace: 'pre-wrap'
+};
+const FLEX_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: '8px' };
+const FLEX_1_STYLE: React.CSSProperties = { flex: 1 };
+const ICON_STYLE: React.CSSProperties = { fontSize: '14px' };
+const BOLD_MARGIN_STYLE: React.CSSProperties = { marginBottom: '8px', fontWeight: 'bold' };
+
 // Complete Claude Code SDK message types
 export interface ClaudeMessage {
   type: 'system' | 'user' | 'assistant' | 'result' | 'error' | 'permission' | 'tool_approval';
@@ -90,6 +110,11 @@ interface ContentBlock {
   tool_use_id?: string;
   is_error?: boolean;
 }
+
+// Helper to check if text starts with bash mode prefix ($ or !)
+const isBashPrefix = (text: string): boolean => {
+  return text.startsWith('$') || text.startsWith('!');
+};
 
 // Tool display configurations
 const TOOL_DISPLAYS: Record<string, (input: any) => { icon: React.ReactNode; action: string; detail: string; todos?: any[] }> = {
@@ -384,16 +409,32 @@ const formatUrl = (url?: string) => {
 
 const formatTodos = (todos?: any[]) => {
   if (!todos || !Array.isArray(todos)) return '0 items';
-  const counts = {
-    pending: todos.filter(t => t.status === 'pending').length,
-    in_progress: todos.filter(t => t.status === 'in_progress').length,
-    completed: todos.filter(t => t.status === 'completed').length
-  };
+  // single pass counting instead of 3 separate filters
+  let pending = 0, in_progress = 0, completed = 0;
+  for (const t of todos) {
+    if (t.status === 'pending') pending++;
+    else if (t.status === 'in_progress') in_progress++;
+    else if (t.status === 'completed') completed++;
+  }
   const parts = [];
-  if (counts.in_progress > 0) parts.push(`${counts.in_progress} active`);
-  if (counts.pending > 0) parts.push(`${counts.pending} pending`);
-  if (counts.completed > 0) parts.push(`${counts.completed} done`);
+  if (in_progress > 0) parts.push(`${in_progress} active`);
+  if (pending > 0) parts.push(`${pending} pending`);
+  if (completed > 0) parts.push(`${completed} done`);
   return parts.length > 0 ? parts.join(', ') : 'No tasks';
+};
+
+// single pass text extraction - avoids filter+map+filter chain
+const extractTextFromBlocks = (blocks: any[]): string => {
+  const result: string[] = [];
+  for (const block of blocks) {
+    if (block.type !== 'text' || !block.text) continue;
+    const text = block.text;
+    // includes() covers both startsWith cases - no need for both
+    if (text.includes('[Attached text]:') || text.includes('[Attached image')) continue;
+    const trimmed = text.trim();
+    if (trimmed) result.push(text);
+  }
+  return result.join('\n');
 };
 
 const getChangePreview = (oldStr?: string, newStr?: string) => {
@@ -690,23 +731,21 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           
           // Function to parse and render thinking content with proper code formatting
           const renderThinkingContent = (content: string) => {
-            // Check for code blocks (```)
-            const codeBlockRegex = /```([\w]*)?[\r\n]+([\s\S]*?)```/g;
-            // Check for inline code (`code`)
-            const inlineCodeRegex = /`([^`]+)`/g;
-            
             // Split content by code blocks first
             const parts: React.ReactNode[] = [];
             let lastIndex = 0;
             let match;
-            
+
+            // Reset lastIndex for global regex reuse
+            CODE_BLOCK_REGEX.lastIndex = 0;
+
             // Process code blocks
-            while ((match = codeBlockRegex.exec(content)) !== null) {
+            while ((match = CODE_BLOCK_REGEX.exec(content)) !== null) {
               // Add text before code block
               if (match.index > lastIndex) {
                 const textBefore = content.substring(lastIndex, match.index);
                 // Process inline code in the text
-                const processedText = textBefore.replace(inlineCodeRegex, (_, code) => 
+                const processedText = textBefore.replace(INLINE_CODE_REGEX, (_, code) =>
                   `<code class="thinking-inline-code">${code}</code>`
                 );
                 parts.push(
@@ -733,7 +772,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             if (lastIndex < content.length) {
               const remainingText = content.substring(lastIndex);
               // Process inline code in the remaining text
-              const processedText = remainingText.replace(inlineCodeRegex, (_, code) => 
+              const processedText = remainingText.replace(INLINE_CODE_REGEX, (_, code) => 
                 `<code class="thinking-inline-code">${code}</code>`
               );
               parts.push(
@@ -743,7 +782,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             
             // If no code blocks were found, just process inline code
             if (parts.length === 0) {
-              const processedContent = content.replace(inlineCodeRegex, (_, code) => 
+              const processedContent = content.replace(INLINE_CODE_REGEX, (_, code) => 
                 `<code class="thinking-inline-code">${code}</code>`
               );
               return <pre className="thinking-text" dangerouslySetInnerHTML={{ __html: processedContent }} />;
@@ -1306,22 +1345,7 @@ const MessageRendererBase: React.FC<{
         try {
           const parsedContent = JSON.parse(content);
           if (Array.isArray(parsedContent)) {
-            // Extract text from JSON-parsed content blocks, excluding attachment markers
-            return parsedContent
-              .filter(block => block.type === 'text' && block.text)
-              .map(block => {
-                const text = block.text;
-                // Skip attachment markers, return only regular text
-                if (text.startsWith('[Attached text]:') || 
-                    text.startsWith('[Attached image') ||
-                    text.includes('[Attached text]:') ||
-                    text.includes('[Attached image')) {
-                  return '';
-                }
-                return text;
-              })
-              .filter(text => text.trim())
-              .join('\n');
+            return extractTextFromBlocks(parsedContent);
           }
         } catch (e) {
           // If JSON parsing fails, return as regular string
@@ -1330,21 +1354,7 @@ const MessageRendererBase: React.FC<{
       return content;
     }
     if (Array.isArray(content)) {
-      return content
-        .filter(block => block.type === 'text' && block.text)
-        .map(block => {
-          const text = block.text;
-          // Skip attachment markers, return only regular text
-          if (text.startsWith('[Attached text]:') || 
-              text.startsWith('[Attached image') ||
-              text.includes('[Attached text]:') ||
-              text.includes('[Attached image')) {
-            return '';
-          }
-          return text;
-        })
-        .filter(text => text.trim())
-        .join('\n');
+      return extractTextFromBlocks(content);
     }
     return '';
   };
@@ -1357,22 +1367,13 @@ const MessageRendererBase: React.FC<{
       return (
         <div className="message system-error">
           <div className="message-content">
-            <div className="error-message" style={{ 
-              color: '#ff6b6b',
-              backgroundColor: 'rgba(255, 107, 107, 0.1)',
-              padding: '12px',
-              borderRadius: '8px',
-              border: '1px solid rgba(255, 107, 107, 0.2)',
-              fontFamily: 'monospace',
-              fontSize: '12px',
-              whiteSpace: 'pre-wrap'
-            }}>
-              <div style={{ display: 'flex', alignItems: 'flex-start', gap: '8px' }}>
-                <span style={{ fontSize: '14px' }}>❌</span>
-                <div style={{ flex: 1 }}>
+            <div className="error-message" style={ERROR_MESSAGE_STYLE}>
+              <div style={FLEX_ROW_STYLE}>
+                <span style={ICON_STYLE}>❌</span>
+                <div style={FLEX_1_STYLE}>
                   {isInstallError ? (
                     <div>
-                      <div style={{ marginBottom: '8px', fontWeight: 'bold' }}>
+                      <div style={BOLD_MARGIN_STYLE}>
                         Claude CLI Not Installed
                       </div>
                       <div>{errorContent}</div>
@@ -1629,7 +1630,7 @@ const MessageRendererBase: React.FC<{
       }
       
       // Check if this is a bash command
-      const isBashCommand = typeof displayText === 'string' && displayText.startsWith('$');
+      const isBashCommand = typeof displayText === 'string' && isBashPrefix(displayText);
 
       // Helper to render text with ultrathink rainbow animation
       const renderWithUltrathink = (text: string): React.ReactNode => {

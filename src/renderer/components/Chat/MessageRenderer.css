@@ -531,7 +531,7 @@ ol {
 }
 
 .thinking-stats {
-  font-size: 10px;
+  font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -742,9 +742,9 @@ ol {
   font-family: var(--font-mono);
   font-size: 9px;
   color: rgba(var(--foreground-rgb), 0.8);
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
   max-height: 400px;
+  overflow-x: auto;
   overflow-y: auto;
 }
 
@@ -795,9 +795,8 @@ ol {
   font-family: var(--font-mono);
   font-size: 8pt;
   background: transparent;
-  overflow-x: hidden;
-  word-wrap: break-word;
-  overflow-wrap: anywhere;
+  overflow-x: auto;
+  white-space: pre;
 }
 
 .diff-line {
@@ -809,7 +808,7 @@ ol {
 
 .diff-line .line-number {
   display: inline-block;
-  min-width: 35px;
+  min-width: 20px;
   color: rgba(var(--foreground-rgb), 0.3);
   text-align: right;
   flex-shrink: 0;
@@ -930,7 +929,7 @@ pre.edit-diff {
 }
 
 .diff-line .line-number {
-  width: 40px;
+  width: 25px;
   flex-shrink: 0;
   text-align: right;
   color: rgba(var(--foreground-rgb), 0.3);
@@ -1235,8 +1234,8 @@ body.platform-win32 .tool-detail {
   font-family: var(--font-mono);
   font-size: 8pt;
   color: rgba(var(--foreground-rgb), 0.6);
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
+  overflow-x: auto;
 }
 
 /* Bash command output styling */
@@ -1267,7 +1266,7 @@ body.platform-win32 .tool-detail {
 .read-more, .search-more, .result-more {
   display: block;
   margin-top: 4px;
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(var(--foreground-rgb), 0.4);
   font-family: var(--font-mono);
   cursor: default;
@@ -1385,7 +1384,7 @@ body.platform-win32 .tool-detail {
 
 .search-count {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1418,7 +1417,7 @@ body.platform-win32 .tool-detail {
 
 .file-count {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 7pt;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1761,8 +1760,8 @@ body.platform-win32 .tool-detail {
   font-size: 8pt;
   line-height: 1.4;
   color: var(--fg-60);
-  white-space: pre-wrap;
-  word-break: break-word;
+  white-space: pre;
+  overflow-x: auto;
   margin: 0;
   background: transparent;
   border: none;
@@ -1901,23 +1900,7 @@ code *::-moz-selection {
   color: var(--color-text-primary) !important;
 }
 
-/* Tool result scrollbar styling */
-.result-content::-webkit-scrollbar {
-  width: 5px;
-}
-
-.result-content::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.result-content::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.3);
-  border-radius: 0;
-}
-
-.result-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.5);
-}
+/* Tool result scrollbar styling - consolidated below */
 
 /* System Message Styles */
 .system-compact,
@@ -2010,6 +1993,8 @@ code *::-moz-selection {
 .tool-result::-webkit-scrollbar,
 .file-list-content::-webkit-scrollbar,
 .search-output::-webkit-scrollbar,
+.search-content::-webkit-scrollbar,
+.diff-content::-webkit-scrollbar,
 .bash-output::-webkit-scrollbar,
 .message-content::-webkit-scrollbar,
 .message-bubble::-webkit-scrollbar,
@@ -2027,6 +2012,8 @@ pre::-webkit-scrollbar {
 .tool-result::-webkit-scrollbar-track,
 .file-list-content::-webkit-scrollbar-track,
 .search-output::-webkit-scrollbar-track,
+.search-content::-webkit-scrollbar-track,
+.diff-content::-webkit-scrollbar-track,
 .bash-output::-webkit-scrollbar-track,
 .message-content::-webkit-scrollbar-track,
 .message-bubble::-webkit-scrollbar-track,
@@ -2043,6 +2030,8 @@ pre::-webkit-scrollbar-track {
 .tool-result::-webkit-scrollbar-thumb,
 .file-list-content::-webkit-scrollbar-thumb,
 .search-output::-webkit-scrollbar-thumb,
+.search-content::-webkit-scrollbar-thumb,
+.diff-content::-webkit-scrollbar-thumb,
 .bash-output::-webkit-scrollbar-thumb,
 .message-content::-webkit-scrollbar-thumb,
 .message-bubble::-webkit-scrollbar-thumb,
@@ -2060,6 +2049,8 @@ pre::-webkit-scrollbar-thumb {
 .tool-result::-webkit-scrollbar-thumb:hover,
 .file-list-content::-webkit-scrollbar-thumb:hover,
 .search-output::-webkit-scrollbar-thumb:hover,
+.search-content::-webkit-scrollbar-thumb:hover,
+.diff-content::-webkit-scrollbar-thumb:hover,
 .bash-output::-webkit-scrollbar-thumb:hover,
 .message-content::-webkit-scrollbar-thumb:hover,
 .message-bubble::-webkit-scrollbar-thumb:hover,
