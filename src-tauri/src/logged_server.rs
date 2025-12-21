@@ -377,8 +377,10 @@ fn start_macos_server(port: u16) {
         write_log(&format!("Attempting to spawn Node.js server on port {}...", port));
         let mut cmd = Command::new("node");
         cmd.arg(&server_file)
-           .env("PORT", port.to_string());
-        
+           .env("PORT", port.to_string())
+           .env_clear()
+           .envs(std::env::vars());
+
         if let Some(ref modules) = node_modules {
             write_log(&format!("Setting NODE_PATH to: {:?}", modules));
             cmd.env("NODE_PATH", modules);
@@ -507,8 +509,10 @@ fn start_macos_server(port: u16) {
                         write_log(&format!("Retrying with absolute path: {} on port {}", path, port));
                         let mut retry_cmd = Command::new(path);
                         retry_cmd.arg(&server_file)
-                                 .env("PORT", port.to_string());
-                        
+                                 .env("PORT", port.to_string())
+                                 .env_clear()
+                                 .envs(std::env::vars());
+
                         if let Some(ref modules) = node_modules {
                             retry_cmd.env("NODE_PATH", modules);
                         }
@@ -646,17 +650,19 @@ fn start_windows_server(port: u16) {
                 write_log(&format!("node_modules found at: {:?}", modules));
             }
         }
-        
+
         // Try to start server with Node.js
         let mut cmd = Command::new("node");
         cmd.arg(&server_file)
-           .env("PORT", port.to_string());
-        
+           .env("PORT", port.to_string())
+           .env_clear()
+           .envs(std::env::vars());
+
         if let Some(ref modules) = node_modules {
             write_log(&format!("Setting NODE_PATH to: {:?}", modules));
             cmd.env("NODE_PATH", modules);
         }
-        
+
         // Windows-specific process flags
         use std::os::windows::process::CommandExt;
         const CREATE_NEW_CONSOLE: u32 = 0x00000010;

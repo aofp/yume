@@ -300,7 +300,7 @@ export const SessionTabs: React.FC = () => {
       if (directory && directory !== '/') {
         const name = directory.split(/[/\\]/).pop() || directory;
         const newProject = { path: directory, name, lastOpened: Date.now() };
-        
+
         // Get existing recent projects
         const stored = localStorage.getItem('yurucode-recent-projects');
         let recentProjects = [];
@@ -311,23 +311,22 @@ export const SessionTabs: React.FC = () => {
         } catch (err) {
           console.error('Failed to parse recent projects:', err);
         }
-        
+
         // Update recent projects list
         const updated = [
           newProject,
           ...recentProjects.filter((p: any) => p.path !== directory)
         ].slice(0, 8);
-        
+
         localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
-        
+
         // Update hasRecentProjects state
         setHasRecentProjects(true);
+
+        // Create a new session with the selected directory
+        console.log('Creating new session with directory:', directory);
+        await createSession(undefined, directory);
       }
-      
-      // Always create a new session when clicking the new tab button
-      // This ensures sessions are properly persisted to disk
-      console.log('Creating new session with directory:', directory);
-      await createSession(undefined, directory);
     }, 0);
   };
 

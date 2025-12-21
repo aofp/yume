@@ -742,7 +742,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     monoFont, sansFont, setMonoFont, setSansFont,
     rememberTabs, setRememberTabs,
     autoGenerateTitle, setAutoGenerateTitle,
-    particlesEnabled, setParticlesEnabled,
     showProjectsMenu, setShowProjectsMenu,
     showAgentsMenu, setShowAgentsMenu,
     showAnalyticsMenu, setShowAnalyticsMenu,
@@ -1721,20 +1720,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               </div>
             </div>
 
-            {/* Reset buttons and particles */}
+            {/* Reset buttons */}
             <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '12px', marginTop: '12px' }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                <input
-                  type="checkbox"
-                  id="particlesEnabled"
-                  checked={particlesEnabled}
-                  onChange={(e) => setParticlesEnabled(e.target.checked)}
-                  className="accent-checkbox"
-                />
-                <label htmlFor="particlesEnabled" style={{ fontSize: '10px', color: 'var(--fg-50)', cursor: 'default' }}>
-                  particles
-                </label>
-              </div>
               <button
                 onClick={handleResetAllFonts}
                 disabled={isDefaultFonts}

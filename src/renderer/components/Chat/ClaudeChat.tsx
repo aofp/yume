@@ -101,10 +101,10 @@ const getToolDisplay = (name: string, input: any) => {
       name: 'multi-edit', 
       detail: `${i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file'} (${i?.edits?.length || 0} changes)` 
     }),
-    'Bash': (i) => ({ 
-      icon: <IconTerminal size={14} stroke={1.5} />, 
-      name: 'running', 
-      detail: i?.command || 'command' 
+    'Bash': (i) => ({
+      icon: <IconTerminal size={14} stroke={1.5} />,
+      name: 'running',
+      detail: i?.command || 'command'
     }),
     'TodoWrite': (i) => ({ 
       icon: <IconChecklist size={14} stroke={1.5} />, 
@@ -3779,11 +3779,6 @@ export const ClaudeChat: React.FC = () => {
           </div>
         )}
         <div className="input-row">
-          {bashCommandMode && (
-            <div className="bash-indicator">
-              <IconTerminal size={14} stroke={1.5} />
-            </div>
-          )}
           {/* Calculate if context is almost full */}
           {(() => {
             const conversationTokens = currentSession?.analytics?.tokens?.conversationTokens || 0;
