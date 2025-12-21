@@ -37,6 +37,22 @@ type SettingsTab = 'general' | 'theme' | 'hooks' | 'commands' | 'mcp';
 // Color type with name for tooltips
 type NamedColor = { hex: string; name: string };
 
+// Helper function to blend two hex colors 50/50
+const blendColors = (color1: string, color2: string): string => {
+  const hex1 = color1.replace('#', '');
+  const hex2 = color2.replace('#', '');
+  const r1 = parseInt(hex1.substr(0, 2), 16);
+  const g1 = parseInt(hex1.substr(2, 2), 16);
+  const b1 = parseInt(hex1.substr(4, 2), 16);
+  const r2 = parseInt(hex2.substr(0, 2), 16);
+  const g2 = parseInt(hex2.substr(2, 2), 16);
+  const b2 = parseInt(hex2.substr(4, 2), 16);
+  const r = Math.round((r1 + r2) / 2);
+  const g = Math.round((g1 + g2) / 2);
+  const b = Math.round((b1 + b2) / 2);
+  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+};
+
 // Color swatches - 9 rows × 21 columns for accent/positive/negative
 const COLOR_ROWS: NamedColor[][] = [
   // Row 1: Defaults only (accent blue, positive green, negative red)
@@ -1477,16 +1493,16 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 }}
               >
                 <div style={{ display: 'flex', gap: '2px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: backgroundColor, border: '1px solid var(--fg-20)' }} />
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: foregroundColor, border: '1px solid var(--fg-10)' }} />
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: accentColor }} />
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: positiveColor }} />
                   <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: negativeColor }} />
+                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: backgroundColor, border: '1px solid var(--fg-20)' }} />
                 </div>
                 <span style={{
                   fontSize: '11px',
                   fontWeight: 'bold',
-                  color: foregroundColor
+                  color: blendColors(foregroundColor, accentColor)
                 }}>
                   {getCurrentThemeDisplayName()}
                 </span>
@@ -1861,18 +1877,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       >
                         {/* Color preview swatches - all 5 colors */}
                         <div style={{ display: 'flex', gap: '2px' }}>
-                          <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.backgroundColor, border: '1px solid var(--fg-20)' }} title="background" />
                           <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.foregroundColor, border: '1px solid var(--fg-10)' }} title="foreground" />
                           <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.accentColor }} title="accent" />
                           <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.positiveColor }} title="positive" />
                           <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.negativeColor }} title="negative" />
+                          <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.backgroundColor, border: '1px solid var(--fg-20)' }} title="background" />
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                           <span style={{
                             flex: 1,
                             fontSize: '10px',
                             fontWeight: 'bold',
-                            color: theme.foregroundColor,
+                            color: blendColors(theme.foregroundColor, theme.accentColor),
                             overflow: 'hidden',
                             textOverflow: 'ellipsis',
                             whiteSpace: 'nowrap'
@@ -1934,18 +1950,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           >
                             {/* Color preview swatches - all 5 colors */}
                             <div style={{ display: 'flex', gap: '2px' }}>
-                              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.backgroundColor, border: '1px solid var(--fg-20)' }} title="background" />
                               <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.foregroundColor, border: '1px solid var(--fg-10)' }} title="foreground" />
                               <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.accentColor }} title="accent" />
                               <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.positiveColor }} title="positive" />
                               <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.negativeColor }} title="negative" />
+                              <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.backgroundColor, border: '1px solid var(--fg-20)' }} title="background" />
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
                               <span style={{
                                 flex: 1,
                                 fontSize: '10px',
                                 fontWeight: 'bold',
-                                color: theme.foregroundColor,
+                                color: blendColors(theme.foregroundColor, theme.accentColor),
                                 overflow: 'hidden',
                                 textOverflow: 'ellipsis',
                                 whiteSpace: 'nowrap'

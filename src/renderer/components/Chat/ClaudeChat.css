@@ -883,33 +883,6 @@ textarea.context-full {
   display: none; /* Chrome/Safari */
 }
 
-/* Particle container for typing effects */
-.particle-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  pointer-events: none;
-  overflow: visible;
-  z-index: 9998;
-  /* CRITICAL: fully isolate from layout - prevents chat flicker when particles animate */
-  contain: strict;
-  isolation: isolate;
-  transform: translateZ(0); /* GPU layer */
-}
-
-/* Particle fade animation - uses CSS vars for random direction */
-@keyframes particleFade {
-  0% {
-    opacity: 0.5;
-    transform: translate(0, 0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translate(var(--dx, 0px), var(--dy, -15px)) scale(0.5);
-  }
-}
 
 /* Textarea text stays visible - only ultrathink gets overlaid */
 

@@ -10,7 +10,7 @@
 }
 
 .claude-label {
-  color: #999999;
+  color: var(--fg-60);
   font-size: 11px;
   text-transform: lowercase;
   user-select: none;
@@ -24,7 +24,7 @@
   left: calc(100% + 4px);
   top: 50%;
   transform: translateY(-50%);
-  color: rgba(255, 255, 255, 0.1);
+  color: var(--fg-10);
   font-family: var(--font-mono);
   font-size: 7pt;
   line-height: 1;
@@ -38,7 +38,7 @@
 .claude-button-container {
   position: relative;
   z-index: 1;
-  background: #0a0a0a; /* Same as settings modal background */
+  background: var(--background-color);
   padding: 0 4px;
   margin: 0 -4px; /* Compensate for padding to maintain alignment */
 }
@@ -48,8 +48,8 @@
   width: auto;
   max-width: 160px;
   height: 23px;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--fg-05);
+  border: 1px solid var(--fg-10);
   border-radius: 4px;
   padding: 0 8px;
   font-size: 10px;
@@ -57,7 +57,7 @@
   cursor: default;
   transition: all 0.2s ease;
   text-align: center;
-  color: #ffffff;
+  color: var(--foreground-color);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,7 +70,7 @@
 }
 
 .claude-selector-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #ffffff;
+  background: var(--fg-05);
+  color: var(--foreground-color);
   border-color: var(--accent-color);
 }

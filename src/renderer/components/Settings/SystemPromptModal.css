@@ -13,7 +13,7 @@
 }
 
 .system-prompt-modal {
-  background: #0a0a0a;
+  background: var(--background-color);
   border: none;
   border-radius: 0;
   width: 100vw;
@@ -32,9 +32,9 @@
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-bottom: 1px solid var(--fg-10);
   flex-shrink: 0;
-  background: #0a0a0a;
+  background: var(--background-color);
   -webkit-app-region: drag;
 }
 
@@ -51,7 +51,7 @@
 .system-prompt-header .close-button {
   background: transparent;
   border: none;
-  color: rgba(255, 255, 255, 0.4);
+  color: var(--fg-40);
   cursor: default;
   padding: 2px;
   transition: all 0.2s ease;
@@ -79,7 +79,7 @@
 }
 
 .system-prompt-content::-webkit-scrollbar-track {
-  background: rgba(255, 255, 255, 0.02);
+  background: var(--fg-02);
 }
 
 .system-prompt-content::-webkit-scrollbar-thumb {
@@ -104,9 +104,9 @@
 .mode-button {
   flex: 1;
   padding: 5px 10px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #666;
+  background: var(--fg-03);
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
   font-size: 10px;
   cursor: default;
   transition: all 0.2s;
@@ -115,12 +115,12 @@
 }
 
 .mode-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  color: #999;
+  background: var(--fg-05);
+  color: var(--fg-60);
 }
 
 .mode-button.active {
-  background: rgba(153, 187, 255, 0.1);
+  background: rgba(var(--accent-rgb), 0.1);
   border-color: var(--accent-color);
   color: var(--accent-color);
 }
@@ -141,13 +141,13 @@
 
 .editor-label {
   font-size: 9px;
-  color: #666;
+  color: var(--fg-40);
   text-transform: lowercase;
 }
 
 .char-count {
   font-size: 9px;
-  color: #444;
+  color: var(--fg-25);
   font-family: var(--mono-font);
 }
 
@@ -156,10 +156,10 @@
 }
 
 .prompt-editor {
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: var(--fg-03);
+  border: 1px solid var(--fg-10);
   border-radius: 2px;
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--fg-90);
   padding: 12px;
   font-size: 11px;
   font-family: var(--mono-font);
@@ -174,7 +174,7 @@
 }
 
 .prompt-editor:focus {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--fg-05);
   border-color: var(--accent-color);
 }
 
@@ -195,12 +195,12 @@
 /* Footer */
 .system-prompt-footer {
   padding: 8px 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid var(--fg-10);
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-shrink: 0;
-  background: #0a0a0a;
+  background: var(--background-color);
 }
 
 .reset-button {
@@ -209,8 +209,8 @@
   gap: 3px;
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #666;
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
   font-size: 9px;
   cursor: default;
   transition: all 0.2s;
@@ -218,9 +218,9 @@
 }
 
 .reset-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #999;
+  background: var(--fg-05);
+  border-color: var(--fg-10);
+  color: var(--fg-60);
 }
 
 .action-buttons {
@@ -242,14 +242,14 @@
 
 .cancel-button {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #666;
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
 }
 
 .cancel-button:hover {
-  background: rgba(255, 255, 255, 0.05);
-  border-color: rgba(255, 255, 255, 0.1);
-  color: #999;
+  background: var(--fg-05);
+  border-color: var(--fg-10);
+  color: var(--fg-60);
 }
 
 .save-button {

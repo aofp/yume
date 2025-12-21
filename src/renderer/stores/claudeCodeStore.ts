@@ -210,9 +210,6 @@ interface ClaudeCodeStore {
   // Title generation
   autoGenerateTitle: boolean; // Whether to auto-generate titles for new sessions
 
-  // Visual effects
-  particlesEnabled: boolean; // Whether to show typing particles
-
   // Menu visibility
   showProjectsMenu: boolean; // Whether to show projects button in menu
   showAgentsMenu: boolean; // Whether to show agents button in menu
@@ -294,9 +291,6 @@ interface ClaudeCodeStore {
   
   // Title generation
   setAutoGenerateTitle: (autoGenerate: boolean) => void;
-
-  // Visual effects
-  setParticlesEnabled: (enabled: boolean) => void;
 
   // Menu visibility
   setShowProjectsMenu: (show: boolean) => void;
@@ -515,7 +509,6 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
   autoGenerateTitle: true, // Default to auto-generating titles (enabled by default)
-  particlesEnabled: localStorage.getItem('yurucode-particles-enabled') !== 'false', // Default to enabled
   showProjectsMenu: false, // Default to hidden
   showAgentsMenu: false, // Default to hidden
   showAnalyticsMenu: false, // Default to hidden
@@ -3789,11 +3782,6 @@ ${content}`;
     set({ autoGenerateTitle: autoGenerate });
     localStorage.setItem('yurucode-auto-generate-title', JSON.stringify(autoGenerate));
     console.log('[Store] Auto-generate title:', autoGenerate);
-  },
-
-  setParticlesEnabled: (enabled: boolean) => {
-    set({ particlesEnabled: enabled });
-    localStorage.setItem('yurucode-particles-enabled', JSON.stringify(enabled));
   },
 
   setShowProjectsMenu: (show: boolean) => {

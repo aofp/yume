@@ -415,7 +415,6 @@ export const ClaudeChat: React.FC = () => {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputOverlayRef = useRef<HTMLDivElement>(null);
-  const particleContainerRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const inputContainerRef = useRef<HTMLDivElement>(null);
   const virtualizedMessageListRef = useRef<VirtualizedMessageListRef>(null);
@@ -444,8 +443,7 @@ export const ClaudeChat: React.FC = () => {
     loadPersistedSession,
     updateSessionDraft,
     addMessageToSession,
-    renameSession,
-    particlesEnabled
+    renameSession
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -462,8 +460,7 @@ export const ClaudeChat: React.FC = () => {
     loadPersistedSession: state.loadPersistedSession,
     updateSessionDraft: state.updateSessionDraft,
     addMessageToSession: state.addMessageToSession,
-    renameSession: state.renameSession,
-    particlesEnabled: state.particlesEnabled
+    renameSession: state.renameSession
   })));
 
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -1515,13 +1512,16 @@ export const ClaudeChat: React.FC = () => {
           workingDir
         }) as string;
         const stats: { [file: string]: { added: number; deleted: number } } = {};
-        for (const line of numstatResult.trim().split('\n')) {
+        // Split by \n and trim each line to handle Windows \r\n line endings
+        for (const rawLine of numstatResult.trim().split('\n')) {
+          const line = rawLine.trim(); // Remove \r on Windows
           if (!line) continue;
           const parts = line.split('\t');
           if (parts.length >= 3) {
             const added = parts[0] === '-' ? 0 : parseInt(parts[0], 10) || 0;
             const deleted = parts[1] === '-' ? 0 : parseInt(parts[1], 10) || 0;
-            const file = parts[2];
+            // Normalize path separators to forward slashes for consistent matching
+            const file = parts[2].replace(/\\/g, '/');
             stats[file] = { added, deleted };
           }
         }
@@ -1531,15 +1531,19 @@ export const ClaudeChat: React.FC = () => {
       }
     };
 
+    // Helper to normalize file paths for consistent matching across platforms
+    const normalizePaths = (paths: string[]): string[] =>
+      paths.map(p => p.replace(/\\/g, '/'));
+
     // Silent refresh - doesn't show loading or clear current state
     const refreshGitStatus = async () => {
       if (!showGitPanel || !currentSession?.workingDirectory) return;
       try {
         const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
         setGitStatus({
-          modified: status.modified || [],
-          added: status.added || [],
-          deleted: status.deleted || [],
+          modified: normalizePaths(status.modified || []),
+          added: normalizePaths(status.added || []),
+          deleted: normalizePaths(status.deleted || []),
           untracked: []
         });
 
@@ -1565,9 +1569,9 @@ export const ClaudeChat: React.FC = () => {
       try {
         const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
         setGitStatus({
-          modified: status.modified || [],
-          added: status.added || [],
-          deleted: status.deleted || [],
+          modified: normalizePaths(status.modified || []),
+          added: normalizePaths(status.added || []),
+          deleted: normalizePaths(status.deleted || []),
           untracked: []
         });
 
@@ -2503,22 +2507,6 @@ export const ClaudeChat: React.FC = () => {
       setCommandTrigger(null);
       return;
     }
-    
-    // Spawn negative particles on backspace/delete
-    if ((e.key === 'Backspace' || e.key === 'Delete') && input.length > 0 && particlesEnabled && inputRef.current) {
-      const textarea = inputRef.current;
-      const selectionLength = Math.abs(textarea.selectionEnd - textarea.selectionStart);
-
-      if (selectionLength > 0) {
-        // For bulk delete (selection), spawn at selection start position
-        const { x, y } = getCaretCoordinates(textarea);
-        const particleCount = Math.min(8, 3 + Math.floor(selectionLength / 5)); // scale with selection size
-        spawnNegativeParticles(x, y, particleCount);
-      } else {
-        const { x, y } = getCaretCoordinates(textarea);
-        spawnNegativeParticles(x, y);
-      }
-    }
 
     if (e.key === 'Enter' && !e.shiftKey) {
       // Don't send if autocomplete is open - let autocomplete handle it
@@ -3110,99 +3098,6 @@ export const ClaudeChat: React.FC = () => {
 
     return { x: Math.min(x, textarea.clientWidth - 10), y: Math.min(y, 36) };
   }, []);
-
-  // Spawn typing particles
-  const spawnParticles = useCallback((relX: number, relY: number) => {
-    if (!particlesEnabled || !particleContainerRef.current || !inputRef.current) return;
-
-    // Convert relative coords to viewport coords
-    const rect = inputRef.current.getBoundingClientRect();
-    const x = rect.left + relX;
-    const y = rect.top + relY;
-
-    const count = 3 + Math.floor(Math.random() * 3); // 3-5 particles
-    const container = particleContainerRef.current;
-
-    for (let i = 0; i < count; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'typing-particle';
-
-      const size = 1 + Math.random() * 1.5;
-
-      // Random direction with strong right bias (typing moves right)
-      const angle = (Math.random() - 0.5) * Math.PI * 0.5; // -45° to +45° centered on right
-      const distance = 15 + Math.random() * 20;
-      const dx = Math.cos(angle) * distance;
-      const dy = Math.sin(angle) * distance;
-
-      particle.style.cssText = `
-        position: fixed;
-        left: ${x + 5}px;
-        top: ${y + 8}px;
-        width: ${size}px;
-        height: ${size}px;
-        background: var(--accent-color);
-        border-radius: 50%;
-        opacity: 0.5;
-        pointer-events: none;
-        z-index: 99999;
-        --dx: ${dx}px;
-        --dy: ${dy}px;
-        animation: particleFade 0.6s ease-out forwards;
-      `;
-
-      container.appendChild(particle);
-
-      // Remove particle after animation
-      setTimeout(() => particle.remove(), 600);
-    }
-  }, [particlesEnabled]);
-
-  // Spawn negative particles for backspace
-  const spawnNegativeParticles = useCallback((relX: number, relY: number, bulkCount?: number) => {
-    if (!particlesEnabled || !particleContainerRef.current || !inputRef.current) return;
-
-    // Convert relative coords to viewport coords
-    const rect = inputRef.current.getBoundingClientRect();
-    const x = rect.left + relX;
-    const y = rect.top + relY;
-
-    const count = bulkCount || (2 + Math.floor(Math.random() * 2)); // 2-3 particles normally
-    const container = particleContainerRef.current;
-
-    for (let i = 0; i < count; i++) {
-      const particle = document.createElement('div');
-      particle.className = 'typing-particle';
-
-      const size = 1 + Math.random() * 1;
-
-      // Random direction with strong right bias (same as typing)
-      const angle = (Math.random() - 0.5) * Math.PI * 0.5; // -45° to +45° centered on right
-      const distance = 15 + Math.random() * 20;
-      const dx = Math.cos(angle) * distance;
-      const dy = Math.sin(angle) * distance;
-
-      particle.style.cssText = `
-        position: fixed;
-        left: ${x}px;
-        top: ${y + 8}px;
-        width: ${size}px;
-        height: ${size}px;
-        background: var(--negative-color);
-        border-radius: 50%;
-        opacity: 0.6;
-        pointer-events: none;
-        z-index: 99999;
-        --dx: ${dx}px;
-        --dy: ${dy}px;
-        animation: particleFade 0.5s ease-out forwards;
-      `;
-
-      container.appendChild(particle);
-
-      setTimeout(() => particle.remove(), 500);
-    }
-  }, [particlesEnabled]);
 
   // Update input container height when it changes
   useEffect(() => {
@@ -3948,15 +3843,6 @@ export const ClaudeChat: React.FC = () => {
                     onChange={handleTextareaChange}
                     onKeyDown={handleKeyDown}
                     onPaste={handlePaste}
-                    onInput={(e) => {
-                      // Spawn particles on character input (not deletions)
-                      const inputEvent = e.nativeEvent as InputEvent;
-                      const isInsertion = inputEvent.inputType?.startsWith('insert');
-                      if (isInsertion && particlesEnabled && inputRef.current) {
-                        const { x, y } = getCaretCoordinates(inputRef.current);
-                        spawnParticles(x, y);
-                      }
-                    }}
                     onScroll={() => {
                       // Sync overlay scroll with textarea scroll
                       if (inputOverlayRef.current && inputRef.current) {
@@ -4142,9 +4028,6 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       </div>
-
-      {/* Particle container - positioned fixed over the input area */}
-      <div ref={particleContainerRef} className="particle-container" />
 
       {/* Mention Autocomplete */}
       {mentionTrigger !== null && (
