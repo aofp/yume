@@ -167,7 +167,7 @@ export interface Session {
   restorePoints?: RestorePoint[]; // Track file changes at each message
   modifiedFiles?: Set<string>; // Track all files touched in this session
   runningBash?: boolean; // Track if bash command is currently running
-  userBashRunning?: boolean; // Track if user's bash command (!) is running
+  userBashRunning?: boolean; // Track if user's bash command ($) is running
   bashProcessId?: string; // Current bash process ID for cancellation
   watermarkImage?: string; // Base64 or URL for watermark image
   pendingToolIds?: Set<string>; // Track pending tool operations by ID
@@ -1342,16 +1342,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               console.log(`🔍 [ANALYTICS DEBUG] Session ${s.id}: Before processing, analytics tokens: ${analytics.tokens.total}`);
               
               // Update message counts - matches Claude Code
-              // Exclude bash commands (messages starting with !) from user message count
+              // Exclude bash commands (messages starting with $) from user message count
               const nonBashUserMessages = existingMessages.filter(m => {
                 if (m.type !== 'user') return false;
                 const content = typeof m.message === 'object' ? m.message?.content : m.message;
-                return !(typeof content === 'string' && content.startsWith('!'));
+                return !(typeof content === 'string' && content.startsWith('$'));
               });
               const bashCommands = existingMessages.filter(m => {
                 if (m.type !== 'user') return false;
                 const content = typeof m.message === 'object' ? m.message?.content : m.message;
-                return typeof content === 'string' && content.startsWith('!');
+                return typeof content === 'string' && content.startsWith('$');
               });
 
               // Also exclude assistant messages that are bash responses (id starts with 'bash-')
@@ -2370,7 +2370,7 @@ ${content}`;
           // ALWAYS set streaming to true when sending a message (even during followup)
           // This ensures the UI shows streaming state after interrupting and sending a new message
           // Only skip for bash commands which don't need thinking indicator
-          const isBashCommand = content.startsWith('!');
+          const isBashCommand = content.startsWith('$');
           updates.streaming = !isBashCommand;
           if (!isBashCommand && !updates.streaming) {
             console.warn('[Store] BUG: streaming should be true after sending message!');
@@ -3422,16 +3422,16 @@ ${content}`;
         }
         
         // Create a new analytics object to ensure React detects the change
-        // Exclude bash commands (messages starting with !) from user message count
+        // Exclude bash commands (messages starting with $) from user message count
         const nonBashUserMessages = updatedMessages.filter(m => {
           if (m.type !== 'user') return false;
           const content = typeof m.message === 'object' ? m.message?.content : m.message;
-          return !(typeof content === 'string' && content.startsWith('!'));
+          return !(typeof content === 'string' && content.startsWith('$'));
         });
         const bashCommands = updatedMessages.filter(m => {
           if (m.type !== 'user') return false;
           const content = typeof m.message === 'object' ? m.message?.content : m.message;
-          return typeof content === 'string' && content.startsWith('!');
+          return typeof content === 'string' && content.startsWith('$');
         });
         
         // Also exclude assistant messages that are bash responses (id starts with 'bash-')

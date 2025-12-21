@@ -2249,10 +2249,10 @@ export const ClaudeChat: React.FC = () => {
       }
     }
     
-    // Check for bash mode command (starts with !)
-    console.log('[ClaudeChat] Checking bash mode:', { bashCommandMode, startsWithBang: input.startsWith('!'), input: input.slice(0, 20) });
-    if (bashCommandMode && input.startsWith('!')) {
-      let bashCommand = input.slice(1).trim(); // Remove the ! prefix
+    // Check for bash mode command (starts with $)
+    console.log('[ClaudeChat] Checking bash mode:', { bashCommandMode, startsWithDollar: input.startsWith('$'), input: input.slice(0, 20) });
+    if (bashCommandMode && input.startsWith('$')) {
+      let bashCommand = input.slice(1).trim(); // Remove the $ prefix
       const originalCommand = bashCommand; // Store original for display
       
       // Set userBashRunning to true when executing user bash command
@@ -2262,11 +2262,6 @@ export const ClaudeChat: React.FC = () => {
         )
       }));
       
-      // Windows CMD alias conversion
-      if (bashCommand.startsWith('!')) {
-        const cmdCommand = bashCommand.slice(1).trim(); // Remove '!' prefix
-        bashCommand = `cmd.exe /c "${cmdCommand}"`;
-      }
       
       if (bashCommand) {
         console.log('[ClaudeChat] Executing bash command:', bashCommand);
@@ -2275,7 +2270,7 @@ export const ClaudeChat: React.FC = () => {
         const commandMessage = {
           id: `bash-cmd-${Date.now()}`,
           type: 'user' as const,
-          message: { content: `!${originalCommand}` }, // Show original input
+          message: { content: `$${originalCommand}` }, // Show original input
           timestamp: Date.now()
         };
         
@@ -2304,11 +2299,11 @@ export const ClaudeChat: React.FC = () => {
         try {
           // Send bash command through the server (which handles it properly)
           // The server will execute through WSL and send back results via socket
-          console.log('[ClaudeChat] Sending bash command to server:', `!${originalCommand}`);
-          
+          console.log('[ClaudeChat] Sending bash command to server:', `$${originalCommand}`);
+
           // Use the store's sendMessage which already has the socket connection
-          // The ! prefix tells the server this is a bash command
-          await sendMessage(`!${originalCommand}`, true);
+          // The $ prefix tells the server this is a bash command
+          await sendMessage(`$${originalCommand}`, true);
           
           // Focus restoration after sending to server
           if (navigator.platform.includes('Win') && inputRef.current) {
@@ -2548,8 +2543,8 @@ export const ClaudeChat: React.FC = () => {
           setHistoryIndex(newIndex);
           const historyValue = sessionHistory[sessionHistory.length - 1 - newIndex];
           setInput(historyValue);
-          // Update bash mode if retrieved command starts with !
-          setBashCommandMode(historyValue.startsWith('!'));
+          // Update bash mode if retrieved command starts with $
+          setBashCommandMode(historyValue.startsWith('$'));
         }
       }
     } else if (e.key === 'ArrowDown') {
@@ -2570,14 +2565,14 @@ export const ClaudeChat: React.FC = () => {
             setHistoryIndex(newIndex);
             const historyValue = sessionHistory[sessionHistory.length - 1 - newIndex];
             setInput(historyValue);
-            // Update bash mode if retrieved command starts with !
-            setBashCommandMode(historyValue.startsWith('!'));
+            // Update bash mode if retrieved command starts with $
+            setBashCommandMode(historyValue.startsWith('$'));
           } else if (historyIndex === 0) {
             // Return to the draft message
             setHistoryIndex(-1);
             const draft = draftMessage[currentSessionId] || '';
             setInput(draft);
-            setBashCommandMode(draft.startsWith('!'));
+            setBashCommandMode(draft.startsWith('$'));
           }
         }
       }
@@ -2948,9 +2943,9 @@ export const ClaudeChat: React.FC = () => {
     
     setInput(newValue);
     
-    // Check for bash mode (starts with !)
+    // Check for bash mode (starts with $)
     const wasInBashMode = bashCommandMode;
-    const isNowBashMode = newValue.startsWith('!');
+    const isNowBashMode = newValue.startsWith('$');
     
     if (wasInBashMode !== isNowBashMode) {
       setBashCommandMode(isNowBashMode);

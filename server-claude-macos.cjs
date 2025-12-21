@@ -2560,10 +2560,10 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Check if this is a bash command (starts with !)
-    if (message && message.startsWith('!')) {
+    // Check if this is a bash command (starts with $)
+    if (message && message.startsWith('$')) {
       console.log(`🐚 Executing bash command: ${message}`);
-      const bashCommand = message.substring(1).trim(); // Remove the ! prefix
+      const bashCommand = message.substring(1).trim(); // Remove the $ prefix
       
       // Execute the bash command directly
       const { exec } = require('child_process');

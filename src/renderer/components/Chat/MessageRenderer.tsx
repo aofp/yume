@@ -1198,21 +1198,29 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             );
           }
           
-          if (block.is_error) {
+          // Check for actual errors - but ignore is_error flag for successful Edit/Write operations
+          // Claude CLI sometimes incorrectly sets is_error:true for successful operations
+          const looksLikeSuccess = resultContent.includes('has been updated') ||
+                                   resultContent.includes('successfully') ||
+                                   resultContent.includes('Applied') ||
+                                   resultContent.includes('→') ||
+                                   resultContent.includes('created');
+
+          if (block.is_error && !looksLikeSuccess) {
             const handleErrorContextMenu = (e: React.MouseEvent) => {
               e.preventDefault();
               e.stopPropagation();
-              
+
               // Copy error to clipboard
               navigator.clipboard.writeText(resultContent).then(() => {
               }).catch(err => {
                 console.error('Failed to copy error:', err);
               });
             };
-            
+
             return (
-              <div 
-                key={idx} 
+              <div
+                key={idx}
                 className="tool-result error"
                 onContextMenu={handleErrorContextMenu}
                 title="right-click to copy error"
@@ -1621,7 +1629,7 @@ const MessageRendererBase: React.FC<{
       }
       
       // Check if this is a bash command
-      const isBashCommand = typeof displayText === 'string' && displayText.startsWith('!');
+      const isBashCommand = typeof displayText === 'string' && displayText.startsWith('$');
 
       // Helper to render text with ultrathink rainbow animation
       const renderWithUltrathink = (text: string): React.ReactNode => {
@@ -1980,12 +1988,6 @@ const MessageRendererBase: React.FC<{
       );
 
     case 'tool_result':
-      // Check if this tool result is an error - if so, don't display it
-      // (the error will be shown via the associated tool_use or result message)
-      if (message.message?.is_error) {
-        return null;
-      }
-
       // Standalone tool result message
       const resultContent = message.message?.content || message.message || '';
       

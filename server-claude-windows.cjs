@@ -3161,19 +3161,11 @@ io.on('connection', (socket) => {
       return;
     }
     
-    // Check if this is a bash command (starts with !)
-    if (message && message.startsWith('!')) {
+    // Check if this is a bash command (starts with $)
+    if (message && message.startsWith('$')) {
       console.log(`🐚 [BASH] Detected bash command: ${message}`);
-      let bashCommand = message.substring(1).trim(); // Remove the ! prefix
+      let bashCommand = message.substring(1).trim(); // Remove the $ prefix
       console.log(`🐚 [BASH] Extracted command: ${bashCommand}`);
-      
-      // Check for Windows CMD alias (!! prefix means run in cmd.exe instead of WSL)
-      let useCmdExe = false;
-      if (bashCommand.startsWith('!')) {
-        useCmdExe = true;
-        bashCommand = bashCommand.substring(1).trim(); // Remove the second ! prefix
-        console.log(`🐚 [BASH] Windows CMD mode detected, will use cmd.exe for: ${bashCommand}`);
-      }
       
       // Use spawn with proper configuration to hide windows
       const { spawn } = require('child_process');
@@ -3218,10 +3210,13 @@ io.on('connection', (socket) => {
         // Check if we're on Windows
         if (process.platform === 'win32') {
           let bashProcess;
-          
+
           // Store bash process for interrupt handling
           activeBashProcesses.set(sessionId, null);
-          
+
+          // Always use PowerShell on Windows (not cmd.exe)
+          const useCmdExe = false;
+
           if (useCmdExe) {
             // Use cmd.exe for Windows native commands
             console.log(`🐚 [CMD] Running Windows command: ${bashCommand}`);
@@ -3325,11 +3320,7 @@ io.on('connection', (socket) => {
             
             // Need to check what sessionId we're using
             console.log(`🐚 ${isCmd} SessionId:`, sessionId);
-            console.log(`🐚 ${isCmd} Session claudeSessionId:`, session.claudeSessionId);
-            
             // Emit to BOTH the regular session AND the Claude session if different
-            console.log(`🐚 ${isCmd} Emitting result message to channel message:${sessionId}`);
-            console.log(`🐚 ${isCmd} Message details:`, JSON.stringify(resultMessage, null, 2));
             socket.emit(`message:${sessionId}`, resultMessage);
             
             // If there's a separate claudeSessionId, emit there too
@@ -3461,7 +3452,6 @@ io.on('connection', (socket) => {
               timestamp: Date.now()
             };
             
-            console.log(`🐚 [BASH] Emitting result message:`, JSON.stringify(resultMessage, null, 2));
             socket.emit(`message:${sessionId}`, resultMessage);
             
             // Always report success for bash commands - the output is sent as a message
@@ -4300,11 +4290,8 @@ Format as a clear, structured summary that preserves all important context.`;
       
       const processStreamLine = (line) => {
         if (!line.trim()) {
-          console.log(`🔸 [${sessionId}] Empty line received`);
           return;
         }
-        
-        console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line}`);
         
         // WRAPPER: Process line for API capture and token tracking
         try {
@@ -4369,7 +4356,6 @@ Format as a clear, structured summary that preserves all important context.`;
         
         try {
           const jsonData = JSON.parse(line);
-          console.log(`📦 [${sessionId}] Message type: ${jsonData.type}${jsonData.subtype ? ` (${jsonData.subtype})` : ''}`);
           
           // Extract session ID if present (update it every time to ensure we have the latest)
           // BUT: Don't store session_id from compact results as they can't be resumed
@@ -4567,9 +4553,6 @@ Format as a clear, structured summary that preserves all important context.`;
                 // Check if this is an Edit/MultiEdit tool result and enhance with context lines
                 let enhancedContent = block.content;
                 
-                // Log the content for debugging
-                console.log(`🔍 [${sessionId}] Tool result content preview:`, block.content?.substring(0, 200));
-                
                 // More permissive check for Edit tool results
                 if (typeof block.content === 'string' && 
                     (block.content.includes('has been updated') || 
@@ -4678,11 +4661,6 @@ Format as a clear, structured summary that preserves all important context.`;
                           });
                           
                           enhancedContent = enhancedDiffLines.join('\n');
-                          console.log(`📝 [${sessionId}] Enhanced diff created with ${enhancedDiffLines.length} lines`);
-                          console.log(`📝 [${sessionId}] Diff preview:`, enhancedContent.substring(0, 300));
-                        } else {
-                          console.log(`📝 [${sessionId}] No line numbers found in diff, keeping original content`);
-                          console.log(`📝 [${sessionId}] Original content:`, block.content.substring(0, 300));
                         }
                       }
                     } catch (err) {
@@ -4781,9 +4759,7 @@ Format as a clear, structured summary that preserves all important context.`;
             }
             
           } else if (jsonData.type === 'result') {
-            console.log(`📦 [${sessionId}] RESULT MESSAGE RECEIVED!`);
-            console.log(`   ✅ Result: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
-            console.log(`   📊 Full result data:`, JSON.stringify(jsonData, null, 2));
+            console.log(`📦 [${sessionId}] RESULT: success=${!jsonData.is_error}, duration=${jsonData.duration_ms}ms`);
             
             // Check if this is a compact result - look for the last user message being /compact
             const session = sessions.get(sessionId);
@@ -5146,17 +5122,9 @@ Format as a clear, structured summary that preserves all important context.`;
         lastDataTime = Date.now();
         resetWatchdog(); // Reset watchdog on any data reception
         
-        console.log(`📥 [${sessionId}] STDOUT received: ${str.length} bytes (total: ${bytesReceived})`);
-        console.log(`📥 [${sessionId}] Data preview: ${str.substring(0, 200)}...`);
-        
-        // LOG EVERYTHING DURING COMPACT TO SEE WHAT CLAUDE OUTPUTS
-        const session = sessions.get(sessionId);
-        const lastUserMessage = session?.messages?.filter(m => m.role === 'user').pop();
-        const isCompactCommand = lastUserMessage?.message?.content?.trim() === '/compact';
-        if (isCompactCommand) {
-          console.log(`🗜️🗜️🗜️ [COMPACT RAW DATA] Full output from Claude:`);
-          console.log(str);
-          console.log(`🗜️🗜️🗜️ [COMPACT RAW DATA] End of output chunk`);
+        // Only log STDOUT summary for large outputs to reduce log spam
+        if (str.length > 1000) {
+          console.log(`📥 [${sessionId}] STDOUT: ${str.length} bytes (total: ${bytesReceived})`);
         }
         
         // Prevent memory overflow from excessive buffering
@@ -5184,10 +5152,7 @@ Format as a clear, structured summary that preserves all important context.`;
         const lines = lineBuffer.split('\n');
         lineBuffer = lines.pop() || '';
         
-        console.log(`📋 [${sessionId}] Split into ${lines.length} lines, buffer remaining: ${lineBuffer.length} chars`);
-        
         for (let i = 0; i < lines.length; i++) {
-          console.log(`📋 [${sessionId}] Processing line ${i + 1}/${lines.length}`);
           processStreamLine(lines[i]);
         }
       });
