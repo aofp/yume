@@ -189,6 +189,10 @@
   font-family: var(--font-mono);
 }
 
+.message.user .message-bubble.bash-mode {
+  background: rgba(var(--negative-rgb), 0.15);
+}
+
 .message.assistant .message-bubble {
   background: rgba(128, 128, 128, 0.15);
   border: none;
@@ -562,7 +566,74 @@ ol {
   overflow-wrap: break-word;
 }
 
-/* Thinking block code formatting */
+/* Markdown styling for thinking blocks */
+.thinking-markdown {
+  font-family: var(--font-sans);
+  font-size: 10px;
+  line-height: 1.5;
+  color: rgba(var(--foreground-rgb), 0.7);
+}
+
+.thinking-markdown p {
+  margin: 0 0 8px 0;
+}
+
+.thinking-markdown p:last-child {
+  margin-bottom: 0;
+}
+
+.thinking-markdown ul,
+.thinking-markdown ol {
+  margin: 4px 0;
+  padding-left: 20px;
+}
+
+.thinking-markdown li {
+  margin: 2px 0;
+}
+
+.thinking-markdown strong {
+  font-weight: 600;
+  color: rgba(var(--foreground-rgb), 0.85);
+}
+
+.thinking-markdown em {
+  font-style: italic;
+}
+
+.thinking-markdown h1,
+.thinking-markdown h2,
+.thinking-markdown h3,
+.thinking-markdown h4,
+.thinking-markdown h5,
+.thinking-markdown h6 {
+  margin: 12px 0 6px 0;
+  font-weight: 600;
+  color: rgba(var(--foreground-rgb), 0.85);
+}
+
+.thinking-markdown h1 { font-size: 14px; }
+.thinking-markdown h2 { font-size: 13px; }
+.thinking-markdown h3 { font-size: 12px; }
+.thinking-markdown h4,
+.thinking-markdown h5,
+.thinking-markdown h6 { font-size: 11px; }
+
+.thinking-markdown blockquote {
+  margin: 8px 0;
+  padding: 4px 12px;
+  border-left: 2px solid rgba(var(--accent-rgb), 0.4);
+  color: rgba(var(--foreground-rgb), 0.6);
+  font-style: italic;
+}
+
+.thinking-markdown hr {
+  border: none;
+  border-top: 1px solid rgba(var(--foreground-rgb), 0.1);
+  margin: 12px 0;
+}
+
+/* Thinking block code formatting (legacy - keep for compatibility) */
 .thinking-text-container {
   font-family: var(--font-sans);
   font-size: 8pt;

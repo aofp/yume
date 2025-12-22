@@ -724,73 +724,11 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           const lineCount = lines.length;
           const charCount = thinkingContent.length;
           const isStreaming = message?.streaming || false;
-          
+
           if (!thinkingContent) {
             return null;
           }
-          
-          // Function to parse and render thinking content with proper code formatting
-          const renderThinkingContent = (content: string) => {
-            // Split content by code blocks first
-            const parts: React.ReactNode[] = [];
-            let lastIndex = 0;
-            let match;
 
-            // Reset lastIndex for global regex reuse
-            CODE_BLOCK_REGEX.lastIndex = 0;
-
-            // Process code blocks
-            while ((match = CODE_BLOCK_REGEX.exec(content)) !== null) {
-              // Add text before code block
-              if (match.index > lastIndex) {
-                const textBefore = content.substring(lastIndex, match.index);
-                // Process inline code in the text
-                const processedText = textBefore.replace(INLINE_CODE_REGEX, (_, code) =>
-                  `<code class="thinking-inline-code">${code}</code>`
-                );
-                parts.push(
-                  <span key={`text-${match.index}`} dangerouslySetInnerHTML={{ __html: processedText }} />
-                );
-              }
-              
-              // Add code block
-              const lang = match[1] || '';
-              const code = match[2] || '';
-              parts.push(
-                <div key={`code-${match.index}`} className="thinking-code-block">
-                  {lang && <div className="thinking-code-lang">{lang}</div>}
-                  <pre className="thinking-code-pre">
-                    <code className="thinking-code">{code.trim()}</code>
-                  </pre>
-                </div>
-              );
-              
-              lastIndex = match.index + match[0].length;
-            }
-            
-            // Add remaining text after last code block
-            if (lastIndex < content.length) {
-              const remainingText = content.substring(lastIndex);
-              // Process inline code in the remaining text
-              const processedText = remainingText.replace(INLINE_CODE_REGEX, (_, code) => 
-                `<code class="thinking-inline-code">${code}</code>`
-              );
-              parts.push(
-                <span key={`text-end`} dangerouslySetInnerHTML={{ __html: processedText }} />
-              );
-            }
-            
-            // If no code blocks were found, just process inline code
-            if (parts.length === 0) {
-              const processedContent = content.replace(INLINE_CODE_REGEX, (_, code) => 
-                `<code class="thinking-inline-code">${code}</code>`
-              );
-              return <pre className="thinking-text" dangerouslySetInnerHTML={{ __html: processedContent }} />;
-            }
-            
-            return <div className="thinking-text-container">{parts}</div>;
-          };
-          
           return (
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
@@ -800,7 +738,44 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 </span>
               </div>
               <div className="thinking-content">
-                {renderThinkingContent(thinkingContent)}
+                <ReactMarkdown
+                  className="thinking-markdown"
+                  remarkPlugins={[remarkGfm]}
+                  components={{
+                    a({ children }) {
+                      return <>{children}</>;
+                    },
+                    code({ node, className, children, ...props }) {
+                      const match = /language-(\w+)/.exec(className || '');
+                      const isInline = !match && !String(children).includes('\n');
+
+                      if (isInline) {
+                        return <code className="thinking-inline-code" {...props}>{children}</code>;
+                      }
+
+                      return (
+                        <div className="thinking-code-block">
+                          {match && <div className="thinking-code-lang">{match[1]}</div>}
+                          <pre className="thinking-code-pre">
+                            <code className="thinking-code" {...props}>{children}</code>
+                          </pre>
+                        </div>
+                      );
+                    },
+                    pre({ children }) {
+                      return <>{children}</>;
+                    },
+                    table({ node, children, ...props }) {
+                      return (
+                        <div className="table-wrapper">
+                          <table className="markdown-table" {...props}>{children}</table>
+                        </div>
+                      );
+                    }
+                  }}
+                >
+                  {thinkingContent}
+                </ReactMarkdown>
               </div>
             </div>
           );
@@ -1667,7 +1642,7 @@ const MessageRendererBase: React.FC<{
               <IconCopy size={12} stroke={1.5} />
             </button>
           </div>
-          <div className={`message-bubble ${isBashCommand ? 'font-mono' : ''}`}>
+          <div className={`message-bubble ${isBashCommand ? 'font-mono bash-mode' : ''}`}>
             {typeof displayText === 'string' ? (
               displayText.includes('\n') ? (
                 <span>{renderMultilineWithUltrathink(displayText)}</span>

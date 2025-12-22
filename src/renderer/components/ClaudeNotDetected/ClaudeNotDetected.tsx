@@ -22,46 +22,13 @@ export const ClaudeNotDetected: React.FC = () => {
         <div className="claude-not-detected-instructions">
           <h3>Installation Instructions:</h3>
           
-          {isMac && (
-            <div className="install-steps">
-              <div className="install-step">
-                <IconCommand size={16} />
-                <code>brew install claude</code>
-              </div>
-              <p className="install-note">or download from claude.ai</p>
+          <div className="install-steps">
+            <div className="install-step">
+              <IconCommand size={16} />
+              <code>npm install -g @anthropic-ai/claude-code</code>
             </div>
-          )}
-          
-          {isWindows && (
-            <div className="install-steps">
-              <div className="install-step">
-                <IconDownload size={16} />
-                <span>Download Claude from claude.ai</span>
-              </div>
-              <div className="install-step">
-                <span className="step-number">1.</span>
-                <span>Install Claude desktop app</span>
-              </div>
-              <div className="install-step">
-                <span className="step-number">2.</span>
-                <span>Enable Developer mode in Claude settings</span>
-              </div>
-              <div className="install-step">
-                <span className="step-number">3.</span>
-                <span>Restart yurucode</span>
-              </div>
-            </div>
-          )}
-          
-          {!isMac && !isWindows && (
-            <div className="install-steps">
-              <div className="install-step">
-                <IconCommand size={16} />
-                <code>pip install claude-cli</code>
-              </div>
-              <p className="install-note">or check claude.ai for installation</p>
-            </div>
-          )}
+            <p className="install-note">Requires Node.js 18+. After installation, restart yurucode.</p>
+          </div>
         </div>
 
         <div className="claude-not-detected-footer">

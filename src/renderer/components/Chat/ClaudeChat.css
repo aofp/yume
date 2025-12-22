@@ -2299,7 +2299,7 @@ textarea.context-full {
 }
 
 .messages-virtualized::-webkit-scrollbar {
-  width: 8px;
+  width: 3px; /* Reduced from 8px to match macOS thin scrollbars */
 }
 
 .messages-virtualized::-webkit-scrollbar-track {

@@ -1512,9 +1512,9 @@ export const ClaudeChat: React.FC = () => {
     // Helper to fetch and parse line stats
     const fetchLineStats = async (workingDir: string) => {
       try {
-        const numstatResult = await invoke('execute_bash', {
-          command: 'git diff --numstat',
-          workingDir
+        // Use dedicated native git command to avoid WSL issues on Windows
+        const numstatResult = await invoke('get_git_diff_numstat', {
+          directory: workingDir
         }) as string;
         const stats: { [file: string]: { added: number; deleted: number } } = {};
         // Split by \n and trim each line to handle Windows \r\n line endings

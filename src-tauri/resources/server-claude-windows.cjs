@@ -294,7 +294,8 @@ console.log('══════════════════════�
 
 // Claude CLI path - try multiple locations
 const { execSync, spawn } = require("child_process");
-const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } = require("fs");
+const fs = require("fs");
+const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } = fs;
 const { dirname, join, isAbsolute } = require("path");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
@@ -783,7 +784,88 @@ function createWslClaudeCommand(args, workingDir, message) {
 if (isWindows) {
   // Load Claude settings to determine execution mode
   loadClaudeSettings();
-  
+
+  // Auto-detect native Windows Claude if not already set
+  if (!NATIVE_WINDOWS_CLAUDE_PATH) {
+    console.log('🔍 Auto-detecting native Windows Claude CLI...');
+
+    // Common Windows installation paths for Claude
+    const appData = process.env.APPDATA || '';
+    const userProfile = process.env.USERPROFILE || '';
+    const localAppData = process.env.LOCALAPPDATA || '';
+
+    const possibleNativeWindowsPaths = [
+      // npm global installation (most common)
+      join(appData, 'npm', 'claude.cmd'),
+      join(appData, 'npm', 'claude.exe'),
+      // User-specific installations
+      join(userProfile, '.claude', 'local', 'claude.exe'),
+      join(localAppData, 'Programs', 'claude', 'claude.exe'),
+      join(localAppData, 'Claude', 'claude.exe'),
+      // Scoop
+      join(userProfile, 'scoop', 'apps', 'claude', 'current', 'claude.exe'),
+      join(userProfile, 'scoop', 'shims', 'claude.exe'),
+      // Chocolatey
+      'C:\\ProgramData\\chocolatey\\bin\\claude.exe',
+      // Program Files
+      'C:\\Program Files\\Claude\\claude.exe',
+      'C:\\Program Files (x86)\\Claude\\claude.exe',
+    ].filter(Boolean);
+
+    // Check common paths first
+    for (const checkPath of possibleNativeWindowsPaths) {
+      try {
+        if (existsSync(checkPath)) {
+          NATIVE_WINDOWS_CLAUDE_PATH = checkPath;
+          console.log(`✅ Found native Windows Claude at: ${checkPath}`);
+          break;
+        }
+      } catch (e) {
+        // Continue searching
+      }
+    }
+
+    // If not found in common paths, try 'where claude' command
+    if (!NATIVE_WINDOWS_CLAUDE_PATH) {
+      try {
+        const whereResult = execSync('where claude', {
+          encoding: 'utf8',
+          windowsHide: true,
+          stdio: ['pipe', 'pipe', 'ignore']
+        }).trim();
+        if (whereResult) {
+          const paths = whereResult.split('\n').map(p => p.trim()).filter(p => p);
+          for (const foundPath of paths) {
+            if (foundPath.endsWith('.exe') || foundPath.endsWith('.cmd')) {
+              NATIVE_WINDOWS_CLAUDE_PATH = foundPath;
+              console.log(`✅ Found native Windows Claude via 'where': ${foundPath}`);
+              break;
+            }
+          }
+        }
+      } catch (e) {
+        console.log('⚠️ "where claude" command failed or claude not in PATH');
+      }
+    }
+
+    // If still not found, also check if 'claude' command works directly
+    if (!NATIVE_WINDOWS_CLAUDE_PATH) {
+      try {
+        execSync('claude --version', {
+          encoding: 'utf8',
+          windowsHide: true,
+          stdio: ['pipe', 'pipe', 'ignore'],
+          timeout: 5000
+        });
+        // If we get here, 'claude' is in PATH
+        NATIVE_WINDOWS_CLAUDE_PATH = 'claude';
+        console.log(`✅ 'claude' command is available in PATH`);
+      } catch (e) {
+        // Not available
+      }
+    }
+  }
+
   console.log('════════════════════════════════════════════════════════════════════');
   console.log('🔍 PLATFORM: Windows detected');
   console.log('🔍 CLAUDE EXECUTION MODE:', CLAUDE_EXECUTION_MODE);
@@ -794,14 +876,20 @@ if (isWindows) {
     console.log('✅ WSL Claude available:', WSL_CLAUDE_PATH);
   }
   console.log('════════════════════════════════════════════════════════════════════');
-  
-  // Set marker based on mode
-  if (CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
+
+  // Set marker based on mode - PREFER native Windows if available
+  if (NATIVE_WINDOWS_CLAUDE_PATH && (CLAUDE_EXECUTION_MODE === 'native-windows' || CLAUDE_EXECUTION_MODE === 'auto')) {
     CLAUDE_PATH = 'NATIVE_WINDOWS_CLAUDE';
+    console.log('🎯 Using native Windows Claude CLI');
+  } else if (NATIVE_WINDOWS_CLAUDE_PATH && !WSL_CLAUDE_PATH) {
+    // If only native Windows is available, use it regardless of mode
+    CLAUDE_PATH = 'NATIVE_WINDOWS_CLAUDE';
+    console.log('🎯 Using native Windows Claude CLI (only option available)');
   } else {
-    CLAUDE_PATH = 'WSL_CLAUDE'; // Default to WSL for compatibility
+    CLAUDE_PATH = 'WSL_CLAUDE'; // Fall back to WSL
+    console.log('🎯 Using WSL Claude CLI');
   }
-  
+
 } else {
   // macOS/Linux paths
   const possibleClaudePaths = [

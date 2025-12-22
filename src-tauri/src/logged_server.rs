@@ -377,25 +377,25 @@ fn start_macos_server(port: u16) {
         write_log(&format!("Attempting to spawn Node.js server on port {}...", port));
         let mut cmd = Command::new("node");
         cmd.arg(&server_file)
-           .env("PORT", port.to_string())
            .env_clear()
-           .envs(std::env::vars());
+           .envs(std::env::vars())
+           .env("PORT", port.to_string());
 
         if let Some(ref modules) = node_modules {
             write_log(&format!("Setting NODE_PATH to: {:?}", modules));
             cmd.env("NODE_PATH", modules);
         }
-        
+
         // Always capture output for logging
         cmd.stdout(Stdio::piped())
            .stderr(Stdio::piped());
-        
+
         // Set working directory to resources folder for relative requires
         if let Some(working_dir) = server_file.parent() {
             cmd.current_dir(working_dir);
             write_log(&format!("Working directory: {:?}", working_dir));
         }
-        
+
         write_log(&format!("Spawn command: node {:?}", &server_file));
         match cmd.spawn() {
             Ok(mut child) => {
@@ -509,9 +509,9 @@ fn start_macos_server(port: u16) {
                         write_log(&format!("Retrying with absolute path: {} on port {}", path, port));
                         let mut retry_cmd = Command::new(path);
                         retry_cmd.arg(&server_file)
-                                 .env("PORT", port.to_string())
                                  .env_clear()
-                                 .envs(std::env::vars());
+                                 .envs(std::env::vars())
+                                 .env("PORT", port.to_string());
 
                         if let Some(ref modules) = node_modules {
                             retry_cmd.env("NODE_PATH", modules);
@@ -654,9 +654,9 @@ fn start_windows_server(port: u16) {
         // Try to start server with Node.js
         let mut cmd = Command::new("node");
         cmd.arg(&server_file)
-           .env("PORT", port.to_string())
            .env_clear()
-           .envs(std::env::vars());
+           .envs(std::env::vars())
+           .env("PORT", port.to_string());
 
         if let Some(ref modules) = node_modules {
             write_log(&format!("Setting NODE_PATH to: {:?}", modules));

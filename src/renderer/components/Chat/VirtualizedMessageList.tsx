@@ -45,7 +45,8 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const streamingScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cooldown period after user scrolls up (don't auto-scroll for this long)
-  const SCROLL_COOLDOWN_MS = 3000;
+  // Increased from 3000ms to 5000ms to give users more time to read while streaming
+  const SCROLL_COOLDOWN_MS = 5000;
 
   // Add thinking message if streaming
   const displayMessages = useMemo(() => {
@@ -165,7 +166,8 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
 
     // Only mark as user scroll if scrolling UP with significant movement (not just virtualizer adjustment)
     // AND we're not at the bottom, AND scroll delta is significant (user intent)
-    if (scrollingUp && !atBottom && scrollDelta > 20) {
+    // Reduced threshold from 20 to 5 for more sensitive scroll detection
+    if (scrollingUp && !atBottom && scrollDelta > 5) {
       userHasScrolledRef.current = true;
       userScrolledAtRef.current = Date.now();
       onScrollStateChange?.(false);
@@ -271,8 +273,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
         const { scrollHeight, clientHeight, scrollTop } = parentRef.current;
         const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-        // Only scroll if we're more than 20px from bottom (higher threshold prevents micro-jitter)
-        if (distanceFromBottom > 20) {
+        // Only scroll if we're more than 40px from bottom (prevents aggressive auto-scroll during streaming)
+        // Increased from 20px to 40px to be less aggressive and allow easier manual scrolling
+        if (distanceFromBottom > 40) {
           isAutoScrollingRef.current = true;
           parentRef.current.scrollTop = scrollHeight - clientHeight;
           isAutoScrollingRef.current = false;

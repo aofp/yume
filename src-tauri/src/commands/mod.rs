@@ -1386,6 +1386,45 @@ pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
     Ok(status)
 }
 
+/// Returns git diff numstat for line additions/deletions per file
+/// Uses native git on Windows to avoid WSL issues
+#[tauri::command]
+pub async fn get_git_diff_numstat(directory: String) -> Result<String, String> {
+    use std::process::Command;
+
+    let dir_path = PathBuf::from(&directory);
+    if !dir_path.exists() {
+        return Err(format!("Directory does not exist: {}", directory));
+    }
+
+    // Run git diff --numstat command using native git
+    #[cfg(target_os = "windows")]
+    let output = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        Command::new("git")
+            .args(&["diff", "--numstat"])
+            .current_dir(&dir_path)
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map_err(|e| format!("Failed to run git diff: {}", e))?
+    };
+
+    #[cfg(not(target_os = "windows"))]
+    let output = Command::new("git")
+        .args(&["diff", "--numstat"])
+        .current_dir(&dir_path)
+        .output()
+        .map_err(|e| format!("Failed to run git diff: {}", e))?;
+
+    if !output.status.success() {
+        return Err("Failed to get git diff numstat".to_string());
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
 /// Helper function for fuzzy matching
 /// Returns true if all characters in the query appear in the text in order
 /// Example: "abc" matches "app_bar_config" (a-b-c appear in order)

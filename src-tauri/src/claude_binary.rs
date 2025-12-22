@@ -109,7 +109,7 @@ pub fn discover_claude_installations() -> Vec<ClaudeInstallation> {
 /// Returns a preference score for installation sources (lower is better)
 fn source_preference(installation: &ClaudeInstallation) -> u8 {
     match installation.source.as_str() {
-        "which" => 1,
+        "which" | "where" => 1,
         "homebrew" => 2,
         "system" => 3,
         source if source.starts_with("nvm") => 4,
@@ -118,10 +118,13 @@ fn source_preference(installation: &ClaudeInstallation) -> u8 {
         "npm-global" => 7,
         "yarn" | "yarn-global" => 8,
         "bun" => 9,
-        "node-modules" => 10,
-        "home-bin" => 11,
-        "PATH" => 12,
-        _ => 13,
+        "scoop" => 10,
+        "chocolatey" => 11,
+        "node-modules" => 12,
+        "home-bin" => 13,
+        "windows-local" | "windows-program" => 14,
+        "PATH" => 15,
+        _ => 16,
     }
 }
 
@@ -147,51 +150,98 @@ fn discover_system_installations() -> Vec<ClaudeInstallation> {
     installations
 }
 
-/// Try using the 'which' command to find Claude
+/// Try using the 'which' command (Unix) or 'where' command (Windows) to find Claude
 fn try_which_command() -> Option<ClaudeInstallation> {
-    debug!("Trying 'which claude' to find binary...");
+    #[cfg(target_os = "windows")]
+    {
+        debug!("Trying 'where claude' to find binary on Windows...");
 
-    match Command::new("which").arg("claude").output() {
-        Ok(output) if output.status.success() => {
-            // Normalize CRLF to LF for Windows compatibility, then trim
-            let output_str = String::from_utf8_lossy(&output.stdout)
-                .replace("\r\n", "\n")
-                .trim()
-                .to_string();
+        // On Windows, use 'where' command
+        let output = Command::new("where")
+            .arg("claude")
+            .output();
 
-            if output_str.is_empty() {
-                return None;
-            }
-
-            // Parse aliased output: "claude: aliased to /path/to/claude"
-            let path = if output_str.starts_with("claude:") && output_str.contains("aliased to") {
-                output_str
-                    .split("aliased to")
-                    .nth(1)
+        match output {
+            Ok(output) if output.status.success() => {
+                // 'where' can return multiple paths, take the first one
+                let output_str = String::from_utf8_lossy(&output.stdout);
+                let path = output_str
+                    .lines()
+                    .next()
                     .map(|s| s.trim().to_string())
-            } else {
-                Some(output_str)
-            }?;
+                    .filter(|s| !s.is_empty())?;
 
-            debug!("'which' found claude at: {}", path);
+                debug!("'where' found claude at: {}", path);
 
-            // Verify the path exists
-            if !PathBuf::from(&path).exists() {
-                warn!("Path from 'which' does not exist: {}", path);
-                return None;
+                // Verify the path exists
+                if !PathBuf::from(&path).exists() {
+                    warn!("Path from 'where' does not exist: {}", path);
+                    return None;
+                }
+
+                // Get version
+                let version = get_claude_version(&path).ok().flatten();
+
+                return Some(ClaudeInstallation {
+                    path,
+                    version,
+                    source: "where".to_string(),
+                    installation_type: InstallationType::System,
+                });
             }
-
-            // Get version
-            let version = get_claude_version(&path).ok().flatten();
-
-            Some(ClaudeInstallation {
-                path,
-                version,
-                source: "which".to_string(),
-                installation_type: InstallationType::System,
-            })
+            _ => {
+                debug!("'where claude' command failed or claude not found in PATH");
+            }
         }
-        _ => None,
+        return None;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        debug!("Trying 'which claude' to find binary...");
+
+        match Command::new("which").arg("claude").output() {
+            Ok(output) if output.status.success() => {
+                // Normalize CRLF to LF for compatibility, then trim
+                let output_str = String::from_utf8_lossy(&output.stdout)
+                    .replace("\r\n", "\n")
+                    .trim()
+                    .to_string();
+
+                if output_str.is_empty() {
+                    return None;
+                }
+
+                // Parse aliased output: "claude: aliased to /path/to/claude"
+                let path = if output_str.starts_with("claude:") && output_str.contains("aliased to") {
+                    output_str
+                        .split("aliased to")
+                        .nth(1)
+                        .map(|s| s.trim().to_string())
+                } else {
+                    Some(output_str)
+                }?;
+
+                debug!("'which' found claude at: {}", path);
+
+                // Verify the path exists
+                if !PathBuf::from(&path).exists() {
+                    warn!("Path from 'which' does not exist: {}", path);
+                    return None;
+                }
+
+                // Get version
+                let version = get_claude_version(&path).ok().flatten();
+
+                Some(ClaudeInstallation {
+                    path,
+                    version,
+                    source: "which".to_string(),
+                    installation_type: InstallationType::System,
+                })
+            }
+            _ => None,
+        }
     }
 }
 
@@ -284,15 +334,65 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
     // Windows-specific paths if on Windows
     #[cfg(target_os = "windows")]
     {
-        if let Ok(appdata) = std::env::var("LOCALAPPDATA") {
-            let path = PathBuf::from(&appdata)
-                .join("Claude")
-                .join("claude.exe");
+        // npm global installation (most common on Windows)
+        if let Ok(appdata) = std::env::var("APPDATA") {
+            // npm global installs go to %APPDATA%\npm
+            let npm_path = PathBuf::from(&appdata).join("npm");
             paths_to_check.push((
-                path.to_string_lossy().to_string(),
+                npm_path.join("claude.cmd").to_string_lossy().to_string(),
+                "npm-global".to_string(),
+            ));
+            paths_to_check.push((
+                npm_path.join("claude.exe").to_string_lossy().to_string(),
+                "npm-global".to_string(),
+            ));
+            paths_to_check.push((
+                npm_path.join("claude").to_string_lossy().to_string(),
+                "npm-global".to_string(),
+            ));
+        }
+
+        // LOCALAPPDATA paths
+        if let Ok(localappdata) = std::env::var("LOCALAPPDATA") {
+            let local = PathBuf::from(&localappdata);
+            paths_to_check.push((
+                local.join("Claude").join("claude.exe").to_string_lossy().to_string(),
+                "windows-local".to_string(),
+            ));
+            paths_to_check.push((
+                local.join("Programs").join("claude").join("claude.exe").to_string_lossy().to_string(),
+                "windows-local".to_string(),
+            ));
+            paths_to_check.push((
+                local.join("Programs").join("Claude").join("claude.exe").to_string_lossy().to_string(),
                 "windows-local".to_string(),
             ));
         }
+
+        // USERPROFILE paths (scoop, local installs)
+        if let Ok(userprofile) = std::env::var("USERPROFILE") {
+            let user = PathBuf::from(&userprofile);
+            // .claude local installation
+            paths_to_check.push((
+                user.join(".claude").join("local").join("claude.exe").to_string_lossy().to_string(),
+                "claude-local".to_string(),
+            ));
+            // Scoop installations
+            paths_to_check.push((
+                user.join("scoop").join("apps").join("claude").join("current").join("claude.exe").to_string_lossy().to_string(),
+                "scoop".to_string(),
+            ));
+            paths_to_check.push((
+                user.join("scoop").join("shims").join("claude.exe").to_string_lossy().to_string(),
+                "scoop".to_string(),
+            ));
+            paths_to_check.push((
+                user.join("scoop").join("shims").join("claude.cmd").to_string_lossy().to_string(),
+                "scoop".to_string(),
+            ));
+        }
+
+        // Program Files installations
         if let Ok(programfiles) = std::env::var("ProgramFiles") {
             let path = PathBuf::from(&programfiles)
                 .join("Claude")
@@ -302,6 +402,21 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
                 "windows-program".to_string(),
             ));
         }
+        if let Ok(programfiles_x86) = std::env::var("ProgramFiles(x86)") {
+            let path = PathBuf::from(&programfiles_x86)
+                .join("Claude")
+                .join("claude.exe");
+            paths_to_check.push((
+                path.to_string_lossy().to_string(),
+                "windows-program".to_string(),
+            ));
+        }
+
+        // Chocolatey installation
+        paths_to_check.push((
+            "C:\\ProgramData\\chocolatey\\bin\\claude.exe".to_string(),
+            "chocolatey".to_string(),
+        ));
     }
 
     // Check each path

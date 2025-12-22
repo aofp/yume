@@ -738,6 +738,7 @@ pub fn run() {
             commands::search_files,
             commands::get_recent_files,
             commands::get_git_status,
+            commands::get_git_diff_numstat,
             commands::get_folder_contents,
             // Database operations
             commands::database::db_save_session,
