@@ -1827,13 +1827,14 @@ export const ClaudeChat: React.FC = () => {
     try {
       // Try staged changes first (--cached), then unstaged changes
       // This handles both newly added files (staged) and modified files (unstaged)
+      // --ignore-cr-at-eol fixes Windows CRLF line ending issues
       const stagedDiff = await invoke('execute_bash', {
-        command: `git diff --cached "${filePath}"`,
+        command: `git diff --cached --ignore-cr-at-eol "${filePath}"`,
         workingDir: currentSession?.workingDirectory
       }) as string;
 
       const unstagedDiff = await invoke('execute_bash', {
-        command: `git diff "${filePath}"`,
+        command: `git diff --ignore-cr-at-eol "${filePath}"`,
         workingDir: currentSession?.workingDirectory
       }) as string;
 

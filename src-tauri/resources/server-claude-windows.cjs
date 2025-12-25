@@ -72,9 +72,16 @@ function getWrapperSession(sessionId) {
   if (!wrapperState.sessions.has(sessionId)) {
     wrapperState.sessions.set(sessionId, {
       id: sessionId,
+      // Per-request tokens (last API call)
       inputTokens: 0,
       outputTokens: 0,
       totalTokens: 0,
+      // Accumulated tokens (across all API calls in session)
+      accumulatedInputTokens: 0,
+      accumulatedOutputTokens: 0,
+      accumulatedTotalTokens: 0,
+      accumulatedCacheRead: 0,
+      accumulatedCacheCreation: 0,
       messageCount: 0,
       apiResponses: [],
       compactCount: 0,
@@ -171,27 +178,29 @@ function processWrapperLine(line, sessionId) {
       const cacheCreation = data.usage.cache_creation_input_tokens || 0;
       const cacheRead = data.usage.cache_read_input_tokens || 0;
 
-      // IMPORTANT: Claude API returns TOTAL context window usage, not deltas!
-      // We should SET these values, not accumulate them.
-      // The input_tokens value already includes all previous context.
-      const prevTotal = session.totalTokens;
-
-      // Set current values (not accumulate)
+      // Store per-request values (for reference/debugging)
       session.inputTokens = input;
       session.outputTokens = output;
       session.cacheCreationTokens = cacheCreation;
       session.cacheReadTokens = cacheRead;
-
-      // Total context = input + output (which already includes everything)
-      // Cache creation is already included in input_tokens by the API
-      // Cache reads don't count towards the 200k limit (they're "free" cached tokens)
       session.totalTokens = input + output;
 
-      const delta = session.totalTokens - prevTotal;
+      // ACCUMULATE tokens across all API calls in this session
+      // This gives accurate tracking of total context usage over time
+      session.accumulatedInputTokens += input;
+      session.accumulatedOutputTokens += output;
+      session.accumulatedCacheRead += cacheRead;
+      session.accumulatedCacheCreation += cacheCreation;
+
+      const prevAccumulated = session.accumulatedTotalTokens;
+      session.accumulatedTotalTokens += input + output;
+
+      const delta = input + output;
       wrapperState.stats.totalTokens += delta;
 
-      // Show the delta for this turn
-      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
+      // Show accumulated context usage
+      const percentage = Math.round(session.accumulatedTotalTokens / 2000);
+      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.accumulatedTotalTokens}/200000 (${percentage}%)`);
       if (cacheCreation > 0 || cacheRead > 0) {
         console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead} (cache_read doesn't count toward 200k limit)`);
       }
@@ -232,13 +241,18 @@ function processWrapperLine(line, sessionId) {
       session.wasCompacted = true;
       session.tokensSaved += savedTokens;
       wrapperState.stats.compacts++;
-      
-      // Reset tokens
+
+      // Reset tokens (both per-request and accumulated)
       session.inputTokens = 0;
       session.outputTokens = 0;
       session.totalTokens = 0;
       session.cacheCreationTokens = 0;
       session.cacheReadTokens = 0;
+      session.accumulatedInputTokens = 0;
+      session.accumulatedOutputTokens = 0;
+      session.accumulatedTotalTokens = 0;
+      session.accumulatedCacheRead = 0;
+      session.accumulatedCacheCreation = 0;
       
       // Use Claude's summary if we captured it, otherwise use fallback
       if (session.compactSummary) {
@@ -263,11 +277,18 @@ function processWrapperLine(line, sessionId) {
     data.wrapper = {
       enabled: true,
       tokens: {
-        total: session.totalTokens,
-        input: session.inputTokens,
-        output: session.outputTokens,
-        cache_read: session.cacheReadTokens || 0,
-        cache_creation: session.cacheCreationTokens || 0
+        // Accumulated totals (what the user cares about for context usage)
+        total: session.accumulatedTotalTokens,
+        input: session.accumulatedInputTokens,
+        output: session.accumulatedOutputTokens,
+        cache_read: session.accumulatedCacheRead || 0,
+        cache_creation: session.accumulatedCacheCreation || 0,
+        // Per-request values (for debugging/reference)
+        lastRequest: {
+          input: session.inputTokens,
+          output: session.outputTokens,
+          total: session.totalTokens
+        }
       },
       compaction: {
         count: session.compactCount,
@@ -4456,43 +4477,57 @@ Format as a clear, structured summary that preserves all important context.`;
         // Check for "No conversation found" error message
         if (line.includes('No conversation found with session ID')) {
           console.log(`🔄 [${sessionId}] Resume failed - session not found in Claude storage`);
-          console.log(`🔄 [${sessionId}] Will create new session with existing context on next message`);
-          
+          console.log(`🔄 [${sessionId}] KILLING process and clearing state`);
+
+          // CRITICAL: Kill the process immediately to stop further streaming
+          try {
+            if (claudeProcess && !claudeProcess.killed) {
+              console.log(`🛑 [${sessionId}] Killing claude process PID: ${claudeProcess.pid}`);
+              claudeProcess.kill('SIGTERM');
+              activeProcesses.delete(sessionId);
+              activeProcessStartTimes.delete(sessionId);
+            }
+          } catch (killErr) {
+            console.error(`❌ [${sessionId}] Error killing process:`, killErr.message);
+          }
+
+          // Clear streaming state for any pending assistant messages
+          const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+          if (lastAssistantMessageId) {
+            console.log(`🔴 [${sessionId}] Clearing streaming for message ${lastAssistantMessageId}`);
+            socket.emit(`update:${sessionId}`, {
+              id: lastAssistantMessageId,
+              streaming: false
+            });
+            lastAssistantMessageIds.delete(sessionId);
+          }
+
+          // Send stream end to ensure UI stops showing spinner
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'stream_end',
+            streaming: false,
+            timestamp: Date.now()
+          });
+
           // Clear the invalid session ID so next attempt doesn't use --resume
           const session = sessions.get(sessionId);
           if (session) {
             // Clear the invalid session ID
             session.claudeSessionId = null;
-            
-            // Send a result message with checkpoint restore flag
-            const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
-            const errorResultMessage = {
-              id: errorResultId,
-              type: 'result',
-              subtype: 'error',
-              is_error: true,
-              error: 'Session not found - restoring from checkpoint',
-              requiresCheckpointRestore: true, // Signal frontend to restore from checkpoint
-              streaming: false,
-              timestamp: Date.now()
-            };
-            const channel = `message:${sessionId}`;
-            console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore flag`);
-            socket.emit(channel, errorResultMessage);
-            console.log(`📤 [${sessionId}] Sent checkpoint restore signal`);
-            
-            // Send info message to explain what happened
+
+            // Send info message to explain what happened (NOT an error result)
             const infoMessageId = `system-info-${Date.now()}-${Math.random()}`;
             socket.emit(`message:${sessionId}`, {
               id: infoMessageId,
               type: 'system',
               subtype: 'info',
-              message: { content: 'session history not found - send message again to continue' },
+              message: { content: 'session expired - send message again to continue' },
               timestamp: Date.now(),
               streaming: false
             });
-            console.log(`📤 [${sessionId}] Sent info message ${infoMessageId} about session not found`);
-            
+            console.log(`📤 [${sessionId}] Sent info message ${infoMessageId} about session expiry`);
+
             // Mark session as ready for new messages
             session.isReady = true;
             console.log(`✅ [${sessionId}] Session marked as ready after resume failure`);
@@ -4519,12 +4554,19 @@ Format as a clear, structured summary that preserves all important context.`;
               // New Claude session detected - reset wrapper token counters
               // Each Claude session has its own 200k context window
               const wrapperSession = getWrapperSession(sessionId);
-              const oldTokens = wrapperSession.totalTokens;
+              const oldTokens = wrapperSession.accumulatedTotalTokens;
+              // Reset per-request tokens
               wrapperSession.totalTokens = 0;
               wrapperSession.inputTokens = 0;
               wrapperSession.outputTokens = 0;
               wrapperSession.cacheCreationTokens = 0;
               wrapperSession.cacheReadTokens = 0;
+              // Reset accumulated tokens
+              wrapperSession.accumulatedInputTokens = 0;
+              wrapperSession.accumulatedOutputTokens = 0;
+              wrapperSession.accumulatedTotalTokens = 0;
+              wrapperSession.accumulatedCacheRead = 0;
+              wrapperSession.accumulatedCacheCreation = 0;
               console.log(`🔄 [${sessionId}] NEW Claude session detected (${previousClaudeSessionId} → ${jsonData.session_id})`);
               console.log(`🔄 [${sessionId}] Reset wrapper tokens: ${oldTokens} → 0 (each session has independent 200k limit)`);
             }
@@ -5067,7 +5109,7 @@ Format as a clear, structured summary that preserves all important context.`;
               // The /compact command itself returns usage: 0 which is not the compressed context size
               // Reset tokens to 0 and let the next message establish the new baseline
               console.log(`🗜️ [${sessionId}] Compact complete - tokens will reset on next message`);
-              
+
               // Reset session token tracking
               if (session) {
                 const savedTokens = session.totalTokens || 0;
@@ -5076,6 +5118,19 @@ Format as a clear, structured summary that preserves all important context.`;
                 session.outputTokens = 0;
                 console.log(`🗜️ [${sessionId}] Reset session tokens from ${savedTokens} to 0`);
               }
+
+              // Also reset wrapper session accumulated tokens
+              const wrapperSession = getWrapperSession(sessionId);
+              const savedAccumulated = wrapperSession.accumulatedTotalTokens;
+              wrapperSession.accumulatedInputTokens = 0;
+              wrapperSession.accumulatedOutputTokens = 0;
+              wrapperSession.accumulatedTotalTokens = 0;
+              wrapperSession.accumulatedCacheRead = 0;
+              wrapperSession.accumulatedCacheCreation = 0;
+              wrapperSession.inputTokens = 0;
+              wrapperSession.outputTokens = 0;
+              wrapperSession.totalTokens = 0;
+              console.log(`🗜️ [${sessionId}] Reset wrapper accumulated tokens from ${savedAccumulated} to 0`);
               
               // Send compact notification with reset instruction
               socket.emit(`message:${sessionId}`, {
@@ -5105,8 +5160,11 @@ Format as a clear, structured summary that preserves all important context.`;
               const output = jsonData.usage.output_tokens || 0;
               const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
               const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
-              // FIXED: Context = input + output ONLY (cache_creation is billing metric, not context)
-              const totalContext = input + output;
+              const thisRequest = input + output;
+
+              // Get accumulated values from wrapper session
+              const wrapperSession = getWrapperSession(sessionId);
+              const accumulatedTotal = wrapperSession.accumulatedTotalTokens;
 
               console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
               console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
@@ -5117,10 +5175,10 @@ Format as a clear, structured summary that preserves all important context.`;
               console.log(`   │ Context History │          │ ${String(cacheRead).padEnd(12)} │            │`);
               console.log(`   │ Cache Created   │          │              │ ${String(cacheCreation).padEnd(10)} │`);
               console.log(`   ├─────────────────┼──────────┼──────────────┼────────────┤`);
-              console.log(`   │ New Tokens      │ ${String(input + output).padEnd(8)} │ (billing)    │ (billing)  │`);
+              console.log(`   │ New Tokens      │ ${String(thisRequest).padEnd(8)} │ (billing)    │ (billing)  │`);
               console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
-              console.log(`   CONTEXT USAGE: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
-              console.log(`   Note: New tokens (input+output) count toward 200k. Cache values are for billing.`);
+              console.log(`   ACCUMULATED CONTEXT: ${accumulatedTotal} / 200000 (${(accumulatedTotal/2000).toFixed(1)}%)`);
+              console.log(`   Note: Accumulated across session. Cache values are for billing only.`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
@@ -5158,23 +5216,27 @@ Format as a clear, structured summary that preserves all important context.`;
             if (jsonData.usage) {
               // Include usage directly for Windows compatibility
               resultMessage.usage = jsonData.usage;
-              
-              // Also add wrapper tokens for enhanced analytics
-              // FIX: Context = input + output ONLY
-              // cache_creation is a BILLING metric (cost of writing to cache), NOT additional context
-              // cache_read is conversation history (already included in the model's context)
-              // For context window tracking, we only count new tokens added this turn
+
+              // Get accumulated values from wrapper session
+              const wrapperSession = getWrapperSession(sessionId);
+
+              // Also add wrapper tokens for enhanced analytics - use ACCUMULATED values
               resultMessage.wrapper = {
                 tokens: {
-                  input: jsonData.usage.input_tokens || 0,
-                  output: jsonData.usage.output_tokens || 0,
-                  // CRITICAL FIX: Do NOT include cache_creation in total
-                  // cache_creation represents tokens being cached, not new context
-                  // The actual context per-turn is just new input + output
-                  total: (jsonData.usage.input_tokens || 0) +
-                         (jsonData.usage.output_tokens || 0),
-                  cache_read: jsonData.usage.cache_read_input_tokens || 0,
-                  cache_creation: jsonData.usage.cache_creation_input_tokens || 0
+                  // Accumulated totals (for context usage display)
+                  input: wrapperSession.accumulatedInputTokens,
+                  output: wrapperSession.accumulatedOutputTokens,
+                  total: wrapperSession.accumulatedTotalTokens,
+                  cache_read: wrapperSession.accumulatedCacheRead,
+                  cache_creation: wrapperSession.accumulatedCacheCreation,
+                  // Per-request values (for debugging/reference)
+                  lastRequest: {
+                    input: jsonData.usage.input_tokens || 0,
+                    output: jsonData.usage.output_tokens || 0,
+                    total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0),
+                    cache_read: jsonData.usage.cache_read_input_tokens || 0,
+                    cache_creation: jsonData.usage.cache_creation_input_tokens || 0
+                  }
                 }
               };
               console.log(`📊 [WRAPPER-TOKENS] Added both usage and wrapper tokens to result message:`, {
@@ -5192,16 +5254,15 @@ Format as a clear, structured summary that preserves all important context.`;
             
             console.log(`   - Model in result message: ${resultMessage.model}`);
             console.log(`   - Session ID in result message: ${resultMessage.session_id || '(cleared after compact)'}`);
-            if (resultMessage.usage) {
-              // FIXED: Context = input + output ONLY (cache values are for billing)
-              const totalContext = (resultMessage.usage.input_tokens || 0) +
-                                  (resultMessage.usage.output_tokens || 0);
-              console.log(`   - Usage breakdown:`);
-              console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0}`);
-              console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0}`);
-              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0} (billing only)`);
-              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0} (billing only)`);
-              console.log(`     • CONTEXT USAGE: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
+            if (resultMessage.usage && resultMessage.wrapper?.tokens) {
+              const accTotal = resultMessage.wrapper.tokens.total;
+              const lastReq = resultMessage.wrapper.tokens.lastRequest;
+              console.log(`   - Usage breakdown (this request):`);
+              console.log(`     • input_tokens: ${lastReq?.input || 0}`);
+              console.log(`     • output_tokens: ${lastReq?.output || 0}`);
+              console.log(`     • cache_creation: ${lastReq?.cache_creation || 0} (billing only)`);
+              console.log(`     • cache_read: ${lastReq?.cache_read || 0} (billing only)`);
+              console.log(`     • ACCUMULATED CONTEXT: ${accTotal} / 200000 (${(accTotal/2000).toFixed(1)}%)`);
             }
             
             // Debug log the full resultMessage before emitting
@@ -5315,53 +5376,15 @@ Format as a clear, structured summary that preserves all important context.`;
         lastDataTime = Date.now();
         
         // Check if this is a "No conversation found" error
+        // NOTE: This is already handled in stdout handler, just log here
         if (error.includes('No conversation found with session ID')) {
-          console.log(`🔄 Resume failed - session not found in Claude storage`);
-          console.log(`🔄 Clearing invalid session ID and will retry automatically`);
+          console.log(`🔄 [${sessionId}] Resume failed (stderr) - already handled in stdout`);
           if (session?.wasCompacted) {
             console.log(`🔄 This was expected - session was compacted and old ID is no longer valid`);
           }
-          
-          // Clear the invalid session ID
-          const oldSessionId = session.claudeSessionId;
-          session.claudeSessionId = null;
-          session.wasInterrupted = false;
-          
-          // Kill the current process
-          if (claudeProcess && !claudeProcess.killed) {
-            console.log(`🔄 Killing failed process before retry`);
-            try {
-              claudeProcess.kill();
-            } catch (e) {
-              console.error(`Failed to kill process: ${e.message}`);
-            }
-          }
-          
-          // Clear from active processes
-          activeProcesses.delete(sessionId);
-          
-          // Notify the user that we're retrying
-          const infoMessage = {
-            id: `info-retry-${Date.now()}`,
-            type: 'system',
-            subtype: 'info',
-            message: '🔄 Session not found. Starting fresh conversation...',
-            streaming: false,
-            timestamp: Date.now()
-          };
-          socket.emit(`message:${sessionId}`, infoMessage);
-          
-          // Schedule a retry without the resume flag
-          console.log(`🔄 Scheduling automatic retry without --resume flag`);
-          setTimeout(() => {
-            console.log(`🔄 Retrying message for session ${sessionId}`);
-            // The spawnRequest function will be called again
-            // Since session.claudeSessionId is now null, it won't use --resume
-            spawnRequest();
-          }, 500);
-          
-          return; // Don't emit error, we're handling it
-        } else {
+          // Don't retry or emit errors - stdout handler already killed process and sent info
+          return;
+        } else if (error.includes('Error:') || error.includes('error:')) {
           // Emit other errors to client
           socket.emit(`message:${sessionId}`, { 
             type: 'error',
@@ -5447,46 +5470,15 @@ Format as a clear, structured summary that preserves all important context.`;
         } else if (code === 1) {
           // Exit code 1 might mean --resume failed OR other errors
           const session = sessions.get(sessionId);
-          
-          // Check if stderr contains "No conversation found" - mark for recreation
+
+          // Check if stderr contains "No conversation found" - this was already handled in stdout
+          // Just log it and clean up if somehow it wasn't caught earlier
           if (session && session.claudeSessionId && stderrBuffer.includes('No conversation found')) {
-            console.log(`⚠️ Resume failed - session not found in Claude storage`);
-            console.log(`🔄 Will recreate session with existing context on next attempt`);
-            // Clear the invalid session ID
+            console.log(`⚠️ [${sessionId}] Resume failed detected on exit (exit code 1)`);
+            // Clear the invalid session ID if not already cleared
             session.claudeSessionId = null;
-            
-            // Send result message with checkpoint restore flag
-            const errorResultId = `result-error-${Date.now()}-${Math.random()}`;
-            const errorResultMessage = {
-              id: errorResultId,
-              type: 'result',
-              subtype: 'error',
-              is_error: true,
-              error: 'Session not found - restoring from checkpoint',
-              requiresCheckpointRestore: true,
-              streaming: false,
-              timestamp: Date.now()
-            };
-            const channel = `message:${sessionId}`;
-            console.log(`📤 [${sessionId}] Emitting error result with checkpoint restore (exit code 1)`);
-            socket.emit(channel, errorResultMessage);
-            console.log(`📤 [${sessionId}] Sent checkpoint restore signal (exit code 1)`);
-            
-            // Clear the assistant message ID tracking
-            const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-            if (lastAssistantMessageId) {
-              console.log(`🔴 Clearing assistant message ID ${lastAssistantMessageId} after resume failure`);
-              lastAssistantMessageIds.delete(sessionId);
-            }
-            
-            // Send a subtle notification that we'll continue without resume
-            socket.emit(`message:${sessionId}`, {
-              type: 'system',
-              subtype: 'info',
-              message: { content: 'continuing conversation (session history not found in claude)' },
-              timestamp: Date.now(),
-              streaming: false
-            });
+            session.isReady = true;
+            // Don't send error result - already handled or just send simple info
           }
         }
         

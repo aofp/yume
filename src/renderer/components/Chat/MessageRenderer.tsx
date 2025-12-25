@@ -2383,32 +2383,25 @@ const MessageRendererBase: React.FC<{
         const filePath = formatPath(associatedToolUse?.message?.input?.file_path || 'file');
         const writtenContent = associatedToolUse?.message?.input?.content || '';
         const allLines = writtenContent.split('\n');
-        const MAX_LINES = 10;
-        const visibleLines = allLines.slice(0, MAX_LINES);
-        const hiddenCount = allLines.length - MAX_LINES;
-        const hasMore = hiddenCount > 0;
+
+        // Create diff display with all lines as additions (file creation)
+        const diffDisplay: DiffDisplay = {
+          file: filePath,
+          hunks: [{
+            startLine: 1,
+            endLine: allLines.length,
+            lines: allLines.map((line, i) => ({
+              type: 'add' as const,
+              content: line,
+              lineNumber: i + 1
+            }))
+          }]
+        };
 
         return (
           <div className="message tool-result-message">
-            <div className="tool-result standalone write-output">
-              <div className="write-header">
-                <IconCheck size={12} stroke={2} className="result-icon success" />
-                <span className="write-path">{filePath}</span>
-                <span className="write-info">{allLines.length} lines written</span>
-              </div>
-              {writtenContent && (
-                <pre className="write-preview">
-                  {visibleLines.map((line, i) => (
-                    <div key={i} className="write-line">
-                      <span className="line-number">{(i + 1).toString().padStart(4, ' ')}</span>
-                      <span className="line-text">{line}</span>
-                    </div>
-                  ))}
-                </pre>
-              )}
-              {hasMore && (
-                <div className="result-more">+ {hiddenCount} more lines</div>
-              )}
+            <div className="tool-result file-edit">
+              <DiffViewer diff={diffDisplay} />
             </div>
           </div>
         );

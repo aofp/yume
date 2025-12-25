@@ -1341,7 +1341,7 @@ body.platform-win32 .tool-detail {
 .read-more, .search-more, .result-more {
   display: block;
   margin-top: 4px;
-  font-size: 7pt;
+  font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.4);
   font-family: var(--font-mono);
   cursor: default;
@@ -1457,7 +1457,7 @@ body.platform-win32 .tool-detail {
   color: var(--accent-color);
 }
 
-.search-count {
+.tool-result .search-count {
   font-family: var(--font-mono);
   font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.4);
@@ -1490,7 +1490,7 @@ body.platform-win32 .tool-detail {
   color: var(--accent-color);
 }
 
-.file-count {
+.tool-result .file-count {
   font-family: var(--font-mono);
   font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.4);
@@ -1523,13 +1523,13 @@ body.platform-win32 .tool-detail {
 
 .dir-path {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 8px;
   color: var(--accent-color);
 }
 
-.dir-count {
+.tool-result .dir-count {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }

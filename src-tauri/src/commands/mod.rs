@@ -1398,13 +1398,14 @@ pub async fn get_git_diff_numstat(directory: String) -> Result<String, String> {
     }
 
     // Run git diff --numstat command using native git
+    // --ignore-cr-at-eol fixes Windows CRLF line ending issues
     #[cfg(target_os = "windows")]
     let output = {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
 
         Command::new("git")
-            .args(&["diff", "--numstat"])
+            .args(&["diff", "--numstat", "--ignore-cr-at-eol"])
             .current_dir(&dir_path)
             .creation_flags(CREATE_NO_WINDOW)
             .output()
@@ -1413,7 +1414,7 @@ pub async fn get_git_diff_numstat(directory: String) -> Result<String, String> {
 
     #[cfg(not(target_os = "windows"))]
     let output = Command::new("git")
-        .args(&["diff", "--numstat"])
+        .args(&["diff", "--numstat", "--ignore-cr-at-eol"])
         .current_dir(&dir_path)
         .output()
         .map_err(|e| format!("Failed to run git diff: {}", e))?;

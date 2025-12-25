@@ -45,8 +45,8 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const streamingScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   // Cooldown period after user scrolls up (don't auto-scroll for this long)
-  // Increased from 3000ms to 5000ms to give users more time to read while streaming
-  const SCROLL_COOLDOWN_MS = 5000;
+  // Set to 0 to disable cooldown - always auto-scroll when assistant is responding
+  const SCROLL_COOLDOWN_MS = 0;
 
   // Add thinking message if streaming
   const displayMessages = useMemo(() => {
@@ -273,14 +273,14 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
         const { scrollHeight, clientHeight, scrollTop } = parentRef.current;
         const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-        // Only scroll if we're more than 40px from bottom (prevents aggressive auto-scroll during streaming)
-        // Increased from 20px to 40px to be less aggressive and allow easier manual scrolling
-        if (distanceFromBottom > 40) {
+        // Always scroll to bottom when streaming (aggressive auto-scroll for better UX)
+        // Reduced threshold to 10px for immediate scrolling
+        if (distanceFromBottom > 10) {
           isAutoScrollingRef.current = true;
           parentRef.current.scrollTop = scrollHeight - clientHeight;
           isAutoScrollingRef.current = false;
         }
-      }, 150); // 150ms is responsive but not too aggressive
+      }, 100); // 100ms for faster, more responsive scrolling
     }
 
     return () => {
