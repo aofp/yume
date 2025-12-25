@@ -153,10 +153,11 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     session.cacheReadTokens = cacheRead; // REPLACE, don't accumulate!
     
     const prevTotal = session.totalTokens;
-    // Total context = accumulated input + accumulated output
-    // Note: input_tokens from API excludes cached content, so accumulating gives correct total
-    // Do NOT add cacheReadTokens here - it's already included in the accumulation
-    session.totalTokens = session.inputTokens + session.outputTokens;
+    // Total context = cache + accumulated new input + accumulated new output
+    // cacheReadTokens is the SIZE of cached conversation history (snapshot)
+    // inputTokens and outputTokens are NEW tokens added (accumulated, excluding cache)
+    // CONTEXT WINDOW TOTAL = all three combined
+    session.totalTokens = session.cacheReadTokens + session.inputTokens + session.outputTokens;
     session.lastUpdateTime = Date.now();
     
     // Check for auto-compaction threshold

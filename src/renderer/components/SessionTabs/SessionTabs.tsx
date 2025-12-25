@@ -733,7 +733,7 @@ export const SessionTabs: React.FC = () => {
                   e.stopPropagation();
                   // If streaming, interrupt first then close
                   if (session.streaming) {
-                    await interruptSession();
+                    await interruptSession(session.id);  // Pass explicit session ID
                   }
                   deleteSession(session.id);
                 }}
@@ -1078,12 +1078,12 @@ export const SessionTabs: React.FC = () => {
           <button onClick={async () => {
             const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
             if (targetSession?.streaming) {
-              await interruptSession();
+              await interruptSession(contextMenu.sessionId);  // Pass explicit session ID
             }
             deleteSession(contextMenu.sessionId);
             setContextMenu(null);
           }}>close</button>
-          
+
           <button onClick={async () => {
             const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
             if (targetSession) {
@@ -1093,9 +1093,8 @@ export const SessionTabs: React.FC = () => {
               for (const s of sessions) {
                 if (s.id !== targetSession.id) {
                   if (s.streaming) {
-                    // Switch to the streaming session to interrupt it
-                    resumeSession(s.id);
-                    await interruptSession();
+                    // No need to switch - pass explicit session ID
+                    await interruptSession(s.id);
                   }
                   deleteSession(s.id);
                 }
@@ -1103,43 +1102,40 @@ export const SessionTabs: React.FC = () => {
             }
             setContextMenu(null);
           }}>close others</button>
-          
+
           <button onClick={async () => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
             for (let idx = 0; idx < sessions.length; idx++) {
               if (idx > sessionIndex) {
                 const s = sessions[idx];
                 if (s.streaming) {
-                  resumeSession(s.id);
-                  await interruptSession();
+                  await interruptSession(s.id);  // Pass explicit session ID
                 }
                 deleteSession(s.id);
               }
             }
             setContextMenu(null);
           }}>close all to right</button>
-          
+
           <button onClick={async () => {
             const sessionIndex = sessions.findIndex(s => s.id === contextMenu.sessionId);
             for (let idx = 0; idx < sessions.length; idx++) {
               if (idx < sessionIndex) {
                 const s = sessions[idx];
                 if (s.streaming) {
-                  resumeSession(s.id);
-                  await interruptSession();
+                  await interruptSession(s.id);  // Pass explicit session ID
                 }
                 deleteSession(s.id);
               }
             }
             setContextMenu(null);
           }}>close all to left</button>
-          
+
           <button onClick={async () => {
             // Interrupt any streaming sessions first
             for (const s of sessions) {
               if (s.streaming) {
-                resumeSession(s.id);
-                await interruptSession();
+                await interruptSession(s.id);  // Pass explicit session ID
               }
             }
             deleteAllSessions();

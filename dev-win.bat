@@ -12,6 +12,6 @@ REM Run the port allocation script
 echo Allocating dynamic ports...
 call node scripts/allocate-port.mjs
 
-REM Start Vite dev server and Tauri in parallel
-echo Starting development servers...
-call npx concurrently -k "npm run dev" "npx tauri dev --no-dev-server --config src-tauri/tauri.dev.conf.json"
+REM Start Tauri dev (which will run beforeDevCommand to start Vite)
+echo Starting development server...
+call npm run tauri:dev

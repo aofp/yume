@@ -1786,45 +1786,70 @@ export const ClaudeChat: React.FC = () => {
     setExpandedFolders(newExpanded);
   }, [expandedFolders, loadFolderContents]);
 
+  // Parse git diff output into DiffHunk array
+  const parseDiffOutput = useCallback((diffResult: string): DiffHunk[] => {
+    const lines = diffResult.split('\n');
+    const hunks: DiffHunk[] = [];
+    let currentHunk: DiffHunk | null = null;
+    let oldLineNum = 0;
+    let newLineNum = 0;
+
+    for (const line of lines) {
+      if (line.startsWith('@@')) {
+        // New hunk - parse both old and new line numbers: @@ -oldStart,oldCount +newStart,newCount @@
+        const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)/);
+        currentHunk = {
+          startLine: match ? parseInt(match[1]) : 1,
+          endLine: 0,
+          lines: []
+        };
+        hunks.push(currentHunk);
+        oldLineNum = match ? parseInt(match[1]) : 1;
+        newLineNum = match ? parseInt(match[2]) : 1;
+      } else if (currentHunk) {
+        if (line.startsWith('+') && !line.startsWith('+++')) {
+          currentHunk.lines.push({ type: 'add', content: line.substring(1), lineNumber: newLineNum++ });
+        } else if (line.startsWith('-') && !line.startsWith('---')) {
+          currentHunk.lines.push({ type: 'remove', content: line.substring(1), lineNumber: oldLineNum++ });
+        } else if (!line.startsWith('diff ') && !line.startsWith('index ') && !line.startsWith('---') && !line.startsWith('+++')) {
+          currentHunk.lines.push({ type: 'context', content: line.substring(1) || '', lineNumber: newLineNum++ });
+          oldLineNum++; // Context lines exist in both old and new
+        }
+      }
+    }
+    return hunks;
+  }, []);
+
   // Load git diff for a file
   const loadGitDiff = useCallback(async (filePath: string) => {
     setSelectedGitFile(filePath);
     setGitLoading(true);
     try {
-      const diffResult = await invoke('execute_bash', {
+      // Try staged changes first (--cached), then unstaged changes
+      // This handles both newly added files (staged) and modified files (unstaged)
+      const stagedDiff = await invoke('execute_bash', {
+        command: `git diff --cached "${filePath}"`,
+        workingDir: currentSession?.workingDirectory
+      }) as string;
+
+      const unstagedDiff = await invoke('execute_bash', {
         command: `git diff "${filePath}"`,
         workingDir: currentSession?.workingDirectory
       }) as string;
 
-      // Parse diff output into our DiffDisplay format
-      const lines = diffResult.split('\n');
-      const hunks: DiffHunk[] = [];
-      let currentHunk: DiffHunk | null = null;
-      let oldLineNum = 0;
-      let newLineNum = 0;
+      // Parse both diffs
+      const stagedHunks = parseDiffOutput(stagedDiff);
+      const unstagedHunks = parseDiffOutput(unstagedDiff);
 
-      for (const line of lines) {
-        if (line.startsWith('@@')) {
-          // New hunk - parse both old and new line numbers: @@ -oldStart,oldCount +newStart,newCount @@
-          const match = line.match(/@@ -(\d+)(?:,\d+)? \+(\d+)/);
-          currentHunk = {
-            startLine: match ? parseInt(match[1]) : 1,
-            endLine: 0,
-            lines: []
-          };
-          hunks.push(currentHunk);
-          oldLineNum = match ? parseInt(match[1]) : 1;
-          newLineNum = match ? parseInt(match[2]) : 1;
-        } else if (currentHunk) {
-          if (line.startsWith('+') && !line.startsWith('+++')) {
-            currentHunk.lines.push({ type: 'add', content: line.substring(1), lineNumber: newLineNum++ });
-          } else if (line.startsWith('-') && !line.startsWith('---')) {
-            currentHunk.lines.push({ type: 'remove', content: line.substring(1), lineNumber: oldLineNum++ });
-          } else if (!line.startsWith('diff ') && !line.startsWith('index ') && !line.startsWith('---') && !line.startsWith('+++')) {
-            currentHunk.lines.push({ type: 'context', content: line.substring(1) || '', lineNumber: newLineNum++ });
-            oldLineNum++; // Context lines exist in both old and new
-          }
-        }
+      // Combine hunks - prefer showing both staged and unstaged if they exist
+      let hunks: DiffHunk[] = [];
+      if (stagedHunks.length > 0 && unstagedHunks.length > 0) {
+        // Both staged and unstaged changes exist - combine them
+        hunks = [...stagedHunks, ...unstagedHunks];
+      } else if (stagedHunks.length > 0) {
+        hunks = stagedHunks;
+      } else if (unstagedHunks.length > 0) {
+        hunks = unstagedHunks;
       }
 
       setGitDiff({
@@ -1839,7 +1864,7 @@ export const ClaudeChat: React.FC = () => {
     } finally {
       setGitLoading(false);
     }
-  }, [currentSession?.workingDirectory]);
+  }, [currentSession?.workingDirectory, parseDiffOutput]);
 
   // Add effect to handle Ctrl+Arrow shortcuts at capture phase
   useEffect(() => {
@@ -2486,7 +2511,7 @@ export const ClaudeChat: React.FC = () => {
         // If streaming, interrupt first then close
         if (currentSession?.streaming) {
           console.log('[ClaudeChat] Interrupting stream before closing tab');
-          interruptSession().then(() => {
+          interruptSession(currentSessionId).then(() => {  // Pass explicit session ID
             deleteSession(currentSessionId);
           });
         } else {

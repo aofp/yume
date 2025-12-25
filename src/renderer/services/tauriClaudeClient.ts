@@ -130,9 +130,14 @@ export class TauriClaudeClient {
 
   async interrupt(sessionId: string): Promise<void> {
     try {
+      console.log(`⛔ [TauriClient] Interrupting session ${sessionId}`);
       await invoke('interrupt_claude_session', { session_id: sessionId });
+      console.log(`✅ [TauriClient] Session ${sessionId} interrupted successfully`);
     } catch (error) {
-      // Still resolve to allow UI to update
+      // Log the error but still resolve to allow UI to update
+      console.error(`❌ [TauriClient] Failed to interrupt session ${sessionId}:`, error);
+      // The UI should still update to show stopped state even if backend fails
+      // This prevents the user from being stuck in a "streaming" state
     }
   }
 

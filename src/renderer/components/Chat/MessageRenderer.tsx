@@ -391,9 +391,6 @@ const formatPath = (path?: string) => {
 
 const formatCommand = (cmd?: string) => {
   if (!cmd) return '';
-  if (cmd.length > 50) {
-    return cmd.substring(0, 50) + '...';
-  }
   return cmd;
 };
 

@@ -264,6 +264,7 @@
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
+  overflow-y: hidden;
 }
 
 @keyframes messageSlide {
@@ -460,6 +461,7 @@
   font-family: var(--font-mono);
   font-size: 7pt;
   opacity: 1;
+  overflow: hidden;
 }
 
 @keyframes toolFade {
@@ -596,7 +598,7 @@
 .thinking-indicator-bottom .thinking-timer {
   color: var(--accent-color);
   font-weight: bold;
-  font-size: 7pt;
+  font-size: 8px;
   opacity: 0.8;
   font-family: var(--font-mono);
 }
@@ -743,12 +745,12 @@ textarea.context-full {
 
 .stop-streaming-btn {
   position: absolute;
-  right: 3px;
-  bottom: 3px;
-  background: rgba(var(--negative-rgb), 0.05);
+  right: 1px;
+  bottom: 1px;
+  background: rgba(var(--negative-rgb), 0.1);
   border: 1px solid var(--negative-color);
   color: var(--negative-color);
-  padding: 10px;
+  padding: 12px;
   border-radius: 3px;
   cursor: default;
   display: flex;
@@ -761,7 +763,7 @@ textarea.context-full {
 }
 
 .stop-streaming-btn:hover {
-  background: rgba(var(--negative-rgb), 0.1);
+  background: rgba(var(--negative-rgb), 0.15);
   border: 1px solid var(--negative-color);
   color: var(--negative-color);
   opacity: 1;

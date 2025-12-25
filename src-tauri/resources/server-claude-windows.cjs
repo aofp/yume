@@ -1015,6 +1015,13 @@ let streamTimeouts = new Map(); // Map of sessionId -> timeout
 let isSpawningProcess = false;
 const processSpawnQueue = [];
 
+// Track sessions that are currently spawning (before process is registered)
+// This prevents the race condition where interrupt is called during spawn
+const spawningProcesses = new Map(); // sessionId -> { startTime, aborted }
+
+// Track pending interrupts that need to be processed once spawn completes
+const pendingInterrupts = new Map(); // sessionId -> callback
+
 // Helper function to generate title with Sonnet
 async function generateTitle(sessionId, userMessage, socket, onSuccess) {
   try {
@@ -3905,8 +3912,12 @@ Format as a clear, structured summary that preserves all important context.`;
         console.log(`⏳ Waiting for previous Claude process to initialize...`);
         await new Promise(resolve => setTimeout(resolve, 200));
       }
-      
+
       isSpawningProcess = true;
+
+      // Mark this session as spawning to handle interrupt race condition
+      spawningProcesses.set(sessionId, { startTime: Date.now(), aborted: false });
+      console.log(`🔄 Session ${sessionId} marked as spawning`);
       
       // Convert WSL paths to Windows paths when using native Windows mode (for validation)
       if (processWorkingDir && isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
@@ -4037,7 +4048,54 @@ Format as a clear, structured summary that preserves all important context.`;
       // Store process reference and start time
       activeProcesses.set(sessionId, claudeProcess);
       activeProcessStartTimes.set(sessionId, Date.now());
-      
+
+      // Check if this session was marked for abort during spawning
+      const spawnState = spawningProcesses.get(sessionId);
+      spawningProcesses.delete(sessionId); // Remove spawning state
+      console.log(`✅ Session ${sessionId} spawn complete, process registered (PID: ${claudeProcess.pid})`);
+
+      // If interrupt was requested during spawn, kill immediately
+      if (spawnState?.aborted || pendingInterrupts.has(sessionId)) {
+        console.log(`🛑 Session ${sessionId} was interrupted during spawn - killing immediately`);
+        const pendingCallback = pendingInterrupts.get(sessionId);
+        pendingInterrupts.delete(sessionId);
+
+        // Kill the process using the proper Windows method
+        const isWindows = process.platform === 'win32';
+        if (isWindows && claudeProcess.pid) {
+          try {
+            require('child_process').execSync(`taskkill /F /T /PID ${claudeProcess.pid}`, {
+              stdio: 'ignore',
+              timeout: 5000
+            });
+          } catch (e) {}
+          try { claudeProcess.kill(); } catch (e) {}
+        } else if (claudeProcess.pid) {
+          try {
+            process.kill(-claudeProcess.pid, 'SIGINT');
+          } catch (e) {
+            claudeProcess.kill('SIGINT');
+          }
+        }
+
+        activeProcesses.delete(sessionId);
+        activeProcessStartTimes.delete(sessionId);
+
+        // Call pending callback if exists
+        if (pendingCallback) {
+          pendingCallback({ success: true, killedDuringSpawn: true });
+        }
+
+        // Send interrupted message
+        socket.emit(`message:${sessionId}`, {
+          type: 'system',
+          subtype: 'interrupted',
+          message: 'task interrupted by user',
+          timestamp: Date.now()
+        });
+        return; // Don't continue with normal processing
+      }
+
       // On Unix systems, detached processes need special handling
       if (process.platform !== 'win32') {
         claudeProcess.unref(); // Allow parent to exit independently
@@ -5593,10 +5651,28 @@ Format as a clear, structured summary that preserves all important context.`;
   }
 
   socket.on('interrupt', ({ sessionId }, callback) => {
-    const process = activeProcesses.get(sessionId);
+    const claudeProcess = activeProcesses.get(sessionId);
     const bashProcess = activeBashProcesses.get(sessionId);
     const session = sessions.get(sessionId);
-    
+    const isWindows = process.platform === 'win32';
+
+    console.log(`⛔ Interrupt requested for session ${sessionId}`);
+
+    // Helper function to force kill a process on Windows using taskkill
+    const forceKillWindows = (pid) => {
+      if (!pid) return;
+      try {
+        // Use taskkill with /F (force) and /T (tree - kill child processes too)
+        require('child_process').execSync(`taskkill /F /T /PID ${pid}`, {
+          stdio: 'ignore',
+          timeout: 5000
+        });
+        console.log(`🛑 Force killed process tree for PID ${pid} using taskkill`);
+      } catch (e) {
+        console.log(`⚠️ taskkill failed for PID ${pid}: ${e.message}`);
+      }
+    };
+
     // Clear the spawn queue on interrupt to prevent stale messages from being sent
     // This is important when user interrupts and immediately sends a new message
     const queueLengthBefore = processSpawnQueue.length;
@@ -5604,26 +5680,55 @@ Format as a clear, structured summary that preserves all important context.`;
       processSpawnQueue.length = 0; // Clear the entire queue
       console.log(`🧹 Cleared ${queueLengthBefore} queued messages after interrupt`);
     }
-    
+
+    // CRITICAL: Check if process is currently spawning (race condition fix)
+    const spawnState = spawningProcesses.get(sessionId);
+    if (spawnState && !spawnState.aborted) {
+      console.log(`⚠️ Session ${sessionId} is currently spawning - marking for abort`);
+      spawnState.aborted = true;
+      spawningProcesses.set(sessionId, spawnState);
+
+      // Store callback to be called when spawn completes
+      if (callback) {
+        pendingInterrupts.set(sessionId, callback);
+        console.log(`📝 Stored pending interrupt callback for session ${sessionId}`);
+      }
+
+      // Send immediate feedback to user
+      socket.emit(`message:${sessionId}`, {
+        type: 'system',
+        subtype: 'interrupted',
+        message: 'stopping task...',
+        timestamp: Date.now()
+      });
+
+      return; // Will be handled when spawn completes
+    }
+
     // Check for bash process first
     if (bashProcess) {
       console.log(`🛑 Killing bash process for session ${sessionId} (PID: ${bashProcess.pid})`);
-      
+
       try {
         // Kill the bash process
-        if (process.platform !== 'win32' && bashProcess.pid) {
+        if (isWindows) {
+          // On Windows, use taskkill to force kill the entire process tree
+          forceKillWindows(bashProcess.pid);
+          // Also try regular kill as backup
+          try { bashProcess.kill(); } catch (e) {}
+        } else if (bashProcess.pid) {
           try {
-            process.kill(-bashProcess.pid, 'SIGTERM'); // Negative PID kills process group
+            process.kill(-bashProcess.pid, 'SIGTERM'); // Negative PID kills process group on Unix
           } catch (e) {
             // Fallback to regular kill
             bashProcess.kill('SIGTERM');
           }
         } else {
-          bashProcess.kill('SIGTERM');  // Use SIGTERM for immediate termination
+          bashProcess.kill('SIGTERM');
         }
-        
+
         activeBashProcesses.delete(sessionId);
-        
+
         // Send interrupted message
         socket.emit(`message:${sessionId}`, {
           type: 'system',
@@ -5631,7 +5736,7 @@ Format as a clear, structured summary that preserves all important context.`;
           message: 'bash command interrupted by user',
           timestamp: Date.now()
         });
-        
+
         // Send callback response so client knows interrupt completed
         if (callback) {
           callback({ success: true });
@@ -5642,21 +5747,26 @@ Format as a clear, structured summary that preserves all important context.`;
           callback({ success: false, error: error.message });
         }
       }
-    } else if (process) {
-      console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${process.pid})`);
-      
-      // Kill the entire process group if on Unix
-      if (process.platform !== 'win32' && process.pid) {
+    } else if (claudeProcess) {
+      console.log(`🛑 Killing claude process for session ${sessionId} (PID: ${claudeProcess.pid})`);
+
+      // Kill the process
+      if (isWindows) {
+        // On Windows, use taskkill to force kill the entire process tree
+        forceKillWindows(claudeProcess.pid);
+        // Also try regular kill as backup
+        try { claudeProcess.kill(); } catch (e) {}
+      } else if (claudeProcess.pid) {
         try {
-          process.kill(-process.pid, 'SIGINT'); // Negative PID kills process group
+          process.kill(-claudeProcess.pid, 'SIGINT'); // Negative PID kills process group on Unix
         } catch (e) {
           // Fallback to regular kill
-          process.kill('SIGINT');
+          claudeProcess.kill('SIGINT');
         }
       } else {
-        process.kill('SIGINT');  // Use SIGINT for graceful interrupt
+        claudeProcess.kill('SIGINT');
       }
-      
+
       activeProcesses.delete(sessionId);
       activeProcessStartTimes.delete(sessionId);
       
@@ -5693,9 +5803,23 @@ Format as a clear, structured summary that preserves all important context.`;
         callback({ success: true });
       }
     } else {
-      // No active process to interrupt
+      // No active process to interrupt - but still send success to update UI state
+      console.log(`⚠️ No active process found for session ${sessionId} - nothing to interrupt`);
+
+      // Also clear any spawning state that might be stale
+      spawningProcesses.delete(sessionId);
+      pendingInterrupts.delete(sessionId);
+
+      // Still emit interrupted message to ensure UI state is consistent
+      socket.emit(`message:${sessionId}`, {
+        type: 'system',
+        subtype: 'interrupted',
+        message: 'task stopped',
+        timestamp: Date.now()
+      });
+
       if (callback) {
-        callback({ success: true });
+        callback({ success: true, noProcess: true });
       }
     }
   });
@@ -5706,12 +5830,32 @@ Format as a clear, structured summary that preserves all important context.`;
       console.error(`Session not found: ${sessionId}`);
       return;
     }
-    
+
     // Kill any active process
-    const process = activeProcesses.get(sessionId);
-    if (process) {
-      console.log(`🛑 Killing process for cleared session ${sessionId}`);
-      process.kill('SIGINT');
+    const claudeProcess = activeProcesses.get(sessionId);
+    if (claudeProcess) {
+      console.log(`🛑 Killing process for cleared session ${sessionId} (PID: ${claudeProcess.pid})`);
+      const isWindows = process.platform === 'win32';
+      if (isWindows && claudeProcess.pid) {
+        // On Windows, use taskkill to force kill the entire process tree
+        try {
+          require('child_process').execSync(`taskkill /F /T /PID ${claudeProcess.pid}`, {
+            stdio: 'ignore',
+            timeout: 5000
+          });
+        } catch (e) {
+          console.log(`⚠️ taskkill failed: ${e.message}`);
+        }
+        try { claudeProcess.kill(); } catch (e) {}
+      } else if (claudeProcess.pid) {
+        try {
+          process.kill(-claudeProcess.pid, 'SIGINT');
+        } catch (e) {
+          claudeProcess.kill('SIGINT');
+        }
+      } else {
+        claudeProcess.kill('SIGINT');
+      }
       activeProcesses.delete(sessionId);
       activeProcessStartTimes.delete(sessionId);
     }
@@ -6137,10 +6281,27 @@ Format as a clear, structured summary that preserves all important context.`;
           streamTimeouts.delete(sessionId);
         }
         
-        const process = activeProcesses.get(sessionId);
-        if (process) {
-          console.log(`🧹 Cleaning up process for session ${sessionId}`);
-          process.kill('SIGINT');
+        const claudeProcess = activeProcesses.get(sessionId);
+        if (claudeProcess) {
+          console.log(`🧹 Cleaning up process for session ${sessionId} (PID: ${claudeProcess.pid})`);
+          const isWindows = process.platform === 'win32';
+          if (isWindows && claudeProcess.pid) {
+            try {
+              require('child_process').execSync(`taskkill /F /T /PID ${claudeProcess.pid}`, {
+                stdio: 'ignore',
+                timeout: 5000
+              });
+            } catch (e) {}
+            try { claudeProcess.kill(); } catch (e) {}
+          } else if (claudeProcess.pid) {
+            try {
+              process.kill(-claudeProcess.pid, 'SIGINT');
+            } catch (e) {
+              claudeProcess.kill('SIGINT');
+            }
+          } else {
+            claudeProcess.kill('SIGINT');
+          }
           activeProcesses.delete(sessionId);
           activeProcessStartTimes.delete(sessionId);
         }

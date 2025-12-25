@@ -817,6 +817,8 @@ ol {
   max-height: 400px;
   overflow-x: auto;
   overflow-y: auto;
+  /* Use overlay scrollbar so it doesn't take space when not scrolling */
+  overflow-y: overlay;
 }
 
 /* Write tool output */
@@ -1276,6 +1278,8 @@ body.platform-win32 .tool-detail {
   word-break: break-all;
   max-height: 400px;
   overflow-y: auto;
+  /* Use overlay scrollbar so it doesn't take space when not scrolling */
+  overflow-y: overlay;
   margin: 0;
   display: block;
 }
@@ -1422,14 +1426,14 @@ body.platform-win32 .tool-detail {
 .bash-prompt {
   color: var(--accent-color);
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 8px;
   font-weight: 600;
 }
 
 .bash-cmd {
   color: rgba(var(--foreground-rgb), 0.8);
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 8px;
 }
 
 .bash-line {
@@ -1449,20 +1453,20 @@ body.platform-win32 .tool-detail {
 
 .search-pattern {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 8px;
   color: var(--accent-color);
 }
 
 .search-count {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
 
 .search-line {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
@@ -1482,13 +1486,13 @@ body.platform-win32 .tool-detail {
 
 .file-pattern {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 8px;
   color: var(--accent-color);
 }
 
 .file-count {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1525,7 +1529,7 @@ body.platform-win32 .tool-detail {
 
 .dir-count {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: 8pt;
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
