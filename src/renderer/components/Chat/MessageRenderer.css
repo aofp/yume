@@ -657,7 +657,7 @@ ol {
   background: rgba(var(--foreground-rgb), 0.1);
   padding: 1px 4px;
   border-radius: 3px;
-  color: var(--color-cyan);
+  color: var(--color-accent);
 }
 
 /* Code blocks in thinking blocks */
@@ -682,6 +682,7 @@ ol {
   padding: 8px;
   overflow-x: auto;
   max-width: 100%;
+  color: var(--color-accent);
   box-sizing: border-box;
 }
 
