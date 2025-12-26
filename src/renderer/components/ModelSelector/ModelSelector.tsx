@@ -37,21 +37,39 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   }, [value, onChange]);
 
-  // Listen for Ctrl+O to highlight the selector and open dropdown
+  // Listen for Ctrl+O to cycle through models directly
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+        e.preventDefault(); // Prevent default browser behavior
+
         // Clear any existing timeout
         if (timeoutRef.current) {
           clearTimeout(timeoutRef.current);
+          timeoutRef.current = null;
         }
 
+        // Find current model index
+        const currentIndex = models.findIndex(m => m.id === currentValue);
+        // Cycle to next model (wrap around to start)
+        const nextIndex = (currentIndex + 1) % models.length;
+        const nextModel = models[nextIndex];
+
+        // Switch to next model
+        onChange?.(nextModel.id);
+
+        // Remove focus from button to prevent stuck hover state
+        if (buttonRef.current) {
+          buttonRef.current.blur();
+        }
+
+        // Highlight to show the change
         setIsHighlighted(true);
-        setIsOpen(prev => !prev); // Toggle dropdown
 
         // Set timeout for exactly 1 second
         timeoutRef.current = setTimeout(() => {
           setIsHighlighted(false);
+          timeoutRef.current = null;
         }, 1000);
       }
     };
@@ -61,9 +79,10 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       window.removeEventListener('keydown', handleKeyDown);
       if (timeoutRef.current) {
         clearTimeout(timeoutRef.current);
+        timeoutRef.current = null;
       }
     };
-  }, []);
+  }, [currentValue, onChange]);
 
   // Calculate dropdown position when opening
   useLayoutEffect(() => {
@@ -124,7 +143,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         ref={buttonRef}
         className={`model-selector-trigger ${isHighlighted ? 'highlighted' : ''}`}
         onClick={() => setIsOpen(!isOpen)}
-        title={`switch model (${modKey}+o)`}
+        title={`cycle models (${modKey}+o)`}
       >
         {selectedModel.name}
         <IconChevronUp size={12} className="chevron-up" />
