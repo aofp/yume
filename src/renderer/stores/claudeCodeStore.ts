@@ -64,6 +64,55 @@ const isBashPrefix = (text: string): boolean => {
   return text.startsWith('$') || text.startsWith('!');
 };
 
+// Fetch session tokens from session file - single source of truth
+// Called after stream_end to get accurate token counts
+async function fetchSessionTokensFromFile(
+  sessionId: string,
+  claudeSessionId: string | undefined,
+  workingDirectory: string | undefined
+): Promise<{
+  input_tokens: number;
+  output_tokens: number;
+  cache_read_input_tokens: number;
+  cache_creation_input_tokens: number;
+  total_context: number;
+  context_percentage: number;
+} | null> {
+  try {
+    if (!claudeSessionId || !workingDirectory) {
+      console.log('[SESSION-TOKENS] Missing claudeSessionId or workingDirectory, skipping fetch');
+      return null;
+    }
+
+    const serverPort = claudeCodeClient.getServerPort();
+    if (!serverPort) {
+      console.log('[SESSION-TOKENS] No server port, skipping fetch');
+      return null;
+    }
+
+    const url = `http://localhost:${serverPort}/session-tokens/${encodeURIComponent(claudeSessionId)}?workingDirectory=${encodeURIComponent(workingDirectory)}`;
+    console.log('[SESSION-TOKENS] Fetching from:', url);
+
+    const response = await fetch(url);
+    if (!response.ok) {
+      console.log('[SESSION-TOKENS] Fetch failed:', response.status);
+      return null;
+    }
+
+    const data = await response.json();
+    if (!data.found || !data.usage) {
+      console.log('[SESSION-TOKENS] No usage data in response');
+      return null;
+    }
+
+    console.log('[SESSION-TOKENS] Got tokens from session file:', data.usage);
+    return data.usage;
+  } catch (error) {
+    console.error('[SESSION-TOKENS] Error fetching session tokens:', error);
+    return null;
+  }
+}
+
 export type SDKMessage = any; // Type from Claude Code SDK
 
 // Agent structure
@@ -184,6 +233,7 @@ export interface Session {
   watermarkImage?: string; // Base64 or URL for watermark image
   pendingToolIds?: Set<string>; // Track pending tool operations by ID
   thinkingStartTime?: number; // Track when thinking started for this session
+  lastMessageTime?: number; // Track last message received time (for streaming state protection)
   readOnly?: boolean; // Mark sessions loaded from projects as read-only
   initialized?: boolean; // Track if session has received first message from Claude (safe to interrupt)
   wasCompacted?: boolean; // Track if session was compacted to prevent old ID restoration
@@ -1800,16 +1850,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 wrapperTokens: message.wrapper?.tokens
               });
               
-              return { 
-                ...s, 
-                messages: existingMessages, 
-                updatedAt: new Date(), 
+              return {
+                ...s,
+                messages: existingMessages,
+                updatedAt: new Date(),
                 analytics,
                 restorePoints,
-                modifiedFiles
+                modifiedFiles,
+                lastMessageTime: Date.now() // Track when last message was received
               };
             });
-            
+
             // Update streaming state based on message type
             if (message.type === 'assistant' || message.type === 'tool_result' || message.type === 'thinking') {
               // Update streaming state based on the message's streaming flag
@@ -1817,50 +1868,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               if (message.streaming === true) {
                 // Don't reset thinkingStartTime here - it's already set when user sends message
                 console.log(`[THINKING TIME DEBUG] ${message.type} streaming started, keeping existing thinkingStartTime`);
-                sessions = sessions.map(s => 
-                  s.id === sessionId ? { ...s, streaming: true } : s
+                sessions = sessions.map(s =>
+                  s.id === sessionId ? { ...s, streaming: true, lastMessageTime: Date.now() } : s
                 );
               } else if (message.streaming === false) {
-                // Check if there's a recent user message indicating a new request is being sent
-                const session = sessions.find(s => s.id === sessionId);
-                const recentUserMessage = session?.messages?.slice(-3).find(m =>
-                  m.type === 'user' &&
-                  m.timestamp &&
-                  (Date.now() - m.timestamp) < 3000 // Within last 3 seconds
+                // CRITICAL FIX: Don't clear streaming when individual messages complete!
+                // Individual messages can finish (streaming=false) while the overall response is still active.
+                // For example: assistant message completes -> tool_use starts -> tool_result -> more text
+                // Only streaming_end (from result message) should clear streaming state.
+                // This prevents the race condition where assistant message completes before tool_use arrives.
+                console.log(`🔄 [STREAMING-FIX] ${message.type} message ${message.id} streaming=false - NOT clearing session streaming (wait for streaming_end)`);
+                // Just update lastMessageTime to track activity, but keep streaming=true
+                sessions = sessions.map(s =>
+                  s.id === sessionId ? { ...s, lastMessageTime: Date.now() } : s
                 );
-
-                // CRITICAL: Check if there are pending tools before clearing streaming
-                const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
-
-                if (recentUserMessage) {
-                  // User sent a followup message while streaming, keep streaming state
-                  console.log(`🔄 [STREAMING] Keeping streaming=true due to recent user message (interrupt + followup scenario)`);
-                } else if (hasPendingTools) {
-                  // Tools still executing, keep streaming state active
-                  console.log(`🔄 [STREAMING-FIX] ${message.type} message ${message.id} streaming=false but ${session?.pendingToolIds?.size} tools still pending - keeping streaming=true`);
-                } else {
-                  // When explicitly marked as streaming=false AND no pending tools, clear streaming
-                  // The server marks messages as streaming=false when complete
-                  console.log(`🔴 [STREAMING] ${message.type} message ${message.id} marked as streaming=false, clearing streaming state for session ${sessionId}`);
-                  sessions = sessions.map(s => {
-                    if (s.id === sessionId) {
-                      // Calculate thinking time if we have a start time
-                      let updatedAnalytics = s.analytics;
-                      if (s.thinkingStartTime && updatedAnalytics) {
-                        const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
-                        updatedAnalytics = {
-                          ...updatedAnalytics,
-                          thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
-                        };
-                        console.log(`📊 [THINKING TIME] Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
-                      }
-                      console.log(`🔴 [STREAMING] Session ${sessionId} streaming state changed: ${s.streaming} -> false`);
-                      return { ...s, streaming: false, thinkingStartTime: undefined, analytics: updatedAnalytics };
-                    }
-                    return s;
-                  });
-                  console.log(`🔴 [STREAMING] Successfully cleared streaming state for session ${sessionId}`);
-                }
               }
             }
             // If streaming is undefined, don't change the state
@@ -2073,12 +2094,26 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     if (message.subtype === 'stream_end' && s.pendingToolIds?.size) {
                       console.log(`[Store] Clearing ${s.pendingToolIds.size} pending tools on stream_end`);
                     }
-                    return { 
-                      ...s, 
-                      streaming: false, 
-                      thinkingStartTime: undefined, 
-                      runningBash: false, 
-                      userBashRunning: false, 
+
+                    // Trigger async fetch of session tokens from file (single source of truth)
+                    if (message.subtype === 'stream_end') {
+                      const claudeSessId = s.claudeSessionId;
+                      const workDir = s.workingDirectory;
+                      // Fire and forget - will update analytics when complete
+                      fetchSessionTokensFromFile(sessionId, claudeSessId, workDir).then(tokens => {
+                        if (tokens) {
+                          // Update analytics with authoritative token data from session file
+                          get().updateSessionAnalyticsFromFile(sessionId, tokens);
+                        }
+                      });
+                    }
+
+                    return {
+                      ...s,
+                      streaming: false,
+                      thinkingStartTime: undefined,
+                      runningBash: false,
+                      userBashRunning: false,
                       analytics: updatedAnalytics,
                       pendingToolIds: clearedPendingTools
                     };

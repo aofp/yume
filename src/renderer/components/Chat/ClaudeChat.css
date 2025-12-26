@@ -75,11 +75,11 @@
 }
 
 .search-count {
-  font-size: 10px;
+  font-size: 8px;
   color: var(--fg-40);
   font-family: var(--font-mono);
   margin-right: 6px;
-  width: 45px; /* Fixed width to prevent jumping */
+  width: 80px; /* Fixed width to prevent jumping */
   text-align: center;
 }
 
@@ -459,7 +459,7 @@
 .tool-detail {
   color: var(--fg-100) !important;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: 8px;
   opacity: 1;
   overflow: hidden;
 }

@@ -2472,7 +2472,6 @@ const MessageRendererBase: React.FC<{
               <div className="search-header">
                 <IconSearch size={12} stroke={1.5} />
                 <span className="search-pattern">"{pattern}"</span>
-                <span className="search-count">{allLines.filter(l => l.trim()).length} matches</span>
               </div>
               <pre className="search-content">
                 {visibleLines.map((line, i) => (
@@ -2502,7 +2501,6 @@ const MessageRendererBase: React.FC<{
               <div className="file-list-header">
                 <IconFileSearch size={12} stroke={1.5} />
                 <span className="file-pattern">{pattern}</span>
-                <span className="file-count">{allLines.length} files</span>
               </div>
               <pre className="file-list-content">
                 {visibleLines.map((line, i) => (
@@ -2532,7 +2530,6 @@ const MessageRendererBase: React.FC<{
               <div className="dir-header">
                 <IconFolderOpen size={12} stroke={1.5} />
                 <span className="dir-path">{path}</span>
-                <span className="dir-count">{allLines.length} items</span>
               </div>
               <pre className="dir-content">
                 {visibleLines.map((line, i) => (

@@ -2,6 +2,9 @@
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "yuru code (dev)",
   "identifier": "be.yuru.yurucode.dev",
+  "build": {
+    "beforeDevCommand": ""
+  },
   "app": {
     "windows": [
       {

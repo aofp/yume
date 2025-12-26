@@ -1135,7 +1135,7 @@ pre.edit-diff {
 .tool-detail {
   color: var(--fg-100);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: 8px !important;
   opacity: 1;
   max-width: 100%;
   overflow-x: auto;
