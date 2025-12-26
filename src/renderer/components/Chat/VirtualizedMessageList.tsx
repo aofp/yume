@@ -178,10 +178,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     const atBottom = checkIfAtBottom();
     isAtBottomRef.current = atBottom;
 
-    // Only mark as user scroll if scrolling UP with significant movement (not just virtualizer adjustment)
-    // AND we're not at the bottom, AND scroll delta is significant (user intent)
-    // Reduced threshold from 20 to 5 for more sensitive scroll detection
-    if (scrollingUp && !atBottom && scrollDelta > 5) {
+    // Mark as user scroll if scrolling UP at all and we're not at the bottom
+    // Any upward scroll should unlock auto-scroll immediately
+    if (scrollingUp && !atBottom && scrollDelta > 0) {
       userHasScrolledRef.current = true;
       userScrolledAtRef.current = Date.now();
       onScrollStateChange?.(false);

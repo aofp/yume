@@ -2707,9 +2707,16 @@ const MessageRendererBase: React.FC<{
       // Check if this is actually a success
       // Claude CLI uses is_error:false for success - this is the primary indicator
       // Also check explicit success subtype or success field
+      // Additionally, check result content for success patterns (like edit completions)
+      const resultText = message.result || '';
+      const looksLikeSuccess = resultText.includes('has been updated') ||
+                               resultText.includes('successfully') ||
+                               resultText.includes('Applied') ||
+                               resultText.includes('created');
       const isSuccess = message.is_error === false ||
                        message.subtype === 'success' ||
-                       message.success === true;
+                       message.success === true ||
+                       (!message.is_error && looksLikeSuccess);
       
       if (isSuccess) {
         // Debug log to see what fields we have
@@ -2875,7 +2882,8 @@ const MessageRendererBase: React.FC<{
             </div>
           </div>
         );
-      } else if (message.is_error) {
+      } else if (message.is_error && !looksLikeSuccess) {
+        // Only show error if is_error is true AND result doesn't look like success
         return (
           <div className="message result-error">
             <IconAlertTriangle size={14} stroke={1.5} className="error-icon" />

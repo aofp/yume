@@ -122,17 +122,18 @@ function processWrapperLine(line, sessionId) {
       session.cacheCreationTokens = cacheCreation;
       session.cacheReadTokens = cacheRead;
 
-      // Total context = input + output (which already includes everything)
-      // Cache creation is already included in input_tokens by the API
-      // Cache reads don't count towards the 200k limit (they're "free" cached tokens)
-      session.totalTokens = input + output;
+      // Total context = all tokens in the context window
+      // cache_read = previous conversation (cached)
+      // cache_creation = new content being cached
+      // input + output = current turn
+      session.totalTokens = cacheRead + cacheCreation + input + output;
 
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;
 
       console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
       if (cacheCreation > 0 || cacheRead > 0) {
-        console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead} (cache_read doesn't count toward 200k limit)`);
+        console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead}`);
       }
     }
     
@@ -3793,7 +3794,11 @@ io.on('connection', (socket) => {
               const output = jsonData.usage.output_tokens || 0;
               const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
               const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
-              const totalContext = input + output + cacheCreation; // FIX: Don't include cacheRead
+              // Total context = everything in the context window
+              // cache_read = previous conversation (already in context)
+              // cache_creation = new content being cached this turn
+              // input + output = current turn tokens
+              const totalContext = cacheRead + cacheCreation + input + output;
 
               console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
               console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
@@ -3807,7 +3812,7 @@ io.on('connection', (socket) => {
               console.log(`   │ Subtotal        │ ${String(input + output).padEnd(8)} │ ${String(cacheRead).padEnd(12)} │ ${String(cacheCreation).padEnd(10)} │`);
               console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
               console.log(`   TOTAL CONTEXT: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
-              console.log(`   Note: Cache reads don't count - only new tokens count toward the 200k limit`);
+              console.log(`   Note: All tokens (cached + new) count toward the 200k context window`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
