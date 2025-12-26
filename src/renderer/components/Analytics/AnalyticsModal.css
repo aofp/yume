@@ -100,11 +100,11 @@
   overflow-y: auto;
   padding: 4px;
   scrollbar-width: thin;
-  scrollbar-color: #333 transparent;
+  scrollbar-color: var(--fg-10) transparent;
 }
 
 .analytics-content::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 
 .analytics-content::-webkit-scrollbar-track {
@@ -112,11 +112,12 @@
 }
 
 .analytics-content::-webkit-scrollbar-thumb {
-  background: #333;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .analytics-content::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: var(--fg-20);
 }
 
 /* Overview Stats */

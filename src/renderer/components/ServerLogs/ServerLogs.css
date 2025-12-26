@@ -415,21 +415,21 @@
   opacity: 1;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - thin, minimal */
 .server-logs-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 3px;
+  height: 3px;
 }
 
 .server-logs-content::-webkit-scrollbar-track {
-  background: #111;
+  background: transparent;
 }
 
 .server-logs-content::-webkit-scrollbar-thumb {
-  background: #333;
+  background: var(--fg-10);
   border-radius: 4px;
 }
 
 .server-logs-content::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: var(--fg-20);
 }

@@ -130,14 +130,10 @@ export class TauriClaudeClient {
 
   async interrupt(sessionId: string): Promise<void> {
     try {
-      console.log(`⛔ [TauriClient] Interrupting session ${sessionId}`);
       await invoke('interrupt_claude_session', { session_id: sessionId });
-      console.log(`✅ [TauriClient] Session ${sessionId} interrupted successfully`);
     } catch (error) {
-      // Log the error but still resolve to allow UI to update
-      console.error(`❌ [TauriClient] Failed to interrupt session ${sessionId}:`, error);
-      // The UI should still update to show stopped state even if backend fails
-      // This prevents the user from being stuck in a "streaming" state
+      console.error(`[TauriClient] Failed to interrupt session ${sessionId}:`, error);
+      throw error;
     }
   }
 
@@ -192,6 +188,7 @@ export class TauriClaudeClient {
 
   onError(sessionId: string, handler: (error: any) => void): () => void {
     const channel = `claude-error:${sessionId}`;
+    let cleanupRequested = false;
 
     const errorHandler = (event: Event<any>) => {
       const error = event.payload;
@@ -200,10 +197,16 @@ export class TauriClaudeClient {
 
     // Set up Tauri event listener
     listen(channel, errorHandler).then(unlisten => {
-      activeListeners.set(channel, unlisten);
+      if (cleanupRequested) {
+        // Cleanup was requested before listener was ready
+        unlisten();
+      } else {
+        activeListeners.set(channel, unlisten);
+      }
     });
 
     return () => {
+      cleanupRequested = true;
       const unlisten = activeListeners.get(channel);
       if (unlisten) {
         unlisten();
@@ -229,6 +232,12 @@ export class TauriClaudeClient {
         // Backend now sends raw JSON strings like Claudia does
         message = typeof payload === 'string' ? JSON.parse(payload) : payload;
       } catch (e) {
+        console.error(`[TauriClient] Failed to parse message:`, { payload: String(payload).substring(0, 200), error: e });
+        // Emit error to handler
+        handler({
+          type: 'error',
+          message: `Failed to parse message: ${e instanceof Error ? e.message : String(e)}`
+        });
         return;
       }
 
@@ -460,13 +469,21 @@ export class TauriClaudeClient {
         handler(transformedMessage);
       }
     };
-    
+
+    // Track cleanup state to handle race conditions with async listener setup
+    let cleanupRequested = false;
+    let updateChannelUnlisten: UnlistenFn | null = null;
+
     // Set up Tauri event listener
     listen(channel, messageHandler).then(unlisten => {
-      currentUnlisten = unlisten;
-      activeListeners.set(channel, unlisten);
+      if (cleanupRequested) {
+        unlisten();
+      } else {
+        currentUnlisten = unlisten;
+        activeListeners.set(channel, unlisten);
+      }
     });
-    
+
     // Listen for session ID updates to switch channels
     listen(updateChannel, async (event: Event<any>) => {
       const { old_session_id, new_session_id } = event.payload;
@@ -484,21 +501,26 @@ export class TauriClaudeClient {
       mapSessionIds(old_session_id, new_session_id);
 
       currentSessionId = new_session_id; // Update the current session ID for wrapper
-      
+
       const newUnlisten = await listen(channel, messageHandler);
       currentUnlisten = newUnlisten;
       activeListeners.set(channel, newUnlisten);
-      
+
       // Also update token listener to new session ID
       setupTokenListener(new_session_id);
     }).then(unlisten => {
-      activeListeners.set(updateChannel, unlisten);
+      if (cleanupRequested) {
+        unlisten();
+      } else {
+        updateChannelUnlisten = unlisten;
+        activeListeners.set(updateChannel, unlisten);
+      }
     });
-    
+
     // Token listener - will be updated when session ID changes
     let tokenChannel = `claude-tokens:${sessionId}`;
     let tokenUnlisten: UnlistenFn | null = null;
-    
+
     const setupTokenListener = (newSessionId: string) => {
       // Clean up old token listener if exists
       if (tokenUnlisten) {
@@ -512,16 +534,22 @@ export class TauriClaudeClient {
       // Token listener - tokens are already processed via the main message channel
       // This listener is for debugging/monitoring only
       listen(tokenChannel, () => {}).then(unlisten => {
-        tokenUnlisten = unlisten;
-        activeListeners.set(tokenChannel, unlisten);
+        if (cleanupRequested) {
+          unlisten();
+        } else {
+          tokenUnlisten = unlisten;
+          activeListeners.set(tokenChannel, unlisten);
+        }
       });
     };
-    
+
     // Set up initial token listener
     setupTokenListener(sessionId);
 
     // Return cleanup function
     return () => {
+      cleanupRequested = true;
+
       // Clean up all listeners for this session
       [channel, tokenChannel, updateChannel].forEach(ch => {
         const unlisten = activeListeners.get(ch);
@@ -574,6 +602,7 @@ export class TauriClaudeClient {
 
   onTitle(sessionId: string, handler: (title: string) => void): () => void {
     const eventName = `claude-title:${sessionId}`;
+    let cleanupRequested = false;
 
     // Set up Tauri event listener
     listen(eventName, (event: Event<any>) => {
@@ -585,11 +614,17 @@ export class TauriClaudeClient {
         handler(data);
       }
     }).then(unlisten => {
-      activeListeners.set(eventName, unlisten);
+      if (cleanupRequested) {
+        // Cleanup was requested before listener was ready
+        unlisten();
+      } else {
+        activeListeners.set(eventName, unlisten);
+      }
     });
 
     // Return cleanup function
     return () => {
+      cleanupRequested = true;
       const unlisten = activeListeners.get(eventName);
       if (unlisten) {
         unlisten();

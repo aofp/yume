@@ -208,27 +208,27 @@ body {
   overflow: hidden;
 }
 
-/* Scrollbar Styles */
+/* Scrollbar Styles - thin, minimal, unobtrusive */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 3px;
+  height: 3px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--color-bg-secondary);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.2);
-  border-radius: var(--radius-sm);
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.4);
+  background: var(--fg-20);
 }
 
 ::-webkit-scrollbar-corner {
-  background: var(--background-color);
+  background: transparent;
 }
 
 /* Selection */
@@ -279,7 +279,7 @@ textarea {
   color: inherit;
   background: var(--background-color);
   border: 1px solid rgba(var(--accent-rgb), 0.5);
-  border-radius: var(--radius-md);
+  border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
   transition: border-color var(--transition-fast), background var(--transition-fast);
 }

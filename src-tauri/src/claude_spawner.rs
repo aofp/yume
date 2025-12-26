@@ -437,8 +437,9 @@ impl ClaudeSpawner {
         tokio::spawn(async move {
             // Monitor process status
             loop {
-                tokio::time::sleep(tokio::time::Duration::from_secs(1)).await;
-                
+                // Use 100ms polling for faster process exit detection
+                tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+
                 // Check if process is still running
                 match registry_complete.is_process_running(run_id).await {
                     Ok(false) => {

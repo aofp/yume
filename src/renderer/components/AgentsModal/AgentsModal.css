@@ -132,22 +132,22 @@
   padding: 4px;
 }
 
-/* Scrollbar */
+/* Scrollbar - thin, minimal */
 .agents-content::-webkit-scrollbar {
-  width: 10px;
+  width: 3px;
 }
 
 .agents-content::-webkit-scrollbar-track {
-  background: #000000;
+  background: transparent;
 }
 
 .agents-content::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.5);
-  border-radius: 0;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .agents-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.7);
+  background: var(--fg-20);
 }
 
 /* Empty state */

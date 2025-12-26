@@ -360,22 +360,22 @@
 
 /* Context menu uses global-context-menu styles from index.css */
 
-/* Scrollbar styling - matching chat window */
+/* Scrollbar styling - thin, minimal */
 .projects-content::-webkit-scrollbar {
-  width: 10px;
+  width: 3px;
 }
 
 .projects-content::-webkit-scrollbar-track {
-  background: #000000;
+  background: transparent;
 }
 
 .projects-content::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.5);
-  border-radius: 0;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .projects-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.7);
+  background: var(--fg-20);
 }
 
 /* Infinite scroll indicators */

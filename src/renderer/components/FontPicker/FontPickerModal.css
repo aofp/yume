@@ -184,9 +184,9 @@
   cursor: not-allowed;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - thin, minimal */
 .font-picker-list::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 
 .font-picker-list::-webkit-scrollbar-track {
@@ -194,10 +194,10 @@
 }
 
 .font-picker-list::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 3px;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .font-picker-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--fg-20);
 }

@@ -631,21 +631,21 @@ pub fn run() {
                     }
                     
                     ::-webkit-scrollbar {
-                        width: 8px;
-                        height: 8px;
+                        width: 3px;
+                        height: 3px;
                     }
-                    
+
                     ::-webkit-scrollbar-track {
                         background: transparent;
                     }
-                    
+
                     ::-webkit-scrollbar-thumb {
-                        background: rgba(255, 153, 153, 0.3);
+                        background: rgba(255, 255, 255, 0.1);
                         border-radius: 4px;
                     }
-                    
+
                     ::-webkit-scrollbar-thumb:hover {
-                        background: rgba(255, 153, 153, 0.5);
+                        background: rgba(255, 255, 255, 0.2);
                     }
                 `;
                 document.head.appendChild(style);

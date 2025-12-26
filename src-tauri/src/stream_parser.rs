@@ -119,6 +119,9 @@ pub enum ClaudeStreamMessage {
     },
 }
 
+/// Maximum buffer size to prevent memory issues (100KB)
+const MAX_BUFFER_SIZE: usize = 100_000;
+
 /// Parser for Claude's stream-json output
 pub struct StreamParser {
     /// Buffer for incomplete JSON lines
@@ -154,6 +157,17 @@ impl StreamParser {
         // Try to parse as complete JSON first
         if let Ok(json) = serde_json::from_str::<Value>(line) {
             return self.parse_json_to_message(json);
+        }
+
+        // Check buffer size before appending to prevent memory issues
+        let new_size = self.buffer.len() + line.len() + 1; // +1 for newline
+        if new_size > MAX_BUFFER_SIZE {
+            // Clear buffer and return error to prevent memory exhaustion
+            self.clear_buffer();
+            return Err(anyhow::anyhow!(
+                "Buffer size limit exceeded ({} bytes). Clearing buffer to prevent memory issues.",
+                new_size
+            ));
         }
 
         // If not complete JSON, add to buffer

@@ -745,13 +745,13 @@ textarea.context-full {
 
 .stop-streaming-btn {
   position: absolute;
-  right: 1px;
-  bottom: 1px;
+  right: 0px;
+  bottom: 0px;
   background: rgba(var(--negative-rgb), 0.1);
   border: 1px solid var(--negative-color);
   color: var(--negative-color);
-  padding: 12px;
-  border-radius: 3px;
+  padding: 13px;
+  border-radius: 4px;
   cursor: default;
   display: flex;
   align-items: center;
@@ -1026,36 +1026,22 @@ textarea.context-full {
   to { opacity: 1; }
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - thin, minimal */
 .chat-messages::-webkit-scrollbar {
-  width: 10px;
+  width: 3px;
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: var(--background-color, #000000);
+  background: transparent;
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.5);
-  border-radius: 0;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.7);
-}
-
-/* Windows horizontal scrollbar - slim 3px height */
-.platform-win32 .claude-chat ::-webkit-scrollbar:horizontal {
-  height: 3px;
-}
-
-.platform-win32 .claude-chat ::-webkit-scrollbar-thumb:horizontal {
-  background: rgba(var(--accent-rgb), 0.3);
-  border-radius: 0;
-}
-
-.platform-win32 .claude-chat ::-webkit-scrollbar-thumb:horizontal:hover {
-  background: rgba(var(--accent-rgb), 0.5);
+  background: var(--fg-20);
 }
 
 /* Image attachments */
@@ -2229,11 +2215,11 @@ textarea.context-full {
   max-height: 80px;
   overflow-y: auto;
   scrollbar-width: thin;
-  scrollbar-color: rgba(var(--accent-rgb), 0.3) transparent;
+  scrollbar-color: var(--fg-10) transparent;
 }
 
 .pending-followup-content::-webkit-scrollbar {
-  width: 4px;
+  width: 3px;
 }
 
 .pending-followup-content::-webkit-scrollbar-track {
@@ -2241,8 +2227,12 @@ textarea.context-full {
 }
 
 .pending-followup-content::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.3);
-  border-radius: 2px;
+  background: var(--fg-10);
+  border-radius: 4px;
+}
+
+.pending-followup-content::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-20);
 }
 
 .pending-followup-attachments {

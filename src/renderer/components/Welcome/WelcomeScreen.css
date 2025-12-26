@@ -395,25 +395,23 @@
   text-transform: lowercase;
 }
 
-/* Scrollbar styling for modal */
+/* Scrollbar styling for modal - thin, minimal */
 .modal-content::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 3px;
+  height: 3px;
 }
 
 .modal-content::-webkit-scrollbar-track {
-  background: var(--fg-02);
-  border-radius: 4px;
+  background: transparent;
 }
 
 .modal-content::-webkit-scrollbar-thumb {
-  background: rgba(255, 153, 153, 0.3);
+  background: var(--fg-10);
   border-radius: 4px;
-  border: 1px solid transparent;
 }
 
 .modal-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 153, 153, 0.5);
+  background: var(--fg-20);
 }
 
 .modal-content::-webkit-scrollbar-corner {

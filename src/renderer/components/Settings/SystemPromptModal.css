@@ -73,22 +73,22 @@
   width: 100%;
 }
 
-/* Custom scrollbar for modal content */
+/* Custom scrollbar for modal content - thin, minimal */
 .system-prompt-content::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 
 .system-prompt-content::-webkit-scrollbar-track {
-  background: var(--fg-02);
+  background: transparent;
 }
 
 .system-prompt-content::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.3);
-  border-radius: 3px;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .system-prompt-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.5);
+  background: var(--fg-20);
 }
 
 /* Mode Selection */

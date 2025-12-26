@@ -116,20 +116,20 @@
   white-space: nowrap;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - thin, minimal */
 .command-list::-webkit-scrollbar {
-  width: 6px;
+  width: 3px;
 }
 
 .command-list::-webkit-scrollbar-track {
-  background: #0a0a0a;
+  background: transparent;
 }
 
 .command-list::-webkit-scrollbar-thumb {
-  background: #333;
-  border-radius: 3px;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .command-list::-webkit-scrollbar-thumb:hover {
-  background: #444;
+  background: var(--fg-20);
 }

@@ -43,6 +43,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const pendingScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAutoScrollingRef = useRef(false); // Track when we're auto-scrolling (to ignore in handleScroll)
   const streamingScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const followUpScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Cooldown period after user scrolls up (don't auto-scroll for this long)
   // Set to 0 to disable cooldown - always auto-scroll when assistant is responding
@@ -115,18 +116,31 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     return scrollHeight - scrollTop - clientHeight < 50;
   }, []);
 
-  // SINGLE SCROLL: just force to bottom once, no competing calls
-  // The key insight: multiple scroll calls fighting each other cause flicker
+  // Scroll to true bottom with follow-up to catch late-rendering content
+  // Uses a delayed second scroll to handle virtualizer remeasurement
   const scrollToTrueBottom = useCallback((behavior: 'auto' | 'smooth' = 'auto') => {
     if (!parentRef.current || displayMessages.length === 0) return;
 
-    const { scrollHeight, clientHeight } = parentRef.current;
-    // Only scroll if not already at bottom (prevents micro-adjustments)
-    const distanceFromBottom = scrollHeight - parentRef.current.scrollTop - clientHeight;
-    if (distanceFromBottom < 2) return; // Already at bottom, skip
+    const doScroll = () => {
+      if (!parentRef.current) return;
+      const { scrollHeight, clientHeight } = parentRef.current;
+      parentRef.current.scrollTop = scrollHeight - clientHeight;
+    };
 
-    // Single scroll operation - no retries, no fighting
-    parentRef.current.scrollTop = scrollHeight - clientHeight;
+    // Scroll immediately
+    doScroll();
+
+    // Clear any pending follow-up scroll
+    if (followUpScrollTimeoutRef.current) {
+      clearTimeout(followUpScrollTimeoutRef.current);
+    }
+
+    // Follow-up scroll after virtualizer has had time to remeasure
+    // This catches content that rendered after the initial scroll
+    followUpScrollTimeoutRef.current = setTimeout(() => {
+      doScroll();
+      followUpScrollTimeoutRef.current = null;
+    }, 50);
   }, [displayMessages.length]);
 
   // Check if we're in cooldown period after user scroll
@@ -274,8 +288,8 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
         const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
         // Always scroll to bottom when streaming (aggressive auto-scroll for better UX)
-        // Reduced threshold to 10px for immediate scrolling
-        if (distanceFromBottom > 10) {
+        // Reduced threshold to 5px for immediate scrolling
+        if (distanceFromBottom > 5) {
           isAutoScrollingRef.current = true;
           parentRef.current.scrollTop = scrollHeight - clientHeight;
           isAutoScrollingRef.current = false;
@@ -299,6 +313,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       }
       if (streamingScrollIntervalRef.current) {
         clearInterval(streamingScrollIntervalRef.current);
+      }
+      if (followUpScrollTimeoutRef.current) {
+        clearTimeout(followUpScrollTimeoutRef.current);
       }
     };
   }, []);

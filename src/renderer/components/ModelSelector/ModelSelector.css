@@ -22,7 +22,39 @@
   gap: 6px;
 }
 
-.model-selector-trigger:hover,
+/* only show hover via js-controlled class, not css :hover */
+.model-selector-trigger.hovered {
+  background: var(--fg-05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 1);
+}
+
+/* remove all focus styles */
+.model-selector-trigger:focus,
+.model-selector-trigger:focus-visible,
+.model-selector-trigger:focus-within {
+  outline: none;
+  background: transparent;
+  border-color: var(--fg-20);
+}
+
+/* when keyboard cycling, force reset all states */
+.model-selector-trigger.keyboard-cycling,
+.model-selector-trigger.keyboard-cycling:hover,
+.model-selector-trigger.keyboard-cycling:focus {
+  pointer-events: none;
+  background: transparent !important;
+  border-color: var(--fg-20) !important;
+  color: var(--fg-50) !important;
+}
+
+/* highlighted overrides everything */
+.model-selector-trigger.keyboard-cycling.highlighted {
+  background: var(--fg-08) !important;
+  color: var(--accent-color) !important;
+  border-color: rgba(var(--accent-rgb), 0.6) !important;
+}
+
 .model-selector-trigger.highlighted {
   background: var(--fg-08);
   color: var(--accent-color);
@@ -36,9 +68,7 @@
   transition: transform 0.2s ease;
 }
 
-.model-selector-trigger:hover .chevron-up {
-  opacity: 1;
-}
+/* hover effect disabled */
 
 .model-dropdown {
   position: fixed;

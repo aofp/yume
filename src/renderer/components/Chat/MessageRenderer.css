@@ -227,6 +227,13 @@
   flex: unset;
 }
 
+/* Assistant message text elements use accent color */
+.message.assistant .message-bubble span,
+.message.assistant .message-bubble code,
+.message.assistant .message-bubble pre {
+  color: var(--accent-color);
+}
+
 .message.user .message-content {
   max-width: 80%;
   width: auto;
@@ -2112,8 +2119,8 @@ pre::-webkit-scrollbar-track {
 .message-bubble::-webkit-scrollbar-thumb,
 .message::-webkit-scrollbar-thumb,
 pre::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.3);
-  border-radius: 2px;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .table-wrapper::-webkit-scrollbar-thumb:hover,
@@ -2131,7 +2138,7 @@ pre::-webkit-scrollbar-thumb {
 .message-bubble::-webkit-scrollbar-thumb:hover,
 .message::-webkit-scrollbar-thumb:hover,
 pre::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.5);
+  background: var(--fg-20);
 }
 
 /* Tool output font size override - 9px for all tool results, 8px for line numbers */

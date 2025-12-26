@@ -198,7 +198,7 @@
 }
 
 .agent-output::-webkit-scrollbar {
-  width: 8px;
+  width: 3px;
 }
 
 .agent-output::-webkit-scrollbar-track {
@@ -206,12 +206,12 @@
 }
 
 .agent-output::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--fg-10);
   border-radius: 4px;
 }
 
 .agent-output::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--fg-20);
 }
 
 .agent-output-empty {

@@ -112,21 +112,20 @@
   font-weight: 500;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - thin, minimal */
 .mention-list::-webkit-scrollbar {
-  width: 8px;
+  width: 3px;
 }
 
 .mention-list::-webkit-scrollbar-track {
-  background: #000;
-  border-left: 1px solid #1a1a1a;
+  background: transparent;
 }
 
 .mention-list::-webkit-scrollbar-thumb {
-  background: #1a1a1a;
-  border-radius: 0;
+  background: var(--fg-10);
+  border-radius: 4px;
 }
 
 .mention-list::-webkit-scrollbar-thumb:hover {
-  background: #2a2a2a;
+  background: var(--fg-20);
 }

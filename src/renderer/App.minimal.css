@@ -147,23 +147,23 @@ ul {
   padding-left: 20px;
 }
 
-/* Scrollbar styling */
+/* Scrollbar styling - thin, minimal, unobtrusive */
 ::-webkit-scrollbar {
-  width: 8px;
-  height: 8px;
+  width: 3px;
+  height: 3px;
 }
 
 ::-webkit-scrollbar-track {
-  background: var(--background-color);
+  background: transparent;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.2);
+  background: var(--fg-10);
   border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.4);
+  background: var(--fg-20);
 }
 
 /* Global Context Menu - matching tab-context-menu style */

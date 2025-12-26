@@ -53,6 +53,12 @@ const isMacOS = navigator.platform.toLowerCase().includes('mac');
 const USE_TAURI_BACKEND = false; // Always use Socket.IO for now since server handles everything
 const claudeClient = USE_TAURI_BACKEND ? tauriClaudeClient : claudeCodeClient;
 
+// Configuration for pending session timeout
+// When a session is in 'pending' status, we wait for it to become 'active' before sending messages.
+// This happens when a temporary session is being replaced with a real Claude session.
+const PENDING_SESSION_TIMEOUT_MS = 5000;
+const PENDING_SESSION_CHECK_INTERVAL_MS = 100;
+
 // Helper to check if text starts with bash mode prefix ($ or !)
 const isBashPrefix = (text: string): boolean => {
   return text.startsWith('$') || text.startsWith('!');
@@ -187,6 +193,7 @@ export interface Session {
     manifestSaved?: boolean;
     autoTriggered?: boolean;
   };
+  cleanup?: () => void; // Cleanup function for event listeners
 }
 
 interface ClaudeCodeStore {
@@ -1817,7 +1824,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 // Check if there's a recent user message indicating a new request is being sent
                 const session = sessions.find(s => s.id === sessionId);
                 const recentUserMessage = session?.messages?.slice(-3).find(m =>
-                  m.role === 'user' &&
+                  m.type === 'user' &&
                   m.timestamp &&
                   (Date.now() - m.timestamp) < 3000 // Within last 3 seconds
                 );
@@ -2171,7 +2178,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       };
       
       // Store cleanup function (could be used later)
-      (activeSession as any).cleanup = cleanup;
+      activeSession.cleanup = cleanup;
       
       return sessionId;
     } catch (error) {
@@ -2299,12 +2306,15 @@ ${content}`;
     }
     
     // Wait for session to be active if it's pending
+    // This polling loop waits for a pending/temporary session to transition to 'active' status
+    // before allowing messages to be sent. This occurs when the UI creates a temporary session
+    // that gets replaced with a real Claude session from the backend.
     if (currentSession?.status === 'pending') {
       console.log('[Store] Session is pending, waiting for activation...');
-      // Wait up to 5 seconds for session to become active
-      let retries = 50;
+      const maxRetries = Math.ceil(PENDING_SESSION_TIMEOUT_MS / PENDING_SESSION_CHECK_INTERVAL_MS);
+      let retries = maxRetries;
       while (retries > 0) {
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise(resolve => setTimeout(resolve, PENDING_SESSION_CHECK_INTERVAL_MS));
         // Check if currentSessionId has been updated (temp replaced with real)
         const newSessionId = get().currentSessionId;
         const session = get().sessions.find(s => s.id === newSessionId);
@@ -2317,7 +2327,7 @@ ${content}`;
       }
       const finalSession = get().sessions.find(s => s.id === get().currentSessionId);
       if (finalSession?.status !== 'active') {
-        console.error('[Store] Session failed to activate after waiting');
+        console.error(`[Store] Session failed to activate after waiting ${PENDING_SESSION_TIMEOUT_MS}ms`);
         return;
       }
       sessionToUse = get().currentSessionId;
@@ -2908,7 +2918,7 @@ ${content}`;
         errorCleanup();
       };
       
-      (session as any).cleanup = cleanup;
+      session.cleanup = cleanup;
       
       set(state => ({
         sessions: [...state.sessions.filter(s => s.id !== sessionId), session],
@@ -3209,18 +3219,15 @@ ${content}`;
         )
       };
     });
-    
+
     // Log the result
-    set(state => {
-      const session = state.sessions.find(s => s.id === sessionId);
-      if (session) {
-        console.log(`🧹 [Store] After clear - analytics:`, session.analytics);
-        console.log(`🧹 [Store] After clear - messages count: ${session.messages.length}`);
-        console.log(`🧹 [Store] After clear - claudeSessionId: ${session.claudeSessionId}`);
-      }
-      return state;
-    });
-    
+    const clearedSession = get().sessions.find(s => s.id === sessionId);
+    if (clearedSession) {
+      console.log(`🧹 [Store] After clear - analytics:`, clearedSession.analytics);
+      console.log(`🧹 [Store] After clear - messages count: ${clearedSession.messages.length}`);
+      console.log(`🧹 [Store] After clear - claudeSessionId: ${clearedSession.claudeSessionId}`);
+    }
+
     // Notify server to clear the Claude session - use the imported singleton
     claudeClient.clearSession(sessionId).catch(error => {
       console.error('Failed to clear server session:', error);
@@ -3584,8 +3591,8 @@ ${content}`;
           analytics: {
             ...session.analytics,
             totalMessages: restoredMessages.length,
-            userMessages: restoredMessages.filter(m => m.role === 'user').length,
-            assistantMessages: restoredMessages.filter(m => m.role === 'assistant').length,
+            userMessages: restoredMessages.filter(m => m.type === 'user').length,
+            assistantMessages: restoredMessages.filter(m => m.type === 'assistant').length,
             // Keep existing token counts as they reflect actual usage
             tokens: session.analytics?.tokens || {
               input: 0,
