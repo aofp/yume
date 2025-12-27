@@ -32,17 +32,23 @@ export interface AgentRun {
 }
 
 class AgentExecutionService {
-  private socket = claudeCodeClient.socket;
   private activeRuns = new Map<string, AgentRun>();
   private runHistory = new Map<string, AgentRun[]>(); // sessionId -> runs
+
+  private get socket() {
+    return claudeCodeClient.getSocket();
+  }
 
   constructor() {
     this.setupListeners();
   }
 
   private setupListeners() {
-    this.socket.on('agent-started', (data: any) => {
-      console.log('🤖 Agent started:', data);
+    const socket = this.socket;
+    if (!socket) return;
+
+    socket.on('agent-started', (data: { runId: string; sessionId: string; config: AgentRun['config'] }) => {
+      console.log('[Agent] Started:', data);
       const { runId, sessionId, config } = data;
       
       // Create initial run record
@@ -67,14 +73,14 @@ class AgentExecutionService {
       this.addToHistory(sessionId, run);
       
       // Notify UI
-      window.dispatchEvent(new CustomEvent('agent-started', { 
-        detail: { runId, sessionId, config } 
+      window.dispatchEvent(new CustomEvent('agent-started', {
+        detail: { runId, sessionId, config }
       }));
     });
 
-    this.socket.on('agent-progress', (data: any) => {
+    socket.on('agent-progress', (data: { runId: string; sessionId: string; data: unknown; metrics: AgentRun['metrics'] }) => {
       const { runId, sessionId, data: progressData, metrics } = data;
-      
+
       const run = this.activeRuns.get(runId);
       if (run) {
         run.output.push({
@@ -83,17 +89,17 @@ class AgentExecutionService {
         });
         run.metrics = metrics;
       }
-      
+
       // Notify UI with progress
-      window.dispatchEvent(new CustomEvent('agent-progress', { 
-        detail: { runId, sessionId, data: progressData, metrics } 
+      window.dispatchEvent(new CustomEvent('agent-progress', {
+        detail: { runId, sessionId, data: progressData, metrics }
       }));
     });
 
-    this.socket.on('agent-completed', (data: any) => {
-      console.log('✅ Agent completed:', data);
+    socket.on('agent-completed', (data: { runId: string; sessionId: string; status: AgentRun['status']; metrics: AgentRun['metrics'] }) => {
+      console.log('[Agent] Completed:', data);
       const { runId, sessionId, status, metrics } = data;
-      
+
       const run = this.activeRuns.get(runId);
       if (run) {
         run.status = status;
@@ -101,48 +107,48 @@ class AgentExecutionService {
         run.metrics = metrics;
         this.activeRuns.delete(runId);
       }
-      
-      window.dispatchEvent(new CustomEvent('agent-completed', { 
-        detail: { runId, sessionId, status, metrics } 
+
+      window.dispatchEvent(new CustomEvent('agent-completed', {
+        detail: { runId, sessionId, status, metrics }
       }));
     });
 
-    this.socket.on('agent-stopped', (data: any) => {
-      console.log('⏹️ Agent stopped:', data);
+    socket.on('agent-stopped', (data: { runId: string }) => {
+      console.log('[Agent] Stopped:', data);
       const { runId } = data;
-      
+
       const run = this.activeRuns.get(runId);
       if (run) {
         run.status = 'stopped';
         run.endTime = new Date().toISOString();
         this.activeRuns.delete(runId);
       }
-      
-      window.dispatchEvent(new CustomEvent('agent-stopped', { 
-        detail: { runId } 
+
+      window.dispatchEvent(new CustomEvent('agent-stopped', {
+        detail: { runId }
       }));
     });
 
-    this.socket.on('agent-error', (data: any) => {
-      console.error('❌ Agent error:', data);
+    socket.on('agent-error', (data: { runId: string; sessionId: string; error: string }) => {
+      console.error('[Agent] Error:', data);
       const { runId, sessionId, error } = data;
-      
+
       const run = this.activeRuns.get(runId);
       if (run) {
         run.metrics.errors++;
       }
-      
-      window.dispatchEvent(new CustomEvent('agent-error', { 
-        detail: { runId, sessionId, error } 
+
+      window.dispatchEvent(new CustomEvent('agent-error', {
+        detail: { runId, sessionId, error }
       }));
     });
 
-    this.socket.on('agent-runs-data', (data: any) => {
+    socket.on('agent-runs-data', (data: { sessionId: string; runs: AgentRun[] }) => {
       const { sessionId, runs } = data;
       this.runHistory.set(sessionId, runs);
-      
-      window.dispatchEvent(new CustomEvent('agent-runs-updated', { 
-        detail: { sessionId, runs } 
+
+      window.dispatchEvent(new CustomEvent('agent-runs-updated', {
+        detail: { sessionId, runs }
       }));
     });
   }
@@ -180,7 +186,7 @@ class AgentExecutionService {
       window.addEventListener('agent-started', handleStarted);
       window.addEventListener('agent-error', handleError);
       
-      this.socket.emit('execute-agent', {
+      this.socket?.emit('execute-agent', {
         sessionId,
         agentConfig: config,
         projectPath,
@@ -221,7 +227,7 @@ class AgentExecutionService {
       window.addEventListener('agent-stopped', handleStopped);
       window.addEventListener('agent-error', handleError);
       
-      this.socket.emit('stop-agent', { runId });
+      this.socket?.emit('stop-agent', { runId });
       
       // Timeout after 5 seconds
       setTimeout(() => {
@@ -251,7 +257,7 @@ class AgentExecutionService {
       
       window.addEventListener('agent-runs-updated', handleRuns);
       
-      this.socket.emit('get-agent-runs', { sessionId });
+      this.socket?.emit('get-agent-runs', { sessionId });
       
       // Return cached or empty after 2 seconds
       setTimeout(() => {

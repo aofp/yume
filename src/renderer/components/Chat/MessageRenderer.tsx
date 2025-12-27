@@ -116,6 +116,12 @@ const isBashPrefix = (text: string): boolean => {
   return text.startsWith('$') || text.startsWith('!');
 };
 
+// Truncate text to max length (default 256)
+const truncateText = (text: string, maxLen = 256): string => {
+  if (!text || text.length <= maxLen) return text || '';
+  return text.substring(0, maxLen) + '...';
+};
+
 // Tool display configurations
 const TOOL_DISPLAYS: Record<string, (input: any) => { icon: React.ReactNode; action: string; detail: string; todos?: any[] }> = {
   'Read': (i) => ({ 
@@ -149,20 +155,20 @@ const TOOL_DISPLAYS: Record<string, (input: any) => { icon: React.ReactNode; act
     detail: formatTodos(i?.todos),
     todos: i?.todos
   }),
-  'WebSearch': (i) => ({ 
-    icon: <IconWorld size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'searching web', 
-    detail: `"${i?.query || ''}"`
+  'WebSearch': (i) => ({
+    icon: <IconWorld size={14} stroke={1.5} className="tool-icon" />,
+    action: 'searching web',
+    detail: truncateText(`"${i?.query || ''}"`, 256)
   }),
   'WebFetch': (i) => ({ 
     icon: <IconDownload size={14} stroke={1.5} className="tool-icon" />, 
     action: 'fetching', 
     detail: formatUrl(i?.url)
   }),
-  'Grep': (i) => ({ 
-    icon: <IconSearch size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'searching', 
-    detail: `"${i?.pattern || ''}" in ${formatPath(i?.path || '.')}`
+  'Grep': (i) => ({
+    icon: <IconSearch size={14} stroke={1.5} className="tool-icon" />,
+    action: 'searching',
+    detail: truncateText(`"${i?.pattern || ''}" in ${formatPath(i?.path || '.')}`, 256)
   }),
   'Glob': (i) => ({ 
     icon: <IconFileSearch size={14} stroke={1.5} className="tool-icon" />, 
@@ -174,9 +180,9 @@ const TOOL_DISPLAYS: Record<string, (input: any) => { icon: React.ReactNode; act
     action: 'listing', 
     detail: formatPath(i?.path)
   }),
-  'Task': (i) => ({ 
-    icon: <IconRobot size={14} stroke={1.5} className="tool-icon" />, 
-    action: i?.description || 'running task', 
+  'Task': (i) => ({
+    icon: <IconRobot size={14} stroke={1.5} className="tool-icon" />,
+    action: truncateText(i?.description || 'running task', 256),
     detail: i?.subagent_type || 'agent'
   }),
   'ExitPlanMode': (i) => ({ 
@@ -391,7 +397,7 @@ const formatPath = (path?: string) => {
 
 const formatCommand = (cmd?: string) => {
   if (!cmd) return '';
-  return cmd;
+  return truncateText(cmd, 256);
 };
 
 const formatUrl = (url?: string) => {
@@ -1182,11 +1188,29 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               }
             }
             
-            // For Write operations, just show success message
+            // For Write operations, show content as all additions (new file creation)
             if (prevBlock?.name === 'Write') {
+              const filePath = formatPath(prevBlock?.input?.file_path || 'file');
+              const writtenContent = prevBlock?.input?.content || '';
+              const allLines = writtenContent.split('\n');
+
+              // Create diff display with all lines as additions
+              const diffDisplay: DiffDisplay = {
+                file: filePath,
+                hunks: [{
+                  startLine: 1,
+                  endLine: allLines.length,
+                  lines: allLines.map((line, i) => ({
+                    type: 'add' as const,
+                    content: line,
+                    lineNumber: i + 1
+                  }))
+                }]
+              };
+
               return (
-                <div key={idx} className="tool-result file-write">
-                  <span className="result-text">file written successfully</span>
+                <div key={idx} className="tool-result file-edit">
+                  <DiffViewer diff={diffDisplay} />
                 </div>
               );
             }
@@ -2702,15 +2726,17 @@ const MessageRendererBase: React.FC<{
       // Claude CLI uses is_error:false for success - this is the primary indicator
       // Also check explicit success subtype or success field
       // Additionally, check result content for success patterns (like edit completions)
+      // IMPORTANT: looksLikeSuccess should OVERRIDE is_error since Claude sometimes sets it incorrectly
       const resultText = message.result || '';
       const looksLikeSuccess = resultText.includes('has been updated') ||
                                resultText.includes('successfully') ||
                                resultText.includes('Applied') ||
-                               resultText.includes('created');
+                               resultText.includes('created') ||
+                               resultText.includes('→');
       const isSuccess = message.is_error === false ||
                        message.subtype === 'success' ||
                        message.success === true ||
-                       (!message.is_error && looksLikeSuccess);
+                       looksLikeSuccess;  // looksLikeSuccess overrides is_error
       
       if (isSuccess) {
         // Debug log to see what fields we have

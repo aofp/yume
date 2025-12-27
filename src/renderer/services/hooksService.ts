@@ -1,6 +1,6 @@
 import { invoke } from '@tauri-apps/api/core';
 
-export interface HookConfig {
+export interface HookScriptConfig {
   event: string;
   enabled: boolean;
   script: string;
@@ -10,13 +10,13 @@ export interface HookConfig {
 export interface HookResponse {
   action: 'continue' | 'block' | 'modify';
   message?: string;
-  modifications?: any;
+  modifications?: Record<string, unknown>;
   exit_code: number;
 }
 
 export class HooksService {
   private static instance: HooksService;
-  private hooks: Map<string, HookConfig> = new Map();
+  private hooks: Map<string, HookScriptConfig> = new Map();
 
   private constructor() {
     this.loadHooks();
@@ -78,7 +78,7 @@ export class HooksService {
   /**
    * Save a hook configuration
    */
-  saveHook(event: string, config: Partial<HookConfig>) {
+  saveHook(event: string, config: Partial<HookScriptConfig>) {
     const existing = this.hooks.get(event) || { event, enabled: false, script: '' };
     const updated = { ...existing, ...config };
     
@@ -99,14 +99,14 @@ export class HooksService {
   /**
    * Get a hook configuration
    */
-  getHook(event: string): HookConfig | undefined {
+  getHook(event: string): HookScriptConfig | undefined {
     return this.hooks.get(event);
   }
 
   /**
    * Get all hooks
    */
-  getAllHooks(): HookConfig[] {
+  getAllHooks(): HookScriptConfig[] {
     return Array.from(this.hooks.values());
   }
 
@@ -114,8 +114,8 @@ export class HooksService {
    * Execute a hook
    */
   async executeHook(
-    event: string, 
-    data: any, 
+    event: string,
+    data: Record<string, unknown>,
     sessionId: string
   ): Promise<HookResponse | null> {
     const hook = this.hooks.get(event);
@@ -215,7 +215,7 @@ export class HooksService {
     }
     
     if (response?.action === 'modify' && response.modifications?.prompt) {
-      return response.modifications.prompt;
+      return response.modifications.prompt as string;
     }
     
     return prompt;
@@ -225,11 +225,11 @@ export class HooksService {
    * Process a tool use through hooks
    */
   async processToolUse(
-    tool: string, 
-    input: any, 
-    sessionId: string, 
+    tool: string,
+    input: Record<string, unknown>,
+    sessionId: string,
     phase: 'pre' | 'post' = 'pre'
-  ): Promise<{ allowed: boolean; message?: string; modifiedInput?: any }> {
+  ): Promise<{ allowed: boolean; message?: string; modifiedInput?: Record<string, unknown> }> {
     const event = phase === 'pre' ? 'pre_tool_use' : 'post_tool_use';
     const response = await this.executeHook(event, { tool, input }, sessionId);
     
@@ -243,7 +243,7 @@ export class HooksService {
     if (response?.action === 'modify' && response.modifications) {
       return {
         allowed: true,
-        modifiedInput: response.modifications.input || input
+        modifiedInput: (response.modifications.input as Record<string, unknown>) || input
       };
     }
     

@@ -17,15 +17,10 @@ import { MCPTab } from './MCPTab';
 import { ClaudeSelector } from './ClaudeSelector';
 import { SystemPromptSelector } from './SystemPromptSelector';
 import { invoke } from '@tauri-apps/api/core';
-import { hooksService, HookConfig } from '../../services/hooksService';
+import { hooksService, HookScriptConfig } from '../../services/hooksService';
 import { TabButton } from '../common/TabButton';
 
-// Access the electron API exposed by preload script
-declare global {
-  interface Window {
-    electronAPI?: any;
-  }
-}
+// electronAPI type is declared globally elsewhere
 
 interface SettingsModalProps {
   onClose: () => void;
@@ -774,7 +769,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
 
   // Hooks tab state
-  const [hooks, setHooks] = useState<HookConfig[]>([]);
+  const [hooks, setHooks] = useState<HookScriptConfig[]>([]);
   const [selectedHooks, setSelectedHooks] = useState<Record<string, boolean>>({});
   const [hookScripts, setHookScripts] = useState<Record<string, string>>({});
 

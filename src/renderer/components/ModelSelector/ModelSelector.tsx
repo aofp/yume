@@ -42,21 +42,6 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     onChange?.(nextModel.id);
   };
 
-  // Listen for Ctrl+O to cycle through models directly
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'o') {
-        e.preventDefault();
-        toggleModel();
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [currentValue, onChange]);
-
 
   return (
     <div className="model-selector">

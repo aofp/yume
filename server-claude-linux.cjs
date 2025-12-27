@@ -3571,14 +3571,8 @@ io.on('connection', (socket) => {
           
           // Mark session as interrupted since we killed the process
           session.wasInterrupted = true;
-          // Store the interrupted session ID separately before clearing
-          if (session.claudeSessionId) {
-            session.interruptedSessionId = session.claudeSessionId;
-            console.log(`💾 Stored interrupted session ID: ${session.interruptedSessionId}`);
-          }
-          // Clear the active session ID since the conversation was interrupted
-          session.claudeSessionId = null;
-          console.log(`🔄 Marked session ${sessionId} as interrupted and cleared claudeSessionId`);
+          // KEEP claudeSessionId so we can --resume with full context
+          console.log(`🔄 Marked session ${sessionId} as interrupted (keeping claudeSessionId: ${session.claudeSessionId} for resume)`);
           
           // Wait a bit for the process to fully terminate
           await new Promise(resolve => setTimeout(resolve, 500));
@@ -4218,66 +4212,8 @@ Format as a clear, structured summary that preserves all important context.`;
         // Don't try to recover with newlines - it doesn't work and can break things
         // Claude legitimately takes time to process complex tasks
         
-        // ONLY kill if frozen for 10+ minutes - Claude needs time for complex tasks
-        // Many operations legitimately take 20+ minutes
-        if (timeSinceLastData > 600000) { // 10 minutes
-          console.error(`💀 Stream appears dead after ${timeSinceLastData}ms, cleaning up`);
-          
-          // Kill any bash processes first
-          if (activeBashProcesses.has(sessionId)) {
-            const bashProc = activeBashProcesses.get(sessionId);
-            if (bashProc) {
-              console.log(`🔪 Killing frozen bash process for session ${sessionId}`);
-              try {
-                bashProc.kill('SIGKILL');
-              } catch (e) {
-                console.error(`Failed to kill bash process: ${e.message}`);
-              }
-              activeBashProcesses.delete(sessionId);
-            }
-          }
-          
-          // Then kill the Claude process
-          if (activeProcesses.has(sessionId)) {
-            const proc = activeProcesses.get(sessionId);
-            
-            console.log(`🔪 Force killing frozen Claude process for session ${sessionId}`);
-            // Force kill the process
-            try {
-              proc.kill('SIGKILL');
-            } catch (e) {
-              console.error(`Failed to kill Claude process: ${e.message}`);
-            }
-            activeProcesses.delete(sessionId);
-            activeProcessStartTimes.delete(sessionId);
-            
-            // Notify client of the issue
-            socket.emit(`message:${sessionId}`, {
-              type: 'system',
-              subtype: 'error',
-              content: '⚠️ Claude became unresponsive and was terminated. Please retry your request.',
-              timestamp: Date.now()
-            });
-            
-            // Mark session for automatic retry
-            if (session) {
-              session.needsRetry = true;
-              session.frozenCount = (session.frozenCount || 0) + 1;
-              console.log(`🔄 Session ${sessionId} marked for retry (frozen ${session.frozenCount} times)`);
-            }
-            
-            // Mark streaming as false for any pending assistant messages
-            if (lastAssistantMessageIds.has(sessionId)) {
-              const messageId = lastAssistantMessageIds.get(sessionId);
-              socket.emit(`update:${sessionId}`, {
-                id: messageId,
-                streaming: false
-              });
-              lastAssistantMessageIds.delete(sessionId);
-            }
-          }
-          clearInterval(streamHealthInterval);
-        }
+        // NO TIME LIMIT - Claude can think as long as it needs
+        // Extended thinking and complex tasks can take arbitrary time
       }, 5000); // Check every 5 seconds - balance between monitoring and performance
       
       // Store health check interval for cleanup
@@ -5404,31 +5340,36 @@ Format as a clear, structured summary that preserves all important context.`;
           }
         }
         
-        // ALWAYS clear streaming state on process exit - send complete message update
-        const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-        if (lastAssistantMessageId) {
-          console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on process exit`);
-          // Get the last assistant message to preserve its content
-          const session = sessions.get(sessionId);
-          const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
-          
+        // Only clear streaming state if this wasn't an interrupted process
+        // When interrupted, a new process is spawned and we don't want to clear its streaming state
+        const session = sessions.get(sessionId);
+        if (session?.wasInterrupted) {
+          console.log(`🔄 Skipping streaming=false for interrupted process (new process is running)`);
+        } else {
+          const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
+          if (lastAssistantMessageId) {
+            console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on process exit`);
+            // Get the last assistant message to preserve its content
+            const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
+
+            socket.emit(`message:${sessionId}`, {
+              type: 'assistant',
+              id: lastAssistantMessageId,
+              message: lastAssistantMsg?.message || { content: '' },
+              streaming: false,
+              timestamp: Date.now()
+            });
+            lastAssistantMessageIds.delete(sessionId);
+          }
+
+          // Always ensure streaming is marked as false for all messages
           socket.emit(`message:${sessionId}`, {
-            type: 'assistant',
-            id: lastAssistantMessageId,
-            message: lastAssistantMsg?.message || { content: '' },
+            type: 'system',
+            subtype: 'stream_end',
             streaming: false,
             timestamp: Date.now()
           });
-          lastAssistantMessageIds.delete(sessionId);
         }
-        
-        // Always ensure streaming is marked as false for all messages
-        socket.emit(`message:${sessionId}`, {
-          type: 'system',
-          subtype: 'stream_end',
-          streaming: false,
-          timestamp: Date.now()
-        });
         
         // Handle unexpected exit codes
         if (code === null || code === -2 || code === 'SIGKILL') {

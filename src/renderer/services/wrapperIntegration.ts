@@ -139,25 +139,26 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     // - cache_read_input_tokens: SIZE of cached context (SNAPSHOT, not incremental!)
     // - cache_creation_input_tokens: One-time cost when content is first cached
     
-    // Accumulate only NEW tokens
-    session.inputTokens += input;
-    session.outputTokens += output;
-    
-    // Cache creation happens once when content is cached (accumulate this)
+    // DON'T accumulate - the API gives us per-message tokens
+    // cache_read already contains the full conversation history
+    session.inputTokens = input;
+    session.outputTokens = output;
+
+    // Cache creation happens once when content is cached
     if (cacheCreation > 0) {
-      session.cacheCreationTokens += cacheCreation;
+      session.cacheCreationTokens = cacheCreation;
     }
-    
-    // Cache read is the SIZE of cached content - it's a snapshot, not incremental!
-    // This represents the conversation history that's being reused
-    session.cacheReadTokens = cacheRead; // REPLACE, don't accumulate!
-    
+
+    // Cache read is the SIZE of cached content - it's a snapshot of conversation history
+    session.cacheReadTokens = cacheRead;
+
     const prevTotal = session.totalTokens;
-    // Total context = cache + accumulated new input + accumulated new output
-    // cacheReadTokens is the SIZE of cached conversation history (snapshot)
-    // inputTokens and outputTokens are NEW tokens added (accumulated, excluding cache)
-    // CONTEXT WINDOW TOTAL = all three combined
-    session.totalTokens = session.cacheReadTokens + session.inputTokens + session.outputTokens;
+    // CORRECT FORMULA: cache_read + cache_creation + input (from API docs)
+    // cache_read = cached conversation history being reused
+    // cache_creation = new content being added to cache
+    // input = new input tokens for this message
+    // Note: output tokens don't count toward INPUT context limit
+    session.totalTokens = session.cacheReadTokens + session.cacheCreationTokens + session.inputTokens;
     session.lastUpdateTime = Date.now();
     
     // Check for auto-compaction threshold
@@ -312,12 +313,12 @@ export function mapSessionIds(tempId: string, realId: string) {
     if (tempSession) {
       const realSession = getWrapperSession(realId);
 
-      realSession.inputTokens += tempSession.inputTokens;
-      realSession.outputTokens += tempSession.outputTokens;
-      realSession.cacheCreationTokens += tempSession.cacheCreationTokens;
-      realSession.cacheReadTokens += tempSession.cacheReadTokens;
-      realSession.totalTokens = realSession.inputTokens + realSession.outputTokens +
-                               realSession.cacheCreationTokens + realSession.cacheReadTokens;
+      // Take the latest values, don't accumulate (these are snapshots)
+      realSession.inputTokens = Math.max(realSession.inputTokens, tempSession.inputTokens);
+      realSession.outputTokens = Math.max(realSession.outputTokens, tempSession.outputTokens);
+      realSession.cacheCreationTokens = Math.max(realSession.cacheCreationTokens, tempSession.cacheCreationTokens);
+      realSession.cacheReadTokens = Math.max(realSession.cacheReadTokens, tempSession.cacheReadTokens);
+      realSession.totalTokens = realSession.cacheReadTokens + realSession.cacheCreationTokens + realSession.inputTokens;
       realSession.messageCount += tempSession.messageCount;
 
       // Delete the temp session

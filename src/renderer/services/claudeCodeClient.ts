@@ -845,6 +845,11 @@ export class ClaudeCodeClient {
 
     return () => {};
   }
+
+  // Expose socket for other services (checkpointService, agentExecutionService)
+  getSocket(): Socket | null {
+    return this.socket;
+  }
 }
 
 // Singleton instance

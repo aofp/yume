@@ -41,17 +41,12 @@ const createDebouncedStorage = (): StateStorage => {
     },
   };
 };
-import { tauriClaudeClient } from '../services/tauriClaudeClient';
+// tauriClaudeClient is kept but not currently used (Socket.IO handles everything)
 import { useLicenseStore } from '../services/licenseManager';
 import { DEFAULT_MODEL_ID, MODEL_ID_MAP, resolveModelId, getModelByFamily } from '../config/models';
 
-// Use Tauri client if available, otherwise fall back to Socket.IO
-// On Windows, always use Socket.IO because Claude runs in WSL
-// On macOS, also use Socket.IO because we're using the Node.js server
-const isWindows = navigator.platform.toLowerCase().includes('win');
-const isMacOS = navigator.platform.toLowerCase().includes('mac');
-const USE_TAURI_BACKEND = false; // Always use Socket.IO for now since server handles everything
-const claudeClient = USE_TAURI_BACKEND ? tauriClaudeClient : claudeCodeClient;
+// Always use Socket.IO client since server handles everything
+const claudeClient = claudeCodeClient;
 
 // Configuration for pending session timeout
 // When a session is in 'pending' status, we wait for it to become 'active' before sending messages.

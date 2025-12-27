@@ -5,14 +5,14 @@
 
 import { isWindows } from './platformUtils';
 
-export interface HookConfig {
+export interface HookAdvancedConfig {
   enabled: boolean;
   level?: 'strict' | 'moderate' | 'permissive';
   whitelist?: string[];
   blacklist?: string[];
   patterns?: Record<string, string[]>;
   thresholds?: Record<string, number>;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export interface HookState {
@@ -36,14 +36,14 @@ export interface HookDecision {
   hook: string;
   action: 'allow' | 'block' | 'modify' | 'warn';
   reason: string;
-  context?: any;
+  context?: unknown;
   riskScore?: number;
 }
 
 class HooksConfigService {
   private static instance: HooksConfigService;
-  private config: Record<string, HookConfig> = {};
-  private state: HookState;
+  private config: Record<string, HookAdvancedConfig> = {};
+  private state!: HookState;
   private readonly STATE_KEY = 'yurucode_hooks_state';
   private readonly CONFIG_KEY = 'yurucode_hooks_config';
 
@@ -72,7 +72,7 @@ class HooksConfigService {
       ? ['C:\\Windows', 'C:\\Program Files', 'C:\\Program Files (x86)']
       : ['/System', '/etc', '/usr', '/bin', '/sbin'];
 
-    const defaults: Record<string, HookConfig> = {
+    const defaults: Record<string, HookAdvancedConfig> = {
       tool_shield: {
         enabled: true,
         level: 'strict',
@@ -229,11 +229,11 @@ class HooksConfigService {
   }
 
   // Public API
-  getConfig(hookName: string): HookConfig | undefined {
+  getConfig(hookName: string): HookAdvancedConfig | undefined {
     return this.config[hookName];
   }
 
-  updateConfig(hookName: string, config: Partial<HookConfig>) {
+  updateConfig(hookName: string, config: Partial<HookAdvancedConfig>) {
     if (!this.config[hookName]) {
       this.config[hookName] = { enabled: false };
     }
@@ -275,7 +275,7 @@ class HooksConfigService {
   }
 
   // Risk scoring system
-  calculateRiskScore(hookName: string, context: any): number {
+  calculateRiskScore(hookName: string, context: { command?: string; path?: string }): number {
     let score = 0;
     const config = this.getConfig(hookName);
     

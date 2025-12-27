@@ -1501,7 +1501,7 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
     
     #[cfg(not(target_os = "windows"))]
     {
-        let _ = window; // Suppress unused warning  
+        let _ = window; // Suppress unused warning
     }
     
     Ok(())

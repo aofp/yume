@@ -1,5 +1,7 @@
 /**
  * Session Checkpoint System
+ * DISABLED: This feature is not currently used.
+ *
  * Inspired by Claudia's checkpoint approach but adapted for localStorage
  * Maintains session-specific context that can be restored when Claude sessions fail
  */
@@ -7,12 +9,19 @@
 // Compression can be added later as an optimization
 // import { compress, decompress } from 'fflate';
 
-export interface Checkpoint {
+export interface Message {
+  type: 'user' | 'assistant' | 'system';
+  message?: {
+    content: string | Array<{ type: string; text?: string }>;
+  };
+}
+
+export interface SessionCheckpoint {
   id: string;
   sessionId: string;
   claudeSessionId?: string;
   timestamp: number;
-  messages: any[];
+  messages: Message[];
   workingDirectory: string;
   metadata: {
     model?: string;
@@ -23,7 +32,7 @@ export interface Checkpoint {
 
 export interface CheckpointStorage {
   version: string;
-  checkpoints: Record<string, Checkpoint>;
+  checkpoints: Record<string, SessionCheckpoint>;
   lastCheckpointId?: string;
 }
 
@@ -39,10 +48,10 @@ class SessionCheckpointManager {
    */
   async createCheckpoint(
     sessionId: string,
-    messages: any[],
+    messages: Message[],
     claudeSessionId?: string,
     workingDirectory?: string,
-    metadata?: any
+    metadata?: { model?: string; totalTokens?: number }
   ): Promise<string> {
     try {
       const checkpointId = `cp-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
@@ -50,7 +59,7 @@ class SessionCheckpointManager {
       // Limit messages to prevent excessive storage
       const messagesToStore = messages.slice(-this.MAX_MESSAGES_PER_CHECKPOINT);
       
-      const checkpoint: Checkpoint = {
+      const checkpoint: SessionCheckpoint = {
         id: checkpointId,
         sessionId,
         claudeSessionId,
@@ -67,10 +76,10 @@ class SessionCheckpointManager {
       // Save checkpoint
       await this.saveCheckpoint(sessionId, checkpoint);
       
-      console.log(`✅ Created checkpoint ${checkpointId} for session ${sessionId}`);
+      console.log(`[SessionCheckpoint] Created ${checkpointId} for session ${sessionId}`);
       return checkpointId;
     } catch (error) {
-      console.error('Failed to create checkpoint:', error);
+      console.error('[SessionCheckpoint] Failed to create:', error);
       throw error;
     }
   }
@@ -78,7 +87,7 @@ class SessionCheckpointManager {
   /**
    * Save checkpoint to localStorage (simplified without compression for now)
    */
-  private async saveCheckpoint(sessionId: string, checkpoint: Checkpoint): Promise<void> {
+  private async saveCheckpoint(sessionId: string, checkpoint: SessionCheckpoint): Promise<void> {
     const storageKey = `${this.STORAGE_KEY_PREFIX}${sessionId}`;
     
     try {
@@ -99,7 +108,7 @@ class SessionCheckpointManager {
       if (checkpointIds.length > this.MAX_CHECKPOINTS_PER_SESSION) {
         const toRemove = checkpointIds.slice(this.MAX_CHECKPOINTS_PER_SESSION);
         toRemove.forEach(id => delete storage.checkpoints[id]);
-        console.log(`🧹 Removed ${toRemove.length} old checkpoints`);
+        console.log(`[SessionCheckpoint] Removed ${toRemove.length} old checkpoints`);
       }
 
       // Save as JSON (compression can be added later as optimization)
@@ -112,14 +121,14 @@ class SessionCheckpointManager {
           const oldestId = checkpointIds.pop();
           if (oldestId) {
             delete storage.checkpoints[oldestId];
-            console.log(`🧹 Removed checkpoint ${oldestId} to stay under storage limit`);
+            console.log(`[SessionCheckpoint] Removed ${oldestId} to stay under storage limit`);
           }
         }
       }
 
       localStorage.setItem(storageKey, jsonStr);
     } catch (error) {
-      console.error('Failed to save checkpoint:', error);
+      console.error('[SessionCheckpoint] Failed to save:', error);
       throw error;
     }
   }
@@ -127,24 +136,24 @@ class SessionCheckpointManager {
   /**
    * Restore the latest checkpoint for a session
    */
-  async restoreLatestCheckpoint(sessionId: string): Promise<Checkpoint | null> {
+  async restoreLatestCheckpoint(sessionId: string): Promise<SessionCheckpoint | null> {
     try {
       const storage = this.getStorage(sessionId);
       if (!storage || !storage.lastCheckpointId) {
-        console.log(`No checkpoints found for session ${sessionId}`);
+        console.log(`[SessionCheckpoint] No checkpoints found for session ${sessionId}`);
         return null;
       }
 
       const checkpoint = storage.checkpoints[storage.lastCheckpointId];
       if (!checkpoint) {
-        console.log(`Last checkpoint ${storage.lastCheckpointId} not found`);
+        console.log(`[SessionCheckpoint] Last checkpoint ${storage.lastCheckpointId} not found`);
         return null;
       }
 
-      console.log(`✅ Restored checkpoint ${checkpoint.id} for session ${sessionId}`);
+      console.log(`[SessionCheckpoint] Restored ${checkpoint.id} for session ${sessionId}`);
       return checkpoint;
     } catch (error) {
-      console.error('Failed to restore checkpoint:', error);
+      console.error('[SessionCheckpoint] Failed to restore:', error);
       return null;
     }
   }
@@ -152,7 +161,7 @@ class SessionCheckpointManager {
   /**
    * Get all checkpoints for a session
    */
-  getSessionCheckpoints(sessionId: string): Checkpoint[] {
+  getSessionCheckpoints(sessionId: string): SessionCheckpoint[] {
     const storage = this.getStorage(sessionId);
     if (!storage) return [];
     
@@ -166,7 +175,7 @@ class SessionCheckpointManager {
   clearSessionCheckpoints(sessionId: string): void {
     const storageKey = `${this.STORAGE_KEY_PREFIX}${sessionId}`;
     localStorage.removeItem(storageKey);
-    console.log(`🧹 Cleared all checkpoints for session ${sessionId}`);
+    console.log(`[SessionCheckpoint] Cleared all checkpoints for session ${sessionId}`);
   }
 
   /**
@@ -181,7 +190,7 @@ class SessionCheckpointManager {
     try {
       return JSON.parse(data);
     } catch (error) {
-      console.error('Failed to parse checkpoint storage:', error);
+      console.error('[SessionCheckpoint] Failed to parse storage:', error);
       return null;
     }
   }
@@ -192,7 +201,7 @@ class SessionCheckpointManager {
   /**
    * Extract last user prompt from messages
    */
-  private extractLastUserPrompt(messages: any[]): string {
+  private extractLastUserPrompt(messages: Message[]): string {
     const lastUserMessage = messages
       .filter(m => m.type === 'user')
       .pop();
@@ -263,7 +272,7 @@ class SessionCheckpointManager {
       }
     }
     
-    console.log(`🧹 Cleaned up ${removedCount} old checkpoints`);
+    console.log(`[SessionCheckpoint] Cleaned up ${removedCount} old checkpoints`);
   }
 }
 

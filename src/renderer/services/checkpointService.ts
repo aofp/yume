@@ -1,6 +1,12 @@
 import { claudeCodeClient } from './claudeCodeClient';
 
-export interface Checkpoint {
+export interface FileSnapshot {
+  path: string;
+  content: string;
+  timestamp: number;
+}
+
+export interface TimelineCheckpoint {
   id: string;
   sessionId: string;
   projectPath: string;
@@ -14,70 +20,87 @@ export interface Checkpoint {
     model: string;
     messageIds: string[];
   };
-  fileSnapshots: any[]; // TODO: Add proper file snapshot types
+  fileSnapshots: FileSnapshot[];
+}
+
+export interface TimelineBranch {
+  id: string;
+  name: string;
+  parentCheckpointId: string;
+  createdAt: string;
 }
 
 export interface Timeline {
   sessionId: string;
   rootCheckpoint: string;
   currentCheckpoint: string;
-  checkpoints: Map<string, Checkpoint>;
-  branches: any[]; // TODO: Add branch types
+  checkpoints: Map<string, TimelineCheckpoint>;
+  branches: TimelineBranch[];
 }
 
 class CheckpointService {
-  private socket = claudeCodeClient.socket;
-  private checkpointsCache = new Map<string, Checkpoint[]>();
+  private checkpointsCache = new Map<string, TimelineCheckpoint[]>();
   private timelinesCache = new Map<string, Timeline>();
+
+  private get socket() {
+    return claudeCodeClient.getSocket();
+  }
 
   constructor() {
     this.setupListeners();
   }
 
   private setupListeners() {
-    this.socket.on('checkpoint-created', (data: any) => {
-      console.log('✅ Checkpoint created:', data);
+    // DISABLED: Timeline/checkpoint feature is not used (see ClaudeChat.tsx line 3684)
+    // Socket listeners are not needed since TimelineNavigator is commented out
+    return;
+
+    const socket = this.socket;
+    if (!socket) return;
+
+    socket.on('checkpoint-created', (data: { sessionId: string; checkpoint: TimelineCheckpoint }) => {
+      console.log('[Checkpoint] Created:', data);
       const { sessionId, checkpoint } = data;
-      
+
       // Update cache
       if (!this.checkpointsCache.has(sessionId)) {
         this.checkpointsCache.set(sessionId, []);
       }
       this.checkpointsCache.get(sessionId)?.push(checkpoint);
-      
+
       // Notify UI components
-      window.dispatchEvent(new CustomEvent('checkpoint-created', { 
-        detail: { sessionId, checkpoint } 
+      window.dispatchEvent(new CustomEvent('checkpoint-created', {
+        detail: { sessionId, checkpoint }
       }));
     });
 
-    this.socket.on('checkpoint-restored', (data: any) => {
-      console.log('✅ Checkpoint restored:', data);
+    socket.on('checkpoint-restored', (data: { sessionId: string; checkpointId: string; messages: unknown[] }) => {
+      console.log('[Checkpoint] Restored:', data);
       const { sessionId, checkpointId, messages } = data;
-      
+
       // Update timeline cache
       const timeline = this.timelinesCache.get(sessionId);
       if (timeline) {
         timeline.currentCheckpoint = checkpointId;
       }
-      
+
       // Notify UI components
-      window.dispatchEvent(new CustomEvent('checkpoint-restored', { 
-        detail: { sessionId, checkpointId, messages } 
+      window.dispatchEvent(new CustomEvent('checkpoint-restored', {
+        detail: { sessionId, checkpointId, messages }
       }));
     });
 
-    this.socket.on('checkpoint-error', (data: any) => {
-      console.error('❌ Checkpoint error:', data);
-      window.dispatchEvent(new CustomEvent('checkpoint-error', { 
-        detail: data 
+    socket.on('checkpoint-error', (data: { sessionId?: string; error: string }) => {
+      console.error('[Checkpoint] Error:', data);
+      window.dispatchEvent(new CustomEvent('checkpoint-error', {
+        detail: data
       }));
     });
 
-    this.socket.on('timeline-data', (data: any) => {
-      console.log('📊 Timeline data received:', data);
+    socket.on('timeline-data', (data: { sessionId: string; timeline?: Timeline; checkpoints?: TimelineCheckpoint[] }) => {
+      console.log('[Checkpoint] Timeline data received:', data);
       const { sessionId, timeline, checkpoints } = data;
-      
+
       // Update caches
       if (timeline) {
         this.timelinesCache.set(sessionId, timeline);
@@ -85,50 +108,50 @@ class CheckpointService {
       if (checkpoints) {
         this.checkpointsCache.set(sessionId, checkpoints);
       }
-      
+
       // Notify UI components
-      window.dispatchEvent(new CustomEvent('timeline-updated', { 
-        detail: { sessionId, timeline, checkpoints } 
+      window.dispatchEvent(new CustomEvent('timeline-updated', {
+        detail: { sessionId, timeline, checkpoints }
       }));
     });
   }
 
   // Create a new checkpoint
-  createCheckpoint(sessionId: string, description: string, trigger: 'manual' | 'auto' | 'fork' = 'manual'): Promise<Checkpoint> {
+  createCheckpoint(sessionId: string, description: string, trigger: 'manual' | 'auto' | 'fork' = 'manual'): Promise<TimelineCheckpoint> {
     return new Promise((resolve, reject) => {
-      console.log(`📸 Creating checkpoint for session ${sessionId}: ${description}`);
-      
-      const handleCreated = (event: any) => {
+      console.log(`[Checkpoint] Creating for session ${sessionId}: ${description}`);
+
+      const handleCreated = (event: CustomEvent<{ sessionId: string; checkpoint: TimelineCheckpoint }>) => {
         const detail = event.detail;
         if (detail.sessionId === sessionId) {
-          window.removeEventListener('checkpoint-created', handleCreated);
-          window.removeEventListener('checkpoint-error', handleError);
+          window.removeEventListener('checkpoint-created', handleCreated as EventListener);
+          window.removeEventListener('checkpoint-error', handleError as EventListener);
           resolve(detail.checkpoint);
         }
       };
-      
-      const handleError = (event: any) => {
+
+      const handleError = (event: CustomEvent<{ sessionId?: string; error: string }>) => {
         const detail = event.detail;
         if (detail.sessionId === sessionId) {
-          window.removeEventListener('checkpoint-created', handleCreated);
-          window.removeEventListener('checkpoint-error', handleError);
+          window.removeEventListener('checkpoint-created', handleCreated as EventListener);
+          window.removeEventListener('checkpoint-error', handleError as EventListener);
           reject(new Error(detail.error));
         }
       };
-      
-      window.addEventListener('checkpoint-created', handleCreated);
-      window.addEventListener('checkpoint-error', handleError);
-      
-      this.socket.emit('create-checkpoint', {
+
+      window.addEventListener('checkpoint-created', handleCreated as EventListener);
+      window.addEventListener('checkpoint-error', handleError as EventListener);
+
+      this.socket?.emit('create-checkpoint', {
         sessionId,
         description,
         trigger,
       });
-      
+
       // Timeout after 10 seconds
       setTimeout(() => {
-        window.removeEventListener('checkpoint-created', handleCreated);
-        window.removeEventListener('checkpoint-error', handleError);
+        window.removeEventListener('checkpoint-created', handleCreated as EventListener);
+        window.removeEventListener('checkpoint-error', handleError as EventListener);
         reject(new Error('Checkpoint creation timeout'));
       }, 10000);
     });
@@ -137,77 +160,77 @@ class CheckpointService {
   // Restore to a checkpoint
   restoreCheckpoint(sessionId: string, checkpointId: string): Promise<void> {
     return new Promise((resolve, reject) => {
-      console.log(`⏮️ Restoring checkpoint ${checkpointId} for session ${sessionId}`);
-      
-      const handleRestored = (event: any) => {
+      console.log(`[Checkpoint] Restoring ${checkpointId} for session ${sessionId}`);
+
+      const handleRestored = (event: CustomEvent<{ sessionId: string; checkpointId: string; messages: unknown[] }>) => {
         const detail = event.detail;
         if (detail.sessionId === sessionId && detail.checkpointId === checkpointId) {
-          window.removeEventListener('checkpoint-restored', handleRestored);
-          window.removeEventListener('checkpoint-error', handleError);
+          window.removeEventListener('checkpoint-restored', handleRestored as EventListener);
+          window.removeEventListener('checkpoint-error', handleError as EventListener);
           resolve();
         }
       };
-      
-      const handleError = (event: any) => {
+
+      const handleError = (event: CustomEvent<{ sessionId?: string; error: string }>) => {
         const detail = event.detail;
         if (detail.sessionId === sessionId) {
-          window.removeEventListener('checkpoint-restored', handleRestored);
-          window.removeEventListener('checkpoint-error', handleError);
+          window.removeEventListener('checkpoint-restored', handleRestored as EventListener);
+          window.removeEventListener('checkpoint-error', handleError as EventListener);
           reject(new Error(detail.error));
         }
       };
-      
-      window.addEventListener('checkpoint-restored', handleRestored);
-      window.addEventListener('checkpoint-error', handleError);
-      
-      this.socket.emit('restore-checkpoint', {
+
+      window.addEventListener('checkpoint-restored', handleRestored as EventListener);
+      window.addEventListener('checkpoint-error', handleError as EventListener);
+
+      this.socket?.emit('restore-checkpoint', {
         sessionId,
         checkpointId,
       });
-      
+
       // Timeout after 10 seconds
       setTimeout(() => {
-        window.removeEventListener('checkpoint-restored', handleRestored);
-        window.removeEventListener('checkpoint-error', handleError);
+        window.removeEventListener('checkpoint-restored', handleRestored as EventListener);
+        window.removeEventListener('checkpoint-error', handleError as EventListener);
         reject(new Error('Checkpoint restoration timeout'));
       }, 10000);
     });
   }
 
   // Get timeline for a session
-  getTimeline(sessionId: string): Promise<{ timeline: Timeline | null; checkpoints: Checkpoint[] }> {
+  getTimeline(sessionId: string): Promise<{ timeline: Timeline | null; checkpoints: TimelineCheckpoint[] }> {
     return new Promise((resolve) => {
-      console.log(`📊 Getting timeline for session ${sessionId}`);
-      
+      console.log(`[Checkpoint] Getting timeline for session ${sessionId}`);
+
       // Check cache first
       const cachedTimeline = this.timelinesCache.get(sessionId);
       const cachedCheckpoints = this.checkpointsCache.get(sessionId) || [];
-      
+
       if (cachedTimeline || cachedCheckpoints.length > 0) {
         resolve({
           timeline: cachedTimeline || null,
           checkpoints: cachedCheckpoints,
         });
       }
-      
-      const handleTimeline = (event: any) => {
+
+      const handleTimeline = (event: CustomEvent<{ sessionId: string; timeline?: Timeline; checkpoints?: TimelineCheckpoint[] }>) => {
         const detail = event.detail;
         if (detail.sessionId === sessionId) {
-          window.removeEventListener('timeline-updated', handleTimeline);
+          window.removeEventListener('timeline-updated', handleTimeline as EventListener);
           resolve({
-            timeline: detail.timeline,
-            checkpoints: detail.checkpoints,
+            timeline: detail.timeline || null,
+            checkpoints: detail.checkpoints || [],
           });
         }
       };
-      
-      window.addEventListener('timeline-updated', handleTimeline);
-      
-      this.socket.emit('get-timeline', { sessionId });
-      
+
+      window.addEventListener('timeline-updated', handleTimeline as EventListener);
+
+      this.socket?.emit('get-timeline', { sessionId });
+
       // Return cached data after 2 seconds if no response
       setTimeout(() => {
-        window.removeEventListener('timeline-updated', handleTimeline);
+        window.removeEventListener('timeline-updated', handleTimeline as EventListener);
         resolve({
           timeline: cachedTimeline || null,
           checkpoints: cachedCheckpoints,
@@ -217,7 +240,7 @@ class CheckpointService {
   }
 
   // Fork from a checkpoint
-  async forkCheckpoint(sessionId: string, checkpointId: string, description: string): Promise<Checkpoint> {
+  async forkCheckpoint(sessionId: string, checkpointId: string, description: string): Promise<TimelineCheckpoint> {
     // First restore to the checkpoint
     await this.restoreCheckpoint(sessionId, checkpointId);
     
@@ -226,7 +249,7 @@ class CheckpointService {
   }
 
   // Get checkpoints for a session
-  getCheckpoints(sessionId: string): Checkpoint[] {
+  getCheckpoints(sessionId: string): TimelineCheckpoint[] {
     return this.checkpointsCache.get(sessionId) || [];
   }
 

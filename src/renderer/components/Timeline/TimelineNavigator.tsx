@@ -9,7 +9,7 @@ import {
   IconChevronRight,
   IconX
 } from '@tabler/icons-react';
-import { checkpointService, Checkpoint, Timeline } from '../../services/checkpointService';
+import { checkpointService, TimelineCheckpoint, Timeline } from '../../services/checkpointService';
 import { FEATURE_FLAGS } from '../../config/features';
 import './TimelineNavigator.css';
 
@@ -27,7 +27,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
   onClose,
 }) => {
   const [timeline, setTimeline] = useState<Timeline | null>(null);
-  const [checkpoints, setCheckpoints] = useState<Checkpoint[]>([]);
+  const [checkpoints, setCheckpoints] = useState<TimelineCheckpoint[]>([]);
   const [selectedCheckpoint, setSelectedCheckpoint] = useState<string | null>(null);
   const [hoveredCheckpoint, setHoveredCheckpoint] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -137,7 +137,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
     }
   };
   
-  const renderCheckpointNode = (checkpoint: Checkpoint, index: number) => {
+  const renderCheckpointNode = (checkpoint: TimelineCheckpoint, index: number) => {
     const isSelected = selectedCheckpoint === checkpoint.id;
     const isHovered = hoveredCheckpoint === checkpoint.id;
     const isCurrent = timeline?.currentCheckpoint === checkpoint.id;
