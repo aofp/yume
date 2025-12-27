@@ -1617,27 +1617,27 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         console.log('🗜️ [COMPACT RECOVERY] New conversation total:', analytics.tokens.total);
                         console.log('🗜️ [COMPACT RECOVERY] New cache size:', analytics.tokens.cacheSize);
                       } else {
-                        // CRITICAL FIX: Properly handle cache vs new tokens
-                        // cache_read is the TOTAL conversation history (a snapshot, not incremental)
-                        // input_tokens and output_tokens are NEW tokens for this turn
+                        // CORRECT CALCULATION: Context window is a SNAPSHOT, not accumulation
+                        // cache_read_input_tokens = full conversation history already cached
+                        // input_tokens = new input this turn (not in cache yet)
+                        // output_tokens = new output this turn
+                        // Total context = cache + new input + new output
                         const previousTotal = analytics.tokens.total;
 
-                        // Accumulate NEW tokens added this turn
-                        analytics.tokens.input += regularInputTokens; // New input
-                        analytics.tokens.output += outputTokens; // New output
-                        analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens; // Track for billing (NOT context)
+                        // Track accumulated input/output for analytics (separate from context calculation)
+                        analytics.tokens.input += regularInputTokens;
+                        analytics.tokens.output += outputTokens;
+                        analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens;
 
-                        // CONTEXT WINDOW = accumulated input + accumulated output
-                        // cache_creation is a BILLING metric for tokens written to cache, NOT additional context!
-                        // The cached content is already counted in input_tokens when it was first sent
-                        analytics.tokens.total += (regularInputTokens + outputTokens);
+                        // CONTEXT WINDOW = cache (history) + new input + new output
+                        // This is a SNAPSHOT of current context, NOT an accumulation!
+                        analytics.tokens.total = cacheReadTokens + regularInputTokens + outputTokens;
 
-                        // Cache size is a snapshot of conversation history (not part of accumulation)
+                        // Cache size is a snapshot of conversation history
                         analytics.tokens.cacheSize = cacheReadTokens;
-                        
-                        console.log(`📊 [TOKEN UPDATE] Context usage:`);
-                        console.log(`   Conversation history (cache): ${cacheReadTokens} tokens`);
-                        console.log(`   Cache creation: ${cacheCreationTokens} tokens`);
+
+                        console.log(`📊 [TOKEN UPDATE] Context usage (SNAPSHOT):`);
+                        console.log(`   Conversation history (cache_read): ${cacheReadTokens} tokens`);
                         console.log(`   New input this turn: ${regularInputTokens} tokens`);
                         console.log(`   New output this turn: ${outputTokens} tokens`);
                         console.log(`   TOTAL CONTEXT IN USE: ${analytics.tokens.total} / 200000 (${(analytics.tokens.total / 200000 * 100).toFixed(2)}%)`);
@@ -2622,10 +2622,11 @@ ${content}`;
           };
         });
         
-        // Handle streaming state
-        if (message.type === 'assistant') {
-          sessions = sessions.map(s => 
-            s.id === sessionId ? { ...s, streaming: message.streaming || false } : s
+        // Handle streaming state - only update if explicitly defined
+        // Don't clear streaming on undefined (could be partial message)
+        if (message.type === 'assistant' && message.streaming !== undefined) {
+          sessions = sessions.map(s =>
+            s.id === sessionId ? { ...s, streaming: message.streaming } : s
           );
         } else if (message.type === 'result' || 
                    (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error'))) {
@@ -2886,7 +2887,8 @@ ${content}`;
             // Extract title from first assistant message if not already set
             sessions = sessions.map(s => {
               if (s.id === sessionId) {
-                let updates: any = { streaming: message.streaming || false };
+                // Only update streaming if explicitly defined (don't clear on undefined)
+                let updates: any = message.streaming !== undefined ? { streaming: message.streaming } : {};
                 
                 // Extract title from first assistant message
                 if (!s.claudeTitle && message.message?.content) {

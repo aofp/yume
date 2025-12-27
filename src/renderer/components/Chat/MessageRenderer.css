@@ -2067,7 +2067,7 @@ code *::-moz-selection {
   background: rgba(var(--accent-rgb), 0.05);
 }
 
-/* Thin scrollbars (3px) for all elements in chat message area */
+/* 3px minimal scrollbars with 50% opacity foreground and background */
 .table-wrapper::-webkit-scrollbar,
 .messages-virtualized::-webkit-scrollbar,
 .markdown-content::-webkit-scrollbar,
@@ -2102,7 +2102,7 @@ pre::-webkit-scrollbar {
 .message-bubble::-webkit-scrollbar-track,
 .message::-webkit-scrollbar-track,
 pre::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(var(--foreground-rgb), 0.05);
 }
 
 .table-wrapper::-webkit-scrollbar-thumb,
@@ -2120,7 +2120,7 @@ pre::-webkit-scrollbar-track {
 .message-bubble::-webkit-scrollbar-thumb,
 .message::-webkit-scrollbar-thumb,
 pre::-webkit-scrollbar-thumb {
-  background: var(--fg-10);
+  background: rgba(var(--foreground-rgb), 0.5);
   border-radius: 4px;
 }
 
@@ -2139,7 +2139,7 @@ pre::-webkit-scrollbar-thumb {
 .message-bubble::-webkit-scrollbar-thumb:hover,
 .message::-webkit-scrollbar-thumb:hover,
 pre::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-20);
+  background: rgba(var(--foreground-rgb), 0.7);
 }
 
 /* Tool output font size override - 9px for all tool results, 8px for line numbers */

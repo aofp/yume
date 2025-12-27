@@ -179,8 +179,8 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     isAtBottomRef.current = atBottom;
 
     // Mark as user scroll if scrolling UP at all and we're not at the bottom
-    // Any upward scroll should unlock auto-scroll immediately
-    if (scrollingUp && !atBottom && scrollDelta > 0) {
+    // Even 1px upward scroll should stop auto-scroll immediately
+    if (scrollingUp && !atBottom) {
       userHasScrolledRef.current = true;
       userScrolledAtRef.current = Date.now();
       onScrollStateChange?.(false);

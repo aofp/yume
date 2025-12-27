@@ -52,7 +52,7 @@ interface LicenseStore extends LicenseState {
 
 // trial features - uses centralized model config
 const TRIAL_FEATURES: LicenseFeatures = {
-  maxTabs: 2,
+  maxTabs: 3,
   allowedModels: [getModelByFamily('sonnet')?.id].filter(Boolean) as string[],
   maxTokensPerSession: 100000,
   watermarkEnabled: true,

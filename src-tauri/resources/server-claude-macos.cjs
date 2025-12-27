@@ -80,6 +80,41 @@ function getWrapperSession(sessionId) {
   return wrapperState.sessions.get(sessionId);
 }
 
+// Calculate accumulated context tokens from existing messages
+// This reads the LAST usage data which contains the total context at that point
+function calculateAccumulatedTokensFromMessages(messages) {
+  if (!messages || messages.length === 0) return 0;
+
+  // Find the last message with usage data - this contains the total context
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    const usage = msg.usage || msg.message?.usage;
+    if (usage) {
+      // The cache_read represents all previously cached content
+      // cache_creation is new content being added
+      // input/output are current turn
+      const cacheRead = usage.cache_read_input_tokens || 0;
+      const cacheCreation = usage.cache_creation_input_tokens || 0;
+      const input = usage.input_tokens || 0;
+      const output = usage.output_tokens || 0;
+      const total = cacheRead + cacheCreation + input + output;
+      console.log(`📊 [WRAPPER] Calculated accumulated tokens from history: ${total} (cache_read=${cacheRead}, cache_creation=${cacheCreation}, input=${input}, output=${output})`);
+      return total;
+    }
+  }
+  return 0;
+}
+
+// Initialize wrapper session with existing tokens (for resumed sessions)
+function initWrapperSessionWithTokens(sessionId, initialTokens) {
+  const session = getWrapperSession(sessionId);
+  if (initialTokens > 0 && session.totalTokens === 0) {
+    session.totalTokens = initialTokens;
+    console.log(`📊 [WRAPPER] Initialized session ${sessionId} with ${initialTokens} accumulated tokens from history`);
+  }
+  return session;
+}
+
 function processWrapperLine(line, sessionId) {
   if (!line || !line.trim()) return line;
   
@@ -105,15 +140,21 @@ function processWrapperLine(line, sessionId) {
     }
     
     // Update tokens if usage present
-    if (data.usage) {
-      const input = data.usage.input_tokens || 0;
-      const output = data.usage.output_tokens || 0;
-      const cacheCreation = data.usage.cache_creation_input_tokens || 0;
-      const cacheRead = data.usage.cache_read_input_tokens || 0;
+    // CRITICAL: Skip 'result' messages - they contain CUMULATIVE session totals, not per-turn usage!
+    // The result message sums up all cache_read_input_tokens across ALL turns, which corrupts
+    // our context tracking. Only assistant messages have accurate per-turn context size.
+    // NOTE: Usage can be at data.usage OR data.message.usage depending on message type
+    const usage = data.usage || data.message?.usage;
+    if (usage && data.type !== 'result') {
+      const input = usage.input_tokens || 0;
+      const output = usage.output_tokens || 0;
+      const cacheCreation = usage.cache_creation_input_tokens || 0;
+      const cacheRead = usage.cache_read_input_tokens || 0;
 
       // IMPORTANT: Claude API returns TOTAL context window usage, not deltas!
-      // We should SET these values, not accumulate them.
-      // The input_tokens value already includes all previous context.
+      // However, when Anthropic's cache expires, cache_read becomes 0 even though
+      // the conversation history still exists. We track the max seen to prevent
+      // the counter from going down when cache expires.
       const prevTotal = session.totalTokens;
 
       // Set current values (not accumulate)
@@ -123,10 +164,14 @@ function processWrapperLine(line, sessionId) {
       session.cacheReadTokens = cacheRead;
 
       // Total context = all tokens in the context window
-      // cache_read = previous conversation (cached)
+      // cache_read = previous conversation (cached by Anthropic)
       // cache_creation = new content being cached
       // input + output = current turn
-      session.totalTokens = cacheRead + cacheCreation + input + output;
+      const reportedTotal = cacheRead + cacheCreation + input + output;
+
+      // Keep the higher value - prevents counter from resetting when cache expires
+      // The actual conversation history is still there even if cache_read is 0
+      session.totalTokens = Math.max(session.totalTokens, reportedTotal);
 
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;
@@ -2491,6 +2536,12 @@ io.on('connection', (socket) => {
         
         existingMessages = data.messages || [];
         console.log(`📝 Loaded ${existingMessages.length} existing messages`);
+
+        // Calculate accumulated tokens from existing messages for wrapper state
+        const accumulatedTokens = calculateAccumulatedTokensFromMessages(existingMessages);
+        if (accumulatedTokens > 0) {
+          initWrapperSessionWithTokens(sessionId, accumulatedTokens);
+        }
       } else {
         // Creating a brand new session
         sessionId = `session-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
@@ -3292,17 +3343,13 @@ io.on('connection', (socket) => {
             const isNewClaudeSession = previousClaudeSessionId && previousClaudeSessionId !== jsonData.session_id;
 
             if (isNewClaudeSession) {
-              // New Claude session detected - reset wrapper token counters
-              // Each Claude session has its own 200k context window
+              // New Claude session detected - but DON'T reset tokens!
+              // When resume fails or session changes, the conversation history is still
+              // sent to claude (that's why cache_read is high). The context continues to accumulate.
+              // Only reset on explicit /compact command.
               const wrapperSession = getWrapperSession(sessionId);
-              const oldTokens = wrapperSession.totalTokens;
-              wrapperSession.totalTokens = 0;
-              wrapperSession.inputTokens = 0;
-              wrapperSession.outputTokens = 0;
-              wrapperSession.cacheCreationTokens = 0;
-              wrapperSession.cacheReadTokens = 0;
-              console.log(`🔄 [${sessionId}] NEW Claude session detected (${previousClaudeSessionId} → ${jsonData.session_id})`);
-              console.log(`🔄 [${sessionId}] Reset wrapper tokens: ${oldTokens} → 0 (each session has independent 200k limit)`);
+              console.log(`🔄 [${sessionId}] Claude session ID changed (${previousClaudeSessionId} → ${jsonData.session_id})`);
+              console.log(`🔄 [${sessionId}] Preserving accumulated tokens: ${wrapperSession.totalTokens} (history still sent to claude)`);
             }
 
             session.claudeSessionId = jsonData.session_id;
@@ -3794,11 +3841,12 @@ io.on('connection', (socket) => {
               const output = jsonData.usage.output_tokens || 0;
               const cacheCreation = jsonData.usage.cache_creation_input_tokens || 0;
               const cacheRead = jsonData.usage.cache_read_input_tokens || 0;
-              // Total context = everything in the context window
-              // cache_read = previous conversation (already in context)
-              // cache_creation = new content being cached this turn
-              // input + output = current turn tokens
-              const totalContext = cacheRead + cacheCreation + input + output;
+
+              // Get tracked total from wrapper - this persists across cache expiry
+              const wrapperSessionForLog = getWrapperSession(sessionId);
+              const trackedTotal = wrapperSessionForLog.totalTokens;
+              // Also calculate API-reported total for comparison
+              const apiReportedTotal = cacheRead + cacheCreation + input + output;
 
               console.log(`\n📊 TOKEN USAGE BREAKDOWN:`);
               console.log(`   ┌─────────────────┬──────────┬──────────────┬────────────┐`);
@@ -3811,8 +3859,8 @@ io.on('connection', (socket) => {
               console.log(`   ├─────────────────┼──────────┼──────────────┼────────────┤`);
               console.log(`   │ Subtotal        │ ${String(input + output).padEnd(8)} │ ${String(cacheRead).padEnd(12)} │ ${String(cacheCreation).padEnd(10)} │`);
               console.log(`   └─────────────────┴──────────┴──────────────┴────────────┘`);
-              console.log(`   TOTAL CONTEXT: ${totalContext} / 200000 (${(totalContext/2000).toFixed(1)}%)`);
-              console.log(`   Note: All tokens (cached + new) count toward the 200k context window`);
+              console.log(`   API REPORTED: ${apiReportedTotal} | TRACKED TOTAL: ${trackedTotal} / 200000 (${(trackedTotal/2000).toFixed(1)}%)`);
+              console.log(`   Note: Tracked total persists even when Anthropic's cache expires`);
             }
             
             // If we have a last assistant message, send an update to mark it as done streaming
@@ -3850,15 +3898,18 @@ io.on('connection', (socket) => {
             if (jsonData.usage) {
               // Include usage directly for Windows compatibility
               resultMessage.usage = jsonData.usage;
-              
+
+              // Get wrapper session to get the accurate accumulated token count
+              const wrapperSession = getWrapperSession(sessionId);
+
               // Also add wrapper tokens for enhanced analytics
-              // FIX: Only NEW tokens count - cache reads are reused and don't consume context
+              // Use the tracked totalTokens which persists even when Anthropic cache expires
               resultMessage.wrapper = {
                 tokens: {
                   input: jsonData.usage.input_tokens || 0,
                   output: jsonData.usage.output_tokens || 0,
-                  total: (jsonData.usage.input_tokens || 0) + (jsonData.usage.output_tokens || 0) + (jsonData.usage.cache_creation_input_tokens || 0),
-                  // Removed cache_read_input_tokens - they don't count!
+                  // Use accumulated total from wrapper state - this persists across cache expiry
+                  total: wrapperSession.totalTokens,
                   cache_read: jsonData.usage.cache_read_input_tokens || 0,
                   cache_creation: jsonData.usage.cache_creation_input_tokens || 0
                 }
@@ -3879,13 +3930,12 @@ io.on('connection', (socket) => {
             console.log(`   - Model in result message: ${resultMessage.model}`);
             console.log(`   - Session ID in result message: ${resultMessage.session_id || '(cleared after compact)'}`);
             if (resultMessage.usage) {
-              console.log(`   - Usage breakdown:`);
-              console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0}`);
-              console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0}`);
-              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0}`);
-              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0}`);
-              console.log(`     • TOTAL CONTEXT USED: ${(resultMessage.usage.input_tokens || 0) + (resultMessage.usage.output_tokens || 0) + (resultMessage.usage.cache_creation_input_tokens || 0) + (resultMessage.usage.cache_read_input_tokens || 0)}`);
-              console.log(`     • Note: ALL tokens (including cached) count towards 200k limit`);
+              console.log(`   - Usage breakdown (CUMULATIVE for session - NOT current context size):`);
+              console.log(`     • input_tokens: ${resultMessage.usage.input_tokens || 0} (cumulative)`);
+              console.log(`     • output_tokens: ${resultMessage.usage.output_tokens || 0} (cumulative)`);
+              console.log(`     • cache_creation: ${resultMessage.usage.cache_creation_input_tokens || 0} (cumulative)`);
+              console.log(`     • cache_read: ${resultMessage.usage.cache_read_input_tokens || 0} (cumulative sum across turns)`);
+              console.log(`     • ACTUAL CURRENT CONTEXT: ${resultMessage.wrapper?.tokens?.total || 0} (from last assistant message)`);
             }
             
             // Debug log the full resultMessage before emitting

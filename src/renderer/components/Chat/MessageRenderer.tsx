@@ -730,9 +730,6 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             <div key={idx} className={`thinking-block ${isStreaming ? 'streaming' : ''}`}>
               <div className="thinking-header">
                 <IconDots size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
-                <span className="thinking-stats">
-                  {lineCount} {lineCount === 1 ? 'line' : 'lines'}, {charCount} chars
-                </span>
               </div>
               <div className="thinking-content">
                 <ReactMarkdown

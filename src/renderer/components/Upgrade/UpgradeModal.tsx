@@ -42,7 +42,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
         <div className="upgrade-content">
           {reason === 'tabLimit' && (
             <div className="upgrade-reason">
-              <p>trial: 2 tabs max</p>
+              <p>trial: 3 tabs max</p>
             </div>
           )}
 

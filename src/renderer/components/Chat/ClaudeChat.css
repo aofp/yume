@@ -1026,22 +1026,22 @@ textarea.context-full {
   to { opacity: 1; }
 }
 
-/* Scrollbar styling - thin, minimal */
+/* Scrollbar styling - 3px minimal with 50% opacity and background */
 .chat-messages::-webkit-scrollbar {
   width: 3px;
 }
 
 .chat-messages::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(var(--foreground-rgb), 0.05);
 }
 
 .chat-messages::-webkit-scrollbar-thumb {
-  background: var(--fg-10);
+  background: rgba(var(--foreground-rgb), 0.5);
   border-radius: 4px;
 }
 
 .chat-messages::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-20);
+  background: rgba(var(--foreground-rgb), 0.7);
 }
 
 /* Image attachments */
@@ -2223,16 +2223,16 @@ textarea.context-full {
 }
 
 .pending-followup-content::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(var(--foreground-rgb), 0.05);
 }
 
 .pending-followup-content::-webkit-scrollbar-thumb {
-  background: var(--fg-10);
+  background: rgba(var(--foreground-rgb), 0.5);
   border-radius: 4px;
 }
 
 .pending-followup-content::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-20);
+  background: rgba(var(--foreground-rgb), 0.7);
 }
 
 .pending-followup-attachments {
@@ -2278,7 +2278,7 @@ textarea.context-full {
 
 .messages-virtualized {
   scrollbar-width: thin;
-  scrollbar-color: var(--fg-10) transparent;
+  scrollbar-color: rgba(var(--foreground-rgb), 0.5) transparent;
   padding-right: 0;
   padding-top: 7px;
   /* prevent layout thrashing from particles/animations outside */
@@ -2291,20 +2291,20 @@ textarea.context-full {
 }
 
 .messages-virtualized::-webkit-scrollbar {
-  width: 3px; /* Reduced from 8px to match macOS thin scrollbars */
+  width: 3px;
 }
 
 .messages-virtualized::-webkit-scrollbar-track {
-  background: transparent;
+  background: rgba(var(--foreground-rgb), 0.05);
 }
 
 .messages-virtualized::-webkit-scrollbar-thumb {
-  background: var(--fg-10);
+  background: rgba(var(--foreground-rgb), 0.5);
   border-radius: 4px;
 }
 
 .messages-virtualized::-webkit-scrollbar-thumb:hover {
-  background: var(--fg-20);
+  background: rgba(var(--foreground-rgb), 0.7);
 }
 
 /* Timeline button */
