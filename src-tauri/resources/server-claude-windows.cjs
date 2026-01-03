@@ -1061,14 +1061,38 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     ];
     
     console.log(`🏷️ Title prompt: "${titlePrompt}"`);
-    
+
     // Ensure Node.js is in PATH for Claude CLI
     const enhancedEnv = { ...process.env };
-    const nodeBinDir = '/opt/homebrew/bin';
-    if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-      enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+
+    // CRITICAL FIX: On Windows native mode, override SHELL to use PowerShell
+    // This prevents Claude CLI's Bash tool from using /usr/bin/bash (from Git Bash/WSL)
+    if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
+      // Set SHELL to PowerShell for Windows native mode
+      enhancedEnv.SHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+      enhancedEnv.COMSPEC = process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe';
+
+      // Add Node.js to PATH using Windows path separator (;)
+      const nodePaths = [
+        'C:\\Program Files\\nodejs',
+        'C:\\Program Files (x86)\\nodejs',
+        process.env.ProgramFiles && `${process.env.ProgramFiles}\\nodejs`,
+      ].filter(Boolean);
+
+      for (const nodePath of nodePaths) {
+        if (existsSync(nodePath) && !enhancedEnv.PATH?.includes(nodePath)) {
+          enhancedEnv.PATH = `${nodePath};${enhancedEnv.PATH || ''}`;
+          break;
+        }
+      }
+    } else if (!isWindows) {
+      // Unix systems - add homebrew path if needed
+      const nodeBinDir = '/opt/homebrew/bin';
+      if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
+        enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+      }
     }
-    
+
     // Use a dedicated yurucode-title-gen directory for title generation
     // This keeps title generation sessions separate from main project sessions
     const titleGenDir = join(homedir(), '.yurucode-title-gen');
@@ -3909,15 +3933,44 @@ Format as a clear, structured summary that preserves all important context.`;
       // Spawn claude process with proper PATH for Node.js
       console.log(`🚀 Spawning claude with args:`, args);
       console.log(`🔍 Active processes count: ${activeProcesses.size}`);
-      
-      // Ensure Node.js is in PATH for Claude CLI (which uses #!/usr/bin/env node)
+
+      // Ensure Node.js is in PATH for Claude CLI
       const enhancedEnv = { ...process.env };
-      const nodeBinDir = '/opt/homebrew/bin';
-      if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-        enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
-        console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
+
+      // CRITICAL FIX: On Windows native mode, override SHELL to use PowerShell
+      // This prevents Claude CLI's Bash tool from using /usr/bin/bash (from Git Bash/WSL)
+      // which would fail trying to run cmd.exe commands through bash
+      if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows' && NATIVE_WINDOWS_CLAUDE_PATH) {
+        // Set SHELL to PowerShell for Windows native mode
+        enhancedEnv.SHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+        // Also set COMSPEC to ensure cmd.exe fallback works
+        enhancedEnv.COMSPEC = process.env.COMSPEC || 'C:\\Windows\\System32\\cmd.exe';
+        console.log(`🔧 Set SHELL to PowerShell for Windows native mode`);
+
+        // Add Node.js to PATH using Windows path separator (;)
+        const nodePaths = [
+          'C:\\Program Files\\nodejs',
+          'C:\\Program Files (x86)\\nodejs',
+          process.env.ProgramFiles && `${process.env.ProgramFiles}\\nodejs`,
+          process.env.LOCALAPPDATA && `${process.env.LOCALAPPDATA}\\Programs\\nodejs`,
+        ].filter(Boolean);
+
+        for (const nodePath of nodePaths) {
+          if (existsSync(nodePath) && !enhancedEnv.PATH?.includes(nodePath)) {
+            enhancedEnv.PATH = `${nodePath};${enhancedEnv.PATH || ''}`;
+            console.log(`🔧 Added Node.js to PATH: ${nodePath}`);
+            break;
+          }
+        }
+      } else if (!isWindows) {
+        // Unix systems - add homebrew path if needed
+        const nodeBinDir = '/opt/homebrew/bin';
+        if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
+          enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+          console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
+        }
       }
-      
+
       // Add unique session identifier to environment to ensure isolation
       enhancedEnv.CLAUDE_SESSION_ID = sessionId;
       enhancedEnv.CLAUDE_INSTANCE = `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
