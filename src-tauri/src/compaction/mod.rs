@@ -8,8 +8,8 @@ use chrono::{DateTime, Utc};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompactionConfig {
-    pub auto_threshold: f32,     // 96% default
-    pub force_threshold: f32,    // 98% default
+    pub auto_threshold: f32,     // 60% default (like Claude Code ~38% buffer)
+    pub force_threshold: f32,    // 65% default
     pub preserve_context: bool,
     pub generate_manifest: bool,
 }
@@ -17,8 +17,8 @@ pub struct CompactionConfig {
 impl Default for CompactionConfig {
     fn default() -> Self {
         Self {
-            auto_threshold: 0.97,
-            force_threshold: 0.98,
+            auto_threshold: 0.60,  // 60% - conservative auto-compact (38-40% buffer like Claude Code)
+            force_threshold: 0.65, // 65% - force compact
             preserve_context: true,
             generate_manifest: true,
         }
@@ -122,7 +122,7 @@ impl CompactionManager {
     pub async fn update_context_usage(&self, session_id: String, usage: f32) -> CompactionAction {
         let config = self.config.lock().await;
         let mut states = self.states.lock().await;
-        
+
         let state = states.entry(session_id.clone()).or_insert_with(|| {
             CompactionState {
                 session_id: session_id.clone(),
@@ -133,20 +133,34 @@ impl CompactionManager {
                 manifest_saved: false,
             }
         });
-        
+
         state.context_usage = usage;
-        
-        // Check thresholds
+
+        // Check thresholds (60% auto, 65% force - like Claude Code with ~38% buffer)
         if usage >= config.force_threshold && !state.force_triggered {
             state.force_triggered = true;
             CompactionAction::Force
         } else if usage >= config.auto_threshold && !state.auto_triggered {
             state.auto_triggered = true;
             CompactionAction::AutoTrigger
-        } else if usage >= 0.90 {
+        } else if usage >= 0.55 {
+            // Warning at 55% to prepare for auto-compact at 60%
             CompactionAction::Warning
         } else {
             CompactionAction::None
+        }
+    }
+
+    /// Reset compaction flags after successful compaction
+    /// This allows the session to trigger compaction again when it reaches threshold
+    pub async fn reset_compaction_flags(&self, session_id: &str) {
+        let mut states = self.states.lock().await;
+        if let Some(state) = states.get_mut(session_id) {
+            state.auto_triggered = false;
+            state.force_triggered = false;
+            state.manifest_saved = false;
+            state.last_compaction = Some(Utc::now());
+            tracing::info!("Reset compaction flags for session {}", session_id);
         }
     }
     
@@ -210,20 +224,20 @@ impl CompactionManager {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CompactionAction {
     None,
-    Notice,       // 75%+
-    Warning,      // 90%+
-    AutoTrigger,  // 96%+
-    Force,        // 98%+
+    Notice,       // deprecated
+    Warning,      // 55%+
+    AutoTrigger,  // 60%+ (38% buffer like Claude Code)
+    Force,        // 65%+
 }
 
 impl CompactionAction {
     pub fn to_message(&self) -> Option<String> {
         match self {
             CompactionAction::None => None,
-            CompactionAction::Notice => Some("Context usage at 75%. Consider organizing your conversation.".to_string()),
-            CompactionAction::Warning => Some("Context usage at 90%. Preparing for auto-compact at 96%.".to_string()),
-            CompactionAction::AutoTrigger => Some("Context usage at 96%. Auto-triggering compact to preserve conversation flow.".to_string()),
-            CompactionAction::Force => Some("Context usage at 98%. Force-compacting to prevent context overflow.".to_string()),
+            CompactionAction::Notice => None, // deprecated
+            CompactionAction::Warning => Some("Context usage at 55%. Auto-compact will trigger at 60%.".to_string()),
+            CompactionAction::AutoTrigger => Some("Context usage at 60%. Auto-compacting (38% buffer reserved like Claude Code).".to_string()),
+            CompactionAction::Force => Some("Context usage at 65%. Force-compacting to prevent context overflow.".to_string()),
         }
     }
     

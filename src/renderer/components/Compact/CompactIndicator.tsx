@@ -27,46 +27,22 @@ export const CompactIndicator: React.FC = () => {
   const [compactConfig, setCompactConfig] = useState<CompactConfig | null>(null);
   const [showDetails, setShowDetails] = useState(false);
   
-  const { socket, activeSessionId } = useClaudeCodeStore();
-  
+  const { currentSessionId } = useClaudeCodeStore();
+
   useEffect(() => {
-    if (!socket || !activeSessionId) return;
-    
-    // Request compact configuration
-    socket.emit('getCompactConfig', (config: CompactConfig) => {
-      setCompactConfig(config);
+    if (!currentSessionId) return;
+
+    // Set default config (socket-based config is deprecated)
+    setCompactConfig({
+      enabled: true,
+      auto: true,
+      threshold: 60,
+      maxTokens: 200000
     });
-    
-    // Listen for token updates
-    const handleTokenUpdate = (data: TokenData) => {
-      if (data.sessionId === activeSessionId) {
-        setTokenData(data);
-      }
-    };
-    
-    // Listen for compact events
-    const handleCompactStart = () => {
-      setIsCompacting(true);
-    };
-    
-    const handleCompactComplete = (data: any) => {
-      setIsCompacting(false);
-      // Show savings notification
-      if (data.saved > 0) {
-        showCompactNotification(data);
-      }
-    };
-    
-    socket.on(`compact:token-update:${activeSessionId}`, handleTokenUpdate);
-    socket.on(`compact:start:${activeSessionId}`, handleCompactStart);
-    socket.on(`compact:complete:${activeSessionId}`, handleCompactComplete);
-    
-    return () => {
-      socket.off(`compact:token-update:${activeSessionId}`, handleTokenUpdate);
-      socket.off(`compact:start:${activeSessionId}`, handleCompactStart);
-      socket.off(`compact:complete:${activeSessionId}`, handleCompactComplete);
-    };
-  }, [socket, activeSessionId]);
+
+    // Token updates come from store analytics, not socket
+    // This component is deprecated - use store analytics instead
+  }, [currentSessionId]);
   
   const showCompactNotification = (data: any) => {
     // This could be a toast or modal
@@ -74,18 +50,20 @@ export const CompactIndicator: React.FC = () => {
   };
   
   const handleManualCompact = () => {
-    if (!socket || !activeSessionId) return;
-    
-    socket.emit('triggerCompact', { sessionId: activeSessionId });
+    if (!currentSessionId) return;
+
+    // Use store's sendMessage to trigger compact
+    const { sendMessage } = useClaudeCodeStore.getState();
+    sendMessage('/compact', false);
   };
   
   const getProgressBarColor = () => {
     if (!tokenData) return '#666';
-    
+
     const percentage = tokenData.percentage;
-    if (percentage < 0.5) return '#0ea5e9'; // cyan
-    if (percentage < 0.75) return '#f59e0b'; // amber
-    return '#ef4444'; // red
+    if (percentage < 0.55) return '#0ea5e9';  // cyan - safe
+    if (percentage < 0.60) return '#f59e0b'; // amber - approaching (55-60%)
+    return '#ef4444'; // red - auto-compact at 60%+ (38% buffer like Claude Code)
   };
   
   const formatTokenCount = (count: number) => {
@@ -138,10 +116,10 @@ export const CompactIndicator: React.FC = () => {
           </div>
         )}
         
-        {/* Auto-compact warning */}
-        {tokenData && tokenData.percentage > 0.7 && !isCompacting && (
+        {/* Auto-compact warning at 55%+ */}
+        {tokenData && tokenData.percentage >= 0.55 && !isCompacting && (
           <div style={styles.warning}>
-            ⚠️ auto-compact at {Math.round(compactConfig.threshold / 1000)}k
+            auto-compact at 60%
           </div>
         )}
       </div>

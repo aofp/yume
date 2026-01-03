@@ -461,7 +461,7 @@
   font-family: var(--font-mono);
   font-size: 8px;
   opacity: 1;
-  overflow: hidden;
+  overflow: visible;
 }
 
 @keyframes toolFade {
@@ -752,7 +752,7 @@ textarea.context-full {
   color: var(--negative-color);
   padding: 13px;
   border-radius: 4px;
-  cursor: default;
+  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1318,7 +1318,7 @@ textarea.context-full {
   border-color: rgba(var(--accent-rgb), 1);
 }
 
-/* Custom negative color at 90%+ */
+/* Custom negative color at 85%+ - auto-compact triggered */
 .btn-stats.high {
   color: var(--negative-color);
   border-color: rgba(var(--negative-rgb), 0.3);
@@ -1330,7 +1330,7 @@ textarea.context-full {
   border-color: var(--negative-color);
 }
 
-/* Critical - auto-compact triggered at 97%+ */
+/* Critical - force-compact at 90%+ */
 .btn-stats.critical {
   color: var(--negative-color);
   border-color: var(--negative-color);
@@ -2478,9 +2478,9 @@ textarea.context-full {
 }
 
 .tool-panel-list {
-  height: 30%;
-  min-height: 80px;
-  max-height: 200px;
+  height: 15%;
+  min-height: 60px;
+  max-height: 100px;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0;

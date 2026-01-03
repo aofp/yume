@@ -61,6 +61,16 @@ pub async fn reset_compaction_state(
 }
 
 #[tauri::command]
+pub async fn reset_compaction_flags(
+    state: State<'_, AppState>,
+    session_id: String,
+) -> Result<(), String> {
+    let compaction_manager = state.compaction_manager.lock().await;
+    compaction_manager.reset_compaction_flags(&session_id).await;
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn update_compaction_config(
     state: State<'_, AppState>,
     config: CompactionConfig,

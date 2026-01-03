@@ -15,7 +15,7 @@ import './MentionAutocomplete.css';
 interface MentionAutocompleteProps {
   trigger: string;
   cursorPosition: number;
-  inputRef: React.RefObject<HTMLTextAreaElement>;
+  inputRef: React.RefObject<HTMLTextAreaElement | null>;
   onSelect: (replacement: string, start: number, end: number) => void;
   onClose: () => void;
   workingDirectory?: string;

@@ -347,6 +347,9 @@ type Theme = {
   accentColor: string;
   positiveColor: string;
   negativeColor: string;
+  opacity?: number;
+  monoFont?: string;
+  sansFont?: string;
   isBuiltIn?: boolean;
 };
 
@@ -360,6 +363,10 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#99bbff',
     positiveColor: '#99ff99',
     negativeColor: '#ff9999',
+    opacity: 0.92,
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -370,6 +377,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#a0a0a0',
     positiveColor: '#88aa88',
     negativeColor: '#aa8888',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -380,6 +390,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#9999aa',
     positiveColor: '#88aa88',
     negativeColor: '#aa7777',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -390,6 +403,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#7799bb',
     positiveColor: '#77aa88',
     negativeColor: '#bb7777',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -400,6 +416,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#8899aa',
     positiveColor: '#88aa94',
     negativeColor: '#aa8888',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -410,6 +429,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#9090a0',
     positiveColor: '#80a080',
     negativeColor: '#a08080',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -420,6 +442,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#88aacc',
     positiveColor: '#77bb99',
     negativeColor: '#cc7788',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -430,6 +455,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#b8a888',
     positiveColor: '#88aa88',
     negativeColor: '#aa8877',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -440,6 +468,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#a8b0c0',
     positiveColor: '#88aa99',
     negativeColor: '#aa8899',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -450,6 +481,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#5599dd',
     positiveColor: '#55bb88',
     negativeColor: '#cc6666',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -460,6 +494,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#6699ff',
     positiveColor: '#66ff88',
     negativeColor: '#ff6666',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -470,6 +507,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#6688cc',
     positiveColor: '#66aa88',
     negativeColor: '#cc6688',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -480,6 +520,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#4477bb',
     positiveColor: '#55aa77',
     negativeColor: '#bb5566',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -490,6 +533,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#99ddff',
     positiveColor: '#99ffbb',
     negativeColor: '#d9b3b3',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -500,6 +546,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc9966',
     positiveColor: '#88aa77',
     negativeColor: '#bb6655',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -510,6 +559,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#aa7744',
     positiveColor: '#77aa66',
     negativeColor: '#aa5544',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -520,6 +572,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc8844',
     positiveColor: '#88aa66',
     negativeColor: '#cc6644',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -530,6 +585,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#b8956e',
     positiveColor: '#8aa870',
     negativeColor: '#a86860',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -540,6 +598,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#8888dd',
     positiveColor: '#77bb99',
     negativeColor: '#dd7788',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -550,6 +611,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#66aaff',
     positiveColor: '#66ffdd',
     negativeColor: '#ff6699',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -560,6 +624,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#77aa77',
     positiveColor: '#88cc88',
     negativeColor: '#cc7777',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -570,6 +637,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#bb99ff',
     positiveColor: '#99ffbb',
     negativeColor: '#ff99bb',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -580,6 +650,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#ff99bb',
     positiveColor: '#99ffcc',
     negativeColor: '#ff9999',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -590,6 +663,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#ff8866',
     positiveColor: '#88cc88',
     negativeColor: '#dd6655',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   // Vibrant themes
@@ -601,6 +677,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#66ccff',
     positiveColor: '#88ff66',
     negativeColor: '#ff6666',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -611,6 +690,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#00aaff',
     positiveColor: '#66ff88',
     negativeColor: '#ff6666',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -621,6 +703,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#ff5500',
     positiveColor: '#aaff66',
     negativeColor: '#cc4444',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -631,6 +716,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#ffcc66',
     positiveColor: '#aaff66',
     negativeColor: '#ff6666',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -641,6 +729,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#66ffbb',
     positiveColor: '#99ff99',
     negativeColor: '#ff6666',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -651,6 +742,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#66ddaa',
     positiveColor: '#44ffcc',
     negativeColor: '#ff6688',
+    opacity: 0.92,
+    monoFont: 'Fira Code',
+    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -661,6 +755,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc66ff',
     positiveColor: '#66ffaa',
     negativeColor: '#ff6666',
+    opacity: 0.92,
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -671,6 +768,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#ff6666',
     positiveColor: '#88ff66',
     negativeColor: '#ff6699',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -681,6 +781,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#dd4455',
     positiveColor: '#66bb77',
     negativeColor: '#cc3344',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   // Loud themes
@@ -692,6 +795,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#44ff00',
     positiveColor: '#88ff00',
     negativeColor: '#ff0066',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -702,6 +808,9 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#ff00ff',
     positiveColor: '#00ff88',
     negativeColor: '#ff0044',
+    opacity: 0.92,
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   }
 ];
@@ -715,6 +824,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const [accentColor, setAccentColor] = useState('#99bbff');
   const [positiveColor, setPositiveColor] = useState('#99ff99');
   const [negativeColor, setNegativeColor] = useState('#ff9999');
+  const [htmlOpacity, setHtmlOpacity] = useState(0.92);
   const [showColorPicker, setShowColorPicker] = useState<'background' | 'foreground' | 'accent' | 'positive' | 'negative' | null>(null);
   const [hoveredColorType, setHoveredColorType] = useState<string | null>(null);
   const [previewColor, setPreviewColor] = useState<string | null>(null);
@@ -872,6 +982,12 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     const negativeB = parseInt(negativeHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--negative-rgb', `${negativeR}, ${negativeG}, ${negativeB}`);
 
+    // Load html opacity (user setting, not theme)
+    const savedHtmlOpacity = localStorage.getItem('htmlOpacity');
+    const opacityValue = savedHtmlOpacity ? parseFloat(savedHtmlOpacity) : 0.92;
+    setHtmlOpacity(opacityValue);
+    document.documentElement.style.opacity = opacityValue.toString();
+
     // Listen for zoom changes
     const handleZoomChange = (e: any) => {
       setZoomLevel(e.detail);
@@ -949,6 +1065,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     handleAccentColorChange(theme.accentColor);
     handlePositiveColorChange(theme.positiveColor);
     handleNegativeColorChange(theme.negativeColor);
+    // Apply theme opacity
+    const themeOpacity = theme.opacity ?? 0.92;
+    handleHtmlOpacityChange(themeOpacity);
+    // Apply theme fonts
+    if (theme.monoFont) {
+      setMonoFont(theme.monoFont);
+      document.documentElement.style.setProperty('--font-mono', `"${theme.monoFont}", monospace`);
+    }
+    if (theme.sansFont) {
+      setSansFont(theme.sansFont);
+      document.documentElement.style.setProperty('--font-sans', `"${theme.sansFont}", sans-serif`);
+    }
     setCurrentThemeId(theme.id);
     localStorage.setItem('currentThemeId', theme.id);
     setShowThemeDropdown(false);
@@ -964,6 +1092,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       accentColor,
       positiveColor,
       negativeColor,
+      opacity: htmlOpacity,
+      monoFont,
+      sansFont,
       isBuiltIn: false
     };
     const updatedThemes = [...customThemes, newTheme];
@@ -1029,6 +1160,33 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     return hasThemeChanges() ? `${name}*` : name;
   };
 
+  // Get current theme's default value for a specific color type
+  const getThemeDefault = (colorType: 'foreground' | 'accent' | 'positive' | 'negative' | 'background'): string => {
+    const theme = getCurrentTheme();
+    if (!theme) {
+      // Fallback to default theme values
+      const defaults = { foreground: '#ffffff', accent: '#99bbff', positive: '#99ff99', negative: '#ff9999', background: '#0a0a0a' };
+      return defaults[colorType];
+    }
+    const map = {
+      foreground: theme.foregroundColor,
+      accent: theme.accentColor,
+      positive: theme.positiveColor,
+      negative: theme.negativeColor,
+      background: theme.backgroundColor
+    };
+    return map[colorType];
+  };
+
+  // Get current theme's default font
+  const getThemeFontDefault = (fontType: 'mono' | 'sans'): string => {
+    const theme = getCurrentTheme();
+    if (!theme) {
+      return fontType === 'mono' ? 'Comic Mono' : 'Comic Neue';
+    }
+    return fontType === 'mono' ? (theme.monoFont || 'Comic Mono') : (theme.sansFont || 'Comic Neue');
+  };
+
   // Preview theme on hover (apply temporarily)
   const previewTheme = (theme: Theme) => {
     document.documentElement.style.setProperty('--background-color', theme.backgroundColor);
@@ -1045,6 +1203,14 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
     document.documentElement.style.setProperty('--positive-color', theme.positiveColor);
     document.documentElement.style.setProperty('--negative-color', theme.negativeColor);
+
+    // Preview fonts
+    if (theme.monoFont) {
+      document.documentElement.style.setProperty('--font-mono', `"${theme.monoFont}", monospace`);
+    }
+    if (theme.sansFont) {
+      document.documentElement.style.setProperty('--font-sans', `"${theme.sansFont}", sans-serif`);
+    }
   };
 
   // Restore current theme after preview
@@ -1063,6 +1229,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
     document.documentElement.style.setProperty('--positive-color', positiveColor);
     document.documentElement.style.setProperty('--negative-color', negativeColor);
+
+    // Restore fonts
+    document.documentElement.style.setProperty('--font-mono', `"${monoFont}", monospace`);
+    document.documentElement.style.setProperty('--font-sans', `"${sansFont}", sans-serif`);
   };
 
 
@@ -1187,6 +1357,14 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     document.documentElement.style.setProperty('--negative-rgb', `${r}, ${g}, ${b}`);
   };
 
+  const handleHtmlOpacityChange = (value: number) => {
+    const clamped = Math.max(0.65, Math.min(1.00, value));
+    const rounded = Math.round(clamped * 100) / 100;
+    setHtmlOpacity(rounded);
+    localStorage.setItem('htmlOpacity', rounded.toString());
+    document.documentElement.style.opacity = rounded.toString();
+  };
+
   // Preview color on hover (temporary, not saved)
   const handleColorPreview = (color: string) => {
     setPreviewColor(color);
@@ -1255,11 +1433,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     negativeColor === '#ff9999';
 
   const handleResetAllFonts = () => {
-    setMonoFont('Fira Code');
-    setSansFont('Helvetica Neue');
+    setMonoFont('Comic Mono');
+    setSansFont('Comic Neue');
   };
 
-  const isDefaultFonts = monoFont === 'Fira Code' && sansFont === 'Helvetica Neue';
+  const isDefaultFonts = monoFont === 'Comic Mono' && sansFont === 'Comic Neue';
 
   const formatBytes = (bytes: number): string => {
     if (bytes === 0) return '0 B';
@@ -1512,8 +1690,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="color-controls">
                     <button
                       className="color-reset"
-                      onClick={() => handleForegroundColorChange('#ffffff')}
-                      disabled={foregroundColor === '#ffffff'}
+                      onClick={() => handleForegroundColorChange(getThemeDefault('foreground'))}
+                      disabled={foregroundColor === getThemeDefault('foreground')}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
@@ -1544,8 +1722,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="color-controls">
                     <button
                       className="color-reset"
-                      onClick={() => handleAccentColorChange('#99bbff')}
-                      disabled={accentColor === '#99bbff'}
+                      onClick={() => handleAccentColorChange(getThemeDefault('accent'))}
+                      disabled={accentColor === getThemeDefault('accent')}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
@@ -1576,8 +1754,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="color-controls">
                     <button
                       className="color-reset"
-                      onClick={() => handlePositiveColorChange('#99ff99')}
-                      disabled={positiveColor === '#99ff99'}
+                      onClick={() => handlePositiveColorChange(getThemeDefault('positive'))}
+                      disabled={positiveColor === getThemeDefault('positive')}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
@@ -1608,8 +1786,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="color-controls">
                     <button
                       className="color-reset"
-                      onClick={() => handleNegativeColorChange('#ff9999')}
-                      disabled={negativeColor === '#ff9999'}
+                      onClick={() => handleNegativeColorChange(getThemeDefault('negative'))}
+                      disabled={negativeColor === getThemeDefault('negative')}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
@@ -1640,8 +1818,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="color-controls">
                     <button
                       className="color-reset"
-                      onClick={() => handleBackgroundColorChange('#0a0a0a')}
-                      disabled={backgroundColor === '#0a0a0a'}
+                      onClick={() => handleBackgroundColorChange(getThemeDefault('background'))}
+                      disabled={backgroundColor === getThemeDefault('background')}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
@@ -1666,6 +1844,31 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     </div>
                   </div>
                 </div>
+
+                <div className="color-setting">
+                  <span className="color-label">opacity</span>
+                  <div className="color-controls" style={{ gap: '8px' }}>
+                    <button
+                      className="color-reset"
+                      onClick={() => handleHtmlOpacityChange(0.92)}
+                      disabled={htmlOpacity === 0.92}
+                    >
+                      <IconRotateClockwise size={12} />
+                    </button>
+                    <input
+                      type="range"
+                      min="0.65"
+                      max="1.00"
+                      step="0.01"
+                      value={htmlOpacity}
+                      onChange={(e) => handleHtmlOpacityChange(parseFloat(e.target.value))}
+                      className="opacity-slider"
+                    />
+                    <span style={{ color: 'var(--fg-50)', fontSize: '11px', minWidth: '28px' }}>
+                      {htmlOpacity.toFixed(2)}
+                    </span>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1678,17 +1881,17 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="font-controls">
                     <button
                       className="color-reset"
-                      onClick={() => setMonoFont('Fira Code')}
-                      disabled={monoFont === 'Fira Code'}
+                      onClick={() => setMonoFont(getThemeFontDefault('mono'))}
+                      disabled={monoFont === getThemeFontDefault('mono')}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
                     <div
                       className="font-input"
                       onClick={() => setShowFontPicker('monospace')}
-                      style={{ fontFamily: monoFont || 'Fira Code' }}
+                      style={{ fontFamily: monoFont || getThemeFontDefault('mono') }}
                     >
-                      {monoFont || 'Fira Code'}
+                      {monoFont || getThemeFontDefault('mono')}
                     </div>
                   </div>
                 </div>
@@ -1698,17 +1901,17 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="font-controls">
                     <button
                       className="color-reset"
-                      onClick={() => setSansFont('Helvetica Neue')}
-                      disabled={sansFont === 'Helvetica Neue'}
+                      onClick={() => setSansFont(getThemeFontDefault('sans'))}
+                      disabled={sansFont === getThemeFontDefault('sans')}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
                     <div
                       className="font-input"
                       onClick={() => setShowFontPicker('sans-serif')}
-                      style={{ fontFamily: sansFont || 'Helvetica Neue' }}
+                      style={{ fontFamily: sansFont || getThemeFontDefault('sans') }}
                     >
-                      {sansFont || 'Helvetica Neue'}
+                      {sansFont || getThemeFontDefault('sans')}
                     </div>
                   </div>
                 </div>

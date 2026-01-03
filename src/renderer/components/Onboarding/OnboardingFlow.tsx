@@ -112,7 +112,7 @@ export const OnboardingFlow: React.FC<OnboardingFlowProps> = ({ onComplete, onSk
       icon: <IconBrain size={48} stroke={1.5} />,
       checks: [
         {
-          label: 'Auto-compact at 97% context usage',
+          label: 'Auto-compact at 85% context usage',
           checked: true,
           required: false
         },

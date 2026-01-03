@@ -58,7 +58,7 @@ const resourcePackage = {
   private: true,
   dependencies: {
     "socket.io": "^4.8.1",
-    "express": "^4.18.2",
+    "express": "^5.1.0",
     "cors": "^2.8.5"
   }
 };

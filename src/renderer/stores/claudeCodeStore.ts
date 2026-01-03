@@ -202,6 +202,9 @@ export interface SessionAnalytics {
   temperature?: number; // Temperature setting
   maxTokens?: number; // Max tokens setting
   stopReason?: string; // Last stop reason
+
+  // Compaction tracking
+  compactPending?: boolean; // Flag set after /compact to reset tokens on next message
 }
 
 export interface Session {
@@ -239,6 +242,7 @@ export interface Session {
     autoTriggered?: boolean;
   };
   cleanup?: () => void; // Cleanup function for event listeners
+  lastAssistantMessageIds?: string[]; // Track last assistant message IDs for virtualization
 }
 
 interface ClaudeCodeStore {
@@ -972,11 +976,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           const currentState = get();
           const isCurrentSession = currentState.currentSessionId === sessionId;
           
-          // Check if this is actually a compact result (has wrapper_compact field or old detection)
-          const isCompactResult = !!message.wrapper_compact || 
-                                 (message.result === '' && 
-                                  (!message.usage || 
-                                   (message.usage.input_tokens === 0 && message.usage.output_tokens === 0)));
+          // Check if this is actually a compact result
+          // Primary: has wrapper_compact field (added by wrapperIntegration.ts)
+          // Fallback: zero usage tokens (definitive indicator of compact)
+          const isCompactResult = !!message.wrapper_compact ||
+                                 (message.usage?.input_tokens === 0 &&
+                                  message.usage?.output_tokens === 0);
           
           // If it's not a compact result, it's a normal result - process through main handler
           if (!isCompactResult) {
@@ -1047,7 +1052,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 if (pendingMessage) {
                   console.log('[Store] 🔄 AUTO-COMPACT COMPLETE - Resending user message with summary');
                   clearAutoCompactMessage(sessionId);
-                  
+
                   // Wait a bit for state to settle, then send the message with summary
                   setTimeout(() => {
                     // The sendMessage function will automatically prepend the summary
@@ -1055,7 +1060,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     get().sendMessage(pendingMessage);
                   }, 500);
                 }
-              });
+              }).catch(err => console.error('[Store] Failed to import wrapperIntegration:', err));
               
               return {
                 ...s,
@@ -1111,29 +1116,30 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             if (message.type === 'tool_use' && message.message?.name) {
               import('../services/hooksService').then(({ hooksService }) => {
                 hooksService.processToolUse(
-                  message.message.name, 
+                  message.message.name,
                   message.message.input || {},
                   sessionId,
                   'pre'
                 ).then(result => {
                   if (!result.allowed) {
                     console.warn('[Hook] Tool blocked:', result.message);
-                    // Add a message to show the block
+                    // Add a message to show the block in the session's messages
                     const blockMessage = {
                       id: `blocked-${Date.now()}`,
-                      type: 'system',
+                      type: 'system' as const,
                       message: { content: `Hook blocked: ${result.message}` },
                       timestamp: new Date().toISOString()
                     };
                     set(state => ({
-                      sessionMessages: {
-                        ...state.sessionMessages,
-                        [sessionId]: [...(state.sessionMessages[sessionId] || []), blockMessage]
-                      }
+                      sessions: state.sessions.map(s =>
+                        s.id === sessionId
+                          ? { ...s, messages: [...(s.messages || []), blockMessage] }
+                          : s
+                      )
                     }));
                   }
-                });
-              });
+                }).catch(err => console.error('[Hook] processToolUse failed:', err));
+              }).catch(err => console.error('[Hook] Failed to import hooksService:', err));
             }
           }
           
@@ -1154,11 +1160,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // Update claudeSessionId if present in message
               // IMPORTANT: For compact results, we clear the session ID to start fresh
               // /compact returns type:"result" with new session_id, not system message
-              // Compact result has num_turns field and all-zero usage
+              // Detection: wrapper_compact field (primary) or zero usage tokens (fallback)
               const isCompactResult = (message.type === 'system' && message.subtype === 'compact') ||
-                                    (message.type === 'result' && 
-                                     message.num_turns !== undefined && 
-                                     message.usage?.input_tokens === 0 && 
+                                    !!message.wrapper_compact ||
+                                    (message.type === 'result' &&
+                                     message.usage?.input_tokens === 0 &&
                                      message.usage?.output_tokens === 0);
               const isResultWithNewSession = message.type === 'result' && message.session_id;
               
@@ -1547,7 +1553,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       analytics.tokens.cacheCreation = message.wrapper.tokens.cache_creation || 0;
                       
                       // Update model-specific tracking
-                      const modelKey = currentModel === 'opus' ? 'opus' : 'sonnet';
+                      const currentModel = get().selectedModel;
+                      const modelKey = currentModel?.includes('opus') ? 'opus' : 'sonnet';
                       analytics.tokens.byModel[modelKey] = {
                         input: message.wrapper.tokens.input,
                         output: message.wrapper.tokens.output,
@@ -1580,43 +1587,36 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       const cacheReadTokens = message.usage.cache_read_input_tokens || 0;
                       const outputTokens = message.usage.output_tokens || 0;
                       
-                      // CRITICAL FIX: Cache read tokens ARE the conversation history in context!
-                      // They count toward the 200k limit - not counting them was causing "1% used" bug
-                      const inputTokens = regularInputTokens + cacheReadTokens; // Include cache in input
-                      const totalNewTokens = inputTokens + outputTokens; // Total context used this turn
+                      // Context formula per Claude Code: cache_read + cache_creation + input
+                      // Output tokens are NOT part of input context (generated by model)
+                      const totalContextTokens = cacheReadTokens + cacheCreationTokens + regularInputTokens;
                       const cacheTotal = cacheCreationTokens + cacheReadTokens;
                       
                       console.log(`🔍 [TOKEN DEBUG] Token breakdown:`);
-                      console.log(`   Regular input: ${regularInputTokens}`);
-                      console.log(`   Cache creation: ${cacheCreationTokens} (cached system prompts)`);
-                      console.log(`   Cache read: ${cacheReadTokens} (cached system prompts)`);
-                      console.log(`   Output: ${outputTokens}`);
-                      console.log(`   --- ACCUMULATION ---`);
-                      console.log(`   NEW conversation tokens: ${totalNewTokens} (input: ${regularInputTokens} + output: ${outputTokens})`);
-                      console.log(`   NEW cache tokens: ${cacheTotal} (creation: ${cacheCreationTokens}, read: ${cacheReadTokens})`);
-                      console.log(`   Previous conversation total: ${analytics.tokens.total}`);
-                      console.log(`   Will be conversation total: ${analytics.tokens.total + totalNewTokens}`);
-                      
+                      console.log(`   cache_read: ${cacheReadTokens}, cache_creation: ${cacheCreationTokens}, input: ${regularInputTokens}`);
+                      console.log(`   output: ${outputTokens} (not counted in context)`);
+                      console.log(`   CONTEXT TOTAL: ${totalContextTokens} / 200000`);
+
                       // Check if compactPending flag is set - if so, reset tokens
                       if (analytics.compactPending) {
                         console.log('🗜️ [COMPACT RECOVERY] Post-compact message received, resetting token count');
-                        console.log('🗜️ [COMPACT RECOVERY] Old conversation total:', analytics.tokens.total);
-                        console.log('🗜️ [COMPACT RECOVERY] Old cache size:', analytics.tokens.cacheSize || 0);
+                        console.log('🗜️ [COMPACT RECOVERY] Old total:', analytics.tokens.total);
                         // Reset conversation tokens after compact
-                        analytics.tokens.input = inputTokens;
+                        analytics.tokens.input = regularInputTokens;
                         analytics.tokens.output = outputTokens;
-                        analytics.tokens.total = totalNewTokens;
+                        analytics.tokens.total = totalContextTokens;
                         // Cache read is the size of cached context after compact
                         analytics.tokens.cacheSize = cacheReadTokens;
                         analytics.compactPending = false; // Clear the flag
                         console.log('🗜️ [COMPACT RECOVERY] New conversation total:', analytics.tokens.total);
                         console.log('🗜️ [COMPACT RECOVERY] New cache size:', analytics.tokens.cacheSize);
                       } else {
-                        // CORRECT CALCULATION: Context window is a SNAPSHOT, not accumulation
-                        // cache_read_input_tokens = full conversation history already cached
-                        // input_tokens = new input this turn (not in cache yet)
-                        // output_tokens = new output this turn
-                        // Total context = cache + new input + new output
+                        // CORRECT CALCULATION per Claude Code / Anthropic API:
+                        // Context = cache_read + cache_creation + input
+                        // - cache_read_input_tokens = cached conversation history
+                        // - cache_creation_input_tokens = new content being cached
+                        // - input_tokens = new input not in cache
+                        // NOTE: output tokens are NOT part of input context (generated by model)
                         const previousTotal = analytics.tokens.total;
 
                         // Track accumulated input/output for analytics (separate from context calculation)
@@ -1624,19 +1624,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         analytics.tokens.output += outputTokens;
                         analytics.tokens.cacheCreation = (analytics.tokens.cacheCreation || 0) + cacheCreationTokens;
 
-                        // CONTEXT WINDOW = cache (history) + new input + new output
-                        // This is a SNAPSHOT of current context, NOT an accumulation!
-                        analytics.tokens.total = cacheReadTokens + regularInputTokens + outputTokens;
+                        // CONTEXT WINDOW = cache_read + cache_creation + input
+                        // Matches wrapper formula and Claude Code calculation
+                        analytics.tokens.total = cacheReadTokens + cacheCreationTokens + regularInputTokens;
 
                         // Cache size is a snapshot of conversation history
                         analytics.tokens.cacheSize = cacheReadTokens;
 
                         console.log(`📊 [TOKEN UPDATE] Context usage (SNAPSHOT):`);
-                        console.log(`   Conversation history (cache_read): ${cacheReadTokens} tokens`);
-                        console.log(`   New input this turn: ${regularInputTokens} tokens`);
-                        console.log(`   New output this turn: ${outputTokens} tokens`);
-                        console.log(`   TOTAL CONTEXT IN USE: ${analytics.tokens.total} / 200000 (${(analytics.tokens.total / 200000 * 100).toFixed(2)}%)`);
-                        console.log(`   Previous total was: ${previousTotal}`);
+                        console.log(`   cache_read: ${cacheReadTokens}, cache_creation: ${cacheCreationTokens}, input: ${regularInputTokens}`);
+                        console.log(`   TOTAL CONTEXT: ${analytics.tokens.total} / 200000 (${(analytics.tokens.total / 200000 * 100).toFixed(2)}%)`);
+                        console.log(`   (output: ${outputTokens} - not counted in context)`);
                       }
                       
                       // Update new analytics fields to match Claude Code
@@ -1650,10 +1648,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         remaining: Math.max(0, 200000 - analytics.tokens.total)
                       };
 
-                      // Check for context warnings and auto-compaction
-                      // Use raw percentage so auto-compact triggers correctly even over 100%
+                      // Check for context warnings at 90%
                       if (rawPercentage >= 90) {
-                        // Process context warning hooks at 90%
                         import('../services/hooksService').then(({ hooksService }) => {
                           hooksService.processContextWarning(
                             analytics.contextWindow.percentage,
@@ -1662,8 +1658,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                             sessionId
                           );
                         });
-                        
-                        // Check for auto-compaction at 97%
+                      }
+
+                      // Always update compaction service for auto-compact at 55%+
+                      // (thresholds: 55% warning, 60% auto, 65% force)
+                      if (rawPercentage >= 55) {
                         import('../services/compactionService').then(({ compactionService }) => {
                           compactionService.updateContextUsage(sessionId, analytics.contextWindow.percentage);
                         });
@@ -2035,15 +2034,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 // Never clear claudeSessionId - keep it for session resumption
                 // Claude CLI handles session management, we just track the ID
                 // Don't clear streaming here - it's handled by streaming_end message
+                // DON'T clear pendingToolIds here - let tool_result messages clear them
+                // This fixes the bug where subagent tasks would lose their streaming state
                 sessions = sessions.map(s => {
                   if (s.id === sessionId) {
-                    console.log(`✅ [STREAMING-FIX] Result processed for session ${sessionId}`);
-                    return { 
-                      ...s, 
+                    console.log(`✅ [STREAMING-FIX] Result processed for session ${sessionId}, pendingTools: ${s.pendingToolIds?.size || 0}`);
+                    return {
+                      ...s,
                       // Don't clear streaming - handled by streaming_end
                       runningBash: false,
-                      userBashRunning: false,
-                      pendingToolIds: new Set() // Clear all pending tools when stream completes
+                      userBashRunning: false
+                      // DON'T clear pendingToolIds - tool_result handles that
                       // Keep claudeSessionId for resumption
                     };
                   }
@@ -2056,11 +2057,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // Check if we have a recent user message (within last 3 seconds)
               // If so, this is likely a followup during streaming, so keep streaming state
               const session = sessions.find(s => s.id === sessionId);
-              const recentUserMessage = session?.messages.findLast(m => 
-                m.type === 'user' && 
-                m.timestamp && 
-                Date.now() - m.timestamp < 3000
-              );
+              const recentUserMessage = session?.messages
+                .filter((m: any) =>
+                  m.type === 'user' &&
+                  m.timestamp &&
+                  Date.now() - m.timestamp < 3000
+                ).pop();
               
               if (recentUserMessage && message.subtype !== 'stream_end') {
                 // Only keep streaming for interruptions when there's a recent user message
@@ -2071,50 +2073,63 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 );
               } else {
                 // Clear streaming and bash running on interruption, error, or stream_end
-                console.log(`System message (${message.subtype}) received, clearing streaming and bash state`);
-                sessions = sessions.map(s => {
-                  if (s.id === sessionId) {
-                    // Calculate thinking time on stream end
-                    let updatedAnalytics = s.analytics;
-                    if (s.thinkingStartTime && updatedAnalytics) {
-                      const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
-                      updatedAnalytics = {
-                        ...updatedAnalytics,
-                        thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                // BUT preserve streaming state if there are pending tools (subagent tasks still running)
+                const session = sessions.find(s => s.id === sessionId);
+                const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+
+                if (hasPendingTools && message.subtype === 'stream_end') {
+                  // CRITICAL FIX: Don't clear streaming if subagent tasks are still pending
+                  console.log(`[Store] stream_end received but ${session.pendingToolIds.size} tools still pending - keeping streaming=true`);
+                  sessions = sessions.map(s =>
+                    s.id === sessionId
+                      ? { ...s, runningBash: false, userBashRunning: false }
+                      : s
+                  );
+                } else {
+                  console.log(`System message (${message.subtype}) received, clearing streaming and bash state`);
+                  sessions = sessions.map(s => {
+                    if (s.id === sessionId) {
+                      // Calculate thinking time on stream end
+                      let updatedAnalytics = s.analytics;
+                      if (s.thinkingStartTime && updatedAnalytics) {
+                        const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                        updatedAnalytics = {
+                          ...updatedAnalytics,
+                          thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                        };
+                        console.log(`📊 [THINKING TIME] Stream end - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                      }
+
+                      // DON'T clear pendingToolIds on stream_end - let tool_result clear them
+                      // Only clear on interrupted/error since user explicitly stopped
+                      const shouldClearPendingTools = message.subtype === 'interrupted' || message.subtype === 'error';
+
+                      // Trigger async fetch of session tokens from file (single source of truth)
+                      if (message.subtype === 'stream_end') {
+                        const claudeSessId = s.claudeSessionId;
+                        const workDir = s.workingDirectory;
+                        // Fire and forget - will update analytics when complete
+                        fetchSessionTokensFromFile(sessionId, claudeSessId, workDir).then(tokens => {
+                          if (tokens) {
+                            // Update analytics with authoritative token data from session file
+                            get().updateSessionAnalyticsFromFile(sessionId, tokens);
+                          }
+                        });
+                      }
+
+                      return {
+                        ...s,
+                        streaming: false,
+                        thinkingStartTime: undefined,
+                        runningBash: false,
+                        userBashRunning: false,
+                        analytics: updatedAnalytics,
+                        pendingToolIds: shouldClearPendingTools ? new Set() : s.pendingToolIds
                       };
-                      console.log(`📊 [THINKING TIME] Stream end - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
                     }
-                    // Clear pendingToolIds on stream_end
-                    const clearedPendingTools = message.subtype === 'stream_end' ? new Set() : s.pendingToolIds;
-                    if (message.subtype === 'stream_end' && s.pendingToolIds?.size) {
-                      console.log(`[Store] Clearing ${s.pendingToolIds.size} pending tools on stream_end`);
-                    }
-
-                    // Trigger async fetch of session tokens from file (single source of truth)
-                    if (message.subtype === 'stream_end') {
-                      const claudeSessId = s.claudeSessionId;
-                      const workDir = s.workingDirectory;
-                      // Fire and forget - will update analytics when complete
-                      fetchSessionTokensFromFile(sessionId, claudeSessId, workDir).then(tokens => {
-                        if (tokens) {
-                          // Update analytics with authoritative token data from session file
-                          get().updateSessionAnalyticsFromFile(sessionId, tokens);
-                        }
-                      });
-                    }
-
-                    return {
-                      ...s,
-                      streaming: false,
-                      thinkingStartTime: undefined,
-                      runningBash: false,
-                      userBashRunning: false,
-                      analytics: updatedAnalytics,
-                      pendingToolIds: clearedPendingTools
-                    };
-                  }
-                  return s;
-                });
+                    return s;
+                  });
+                }
               }
               return { sessions };
             } else if (message.type === 'tool_use') {
@@ -2147,10 +2162,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 return s;
               });
             } else if (message.type === 'tool_result') {
-              // Keep streaming active for tool results as more tools may follow
-              // The streaming state will be cleared by the result message
-              
               // Remove tool ID from pending set
+              // streaming will be managed by assistant/result/stream_end messages
               const toolUseId = message.message?.tool_use_id;
               sessions = sessions.map(s => {
                 if (s.id === sessionId) {
@@ -2159,8 +2172,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     pendingTools.delete(toolUseId);
                     console.log(`[Store] Removed tool ${toolUseId} from pending. Remaining: ${pendingTools.size}`);
                   }
-                  return { 
-                    ...s, 
+                  return {
+                    ...s,
                     runningBash: false,
                     pendingToolIds: pendingTools
                   };
@@ -2187,8 +2200,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             }
             // Also try web-based focus restoration
             window.focus();
-            // Focus the input if we have a reference
-            const inputElement = document.querySelector('textarea.message-input') as HTMLTextAreaElement;
+            // Focus the input if we have a reference (correct class name)
+            const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
             if (inputElement) {
               inputElement.focus();
             }
@@ -2648,14 +2661,14 @@ ${content}`;
         }
         // Also try web-based focus restoration
         window.focus();
-        // Focus the input if we have a reference
-        const inputElement = document.querySelector('textarea.message-input') as HTMLTextAreaElement;
+        // Focus the input if we have a reference (correct class name)
+        const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
         if (inputElement) {
           inputElement.focus();
         }
       });
     }
-    
+
     // Store cleanup function
     const session = get().sessions.find(s => s.id === sessionId);
     if (session) {
@@ -3681,17 +3694,17 @@ ${content}`;
   // Font customization
   setMonoFont: (font: string) => {
     set({ monoFont: font });
-    // Apply to CSS variable
-    document.documentElement.style.setProperty('--font-mono', font);
+    // Apply to CSS variable with proper formatting
+    document.documentElement.style.setProperty('--font-mono', `"${font}", monospace`);
     // Save to localStorage
     localStorage.setItem('yurucode-mono-font', font);
     console.log('[Store] Set mono font:', font);
   },
-  
+
   setSansFont: (font: string) => {
     set({ sansFont: font });
-    // Apply to CSS variable
-    document.documentElement.style.setProperty('--font-sans', font);
+    // Apply to CSS variable with proper formatting
+    document.documentElement.style.setProperty('--font-sans', `"${font}", sans-serif`);
     // Save to localStorage
     localStorage.setItem('yurucode-sans-font', font);
     console.log('[Store] Set sans font:', font);

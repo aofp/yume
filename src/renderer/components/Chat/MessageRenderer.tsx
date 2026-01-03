@@ -36,6 +36,12 @@ import './MessageRenderer.css';
 // pre-compiled regex patterns (avoid re-creation in render)
 const CODE_BLOCK_REGEX = /```([\w]*)?[\r\n]+([\s\S]*?)```/g;
 const INLINE_CODE_REGEX = /`([^`]+)`/g;
+const THINKING_TAG_REGEX = /<thinking>([\s\S]*?)<\/thinking>/g;
+
+// Convert <thinking>...</thinking> tags to italic markdown
+const processThinkingTags = (text: string): string => {
+  return text.replace(THINKING_TAG_REGEX, (_match, content) => `*${content.trim()}*`);
+};
 
 // static style objects (avoid re-creation in render)
 const ERROR_MESSAGE_STYLE: React.CSSProperties = {
@@ -97,6 +103,13 @@ export interface ClaudeMessage {
 
   // Subagent tracking
   parent_tool_use_id?: string;  // ID of the parent Task tool use (for subagent messages)
+
+  // Wrapper compact metadata
+  wrapper_compact?: {
+    savedTokens?: number;
+    totalSaved?: number;
+    compactCount?: number;
+  };
 }
 
 interface ContentBlock {
@@ -545,8 +558,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
         // If it's a plain object with a text field, extract and display it
         if (parsed.text && typeof parsed.text === 'string') {
           return (
-            <ReactMarkdown
-              className="markdown-content"
+            <div className="markdown-content"><ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
                 code({ node, inline, className, children, ...props }) {
@@ -581,8 +593,8 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 }
               }}
             >
-              {parsed.text}
-            </ReactMarkdown>
+              {processThinkingTags(parsed.text)}
+            </ReactMarkdown></div>
           );
         }
         // Otherwise it's raw JSON data - show it as formatted JSON in a code block
@@ -613,8 +625,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
     }
     
     return (
-      <ReactMarkdown
-        className="markdown-content"
+      <div className="markdown-content"><ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
           code({ node, inline, className, children, ...props }) {
@@ -651,11 +662,11 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           }
         }}
       >
-        {content}
-      </ReactMarkdown>
+        {processThinkingTags(content)}
+      </ReactMarkdown></div>
     );
   }
-  
+
   if (Array.isArray(content)) {
     // During streaming, only show the last tool that's actively being used
     let toolsToRender = content;
@@ -693,7 +704,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           }
           // For text blocks with search highlighting
           if (searchQuery) {
-            const highlighted = highlightText(block.text || '', searchQuery, isCurrentMatch || false);
+            const highlighted = highlightText(processThinkingTags(block.text || ''), searchQuery, isCurrentMatch || false);
             return (
               <div key={idx} className="content-text">
                 {highlighted}
@@ -716,7 +727,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                     );
                   }
                 }}
-              >{block.text || ''}</ReactMarkdown>
+              >{processThinkingTags(block.text || '')}</ReactMarkdown>
             </div>
           );
           
@@ -738,8 +749,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 <IconDots size={14} stroke={1.5} className="thinking-icon" style={{ color: 'var(--accent-color)' }} />
               </div>
               <div className="thinking-content">
-                <ReactMarkdown
-                  className="thinking-markdown"
+                <div className="thinking-markdown"><ReactMarkdown
                   remarkPlugins={[remarkGfm]}
                   components={{
                     a({ children }) {
@@ -775,11 +785,11 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                   }}
                 >
                   {thinkingContent}
-                </ReactMarkdown>
+                </ReactMarkdown></div>
               </div>
             </div>
           );
-          
+
         case 'tool_use':
           // Tool uses are now rendered separately outside message bubbles
           // Return null here to prevent them from appearing inside bubbles
@@ -2812,14 +2822,71 @@ const MessageRendererBase: React.FC<{
         // Always show compact results, otherwise only show if no assistant message
         const isCompactResult = message.wrapper_compact || resultText.includes('Conversation compacted');
         const showResultText = resultText && (isCompactResult || !hasAssistantMessage);
-        
+
+        // Render beautiful compact summary card for compaction results
+        if (isCompactResult && message.wrapper_compact) {
+          const compactData = message.wrapper_compact;
+          const savedTokens = compactData.savedTokens || 0;
+          const totalSaved = compactData.totalSaved || savedTokens;
+          const compactCount = compactData.compactCount || 1;
+
+          // Format token count nicely
+          const formatTokens = (tokens: number) => {
+            if (tokens >= 1000000) return `${(tokens / 1000000).toFixed(1)}M`;
+            if (tokens >= 1000) return `${(tokens / 1000).toFixed(1)}k`;
+            return tokens.toLocaleString();
+          };
+
+          return (
+            <div className="message result-success">
+              <div className="compact-summary-card">
+                <div className="compact-summary-header">
+                  <IconChevronsRight size={14} className="compact-summary-icon" />
+                  <div className="compact-summary-title">context compacted</div>
+                </div>
+
+                <div className="compact-stats">
+                  <div className="compact-stat">
+                    <div className="compact-stat-value">{formatTokens(savedTokens)}</div>
+                    <div className="compact-stat-label">freed</div>
+                  </div>
+                  <div className="compact-stat">
+                    <div className="compact-stat-value">{formatTokens(totalSaved)}</div>
+                    <div className="compact-stat-label">total</div>
+                  </div>
+                  <div className="compact-stat">
+                    <div className="compact-stat-value">{compactCount}x</div>
+                  </div>
+                </div>
+
+                {resultText && (
+                  <div className="compact-summary-content">
+                    <div className="compact-summary-text">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {resultText}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="elapsed-time">
+                {elapsedSeconds}s
+                {message.model && ` • ${
+                  message.model.includes('opus') ? 'opus 4.5' :
+                  message.model.includes('sonnet') ? 'sonnet 4.5' :
+                  message.model
+                }`}
+              </div>
+            </div>
+          );
+        }
+
         return (
           <div className="message result-success">
             {showResultText && (
               <div className="assistant-bubble">
                 <div className="message-content">
-                  <ReactMarkdown
-                    className="markdown-content"
+                  <div className="markdown-content"><ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
                       code: ({node, inline, className, children, ...props}) => {
@@ -2885,7 +2952,7 @@ const MessageRendererBase: React.FC<{
                     }}
                   >
                     {resultText}
-                  </ReactMarkdown>
+                  </ReactMarkdown></div>
                 </div>
               </div>
             )}

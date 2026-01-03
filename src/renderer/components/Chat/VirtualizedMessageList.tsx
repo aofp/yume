@@ -45,6 +45,10 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const streamingScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const followUpScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
+  // Scroll anchoring refs - used to maintain position when user has scrolled up
+  const scrollAnchorRef = useRef<{ index: number; offset: number } | null>(null);
+  const prevTotalSizeRef = useRef<number>(0);
+
   // Cooldown period after user scrolls up (don't auto-scroll for this long)
   // Set to 0 to disable cooldown - always auto-scroll when assistant is responding
   const SCROLL_COOLDOWN_MS = 0;
@@ -108,12 +112,11 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     }, [displayMessages]),
   });
 
-  // Check if we're at bottom
-  const checkIfAtBottom = useCallback(() => {
+  // Check if we're at bottom - uses different thresholds for different purposes
+  const checkIfAtBottom = useCallback((threshold = 50) => {
     if (!parentRef.current) return false;
     const { scrollTop, scrollHeight, clientHeight } = parentRef.current;
-    // Use 50px threshold for more reliable detection
-    return scrollHeight - scrollTop - clientHeight < 50;
+    return scrollHeight - scrollTop - clientHeight < threshold;
   }, []);
 
   // Scroll to true bottom with follow-up to catch late-rendering content
@@ -163,36 +166,72 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   // Track last scroll position to detect scroll direction
   const lastScrollTopRef = useRef(0);
 
+  // Capture scroll anchor - which item is at the top of the viewport
+  const captureScrollAnchor = useCallback(() => {
+    if (!parentRef.current) return;
+    const virtualItems = virtualizer.getVirtualItems();
+    if (virtualItems.length === 0) return;
+
+    const scrollTop = parentRef.current.scrollTop;
+
+    // Find the first visible item
+    for (const item of virtualItems) {
+      if (item.start + item.size > scrollTop) {
+        // This item is at least partially visible at the top
+        scrollAnchorRef.current = {
+          index: item.index,
+          offset: scrollTop - item.start, // how far into this item we've scrolled
+        };
+        break;
+      }
+    }
+  }, [virtualizer]);
+
   // Update isAtBottom on scroll and detect user scrolling
   const handleScroll = useCallback(() => {
     if (!parentRef.current) return;
-
-    // Ignore scroll events triggered by our auto-scroll
-    if (isAutoScrollingRef.current) return;
 
     const currentScrollTop = parentRef.current.scrollTop;
     const scrollingUp = currentScrollTop < lastScrollTopRef.current;
     const scrollDelta = Math.abs(currentScrollTop - lastScrollTopRef.current);
     lastScrollTopRef.current = currentScrollTop;
 
-    const atBottom = checkIfAtBottom();
-    isAtBottomRef.current = atBottom;
+    // CRITICAL: Detect user scroll BEFORE checking isAutoScrollingRef
+    // This ensures any scroll up is detected even during auto-scroll periods
+    // Use 1px threshold for unstick - ANY scroll up should unstick immediately
+    const atBottomForUnstick = checkIfAtBottom(1);
 
-    // Mark as user scroll if scrolling UP at all and we're not at the bottom
-    // Even 1px upward scroll should stop auto-scroll immediately
-    if (scrollingUp && !atBottom) {
+    // If scrolling UP by any amount and not at very bottom, mark as user scroll
+    // This takes priority over auto-scroll detection
+    if (scrollingUp && scrollDelta > 0 && !atBottomForUnstick) {
       userHasScrolledRef.current = true;
       userScrolledAtRef.current = Date.now();
+      // Capture which item we're looking at for scroll anchoring
+      captureScrollAnchor();
       onScrollStateChange?.(false);
+      return; // Don't process further - user has taken control
     }
 
-    // If user scrolls back to bottom, clear the manual scroll flag
-    if (atBottom) {
+    // Keep anchor updated while user is scrolled up (for any scroll movement)
+    if (userHasScrolledRef.current && scrollDelta > 0) {
+      captureScrollAnchor();
+    }
+
+    // For auto-scroll events, skip the rest of processing
+    if (isAutoScrollingRef.current) return;
+
+    // Use larger threshold (50px) for "at bottom" state reporting
+    const atBottomForState = checkIfAtBottom(50);
+    isAtBottomRef.current = atBottomForState;
+
+    // If user scrolls back to bottom, clear the manual scroll flag and anchor
+    if (atBottomForState) {
       userHasScrolledRef.current = false;
       userScrolledAtRef.current = 0;
+      scrollAnchorRef.current = null;
       onScrollStateChange?.(true);
     }
-  }, [checkIfAtBottom, onScrollStateChange]);
+  }, [checkIfAtBottom, onScrollStateChange, captureScrollAnchor]);
 
   // Expose scroll methods to parent components
   useImperativeHandle(ref, () => ({
@@ -213,6 +252,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       // Force scroll and reset user scroll flag (for user-initiated actions like sending a message)
       userHasScrolledRef.current = false;
       userScrolledAtRef.current = 0;
+      scrollAnchorRef.current = null;
       isAutoScrollingRef.current = true;
       if (!parentRef.current || displayMessages.length === 0) return;
       scrollToTrueBottom(behavior);
@@ -228,6 +268,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     if (previousMessageCountRef.current === 0 && messageCount > 0) {
       userHasScrolledRef.current = false;
       isAtBottomRef.current = true;
+      scrollAnchorRef.current = null;
     }
 
     previousMessageCountRef.current = messageCount;
@@ -273,14 +314,55 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     }
   }, [contentHash, displayMessages.length, performAutoScroll]);
 
-  // Interval-based scroll during streaming/thinking - SMART bottom sticking
-  // Only scrolls when significantly away from bottom to prevent flicker
-  useEffect(() => {
-    const shouldPoll = (isStreaming || showThinking) && !userHasScrolledRef.current;
+  // CRITICAL: Scroll anchoring - maintain position when user has scrolled up
+  // When new content arrives and virtualizer re-measures, restore scroll to anchored item
+  useLayoutEffect(() => {
+    if (!parentRef.current || !userHasScrolledRef.current || !scrollAnchorRef.current) return;
 
-    if (shouldPoll) {
+    const newTotalSize = virtualizer.getTotalSize();
+    const oldTotalSize = prevTotalSizeRef.current;
+    prevTotalSizeRef.current = newTotalSize;
+
+    // If total size changed, we need to restore scroll position
+    if (oldTotalSize > 0 && newTotalSize !== oldTotalSize) {
+      const anchor = scrollAnchorRef.current;
+
+      // Find the current position of the anchored item
+      const virtualItems = virtualizer.getVirtualItems();
+      const anchorItem = virtualItems.find(item => item.index === anchor.index);
+
+      if (anchorItem) {
+        // Restore scroll to keep the same item at the same position
+        const newScrollTop = anchorItem.start + anchor.offset;
+        isAutoScrollingRef.current = true;
+        parentRef.current.scrollTop = newScrollTop;
+        setTimeout(() => { isAutoScrollingRef.current = false; }, 50);
+      } else {
+        // Item not in view, use virtualizer's scrollToIndex
+        isAutoScrollingRef.current = true;
+        virtualizer.scrollToIndex(anchor.index, { align: 'start' });
+        // Adjust for offset after scroll
+        setTimeout(() => {
+          if (parentRef.current) {
+            parentRef.current.scrollTop += anchor.offset;
+          }
+          isAutoScrollingRef.current = false;
+        }, 50);
+      }
+    }
+  }, [virtualizer, contentHash]);
+
+  // Ref for auto-scroll reset timeout
+  const autoScrollResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Interval-based scroll during streaming/thinking - SMART bottom sticking
+  // Always start interval when streaming/thinking - the ref check is inside the interval
+  // so that forceScrollToBottom can reset userHasScrolledRef and scrolling resumes
+  useEffect(() => {
+    if (isStreaming || showThinking) {
       // Start interval for continuous scroll during streaming
       streamingScrollIntervalRef.current = setInterval(() => {
+        // Check ref INSIDE interval so forceScrollToBottom can reset it mid-stream
         if (!parentRef.current || userHasScrolledRef.current) return;
 
         const { scrollHeight, clientHeight, scrollTop } = parentRef.current;
@@ -291,7 +373,13 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
         if (distanceFromBottom > 5) {
           isAutoScrollingRef.current = true;
           parentRef.current.scrollTop = scrollHeight - clientHeight;
-          isAutoScrollingRef.current = false;
+          // Reset flag after scroll events have been processed (async)
+          if (autoScrollResetTimeoutRef.current) {
+            clearTimeout(autoScrollResetTimeoutRef.current);
+          }
+          autoScrollResetTimeoutRef.current = setTimeout(() => {
+            isAutoScrollingRef.current = false;
+          }, 50);
         }
       }, 100); // 100ms for faster, more responsive scrolling
     }
@@ -315,6 +403,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       }
       if (followUpScrollTimeoutRef.current) {
         clearTimeout(followUpScrollTimeoutRef.current);
+      }
+      if (autoScrollResetTimeoutRef.current) {
+        clearTimeout(autoScrollResetTimeoutRef.current);
       }
     };
   }, []);

@@ -15,19 +15,19 @@ name = "yurucode_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
-tauri-build = { version = "2.0.0-rc.13", features = [] }
+tauri-build = { version = "2", features = [] }
 
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
 log = "0.4"
-tauri = { version = "2.0.0-rc.17", features = ["macos-private-api"] }
-tauri-plugin-log = "2.0.0-rc"
-tauri-plugin-fs = "2.0.0-rc"
-tauri-plugin-dialog = "2.0.0-rc"
-tauri-plugin-shell = "2.0.0-rc"
-tauri-plugin-store = "2.0.0-rc"
-tauri-plugin-clipboard-manager = "2.0.0-rc"
+tauri = { version = "2", features = ["macos-private-api"] }
+tauri-plugin-log = "2"
+tauri-plugin-fs = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-shell = "2"
+tauri-plugin-store = "2"
+tauri-plugin-clipboard-manager = "2"
 tokio = { version = "1.40", features = ["full"] }
 tokio-tungstenite = "0.24"
 futures-util = "0.3"
@@ -59,7 +59,7 @@ cocoa = "0.25"
 objc = "0.2"
 
 [target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0.58", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse"] }
+windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse"] }
 
 # Optimization profiles for smaller builds
 [profile.release]
@@ -78,10 +78,6 @@ strip = "debuginfo"      # Strip debug info only
 [profile.release.package."*"]
 opt-level = "z"
 strip = true
-
-# Windows-specific settings to prevent console window
-[target.'cfg(windows)']
-version = "0.48"
 
 [[bin]]
 name = "yurucode"

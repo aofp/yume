@@ -1,6 +1,6 @@
 /**
  * Compaction Service
- * Handles context compaction and auto-trigger at 97%
+ * Handles context compaction and auto-trigger at 85%
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -8,8 +8,8 @@ import { useClaudeCodeStore } from '../stores/claudeCodeStore';
 import { hooksService } from './hooksService';
 
 export interface CompactionConfig {
-  autoThreshold: number;  // 0.97 (97%)
-  forceThreshold: number; // 0.98 (98%)
+  autoThreshold: number;  // 0.85 (85%)
+  forceThreshold: number; // 0.90 (90%)
   preserveContext: boolean;
   generateManifest: boolean;
 }
@@ -44,8 +44,8 @@ export interface ContextManifest {
 
 class CompactionService {
   private config: CompactionConfig = {
-    autoThreshold: 0.97,
-    forceThreshold: 0.98,
+    autoThreshold: 0.60,  // 60% - conservative auto-compact (38% buffer like Claude Code)
+    forceThreshold: 0.65, // 65% - force compact
     preserveContext: true,
     generateManifest: true
   };
@@ -61,13 +61,13 @@ class CompactionService {
       case 'None':
         return '';
       case 'Notice':
-        return ''; // Notice level removed - no action at 75%
+        return ''; // Notice level deprecated
       case 'Warning':
-        return 'Context usage at 90%. Preparing for auto-compact at 97%.';
+        return 'Context usage at 55%. Auto-compact will trigger at 60%.';
       case 'AutoTrigger':
-        return 'Context usage at 97%. Auto-triggering compact to preserve conversation flow.';
+        return 'Context usage at 60%. Auto-compacting (38% buffer reserved like Claude Code).';
       case 'Force':
-        return 'Context usage at 98%. Force-compacting to prevent context overflow.';
+        return 'Context usage at 65%. Force-compacting to prevent context overflow.';
       default:
         return '';
     }
@@ -148,7 +148,7 @@ class CompactionService {
   }
 
   /**
-   * Trigger auto-compaction at 97%
+   * Trigger auto-compaction at 85%
    */
   async triggerAutoCompaction(sessionId: string): Promise<void> {
     console.log('[Compaction] 🎯 triggerAutoCompaction called for session:', sessionId);
@@ -156,6 +156,8 @@ class CompactionService {
     // Prevent multiple compactions
     if (this.compactingSessionIds.has(sessionId)) {
       console.log('[Compaction] ⚠️ Already compacting, skipping');
+      // Reset flags so next check can trigger again after current compaction finishes
+      await invoke('reset_compaction_flags', { sessionId });
       return;
     }
 
@@ -164,6 +166,8 @@ class CompactionService {
     const timeSinceLastCompact = Date.now() - lastTime;
     if (timeSinceLastCompact < 60000) {
       console.log(`[Compaction] ⏱️ Skipping auto-compact (rate limited, ${timeSinceLastCompact}ms since last)`);
+      // Reset flags so next check can trigger again after rate limit expires
+      await invoke('reset_compaction_flags', { sessionId });
       return;
     }
 
@@ -189,6 +193,10 @@ class CompactionService {
       console.log('[Compaction] 🚀 Sending /compact command to Claude');
       await store.sendMessage('/compact', false);
 
+      // Reset backend flags so compaction can trigger again later
+      console.log('[Compaction] 🔄 Resetting backend compaction flags');
+      await invoke('reset_compaction_flags', { sessionId });
+
       console.log('[Compaction] ✅ Auto-compact triggered successfully');
     } catch (error) {
       console.error('[Compaction] ❌ Auto-compact failed:', error);
@@ -200,11 +208,11 @@ class CompactionService {
   }
 
   /**
-   * Force compaction at 98%
+   * Force compaction at 90%
    */
   async triggerForceCompaction(sessionId: string): Promise<void> {
     this.compactingSessionIds.add(sessionId);
-    
+
     const store = useClaudeCodeStore.getState();
     store.setCompacting(sessionId, true);
 
@@ -215,6 +223,9 @@ class CompactionService {
 
       // Force compact
       await store.sendMessage('/compact', false);
+
+      // Reset backend flags so compaction can trigger again later
+      await invoke('reset_compaction_flags', { sessionId });
 
       console.log('[Compaction] Force-compact completed');
     } catch (error) {

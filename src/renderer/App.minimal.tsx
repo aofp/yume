@@ -58,10 +58,10 @@ export const App: React.FC = () => {
     
     // Apply saved fonts from store (store loads from localStorage)
     if (monoFont) {
-      document.documentElement.style.setProperty('--font-mono', monoFont);
+      document.documentElement.style.setProperty('--font-mono', `"${monoFont}", monospace`);
     }
     if (sansFont) {
-      document.documentElement.style.setProperty('--font-sans', sansFont);
+      document.documentElement.style.setProperty('--font-sans', `"${sansFont}", sans-serif`);
     }
     
     // Apply saved background opacity
@@ -124,8 +124,8 @@ export const App: React.FC = () => {
     
     // Check if there's selected text
     const selection = window.getSelection();
-    const hasSelection = selection && selection.toString().trim().length > 0;
-    const selectedText = hasSelection ? selection.toString() : '';
+    const hasSelection = !!(selection && selection.toString().trim().length > 0);
+    const selectedText = hasSelection ? selection!.toString() : '';
     
     // Check if target is a textarea or input to show copy/paste options
     const isTextInput = target.tagName === 'TEXTAREA' || target.tagName === 'INPUT';
@@ -350,7 +350,8 @@ export const App: React.FC = () => {
             } else if (event.payload.type === 'enter') {
               setIsDragging(true);
               document.body.classList.add('dragging');
-            } else if (event.payload.type === 'leave' || event.payload.type === 'cancel') {
+            } else {
+              // leave, cancel, over - hide overlay
               setIsDragging(false);
               document.body.classList.remove('dragging');
             }
@@ -375,25 +376,28 @@ export const App: React.FC = () => {
       console.log('Folder changed to:', directory);
       // Could update current session's directory here
     };
-    
+
+    // Stable reference for help modal handler to ensure proper cleanup
+    const handleShowHelpModal = () => setShowHelpModal(true);
+
     if (window.electronAPI?.on) {
       window.electronAPI.on('initial-directory', handleInitialDirectory);
       window.electronAPI.on('folder-changed', handleFolderChanged);
-      window.electronAPI.on('show-help-modal', () => setShowHelpModal(true));
+      window.electronAPI.on('show-help-modal', handleShowHelpModal);
     }
-    
+
     // Cleanup listeners
     return () => {
       // Cleanup Tauri drag drop listener
       if (unlistenDragDrop) {
         unlistenDragDrop();
       }
-      
+
       // Cleanup Electron listeners
       if (window.electronAPI?.off) {
         window.electronAPI.off('initial-directory', handleInitialDirectory);
         window.electronAPI.off('folder-changed', handleFolderChanged);
-        window.electronAPI.off('show-help-modal', () => setShowHelpModal(true));
+        window.electronAPI.off('show-help-modal', handleShowHelpModal);
       }
     };
   }, [createSession, setIsDragging]);
@@ -425,7 +429,7 @@ export const App: React.FC = () => {
         
         if (window.__TAURI__) {
           import('@tauri-apps/api/core').then(({ invoke }) => {
-            invoke('toggle_console_visibility').then((message: string) => {
+            invoke<string>('toggle_console_visibility').then((message) => {
               console.log('Console visibility toggled:', message);
               // Could show a toast notification here
             }).catch(err => {
@@ -602,7 +606,12 @@ export const App: React.FC = () => {
     const negativeG = parseInt(negativeHex.substr(2, 2), 16);
     const negativeB = parseInt(negativeHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--negative-rgb', `${negativeR}, ${negativeG}, ${negativeB}`);
-    
+
+    // Apply html opacity (theme setting)
+    const savedHtmlOpacity = localStorage.getItem('htmlOpacity');
+    const opacityValue = savedHtmlOpacity ? parseFloat(savedHtmlOpacity) : 0.92;
+    document.documentElement.style.opacity = opacityValue.toString();
+
     // Apply saved zoom level
     const savedZoomPercent = localStorage.getItem('zoomPercent') || '100';
     document.body.style.zoom = `${parseInt(savedZoomPercent) / 100}`;
@@ -612,28 +621,21 @@ export const App: React.FC = () => {
       const restoreWindowState = async () => {
         try {
           const tauriWindow = await import('@tauri-apps/api/window');
+          const { PhysicalSize, PhysicalPosition } = await import('@tauri-apps/api/dpi');
           const appWindow = tauriWindow.getCurrentWindow();
-          
+
           // Restore size
           const savedWidth = localStorage.getItem('windowWidth');
           const savedHeight = localStorage.getItem('windowHeight');
           if (savedWidth && savedHeight) {
-            await appWindow.setSize({
-              type: 'Physical',
-              width: parseInt(savedWidth),
-              height: parseInt(savedHeight)
-            });
+            await appWindow.setSize(new PhysicalSize(parseInt(savedWidth), parseInt(savedHeight)));
           }
-          
+
           // Restore position
           const savedX = localStorage.getItem('windowX');
           const savedY = localStorage.getItem('windowY');
           if (savedX && savedY) {
-            await appWindow.setPosition({
-              type: 'Physical',
-              x: parseInt(savedX),
-              y: parseInt(savedY)
-            });
+            await appWindow.setPosition(new PhysicalPosition(parseInt(savedX), parseInt(savedY)));
           }
           
           // Listen for window events to save state
@@ -916,7 +918,7 @@ export const App: React.FC = () => {
         <ProjectsModal
           isOpen={showProjectsModal}
           onClose={() => setShowProjectsModal(false)}
-        onSelectSession={async (projectPath, sessionId, sessionTitle, sessionMessageCount?) => {
+        onSelectSession={async (projectPath: string, sessionId: string | null, sessionTitle: string, sessionMessageCount?: number) => {
           // If no sessionId, create a new session in the project
           if (!sessionId) {
             // Format project name from path
@@ -1040,7 +1042,10 @@ export const App: React.FC = () => {
                 toolUses: 0,
                 tokens: { input: 0, output: 0, total: 0, byModel: { opus: { input: 0, output: 0, total: 0 }, sonnet: { input: 0, output: 0, total: 0 } } },
                 cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
-                modelUsage: {}
+                modelUsage: {},
+                duration: 0,
+                lastActivity: new Date(),
+                thinkingTime: 0
               },
               draft: { input: '', attachments: [] },
               permissionMode: 'default' as const,

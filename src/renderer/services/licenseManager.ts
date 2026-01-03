@@ -90,18 +90,13 @@ async function validateLicenseWithServer(key: string): Promise<{
   try {
     // basic format check first
     if (!validateLicenseFormat(key)) {
-      console.error('[License] Format validation failed for key:', key);
       return { valid: false, error: 'Invalid format' };
     }
-    console.log('[License] Format valid, calling API...');
-    console.log('[License] API URL:', VALIDATION_API_URL);
-    console.log('[License] Key to validate:', key.toUpperCase());
 
     // Prepare request body
     const requestBody = JSON.stringify({
       license_key: key.toUpperCase()
     });
-    console.log('[License] Request body:', requestBody);
 
     // call validation API with additional headers for production
     const response = await fetch(VALIDATION_API_URL, {
@@ -116,14 +111,7 @@ async function validateLicenseWithServer(key: string): Promise<{
       credentials: 'omit'
     });
 
-    console.log('[License] Response status:', response.status);
-    console.log('[License] Response headers:', response.headers);
-
     if (!response.ok) {
-      console.error('[License] Response not OK:', response.status, response.statusText);
-      const errorText = await response.text();
-      console.error('[License] Error response body:', errorText);
-      
       if (response.status === 429) {
         return { valid: false, error: 'Rate limit exceeded. Please try again later.' };
       }
@@ -131,49 +119,31 @@ async function validateLicenseWithServer(key: string): Promise<{
     }
 
     const responseText = await response.text();
-    console.log('[License] Raw response:', responseText);
-    
+
     let result;
     try {
       result = JSON.parse(responseText);
-    } catch (parseError) {
-      console.error('[License] JSON parse error:', parseError);
-      console.error('[License] Response text that failed to parse:', responseText);
+    } catch {
       return { valid: false, error: 'Invalid server response' };
     }
-    
-    console.log('[License] Parsed API Response:', result);
-    
-    const validationResult = {
+
+    return {
       valid: result.valid === true,
       error: result.error,
       signature: result.signature,
       timestamp: result.validated_at
     };
-    console.log('[License] Returning validation result:', validationResult);
-    return validationResult;
-  } catch (error) {
-    console.error('[License] License validation error:', error);
-    console.error('[License] Error name:', error.name);
-    console.error('[License] Error message:', error.message);
-    console.error('[License] Error stack:', error.stack);
-    
-    // Check if it's a network error
-    if (error.name === 'TypeError' && error.message.includes('fetch')) {
-      console.error('[License] This appears to be a network/fetch error');
-    }
-    
+  } catch (error: any) {
     // fallback to cached validation if available
     const cached = useLicenseStore.getState().validationCache;
     if (cached && cached.key === key) {
       const cacheAge = Date.now() - cached.timestamp;
       if (cacheAge < 5 * 60 * 1000) { // 5 minutes cache
-        console.log('[License] Using cached validation');
         return { valid: cached.valid };
       }
     }
-    
-    return { valid: false, error: `Network error: ${error.message}` };
+
+    return { valid: false, error: `Network error: ${error?.message || 'Unknown'}` };
   }
 }
 

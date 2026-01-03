@@ -94,6 +94,19 @@
   max-height: 300px;
 }
 
+.font-section-header {
+  font-size: 10px;
+  color: var(--accent-color);
+  text-transform: lowercase;
+  padding: 6px 10px 4px;
+  margin-top: 4px;
+  opacity: 0.7;
+}
+
+.font-section-header:first-child {
+  margin-top: 0;
+}
+
 .font-option {
   display: flex;
   justify-content: space-between;

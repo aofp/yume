@@ -14,7 +14,7 @@ const wrapperState = {
   sessionMapping: new Map<string, string>(), // Map temp IDs to real IDs
   debug: isDev, // Only enable debug in development
   initialized: false,
-  autoCompactThreshold: 192000,
+  autoCompactThreshold: 170000, // 85% of 200k context window
   autoCompactPending: new Map<string, string>() // Track pending auto-compacts
 };
 
@@ -177,6 +177,7 @@ export function processWrapperMessage(message: any, sessionId: string): any {
   // Detect and handle compaction
   if (isCompactResult(message)) {
     const savedTokens = session.totalTokens;
+    const claudeResult = message.result || ''; // Save Claude's original result
 
     session.compactCount++;
     session.wasCompacted = true;
@@ -191,8 +192,8 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     session.autoCompactTriggered = false; // Reset so it can trigger again later
     session.lastUpdateTime = Date.now();
 
-    // Generate helpful summary
-    processed.result = generateCompactSummary(session, savedTokens);
+    // Generate helpful summary (includes Claude's result if present)
+    processed.result = generateCompactSummary(session, savedTokens, claudeResult);
 
     // Add compaction metadata
     processed.wrapper_compact = {
@@ -200,6 +201,12 @@ export function processWrapperMessage(message: any, sessionId: string): any {
       totalSaved: session.tokensSaved,
       compactCount: session.compactCount
     };
+
+    debugLog('[WRAPPER] 🗜️ Compact detected:', {
+      savedTokens,
+      compactCount: session.compactCount,
+      claudeResultLength: claudeResult.length
+    });
   }
   
   // Add COMPLETE wrapper metadata to every message
@@ -235,25 +242,45 @@ export function processWrapperMessage(message: any, sessionId: string): any {
 }
 
 function isCompactResult(message: any): boolean {
-  // Compaction has empty result and 0 tokens
-  return message.type === 'result' &&
-         message.result === '' &&
-         (!message.usage || (message.usage.input_tokens === 0 && message.usage.output_tokens === 0));
+  // Compact result is detected by:
+  // 1. type === 'result'
+  // 2. Zero usage tokens (both input and output are 0) - THE definitive indicator
+  // Note: Claude may return non-empty result with its own summary, so don't check result === ''
+  if (message.type !== 'result') return false;
+
+  // Primary check: zero usage tokens - the definitive indicator of compact
+  // Compact results have 0 input and 0 output tokens because the context was reset
+  const hasZeroUsage = message.usage &&
+    message.usage.input_tokens === 0 &&
+    message.usage.output_tokens === 0;
+
+  // Secondary check: num_turns field combined with zero/missing cache tokens
+  // This catches edge cases where usage might not be present
+  const hasNumTurnsWithNoCache = message.num_turns !== undefined &&
+    (!message.usage?.cache_read_input_tokens || message.usage.cache_read_input_tokens === 0);
+
+  return hasZeroUsage || hasNumTurnsWithNoCache;
 }
 
-function generateCompactSummary(session: SessionState, savedTokens: number): string {
+function generateCompactSummary(session: SessionState, savedTokens: number, claudeResult?: string): string {
   const percentageSaved = ((savedTokens / 200000) * 100).toFixed(2);
-  return `✅ Conversation compacted successfully!
 
-📊 Compaction Summary:
-• Tokens saved: ${savedTokens.toLocaleString()} (${percentageSaved}% of context window)
-• Messages compressed: ${session.messageCount}
-• Compactions done: ${session.compactCount}
-• Total tokens saved: ${session.tokensSaved.toLocaleString()}
+  let summary = `**Conversation compacted successfully.**
 
-✨ Context has been reset. You can continue the conversation normally.
+**Summary:**
+- Tokens saved: **${savedTokens.toLocaleString()}** (${percentageSaved}% of context window)
+- Messages compressed: ${session.messageCount}
+- Compactions done: ${session.compactCount}
+- Total tokens saved: ${session.tokensSaved.toLocaleString()}
 
-💡 The conversation history has been compressed to save tokens while preserving context (200k window).`;
+Context has been reset. You can continue the conversation normally.`;
+
+  // If Claude provided its own summary, append it
+  if (claudeResult && claudeResult.trim()) {
+    summary += `\n\n---\n\n**Claude's Summary:**\n${claudeResult}`;
+  }
+
+  return summary;
 }
 
 // Export functions

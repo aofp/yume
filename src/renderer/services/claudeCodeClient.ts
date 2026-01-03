@@ -648,11 +648,21 @@ export class ClaudeCodeClient {
     if (!this.socket) {
       debugLog('[Client] Socket not ready, waiting for connection before setting up message listener for', channel);
 
+      // Track cleanup state to prevent race condition
+      let cleanupRequested = false;
+
       // Set up a delayed subscription that will activate once connected
       const checkInterval = setInterval(() => {
+        if (cleanupRequested) {
+          clearInterval(checkInterval);
+          return;
+        }
         if (this.socket && this.connected) {
           debugLog('[Client] Socket now ready, setting up delayed message listener for', channel);
           clearInterval(checkInterval);
+
+          // Double-check cleanup wasn't requested during this tick
+          if (cleanupRequested) return;
 
           // Store handler
           this.messageHandlers.set(channel, loggingHandler);
@@ -664,6 +674,7 @@ export class ClaudeCodeClient {
 
       // Return cleanup that clears the interval and removes handler if set up
       return () => {
+        cleanupRequested = true;
         clearInterval(checkInterval);
         if (this.socket) {
           const storedHandler = this.messageHandlers.get(channel);

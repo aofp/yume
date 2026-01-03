@@ -1,5 +1,47 @@
 /* Font definitions for yurucode */
 
+/* Comic Neue - Sans-serif (default) */
+@font-face {
+  font-family: 'Comic Neue';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./woff2/ComicNeue-Light.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Comic Neue';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./woff2/ComicNeue-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Comic Neue';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./woff2/ComicNeue-Bold.woff2') format('woff2');
+}
+
+/* Comic Mono - Monospace (default) */
+@font-face {
+  font-family: 'Comic Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./ComicMono.ttf') format('truetype');
+}
+
+@font-face {
+  font-family: 'Comic Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./ComicMono-Bold.ttf') format('truetype');
+}
+
 /* Fira Code - Local Loading (WOFF2 only for size optimization) */
 @font-face {
   font-family: 'Fira Code';
@@ -41,13 +83,86 @@
   src: url('./woff2/FiraCode-Bold.woff2') format('woff2');
 }
 
-/* Inter - Variable Font Only (size optimization) */
+/* JetBrains Mono - Monospace */
 @font-face {
-  font-family: 'Inter';
+  font-family: 'JetBrains Mono';
   font-style: normal;
-  font-weight: 100 900;
+  font-weight: 300;
   font-display: swap;
-  src: url('./Inter-Variable.ttf') format('truetype-variations');
+  src: url('./woff2/JetBrainsMono-Light.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./woff2/JetBrainsMono-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./woff2/JetBrainsMono-Medium.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./woff2/JetBrainsMono-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./woff2/JetBrainsMono-Bold.woff2') format('woff2');
+}
+
+/* IBM Plex Sans - Sans-serif */
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 300;
+  font-display: swap;
+  src: url('./woff2/IBMPlexSans-Light.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('./woff2/IBMPlexSans-Regular.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url('./woff2/IBMPlexSans-Medium.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url('./woff2/IBMPlexSans-SemiBold.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'IBM Plex Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('./woff2/IBMPlexSans-Bold.woff2') format('woff2');
 }
 
 /* Helvetica Neue - Windows compatible declaration */

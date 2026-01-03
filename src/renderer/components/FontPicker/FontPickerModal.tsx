@@ -16,28 +16,9 @@ interface FontPickerModalProps {
   fontType: 'monospace' | 'sans-serif';
 }
 
-const DEFAULT_MONOSPACE_FONTS = [
-  'Fira Code',
-  'JetBrains Mono',
-  'Monaco',
-  'Menlo',
-  'SF Mono',
-  'Consolas',
-  'Source Code Pro',
-  'Inconsolata',
-  'Hack',
-  'Courier New',
-  'monospace'
-];
-
-const DEFAULT_SANS_SERIF_FONTS = [
-  'Helvetica',
-  'Arial',
-  'Segoe UI',
-  'System UI',
-  '-apple-system',
-  'sans-serif'
-];
+// Yurucode bundled fonts - always available (downloaded with app)
+const YURUCODE_MONOSPACE_FONTS = ['Comic Mono', 'Fira Code', 'JetBrains Mono'];
+const YURUCODE_SANS_FONTS = ['Comic Neue', 'Helvetica Neue', 'IBM Plex Sans'];
 
 export const FontPickerModal: React.FC<FontPickerModalProps> = ({
   onClose,
@@ -69,69 +50,41 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
     loadSystemFonts();
   }, []);
   
-  // Filter fonts based on type and availability
-  const getAvailableFonts = () => {
-    // ALWAYS start with our essential fonts - no matter what
-    let fontList: string[] = [];
-    
-    if (fontType === 'monospace') {
-      // ALWAYS include Fira Code first for monospace
-      fontList = [
-        'Fira Code',
-        'Consolas', 
-        'Courier New',
-        'JetBrains Mono',
-        'Monaco',
-        'Menlo',
-        'SF Mono',
-        'Source Code Pro',
-        'Inconsolata',
-        'Hack',
-        'monospace'
-      ];
-    } else {
-      // ALWAYS include Helvetica first for sans-serif
-      fontList = [
-        'Helvetica',
-        'Helvetica Neue',
-        'Arial',
-        'Segoe UI',
-        'Inter',
-        'System UI',
-        '-apple-system',
-        'sans-serif'
-      ];
-    }
-    
-    // If we have system fonts, add them (but don't replace our list)
-    if (systemFonts.length > 0) {
-      const monoKeywords = ['mono', 'code', 'courier', 'consolas', 'menlo', 'monaco', 'hack', 'inconsolata', 'jetbrains', 'fira'];
-      
-      let additionalFonts: string[];
-      if (fontType === 'monospace') {
-        additionalFonts = systemFonts.filter(f => 
-          monoKeywords.some(keyword => f.toLowerCase().includes(keyword))
-        );
-      } else {
-        additionalFonts = systemFonts.filter(f => 
-          !monoKeywords.some(keyword => f.toLowerCase().includes(keyword))
-        );
-      }
-      
-      // Add system fonts that aren't already in our list
-      additionalFonts.forEach(font => {
-        if (!fontList.some(f => f.toLowerCase() === font.toLowerCase())) {
-          fontList.push(font);
-        }
-      });
-    }
-    
-    console.log(`[FontPicker] Returning ${fontList.length} fonts for ${fontType}:`, fontList);
-    return fontList;
+  // Get yurucode bundled fonts
+  const getYurucodeFonts = () => {
+    return fontType === 'monospace' ? YURUCODE_MONOSPACE_FONTS : YURUCODE_SANS_FONTS;
   };
-  
-  const fonts = getAvailableFonts();
-  const filteredFonts = fonts.filter(font => 
+
+  // Get system-detected fonts (excluding yurucode bundled fonts)
+  const getDetectedSystemFonts = () => {
+    if (systemFonts.length === 0) return [];
+
+    const monoKeywords = ['mono', 'code', 'courier', 'consolas', 'menlo', 'monaco', 'hack', 'inconsolata', 'jetbrains', 'fira'];
+    const yurucodeFontNames = [...YURUCODE_MONOSPACE_FONTS, ...YURUCODE_SANS_FONTS].map(f => f.toLowerCase());
+
+    // Filter by type and exclude yurucode bundled fonts
+    const filtered = systemFonts.filter(font => {
+      const lower = font.toLowerCase();
+      // Skip if it's a yurucode bundled font
+      if (yurucodeFontNames.some(yf => lower.includes(yf.toLowerCase()))) return false;
+
+      if (fontType === 'monospace') {
+        return monoKeywords.some(keyword => lower.includes(keyword));
+      } else {
+        return !monoKeywords.some(keyword => lower.includes(keyword));
+      }
+    });
+
+    return filtered;
+  };
+
+  const yurucodeFonts = getYurucodeFonts();
+  const otherFonts = getDetectedSystemFonts();
+
+  const filteredYurucodeFonts = yurucodeFonts.filter(font =>
+    font.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+  const filteredOtherFonts = otherFonts.filter(font =>
     font.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -171,19 +124,42 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
         </div>
 
         <div className="font-picker-list">
-          {filteredFonts.map(font => (
-            <button
-              key={font}
-              className={`font-option ${currentFont === font ? 'selected' : ''}`}
-              onClick={() => handleFontSelect(font)}
-              style={{ fontFamily: `"${font}"` }}
-            >
-              <span className="font-name">{font}</span>
-              <span className="font-preview" style={{ fontFamily: `"${font}"` }}>
-                {fontType === 'monospace' ? 'const x = 42;' : 'Hello World'}
-              </span>
-            </button>
-          ))}
+          {filteredYurucodeFonts.length > 0 && (
+            <>
+              <div className="font-section-header">yurucode</div>
+              {filteredYurucodeFonts.map(font => (
+                <button
+                  key={font}
+                  className={`font-option ${currentFont === font ? 'selected' : ''}`}
+                  onClick={() => handleFontSelect(font)}
+                  style={{ fontFamily: `"${font}"` }}
+                >
+                  <span className="font-name">{font}</span>
+                  <span className="font-preview" style={{ fontFamily: `"${font}"` }}>
+                    {fontType === 'monospace' ? 'const x = 42;' : 'Hello World'}
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
+          {filteredOtherFonts.length > 0 && (
+            <>
+              <div className="font-section-header">system</div>
+              {filteredOtherFonts.map(font => (
+                <button
+                  key={font}
+                  className={`font-option ${currentFont === font ? 'selected' : ''}`}
+                  onClick={() => handleFontSelect(font)}
+                  style={{ fontFamily: `"${font}"` }}
+                >
+                  <span className="font-name">{font}</span>
+                  <span className="font-preview" style={{ fontFamily: `"${font}"` }}>
+                    {fontType === 'monospace' ? 'const x = 42;' : 'Hello World'}
+                  </span>
+                </button>
+              ))}
+            </>
+          )}
         </div>
       </div>
     </div>

@@ -367,6 +367,7 @@ export const ClaudeChat: React.FC = () => {
   const [isDictating, setIsDictating] = useState(false);
   const recognitionRef = useRef<any>(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
   // const [showTimeline, setShowTimeline] = useState(false);  // REMOVED: Unnecessary feature
   const [showAgentExecutor, setShowAgentExecutor] = useState(false);
@@ -417,6 +418,10 @@ export const ClaudeChat: React.FC = () => {
   const [bashStartTimes, setBashStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashElapsedTimes, setBashElapsedTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashDotCounts, setBashDotCounts] = useState<{ [sessionId: string]: number }>({});
+  // Per-session textarea heights for persistence when switching tabs
+  const [textareaHeights, setTextareaHeights] = useState<{ [sessionId: string]: number }>({});
+  // Overlay height synced with textarea for ultrathink label positioning
+  const [overlayHeight, setOverlayHeight] = useState(44);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputOverlayRef = useRef<HTMLDivElement>(null);
@@ -468,7 +473,7 @@ export const ClaudeChat: React.FC = () => {
     renameSession: state.renameSession
   })));
 
-  const currentSession = sessions.find(s => s.id === currentSessionId);
+  const currentSession = useMemo(() => sessions.find(s => s.id === currentSessionId), [sessions, currentSessionId]);
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
@@ -704,7 +709,7 @@ export const ClaudeChat: React.FC = () => {
             }
           } else {
             // New session, check if has messages
-            if (currentSession?.messages?.length > 0) {
+            if (currentSession?.messages && currentSession.messages.length > 0) {
               // Has messages, scroll to bottom instantly
               scrollToBottomHelper('auto');
             }
@@ -831,7 +836,7 @@ export const ClaudeChat: React.FC = () => {
       }, 100);
       return () => clearInterval(interval);
     }
-  }, [currentSession?.streaming, currentSessionId, thinkingStartTimes[currentSessionId]]);
+  }, [currentSession?.streaming, currentSessionId, currentSessionId ? thinkingStartTimes[currentSessionId] : undefined]);
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {
@@ -885,7 +890,7 @@ export const ClaudeChat: React.FC = () => {
         return newCounts;
       });
     }
-  }, [currentSession?.runningBash, currentSession?.userBashRunning, currentSessionId, bashStartTimes[currentSessionId]]);
+  }, [currentSession?.runningBash, currentSession?.userBashRunning, currentSessionId, currentSessionId ? bashStartTimes[currentSessionId] : undefined]);
 
   // Speech recognition for dictation
   const startDictation = useCallback(async () => {
@@ -1041,6 +1046,9 @@ export const ClaudeChat: React.FC = () => {
       if (inputRef.current) {
         inputRef.current.style.height = '44px';
         inputRef.current.style.overflow = 'hidden';
+      }
+      if (currentSessionId) {
+        setTextareaHeights(prev => ({ ...prev, [currentSessionId]: 44 }));
       }
     }
     setShowClearConfirm(false);
@@ -1401,14 +1409,21 @@ export const ClaudeChat: React.FC = () => {
 
 
 
-  // Search functionality
+  // Debounce search query to prevent expensive re-renders on every keystroke
   useEffect(() => {
-    if (!searchQuery || !currentSession) {
+    const timer = setTimeout(() => setDebouncedSearchQuery(searchQuery), 200);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Search functionality - uses debounced query for performance
+  useEffect(() => {
+    if (!debouncedSearchQuery || !currentSession) {
       setSearchMatches([]);
       setSearchIndex(0);
       return;
     }
 
+    const query = debouncedSearchQuery.toLowerCase();
     const matches: number[] = [];
     currentSession.messages.forEach((msg, idx) => {
       let content = '';
@@ -1422,7 +1437,7 @@ export const ClaudeChat: React.FC = () => {
             .join(' ');
         }
       }
-      if (content.toLowerCase().includes(searchQuery.toLowerCase())) {
+      if (content.toLowerCase().includes(query)) {
         matches.push(idx);
       }
     });
@@ -1434,7 +1449,7 @@ export const ClaudeChat: React.FC = () => {
       const element = document.querySelector(`[data-message-index="${matches[0]}"]`);
       element?.scrollIntoView({ behavior: 'instant', block: 'center' });
     }
-  }, [searchQuery, currentSession]);
+  }, [debouncedSearchQuery, currentSession]);
 
   const navigateSearch = (direction: 'next' | 'prev') => {
     if (searchMatches.length === 0) return;
@@ -1996,15 +2011,50 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [input, attachments, currentSessionId, updateSessionDraft]);
 
-  // Set initial textarea height to prevent jump
+  // Restore per-session textarea height when switching tabs
   useEffect(() => {
-    if (inputRef.current) {
-      inputRef.current.style.height = '44px';
+    if (inputRef.current && currentSessionId) {
+      const savedHeight = textareaHeights[currentSessionId] || 44;
+      inputRef.current.style.height = `${savedHeight}px`;
+      setOverlayHeight(savedHeight);
+      // Recalculate height based on content after a frame (for animation sync)
+      requestAnimationFrame(() => {
+        if (inputRef.current) {
+          const scrollHeight = inputRef.current.scrollHeight;
+          const newHeight = Math.min(Math.max(scrollHeight, 44), 90);
+          inputRef.current.style.height = `${newHeight}px`;
+          setOverlayHeight(newHeight);
+          if (newHeight !== savedHeight) {
+            setTextareaHeights(prev => ({ ...prev, [currentSessionId]: newHeight }));
+          }
+        }
+      });
     }
   }, [currentSessionId]);
 
+  // Focus maintenance during streaming - restore focus if lost while streaming
+  useEffect(() => {
+    if (!currentSession?.streaming) return;
+
+    const checkFocus = () => {
+      // If streaming and focus was lost (not to another input/textarea), restore it
+      const activeElement = document.activeElement;
+      const isInputElement = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
+
+      // Only restore focus if nothing else has focus (e.g., body has focus)
+      if (activeElement === document.body && inputRef.current) {
+        inputRef.current.focus();
+      }
+    };
+
+    // Check periodically during streaming
+    const intervalId = setInterval(checkFocus, 500);
+
+    return () => clearInterval(intervalId);
+  }, [currentSession?.streaming]);
+
   // Helper function to handle delayed sends
-  const handleDelayedSend = async (content: string, attachments: Attachment[], sessionId: string) => {
+  const handleDelayedSend = async (content: string, attachments: Attachment[], sessionId: string, isBash = false) => {
     try {
       // Check if session is read-only before sending
       const targetSession = sessions.find(s => s.id === sessionId);
@@ -2059,8 +2109,8 @@ export const ClaudeChat: React.FC = () => {
         console.log('[ClaudeChat] Recording streaming start time for delayed send (first message):', sessionId);
       }
       
-      await sendMessage(messageContent, false);
-      
+      await sendMessage(messageContent, isBash);
+
       // Clear pending message on success
       setPendingFollowupMessage(null);
       
@@ -2469,6 +2519,8 @@ export const ClaudeChat: React.FC = () => {
         inputRef.current.style.height = '44px'; // Reset to min-height
         inputRef.current.style.overflow = 'hidden';
       }
+      // Reset per-session textarea height
+      setTextareaHeights(prev => ({ ...prev, [currentSessionId]: 44 }));
       // Clear drafts after sending
       updateSessionDraft(currentSessionId, '', []);
       // Track when streaming starts for this session (for first message of a fresh session)
@@ -2909,20 +2961,31 @@ export const ClaudeChat: React.FC = () => {
     } else {
       // Check if this is a custom command (using cached version to avoid JSON.parse on every command)
       const customCommands = getCachedCustomCommands();
+      if (!customCommands) {
+        // No custom commands defined, pass through to Claude
+        setInput(replacement);
+        setCommandTrigger(null);
+        return;
+      }
+
+      // Extract the base command and any arguments
+      const parts = command.split(/\s+/);
+      const baseCommand = parts[0];
+      const commandArgs = parts.slice(1).join(' ');
+
       const customCommand = customCommands.find((cmd: any) => {
         const trigger = cmd.name.startsWith('/') ? cmd.name : '/' + cmd.name;
-        return trigger === command && cmd.enabled;
+        return trigger === baseCommand && cmd.enabled;
       });
-      
+
       if (customCommand) {
         // Execute custom command
         setInput('');
         setCommandTrigger(null);
-        
+
         // Replace $ARGUMENTS placeholder with any arguments passed to the command
-        const args = arguments.length > 1 ? arguments.slice(1).join(' ') : '';
         const template = customCommand.template || customCommand.script || '';
-        const finalContent = template.replace('$ARGUMENTS', args);
+        const finalContent = template.replace('$ARGUMENTS', commandArgs);
         
         if (finalContent) {
           setInput(finalContent);
@@ -3071,11 +3134,17 @@ export const ClaudeChat: React.FC = () => {
     // Only update if height actually changed to prevent unnecessary reflows
     if (newHeight !== currentHeight) {
       textarea.style.height = newHeight + 'px';
+      // Sync overlay height for ultrathink label positioning
+      setOverlayHeight(newHeight);
+      // Save per-session textarea height
+      if (currentSessionId) {
+        setTextareaHeights(prev => ({ ...prev, [currentSessionId]: newHeight }));
+      }
     } else {
       // Restore the original height if no change needed
       textarea.style.height = currentHeight + 'px';
     }
-    
+
     // Show scrollbar only when content exceeds max height
     textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
 
@@ -3125,15 +3194,31 @@ export const ClaudeChat: React.FC = () => {
     return { x: Math.min(x, textarea.clientWidth - 10), y: Math.min(y, 36) };
   }, []);
 
+  // Sync overlay height with textarea on any resize (including animations)
+  useEffect(() => {
+    if (!inputRef.current) return;
+
+    const textareaObserver = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        const height = entry.contentRect.height + 8; // Add padding
+        setOverlayHeight(Math.max(44, Math.min(height, 106)));
+      }
+    });
+
+    textareaObserver.observe(inputRef.current);
+
+    return () => textareaObserver.disconnect();
+  }, []);
+
   // Update input container height when it changes
   useEffect(() => {
     if (!inputContainerRef.current) return;
-    
+
     const observer = new ResizeObserver(() => {
       const height = inputContainerRef.current?.offsetHeight || 120;
       setInputContainerHeight(height);
     });
-    
+
     observer.observe(inputContainerRef.current);
     
     return () => observer.disconnect();
@@ -3452,9 +3537,9 @@ export const ClaudeChat: React.FC = () => {
         {(() => {
           // Process all messages once at the beginning
           const processedMessages = currentSession.messages
-            .reduce((acc, message, index, array) => {
+            .reduce((acc: any[], message: any, index: number, array: any[]) => {
             // Group messages by type and only show final versions
-            
+
             // Always show user messages (but deduplicate)
             if (message.type === 'user') {
               // Skip empty messages
@@ -3462,67 +3547,67 @@ export const ClaudeChat: React.FC = () => {
               if (!content || (typeof content === 'string' && !content.trim())) {
                 return acc;
               }
-              
+
               // Check if this exact user message already exists by ID
-              const existsById = acc.some(m => 
-                m.type === 'user' && 
-                m.id && 
+              const existsById = acc.some((m: any) =>
+                m.type === 'user' &&
+                m.id &&
                 message.id &&
                 m.id === message.id
               );
-              
+
               if (existsById) {
                 return acc; // Skip if ID already exists
               }
-              
+
               // Also check for duplicate content within 2 seconds
-              const contentDuplicate = acc.some(m => 
-                m.type === 'user' && 
+              const contentDuplicate = acc.some((m: any) =>
+                m.type === 'user' &&
                 JSON.stringify(m.message?.content) === JSON.stringify(message.message?.content) &&
                 Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 2000
               );
-              
+
               if (!contentDuplicate) {
                 acc.push(message);
               }
               return acc;
             }
-            
+
             // For assistant messages, deduplicate properly
             if (message.type === 'assistant') {
               // First check by ID if both have IDs
               if (message.id) {
-                const existingIndex = acc.findIndex(m => 
-                  m.type === 'assistant' && 
-                  m.id && 
+                const existingIndex = acc.findIndex((m: any) =>
+                  m.type === 'assistant' &&
+                  m.id &&
                   m.id === message.id
                 );
-                
+
                 if (existingIndex >= 0) {
                   // Update existing message (for streaming updates)
                   acc[existingIndex] = message;
                   return acc;
                 }
               }
-              
+
               // Check for duplicate content within a short time window
-              const contentDuplicate = acc.some(m => 
-                m.type === 'assistant' && 
+              const contentDuplicate = acc.some((m: any) =>
+                m.type === 'assistant' &&
                 JSON.stringify(m.message?.content) === JSON.stringify(message.message?.content) &&
                 Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 2000
               );
-              
+
               if (!contentDuplicate) {
                 acc.push(message);
               }
               return acc;
             }
-            
+
             // Show tool messages but deduplicate by ID
             if (message.type === 'tool_use' || message.type === 'tool_result') {
               // Check for duplicate by ID
               if (message.id) {
-                const existingIndex = acc.findIndex(m =>
+                const existingIndex = acc.findIndex((m: any) =>
                   (m.type === 'tool_use' || m.type === 'tool_result') &&
                   m.id === message.id
                 );
@@ -3535,7 +3620,7 @@ export const ClaudeChat: React.FC = () => {
 
               // Also check for duplicate by tool_use_id for tool_result
               if (message.type === 'tool_result' && message.message?.tool_use_id) {
-                const existingIndex = acc.findIndex(m =>
+                const existingIndex = acc.findIndex((m: any) =>
                   m.type === 'tool_result' &&
                   m.message?.tool_use_id === message.message.tool_use_id
                 );
@@ -3841,7 +3926,7 @@ export const ClaudeChat: React.FC = () => {
                       ref={inputOverlayRef}
                       className="input-text-overlay"
                       style={{
-                        height: inputRef.current ? `${inputRef.current.clientHeight}px` : '44px',
+                        height: `${overlayHeight}px`,
                         minHeight: '44px',
                         maxHeight: '106px'
                       }}
@@ -4001,9 +4086,11 @@ export const ClaudeChat: React.FC = () => {
               }
 
               // Determine usage class and auto-compact status (use raw percentage)
-              const usageClass = rawPercentage >= 97 ? 'critical' : rawPercentage >= 90 ? 'high' : 'low';
-              const willAutoCompact = rawPercentage >= 97;
-              const approachingCompact = rawPercentage >= 90 && rawPercentage < 97;
+              // 60%+ shows negative color (auto-compact), 65%+ shows critical pulsing (force)
+              // Conservative thresholds like Claude Code (~38% buffer reserved)
+              const usageClass = rawPercentage >= 65 ? 'critical' : rawPercentage >= 60 ? 'high' : 'low';
+              const willAutoCompact = rawPercentage >= 60;
+              const approachingCompact = rawPercentage >= 55 && rawPercentage < 60;
 
               const hasActivity = currentSession.messages.some(m =>
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
@@ -4038,7 +4125,7 @@ export const ClaudeChat: React.FC = () => {
                     onClick={() => setShowStatsModal(true)}
                     disabled={false}
                     title={hasActivity ?
-                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 97%' : ''} - click for details (${modKey}+.)` :
+                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 60%' : ''} - click for details (${modKey}+.)` :
                       `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (${modKey}+.)`}
                   >
                     {percentage}%

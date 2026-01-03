@@ -764,6 +764,7 @@ pub fn run() {
             commands::compaction::load_context_manifest,
             commands::compaction::get_compaction_state,
             commands::compaction::reset_compaction_state,
+            commands::compaction::reset_compaction_flags,
             commands::compaction::update_compaction_config,
             commands::compaction::get_compaction_config,
             commands::compaction::generate_context_manifest,

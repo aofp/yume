@@ -17,7 +17,7 @@ html {
 }
 
 body {
-  font-family: 'Helvetica Neue', 'Helvetica', 'Inter', 'Segoe UI', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
+  font-family: 'Comic Neue', 'Helvetica Neue', 'Helvetica', 'Inter', 'Segoe UI', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
   background: var(--background-color, #000000) !important;
   color: var(--foreground-color, #ffffff);
   overflow: hidden;
