@@ -1490,7 +1490,7 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
             let _ = ShowWindow(hwnd, SW_RESTORE);
             let _ = SetActiveWindow(hwnd);
             let _ = SetForegroundWindow(hwnd);
-            let _ = SetFocus(hwnd);
+            let _ = SetFocus(Some(hwnd));
             
             // Detach the thread input if we attached it
             if attached {

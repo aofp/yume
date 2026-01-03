@@ -319,12 +319,12 @@ pub async fn get_token_stats(
     debug!("get_token_stats command called for session: {}", session_id);
     
     // Get the process registry from AppState
-    let registry = state.process_registry();
-    
+    let _registry = state.process_registry();
+
     // Get the session info first to get the run_id
     let session_manager = state.session_manager();
     if let Some(session) = session_manager.get_session(&session_id).await {
-        if let Some(run_id) = session.run_id {
+        if let Some(_run_id) = session.run_id {
             // Get token stats from registry (this functionality may need to be added)
             // For now, return placeholder values
             // In production, this would query the ProcessRegistry for accumulated tokens

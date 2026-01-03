@@ -570,7 +570,7 @@ pub fn create_title_prompt(first_message: &str) -> String {
 
 /// Spawns a separate Claude process for title generation
 pub async fn spawn_claude_for_title(
-    app: AppHandle,
+    _app: AppHandle,
     first_message: &str,
     project_path: &str,
 ) -> Result<String> {
@@ -590,7 +590,7 @@ pub async fn spawn_claude_for_title(
     cmd.stdout(Stdio::piped());
     cmd.stderr(Stdio::piped());
     
-    let output = cmd.output().await?;
+    let _output = cmd.output().await?;
     
     // Parse the output to extract the title
     // For now, return a placeholder

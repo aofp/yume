@@ -3,7 +3,6 @@ use serde::{Deserialize, Serialize};
 use std::cmp::Ordering;
 use std::path::PathBuf;
 use std::process::Command;
-use tauri::Manager;
 use tracing::{debug, error, info, warn};
 
 /// Type of Claude installation

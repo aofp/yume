@@ -331,7 +331,7 @@ pub fn run() {
                         // Also force initial size to at least minimum
                         let _ = SetWindowPos(
                             hwnd,
-                            HWND::default(),
+                            Some(HWND::default()),
                             0,
                             0,
                             516,

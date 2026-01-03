@@ -226,7 +226,7 @@ pub fn load_hooks_config() -> Vec<HookConfig> {
 }
 
 /// Save hooks configuration to settings
-pub fn save_hooks_config(hooks: &[HookConfig]) -> Result<(), String> {
+pub fn save_hooks_config(_hooks: &[HookConfig]) -> Result<(), String> {
     // Will be saved to localStorage via IPC
     Ok(())
 }

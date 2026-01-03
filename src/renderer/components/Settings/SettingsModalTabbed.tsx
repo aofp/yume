@@ -372,11 +372,11 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'mono',
     name: 'mono',
-    backgroundColor: '#0c0c0c',
-    foregroundColor: '#d8d8d8',
-    accentColor: '#a0a0a0',
-    positiveColor: '#88aa88',
-    negativeColor: '#aa8888',
+    backgroundColor: '#0a0a0a',
+    foregroundColor: '#c8c8c8',
+    accentColor: '#888888',
+    positiveColor: '#909090',
+    negativeColor: '#a0a0a0',
     opacity: 0.92,
     monoFont: 'JetBrains Mono',
     sansFont: 'IBM Plex Sans',
@@ -385,11 +385,11 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'onyx',
     name: 'onyx',
-    backgroundColor: '#080808',
-    foregroundColor: '#c8c8c8',
-    accentColor: '#9999aa',
-    positiveColor: '#88aa88',
-    negativeColor: '#aa7777',
+    backgroundColor: '#050507',
+    foregroundColor: '#d0d0d8',
+    accentColor: '#9988bb',
+    positiveColor: '#88aa99',
+    negativeColor: '#bb8899',
     opacity: 0.92,
     monoFont: 'JetBrains Mono',
     sansFont: 'IBM Plex Sans',
@@ -398,24 +398,24 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'graphite',
     name: 'graphite',
-    backgroundColor: '#101012',
-    foregroundColor: '#b8b8b8',
-    accentColor: '#7799bb',
+    backgroundColor: '#0c0c0e',
+    foregroundColor: '#c0c4cc',
+    accentColor: '#6688aa',
     positiveColor: '#77aa88',
-    negativeColor: '#bb7777',
+    negativeColor: '#aa7777',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
+    monoFont: 'Fira Code',
     sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
     id: 'steel',
     name: 'steel',
-    backgroundColor: '#101010',
-    foregroundColor: '#c0c0b8',
-    accentColor: '#8899aa',
-    positiveColor: '#88aa94',
-    negativeColor: '#aa8888',
+    backgroundColor: '#0a0c0e',
+    foregroundColor: '#b8c0c8',
+    accentColor: '#7099bb',
+    positiveColor: '#70aa90',
+    negativeColor: '#bb7080',
     opacity: 0.92,
     monoFont: 'JetBrains Mono',
     sansFont: 'IBM Plex Sans',
@@ -424,50 +424,50 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'ash',
     name: 'ash',
-    backgroundColor: '#0e0e0e',
-    foregroundColor: '#c8c8c4',
-    accentColor: '#9090a0',
-    positiveColor: '#80a080',
-    negativeColor: '#a08080',
+    backgroundColor: '#0c0b0a',
+    foregroundColor: '#d0ccc8',
+    accentColor: '#a09080',
+    positiveColor: '#90a080',
+    negativeColor: '#a08070',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
     id: 'titanium',
     name: 'titanium',
-    backgroundColor: '#0a0a0c',
-    foregroundColor: '#c4c8d0',
-    accentColor: '#88aacc',
-    positiveColor: '#77bb99',
-    negativeColor: '#cc7788',
+    backgroundColor: '#08090c',
+    foregroundColor: '#c8ccd8',
+    accentColor: '#7090cc',
+    positiveColor: '#70b090',
+    negativeColor: '#cc7090',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
+    monoFont: 'Fira Code',
     sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
     id: 'ivory',
     name: 'ivory',
-    backgroundColor: '#0c0c0a',
-    foregroundColor: '#e8e6e0',
-    accentColor: '#b8a888',
-    positiveColor: '#88aa88',
-    negativeColor: '#aa8877',
+    backgroundColor: '#0c0c08',
+    foregroundColor: '#f0ece0',
+    accentColor: '#c0a870',
+    positiveColor: '#90b080',
+    negativeColor: '#c09070',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
+    monoFont: 'Comic Mono',
+    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
     id: 'mercury',
     name: 'mercury',
-    backgroundColor: '#0a0a0a',
-    foregroundColor: '#d0d0d4',
-    accentColor: '#a8b0c0',
-    positiveColor: '#88aa99',
-    negativeColor: '#aa8899',
+    backgroundColor: '#080a0c',
+    foregroundColor: '#d8dce0',
+    accentColor: '#80b0c8',
+    positiveColor: '#80c0a0',
+    negativeColor: '#c08090',
     opacity: 0.92,
     monoFont: 'JetBrains Mono',
     sansFont: 'IBM Plex Sans',
@@ -476,11 +476,11 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'carbon',
     name: 'carbon',
-    backgroundColor: '#0c0c0e',
-    foregroundColor: '#d0d4dc',
-    accentColor: '#5599dd',
-    positiveColor: '#55bb88',
-    negativeColor: '#cc6666',
+    backgroundColor: '#080808',
+    foregroundColor: '#d4d8e0',
+    accentColor: '#5588bb',
+    positiveColor: '#60a080',
+    negativeColor: '#bb6060',
     opacity: 0.92,
     monoFont: 'JetBrains Mono',
     sansFont: 'IBM Plex Sans',
@@ -489,13 +489,13 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'slate',
     name: 'slate',
-    backgroundColor: '#121218',
-    foregroundColor: '#cbcbcb',
-    accentColor: '#6699ff',
-    positiveColor: '#66ff88',
-    negativeColor: '#ff6666',
+    backgroundColor: '#0e1014',
+    foregroundColor: '#c8ccd0',
+    accentColor: '#6080cc',
+    positiveColor: '#60aa80',
+    negativeColor: '#cc6070',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
+    monoFont: 'Fira Code',
     sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
@@ -750,24 +750,24 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'cyber',
     name: 'cyber',
-    backgroundColor: '#0a0408',
-    foregroundColor: '#e6daff',
-    accentColor: '#cc66ff',
-    positiveColor: '#66ffaa',
-    negativeColor: '#ff6666',
+    backgroundColor: '#0a0810',
+    foregroundColor: '#d8d0e0',
+    accentColor: '#aa77cc',
+    positiveColor: '#77bb99',
+    negativeColor: '#cc7788',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
+    monoFont: 'Fira Code',
     sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
     id: 'cherry',
     name: 'cherry',
-    backgroundColor: '#0a0404',
-    foregroundColor: '#ffbfbf',
-    accentColor: '#ff6666',
-    positiveColor: '#88ff66',
-    negativeColor: '#ff6699',
+    backgroundColor: '#0c0808',
+    foregroundColor: '#e8d0d0',
+    accentColor: '#cc7777',
+    positiveColor: '#88aa88',
+    negativeColor: '#cc8888',
     opacity: 0.92,
     monoFont: 'Comic Mono',
     sansFont: 'Comic Neue',
@@ -776,11 +776,11 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'crimson',
     name: 'crimson',
-    backgroundColor: '#0c0406',
-    foregroundColor: '#f0d8dc',
-    accentColor: '#dd4455',
-    positiveColor: '#66bb77',
-    negativeColor: '#cc3344',
+    backgroundColor: '#0c0608',
+    foregroundColor: '#e0d0d4',
+    accentColor: '#bb6677',
+    positiveColor: '#77aa88',
+    negativeColor: '#aa6666',
     opacity: 0.92,
     monoFont: 'Comic Mono',
     sansFont: 'Comic Neue',
@@ -790,27 +790,27 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'matrix',
     name: 'matrix',
-    backgroundColor: '#040a04',
-    foregroundColor: '#99ff99',
-    accentColor: '#44ff00',
-    positiveColor: '#88ff00',
-    negativeColor: '#ff0066',
+    backgroundColor: '#060a06',
+    foregroundColor: '#a8d8a8',
+    accentColor: '#66aa66',
+    positiveColor: '#77bb77',
+    negativeColor: '#cc6666',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
+    monoFont: 'JetBrains Mono',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
     id: 'neon',
     name: 'neon',
-    backgroundColor: '#08060a',
-    foregroundColor: '#f0e0ff',
-    accentColor: '#ff00ff',
-    positiveColor: '#00ff88',
-    negativeColor: '#ff0044',
+    backgroundColor: '#0a080c',
+    foregroundColor: '#e0d8e8',
+    accentColor: '#bb88cc',
+    positiveColor: '#88bb99',
+    negativeColor: '#cc7788',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
+    monoFont: 'Fira Code',
+    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   }
 ];
@@ -1065,9 +1065,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     handleAccentColorChange(theme.accentColor);
     handlePositiveColorChange(theme.positiveColor);
     handleNegativeColorChange(theme.negativeColor);
-    // Apply theme opacity
-    const themeOpacity = theme.opacity ?? 0.92;
-    handleHtmlOpacityChange(themeOpacity);
     // Apply theme fonts
     if (theme.monoFont) {
       setMonoFont(theme.monoFont);
@@ -1082,26 +1079,41 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     setShowThemeDropdown(false);
   };
 
-  // Save current colors as a new custom theme
+  // Save current colors as a new custom theme (or update existing by name)
   const saveAsCustomTheme = (name: string) => {
-    const newTheme: Theme = {
-      id: `custom-${Date.now()}`,
-      name: name,
-      backgroundColor,
-      foregroundColor,
-      accentColor,
-      positiveColor,
-      negativeColor,
-      opacity: htmlOpacity,
-      monoFont,
-      sansFont,
-      isBuiltIn: false
-    };
-    const updatedThemes = [...customThemes, newTheme];
-    setCustomThemes(updatedThemes);
-    localStorage.setItem('customThemes', JSON.stringify(updatedThemes));
-    setCurrentThemeId(newTheme.id);
-    localStorage.setItem('currentThemeId', newTheme.id);
+    const existingTheme = customThemes.find(t => t.name.toLowerCase() === name.toLowerCase());
+
+    if (existingTheme) {
+      // Update existing theme with current colors
+      const updatedThemes = customThemes.map(t =>
+        t.id === existingTheme.id
+          ? { ...t, backgroundColor, foregroundColor, accentColor, positiveColor, negativeColor, monoFont, sansFont }
+          : t
+      );
+      setCustomThemes(updatedThemes);
+      localStorage.setItem('customThemes', JSON.stringify(updatedThemes));
+      setCurrentThemeId(existingTheme.id);
+      localStorage.setItem('currentThemeId', existingTheme.id);
+    } else {
+      // Create new theme
+      const newTheme: Theme = {
+        id: `custom-${Date.now()}`,
+        name: name,
+        backgroundColor,
+        foregroundColor,
+        accentColor,
+        positiveColor,
+        negativeColor,
+        monoFont,
+        sansFont,
+        isBuiltIn: false
+      };
+      const updatedThemes = [...customThemes, newTheme];
+      setCustomThemes(updatedThemes);
+      localStorage.setItem('customThemes', JSON.stringify(updatedThemes));
+      setCurrentThemeId(newTheme.id);
+      localStorage.setItem('currentThemeId', newTheme.id);
+    }
   };
 
   // Rename a custom theme
@@ -1640,45 +1652,62 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
         return (
           <>
             {/* Theme selector at top */}
-            <div className="settings-section" style={{ marginBottom: '12px', textAlign: 'center' }}>
+            <div className="settings-section" style={{ marginBottom: '12px' }}>
               <h4 style={{ textAlign: 'left' }}>theme</h4>
-              <button
-                onClick={() => setShowThemeDropdown(true)}
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '8px',
-                  padding: '6px 10px',
-                  background: 'transparent',
-                  border: '1px solid var(--fg-15)',
-                  borderRadius: '4px',
-                  cursor: 'default',
-                  transition: 'all 0.15s ease'
-                }}
-                onMouseEnter={(e) => {
-                  e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.5)';
-                  e.currentTarget.style.background = 'var(--fg-05)';
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.borderColor = 'var(--fg-15)';
-                  e.currentTarget.style.background = 'transparent';
-                }}
-              >
-                <div style={{ display: 'flex', gap: '2px' }}>
-                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: foregroundColor, border: '1px solid var(--fg-10)' }} />
-                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: accentColor }} />
-                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: positiveColor }} />
-                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: negativeColor }} />
-                  <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: backgroundColor, border: '1px solid var(--fg-20)' }} />
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
+                <button
+                  onClick={() => setShowThemeDropdown(true)}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '8px',
+                    padding: '6px 10px',
+                    background: 'transparent',
+                    border: '1px solid var(--fg-15)',
+                    borderRadius: '4px',
+                    cursor: 'default',
+                    transition: 'all 0.15s ease'
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.5)';
+                    e.currentTarget.style.background = 'var(--fg-05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.borderColor = 'var(--fg-15)';
+                    e.currentTarget.style.background = 'transparent';
+                  }}
+                >
+                  <div style={{ display: 'flex', gap: '2px' }}>
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: foregroundColor, border: '1px solid var(--fg-10)' }} />
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: accentColor }} />
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: positiveColor }} />
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: negativeColor }} />
+                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: backgroundColor, border: '1px solid var(--fg-20)' }} />
+                  </div>
+                  <span style={{
+                    fontSize: '11px',
+                    fontWeight: 'bold',
+                    color: blendColors(foregroundColor, accentColor)
+                  }}>
+                    {getCurrentThemeDisplayName()}
+                  </span>
+                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <span style={{ fontSize: '11px', color: 'var(--fg-50)' }}>opacity</span>
+                  <input
+                    type="range"
+                    min="0.65"
+                    max="1.00"
+                    step="0.01"
+                    value={htmlOpacity}
+                    onChange={(e) => handleHtmlOpacityChange(parseFloat(e.target.value))}
+                    className="opacity-slider"
+                  />
+                  <span style={{ fontSize: '11px', color: 'var(--fg-50)', minWidth: '28px' }}>
+                    {htmlOpacity.toFixed(2)}
+                  </span>
                 </div>
-                <span style={{
-                  fontSize: '11px',
-                  fontWeight: 'bold',
-                  color: blendColors(foregroundColor, accentColor)
-                }}>
-                  {getCurrentThemeDisplayName()}
-                </span>
-              </button>
+              </div>
             </div>
 
             {/* Color controls */}
@@ -1842,31 +1871,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                         </div>
                       )}
                     </div>
-                  </div>
-                </div>
-
-                <div className="color-setting">
-                  <span className="color-label">opacity</span>
-                  <div className="color-controls" style={{ gap: '8px' }}>
-                    <button
-                      className="color-reset"
-                      onClick={() => handleHtmlOpacityChange(0.92)}
-                      disabled={htmlOpacity === 0.92}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <input
-                      type="range"
-                      min="0.65"
-                      max="1.00"
-                      step="0.01"
-                      value={htmlOpacity}
-                      onChange={(e) => handleHtmlOpacityChange(parseFloat(e.target.value))}
-                      className="opacity-slider"
-                    />
-                    <span style={{ color: 'var(--fg-50)', fontSize: '11px', minWidth: '28px' }}>
-                      {htmlOpacity.toFixed(2)}
-                    </span>
                   </div>
                 </div>
               </div>
@@ -2702,20 +2706,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
           {(activeTab === 'general' || activeTab === 'theme') && (
             <div className="settings-bottom-controls">
               <div className="settings-bottom-left">
-                {activeTab === 'general' && !isLicensed && (
-                  <button
-                    className="settings-action-btn upgrade"
-                    onClick={() => {
-                      // Don't close settings modal, just show upgrade modal on top
-                      window.dispatchEvent(new CustomEvent('showUpgradeModal', {
-                        detail: { reason: 'trial' }
-                      }));
-                    }}
-                  >
-                    <IconCrown size={12} />
-                    <span>upgrade</span>
-                  </button>
-                )}
                 {activeTab === 'theme' && (
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
                     <div>
