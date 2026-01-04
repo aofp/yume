@@ -43,6 +43,59 @@ class ClaudeDetectorService {
   private detectionCache: ClaudeDetectionResult | null = null;
   private cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
   private windowsPathsCache: WindowsPaths | null = null;
+  private claudeVersionCache: string | null = null;
+
+  constructor() {
+    // Hydrate cache from localStorage on initialization
+    this.hydrateFromLocalStorage();
+  }
+
+  /**
+   * Hydrate caches from localStorage for instant access
+   */
+  private hydrateFromLocalStorage(): void {
+    try {
+      const cachedDetection = localStorage.getItem('claudeDetectionResult');
+      if (cachedDetection) {
+        const parsed = JSON.parse(cachedDetection) as ClaudeDetectionResult;
+        // Only use cache if it's less than cacheTimeout old
+        if (parsed.lastDetection && (Date.now() - parsed.lastDetection) < this.cacheTimeout) {
+          this.detectionCache = parsed;
+          console.log('🔄 Hydrated Claude detection cache from localStorage');
+        }
+      }
+
+      const cachedVersion = localStorage.getItem('claudeVersionCache');
+      if (cachedVersion) {
+        const parsed = JSON.parse(cachedVersion);
+        // Cache version for 30 minutes
+        if (parsed.timestamp && (Date.now() - parsed.timestamp) < 30 * 60 * 1000) {
+          this.claudeVersionCache = parsed.version;
+          console.log('🔄 Hydrated Claude version cache:', parsed.version);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to hydrate cache from localStorage:', error);
+    }
+  }
+
+  /**
+   * Get cached Claude version (for instant UI display)
+   */
+  getCachedVersion(): string | null {
+    return this.claudeVersionCache;
+  }
+
+  /**
+   * Set and persist Claude version cache
+   */
+  setCachedVersion(version: string): void {
+    this.claudeVersionCache = version;
+    localStorage.setItem('claudeVersionCache', JSON.stringify({
+      version,
+      timestamp: Date.now()
+    }));
+  }
 
   /**
    * Get cached detection results or perform new detection

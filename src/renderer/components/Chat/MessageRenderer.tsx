@@ -1919,12 +1919,25 @@ const MessageRendererBase: React.FC<{
       }
       
       const shouldRenderText = textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim()));
-      
-      
+
+
       // During streaming, if there's no content yet, don't render anything
       // The thinking indicator is shown separately in ClaudeChat
       const hasTextContent = textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim()));
-      
+
+      // Debug logging for bash output issue
+      if (message.id?.startsWith('bash-')) {
+        console.log('[MessageRenderer] BASH MESSAGE DEBUG:', {
+          messageId: message.id,
+          contentToRender: JSON.stringify(contentToRender),
+          textContent: JSON.stringify(textContent),
+          hasTextContent,
+          isArray: Array.isArray(textContent),
+          arrayLength: Array.isArray(textContent) ? textContent.length : 'N/A',
+          streaming: message.streaming
+        });
+      }
+
       // Show empty assistant message with (no content) if it's not streaming and has no text
       const showEmptyMessage = !message.streaming && !hasTextContent && message.type === 'assistant';
       

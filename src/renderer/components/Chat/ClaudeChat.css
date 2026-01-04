@@ -326,6 +326,7 @@
   padding: 12px;
   margin: 8px 0;
   overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .message-text pre code {
@@ -1195,6 +1196,7 @@ textarea.context-full {
   text-transform: lowercase;
   transition: all 0.2s ease;
   cursor: default;
+  line-height: 9pt;
 }
 
 .btn-context-icon {
@@ -2080,8 +2082,8 @@ textarea.context-full {
   overflow-x: auto;
   overflow-y: hidden;
   display: block;
-  /* Hide scrollbar */
-  scrollbar-width: none; /* Firefox */
+  /* Firefox scrollbar - thin style */
+  scrollbar-width: thin;
   -ms-overflow-style: none; /* IE/Edge */
   font-family: var(--font-sans);
   width: 100%;
@@ -2214,8 +2216,9 @@ textarea.context-full {
   word-break: break-word;
   max-height: 80px;
   overflow-y: auto;
+  /* Firefox scrollbar - thin style */
   scrollbar-width: thin;
-  scrollbar-color: var(--fg-10) transparent;
+  scrollbar-color: rgba(var(--foreground-rgb), 0.5) rgba(var(--foreground-rgb), 0.05);
 }
 
 .pending-followup-content::-webkit-scrollbar {
@@ -2277,8 +2280,9 @@ textarea.context-full {
 }
 
 .messages-virtualized {
+  /* Firefox scrollbar - thin style */
   scrollbar-width: thin;
-  scrollbar-color: rgba(var(--foreground-rgb), 0.5) transparent;
+  scrollbar-color: rgba(var(--foreground-rgb), 0.5) rgba(var(--foreground-rgb), 0.05);
   padding-right: 0;
   padding-top: 7px;
   /* Use 'paint' containment only - 'layout style' can break text selection during streaming

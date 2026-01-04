@@ -236,6 +236,12 @@ body::before {
 }
 
 /* Scrollbar Styles - 3px minimal with 50% opacity */
+/* Firefox scrollbar - thin style */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--foreground-rgb), 0.5) rgba(var(--foreground-rgb), 0.05);
+}
+
 ::-webkit-scrollbar {
   width: 3px;
   height: 3px;

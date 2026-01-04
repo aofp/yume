@@ -285,6 +285,7 @@
   overflow-x: auto;
   overflow-wrap: normal;
   word-break: normal;
+  scrollbar-width: thin;
 }
 
 .markdown-content pre {
@@ -299,6 +300,7 @@
   overflow-wrap: normal;
   max-width: 100%;
   box-sizing: border-box;
+  scrollbar-width: thin;
 }
 
 .markdown-content pre code {
@@ -309,6 +311,7 @@
   display: block;
   overflow-x: auto;
   font-size: 10px;
+  scrollbar-width: thin;
 }
 
 /* Code block with copy button */
@@ -322,6 +325,7 @@
   background: transparent;
   max-width: 100%;
   box-sizing: border-box;
+  scrollbar-width: thin;
 }
 
 .code-block-header {
@@ -684,6 +688,7 @@ ol {
   max-width: 100%;
   color: var(--color-accent);
   box-sizing: border-box;
+  scrollbar-width: thin;
 }
 
 .thinking-code {
@@ -827,6 +832,7 @@ ol {
   overflow-y: auto;
   /* Use overlay scrollbar so it doesn't take space when not scrolling */
   overflow-y: overlay;
+  scrollbar-width: thin;
 }
 
 /* Write tool output */
@@ -878,6 +884,7 @@ ol {
   background: transparent;
   overflow-x: auto;
   white-space: pre;
+  scrollbar-width: thin;
 }
 
 .diff-line {
@@ -1319,6 +1326,7 @@ body.platform-win32 .tool-detail {
   color: rgba(var(--foreground-rgb), 0.6);
   white-space: pre;
   overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 /* Bash command output styling */
@@ -1836,6 +1844,7 @@ body.platform-win32 .tool-detail {
   margin: 0;
   max-width: 100%;
   overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .diff-content {
@@ -1849,6 +1858,7 @@ body.platform-win32 .tool-detail {
   background: transparent;
   border: none;
   padding: 0;
+  scrollbar-width: thin;
 }
 
 /* Todo Write Styles - Minimal Dark */
@@ -2033,6 +2043,7 @@ code *::-moz-selection {
   max-width: 100%;
   width: 100%;
   display: block;
+  scrollbar-width: thin;
 }
 
 .markdown-table {

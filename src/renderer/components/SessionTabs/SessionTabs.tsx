@@ -165,32 +165,58 @@ export const SessionTabs: React.FC = () => {
     return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // Check for overflow and apply class
+  // Scroll indicator ref
+  const scrollIndicatorRef = useRef<HTMLDivElement>(null);
+
+  // Check for overflow and update scroll indicator
   useEffect(() => {
     const container = tabsContainerRef.current;
+    const indicator = scrollIndicatorRef.current;
     if (!container) return;
 
-    const checkOverflow = () => {
+    const updateScrollIndicator = () => {
       const hasOverflow = container.scrollWidth > container.clientWidth;
+
       if (hasOverflow) {
         container.classList.add('has-overflow');
       } else {
         container.classList.remove('has-overflow');
       }
+
+      if (indicator) {
+        if (hasOverflow) {
+          // Calculate thumb width and position
+          const scrollRatio = container.clientWidth / container.scrollWidth;
+          const thumbWidth = container.clientWidth * scrollRatio;
+          const maxScroll = container.scrollWidth - container.clientWidth;
+          const scrollProgress = maxScroll > 0 ? container.scrollLeft / maxScroll : 0;
+          const thumbPosition = scrollProgress * (container.clientWidth - thumbWidth);
+
+          indicator.style.width = `${thumbWidth}px`;
+          indicator.style.transform = `translateX(${thumbPosition}px)`;
+          indicator.style.display = 'block';
+        } else {
+          indicator.style.display = 'none';
+        }
+      }
     };
 
+    // Update on scroll
+    container.addEventListener('scroll', updateScrollIndicator);
+
     // Check on mount and when sessions change
-    checkOverflow();
-    
+    updateScrollIndicator();
+
     // Also check on window resize
-    window.addEventListener('resize', checkOverflow);
-    
+    window.addEventListener('resize', updateScrollIndicator);
+
     // Create a ResizeObserver to watch for container size changes
-    const resizeObserver = new ResizeObserver(checkOverflow);
+    const resizeObserver = new ResizeObserver(updateScrollIndicator);
     resizeObserver.observe(container);
 
     return () => {
-      window.removeEventListener('resize', checkOverflow);
+      container.removeEventListener('scroll', updateScrollIndicator);
+      window.removeEventListener('resize', updateScrollIndicator);
       resizeObserver.disconnect();
     };
   }, [sessions]);
@@ -343,7 +369,8 @@ export const SessionTabs: React.FC = () => {
   return (
     <div className="session-tabs">
       <div className="tabs-wrapper">
-        <div className="tabs-scrollable" ref={tabsContainerRef}>
+        <div className="tabs-scroll-container">
+          <div className="tabs-scrollable" ref={tabsContainerRef}>
           {sessions.map((session) => (
           <div
             key={session.id}
@@ -746,8 +773,10 @@ export const SessionTabs: React.FC = () => {
             )}
           </div>
         ))}
+          </div>
+          <div className="scroll-indicator" ref={scrollIndicatorRef} />
         </div>
-        
+
         <div className={`tabs-actions ${sessions.length === 0 ? 'no-tabs' : ''}`}>
           <button 
             className={`tab-new ${dragOverNewTab ? 'drag-over-duplicate' : ''}`}

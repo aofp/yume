@@ -25,6 +25,18 @@
   -webkit-app-region: no-drag;
 }
 
+.tabs-scroll-container {
+  position: relative;
+  flex: 0 1 auto; /* Don't grow, can shrink, auto basis */
+  min-width: 0;
+  max-width: 100%; /* Allow shrinking when needed */
+}
+
+/* Only expand to fill space when there's overflow */
+.tabs-scroll-container:has(.tabs-scrollable.has-overflow) {
+  flex: 1 1 auto;
+}
+
 .tabs-scrollable {
   display: flex;
   align-items: center;
@@ -65,30 +77,31 @@
 }
 
 .tabs-scrollable {
-  /* Firefox scrollbar properties removed for cleaner look */
+  /* Hide native scrollbars completely */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
 }
 
 .tabs-scrollable::-webkit-scrollbar {
-  height: 1px !important;
-  background: transparent;
+  display: none;
 }
 
-.tabs-scrollable::-webkit-scrollbar-track {
-  background: transparent;
-  height: 1px !important;
+/* Custom 1px scroll indicator */
+.scroll-indicator {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 1px;
+  background: var(--accent-color);
+  pointer-events: none;
+  z-index: 10;
+  opacity: 0.7;
+  transition: opacity 0.2s ease;
 }
 
-.tabs-scrollable::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.7);
-  border-radius: 0;
-  height: 1px !important;
-  min-height: 1px !important;
-  max-height: 1px !important;
-}
-
-.tabs-scrollable::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 1);
-  height: 1px !important;
+.tabs-scrollable:hover + .scroll-indicator,
+.scroll-indicator:hover {
+  opacity: 1;
 }
 
 .session-tab {

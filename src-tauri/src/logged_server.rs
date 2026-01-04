@@ -80,8 +80,11 @@ impl ServerProcessGuard {
     #[cfg(target_os = "windows")]
     fn force_kill(pid: u32) {
         info!("Force killing Windows process PID: {}", pid);
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         let _ = Command::new("taskkill")
             .args(&["/F", "/PID", &pid.to_string()])
+            .creation_flags(CREATE_NO_WINDOW)
             .output();
     }
     

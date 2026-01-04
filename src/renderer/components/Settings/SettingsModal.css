@@ -63,7 +63,9 @@
   overflow-y: hidden;
   max-width: calc(100% - 40px); /* Leave space for settings icon */
   -webkit-app-region: no-drag;
-  scrollbar-width: none; /* Hide scrollbar on Firefox */
+  /* Firefox scrollbar - thin style */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(var(--accent-rgb), 0.5) transparent;
   -ms-overflow-style: none; /* Hide scrollbar on IE/Edge */
 }
 

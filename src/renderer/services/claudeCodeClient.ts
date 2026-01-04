@@ -321,6 +321,10 @@ export class ClaudeCodeClient {
       if (eventName.startsWith('keepalive:')) {
         debugLog('[Client] Keepalive received');
       }
+      // Debug: log ALL message: events to see if they're being received
+      if (eventName.startsWith('message:')) {
+        console.log(`[Client] 🔔 onAny received message event: ${eventName}`, args[0]?.type, args[0]?.id);
+      }
     });
   }
 
@@ -690,6 +694,7 @@ export class ClaudeCodeClient {
     this.messageHandlers.set(channel, loggingHandler);
 
     // Listen for messages
+    console.log(`[Client] 📡 Setting up socket.on listener for channel: ${channel}`);
     this.socket.on(channel, loggingHandler);
 
     debugLog(`[Client] Listening for messages on ${channel}`);

@@ -1369,7 +1369,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   };
 
   const handleHtmlOpacityChange = (value: number) => {
-    const clamped = Math.max(0.65, Math.min(1.00, value));
+    const clamped = Math.max(0.70, Math.min(1.00, value));
     const rounded = Math.round(clamped * 100) / 100;
     setHtmlOpacity(rounded);
     localStorage.setItem('htmlOpacity', rounded.toString());
@@ -1695,7 +1695,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <span style={{ fontSize: '11px', color: 'var(--fg-50)' }}>opacity</span>
                   <input
                     type="range"
-                    min="0.65"
+                    min="0.70"
                     max="1.00"
                     step="0.01"
                     value={htmlOpacity}

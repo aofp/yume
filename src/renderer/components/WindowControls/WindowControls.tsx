@@ -52,10 +52,19 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
       const windowWidth = window.innerWidth;
       const x = e.clientX;
       const y = e.clientY;
-      
-      // Check if in trigger zone (top 28px height for title bar area)
+
+      // Get current zoom level from body style (default to 1 if not set)
+      const bodyZoom = document.body.style.zoom;
+      const zoomLevel = bodyZoom ? parseFloat(bodyZoom) : 1;
+
+      // Calculate trigger zone height adjusted for zoom
+      // The title bar is visually 28px, and clientY is in zoomed coordinates
+      // So we need to multiply by zoom level to get the correct threshold
+      const triggerZoneHeight = 28 * zoomLevel;
+
+      // Check if in trigger zone (top 28px height for title bar area, adjusted for zoom)
       // Don't open menu if dragging a tab
-      if (y <= 28 && !isDraggingTab) {
+      if (y <= triggerZoneHeight && !isDraggingTab) {
         if (isMac) {
           // macOS: right 1/3 of window
           if (x >= windowWidth * 0.67) {

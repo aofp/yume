@@ -473,7 +473,14 @@ export const ClaudeChat: React.FC = () => {
     renameSession: state.renameSession
   })));
 
-  const currentSession = useMemo(() => sessions.find(s => s.id === currentSessionId), [sessions, currentSessionId]);
+  // Track messageUpdateCounter explicitly to ensure React re-renders on message changes
+  // This fixes bash output not showing until switching tabs
+  const currentSessionUpdateCounter = useMemo(() => {
+    const session = sessions.find(s => s.id === currentSessionId);
+    return session?.messageUpdateCounter || 0;
+  }, [sessions, currentSessionId]);
+
+  const currentSession = useMemo(() => sessions.find(s => s.id === currentSessionId), [sessions, currentSessionId, currentSessionUpdateCounter]);
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
@@ -3783,7 +3790,7 @@ export const ClaudeChat: React.FC = () => {
       
       {/* Agent Executor */}
       {currentSessionId && FEATURE_FLAGS.ENABLE_AGENT_EXECUTION && (
-        <React.Suspense fallback={<div>Loading agent executor...</div>}>
+        <React.Suspense fallback={<div>&nbsp;</div>}>
           <AgentExecutor
             sessionId={currentSessionId}
             isOpen={showAgentExecutor}

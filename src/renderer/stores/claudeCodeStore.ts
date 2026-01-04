@@ -235,6 +235,7 @@ export interface Session {
   readOnly?: boolean; // Mark sessions loaded from projects as read-only
   initialized?: boolean; // Track if session has received first message from Claude (safe to interrupt)
   wasCompacted?: boolean; // Track if session was compacted to prevent old ID restoration
+  messageUpdateCounter?: number; // Counter to force React re-render on message updates
   compactionState?: { // Track compaction state
     isCompacting: boolean;
     lastCompacted?: Date;
@@ -3592,11 +3593,13 @@ ${content}`;
           });
         }
         
-        return { 
-          ...s, 
-          messages: updatedMessages, 
+        return {
+          ...s,
+          messages: updatedMessages,
           updatedAt: new Date(),
           analytics,
+          // Force React re-render by updating a counter (fixes bash output not showing)
+          messageUpdateCounter: (s.messageUpdateCounter || 0) + 1,
           // Clear thinkingStartTime after we've used it for result
           ...(shouldClearThinkingTime ? { thinkingStartTime: undefined } : {})
         };

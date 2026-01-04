@@ -1031,6 +1031,8 @@ let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMe
 let allAssistantMessageIds = new Map();  // Map of sessionId -> Array of all assistant message IDs
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
+let stoppedSessions = new Map(); // Map of sessionId -> boolean - tracks sessions that should stop processing buffered data
+let killedProcessPIDs = new Set(); // Set of PIDs that were killed due to resume failure - ignore their buffered data
 
 // Add process spawn mutex to prevent race conditions
 let isSpawningProcess = false;
@@ -1309,14 +1311,15 @@ app.delete('/claude-session/:projectPath/:sessionId', async (req, res) => {
 app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   try {
     const { projectPath, sessionId } = req.params;
-    
+
     console.log('Loading session request:');
     console.log('  - Raw projectPath:', projectPath);
     console.log('  - SessionId:', sessionId);
     console.log('  - Platform:', platform());
-    
-    if (isWindows) {
-      // Load from WSL
+    console.log('  - Execution mode:', CLAUDE_EXECUTION_MODE);
+
+    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
+      // Load from WSL (WSL mode)
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -1703,42 +1706,48 @@ app.get('/claude-analytics', async (req, res) => {
       // Directly access WSL filesystem through Windows mount - no wsl.exe commands
       const { readdir, readFile, stat } = await import('fs/promises');
       const path = await import('path');
-      
-      // Try different WSL mount paths and users
-      const possibleUsers = ['yuru', 'muuko', process.env.USER, process.env.USERNAME].filter(Boolean);
-      const possibleDistros = ['Ubuntu', 'Ubuntu-20.04', 'Ubuntu-22.04', 'Ubuntu-24.04'];
-      const possiblePrefixes = ['\\\\wsl$', '\\\\wsl.localhost'];
-      
-      console.log('📊 Analytics: Searching for WSL Claude projects...');
-      console.log('  Possible users:', possibleUsers);
-      console.log('  Possible distros:', possibleDistros);
-      
+
       let wslProjectsPath = null;
-      let attemptCount = 0;
-      
-      for (const prefix of possiblePrefixes) {
-        for (const distro of possibleDistros) {
-          for (const user of possibleUsers) {
-            const testPath = `${prefix}\\${distro}\\home\\${user}\\.claude\\projects`;
-            attemptCount++;
-            try {
-              await stat(testPath);
-              wslProjectsPath = testPath;
-              console.log(`✅ Found WSL Claude projects at: ${testPath} (attempt ${attemptCount})`);
-              break;
-            } catch (e) {
-              // Silent - try next combination
+
+      // Only try WSL paths if not in native-windows mode
+      if (CLAUDE_EXECUTION_MODE !== 'native-windows') {
+        // Try different WSL mount paths and users
+        const possibleUsers = ['yuru', 'muuko', process.env.USER, process.env.USERNAME].filter(Boolean);
+        const possibleDistros = ['Ubuntu', 'Ubuntu-20.04', 'Ubuntu-22.04', 'Ubuntu-24.04'];
+        const possiblePrefixes = ['\\\\wsl$', '\\\\wsl.localhost'];
+
+        console.log('📊 Analytics: Searching for WSL Claude projects...');
+        console.log('  Possible users:', possibleUsers);
+        console.log('  Possible distros:', possibleDistros);
+
+        let attemptCount = 0;
+
+        for (const prefix of possiblePrefixes) {
+          for (const distro of possibleDistros) {
+            for (const user of possibleUsers) {
+              const testPath = `${prefix}\\${distro}\\home\\${user}\\.claude\\projects`;
+              attemptCount++;
+              try {
+                await stat(testPath);
+                wslProjectsPath = testPath;
+                console.log(`✅ Found WSL Claude projects at: ${testPath} (attempt ${attemptCount})`);
+                break;
+              } catch (e) {
+                // Silent - try next combination
+              }
             }
+            if (wslProjectsPath) break;
           }
           if (wslProjectsPath) break;
         }
-        if (wslProjectsPath) break;
+
+        if (!wslProjectsPath) {
+          console.log(`❌ WSL Claude projects not found after ${attemptCount} attempts`);
+        }
+      } else {
+        console.log('📊 Analytics: Native Windows mode - skipping WSL, using Windows projects');
       }
-      
-      if (!wslProjectsPath) {
-        console.log(`❌ WSL Claude projects not found after ${attemptCount} attempts`);
-      }
-      
+
       if (wslProjectsPath) {
         try {
           const projectDirs = await readdir(wslProjectsPath);
@@ -2198,9 +2207,9 @@ app.get('/claude-projects-quick', async (req, res) => {
     // Get pagination params from query string
     const limit = parseInt(req.query.limit) || 20;
     const offset = parseInt(req.query.offset) || 0;
-    // On Windows, load from WSL where Claude actually stores projects
-    if (isWindows) {
-      console.log('🔍 Windows detected - loading projects from WSL');
+    // On Windows, check execution mode to determine which projects to load
+    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
+      console.log('🔍 Windows detected with WSL mode - loading projects from WSL');
       
       // Get WSL username dynamically
       let wslUser = 'user';
@@ -2329,8 +2338,12 @@ app.get('/claude-projects-quick', async (req, res) => {
     }
     
     const claudeDir = join(homedir(), '.claude', 'projects');
-    
-    console.log('Quick loading project list from:', claudeDir);
+
+    if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows') {
+      console.log('🪟 Native Windows mode - loading projects from:', claudeDir);
+    } else {
+      console.log('Quick loading project list from:', claudeDir);
+    }
     
     // Check if projects directory exists
     if (!existsSync(claudeDir)) {
@@ -2354,9 +2367,10 @@ app.get('/claude-projects-quick', async (req, res) => {
           const sessionFiles = await readdir(projectPath);
           const sessionCount = sessionFiles.filter(f => f.endsWith('.jsonl')).length;
           
-          // On Windows, if sessionCount is 0, don't report it as 0 - sessions might be in WSL
+          // On Windows WSL mode, if sessionCount is 0, sessions might be in WSL
           // Return null to indicate unknown count rather than wrong count
-          const effectiveSessionCount = (isWindows && sessionCount === 0) ? null : sessionCount;
+          // In native-windows mode, trust the local count
+          const effectiveSessionCount = (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows' && sessionCount === 0) ? null : sessionCount;
           
           // Just return name, path, and count for quick loading
           return {
@@ -2398,8 +2412,8 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
       'Connection': 'keep-alive'
     });
     
-    if (isWindows) {
-      // Load from WSL where Claude stores projects
+    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
+      // Load from WSL where Claude stores projects (WSL mode)
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -2412,6 +2426,7 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         console.warn('Could not detect WSL user, using default');
       }
       const projectPath = `/home/${wslUser}/.claude/projects/${projectName}`;
+      console.log('🔍 WSL mode - loading sessions from:', projectPath);
       
       try {
         // Get file list from WSL
@@ -2568,8 +2583,11 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         res.end();
       }
     } else {
-      // macOS/Linux implementation - read from ~/.claude/projects
+      // macOS/Linux/native-Windows implementation - read from ~/.claude/projects
       const projectPath = path.join(os.homedir(), '.claude', 'projects', projectName);
+      if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows') {
+        console.log('🪟 Native Windows mode - loading sessions from:', projectPath);
+      }
       
       try {
         // Check if project directory exists
@@ -2661,9 +2679,9 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
   try {
     const projectName = decodeURIComponent(req.params.projectName);
     console.log(`📅 Getting date for project: ${projectName}`);
-    
-    if (isWindows) {
-      // Get WSL user
+
+    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
+      // Get WSL user (WSL mode)
       let wslUser = 'yuru';
       try {
         const { execSync } = require('child_process');
@@ -2721,9 +2739,9 @@ app.get('/claude-project-date/:projectName', async (req, res) => {
 app.get('/claude-project-session-count/:projectName', async (req, res) => {
   try {
     const projectName = decodeURIComponent(req.params.projectName);
-    
-    if (isWindows) {
-      // Load from WSL
+
+    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
+      // Load from WSL (WSL mode)
       // Get WSL username dynamically
       let wslUser = 'user';
       try {
@@ -2778,9 +2796,9 @@ app.get('/claude-project-session-count/:projectName', async (req, res) => {
 // Projects endpoint - loads claude projects asynchronously with enhanced error handling
 app.get('/claude-projects', async (req, res) => {
   try {
-    // On Windows, ALWAYS load from WSL, NEVER from Windows filesystem
-    if (isWindows) {
-      console.log('🚨 WINDOWS DETECTED - LOADING FROM WSL ONLY!');
+    // On Windows, check execution mode - only load from WSL if NOT in native-windows mode
+    if (isWindows && CLAUDE_EXECUTION_MODE !== 'native-windows') {
+      console.log('🚨 WINDOWS DETECTED (WSL mode) - LOADING FROM WSL ONLY!');
       try {
         // Get WSL user using PowerShell
         let wslUser = 'yuru'; // default
@@ -2945,8 +2963,12 @@ app.get('/claude-projects', async (req, res) => {
     }
     
     const claudeDir = join(homedir(), '.claude', 'projects');
-    
-    console.log('Loading projects from:', claudeDir);
+
+    if (isWindows && CLAUDE_EXECUTION_MODE === 'native-windows') {
+      console.log('🪟 Native Windows mode - loading projects from:', claudeDir);
+    } else {
+      console.log('Loading projects from:', claudeDir);
+    }
     console.log('Platform:', platform());
     
     // Check if projects directory exists
@@ -3460,6 +3482,8 @@ io.on('connection', (socket) => {
             
             // Need to check what sessionId we're using
             console.log(`🐚 ${isCmd} SessionId:`, sessionId);
+            console.log(`🐚 ${isCmd} Emitting result on channel: message:${sessionId}`);
+            console.log(`🐚 ${isCmd} Result message:`, JSON.stringify(resultMessage).substring(0, 500));
             // Emit to BOTH the regular session AND the Claude session if different
             socket.emit(`message:${sessionId}`, resultMessage);
             
@@ -3651,6 +3675,13 @@ io.on('connection', (socket) => {
           model,
           queueLength: processSpawnQueue.length
         });
+
+        // CRITICAL: Clear stopped flag when starting new message processing
+        // This allows new messages to be processed after a resume failure
+        if (stoppedSessions.get(sessionId)) {
+          console.log(`🔄 [${sessionId}] Clearing stopped flag for new message`);
+          stoppedSessions.delete(sessionId);
+        }
 
         // Check if there's an existing process for this session
         if (activeProcesses.has(sessionId)) {
@@ -4448,7 +4479,21 @@ Format as a clear, structured summary that preserves all important context.`;
         if (!line.trim()) {
           return;
         }
-        
+
+        // CRITICAL: Check if this process was killed - if so, don't emit any more messages
+        // This prevents buffered stdout data from continuing to emit streaming=true after process kill
+        // Using PID check is more reliable than session-level flag because it survives new process spawns
+        if (claudeProcess && claudeProcess.pid && killedProcessPIDs.has(claudeProcess.pid)) {
+          console.log(`🛑 [${sessionId}] Process ${claudeProcess.pid} was killed - ignoring buffered line`);
+          return;
+        }
+
+        // Also check session-level stopped flag as a fallback
+        if (stoppedSessions.get(sessionId)) {
+          console.log(`🛑 [${sessionId}] Session stopped - ignoring buffered line`);
+          return;
+        }
+
         // WRAPPER: Process line for API capture and token tracking
         try {
           const augmentedLine = processWrapperLine(line, sessionId);
@@ -4468,10 +4513,20 @@ Format as a clear, structured summary that preserves all important context.`;
           console.log(`🔄 [${sessionId}] Resume failed - session not found in Claude storage`);
           console.log(`🔄 [${sessionId}] KILLING process and clearing state`);
 
+          // CRITICAL: Mark session as stopped to prevent buffered data from emitting
+          stoppedSessions.set(sessionId, true);
+          console.log(`🛑 [${sessionId}] Marked session as stopped - buffered data will be ignored`);
+
           // CRITICAL: Kill the process immediately to stop further streaming
           try {
             if (claudeProcess && !claudeProcess.killed) {
-              console.log(`🛑 [${sessionId}] Killing claude process PID: ${claudeProcess.pid}`);
+              const pidToKill = claudeProcess.pid;
+              console.log(`🛑 [${sessionId}] Killing claude process PID: ${pidToKill}`);
+              // Track this PID so any buffered data from it is ignored
+              if (pidToKill) {
+                killedProcessPIDs.add(pidToKill);
+                console.log(`🛑 [${sessionId}] Added PID ${pidToKill} to killed set`);
+              }
               claudeProcess.kill('SIGTERM');
               activeProcesses.delete(sessionId);
               activeProcessStartTimes.delete(sessionId);
@@ -5447,7 +5502,12 @@ Format as a clear, structured summary that preserves all important context.`;
         }
         activeProcesses.delete(sessionId);
         activeProcessStartTimes.delete(sessionId);
-        
+
+        // Clean up killed PID tracking now that process has fully exited
+        if (claudeProcess && claudeProcess.pid) {
+          killedProcessPIDs.delete(claudeProcess.pid);
+        }
+
         // Mark session as completed (not interrupted) when process exits normally
         if (code === 0) {
           const session = sessions.get(sessionId);
@@ -5755,7 +5815,8 @@ Format as a clear, structured summary that preserves all important context.`;
 
       activeProcesses.delete(sessionId);
       activeProcessStartTimes.delete(sessionId);
-      
+      stoppedSessions.set(sessionId, true);  // Prevent buffered data from emitting
+
       // When user explicitly stops, prevent auto-resume by clearing session state
       // This ensures any new message starts a fresh Claude session, not a resume
       if (session) {
@@ -5853,7 +5914,8 @@ Format as a clear, structured summary that preserves all important context.`;
     session.wasInterrupted = false;  // Reset interrupted flag
     session.wasCompacted = false;  // Reset compacted flag
     lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
-    
+    stoppedSessions.delete(sessionId);  // Clear stopped flag so new messages can be processed
+
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
     
     // Send clear confirmation
@@ -5874,6 +5936,7 @@ Format as a clear, structured summary that preserves all important context.`;
     const { sessionId } = data;
     sessions.delete(sessionId);
     lastAssistantMessageIds.delete(sessionId);  // Clean up tracking
+    stoppedSessions.delete(sessionId);  // Clean up stopped flag
     callback({ success: true });
   });
 

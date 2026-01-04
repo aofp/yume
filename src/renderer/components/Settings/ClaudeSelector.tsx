@@ -11,7 +11,10 @@ interface ClaudeSelectorProps {
 export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange }) => {
   const [showModal, setShowModal] = useState(false);
   const [detection, setDetection] = useState<ClaudeDetectionResult | null>(null);
-  const [claudeVersion, setClaudeVersion] = useState<string>('');
+  const [claudeVersion, setClaudeVersion] = useState<string>(() => {
+    // Initialize with cached version for instant display
+    return claudeDetector.getCachedVersion() || '';
+  });
   const [settings, setSettings] = useState<ClaudeSettings>(() => {
     const saved = claudeDetector.loadSettings();
     // Default to native-windows if not set
@@ -23,9 +26,12 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
   });
 
   useEffect(() => {
-    // Initial detection on mount
-    detectInstallations();
-    fetchClaudeVersion();
+    // Initial detection on mount - use cache if available (no force)
+    detectInstallations(false);
+    // Only fetch version if not cached
+    if (!claudeVersion) {
+      fetchClaudeVersion();
+    }
   }, []);
 
   const fetchClaudeVersion = async () => {
@@ -33,21 +39,27 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
       const version = await invoke<string>('get_claude_version');
       // Extract just the version number if it includes "claude" prefix
       const versionMatch = version.match(/(\d+\.\d+\.\d+)/);
+      let extractedVersion = '';
       if (versionMatch) {
-        setClaudeVersion(versionMatch[1]);
+        extractedVersion = versionMatch[1];
       } else if (version && version !== 'unknown') {
-        setClaudeVersion(version.replace('claude', '').trim());
+        extractedVersion = version.replace('claude', '').trim();
+      }
+      if (extractedVersion) {
+        setClaudeVersion(extractedVersion);
+        // Cache the version for future instant access
+        claudeDetector.setCachedVersion(extractedVersion);
       }
     } catch (error) {
       console.error('Failed to get Claude version:', error);
     }
   };
 
-  const detectInstallations = async () => {
+  const detectInstallations = async (force = false) => {
     try {
-      const result = await claudeDetector.detectInstallations(true);
+      const result = await claudeDetector.detectInstallations(force);
       setDetection(result);
-      
+
       // Set preferred installation based on current mode
       const newSettings = { ...settings };
       if (settings.executionMode === 'native-windows' && result.nativeWindows) {
@@ -124,7 +136,7 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
           currentMode={settings.executionMode}
           onSelect={handleModeSelect}
           onClose={() => setShowModal(false)}
-          onRefresh={detectInstallations}
+          onRefresh={() => detectInstallations(true)}
         />
       )}
     </>
