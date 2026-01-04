@@ -1441,28 +1441,58 @@ const MessageRendererBase: React.FC<{
   // Ref for selection preservation during streaming
   const containerRef = useRef<HTMLDivElement>(null);
   const selectionStateRef = useRef<SelectionState | null>(null);
-  const contentRef = useRef<string>('');
+  const wasStreamingRef = useRef(false);
+  const restoreRafRef = useRef<number | null>(null);
 
-  // Save selection before render (during streaming)
+  // Track streaming state transitions and capture selection
   useLayoutEffect(() => {
+    // When streaming starts, begin tracking selection
+    if (isStreaming && !wasStreamingRef.current) {
+      wasStreamingRef.current = true;
+    }
+
+    // While streaming, save selection if user has one
     if (isStreaming && containerRef.current) {
       const saved = saveSelection(containerRef.current);
       if (saved) {
         selectionStateRef.current = saved;
       }
     }
+
+    // When streaming ends, clear saved state
+    if (!isStreaming && wasStreamingRef.current) {
+      wasStreamingRef.current = false;
+      selectionStateRef.current = null;
+    }
   });
 
-  // Restore selection after render (during streaming)
+  // Restore selection after render (during streaming) - use double-RAF for reliability
   useEffect(() => {
-    if (isStreaming && containerRef.current && selectionStateRef.current) {
-      // Small delay to ensure DOM is updated
-      requestAnimationFrame(() => {
+    if (!isStreaming || !containerRef.current || !selectionStateRef.current) return;
+
+    // Cancel any pending restore
+    if (restoreRafRef.current) {
+      cancelAnimationFrame(restoreRafRef.current);
+    }
+
+    // Double requestAnimationFrame for more reliable DOM settling
+    // First RAF: scheduled after current paint
+    // Second RAF: scheduled after next paint (DOM is definitely settled)
+    restoreRafRef.current = requestAnimationFrame(() => {
+      restoreRafRef.current = requestAnimationFrame(() => {
         if (containerRef.current && selectionStateRef.current) {
           restoreSelection(containerRef.current, selectionStateRef.current);
         }
+        restoreRafRef.current = null;
       });
-    }
+    });
+
+    return () => {
+      if (restoreRafRef.current) {
+        cancelAnimationFrame(restoreRafRef.current);
+        restoreRafRef.current = null;
+      }
+    };
   });
 
   const handleCopy = (text: string) => {

@@ -2281,13 +2281,25 @@ textarea.context-full {
   scrollbar-color: rgba(var(--foreground-rgb), 0.5) transparent;
   padding-right: 0;
   padding-top: 7px;
-  /* prevent layout thrashing from particles/animations outside */
-  contain: layout style paint;
+  /* Use 'paint' containment only - 'layout style' can break text selection during streaming
+   * See: https://developer.mozilla.org/en-US/docs/Web/CSS/contain
+   * 'layout' containment can cause selection state to be reset during reflows */
+  contain: paint;
   will-change: scroll-position;
   /* GPU acceleration for smooth scrolling */
   transform: translateZ(0);
   /* prevent scroll anchor jumping */
   overflow-anchor: none;
+  /* CRITICAL: Ensure text selection is always allowed */
+  user-select: text;
+  -webkit-user-select: text;
+}
+
+/* Ensure message content is selectable during streaming */
+.messages-virtualized .message-content,
+.messages-virtualized .message-content * {
+  user-select: text;
+  -webkit-user-select: text;
 }
 
 .messages-virtualized::-webkit-scrollbar {

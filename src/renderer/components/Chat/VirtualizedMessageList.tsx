@@ -1,10 +1,46 @@
-import { useVirtualizer } from '@tanstack/react-virtual';
-import React, { useRef, useEffect, useLayoutEffect, useCallback, useMemo, useImperativeHandle, forwardRef } from 'react';
+import { useVirtualizer, VirtualItem } from '@tanstack/react-virtual';
+import React, { useRef, useEffect, useLayoutEffect, useCallback, useMemo, useImperativeHandle, forwardRef, memo } from 'react';
 import { MessageRenderer } from './MessageRenderer';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 
 // Pre-computed thinking characters to avoid splitting on every render
 const THINKING_CHARS = 'thinking'.split('');
+
+// Memoized virtual item wrapper to prevent DOM recreation during streaming
+// This is CRITICAL for maintaining text selection during updates
+const VirtualItemWrapper = memo(({
+  virtualItem,
+  children,
+  measureElement
+}: {
+  virtualItem: VirtualItem;
+  children: React.ReactNode;
+  measureElement: (el: HTMLElement | null) => void;
+}) => {
+  return (
+    <div
+      data-index={virtualItem.index}
+      ref={measureElement}
+      style={{
+        position: 'absolute',
+        top: 0,
+        left: 0,
+        width: '100%',
+        maxWidth: '100%',
+        transform: `translateY(${virtualItem.start}px)`,
+        boxSizing: 'border-box',
+      }}
+    >
+      {children}
+    </div>
+  );
+}, (prev, next) => {
+  // Only re-render wrapper if position changes
+  // Children re-render is handled by their own memo
+  return prev.virtualItem.index === next.virtualItem.index &&
+    prev.virtualItem.start === next.virtualItem.start &&
+    prev.virtualItem.size === next.virtualItem.size;
+});
 
 interface VirtualizedMessageListProps {
   messages: any[];
@@ -49,9 +85,27 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const scrollAnchorRef = useRef<{ index: number; offset: number } | null>(null);
   const prevTotalSizeRef = useRef<number>(0);
 
+  // CRITICAL: Store messages in ref for stable callbacks - prevents virtualizer recreation
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+
   // Cooldown period after user scrolls up (don't auto-scroll for this long)
   // Set to 0 to disable cooldown - always auto-scroll when assistant is responding
   const SCROLL_COOLDOWN_MS = 0;
+
+  // Detect if user has active text selection within our container
+  // This prevents scroll actions from disrupting text selection
+  const hasActiveSelection = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || selection.isCollapsed) return false;
+
+    try {
+      const range = selection.getRangeAt(0);
+      return parentRef.current?.contains(range.commonAncestorContainer) ?? false;
+    } catch {
+      return false;
+    }
+  }, []);
 
   // Add thinking message if streaming
   const displayMessages = useMemo(() => {
@@ -72,9 +126,12 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     return `${displayMessages.length}:${lastId}:${lastLen}:${isStreaming}:${thinkingState}`;
   }, [displayMessages, showThinking]);
 
-  // Estimate message heights based on content
+  // CRITICAL: Stable estimateSize using ref - prevents virtualizer recreation during streaming
+  // Using ref instead of displayMessages in dependency array avoids callback recreation
   const estimateSize = useCallback((index: number) => {
-    const msg = displayMessages[index];
+    // Access via ref for stable reference
+    const msgs = showThinking ? [...messagesRef.current, { type: 'thinking', id: 'thinking-indicator' }] : messagesRef.current;
+    const msg = msgs[index];
     if (!msg) return 100;
 
     // Thinking indicator has fixed height
@@ -99,17 +156,19 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     if (contentLength > 1000) return 300;
     if (contentLength > 500) return 200;
     return 150;
-  }, [displayMessages]);
+  }, [showThinking]); // Only depends on showThinking, not displayMessages
 
   const virtualizer = useVirtualizer({
     count: displayMessages.length,
     getScrollElement: () => parentRef.current,
     estimateSize,
     overscan: 5, // Render 5 items outside viewport for smoother scrolling
+    // Stable getItemKey using ref - prevents recreation during streaming
     getItemKey: useCallback((index: number) => {
-      const msg = displayMessages[index];
+      const msgs = showThinking ? [...messagesRef.current, { type: 'thinking', id: 'thinking-indicator' }] : messagesRef.current;
+      const msg = msgs[index];
       return msg?.id || `msg-${index}`;
-    }, [displayMessages]),
+    }, [showThinking]),
   });
 
   // Check if we're at bottom - uses different thresholds for different purposes
@@ -278,6 +337,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const performAutoScroll = useCallback(() => {
     if (!parentRef.current || displayMessages.length === 0 || userHasScrolledRef.current) return;
 
+    // CRITICAL: Don't auto-scroll if user is selecting text
+    if (hasActiveSelection()) return;
+
     isAutoScrollingRef.current = true;
     scrollToTrueBottom('auto');
 
@@ -285,7 +347,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     setTimeout(() => {
       isAutoScrollingRef.current = false;
     }, 100);
-  }, [displayMessages.length, scrollToTrueBottom]);
+  }, [displayMessages.length, scrollToTrueBottom, hasActiveSelection]);
 
   // Track previous showThinking state to detect when it becomes true
   const prevShowThinkingRef = useRef(showThinking);
@@ -365,6 +427,10 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
         // Check ref INSIDE interval so forceScrollToBottom can reset it mid-stream
         if (!parentRef.current || userHasScrolledRef.current) return;
 
+        // CRITICAL: Don't scroll if user is actively selecting text
+        // This prevents selection from being disrupted during streaming
+        if (hasActiveSelection()) return;
+
         const { scrollHeight, clientHeight, scrollTop } = parentRef.current;
         const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
@@ -441,31 +507,23 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
           paddingRight: '8px',
           boxSizing: 'border-box',
           overflowX: 'hidden', // Prevent child overflow
-          // GPU acceleration and containment to prevent layout thrashing
-          contain: 'layout style',
-          willChange: 'contents',
+          // Use 'paint' containment instead of 'layout style' to preserve text selection
+          // 'layout style' can reset selection state during layout recalculations
+          contain: 'paint',
+          willChange: 'transform',
         }}
       >
         {virtualItems.map((virtualItem) => {
           const message = displayMessages[virtualItem.index];
           if (!message) return null;
-          
+
           // Render thinking indicator
           if (message.type === 'thinking') {
             return (
-              <div
+              <VirtualItemWrapper
                 key={virtualItem.key}
-                data-index={virtualItem.index}
-                ref={virtualizer.measureElement}
-                style={{
-                  position: 'absolute',
-                  top: 0,
-                  left: 0,
-                  width: '100%',
-                  maxWidth: '100%',
-                  transform: `translateY(${virtualItem.start}px)`,
-                  boxSizing: 'border-box',
-                }}
+                virtualItem={virtualItem}
+                measureElement={virtualizer.measureElement}
               >
                 <div className="message assistant">
                   <div className="message-content">
@@ -493,36 +551,28 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                     </div>
                   </div>
                 </div>
-              </div>
+              </VirtualItemWrapper>
             );
           }
-          
-          const isLastStreaming = isStreaming && 
+
+          const isLastStreaming = isStreaming &&
             lastAssistantMessageIds.includes(message.id);
-          
+
           return (
-            <div
+            <VirtualItemWrapper
               key={virtualItem.key}
-              data-index={virtualItem.index}
-              ref={virtualizer.measureElement}
-              style={{
-                position: 'absolute',
-                top: 0,
-                left: 0,
-                width: '100%',
-                maxWidth: '100%',
-                transform: `translateY(${virtualItem.start}px)`,
-                boxSizing: 'border-box',
-              }}
+              virtualItem={virtualItem}
+              measureElement={virtualizer.measureElement}
             >
               <MessageRenderer
                 message={message}
+                index={virtualItem.index}
                 sessionId={sessionId}
                 isStreaming={isLastStreaming}
                 isLast={virtualItem.index === displayMessages.length - 1 && !showThinking}
                 thinkingFor={0}
               />
-            </div>
+            </VirtualItemWrapper>
           );
         })}
       </div>
