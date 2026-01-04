@@ -813,7 +813,7 @@ textarea.context-full {
 .chat-input {
   flex: 1;
   background: linear-gradient(rgba(var(--background-rgb), 0.25), rgba(var(--background-rgb), 0.25)), #000000;
-  border: 1px solid rgba(var(--accent-rgb), 0.6);
+  border: 1px solid rgba(var(--accent-rgb), 0.4);
   color: var(--foreground-color);
   caret-color: var(--accent-color);
   padding: 4px;
@@ -1135,7 +1135,7 @@ textarea.context-full {
 }
 
 .chat-input.bash-mode:focus {
-  border-color: rgba(var(--negative-rgb), 1);
+  border-color: rgba(var(--negative-rgb), 0.9);
 }
 
 /* Context bar - stats section */
