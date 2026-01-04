@@ -371,8 +371,8 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'mono',
     name: 'mono',
-    backgroundColor: '#0a0a0a',
-    foregroundColor: '#c8c8c8',
+    backgroundColor: '#080808',
+    foregroundColor: '#ffffff',
     accentColor: '#7a9eb8',
     positiveColor: '#8ba888',
     negativeColor: '#b88a8a',

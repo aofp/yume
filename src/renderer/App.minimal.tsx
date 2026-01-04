@@ -294,6 +294,24 @@ export const App: React.FC = () => {
                       // Folder: create new session
                       console.log('Creating session for dropped folder:', path);
                       const sessionName = path.split(/[/\\]/).pop() || 'new session';
+
+                      // Add to recent projects
+                      const newProject = { path, name: sessionName, lastOpened: Date.now(), accessCount: 1 };
+                      const stored = localStorage.getItem('yurucode-recent-projects');
+                      let recentProjects = [];
+                      try {
+                        if (stored) {
+                          recentProjects = JSON.parse(stored);
+                        }
+                      } catch (e) {
+                        console.error('Failed to parse recent projects:', e);
+                      }
+                      const updated = [
+                        newProject,
+                        ...recentProjects.filter((p: any) => p.path !== path)
+                      ].slice(0, 8);
+                      localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+
                       await createSession(sessionName, path);
                       return; // Only handle the first folder
                     } else {

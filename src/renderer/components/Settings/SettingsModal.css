@@ -850,6 +850,7 @@ input[type="checkbox"].checkbox-input {
   display: inline-block;
   background: var(--background-color);
   border-radius: 4px;
+  line-height: 10px;
   height: 23px;
   z-index: 2;
   border: 1px solid var(--fg-15);
