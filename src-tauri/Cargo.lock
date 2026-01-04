@@ -6556,6 +6556,7 @@ dependencies = [
  "tracing-subscriber",
  "uuid",
  "walkdir",
+ "webview2-com",
  "which 6.0.3",
  "windows",
 ]

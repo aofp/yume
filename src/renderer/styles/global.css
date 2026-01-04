@@ -148,16 +148,14 @@
   box-sizing: border-box;
 }
 
-html {
-  background: transparent;
-}
-
 html,
 body,
 #root {
   width: 100%;
   height: 100%;
   overflow: hidden;
+  /* CRITICAL: Force transparency for WebView2 window transparency on Windows */
+  background: transparent !important;
 }
 
 body {
@@ -165,11 +163,38 @@ body {
   font-size: var(--text-base);
   line-height: var(--leading-normal);
   color: var(--color-text-primary);
-  background: var(--background-color);
+  /* Use --bg-color for transparency support - set by index.html
+     On Windows: transparent (WebView2 only supports alpha=0 or alpha=255)
+     On macOS/Linux: semi-transparent via native support */
+  background: var(--bg-color, transparent);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   border-radius: 4px;
   overflow: hidden;
+  position: relative;
+  /* Create stacking context so ::before with z-index:-1 stays within body */
+  isolation: isolate;
+}
+
+/* Windows transparency overlay - provides the tinted background effect
+   WebView2 only supports fully transparent or fully opaque backgrounds,
+   so we use a pseudo-element overlay to simulate semi-transparency.
+   The isolation: isolate on body ensures this stays within the body's
+   stacking context and doesn't go behind the window itself. */
+body::before {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  /* --bg-overlay-color is set by index.html based on platform:
+     Windows: rgba(0,0,0,alpha) for tint effect
+     macOS/Linux: transparent (native semi-transparency handles it) */
+  background: var(--bg-overlay-color, transparent);
+  pointer-events: none;
+  z-index: -1;
+  border-radius: 4px;
 }
 
 /* App Layout */
@@ -178,7 +203,8 @@ body {
   flex-direction: column;
   width: 100%;
   height: 100%;
-  background: var(--color-bg-primary);
+  /* Transparent to allow window transparency to show through */
+  background: transparent;
   padding-top: 0;
 }
 
@@ -198,7 +224,8 @@ body {
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  background: var(--color-bg-primary);
+  /* Transparent to allow window transparency to show through */
+  background: transparent;
 }
 
 .chat-container {

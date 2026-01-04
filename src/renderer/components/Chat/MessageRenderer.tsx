@@ -1,13 +1,13 @@
-import React, { memo, useState, useCallback } from 'react';
+import React, { memo, useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import SyntaxHighlighter from 'react-syntax-highlighter';
 import { DiffViewer, DiffDisplay, DiffLine } from './DiffViewer';
-import { 
+import {
   IconBolt,
-  IconAlertTriangle, 
-  IconCheck, 
-  IconX, 
+  IconAlertTriangle,
+  IconCheck,
+  IconX,
   IconChevronsRight,
   IconMinus,
   IconChecklist,
@@ -32,6 +32,106 @@ import {
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './MessageRenderer.css';
+
+// Selection preservation utilities for streaming messages
+interface SelectionState {
+  startContainerPath: number[];
+  startOffset: number;
+  endContainerPath: number[];
+  endOffset: number;
+  selectedText: string;
+}
+
+// Get path from root to a node (array of child indices)
+const getNodePath = (root: Node, node: Node): number[] | null => {
+  const path: number[] = [];
+  let current: Node | null = node;
+
+  while (current && current !== root) {
+    const parent: ParentNode | null = current.parentNode;
+    if (!parent) return null;
+
+    const children = Array.from(parent.childNodes);
+    const index = children.indexOf(current as ChildNode);
+    if (index === -1) return null;
+
+    path.unshift(index);
+    current = parent as Node;
+  }
+
+  return current === root ? path : null;
+};
+
+// Get node from path
+const getNodeFromPath = (root: Node, path: number[]): Node | null => {
+  let current: Node = root;
+
+  for (const index of path) {
+    const children = current.childNodes;
+    if (index >= children.length) return null;
+    current = children[index];
+  }
+
+  return current;
+};
+
+// Save current selection state relative to a container
+const saveSelection = (container: HTMLElement): SelectionState | null => {
+  const selection = window.getSelection();
+  if (!selection || selection.rangeCount === 0 || selection.isCollapsed) return null;
+
+  const range = selection.getRangeAt(0);
+
+  // Check if selection is within our container
+  if (!container.contains(range.commonAncestorContainer)) return null;
+
+  const startPath = getNodePath(container, range.startContainer);
+  const endPath = getNodePath(container, range.endContainer);
+
+  if (!startPath || !endPath) return null;
+
+  return {
+    startContainerPath: startPath,
+    startOffset: range.startOffset,
+    endContainerPath: endPath,
+    endOffset: range.endOffset,
+    selectedText: selection.toString()
+  };
+};
+
+// Restore selection state
+const restoreSelection = (container: HTMLElement, state: SelectionState): boolean => {
+  try {
+    const startNode = getNodeFromPath(container, state.startContainerPath);
+    const endNode = getNodeFromPath(container, state.endContainerPath);
+
+    if (!startNode || !endNode) return false;
+
+    // Validate offsets
+    const startLength = startNode.nodeType === Node.TEXT_NODE
+      ? (startNode as Text).length
+      : startNode.childNodes.length;
+    const endLength = endNode.nodeType === Node.TEXT_NODE
+      ? (endNode as Text).length
+      : endNode.childNodes.length;
+
+    if (state.startOffset > startLength || state.endOffset > endLength) return false;
+
+    const selection = window.getSelection();
+    if (!selection) return false;
+
+    const range = document.createRange();
+    range.setStart(startNode, Math.min(state.startOffset, startLength));
+    range.setEnd(endNode, Math.min(state.endOffset, endLength));
+
+    selection.removeAllRanges();
+    selection.addRange(range);
+
+    return true;
+  } catch (e) {
+    return false;
+  }
+};
 
 // pre-compiled regex patterns (avoid re-creation in render)
 const CODE_BLOCK_REGEX = /```([\w]*)?[\r\n]+([\s\S]*?)```/g;
@@ -1323,19 +1423,48 @@ const highlightText = (text: string, searchQuery: string, isCurrentMatch: boolea
 };
 
 // Main message renderer component - memoized for performance
-const MessageRendererBase: React.FC<{ 
-  message: ClaudeMessage; 
-  index: number; 
+const MessageRendererBase: React.FC<{
+  message: ClaudeMessage;
+  index: number;
   isLast?: boolean;
   searchQuery?: string;
   isCurrentMatch?: boolean;
-}> = ({ message, index, isLast = false, searchQuery = '', isCurrentMatch = false }) => {
+  sessionId?: string;
+  isStreaming?: boolean;
+  thinkingFor?: number;
+}> = ({ message, index, isLast = false, searchQuery = '', isCurrentMatch = false, isStreaming = false }) => {
   // Get the current session to access previous messages for context
   const store = useClaudeCodeStore.getState();
   const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
   const sessionMessages = currentSession?.messages || [];
-  
-  
+
+  // Ref for selection preservation during streaming
+  const containerRef = useRef<HTMLDivElement>(null);
+  const selectionStateRef = useRef<SelectionState | null>(null);
+  const contentRef = useRef<string>('');
+
+  // Save selection before render (during streaming)
+  useLayoutEffect(() => {
+    if (isStreaming && containerRef.current) {
+      const saved = saveSelection(containerRef.current);
+      if (saved) {
+        selectionStateRef.current = saved;
+      }
+    }
+  });
+
+  // Restore selection after render (during streaming)
+  useEffect(() => {
+    if (isStreaming && containerRef.current && selectionStateRef.current) {
+      // Small delay to ensure DOM is updated
+      requestAnimationFrame(() => {
+        if (containerRef.current && selectionStateRef.current) {
+          restoreSelection(containerRef.current, selectionStateRef.current);
+        }
+      });
+    }
+  });
+
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
   };
@@ -1770,22 +1899,22 @@ const MessageRendererBase: React.FC<{
       const showEmptyMessage = !message.streaming && !hasTextContent && message.type === 'assistant';
       
       return (
-        <>
+        <div ref={containerRef}>
           {/* Render thinking blocks first, outside any message bubble */}
           {thinkingBlocks && thinkingBlocks.length > 0 && (
             <div className="message thinking-message">
-              {thinkingBlocks.map((block, idx) => 
+              {thinkingBlocks.map((block, idx) =>
                 renderContent([block], message, searchQuery, isCurrentMatch)
               )}
             </div>
           )}
-          
+
           {/* Render text content in message bubble if there is any, or show (no content) */}
           {(hasTextContent || showEmptyMessage) && (
             <div className="message assistant">
               <div className="message-content">
                 <div className="message-bubble">
-                  {hasTextContent ? 
+                  {hasTextContent ?
                     renderContent(textContent, message, searchQuery, isCurrentMatch) :
                     <span style={{ color: '#666', fontStyle: 'italic' }}>(no content)</span>
                   }
@@ -1793,8 +1922,8 @@ const MessageRendererBase: React.FC<{
               </div>
               {showButtons && (
                 <div className="message-actions">
-                  <button 
-                    onClick={() => handleCopy(getMessageText(message.message?.content))} 
+                  <button
+                    onClick={() => handleCopy(getMessageText(message.message?.content))}
                     className="action-btn"
                     title="copy"
                   >
@@ -1863,9 +1992,9 @@ const MessageRendererBase: React.FC<{
               </div>
             );
           })}
-        </>
+        </div>
       );
-      
+
     case 'tool_use':
       // Standalone tool use message
       const toolName = message.message?.name || 'unknown tool';
@@ -3056,6 +3185,7 @@ export const MessageRenderer = memo(MessageRendererBase, (prevProps, nextProps) 
   return (
     prevProps.message.id === nextProps.message.id &&
     prevProps.message.streaming === nextProps.message.streaming &&
+    prevProps.isStreaming === nextProps.isStreaming &&
     areContentsEqual(prevProps.message.message?.content, nextProps.message.message?.content)
   );
 });

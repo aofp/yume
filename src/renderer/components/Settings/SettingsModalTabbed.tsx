@@ -258,7 +258,7 @@ const FOREGROUND_COLOR_ROWS: NamedColor[][] = [
     { hex: '#e0bcc5', name: 'rose grey' }, { hex: '#d6b4bd', name: 'antique rose' }, { hex: '#ccacb5', name: 'plum grey' },
     { hex: '#c2a4ad', name: 'thistle' }, { hex: '#b89ca5', name: 'heather' }, { hex: '#ae949d', name: 'wisteria' },
     { hex: '#a48c95', name: 'orchid grey' }, { hex: '#9a848d', name: 'violet grey' }, { hex: '#907c85', name: 'wine grey' },
-    { hex: '#86747d', name: 'grape' }, { hex: '#7c6c75', name: 'plum' }, { hex: '#72646d', name: 'raisin' }
+    { hex: '#86747d', name: 'wine' }, { hex: '#7c6c75', name: 'plum' }, { hex: '#72646d', name: 'raisin' }
   ],
   // Row 5: Blue tints - ice to steel (21)
   [
@@ -363,8 +363,7 @@ const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#99bbff',
     positiveColor: '#99ff99',
     negativeColor: '#ff9999',
-    opacity: 0.92,
-    opacity: 0.92,
+    opacity: 0.97,
     monoFont: 'Comic Mono',
     sansFont: 'Comic Neue',
     isBuiltIn: true
@@ -374,9 +373,9 @@ const BUILT_IN_THEMES: Theme[] = [
     name: 'mono',
     backgroundColor: '#0a0a0a',
     foregroundColor: '#c8c8c8',
-    accentColor: '#888888',
-    positiveColor: '#909090',
-    negativeColor: '#a0a0a0',
+    accentColor: '#7a9eb8',
+    positiveColor: '#8ba888',
+    negativeColor: '#b88a8a',
     opacity: 0.92,
     monoFont: 'JetBrains Mono',
     sansFont: 'IBM Plex Sans',
@@ -633,7 +632,7 @@ const BUILT_IN_THEMES: Theme[] = [
     id: 'grape',
     name: 'grape',
     backgroundColor: '#0c080e',
-    foregroundColor: '#e8bfff',
+    foregroundColor: '#f8f5ff',
     accentColor: '#bb99ff',
     positiveColor: '#99ffbb',
     negativeColor: '#ff99bb',

@@ -6,11 +6,12 @@
   box-sizing: border-box;
 }
 
-/* CSS variables for dynamic theming */
-:root {
-  --bg-color: var(--background-color, #000000);
-  --bg-opacity: 1;
-}
+/* CSS variables for dynamic theming
+   Note: --bg-color and --bg-overlay-color are set dynamically by JavaScript
+   in index.html to support platform-specific transparency:
+   - Windows: --bg-color=transparent, --bg-overlay-color=rgba(0,0,0,alpha)
+   - macOS: --bg-color=rgba(0,0,0,alpha), --bg-overlay-color=transparent
+   Do NOT override these here or transparency will break! */
 
 html {
   background: transparent !important;
@@ -18,7 +19,10 @@ html {
 
 body {
   font-family: 'Comic Neue', 'Helvetica Neue', 'Helvetica', 'Inter', 'Segoe UI', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
-  background: var(--background-color, #000000) !important;
+  /* Use --bg-color for transparency - set by index.html before CSS loads
+     On Windows: transparent (overlay provides tint)
+     On macOS: rgba with alpha for native transparency */
+  background: var(--bg-color, transparent) !important;
   color: var(--foreground-color, #ffffff);
   overflow: hidden;
 }

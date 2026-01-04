@@ -1,6 +1,7 @@
 .titlebar-wrapper {
   height: 28px;
-  background: var(--background-color); /* Use theme background */
+  /* Use background color instead of transparent */
+  background: var(--background-color);
   display: flex !important;
   align-items: center;
   position: fixed;

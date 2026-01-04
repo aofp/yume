@@ -8,8 +8,8 @@
   left: 0;
   right: 0;
   bottom: 0;
-  /* Theme background at 50% blended with black */
-  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+  /* Transparent to allow window transparency to show through */
+  background: transparent;
   overflow: hidden; /* Prevent outer container from scrolling */
   /* Isolate from external layout changes (particles, etc) */
   contain: layout style;
@@ -806,7 +806,7 @@ textarea.context-full {
 
 .chat-input {
   flex: 1;
-  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+  background: linear-gradient(rgba(var(--background-rgb), 0.25), rgba(var(--background-rgb), 0.25)), #000000;
   border: 1px solid rgba(var(--accent-rgb), 0.6);
   color: var(--foreground-color);
   caret-color: var(--accent-color);
@@ -830,7 +830,7 @@ textarea.context-full {
 }
 
 .chat-input:focus {
-  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+  background: linear-gradient(rgba(var(--background-rgb), 0.25), rgba(var(--background-rgb), 0.25)), #000000;
   border-color: rgba(var(--accent-rgb), 1);
   overflow-y: auto; /* Show scrollbar on focus if content overflows */
 }

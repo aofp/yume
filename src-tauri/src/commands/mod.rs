@@ -303,6 +303,48 @@ pub async fn maximize_window(window: Window) -> Result<(), String> {
     }
 }
 
+/// Sets the window opacity (0.0 to 1.0)
+/// On Windows, uses SetLayeredWindowAttributes for true window transparency
+/// On macOS/Linux, this is a no-op as CSS opacity works for those platforms
+#[tauri::command]
+pub async fn set_window_opacity(window: Window, opacity: f64) -> Result<(), String> {
+    use tracing::info;
+
+    // Clamp opacity between 0.65 and 1.0 (same range as frontend slider)
+    let clamped = opacity.max(0.65).min(1.0);
+    info!("Setting window opacity to: {}", clamped);
+
+    #[cfg(target_os = "windows")]
+    {
+        use windows::Win32::Foundation::{HWND, COLORREF};
+        use windows::Win32::UI::WindowsAndMessaging::{
+            SetLayeredWindowAttributes, LWA_ALPHA
+        };
+
+        if let Ok(hwnd) = window.hwnd() {
+            unsafe {
+                let hwnd = HWND(hwnd.0);
+                // Convert 0.0-1.0 to 0-255 byte range
+                let alpha = (clamped * 255.0) as u8;
+
+                if let Err(e) = SetLayeredWindowAttributes(hwnd, COLORREF(0), alpha, LWA_ALPHA) {
+                    return Err(format!("Failed to set window opacity: {:?}", e));
+                }
+                info!("Windows opacity set to alpha={} ({}%)", alpha, (clamped * 100.0) as i32);
+            }
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // On macOS and Linux, CSS opacity works, so this is a no-op
+        // The frontend handles opacity via document.documentElement.style.opacity
+        info!("Non-Windows platform: opacity handled by CSS");
+    }
+
+    Ok(())
+}
+
 /// Closes the current window
 /// The server remains running if other windows are open (multi-window support)
 /// Server cleanup happens automatically when the last window closes

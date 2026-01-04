@@ -1,0 +1,10 @@
+This is a test file created by Claude Code.
+
+Testing the Write tool functionality.
+Now testing the Edit tool functionality as well!
+
+Line 1: Initial content
+Line 2: More initial content
+Line 3: This line has been successfully edited by the Edit tool!
+
+End of test file.

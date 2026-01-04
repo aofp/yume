@@ -11,7 +11,37 @@
       // CRITICAL: This MUST run before modules to prevent Object.assign errors
       (function() {
         'use strict';
-        
+
+        // CRITICAL: Set --bg-color CSS variable BEFORE any stylesheets load
+        // This enables transparency support from the very first paint
+        var savedOpacity = localStorage.getItem('yurucode-bg-opacity');
+        // Default to 80% opacity for visible transparency effect
+        var opacityPercent = savedOpacity ? parseInt(savedOpacity, 10) : 80;
+        var alpha = Math.max(0, Math.min(1, opacityPercent / 100));
+
+        // Detect platform - Windows requires special handling
+        var isWindows = navigator.platform.indexOf('Win') > -1;
+
+        // WebView2 on Windows ONLY supports alpha=0 (transparent) or alpha=255 (opaque)
+        // Semi-transparent values silently fail and render as opaque
+        // So we use transparent background + overlay for the tint effect
+        if (isWindows) {
+          // Windows: Use fully transparent background, overlay provides tint
+          document.documentElement.style.setProperty('--bg-color', 'transparent');
+          document.documentElement.style.setProperty('--bg-overlay-color', 'rgba(0, 0, 0, ' + alpha + ')');
+          document.documentElement.style.setProperty('--bg-opacity', alpha);
+          document.documentElement.style.setProperty('--is-windows', '1');
+          console.log('[Early Init] Windows mode: transparent bg + overlay alpha:', alpha);
+        } else {
+          // macOS/Linux: Native semi-transparency works
+          var bgColor = 'rgba(0, 0, 0, ' + alpha + ')';
+          document.documentElement.style.setProperty('--bg-color', bgColor);
+          document.documentElement.style.setProperty('--bg-overlay-color', 'transparent');
+          document.documentElement.style.setProperty('--bg-opacity', alpha);
+          document.documentElement.style.setProperty('--is-windows', '0');
+          console.log('[Early Init] macOS/Linux mode: --bg-color:', bgColor);
+        }
+
         // Polyfill Object.assign
         if (typeof Object.assign !== 'function') {
           Object.defineProperty(Object, 'assign', {
@@ -36,10 +66,10 @@
             configurable: true
           });
         }
-        
+
         // Ensure require_core is available
         window.require_core = function() {
-          return { 
+          return {
             Object: Object,
             ReactCurrentOwner: { current: null },
             ReactCurrentDispatcher: { current: null },
@@ -47,7 +77,7 @@
             ReactDebugCurrentFrame: { setExtraStackFrame: function() {} }
           };
         };
-        
+
         console.log('[Polyfill] Object.assign ready:', typeof Object.assign);
       })();
     </script>
@@ -56,22 +86,29 @@
     <!-- Import fonts CSS file with relative path for production -->
     <link rel="stylesheet" href="./fonts/fonts.css">
     <style>
-      /* Critical styles to prevent white flash */
-      html, body {
-        background-color: #000000 !important;
+      /* Critical styles for transparency - html must be transparent */
+      html {
+        background-color: transparent !important;
+        margin: 0;
+        padding: 0;
+        overflow: hidden;
+      }
+      body {
+        /* Use CSS variable for dynamic opacity, fallback to transparent */
+        background-color: var(--bg-color, transparent) !important;
         margin: 0;
         padding: 0;
         overflow: hidden;
       }
       #root {
-        background-color: #000000 !important;
+        background-color: transparent !important;
         min-height: 100vh;
       }
     </style>
   </head>
   <body>
     <div id="root">
-      <div style="background-color: #000000; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
+      <div style="background-color: transparent; min-height: 100vh; display: flex; align-items: center; justify-content: center;">
         <style>
           @keyframes spin-orbit {
             0% { transform: rotate(0deg) translateX(18px) rotate(0deg); }

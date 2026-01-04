@@ -562,9 +562,19 @@ export const App: React.FC = () => {
 
   // Apply theme colors, zoom level, and window state from localStorage on mount
   useEffect(() => {
-    // Apply background color
+    // Apply background color - but on Windows, we need transparent for WebView2
+    const isWindows = navigator.platform.indexOf('Win') > -1;
     const savedBackgroundColor = localStorage.getItem('backgroundColor') || '#000000';
-    document.documentElement.style.setProperty('--background-color', savedBackgroundColor);
+
+    // On Windows, --background-color must be transparent for window transparency
+    // The overlay (body::before) provides the tinted effect instead
+    if (isWindows) {
+      document.documentElement.style.setProperty('--background-color', 'transparent');
+    } else {
+      document.documentElement.style.setProperty('--background-color', savedBackgroundColor);
+    }
+
+    // Still set the RGB values for use in rgba() calculations
     const bgHex = savedBackgroundColor.replace('#', '');
     const bgR = parseInt(bgHex.substr(0, 2), 16);
     const bgG = parseInt(bgHex.substr(2, 2), 16);

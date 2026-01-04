@@ -3711,24 +3711,29 @@ ${content}`;
   },
   
   setBackgroundOpacity: (opacity: number) => {
-    // Keep at 100% until Tauri v2 supports transparency
-    const fixedOpacity = 100;
-    set({ backgroundOpacity: fixedOpacity });
-    
-    // Apply solid black background
-    const alpha = 1; // Always fully opaque
+    // Clamp opacity between 50 and 100
+    const clampedOpacity = Math.max(50, Math.min(100, opacity));
+    set({ backgroundOpacity: clampedOpacity });
+
+    // Calculate alpha from opacity percentage
+    const alpha = clampedOpacity / 100;
     document.documentElement.style.setProperty('--bg-opacity', alpha.toString());
-    
-    // For OLED black background, use solid black
-    const bgColor = 'rgba(0, 0, 0, 1)';
+
+    // For OLED black background, use dynamic alpha
+    const bgColor = `rgba(0, 0, 0, ${alpha})`;
     document.documentElement.style.setProperty('--bg-color', bgColor);
-    
-    // Also apply directly to body for immediate effect
+
+    // Apply directly to body for immediate effect
     document.body.style.backgroundColor = bgColor;
-    
-    // Save to localStorage (always 100 for now)
-    localStorage.setItem('yurucode-bg-opacity', fixedOpacity.toString());
-    console.log('[Store] Set background opacity:', fixedOpacity, 'alpha:', alpha, 'color:', bgColor);
+
+    // Also ensure html element is transparent for see-through effect
+    if (alpha < 1) {
+      document.documentElement.style.backgroundColor = 'transparent';
+    }
+
+    // Save to localStorage
+    localStorage.setItem('yurucode-bg-opacity', clampedOpacity.toString());
+    console.log('[Store] Set background opacity:', clampedOpacity, 'alpha:', alpha, 'color:', bgColor);
   },
   
   // Tab persistence

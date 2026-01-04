@@ -11,6 +11,7 @@ export interface TauriAPI {
     maximize: () => Promise<void>;
     close: () => Promise<void>;
     setZoomLevel: (level: number) => Promise<void>;
+    setOpacity: (opacity: number) => Promise<void>;
   };
   claude: {
     sendMessage: (sessionId: string, message: string, workingDir: string, model: string) => Promise<void>;
@@ -61,6 +62,9 @@ class TauriAPIBridge implements TauriAPI {
     },
     setZoomLevel: async (level: number): Promise<void> => {
       await invoke('set_zoom_level', { level });
+    },
+    setOpacity: async (opacity: number): Promise<void> => {
+      await invoke('set_window_opacity', { opacity });
     }
   };
 

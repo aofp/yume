@@ -46,6 +46,15 @@ pub fn run() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
+    // CRITICAL: Set WebView2 transparent background via environment variable
+    // This MUST be set BEFORE WebView2 initializes to prevent white flash
+    // "00000000" = AARRGGBB format with Alpha=0 for full transparency
+    #[cfg(target_os = "windows")]
+    {
+        std::env::set_var("WEBVIEW2_DEFAULT_BACKGROUND_COLOR", "00000000");
+        info!("Set WEBVIEW2_DEFAULT_BACKGROUND_COLOR=00000000 for transparent startup");
+    }
+
     // Build the Tauri application with required plugins
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())        // File system access for project navigation
@@ -169,6 +178,21 @@ pub fn run() {
                     let _ = window_clone.show();
                     let _ = window_clone.set_focus();
                     info!("Window shown and focused after initialization");
+
+                    // WORKAROUND: Force a tiny resize to trigger WebView2 transparency
+                    // Known issue: WebView2 doesn't apply transparency until resized
+                    // https://github.com/tauri-apps/tauri/issues/4881
+                    #[cfg(target_os = "windows")]
+                    {
+                        std::thread::sleep(std::time::Duration::from_millis(50));
+                        if let Ok(size) = window_clone.outer_size() {
+                            // Resize by 1 pixel and back to force redraw
+                            let _ = window_clone.set_size(tauri::PhysicalSize::new(size.width + 1, size.height));
+                            std::thread::sleep(std::time::Duration::from_millis(16)); // ~1 frame
+                            let _ = window_clone.set_size(tauri::PhysicalSize::new(size.width, size.height));
+                            info!("Triggered resize workaround for WebView2 transparency");
+                        }
+                    }
                 });
             }
             
@@ -462,31 +486,76 @@ pub fn run() {
                 }
             }
             
-            // Configure Windows-specific window properties
+            // Configure Windows-specific window properties including transparency
             #[cfg(target_os = "windows")]
             {
                 use windows::Win32::Foundation::HWND;
                 use windows::Win32::UI::WindowsAndMessaging::{
-                    SetWindowLongPtrW, GetWindowLongPtrW, GWL_EXSTYLE, 
-                    WS_EX_ACCEPTFILES, WS_EX_APPWINDOW, SetForegroundWindow
+                    SetWindowLongPtrW, GetWindowLongPtrW, GWL_EXSTYLE,
+                    WS_EX_ACCEPTFILES, WS_EX_APPWINDOW,
+                    SetForegroundWindow
                 };
-                
+
                 let hwnd = window.hwnd().unwrap();
                 unsafe {
                     let hwnd = HWND(hwnd.0);
-                    // Get current extended style
+
+                    // Get current extended style and add app window flags
+                    // Note: Do NOT add WS_EX_LAYERED - it causes WebView2 to not render
+                    // Note: Do NOT remove WS_CLIPCHILDREN - it causes child window rendering issues
                     let ex_style = GetWindowLongPtrW(hwnd, GWL_EXSTYLE);
-                    // Add accept files and app window flags for better interaction
                     SetWindowLongPtrW(
-                        hwnd, 
-                        GWL_EXSTYLE, 
+                        hwnd,
+                        GWL_EXSTYLE,
                         ex_style | (WS_EX_ACCEPTFILES.0 as isize) | (WS_EX_APPWINDOW.0 as isize)
                     );
+
                     // Force window to take focus
                     let _ = SetForegroundWindow(hwnd);
                 }
+
+                // CRITICAL: Set WebView2 background to transparent
+                // WebView2 has its own opaque background by default, even with DWM transparency
+                // Using webview2-com crate for proper COM interface access
+                let window_for_webview = window.clone();
+                let _ = window_for_webview.with_webview(|webview| {
+                    use webview2_com::Microsoft::Web::WebView2::Win32::{
+                        ICoreWebView2Controller2, COREWEBVIEW2_COLOR
+                    };
+                    use windows::core::Interface;
+
+                    unsafe {
+                        let controller = webview.controller();
+
+                        // Cast to ICoreWebView2Controller2 which provides SetDefaultBackgroundColor
+                        match controller.cast::<ICoreWebView2Controller2>() {
+                            Ok(controller2) => {
+                                // Alpha=0 for fully transparent background
+                                // Note: Semi-transparent (0 < A < 255) is NOT supported on Windows
+                                let transparent_color = COREWEBVIEW2_COLOR {
+                                    A: 0,
+                                    R: 0,
+                                    G: 0,
+                                    B: 0,
+                                };
+
+                                match controller2.SetDefaultBackgroundColor(transparent_color) {
+                                    Ok(_) => {
+                                        info!("WebView2 background set to transparent via ICoreWebView2Controller2");
+                                    }
+                                    Err(e) => {
+                                        error!("Failed to set WebView2 background color: {:?}", e);
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                error!("Failed to cast to ICoreWebView2Controller2: {:?}", e);
+                            }
+                        }
+                    }
+                });
             }
-            
+
             // Configure Linux-specific window properties
             #[cfg(target_os = "linux")]
             {
@@ -595,41 +664,67 @@ pub fn run() {
                 console.log('Document ready state:', document.readyState);
                 console.log('Document body:', document.body ? 'exists' : 'missing');
                 console.log('Root element:', document.getElementById('root'));
-                
+
+                // Get saved opacity from localStorage (default to 80 for visible transparency)
+                const savedOpacity = localStorage.getItem('yurucode-bg-opacity');
+                const opacityPercent = savedOpacity ? parseInt(savedOpacity, 10) : 80;
+                const alpha = Math.max(0, Math.min(1, opacityPercent / 100));
+
+                // Detect platform - Windows requires special handling
+                const isWindows = navigator.platform.indexOf('Win') > -1;
+                console.log('Platform:', navigator.platform, 'isWindows:', isWindows);
+
+                // WebView2 on Windows ONLY supports alpha=0 (transparent) or alpha=255 (opaque)
+                // Semi-transparent values silently fail and render as opaque
+                // So we use transparent background + overlay for the tint effect
+                let bgColor, overlayColor;
+                if (isWindows) {
+                    bgColor = 'transparent';
+                    overlayColor = 'rgba(0, 0, 0, ' + alpha + ')';
+                    console.log('Windows mode: transparent bg + overlay alpha:', alpha);
+                } else {
+                    bgColor = 'rgba(0, 0, 0, ' + alpha + ')';
+                    overlayColor = 'transparent';
+                    console.log('macOS/Linux mode: bg-color:', bgColor);
+                }
+
                 // Set up transparency support with webkit-specific styles
                 document.documentElement.style.backgroundColor = 'transparent';
                 document.documentElement.style.background = 'transparent';
                 if (document.body) {
-                    document.body.style.backgroundColor = 'rgba(0, 0, 0, 1)';
-                    document.body.style.background = 'rgba(0, 0, 0, 1)';
+                    document.body.style.backgroundColor = bgColor;
+                    document.body.style.background = bgColor;
                 }
-                
+
                 const style = document.createElement('style');
+                style.id = 'yurucode-transparency-styles';
                 style.textContent = `
                     :root {
-                        --bg-color: rgba(0, 0, 0, 1);
-                        --bg-opacity: 1;
+                        --bg-color: ` + bgColor + `;
+                        --bg-overlay-color: ` + overlayColor + `;
+                        --bg-opacity: ` + alpha + `;
+                        --is-windows: ` + (isWindows ? '1' : '0') + `;
                     }
-                    
+
                     html {
                         background-color: transparent !important;
                         background: transparent !important;
                         -webkit-app-region: no-drag;
                     }
-                    
+
                     body {
-                        background: var(--bg-color, rgba(0, 0, 0, 1)) !important;
-                        background-color: var(--bg-color, rgba(0, 0, 0, 1)) !important;
+                        background: var(--bg-color) !important;
+                        background-color: var(--bg-color) !important;
                         -webkit-user-select: none;
                         user-select: none;
                         -webkit-app-region: no-drag;
                     }
-                    
+
                     /* WebKit-specific transparency */
                     ::-webkit-scrollbar-corner {
                         background: transparent;
                     }
-                    
+
                     ::-webkit-scrollbar {
                         width: 3px;
                         height: 3px;
@@ -649,7 +744,7 @@ pub fn run() {
                     }
                 `;
                 document.head.appendChild(style);
-                
+
                 // Add debug message to check if JavaScript is running
                 if (!document.getElementById('root')) {
                     console.error('Root element not found!');
