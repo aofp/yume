@@ -1,20 +1,93 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::collections::HashMap;
 use tracing::{debug, error, info, warn};
+
+// ============================================================================
+// Supporting types for enriched message parsing (matching SDK types)
+// ============================================================================
+
+/// Usage statistics included in result messages
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct ResultUsage {
+    #[serde(default)]
+    pub input_tokens: u32,
+    #[serde(default)]
+    pub output_tokens: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_creation_input_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub cache_read_input_tokens: Option<u32>,
+}
+
+/// Per-model usage statistics
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ModelUsage {
+    #[serde(default)]
+    pub input_tokens: u32,
+    #[serde(default)]
+    pub output_tokens: u32,
+    #[serde(default)]
+    pub cache_read_input_tokens: u32,
+    #[serde(default)]
+    pub cache_creation_input_tokens: u32,
+    #[serde(default)]
+    pub web_search_requests: u32,
+    #[serde(default)]
+    pub cost_usd: f64,
+    #[serde(default)]
+    pub context_window: u32,
+}
+
+/// Information about a denied tool use
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct PermissionDenial {
+    pub tool_name: String,
+    pub tool_use_id: String,
+    #[serde(default)]
+    pub tool_input: Value,
+}
+
+/// Metadata for compact boundary messages
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CompactMetadata {
+    pub trigger: String, // "manual" | "auto"
+    #[serde(default)]
+    pub pre_tokens: u32,
+}
 
 /// Represents all possible message types from Claude's stream-json output
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type")]
 pub enum ClaudeStreamMessage {
-    /// System messages (init, etc.)
+    /// System messages (init, compact_boundary, etc.)
     #[serde(rename = "system")]
     System {
         subtype: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         session_id: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
+        uuid: Option<String>,
+        #[serde(skip_serializing_if = "Option::is_none")]
         message: Option<String>,
+        /// Present when subtype is "compact_boundary"
+        #[serde(skip_serializing_if = "Option::is_none")]
+        compact_metadata: Option<CompactMetadata>,
+        /// Tools available (present in init)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        tools: Option<Vec<String>>,
+        /// Current model (present in init)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        model: Option<String>,
+        /// Current working directory (present in init)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        cwd: Option<String>,
+        /// Permission mode (present in init)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(rename = "permissionMode")]
+        permission_mode: Option<String>,
     },
 
     /// Text content from Claude
@@ -102,13 +175,74 @@ pub enum ClaudeStreamMessage {
     #[serde(rename = "interrupt")]
     Interrupt,
 
-    /// Result message (completion status)
+    /// Result message (completion status) - enriched with SDK fields
     #[serde(rename = "result")]
     Result {
+        /// Result subtype: "success", "error_max_turns", "error_during_execution",
+        /// "error_max_budget_usd", "error_max_structured_output_retries"
+        #[serde(skip_serializing_if = "Option::is_none")]
+        subtype: Option<String>,
+        /// Unique identifier for this message
+        #[serde(skip_serializing_if = "Option::is_none")]
+        uuid: Option<String>,
+        /// Session identifier
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
+        /// Total execution duration in milliseconds
+        #[serde(skip_serializing_if = "Option::is_none")]
+        duration_ms: Option<u64>,
+        /// API call duration in milliseconds
+        #[serde(skip_serializing_if = "Option::is_none")]
+        duration_api_ms: Option<u64>,
+        /// Whether the result is an error
+        #[serde(default)]
+        is_error: bool,
+        /// Number of conversation turns
+        #[serde(skip_serializing_if = "Option::is_none")]
+        num_turns: Option<u32>,
+        /// Final result text (for success)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        result: Option<String>,
+        /// Total cost in USD
+        #[serde(skip_serializing_if = "Option::is_none")]
+        total_cost_usd: Option<f64>,
+        /// Aggregated token usage
+        #[serde(skip_serializing_if = "Option::is_none")]
+        usage: Option<ResultUsage>,
+        /// Per-model usage breakdown
+        #[serde(skip_serializing_if = "Option::is_none")]
+        #[serde(rename = "modelUsage")]
+        model_usage: Option<HashMap<String, ModelUsage>>,
+        /// List of permission denials during execution
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        permission_denials: Vec<PermissionDenial>,
+        /// Structured output (when using --json-schema)
+        #[serde(skip_serializing_if = "Option::is_none")]
+        structured_output: Option<Value>,
+        /// Error messages (for error subtypes)
+        #[serde(default, skip_serializing_if = "Vec::is_empty")]
+        errors: Vec<String>,
+        // Legacy fields for backward compatibility
         #[serde(skip_serializing_if = "Option::is_none")]
         status: Option<String>,
         #[serde(skip_serializing_if = "Option::is_none")]
         error: Option<String>,
+    },
+
+    /// Streaming partial message (when using --include-partial-messages)
+    #[serde(rename = "stream_event")]
+    StreamEvent {
+        /// The raw streaming event from Anthropic API
+        event: Value,
+        /// Parent tool use ID if within a subagent
+        #[serde(skip_serializing_if = "Option::is_none")]
+        parent_tool_use_id: Option<String>,
+        /// Unique identifier
+        #[serde(skip_serializing_if = "Option::is_none")]
+        uuid: Option<String>,
+        /// Session identifier
+        #[serde(skip_serializing_if = "Option::is_none")]
+        session_id: Option<String>,
     },
 
     /// Raw/unknown message type
@@ -192,15 +326,28 @@ impl StreamParser {
 
     /// Checks if the buffer contains a complete JSON object
     fn is_complete_json(&mut self) -> bool {
+        // Reset state before checking - important for multi-line fragments
+        self.reset_json_state();
+
+        let mut prev_was_escape = false;
+
         for ch in self.buffer.chars() {
-            // Handle escape sequences
-            if self.last_char == Some('\\') {
+            if prev_was_escape {
+                // This character is escaped, skip it entirely
+                prev_was_escape = false;
                 self.last_char = Some(ch);
                 continue;
             }
 
-            // Track string boundaries
-            if ch == '"' && self.last_char != Some('\\') {
+            // Check for escape character (only valid inside strings)
+            if ch == '\\' && self.in_string {
+                prev_was_escape = true;
+                self.last_char = Some(ch);
+                continue;
+            }
+
+            // Track string boundaries (unescaped quotes)
+            if ch == '"' {
                 self.in_string = !self.in_string;
             }
 
@@ -554,7 +701,247 @@ mod tests {
     fn test_dollar_terminator() {
         let mut parser = StreamParser::new();
         let result = parser.process_line("$").unwrap();
-        
+
         assert!(matches!(result, Some(ClaudeStreamMessage::MessageStop)));
+    }
+
+    #[test]
+    fn test_parse_enriched_result_success() {
+        let json = r#"{
+            "type": "result",
+            "subtype": "success",
+            "uuid": "msg-123",
+            "session_id": "sess-456",
+            "duration_ms": 5000,
+            "duration_api_ms": 4500,
+            "is_error": false,
+            "num_turns": 3,
+            "result": "Task completed successfully",
+            "total_cost_usd": 0.05,
+            "usage": {
+                "input_tokens": 1000,
+                "output_tokens": 500,
+                "cache_creation_input_tokens": 100,
+                "cache_read_input_tokens": 200
+            }
+        }"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        match result {
+            Some(ClaudeStreamMessage::Result {
+                subtype,
+                is_error,
+                num_turns,
+                total_cost_usd,
+                usage,
+                ..
+            }) => {
+                assert_eq!(subtype, Some("success".to_string()));
+                assert!(!is_error);
+                assert_eq!(num_turns, Some(3));
+                assert_eq!(total_cost_usd, Some(0.05));
+                assert!(usage.is_some());
+                let u = usage.unwrap();
+                assert_eq!(u.input_tokens, 1000);
+                assert_eq!(u.output_tokens, 500);
+            }
+            _ => panic!("Expected Result message"),
+        }
+    }
+
+    #[test]
+    fn test_parse_result_error() {
+        let json = r#"{
+            "type": "result",
+            "subtype": "error_max_turns",
+            "is_error": true,
+            "num_turns": 10,
+            "errors": ["Maximum turns exceeded"]
+        }"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        match result {
+            Some(ClaudeStreamMessage::Result {
+                subtype,
+                is_error,
+                errors,
+                ..
+            }) => {
+                assert_eq!(subtype, Some("error_max_turns".to_string()));
+                assert!(is_error);
+                assert_eq!(errors.len(), 1);
+                assert_eq!(errors[0], "Maximum turns exceeded");
+            }
+            _ => panic!("Expected Result message"),
+        }
+    }
+
+    #[test]
+    fn test_parse_compact_boundary() {
+        let json = r#"{
+            "type": "system",
+            "subtype": "compact_boundary",
+            "uuid": "msg-789",
+            "session_id": "sess-456",
+            "compact_metadata": {
+                "trigger": "auto",
+                "pre_tokens": 50000
+            }
+        }"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        match result {
+            Some(ClaudeStreamMessage::System {
+                subtype,
+                compact_metadata,
+                ..
+            }) => {
+                assert_eq!(subtype, "compact_boundary");
+                assert!(compact_metadata.is_some());
+                let cm = compact_metadata.unwrap();
+                assert_eq!(cm.trigger, "auto");
+                assert_eq!(cm.pre_tokens, 50000);
+            }
+            _ => panic!("Expected System message with compact_boundary"),
+        }
+    }
+
+    #[test]
+    fn test_parse_system_init_with_tools() {
+        let json = r#"{
+            "type": "system",
+            "subtype": "init",
+            "session_id": "sess-123",
+            "tools": ["Read", "Write", "Bash", "Grep"],
+            "model": "claude-sonnet-4-20250514",
+            "cwd": "/home/user/project",
+            "permissionMode": "default"
+        }"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        match result {
+            Some(ClaudeStreamMessage::System {
+                subtype,
+                session_id,
+                tools,
+                model,
+                permission_mode,
+                ..
+            }) => {
+                assert_eq!(subtype, "init");
+                assert_eq!(session_id, Some("sess-123".to_string()));
+                assert!(tools.is_some());
+                assert_eq!(tools.unwrap().len(), 4);
+                assert_eq!(model, Some("claude-sonnet-4-20250514".to_string()));
+                assert_eq!(permission_mode, Some("default".to_string()));
+            }
+            _ => panic!("Expected System init message"),
+        }
+    }
+
+    #[test]
+    fn test_parse_stream_event() {
+        let json = r#"{
+            "type": "stream_event",
+            "event": {"type": "content_block_delta", "delta": {"text": "Hello"}},
+            "parent_tool_use_id": null,
+            "uuid": "evt-123",
+            "session_id": "sess-456"
+        }"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        match result {
+            Some(ClaudeStreamMessage::StreamEvent {
+                event,
+                uuid,
+                session_id,
+                ..
+            }) => {
+                assert!(event.get("type").is_some());
+                assert_eq!(uuid, Some("evt-123".to_string()));
+                assert_eq!(session_id, Some("sess-456".to_string()));
+            }
+            _ => panic!("Expected StreamEvent message"),
+        }
+    }
+
+    #[test]
+    fn test_backward_compatibility_simple_result() {
+        // Test that old-style simple result messages still parse
+        let json = r#"{"type":"result","status":"success"}"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        match result {
+            Some(ClaudeStreamMessage::Result { status, .. }) => {
+                assert_eq!(status, Some("success".to_string()));
+            }
+            _ => panic!("Expected Result message"),
+        }
+    }
+
+    #[test]
+    fn test_windows_path_escaping() {
+        // Windows paths have backslashes that become \\ in JSON
+        // This tests that escaped backslashes don't break string boundary detection
+        let json = r#"{"type":"text","content":"C:\\Users\\name\\file.txt"}"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        match result {
+            Some(ClaudeStreamMessage::Text { content, .. }) => {
+                assert_eq!(content, r"C:\Users\name\file.txt");
+            }
+            _ => panic!("Expected Text message"),
+        }
+    }
+
+    #[test]
+    fn test_escaped_quote_in_string() {
+        // Test escaped quotes inside strings
+        let json = r#"{"type":"text","content":"He said \"hello\""}"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        match result {
+            Some(ClaudeStreamMessage::Text { content, .. }) => {
+                assert_eq!(content, r#"He said "hello""#);
+            }
+            _ => panic!("Expected Text message"),
+        }
+    }
+
+    #[test]
+    fn test_fragmented_json_with_escapes() {
+        // Test fragmented JSON containing Windows paths
+        let mut parser = StreamParser::new();
+
+        // First fragment: opening brace and type field
+        let result1 = parser.process_line(r#"{"type":"text","#).unwrap();
+        assert!(result1.is_none());
+
+        // Second fragment: content with escaped backslashes
+        let result2 = parser.process_line(r#""content":"C:\\path"}"#).unwrap();
+        match result2 {
+            Some(ClaudeStreamMessage::Text { content, .. }) => {
+                assert_eq!(content, r"C:\path");
+            }
+            _ => panic!("Expected Text message"),
+        }
+    }
+
+    #[test]
+    fn test_complex_escape_sequences() {
+        // Test various JSON escape sequences: \\ \" \n \t
+        let json = r#"{"type":"text","content":"line1\\nline2\ttab\\\"quoted\\\\"}"#;
+        let mut parser = StreamParser::new();
+        let result = parser.process_line(json).unwrap();
+
+        assert!(matches!(result, Some(ClaudeStreamMessage::Text { .. })));
     }
 }
