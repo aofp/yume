@@ -326,8 +326,10 @@ export class TauriClaudeClient {
         // Full assistant message from Claude
         // Claude sends: {"type":"assistant","message":{...},"session_id":"..."}
         const messageData = message.message || {};
-        // ALWAYS generate a unique ID for each message - no updates!
-        const messageId = `assistant-${Date.now()}-${Math.random()}`;
+        // Check if this is a bash command result (has bash- prefixed ID)
+        const isBashResult = message.id && String(message.id).startsWith('bash-');
+        // Preserve bash IDs, generate new IDs for other messages
+        const messageId = isBashResult ? message.id : `assistant-${Date.now()}-${Math.random()}`;
         
         // Process content blocks
         let processedContent = messageData.content;
@@ -364,11 +366,13 @@ export class TauriClaudeClient {
         }
         
         // ALWAYS send assistant messages, even if empty (to maintain context)
-        // Track ALL assistant messages during streaming
-        if (!streamingAssistantMessages.has(sessionId)) {
-          streamingAssistantMessages.set(sessionId, new Set());
+        // Track assistant messages during streaming (skip bash results - they're already complete)
+        if (!isBashResult) {
+          if (!streamingAssistantMessages.has(sessionId)) {
+            streamingAssistantMessages.set(sessionId, new Set());
+          }
+          streamingAssistantMessages.get(sessionId)?.add(messageId);
         }
-        streamingAssistantMessages.get(sessionId)?.add(messageId);
         
         // If we have text/thinking blocks, use them. Otherwise, send empty content
         // This ensures every assistant message is displayed, maintaining conversation flow
@@ -384,7 +388,9 @@ export class TauriClaudeClient {
             role: 'assistant'
           },
           model: messageData.model,
-          streaming: true // ALWAYS true for assistant messages - let result clear it
+          // For bash results, preserve original streaming value (false = complete)
+          // For Claude messages, always true to let result clear it
+          streaming: isBashResult ? (message.streaming ?? false) : true
         };
       } else if (message.type === 'user') {
         // User message echo from Claude
