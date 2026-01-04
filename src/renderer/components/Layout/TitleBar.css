@@ -25,6 +25,11 @@
   -webkit-app-region: drag;
   app-region: drag;
   position: relative;
+  cursor: default;
+}
+
+.titlebar-wrapper.is-dragging .titlebar {
+  cursor: grabbing;
 }
 
 .titlebar-settings {
@@ -101,6 +106,10 @@
   position: relative;
   top: -4px;
   margin-left: 6px;
+}
+
+.titlebar-wrapper.is-dragging .titlebar-logo {
+  cursor: grabbing;
 }
 
 /* Center the title */

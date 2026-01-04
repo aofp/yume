@@ -25,10 +25,15 @@
   max-height: 100%;
   user-select: none;
   -webkit-user-select: none;
+  cursor: default;
   display: flex;
   flex-direction: column;
   position: relative;
   overflow: hidden;
+}
+
+.settings-modal * {
+  cursor: default;
 }
 
 .settings-header {
@@ -278,7 +283,7 @@
   height: 4px;
   padding: 0;
   margin: 0;
-  background: var(--foreground-color);
+  background: rgba(var(--foreground-rgb), 0.5);
   border-radius: 4px;
   appearance: none;
   -webkit-appearance: none;
@@ -879,10 +884,6 @@ input[type="checkbox"].checkbox-input {
   cursor: default !important;
 }
 
-.platform-darwin .toggle-switch {
-  top: 0px;
-}
-
 /* Toggle labels */
 .toggle-switch-label {
   font-size: 11px;
@@ -923,10 +924,6 @@ input[type="checkbox"].checkbox-input {
   border-radius: 3px;  /* Smaller radius for inner slider */
   transition: transform 0.2s ease;
   pointer-events: none;
-}
-
-.platform-darwin .toggle-switch-slider {
-  top: -1px;
 }
 
 .toggle-switch.active .toggle-switch-slider {

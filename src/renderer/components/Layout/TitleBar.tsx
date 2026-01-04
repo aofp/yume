@@ -10,6 +10,7 @@ interface TitleBarProps {
 export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
   const [showAboutModal, setShowAboutModal] = useState(false);
   const [isWindowActive, setIsWindowActive] = useState(true);
+  const [isDragging, setIsDragging] = useState(false);
   const titlebarRef = useRef<HTMLDivElement>(null);
   
   // Platform detection
@@ -27,7 +28,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
       }
 
       console.log('TitleBar: Mouse down, attempting to drag...');
-      
+      setIsDragging(true);
+
       try {
         if ((window as any).__TAURI__) {
           // Import the window module and check what's available
@@ -67,12 +69,18 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
       }
     };
 
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
     // Add event listener to the element
     const element = titlebarRef.current;
     if (element) {
       element.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('mouseup', handleMouseUp);
       return () => {
         element.removeEventListener('mousedown', handleMouseDown);
+        window.removeEventListener('mouseup', handleMouseUp);
       };
     }
   }, []);
@@ -95,7 +103,7 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
   }, []);
 
   return (
-    <div className="titlebar-wrapper" ref={titlebarRef}>
+    <div className={`titlebar-wrapper${isDragging ? ' is-dragging' : ''}`} ref={titlebarRef}>
       <div className="titlebar">
         <div className="titlebar-content">
           {/* Center the title */}
