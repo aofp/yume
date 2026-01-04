@@ -48,6 +48,11 @@
   background: var(--background-color);
   z-index: 10;
   -webkit-app-region: drag;
+  cursor: default;
+}
+
+.settings-header.is-dragging {
+  cursor: grabbing;
 }
 
 .settings-header-left {
@@ -288,10 +293,12 @@
   appearance: none;
   -webkit-appearance: none;
   cursor: default;
+  border: none;
 }
 
 .opacity-slider::-webkit-slider-thumb {
   appearance: none;
+  transition: background 0.2s ease;
   -webkit-appearance: none;
   width: 12px;
   height: 12px;

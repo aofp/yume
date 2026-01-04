@@ -53,16 +53,23 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
   const [isLoadingAgents, setIsLoadingAgents] = useState(false);
   const outputRef = useRef<HTMLDivElement>(null);
   
-  // Load agents from database
+  // Load agents from database - auto-load defaults if empty
   useEffect(() => {
     const loadAgents = async () => {
       if (!isOpen) return;
-      
+
       setIsLoadingAgents(true);
       try {
-        const agentList = await invoke<Agent[]>('list_agents');
+        let agentList = await invoke<Agent[]>('list_agents');
+
+        // Auto-load default agents if none exist
+        if (agentList.length === 0) {
+          console.log('No agents found, loading defaults...');
+          agentList = await invoke<Agent[]>('load_default_agents');
+        }
+
         setAgents(agentList);
-        
+
         // Select first agent by default
         if (agentList.length > 0 && !selectedAgentId) {
           setSelectedAgentId(agentList[0].id || null);
@@ -74,7 +81,7 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
         setIsLoadingAgents(false);
       }
     };
-    
+
     loadAgents();
   }, [isOpen]);
   

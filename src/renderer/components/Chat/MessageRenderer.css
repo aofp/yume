@@ -392,14 +392,14 @@
 .markdown-content ul,
 .markdown-content ol {
   margin: 0;
-  padding-left: 20px;
+  padding-left: 12px;
   list-style-position: outside;
 }
 
 /* Ensure all ol elements have proper margin */
 ol {
-  margin-left: 20px;
-  padding-left: 20px;
+  margin-left: 12px;
+  padding-left: 12px;
 }
 
 .markdown-content li {
@@ -413,7 +413,7 @@ ol {
 .markdown-content ol ul,
 .markdown-content ol ol {
   margin: 0;
-  padding-left: 20px;
+  padding-left: 12px;
 }
 
 /* Style list markers */

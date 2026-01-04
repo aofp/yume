@@ -147,8 +147,8 @@ body.tab-dragging .session-tabs * {
 
 /* Ensure all ul elements have proper margin */
 ul {
-  margin-left: 20px;
-  padding-left: 20px;
+  margin-left: 12px;
+  padding-left: 12px;
 }
 
 /* Scrollbar styling - thin, minimal, unobtrusive */

@@ -6,6 +6,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { useClaudeCodeStore } from '../stores/claudeCodeStore';
 import { hooksService } from './hooksService';
+import { setAutoCompactMessage } from './wrapperIntegration';
 
 export interface CompactionConfig {
   autoThreshold: number;  // 0.85 (85%)
@@ -78,10 +79,22 @@ class CompactionService {
    */
   async updateContextUsage(sessionId: string, usagePercentage: number): Promise<void> {
     console.log(`[Compaction] 📊 updateContextUsage called: ${usagePercentage.toFixed(2)}% for session ${sessionId}`);
-    
+
     // Don't process if already compacting
     if (this.compactingSessionIds.has(sessionId)) {
       console.log('[Compaction] ⚠️ Already compacting, skipping update');
+      return;
+    }
+
+    // Guard: Sanity check - if percentage is impossibly high (>200%), it's likely wrong calculation
+    if (usagePercentage > 200) {
+      console.warn(`[Compaction] ⚠️ Ignoring impossibly high usage: ${usagePercentage.toFixed(2)}% - likely cumulative API values, not actual context`);
+      return;
+    }
+
+    // Guard: Don't trigger on negative or zero values
+    if (usagePercentage <= 0) {
+      console.log('[Compaction] ⚠️ Ignoring zero/negative usage');
       return;
     }
 
@@ -148,16 +161,58 @@ class CompactionService {
   }
 
   /**
-   * Trigger auto-compaction at 85%
+   * Mark session for auto-compaction on next user message
+   * (Instead of immediately compacting, we wait for user to send a followup)
    */
   async triggerAutoCompaction(sessionId: string): Promise<void> {
     console.log('[Compaction] 🎯 triggerAutoCompaction called for session:', sessionId);
-    
+
+    const store = useClaudeCodeStore.getState();
+    const session = store.sessions.find(s => s.id === sessionId);
+
+    // Guard: Don't flag if already pending or compacting
+    if (session?.compactionState?.pendingAutoCompact) {
+      console.log('[Compaction] ⚠️ Already pending auto-compact, skipping');
+      return;
+    }
+    if (this.compactingSessionIds.has(sessionId)) {
+      console.log('[Compaction] ⚠️ Already compacting, skipping');
+      return;
+    }
+
+    // Guard: Don't compact sessions with no messages or very few messages
+    const messageCount = session?.messages?.length || 0;
+    if (messageCount < 3) {
+      console.log(`[Compaction] ⚠️ Skipping auto-compact flag - session has too few messages (${messageCount})`);
+      await invoke('reset_compaction_flags', { sessionId });
+      return;
+    }
+
+    // Guard: Don't compact if token tracking shows low usage (prevents spurious triggers)
+    const tokenTotal = session?.analytics?.tokens?.total || 0;
+    if (tokenTotal < 50000) { // Less than 25% of 200k
+      console.log(`[Compaction] ⚠️ Skipping auto-compact flag - token count too low (${tokenTotal})`);
+      await invoke('reset_compaction_flags', { sessionId });
+      return;
+    }
+
+    // Set the pending flag - compaction will happen when user sends next message
+    console.log('[Compaction] 🚩 Setting pendingAutoCompact flag - will compact on next user message');
+    store.updateCompactionState(sessionId, { pendingAutoCompact: true });
+
+    // Reset backend flags
+    await invoke('reset_compaction_flags', { sessionId });
+  }
+
+  /**
+   * Execute the actual compaction (called from sendMessage when pending)
+   */
+  async executeAutoCompaction(sessionId: string, pendingUserMessage: string): Promise<void> {
+    console.log('[Compaction] 🔄 executeAutoCompaction called for session:', sessionId);
+
     // Prevent multiple compactions
     if (this.compactingSessionIds.has(sessionId)) {
       console.log('[Compaction] ⚠️ Already compacting, skipping');
-      // Reset flags so next check can trigger again after current compaction finishes
-      await invoke('reset_compaction_flags', { sessionId });
       return;
     }
 
@@ -165,21 +220,24 @@ class CompactionService {
     const lastTime = this.lastCompactionTime[sessionId] || 0;
     const timeSinceLastCompact = Date.now() - lastTime;
     if (timeSinceLastCompact < 60000) {
-      console.log(`[Compaction] ⏱️ Skipping auto-compact (rate limited, ${timeSinceLastCompact}ms since last)`);
-      // Reset flags so next check can trigger again after rate limit expires
-      await invoke('reset_compaction_flags', { sessionId });
+      console.log(`[Compaction] ⏱️ Rate limited (${timeSinceLastCompact}ms since last), skipping compact`);
       return;
     }
+
+    const store = useClaudeCodeStore.getState();
 
     console.log('[Compaction] ✅ Proceeding with auto-compact');
     this.compactingSessionIds.add(sessionId);
     this.lastCompactionTime[sessionId] = Date.now();
 
-    const store = useClaudeCodeStore.getState();
-    
+    // Save the user's pending message for send after compact completes
+    setAutoCompactMessage(sessionId, pendingUserMessage);
+    console.log('[Compaction] 💾 Saved pending user message for send after compact');
+
     // Update compaction state
     console.log('[Compaction] 📝 Setting compacting state');
     store.setCompacting(sessionId, true);
+    store.updateCompactionState(sessionId, { pendingAutoCompact: false }); // Clear the flag
 
     try {
       // Generate and save context manifest before compaction
@@ -198,8 +256,13 @@ class CompactionService {
       await invoke('reset_compaction_flags', { sessionId });
 
       console.log('[Compaction] ✅ Auto-compact triggered successfully');
+      // The compact result handler will send the pending user message
     } catch (error) {
       console.error('[Compaction] ❌ Auto-compact failed:', error);
+      // Clear the pending message on failure
+      import('./wrapperIntegration').then(({ clearAutoCompactMessage }) => {
+        clearAutoCompactMessage(sessionId);
+      });
     } finally {
       this.compactingSessionIds.delete(sessionId);
       store.setCompacting(sessionId, false);

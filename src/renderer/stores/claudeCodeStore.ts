@@ -241,6 +241,7 @@ export interface Session {
     lastCompacted?: Date;
     manifestSaved?: boolean;
     autoTriggered?: boolean;
+    pendingAutoCompact?: boolean; // Flag: needs compaction on next user message
   };
   cleanup?: () => void; // Cleanup function for event listeners
   lastAssistantMessageIds?: string[]; // Track last assistant message IDs for virtualization
@@ -573,7 +574,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   sansFont: 'Helvetica', // Default sans-serif font
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
-  autoGenerateTitle: true, // Default to auto-generating titles (enabled by default)
+  autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
   showProjectsMenu: false, // Default to hidden
   showAgentsMenu: false, // Default to hidden
   showAnalyticsMenu: false, // Default to hidden
@@ -1281,24 +1282,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 });
               }
               
-              // Check for auto-compact trigger in wrapper metadata
+              // NOTE: wrapper_auto_compact is now DISABLED in wrapperIntegration.ts
+              // The frontend wrapper's token calculation was incorrect (used cumulative API values
+              // instead of actual context size). Auto-compaction is now handled only by
+              // compactionService.updateContextUsage() using the correctly tracked analytics.tokens.total
+              // This code block is kept for backwards compatibility but should never trigger.
               if (message.wrapper_auto_compact?.triggered) {
-                console.log('⚠️ [Store] AUTO-COMPACT TRIGGERED! Saving user message and sending /compact');
-                // Import wrapper function to store the pending message
-                import('../services/wrapperIntegration').then(({ setAutoCompactMessage }) => {
-                  // Store the user's original message for resending after compact
-                  const lastUserMessage = existingMessages.filter(m => m.type === 'user').pop();
-                  if (lastUserMessage?.message?.content) {
-                    setAutoCompactMessage(sessionId, lastUserMessage.message.content);
-                    console.log('[Store] Stored user message for auto-resend after compact');
-                    
-                    // Send /compact command
-                    setTimeout(() => {
-                      console.log('[Store] Sending /compact command...');
-                      get().sendMessage('/compact');
-                    }, 100);
-                  }
-                });
+                console.warn('⚠️ [Store] wrapper_auto_compact.triggered received (unexpected - this path is deprecated)');
+                // Don't trigger compaction from this path - it was based on wrong calculations
               }
               
               // Handle messages with proper deduplication
@@ -1668,12 +1659,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         });
                       }
 
-                      // Always update compaction service for auto-compact at 55%+
-                      // (thresholds: 55% warning, 60% auto, 65% force)
+                      // NOTE: Auto-compaction is DISABLED in this path (no wrapper tokens)
+                      // The formula above (cache_read + cache_creation + input) uses CUMULATIVE
+                      // API values which don't represent actual context size.
+                      // Auto-compaction should only trigger when we have accurate token tracking
+                      // from the server wrapper (message.wrapper.tokens).
+                      //
+                      // On Windows/non-wrapper systems, manual /compact is still available.
                       if (rawPercentage >= 55) {
-                        import('../services/compactionService').then(({ compactionService }) => {
-                          compactionService.updateContextUsage(sessionId, analytics.contextWindow.percentage);
-                        });
+                        console.log(`⚠️ [COMPACTION] Skipping auto-compact check - no wrapper tokens (unreliable calculation)`);
+                        console.log(`   Reported ${rawPercentage.toFixed(2)}% but this uses cumulative API values, not actual context size`);
                       }
                       
                       // Update conversation tokens
@@ -2288,7 +2283,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       console.warn('[Store] Cannot send empty message');
       return;
     }
-    
+
+    // Check if this session has pending auto-compact (compact on next user message)
+    const sessionForCompact = get().sessions.find(s => s.id === currentSessionId);
+    if (sessionForCompact?.compactionState?.pendingAutoCompact && !content.startsWith('/compact')) {
+      console.log('[Store] 🗜️ Pending auto-compact detected - compacting before sending user message');
+      // Import and execute auto compaction with the user's message
+      const { compactionService } = await import('../services/compactionService');
+      await compactionService.executeAutoCompaction(currentSessionId, content);
+      // The compact result handler will send the user's message after completion
+      return;
+    }
+
     // Check if this session was compacted and needs the summary prepended
     const session = get().sessions.find(s => s.id === currentSessionId);
     if (session?.wasCompacted && !session.claudeSessionId) {
@@ -3606,8 +3612,23 @@ ${content}`;
             totalCost: analytics.cost.total,
             model: isOpus ? 'opus' : 'sonnet'
           });
+
+          // AUTO-COMPACTION CHECK: Use analytics.tokens.total (tracked correctly)
+          // NOT the raw API values (cache_read_input_tokens is cumulative, not context size)
+          // analytics.tokens.total comes from wrapper.tokens.total which tracks correctly
+          const trackedContextTokens = analytics?.tokens?.total || 0;
+          const contextPercentage = (trackedContextTokens / 200000) * 100;
+
+          // Only trigger compaction check at 55%+ (thresholds: 55% warning, 60% auto, 65% force)
+          // Use the tracked tokens, not the cumulative API values
+          if (contextPercentage >= 55 && trackedContextTokens > 0) {
+            console.log(`🗜️ [COMPACTION] Checking auto-compact in addMessageToSession: ${contextPercentage.toFixed(2)}% (${trackedContextTokens} tracked tokens)`);
+            import('../services/compactionService').then(({ compactionService }) => {
+              compactionService.updateContextUsage(sessionId, contextPercentage);
+            }).catch(err => console.error('[Compaction] Failed to import compactionService:', err));
+          }
         }
-        
+
         return {
           ...s,
           messages: updatedMessages,

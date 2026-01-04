@@ -354,8 +354,8 @@
 
 .message-text ul,
 .message-text ol {
-  margin: 8px 0 8px 20px;
-  padding-left: 32px;
+  margin: 8px 0 8px 12px;
+  padding-left: 12px;
   list-style-position: outside;
 }
 
@@ -370,7 +370,7 @@
 .message-text ol ul,
 .message-text ol ol {
   margin: 4px 0;
-  padding-left: 24px;
+  padding-left: 12px;
 }
 
 /* Style list markers */

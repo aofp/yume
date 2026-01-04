@@ -1,25 +1,21 @@
 import React, { useState, useCallback, useMemo, useRef, useEffect } from 'react';
 import { invoke } from '@tauri-apps/api/core';
-import { 
-  IconRobot, 
-  IconPlus, 
-  IconX, 
-  IconEdit, 
-  IconTrash, 
+import {
+  IconRobot,
+  IconPlus,
+  IconX,
+  IconEdit,
+  IconTrash,
   IconCheck,
   IconBrain,
   IconShield,
-  IconGitCommit,
-  IconCode,
-  IconBug,
-  IconWand,
-  IconRocket,
   IconSearch,
   IconCopy
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { TabButton } from '../common/TabButton';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
+import { systemPromptService } from '../../services/systemPromptService';
 import './AgentsModal.css';
 
 // Agent structure - simplified
@@ -30,7 +26,58 @@ export interface Agent {
   system_prompt: string;
   created_at: number;
   updated_at: number;
+  icon?: string;
+  isYurucode?: boolean;
 }
+
+// The 5 Yurucode Core Agents - built-in, non-deletable
+const YURUCODE_AGENTS: Agent[] = [
+  {
+    id: 'yurucode-architect',
+    name: 'architect',
+    model: 'opus',
+    system_prompt: 'architect agent. plan, design, decompose. think first. output: steps, dependencies, risks. use TodoWrite.',
+    created_at: 0,
+    updated_at: 0,
+    isYurucode: true
+  },
+  {
+    id: 'yurucode-explorer',
+    name: 'explorer',
+    model: 'sonnet',
+    system_prompt: 'explorer agent. find, read, understand. use Glob, Grep, Read. output: paths, snippets, structure. no edits.',
+    created_at: 0,
+    updated_at: 0,
+    isYurucode: true
+  },
+  {
+    id: 'yurucode-implementer',
+    name: 'implementer',
+    model: 'opus',
+    system_prompt: 'implementer agent. code, edit, build. read before edit. small changes. output: working code, minimal diff.',
+    created_at: 0,
+    updated_at: 0,
+    isYurucode: true
+  },
+  {
+    id: 'yurucode-guardian',
+    name: 'guardian',
+    model: 'opus',
+    system_prompt: 'guardian agent. review, audit, verify. check bugs, security, performance. output: issues, severity, fixes.',
+    created_at: 0,
+    updated_at: 0,
+    isYurucode: true
+  },
+  {
+    id: 'yurucode-specialist',
+    name: 'specialist',
+    model: 'sonnet',
+    system_prompt: 'specialist agent. adapt to domain: test, docs, devops, data. output: domain artifacts.',
+    created_at: 0,
+    updated_at: 0,
+    isYurucode: true
+  }
+];
 
 interface AgentsModalProps {
   isOpen: boolean;
@@ -40,7 +87,7 @@ interface AgentsModalProps {
 
 
 export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSelectAgent }) => {
-  const { agents, addAgent, updateAgent, deleteAgent, importAgents, sessions, currentSessionId } = useClaudeCodeStore();
+  const { sessions, currentSessionId, selectedModel } = useClaudeCodeStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
   const [editMode, setEditMode] = useState(false);
@@ -48,10 +95,10 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [showSearch, setShowSearch] = useState(false);
-  const [hasLoadedAgents, setHasLoadedAgents] = useState(false);
-  const [agentScope, setAgentScope] = useState<'global' | 'project'>('global');
+  const [agentScope, setAgentScope] = useState<'yurucode' | 'global' | 'project'>('yurucode');
   const [globalAgents, setGlobalAgents] = useState<Agent[]>([]);
   const [projectAgents, setProjectAgents] = useState<Agent[]>([]);
+  const [agentsEnabled, setAgentsEnabled] = useState(() => systemPromptService.getCurrent().agentsEnabled);
   
   // Get current session's directory
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -76,8 +123,18 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
 
   // Get current agents based on scope
   const currentAgents = useMemo(() => {
-    return agentScope === 'global' ? globalAgents : projectAgents;
+    if (agentScope === 'yurucode') return YURUCODE_AGENTS;
+    if (agentScope === 'global') return globalAgents;
+    return projectAgents;
   }, [agentScope, globalAgents, projectAgents]);
+
+  // Toggle yurucode agents enabled/disabled
+  const handleToggleAgents = useCallback(() => {
+    const newEnabled = !agentsEnabled;
+    setAgentsEnabled(newEnabled);
+    const settings = systemPromptService.getCurrent();
+    systemPromptService.save({ ...settings, agentsEnabled: newEnabled });
+  }, [agentsEnabled]);
   
   // Filter agents based on search
   const filteredAgents = useMemo(() => {
@@ -113,8 +170,12 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     setCreateMode(false);
   }, []);
 
-  // Save agent (create or update)
+  // Save agent (create or update) - not allowed for yurucode agents
   const handleSave = useCallback(async () => {
+    if (agentScope === 'yurucode') {
+      return; // yurucode agents are read-only
+    }
+
     if (!formData.name || !formData.system_prompt) {
       alert('Name and system prompt are required');
       return;
@@ -133,21 +194,16 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
       // Save to filesystem
       if (agentScope === 'global') {
         await invoke('save_global_agent', { agent });
-      } else if (currentDirectory) {
-        await invoke('save_project_agent', { agent, directory: currentDirectory });
-      }
-      
-      // Update local state
-      if (agentScope === 'global') {
         const updated = globalAgents.filter(a => a.id !== agent.id);
         updated.push(agent);
         setGlobalAgents(updated);
-      } else {
+      } else if (agentScope === 'project' && currentDirectory) {
+        await invoke('save_project_agent', { agent, directory: currentDirectory });
         const updated = projectAgents.filter(a => a.id !== agent.id);
         updated.push(agent);
         setProjectAgents(updated);
       }
-      
+
       console.log('Agent saved:', agent.name);
     } catch (err) {
       console.error('Failed to save agent:', err);
@@ -166,8 +222,12 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     });
   }, [formData, selectedAgent, agentScope, currentDirectory, globalAgents, projectAgents]);
 
-  // Delete agent with confirmation
+  // Delete agent with confirmation - not allowed for yurucode agents
   const handleDelete = useCallback((agent: Agent) => {
+    if (agent.isYurucode) {
+      return; // yurucode agents cannot be deleted
+    }
+
     setConfirmModal({
       isOpen: true,
       title: 'Delete Agent',
@@ -179,16 +239,16 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
           if (agentScope === 'global') {
             await invoke('delete_global_agent', { agentName: agent.name });
             setGlobalAgents(globalAgents.filter(a => a.id !== agent.id));
-          } else if (currentDirectory) {
+          } else if (agentScope === 'project' && currentDirectory) {
             await invoke('delete_project_agent', { agentName: agent.name, directory: currentDirectory });
             setProjectAgents(projectAgents.filter(a => a.id !== agent.id));
           }
-          
+
           if (selectedAgent?.id === agent.id) {
             setSelectedAgent(null);
             setEditMode(false);
           }
-          
+
           console.log('Agent deleted:', agent.name);
         } catch (err) {
           console.error('Failed to delete agent:', err);
@@ -373,13 +433,19 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
             {!editMode && !createMode && (
               <div className="header-tabs">
                 <TabButton
+                  label="yurucode"
+                  active={agentScope === 'yurucode'}
+                  onClick={() => setAgentScope('yurucode')}
+                  count={5}
+                />
+                <TabButton
                   label="global"
                   active={agentScope === 'global'}
                   onClick={() => setAgentScope('global')}
                   count={globalAgents.length}
                 />
                 <TabButton
-                  label={projectName || 'project'}
+                  label="project"
                   active={agentScope === 'project'}
                   onClick={() => setAgentScope('project')}
                   disabled={!currentDirectory}
@@ -412,82 +478,113 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
         <div className="agents-content">
           {!editMode && !createMode ? (
             <>
-              {filteredAgents.length === 0 ? (
-                <div className="agents-empty">
-                  {searchQuery ? 'no agents match your search' : (
-                    <div
-                      className="agent-item add-agent-item"
-                      onClick={handleCreateNew}
-                      style={{ cursor: 'pointer' }}
-                    >
-                      <div className="agent-info">
-                        <IconPlus size={14} style={{ marginRight: 8 }} />
-                        <div className="agent-name">add agent</div>
+              {/* Yurucode agents tab - with enable/disable toggle */}
+              {agentScope === 'yurucode' && (
+                <>
+                  <div className="yurucode-toggle">
+                    <span className="toggle-label">yurucode agents</span>
+                    <input
+                      type="checkbox"
+                      id="yurucode-agents-toggle"
+                      className="checkbox-input"
+                      checked={agentsEnabled}
+                      onChange={handleToggleAgents}
+                    />
+                    <label htmlFor="yurucode-agents-toggle" className={`toggle-switch ${agentsEnabled ? 'active' : ''}`}>
+                      <span className="toggle-switch-slider" />
+                      <span className="toggle-switch-label off">OFF</span>
+                      <span className="toggle-switch-label on">ON</span>
+                    </label>
+                  </div>
+                  <div className="yurucode-model-info">
+                    uses current model: <span className="current-model">{selectedModel?.includes('opus') ? 'opus' : 'sonnet'}</span>
+                  </div>
+                  <div className={`agents-list ${!agentsEnabled ? 'agents-disabled' : ''}`}>
+                    {YURUCODE_AGENTS.map((agent, index) => (
+                      <div
+                        key={agent.id}
+                        className={`agent-item yurucode-agent ${focusedIndex === index ? 'focused' : ''}`}
+                        onMouseEnter={() => setFocusedIndex(index)}
+                      >
+                        <div className="agent-info">
+                          <div className="agent-name">{agent.name}</div>
+                        </div>
+                        <div className="agent-prompt-preview">{agent.system_prompt}</div>
+                      </div>
+                    ))}
+                  </div>
+                </>
+              )}
+
+              {/* Global and Project tabs - editable agents */}
+              {agentScope !== 'yurucode' && (
+                <>
+                  {filteredAgents.length === 0 ? (
+                    <div className="agents-empty">
+                      {searchQuery ? 'no agents match your search' : (
+                        <div
+                          className="agent-item add-agent-item"
+                          onClick={handleCreateNew}
+                          style={{ cursor: 'pointer' }}
+                        >
+                          <div className="agent-info">
+                            <IconPlus size={14} style={{ marginRight: 8 }} />
+                            <div className="agent-name">add agent</div>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="agents-list">
+                      {filteredAgents.map((agent, index) => (
+                        <div
+                          key={agent.id}
+                          className={`agent-item ${focusedIndex === index ? 'focused' : ''} ${selectedAgent?.id === agent.id ? 'selected' : ''}`}
+                          onClick={() => handleEdit(agent)}
+                          onMouseEnter={() => setFocusedIndex(index)}
+                        >
+                          <div className="agent-info">
+                            <div className="agent-name">{agent.name}</div>
+                            <div className="agent-model">{agent.model}</div>
+                          </div>
+                          <div className="agent-actions">
+                            <button
+                              className="agent-action"
+                              onClick={(e) => { e.stopPropagation(); handleEdit(agent); }}
+                              title="edit"
+                            >
+                              <IconEdit size={14} />
+                            </button>
+                            <button
+                              className="agent-action"
+                              onClick={(e) => { e.stopPropagation(); handleDuplicate(agent); }}
+                              title="duplicate"
+                            >
+                              <IconCopy size={14} />
+                            </button>
+                            <button
+                              className="agent-action agent-delete"
+                              onClick={(e) => { e.stopPropagation(); handleDelete(agent); }}
+                              title="delete"
+                            >
+                              <IconTrash size={14} />
+                            </button>
+                          </div>
+                        </div>
+                      ))}
+                      <div
+                        className="agent-item add-agent-item"
+                        onClick={handleCreateNew}
+                        onMouseEnter={() => setFocusedIndex(filteredAgents.length)}
+                      >
+                        <div className="agent-info">
+                          <IconPlus size={14} style={{ marginRight: 8 }} />
+                          <div className="agent-name">add agent</div>
+                        </div>
                       </div>
                     </div>
                   )}
-                </div>
-              ) : (
-                <div className="agents-list">
-                  {filteredAgents.map((agent, index) => (
-                    <div
-                      key={agent.id}
-                      className={`agent-item ${focusedIndex === index ? 'focused' : ''} ${selectedAgent?.id === agent.id ? 'selected' : ''}`}
-                      onClick={() => {
-                        // Always edit on click
-                        handleEdit(agent);
-                      }}
-                      onMouseEnter={() => setFocusedIndex(index)}
-                    >
-                      <div className="agent-info">
-                        <div className="agent-name">{agent.name}</div>
-                        <div className="agent-model">{agent.model}</div>
-                      </div>
-                      <div className="agent-actions">
-                        <button
-                          className="agent-action"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleEdit(agent);
-                          }}
-                          title="edit"
-                        >
-                          <IconEdit size={14} />
-                        </button>
-                        <button
-                          className="agent-action"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDuplicate(agent);
-                          }}
-                          title="duplicate"
-                        >
-                          <IconCopy size={14} />
-                        </button>
-                        <button
-                          className="agent-action agent-delete"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleDelete(agent);
-                          }}
-                          title="delete"
-                        >
-                          <IconTrash size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  ))}
-                  <div
-                    className="agent-item add-agent-item"
-                    onClick={handleCreateNew}
-                    onMouseEnter={() => setFocusedIndex(filteredAgents.length)}
-                  >
-                    <div className="agent-info">
-                      <IconPlus size={14} style={{ marginRight: 8 }} />
-                      <div className="agent-name">add agent</div>
-                    </div>
-                  </div>
-                </div>
+                </>
               )}
             </>
           ) : (

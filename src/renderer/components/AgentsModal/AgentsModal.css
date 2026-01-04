@@ -455,3 +455,147 @@
   background: rgba(var(--accent-rgb), 0.2);
   border-color: var(--accent-color);
 }
+
+/* Yurucode Agents Toggle */
+.yurucode-toggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  margin-bottom: 8px;
+}
+
+.toggle-label {
+  color: #999;
+  font-size: 13px;
+  font-weight: 500;
+}
+
+/* Hide checkbox input */
+.yurucode-toggle .checkbox-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+/* Toggle switch - matching settings style */
+.yurucode-toggle .toggle-switch {
+  position: relative;
+  width: 118px;
+  height: 23px;
+  border: 1px solid var(--fg-15);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  display: inline-flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  background: var(--background-color);
+}
+
+.yurucode-toggle .toggle-switch:hover {
+  border-color: rgba(var(--accent-rgb), 1);
+}
+
+.yurucode-toggle .toggle-switch-label {
+  font-size: 11px;
+  font-weight: bold;
+  user-select: none;
+  transition: opacity 0.2s ease;
+  z-index: 1;
+  padding: 0;
+  text-align: center;
+  flex: 1;
+}
+
+.yurucode-toggle .toggle-switch-label.off {
+  color: var(--fg-50);
+  opacity: 1;
+}
+
+.yurucode-toggle .toggle-switch-label.on {
+  color: rgba(var(--accent-rgb), 1);
+  opacity: 0;
+}
+
+.yurucode-toggle .toggle-switch.active .toggle-switch-label.off {
+  opacity: 0;
+}
+
+.yurucode-toggle .toggle-switch.active .toggle-switch-label.on {
+  opacity: 1;
+}
+
+.yurucode-toggle .toggle-switch-slider {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 58px;
+  height: 21px;
+  background: var(--fg-05);
+  border-radius: 3px;
+  transition: transform 0.2s ease;
+  pointer-events: none;
+}
+
+.yurucode-toggle .toggle-switch.active .toggle-switch-slider {
+  transform: translateX(58px);
+  background: rgba(var(--accent-rgb), 0.2);
+}
+
+.yurucode-toggle .toggle-switch:hover .toggle-switch-slider {
+  background: var(--fg-15);
+}
+
+.yurucode-toggle .toggle-switch.active:hover .toggle-switch-slider {
+  background: rgba(var(--accent-rgb), 0.25);
+}
+
+/* Yurucode model info */
+.yurucode-model-info {
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  font-size: 11px;
+  color: #666;
+}
+
+.yurucode-model-info .current-model {
+  color: var(--accent-color);
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+/* Yurucode agent items */
+.yurucode-agent {
+  cursor: default;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.yurucode-agent .agent-info {
+  width: 100%;
+}
+
+.agent-prompt-preview {
+  font-size: 11px;
+  color: #666;
+  font-family: var(--mono-font);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  width: 100%;
+}
+
+/* Disabled state for yurucode agents list */
+.agents-list.agents-disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.agents-list.agents-disabled .agent-item {
+  border-color: #333;
+}

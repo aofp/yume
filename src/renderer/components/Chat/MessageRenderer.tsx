@@ -1783,14 +1783,11 @@ const MessageRendererBase: React.FC<{
             <span className="attachment-text">[attached: {attachmentText}]</span>
           </div>
         );
-        displayText = (
-          <>
-            {displayText && <div>{displayText}</div>}
-            {attachmentPreview}
-          </>
-        );
+        // Store original text for ultrathink processing, then wrap with attachment
+        const originalText = displayText;
+        displayText = { originalText, attachmentPreview } as any;
       }
-      
+
       // Check if this is a bash command
       const isBashCommand = typeof displayText === 'string' && isBashPrefix(displayText);
 
@@ -1836,6 +1833,19 @@ const MessageRendererBase: React.FC<{
               ) : (
                 <span>{renderWithUltrathink(displayText)}</span>
               )
+            ) : displayText && typeof displayText === 'object' && 'originalText' in displayText ? (
+              // Handle attachment case - apply ultrathink to text part
+              <>
+                {displayText.originalText && (
+                  <div>
+                    {displayText.originalText.includes('\n')
+                      ? <span>{renderMultilineWithUltrathink(displayText.originalText)}</span>
+                      : <span>{renderWithUltrathink(displayText.originalText)}</span>
+                    }
+                  </div>
+                )}
+                {displayText.attachmentPreview}
+              </>
             ) : (
               displayText
             )}

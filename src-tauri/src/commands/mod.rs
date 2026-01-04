@@ -898,15 +898,14 @@ pub fn clear_server_logs() -> Result<(), String> {
 }
 
 /// Load Claude agents from ~/.claude/agents directory (global agents)
+/// Does NOT include yurucode built-in agents
 #[tauri::command]
 pub fn load_claude_agents() -> Result<Vec<ClaudeAgent>, String> {
-    // Imports cleaned up
-    
     let home_dir = dirs::home_dir()
         .ok_or_else(|| "Could not determine home directory".to_string())?;
-    
+
     let agents_dir = home_dir.join(".claude").join("agents");
-    
+
     load_agents_from_directory(&agents_dir)
 }
 

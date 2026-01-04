@@ -817,6 +817,8 @@ const BUILT_IN_THEMES: Theme[] = [
 export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { isLicensed } = useLicenseStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>('theme');
+  const [isDragging, setIsDragging] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(0);
   const [backgroundColor, setBackgroundColor] = useState('#0a0a0a');
   const [foregroundColor, setForegroundColor] = useState('#ffffff');
@@ -876,6 +878,48 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     return () => document.removeEventListener('keydown', handleEscape);
   }, [onClose, showColorPicker, showFontPicker, showAboutModal]);
 
+  // Handle drag cursor on settings header
+  useEffect(() => {
+    const handleMouseDown = async (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (target.closest('button') || target.closest('input')) {
+        return;
+      }
+      setIsDragging(true);
+      try {
+        if ((window as any).__TAURI__) {
+          const windowApi = await import('@tauri-apps/api/window');
+          let appWindow;
+          if (windowApi.getCurrent) {
+            appWindow = windowApi.getCurrent();
+          } else if (windowApi.appWindow) {
+            appWindow = windowApi.appWindow;
+          } else if (windowApi.Window?.getCurrent) {
+            appWindow = windowApi.Window.getCurrent();
+          }
+          if (appWindow) {
+            await appWindow.startDragging();
+          }
+        }
+      } catch (error) {
+        console.error('Settings: Error starting drag:', error);
+      }
+    };
+
+    const handleMouseUp = () => {
+      setIsDragging(false);
+    };
+
+    const element = headerRef.current;
+    if (element) {
+      element.addEventListener('mousedown', handleMouseDown);
+      window.addEventListener('mouseup', handleMouseUp);
+      return () => {
+        element.removeEventListener('mousedown', handleMouseDown);
+        window.removeEventListener('mouseup', handleMouseUp);
+      };
+    }
+  }, []);
 
   // Hooks tab state
   const [hooks, setHooks] = useState<HookScriptConfig[]>([]);
@@ -1665,6 +1709,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     border: '1px solid var(--fg-15)',
                     borderRadius: '4px',
                     cursor: 'default',
+                    width: '160px',
                     transition: 'all 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
@@ -2653,7 +2698,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     <>
       <div className="settings-modal-overlay">
         <div className="settings-modal">
-          <div className="settings-header" data-tauri-drag-region>
+          <div className={`settings-header${isDragging ? ' is-dragging' : ''}`} ref={headerRef} data-tauri-drag-region>
             <div className="settings-header-left" data-tauri-drag-region>
               <IconSettings size={16} stroke={1.5} style={{ color: 'var(--accent-color)', pointerEvents: 'none', userSelect: 'none' }} />
               {/* Tab navigation in header */}

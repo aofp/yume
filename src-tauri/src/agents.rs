@@ -42,50 +42,50 @@ pub async fn load_default_agents(app: AppHandle) -> Result<Vec<Agent>, String> {
         fs::read_to_string(&default_agents_path)
             .map_err(|e| format!("Failed to read default agents file: {}", e))?
     } else {
-        // Fallback to hardcoded default agents
+        // Fallback to hardcoded default agents - The 5 Yurucode Core Agents
         r#"[
   {
-    "name": "Git Commit Bot",
-    "icon": "🔧",
-    "model": "sonnet",
-    "default_task": "Commit all changes with a descriptive message",
-    "system_prompt": "You are a Git commit assistant. Analyze the git diff and status, write a clear commit message following conventional commits format (feat/fix/docs/style/refactor/test/chore), and commit the changes. Always check git status and diff first, then create an appropriate commit message.",
+    "name": "architect",
+    "icon": "🧠",
+    "model": "opus",
+    "default_task": "plan implementation",
+    "system_prompt": "architect agent. plan, design, decompose. think first. output: steps, dependencies, risks. use TodoWrite.",
     "created_at": 1735224000000,
     "updated_at": 1735224000000
   },
   {
-    "name": "Code Reviewer",
+    "name": "explorer",
+    "icon": "🔍",
+    "model": "sonnet",
+    "default_task": "gather context",
+    "system_prompt": "explorer agent. find, read, understand. use Glob, Grep, Read. output: paths, snippets, structure. no edits.",
+    "created_at": 1735224000000,
+    "updated_at": 1735224000000
+  },
+  {
+    "name": "implementer",
+    "icon": "⚡",
+    "model": "opus",
+    "default_task": "write code",
+    "system_prompt": "implementer agent. code, edit, build. read before edit. small changes. output: working code, minimal diff.",
+    "created_at": 1735224000000,
+    "updated_at": 1735224000000
+  },
+  {
+    "name": "guardian",
     "icon": "🛡️",
     "model": "opus",
-    "default_task": "Review the recent changes for bugs and improvements",
-    "system_prompt": "You are a senior code reviewer. Analyze code for bugs, security issues, performance problems, and suggest improvements. Focus on code quality, maintainability, and best practices. Be constructive and specific in your feedback.",
+    "default_task": "review code",
+    "system_prompt": "guardian agent. review, audit, verify. check bugs, security, performance. output: issues, severity, fixes.",
     "created_at": 1735224000000,
     "updated_at": 1735224000000
   },
   {
-    "name": "Bug Hunter",
-    "icon": "🐛",
+    "name": "specialist",
+    "icon": "🎯",
     "model": "sonnet",
-    "default_task": "Find and fix bugs in the codebase",
-    "system_prompt": "You are a debugging specialist. Analyze error messages, stack traces, and code to identify root causes of bugs. Use systematic debugging techniques, add logging where needed, and provide clear fixes with explanations.",
-    "created_at": 1735224000000,
-    "updated_at": 1735224000000
-  },
-  {
-    "name": "Test Writer",
-    "icon": "🧪",
-    "model": "sonnet",
-    "default_task": "Write comprehensive tests for the code",
-    "system_prompt": "You are a test automation expert. Write comprehensive unit tests, integration tests, and edge case tests. Ensure high code coverage and test important functionality. Use the project's existing testing framework and patterns.",
-    "created_at": 1735224000000,
-    "updated_at": 1735224000000
-  },
-  {
-    "name": "Refactoring Expert",
-    "icon": "✨",
-    "model": "opus",
-    "default_task": "Refactor code for better structure and performance",
-    "system_prompt": "You are a refactoring specialist. Identify code smells, duplicate code, and opportunities for improvement. Apply design patterns appropriately, improve naming, extract methods/components, and enhance code organization while maintaining functionality.",
+    "default_task": "domain task",
+    "system_prompt": "specialist agent. adapt to domain: test, docs, devops, data. output: domain artifacts.",
     "created_at": 1735224000000,
     "updated_at": 1735224000000
   }

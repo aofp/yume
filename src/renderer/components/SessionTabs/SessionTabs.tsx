@@ -687,11 +687,18 @@ export const SessionTabs: React.FC = () => {
                     });
                   }
 
-                  // Color gradient: grey until 90%, red when over 100%, orange at 90-100%
+                  // Check if pending auto-compact (will compact on next message)
+                  const isPendingCompact = (session as any).compactionState?.pendingAutoCompact;
+
+                  // Color gradient based on thresholds:
+                  // - 40%+: faint glow (0.3 opacity)
+                  // - 50%+: medium glow (0.8 opacity)
+                  // - pendingAutoCompact (60%+): full glow (1.0 opacity) - will compact on next message
                   const getColor = (pct: number) => {
-                    if (pct >= 100) return 'rgba(var(--negative-rgb), 1.0)'; // Full red when over 100%
-                    if (pct >= 90) return 'rgba(var(--negative-rgb), 0.8)'; // Orange/red at 90-100%
-                    return 'rgba(150, 150, 150, 0.8)'; // Grey below 90%
+                    if (isPendingCompact) return 'rgba(var(--negative-rgb), 1.0)'; // Full glow - pending compact
+                    if (pct >= 50) return 'rgba(var(--negative-rgb), 0.8)'; // Medium glow at 50%+
+                    if (pct >= 40) return 'rgba(var(--negative-rgb), 0.3)'; // Faint glow at 40%+
+                    return 'rgba(150, 150, 150, 0.8)'; // Grey below 40%
                   };
 
                   return (

@@ -14,7 +14,7 @@ const wrapperState = {
   sessionMapping: new Map<string, string>(), // Map temp IDs to real IDs
   debug: isDev, // Only enable debug in development
   initialized: false,
-  autoCompactThreshold: 170000, // 85% of 200k context window
+  autoCompactThreshold: 120000, // 60% of 200k context window (matches compactionService)
   autoCompactPending: new Map<string, string>() // Track pending auto-compacts
 };
 
@@ -140,37 +140,43 @@ export function processWrapperMessage(message: any, sessionId: string): any {
     // - cache_creation_input_tokens: One-time cost when content is first cached
     
     // DON'T accumulate - the API gives us per-message tokens
-    // cache_read already contains the full conversation history
+    // IMPORTANT: cache_read_input_tokens from API is CUMULATIVE across all turns,
+    // NOT the current context size! We track context size incrementally.
     session.inputTokens = input;
     session.outputTokens = output;
 
     // Cache creation happens once when content is cached
-    if (cacheCreation > 0) {
-      session.cacheCreationTokens = cacheCreation;
-    }
+    session.cacheCreationTokens = cacheCreation;
 
-    // Cache read is the SIZE of cached content - it's a snapshot of conversation history
+    // Cache read from API is cumulative - store it but don't use for context calculation
     session.cacheReadTokens = cacheRead;
 
-    const prevTotal = session.totalTokens;
-    // CORRECT FORMULA: cache_read + cache_creation + input (from API docs)
-    // cache_read = cached conversation history being reused
-    // cache_creation = new content being added to cache
-    // input = new input tokens for this message
-    // Note: output tokens don't count toward INPUT context limit
-    session.totalTokens = session.cacheReadTokens + session.cacheCreationTokens + session.inputTokens;
+    // CORRECT FORMULA for actual context size:
+    // Track incrementally by ACCUMULATING output tokens (which become part of context)
+    // The server wrapper does this correctly - we should use wrapper.tokens.total when available
+    // For now, accumulate output tokens as a rough estimate
+    // The real context size comes from the server's wrapper.tokens.total field
+    if (output > 0) {
+      session.totalTokens += output; // Accumulate output tokens
+    }
+    // Also add input tokens for new messages (but don't double-count)
+    if (input > 0 && cacheRead === 0) {
+      // Only add input if this is a new context (no cache read yet)
+      session.totalTokens += input;
+    }
     session.lastUpdateTime = Date.now();
-    
-    // Check for auto-compaction threshold
-    if (session.totalTokens >= wrapperState.autoCompactThreshold && !session.autoCompactTriggered) {
-      session.autoCompactTriggered = true;
-      
-      // Add auto-compact trigger to message
-      processed.wrapper_auto_compact = {
-        triggered: true,
-        threshold: wrapperState.autoCompactThreshold,
-        currentTokens: session.totalTokens
-      };
+
+    // DISABLED: Auto-compact trigger based on frontend calculation
+    // The calculation here is unreliable because cache_read_input_tokens from the API
+    // is cumulative across turns, not the actual context size.
+    // Auto-compaction should be handled by compactionService using the server's tracked tokens.
+    // See claudeCodeStore.ts line 1668-1671 for the correct trigger point.
+
+    // Log for debugging but don't trigger auto-compact
+    if (wrapperState.debug) {
+      const percentage = (session.totalTokens / 200000 * 100).toFixed(2);
+      console.log(`📊 [WRAPPER] Token update: ${percentage}% (${session.totalTokens}/200000)`);
+      console.log(`   API values: cacheRead=${cacheRead}, cacheCreation=${cacheCreation}, input=${input}, output=${output}`);
     }
   }
   

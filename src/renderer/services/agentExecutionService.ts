@@ -277,51 +277,37 @@ class AgentExecutionService {
     return this.activeRuns.get(runId);
   }
 
-  // Predefined agent templates
+  // The 5 Yurucode Core Agents
   static readonly AGENT_TEMPLATES = {
-    codeReviewer: {
-      name: 'Code Reviewer',
-      systemPrompt: `You are a thorough code reviewer. Analyze the codebase for:
-- Code quality issues
-- Performance problems
-- Security vulnerabilities
-- Best practice violations
-- Suggest improvements with specific examples`,
+    architect: {
+      name: 'architect',
+      systemPrompt: `architect agent. plan, design, decompose. think first. output: steps, dependencies, risks. use TodoWrite.`,
       model: 'opus' as const,
       createCheckpoint: true,
     },
-    testWriter: {
-      name: 'Test Writer',
-      systemPrompt: `You are a test writing specialist. Your task is to:
-- Analyze the existing code
-- Identify areas lacking test coverage
-- Write comprehensive unit tests
-- Include edge cases and error scenarios
-- Use the project's existing test framework`,
-      model: 'sonnet' as const,
-      createCheckpoint: true,
-    },
-    refactorer: {
-      name: 'Code Refactorer',
-      systemPrompt: `You are a code refactoring expert. Your goals:
-- Identify code smells and anti-patterns
-- Suggest and implement refactorings
-- Improve code readability and maintainability
-- Preserve existing functionality
-- Follow SOLID principles`,
-      model: 'opus' as const,
-      createCheckpoint: true,
-    },
-    documentor: {
-      name: 'Documentation Writer',
-      systemPrompt: `You are a documentation specialist. Your tasks:
-- Add comprehensive JSDoc/TypeDoc comments
-- Create or update README files
-- Document complex logic and algorithms
-- Add inline comments for clarity
-- Generate API documentation`,
+    explorer: {
+      name: 'explorer',
+      systemPrompt: `explorer agent. find, read, understand. use Glob, Grep, Read. output: paths, snippets, structure. no edits.`,
       model: 'sonnet' as const,
       createCheckpoint: false,
+    },
+    implementer: {
+      name: 'implementer',
+      systemPrompt: `implementer agent. code, edit, build. read before edit. small changes. output: working code, minimal diff.`,
+      model: 'opus' as const,
+      createCheckpoint: true,
+    },
+    guardian: {
+      name: 'guardian',
+      systemPrompt: `guardian agent. review, audit, verify. check bugs, security, performance. output: issues, severity, fixes.`,
+      model: 'opus' as const,
+      createCheckpoint: true,
+    },
+    specialist: {
+      name: 'specialist',
+      systemPrompt: `specialist agent. adapt to domain: test, docs, devops, data. output: domain artifacts.`,
+      model: 'sonnet' as const,
+      createCheckpoint: true,
     },
   };
 }
