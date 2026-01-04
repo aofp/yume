@@ -8,12 +8,17 @@
   left: 0;
   right: 0;
   bottom: 0;
-  /* Transparent to allow window transparency to show through */
+  /* Transparent to allow window transparency to show through (Windows uses body::before overlay) */
   background: transparent;
   overflow: hidden; /* Prevent outer container from scrolling */
   /* Isolate from external layout changes (particles, etc) */
   contain: layout style;
   isolation: isolate;
+}
+
+/* macOS: 50% darker background like textarea - opacity is handled by html element */
+.platform-darwin .chat-container {
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
 }
 
 /* Windows-specific fix for zoom issues */
