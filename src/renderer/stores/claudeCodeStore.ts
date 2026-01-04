@@ -1517,7 +1517,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     console.log('🗜️ [COMPACT] Ignoring zero usage from compact command itself');
                     // The system compact message will handle the actual token reset
                     // Don't process this result message's usage
-                    return { ...s, messages: existingMessages, analytics, updatedAt: new Date() };
+                    return {
+                      ...s,
+                      messages: existingMessages,
+                      analytics,
+                      updatedAt: new Date(),
+                      // Force React re-render by updating a counter
+                      messageUpdateCounter: (s.messageUpdateCounter || 0) + 1
+                    };
                   }
                   
                   // Check if we've already processed tokens for a result with this ID
@@ -1852,7 +1859,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 analytics,
                 restorePoints,
                 modifiedFiles,
-                lastMessageTime: Date.now() // Track when last message was received
+                lastMessageTime: Date.now(), // Track when last message was received
+                // Force React re-render by updating a counter (fixes bash output not showing)
+                messageUpdateCounter: (s.messageUpdateCounter || 0) + 1
               };
             });
 
@@ -2889,9 +2898,15 @@ ${content}`;
               }
             }
             
-            return { ...s, messages: existingMessages, updatedAt: new Date() };
+            return {
+              ...s,
+              messages: existingMessages,
+              updatedAt: new Date(),
+              // Force React re-render by updating a counter (fixes bash output not showing)
+              messageUpdateCounter: (s.messageUpdateCounter || 0) + 1
+            };
           });
-          
+
           if (message.type === 'assistant') {
             // Extract title from first assistant message if not already set
             sessions = sessions.map(s => {
