@@ -17,6 +17,8 @@ pub struct SpawnSessionRequest {
     pub project_path: String,
     pub model: String,
     pub prompt: String,
+    /// Optional session ID to resume an existing conversation
+    pub resume_session_id: Option<String>,
 }
 
 /// Response structure for spawning a new Claude session
@@ -85,13 +87,14 @@ pub async fn spawn_claude_session(
     let session_manager = state.session_manager();
     let spawner = Arc::new(ClaudeSpawner::new(registry, session_manager));
     
-    // Create spawn options
+    // Create spawn options - use resume_session_id if provided
+    let is_resuming = request.resume_session_id.is_some();
     let options = SpawnOptions {
         project_path: request.project_path,
         model: request.model,
         prompt: request.prompt,
-        resume_session_id: None,
-        continue_conversation: false,
+        resume_session_id: request.resume_session_id,
+        continue_conversation: is_resuming,
     };
     
     // Spawn the Claude process

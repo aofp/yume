@@ -18,6 +18,7 @@ import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { useLicenseStore } from './services/licenseManager';
 import { platformBridge } from './services/platformBridge';
 import { claudeCodeClient } from './services/claudeCodeClient';
+import { systemPromptService } from './services/systemPromptService';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import './App.minimal.css';
 
@@ -46,7 +47,10 @@ export const App: React.FC = () => {
   // Load session mappings and initialize fonts on startup
   useEffect(() => {
     loadSessionMappings();
-    
+
+    // Sync yurucode agents to ~/.claude/agents/ based on settings
+    systemPromptService.syncAgentsToFilesystem();
+
     // Check Claude CLI connection after a short delay
     const checkConnection = setTimeout(() => {
       if (!claudeCodeClient.isConnected()) {
@@ -78,7 +82,23 @@ export const App: React.FC = () => {
     
     return () => clearTimeout(checkConnection);
   }, [loadSessionMappings, monoFont, sansFont, setBackgroundOpacity]);
-  
+
+  // Cleanup yurucode agents from ~/.claude/agents/ on app exit
+  // Only removes files if no other yurucode instances are running
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Fire and forget - we can't await in beforeunload
+      systemPromptService.cleanupAgentsOnExit();
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      // Also call cleanup when component unmounts
+      systemPromptService.cleanupAgentsOnExit();
+    };
+  }, []);
+
   // Restore tabs after store is hydrated from persistence
   useEffect(() => {
     // Small delay to ensure store is fully hydrated from persistence
@@ -608,8 +628,8 @@ export const App: React.FC = () => {
     const fgB = parseInt(fgHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--foreground-rgb', `${fgR}, ${fgG}, ${fgB}`);
 
-    // Apply accent color - use the same default as SettingsModal (#99bbff)
-    const savedAccentColor = localStorage.getItem('accentColor') || '#99bbff';
+    // Apply accent color - use the same default as SettingsModal (#bb99ff)
+    const savedAccentColor = localStorage.getItem('accentColor') || '#bb99ff';
     document.documentElement.style.setProperty('--accent-color', savedAccentColor);
     const accentHex = savedAccentColor.replace('#', '');
     const accentR = parseInt(accentHex.substr(0, 2), 16);
@@ -1079,7 +1099,7 @@ export const App: React.FC = () => {
               permissionMode: 'default' as const,
               allowedTools: ['Read', 'Write', 'Edit', 'MultiEdit', 'LS', 'Glob', 'Grep', 'Bash', 'WebFetch', 'WebSearch', 'TodoWrite'],
               restorePoints: [],
-              modifiedFiles: []
+              modifiedFiles: new Set<string>()
             };
             
             // Add session to store and set as current

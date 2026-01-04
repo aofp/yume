@@ -31,11 +31,12 @@ export interface Agent {
 }
 
 // The 5 Yurucode Core Agents - built-in, non-deletable
+// All yurucode agents use the currently selected model
 const YURUCODE_AGENTS: Agent[] = [
   {
     id: 'yurucode-architect',
     name: 'architect',
-    model: 'opus',
+    model: 'opus', // Placeholder - actual model is set by current selection
     system_prompt: 'architect agent. plan, design, decompose. think first. output: steps, dependencies, risks. use TodoWrite.',
     created_at: 0,
     updated_at: 0,
@@ -44,7 +45,7 @@ const YURUCODE_AGENTS: Agent[] = [
   {
     id: 'yurucode-explorer',
     name: 'explorer',
-    model: 'sonnet',
+    model: 'opus',
     system_prompt: 'explorer agent. find, read, understand. use Glob, Grep, Read. output: paths, snippets, structure. no edits.',
     created_at: 0,
     updated_at: 0,
@@ -71,7 +72,7 @@ const YURUCODE_AGENTS: Agent[] = [
   {
     id: 'yurucode-specialist',
     name: 'specialist',
-    model: 'sonnet',
+    model: 'opus',
     system_prompt: 'specialist agent. adapt to domain: test, docs, devops, data. output: domain artifacts.',
     created_at: 0,
     updated_at: 0,
@@ -121,20 +122,35 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     isDangerous?: boolean;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
+  // Yurucode agent names to filter from global tab
+  // Match both short names (architect) and full file names (yurucode-architect)
+  const yurucodeAgentNames = useMemo(() =>
+    new Set([
+      ...YURUCODE_AGENTS.map(a => a.name),
+      ...YURUCODE_AGENTS.map(a => `yurucode-${a.name}`)
+    ]),
+  []);
+
   // Get current agents based on scope
   const currentAgents = useMemo(() => {
     if (agentScope === 'yurucode') return YURUCODE_AGENTS;
-    if (agentScope === 'global') return globalAgents;
+    if (agentScope === 'global') {
+      // Filter out yurucode agents from global tab since they're shown in yurucode tab
+      return globalAgents.filter(a => !yurucodeAgentNames.has(a.name));
+    }
     return projectAgents;
-  }, [agentScope, globalAgents, projectAgents]);
+  }, [agentScope, globalAgents, projectAgents, yurucodeAgentNames]);
 
   // Toggle yurucode agents enabled/disabled
-  const handleToggleAgents = useCallback(() => {
+  const handleToggleAgents = useCallback(async () => {
     const newEnabled = !agentsEnabled;
     setAgentsEnabled(newEnabled);
     const settings = systemPromptService.getCurrent();
-    systemPromptService.save({ ...settings, agentsEnabled: newEnabled });
-  }, [agentsEnabled]);
+    // Extract model name (opus/sonnet) from full model ID
+    const modelName = selectedModel?.includes('opus') ? 'opus' : 'sonnet';
+    // Use saveAndSync to also write/remove agent files from ~/.claude/agents/
+    await systemPromptService.saveAndSync({ ...settings, agentsEnabled: newEnabled }, modelName);
+  }, [agentsEnabled, selectedModel]);
   
   // Filter agents based on search
   const filteredAgents = useMemo(() => {
@@ -424,11 +440,11 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
       
       <div className="agents-modal-overlay" onClick={onClose}>
         <div className="agents-modal" onClick={e => e.stopPropagation()}>
-        <div className="agents-header" data-tauri-drag-region>
+        <div className="agents-header" data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
           <div className="agents-header-left" data-tauri-drag-region>
             <div className="agents-title" data-tauri-drag-region>
               <IconRobot size={16} />
-              <span>claude agents</span>
+              <span>agents</span>
             </div>
             {!editMode && !createMode && (
               <div className="header-tabs">
@@ -442,7 +458,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                   label="global"
                   active={agentScope === 'global'}
                   onClick={() => setAgentScope('global')}
-                  count={globalAgents.length}
+                  count={globalAgents.filter(a => !yurucodeAgentNames.has(a.name)).length}
                 />
                 <TabButton
                   label="project"

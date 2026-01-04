@@ -545,7 +545,11 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                           <span className="thinking-dots"></span>
                         </span>
                         {thinkingElapsed > 0 && (
-                          <span className="thinking-timer">{thinkingElapsed}s</span>
+                          <span className="thinking-timer">
+                            {thinkingElapsed >= 60
+                              ? `${Math.floor(thinkingElapsed / 60)}m ${thinkingElapsed % 60}s`
+                              : `${thinkingElapsed}s`}
+                          </span>
                         )}
                       </span>
                     </div>

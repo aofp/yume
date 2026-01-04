@@ -28,6 +28,7 @@ import {
   IconServer,
   IconTerminal2,
   IconPlayerStop,
+  IconPlayerPlay,
   IconDots,
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
@@ -801,6 +802,21 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           )) {
             console.log('[TodoFilter] Filtering todo success message in text block:', block.text.substring(0, 100));
             return null;
+          }
+          // Render agent launch messages with clean UI
+          if (block.text && block.text.includes('Async agent launched successfully')) {
+            const agentIdMatch = block.text.match(/agentId:\s*([a-f0-9]+)/);
+            const agentTypeMatch = block.text.match(/yurucode-(\w+)|subagent_type[=:]\s*['"]?([^'">\s,]+)/i);
+            const agentId = agentIdMatch?.[1] || '';
+            const agentType = agentTypeMatch?.[1] || agentTypeMatch?.[2] || 'agent';
+            return (
+              <div key={idx} className="agent-launch">
+                <IconPlayerPlay size={12} stroke={1.5} className="agent-launch-icon" />
+                <span className="agent-launch-type">{agentType}</span>
+                {agentId && <span className="agent-launch-id">{agentId.slice(0, 7)}</span>}
+                <span className="agent-launch-status">launched</span>
+              </div>
+            );
           }
           // For text blocks with search highlighting
           if (searchQuery) {
@@ -2840,6 +2856,77 @@ const MessageRendererBase: React.FC<{
               </pre>
               {hasMore && (
                 <div className="result-more">+ {hiddenCount} more lines</div>
+              )}
+            </div>
+          </div>
+        );
+      }
+
+      // ===== TASKOUTPUT TOOL (agent progress) =====
+      if (resultToolName === 'TaskOutput') {
+        // Parse the xml-like structure from TaskOutput
+        const statusMatch = contentStr.match(/<retrieval_status>(\w+)<\/retrieval_status>/);
+        const taskIdMatch = contentStr.match(/<task_id>([^<]+)<\/task_id>/);
+        const taskStatusMatch = contentStr.match(/<status>(\w+)<\/status>/);
+        const outputMatch = contentStr.match(/<output>([\s\S]*?)<\/output>/);
+
+        const retrievalStatus = statusMatch?.[1] || 'unknown';
+        const taskId = taskIdMatch?.[1] || '';
+        const taskStatus = taskStatusMatch?.[1] || retrievalStatus;
+        const rawOutput = outputMatch?.[1]?.trim() || '';
+
+        // Parse tool calls from the output
+        const toolCalls = rawOutput.split('\n').filter(line => line.startsWith('[Tool:'));
+        const displayCalls = toolCalls.slice(-8); // show last 8 tool calls
+        const hiddenCalls = toolCalls.length - displayCalls.length;
+
+        // Status icon and color
+        const isRunning = taskStatus === 'running' || retrievalStatus === 'timeout';
+        const isComplete = taskStatus === 'completed';
+        const StatusIcon = isRunning ? IconDots : (isComplete ? IconCheck : IconX);
+        const statusClass = isRunning ? 'running' : (isComplete ? 'complete' : 'error');
+
+        return (
+          <div className="message tool-result-message">
+            <div className={`tool-result standalone taskoutput-result ${statusClass}`}>
+              <div className="taskoutput-header">
+                <StatusIcon size={12} stroke={1.5} className={`status-icon ${statusClass}`} />
+                <span className="taskoutput-status">{isRunning ? 'agent working' : taskStatus}</span>
+                {taskId && <span className="taskoutput-id">{taskId.slice(0, 7)}</span>}
+              </div>
+              {displayCalls.length > 0 && (
+                <div className="taskoutput-tools">
+                  {hiddenCalls > 0 && (
+                    <div className="taskoutput-hidden">+ {hiddenCalls} earlier calls</div>
+                  )}
+                  {displayCalls.map((call, i) => {
+                    // Parse [Tool: Name] {input}
+                    const toolMatch = call.match(/\[Tool: (\w+)\] ({.*})?/);
+                    if (!toolMatch) return null;
+                    const toolName = toolMatch[1];
+                    const toolInput = toolMatch[2];
+
+                    // Parse input json for display
+                    let detail = '';
+                    try {
+                      if (toolInput) {
+                        const parsed = JSON.parse(toolInput);
+                        // Show relevant detail based on tool type
+                        if (parsed.pattern) detail = parsed.pattern;
+                        else if (parsed.file_path) detail = formatPath(parsed.file_path);
+                        else if (parsed.query) detail = parsed.query.slice(0, 40) + (parsed.query.length > 40 ? '...' : '');
+                        else if (parsed.command) detail = parsed.command.slice(0, 40) + (parsed.command.length > 40 ? '...' : '');
+                      }
+                    } catch {}
+
+                    return (
+                      <div key={i} className="taskoutput-tool-call">
+                        <span className="tool-name">{toolName}</span>
+                        {detail && <span className="tool-detail">{detail}</span>}
+                      </div>
+                    );
+                  })}
+                </div>
               )}
             </div>
           </div>

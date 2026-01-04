@@ -44,7 +44,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
     <>
     <div className="about-modal-overlay" onClick={onClose}>
       <div className="about-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="about-header">
+        <div className="about-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>about</h3>
           <button className="about-close" onClick={onClose}>
             <IconX size={16} />

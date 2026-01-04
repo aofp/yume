@@ -1,3 +1,5 @@
+import { invoke } from '@tauri-apps/api/core';
+
 export interface SystemPromptSettings {
   enabled: boolean;
   mode: 'default' | 'custom' | 'none';
@@ -9,12 +11,24 @@ const STORAGE_KEY = 'system_prompt_settings';
 
 const DEFAULT_PROMPT_WITH_AGENTS = `yurucode orchestrator. lowercase, concise.
 
-agents: architect (plan), explorer (find), implementer (code), guardian (review), specialist (domain).
+agents available:
+- architect: plan complex tasks (3+ steps), identify risks
+- explorer: search codebase, gather context (use for broad searches)
+- implementer: make focused code changes
+- guardian: review for bugs, security, performance
+- specialist: tests, docs, devops, data tasks
 
-rules:
-- simple: direct, no agents
-- complex: architect → explorer → implementer → guardian
-- parallel agents when independent
+when to use agents:
+- 1-2 step task → do directly, no agents
+- 3+ steps or multi-file → architect first, then others
+- broad codebase search → explorer (faster than manual glob/grep)
+- after significant changes → guardian review
+- parallel agents only when subtasks are independent
+
+cost awareness:
+- each agent = extra api call, use sparingly
+- haiku agents for quick exploration
+- don't retry failed agent tasks (non-deterministic)
 
 always: read before edit, small changes, relative paths.`;
 
@@ -113,6 +127,64 @@ class SystemPromptService {
       agentsEnabled: true
     };
     this.save(this.settings);
+  }
+
+  // ============================================================================
+  // YURUCODE AGENTS SYNC - Write/Remove agent files to ~/.claude/agents/
+  // ============================================================================
+
+  /**
+   * Sync yurucode agents to ~/.claude/agents/ based on enabled state.
+   * Call this on app startup, when toggling agents, or when switching models.
+   * @param model - The model to use for all agents (e.g., 'opus', 'sonnet')
+   */
+  async syncAgentsToFilesystem(model?: string): Promise<void> {
+    try {
+      const enabled = this.getCurrent().agentsEnabled;
+      await invoke('sync_yurucode_agents', { enabled, model });
+      console.log(`[SystemPrompt] Yurucode agents ${enabled ? `synced with model: ${model || 'default'}` : 'removed'}`);
+    } catch (error) {
+      console.error('[SystemPrompt] Failed to sync agents:', error);
+    }
+  }
+
+  /**
+   * Cleanup yurucode agents on app exit.
+   * Only removes agent files if no other yurucode instances are running.
+   */
+  async cleanupAgentsOnExit(): Promise<void> {
+    try {
+      await invoke('cleanup_yurucode_agents_on_exit');
+      console.log('[SystemPrompt] Cleanup called on exit');
+    } catch (error) {
+      console.error('[SystemPrompt] Failed to cleanup agents:', error);
+    }
+  }
+
+  /**
+   * Check if yurucode agents are currently synced to filesystem.
+   */
+  async areAgentsSynced(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('are_yurucode_agents_synced');
+    } catch (error) {
+      console.error('[SystemPrompt] Failed to check agents sync status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Save settings and sync agents to filesystem if agentsEnabled changed.
+   * @param model - The current model to use for agents
+   */
+  async saveAndSync(settings: SystemPromptSettings, model?: string): Promise<void> {
+    const previousEnabled = this.settings?.agentsEnabled;
+    this.save(settings);
+
+    // Sync to filesystem if agentsEnabled changed
+    if (previousEnabled !== settings.agentsEnabled) {
+      await this.syncAgentsToFilesystem(model);
+    }
   }
 }
 

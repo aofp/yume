@@ -186,6 +186,19 @@ body.tab-dragging .session-tab {
   cursor: grabbing !important;
 }
 
+/* Todo progress bar at bottom of tab */
+.tab-todo-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 2px;
+  background: var(--accent-color);
+  opacity: 0.5;
+  border-radius: 0 0 6px 6px;
+  transition: width 0.3s ease;
+  pointer-events: none;
+}
+
 .session-tab.drag-over {
   background: rgba(var(--accent-rgb), 0.15);
   cursor: grabbing !important;

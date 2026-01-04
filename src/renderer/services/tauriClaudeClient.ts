@@ -140,19 +140,27 @@ export class TauriClaudeClient {
   async sendMessage(sessionId: string, content: string, model?: string): Promise<void> {
     try {
       // Check if this session needs to be spawned first
-      // This happens when createSession was called without a prompt
+      // This happens when createSession was called without a prompt OR when resuming a past conversation
       const sessionStore = (window as any).__claudeSessionStore;
       if (sessionStore && sessionStore[sessionId]?.pendingSpawn) {
         const sessionData = sessionStore[sessionId];
         const mappedModel = model ? resolveModelId(model) : sessionData.model;
 
+        // Check if this is a resume of a past conversation (has claudeSessionId)
+        const isResuming = !!sessionData.claudeSessionId;
+        console.log('[TauriClient] Spawning session:', {
+          sessionId,
+          isResuming,
+          claudeSessionId: sessionData.claudeSessionId
+        });
+
         // Spawn Claude with the first message as the prompt
+        // If resuming, pass the claudeSessionId as resume_session_id
         const spawnRequest = {
           project_path: sessionData.workingDirectory,
           model: mappedModel,
           prompt: content, // Pass the message as the initial prompt
-          resume_session_id: null,
-          continue_conversation: false
+          resume_session_id: isResuming ? sessionData.claudeSessionId : null
         };
 
         const response = await invoke('spawn_claude_session', { request: spawnRequest });

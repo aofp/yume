@@ -6,13 +6,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--bg-color, #000);
+  background: var(--background-color, #0a0a0a);
   z-index: 999999;
   cursor: default;
 }
 
 .agents-modal {
-  background: var(--bg-color, #000);
+  background: var(--background-color, #0a0a0a);
   width: 100%;
   height: 100%;
   display: flex;
@@ -34,8 +34,15 @@
 .agents-header-left {
   display: flex;
   align-items: center;
-  gap: 0;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
   -webkit-app-region: drag;
+}
+
+.agents-header-left .header-tabs {
+  margin-right: 10px;
 }
 
 .agents-title {
@@ -407,7 +414,7 @@
 }
 
 .agent-model-select option {
-  background: var(--bg-color, #000);
+  background: var(--background-color, #0a0a0a);
   color: #fff;
 }
 
@@ -574,6 +581,17 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 8px;
+  pointer-events: none;
+}
+
+.yurucode-agent:hover,
+.yurucode-agent.focused {
+  border-color: #222;
+  background: transparent;
+}
+
+.yurucode-agent:hover .agent-name {
+  color: #999;
 }
 
 .yurucode-agent .agent-info {

@@ -57,7 +57,7 @@ const ALL_COLORS = COLOR_ROWS.flat();
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { isLicensed } = useLicenseStore();
   const [zoomLevel, setZoomLevel] = useState(0);
-  const [accentColor, setAccentColor] = useState('#99bbff');
+  const [accentColor, setAccentColor] = useState('#bb99ff');
   const [positiveColor, setPositiveColor] = useState('#99ff99'); // default green
   const [negativeColor, setNegativeColor] = useState('#ff9999'); // default red
   const [showColorPicker, setShowColorPicker] = useState<'accent' | 'positive' | 'negative' | null>(null);
@@ -94,7 +94,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     getZoom();
 
     // Get saved colors and apply them
-    const savedAccentColor = localStorage.getItem('accentColor') || '#99bbff';
+    const savedAccentColor = localStorage.getItem('accentColor') || '#bb99ff';
     setAccentColor(savedAccentColor);
     // Apply accent color
     document.documentElement.style.setProperty('--accent-color', savedAccentColor);
@@ -282,7 +282,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     <>
       <div className="settings-modal-overlay" onClick={onClose}>
         <div className="settings-modal" onClick={(e) => e.stopPropagation()}>
-          <div className="settings-header" data-tauri-drag-region>
+          <div className="settings-header" data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
             <h3>
               <IconSettings size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
               settings

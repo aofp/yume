@@ -830,8 +830,6 @@ ol {
   max-height: 400px;
   overflow-x: auto;
   overflow-y: auto;
-  /* Use overlay scrollbar so it doesn't take space when not scrolling */
-  overflow-y: overlay;
   scrollbar-width: thin;
 }
 
@@ -905,10 +903,7 @@ ol {
 
 .diff-line .line-content {
   flex: 1;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  word-break: break-all;
-  overflow-wrap: anywhere;
+  white-space: pre;
   color: rgba(var(--foreground-rgb), 1);
 }
 
@@ -989,15 +984,14 @@ pre.edit-diff {
   font-size: 8pt;
   margin: 0;
   padding: 4px 8px;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  word-break: break-all;
+  white-space: pre;
   color: var(--fg-60);
   background: transparent;
   border: none;
   overflow-x: auto;
   max-width: 100%;
   box-sizing: border-box;
+  scrollbar-width: thin;
 }
 
 .diff-section {
@@ -1034,8 +1028,7 @@ pre.edit-diff {
 
 .diff-text {
   flex: 1;
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
 }
 
 .diff-line.removed .diff-marker,
@@ -1147,11 +1140,10 @@ pre.edit-diff {
   max-width: 100%;
   overflow-x: auto;
   overflow-y: visible;
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  word-break: break-all;
+  white-space: pre;
   box-sizing: border-box;
   position: relative;
+  scrollbar-width: thin;
 }
 
 /* Windows-specific adjustment for tool-detail positioning */
@@ -1242,7 +1234,9 @@ body.platform-win32 .tool-detail {
   font-family: var(--font-mono);
   font-size: 8pt;
   color: rgba(var(--foreground-rgb), 0.6);
-  white-space: pre-wrap;
+  white-space: pre;
+  overflow-x: auto;
+  scrollbar-width: thin;
 }
 
 .read-line,
@@ -1269,9 +1263,7 @@ body.platform-win32 .tool-detail {
 .search-line .line-text,
 .result-line .line-text {
   flex: 1;
-  white-space: pre-wrap;
-  word-break: break-all;
-  word-break: break-all;
+  white-space: pre;
 }
 
 /* Bash command output */
@@ -1289,14 +1281,13 @@ body.platform-win32 .tool-detail {
   font-family: var(--font-mono);
   font-size: 8pt;
   color: rgba(var(--foreground-rgb), 0.85);
-  white-space: pre-wrap;
-  word-break: break-all;
+  white-space: pre;
   max-height: 400px;
+  overflow-x: auto;
   overflow-y: auto;
-  /* Use overlay scrollbar so it doesn't take space when not scrolling */
-  overflow-y: overlay;
   margin: 0;
   display: block;
+  scrollbar-width: thin;
 }
 
 .bash-more {
@@ -1332,18 +1323,6 @@ body.platform-win32 .tool-detail {
 /* Bash command output styling */
 .bash-output {
   margin: 4px 0;
-}
-
-.bash-content {
-  margin: 0;
-  font-family: var(--font-mono);
-  font-size: 8pt;
-  color: rgba(var(--foreground-rgb), 0.8);
-  white-space: pre-wrap;
-  word-break: break-all;
-  background: rgba(var(--foreground-rgb), 0.02);
-  padding: 8px;
-  border-radius: 4px;
 }
 
 .bash-more {
@@ -1659,6 +1638,133 @@ body.platform-win32 .tool-detail {
 .task-line {
   color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
+}
+
+/* Agent Launch Display */
+.agent-launch {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(var(--foreground-rgb), 0.6);
+  border-left: 2px solid var(--color-blue);
+  margin: 2px 0;
+}
+
+.agent-launch-icon {
+  color: var(--color-blue);
+  flex-shrink: 0;
+}
+
+.agent-launch-type {
+  color: rgba(var(--foreground-rgb), 0.8);
+}
+
+.agent-launch-id {
+  color: rgba(var(--foreground-rgb), 0.4);
+  font-size: 7pt;
+}
+
+.agent-launch-status {
+  color: var(--color-blue);
+  margin-left: auto;
+}
+
+/* TaskOutput Result - Agent Progress Display */
+.tool-result.taskoutput-result {
+  display: block;
+  padding: 6px 8px;
+  border-left: 2px solid rgba(var(--foreground-rgb), 0.2);
+}
+
+.tool-result.taskoutput-result.running {
+  border-left-color: var(--color-blue);
+}
+
+.tool-result.taskoutput-result.complete {
+  border-left-color: var(--color-green);
+}
+
+.tool-result.taskoutput-result.error {
+  border-left-color: var(--color-magenta);
+}
+
+.taskoutput-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 4px;
+}
+
+.taskoutput-header .status-icon {
+  flex-shrink: 0;
+}
+
+.taskoutput-header .status-icon.running {
+  color: var(--color-blue);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.taskoutput-header .status-icon.complete {
+  color: var(--color-green);
+}
+
+.taskoutput-header .status-icon.error {
+  color: var(--color-magenta);
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.taskoutput-status {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(var(--foreground-rgb), 0.7);
+}
+
+.taskoutput-id {
+  font-family: var(--font-mono);
+  font-size: 7pt;
+  color: rgba(var(--foreground-rgb), 0.4);
+  margin-left: auto;
+}
+
+.taskoutput-tools {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.taskoutput-hidden {
+  font-family: var(--font-mono);
+  font-size: 7pt;
+  color: rgba(var(--foreground-rgb), 0.3);
+  padding: 2px 0;
+}
+
+.taskoutput-tool-call {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(var(--foreground-rgb), 0.5);
+}
+
+.taskoutput-tool-call .tool-name {
+  color: rgba(var(--foreground-rgb), 0.6);
+}
+
+.taskoutput-tool-call .tool-detail {
+  color: rgba(var(--foreground-rgb), 0.4);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
 }
 
 /* Simple Confirmation (ExitPlanMode, KillBash) */

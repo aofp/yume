@@ -50,9 +50,9 @@ const blendColors = (color1: string, color2: string): string => {
 
 // Color swatches - 9 rows × 21 columns for accent/positive/negative
 const COLOR_ROWS: NamedColor[][] = [
-  // Row 1: Defaults only (accent blue, positive green, negative red)
+  // Row 1: Defaults only (accent violet, positive green, negative red)
   [
-    { hex: '#99bbff', name: 'default accent' }, { hex: '#99ff99', name: 'default positive' }, { hex: '#ff9999', name: 'default negative' }
+    { hex: '#bb99ff', name: 'default accent' }, { hex: '#99ff99', name: 'default positive' }, { hex: '#ff9999', name: 'default negative' }
   ],
   // Row 2: Vivid spectrum (21)
   [
@@ -360,7 +360,7 @@ const BUILT_IN_THEMES: Theme[] = [
     name: 'default',
     backgroundColor: '#0a0a0a',
     foregroundColor: '#ffffff',
-    accentColor: '#99bbff',
+    accentColor: '#bb99ff',
     positiveColor: '#99ff99',
     negativeColor: '#ff9999',
     opacity: 0.97,
@@ -822,7 +822,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const [zoomLevel, setZoomLevel] = useState(0);
   const [backgroundColor, setBackgroundColor] = useState('#0a0a0a');
   const [foregroundColor, setForegroundColor] = useState('#ffffff');
-  const [accentColor, setAccentColor] = useState('#99bbff');
+  const [accentColor, setAccentColor] = useState('#bb99ff');
   const [positiveColor, setPositiveColor] = useState('#99ff99');
   const [negativeColor, setNegativeColor] = useState('#ff9999');
   const [htmlOpacity, setHtmlOpacity] = useState(0.92);
@@ -998,7 +998,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     const fgB = parseInt(fgHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--foreground-rgb', `${fgR}, ${fgG}, ${fgB}`);
 
-    const savedAccentColor = localStorage.getItem('accentColor') || '#99bbff';
+    const savedAccentColor = localStorage.getItem('accentColor') || '#bb99ff';
     setAccentColor(savedAccentColor);
     document.documentElement.style.setProperty('--accent-color', savedAccentColor);
     const accentHex = savedAccentColor.replace('#', '');
@@ -1220,7 +1220,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     const theme = getCurrentTheme();
     if (!theme) {
       // Fallback to default theme values
-      const defaults = { foreground: '#ffffff', accent: '#99bbff', positive: '#99ff99', negative: '#ff9999', background: '#0a0a0a' };
+      const defaults = { foreground: '#ffffff', accent: '#bb99ff', positive: '#99ff99', negative: '#ff9999', background: '#0a0a0a' };
       return defaults[colorType];
     }
     const map = {
@@ -1476,14 +1476,14 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const handleResetAllTheme = () => {
     handleBackgroundColorChange('#0a0a0a');
     handleForegroundColorChange('#ffffff');
-    handleAccentColorChange('#99bbff');
+    handleAccentColorChange('#bb99ff');
     handlePositiveColorChange('#99ff99');
     handleNegativeColorChange('#ff9999');
   };
 
   const isDefaultTheme = backgroundColor === '#0a0a0a' &&
     foregroundColor === '#ffffff' &&
-    accentColor === '#99bbff' &&
+    accentColor === '#bb99ff' &&
     positiveColor === '#99ff99' &&
     negativeColor === '#ff9999';
 
@@ -2698,7 +2698,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     <>
       <div className="settings-modal-overlay">
         <div className="settings-modal">
-          <div className={`settings-header${isDragging ? ' is-dragging' : ''}`} ref={headerRef} data-tauri-drag-region>
+          <div className={`settings-header${isDragging ? ' is-dragging' : ''}`} ref={headerRef} data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
             <div className="settings-header-left" data-tauri-drag-region>
               <IconSettings size={16} stroke={1.5} style={{ color: 'var(--accent-color)', pointerEvents: 'none', userSelect: 'none' }} />
               {/* Tab navigation in header */}

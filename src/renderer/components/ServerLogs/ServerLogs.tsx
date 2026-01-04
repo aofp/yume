@@ -195,7 +195,7 @@ export const ServerLogs: React.FC<ServerLogsProps> = ({ isOpen, onClose }) => {
   return (
     <div className="server-logs-overlay">
       <div className="server-logs-modal">
-        <div className="server-logs-header" data-tauri-drag-region>
+        <div className="server-logs-header" data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
           <div className="server-logs-title" data-tauri-drag-region>
             <IconTerminal size={16} />
             <span>server logs</span>

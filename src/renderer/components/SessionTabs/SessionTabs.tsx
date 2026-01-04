@@ -697,7 +697,7 @@ export const SessionTabs: React.FC = () => {
                   const getColor = (pct: number) => {
                     if (isPendingCompact) return 'rgba(var(--negative-rgb), 1.0)'; // Full glow - pending compact
                     if (pct >= 50) return 'rgba(var(--negative-rgb), 0.8)'; // Medium glow at 50%+
-                    if (pct >= 40) return 'rgba(var(--negative-rgb), 0.3)'; // Faint glow at 40%+
+                    if (pct >= 40) return 'rgba(var(--negative-rgb), 0.6)'; // Faint glow at 40%+
                     return 'rgba(150, 150, 150, 0.8)'; // Grey below 40%
                   };
 
@@ -778,6 +778,22 @@ export const SessionTabs: React.FC = () => {
                 <IconX size={14} stroke={1.5} />
               </button>
             )}
+            {/* Todo progress bar at bottom of tab */}
+            {(() => {
+              const todos = (session as any).todos;
+              if (!todos || !Array.isArray(todos) || todos.length === 0) return null;
+              const completed = todos.filter((t: any) => t.status === 'completed').length;
+              const total = todos.length;
+              const percentage = (completed / total) * 100;
+              // Hide when 100% complete and not streaming
+              if (percentage === 100 && !session.streaming) return null;
+              return (
+                <div
+                  className="tab-todo-progress"
+                  style={{ width: `${percentage}%` }}
+                />
+              );
+            })()}
           </div>
         ))}
           </div>

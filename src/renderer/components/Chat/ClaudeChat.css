@@ -837,7 +837,7 @@ textarea.context-full {
 
 .chat-input:focus {
   background: linear-gradient(rgba(var(--background-rgb), 0.25), rgba(var(--background-rgb), 0.25)), #000000;
-  border-color: rgba(var(--accent-rgb), 1);
+  border-color: rgba(var(--accent-rgb), 0.9);
   overflow-y: auto; /* Show scrollbar on focus if content overflows */
 }
 
@@ -1314,21 +1314,50 @@ textarea.context-full {
   font-family: var(--font-mono);
 }
 
-/* Color coding for token usage levels - grey until 90%, then custom negative color */
-.btn-stats.low {
+/* Color coding for token usage levels matching tab area gradient:
+   - minimal (<40%): grey
+   - low (40%+): faint red (0.3 opacity)
+   - medium (50%+): medium red (0.8 opacity)
+   - high (60%+): full red (1.0 opacity)
+   - critical (65%+): full red with pulse */
+.btn-stats.minimal {
   color: var(--fg-40);
 }
 
-.btn-stats.low:hover {
+.btn-stats.minimal:hover {
   background: var(--fg-05);
   color: var(--accent-color);
   border-color: rgba(var(--accent-rgb), 1);
 }
 
-/* Custom negative color at 85%+ - auto-compact triggered */
+/* 40%+ - faint red */
+.btn-stats.low {
+  color: rgba(var(--negative-rgb), 0.5);
+  border-color: rgba(var(--negative-rgb), 0.15);
+}
+
+.btn-stats.low:hover {
+  background: rgba(var(--negative-rgb), 0.03);
+  color: rgba(var(--negative-rgb), 0.6);
+  border-color: rgba(var(--negative-rgb), 0.25);
+}
+
+/* 50%+ - medium red */
+.btn-stats.medium {
+  color: rgba(var(--negative-rgb), 0.8);
+  border-color: rgba(var(--negative-rgb), 0.25);
+}
+
+.btn-stats.medium:hover {
+  background: rgba(var(--negative-rgb), 0.05);
+  color: rgba(var(--negative-rgb), 0.9);
+  border-color: rgba(var(--negative-rgb), 0.4);
+}
+
+/* 60%+ - full red (auto-compact triggered) */
 .btn-stats.high {
   color: var(--negative-color);
-  border-color: rgba(var(--negative-rgb), 0.3);
+  border-color: var(--negative-color);
 }
 
 .btn-stats.high:hover {

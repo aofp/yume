@@ -45,6 +45,7 @@ import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete'
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { Watermark } from '../Watermark/Watermark';
+import { getAutoCompactMessage } from '../../services/wrapperIntegration';
 // Lazy load heavy components to avoid breaking production build
 // REMOVED: These features were overengineered and unnecessary - just use chat instead
 // const CheckpointButton = React.lazy(() => import('../Checkpoint/CheckpointButton').then(m => ({ default: m.CheckpointButton })));
@@ -1032,10 +1033,10 @@ export const ClaudeChat: React.FC = () => {
 
   // Clear context with confirmation
   const handleClearContextRequest = useCallback(() => {
-    if (currentSessionId && !currentSession?.readOnly) {
+    if (currentSessionId && !currentSession?.readOnly && !currentSession?.streaming) {
       setShowClearConfirm(true);
     }
-  }, [currentSessionId, currentSession?.readOnly]);
+  }, [currentSessionId, currentSession?.readOnly, currentSession?.streaming]);
 
   const confirmClearContext = useCallback(() => {
     if (currentSessionId) {
@@ -1063,10 +1064,10 @@ export const ClaudeChat: React.FC = () => {
 
   // Compact context with confirmation
   const handleCompactContextRequest = useCallback(() => {
-    if (currentSessionId && !currentSession?.readOnly) {
+    if (currentSessionId && !currentSession?.readOnly && !currentSession?.streaming) {
       setShowCompactConfirm(true);
     }
-  }, [currentSessionId, currentSession?.readOnly]);
+  }, [currentSessionId, currentSession?.readOnly, currentSession?.streaming]);
 
   const confirmCompactContext = useCallback(() => {
     if (currentSessionId) {
@@ -1189,7 +1190,7 @@ export const ClaudeChat: React.FC = () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         claudeSessionId: conversation.id,
-        readOnly: true, // Mark as read-only since it's a historical view
+        readOnly: false, // Allow interaction - will spawn with --resume on first message
         analytics: {
           totalMessages: messagesToLoad.length,
           userMessages: messagesToLoad.filter((m: any) => m.type === 'user').length,
@@ -1202,16 +1203,36 @@ export const ClaudeChat: React.FC = () => {
           thinkingTime: 0
         },
         pendingToolIds: new Set(),
-        modifiedFiles: []
+        modifiedFiles: new Set<string>()
       };
 
-      // Add session directly to store (no socket needed for historical view)
+      // Add session to store first
       useClaudeCodeStore.setState((state: any) => ({
         sessions: [...state.sessions, restoredSession],
         currentSessionId: newSessionId
       }));
 
-      console.log('[ClaudeChat] Session restored successfully with', messagesToLoad.length, 'messages');
+      // Register session with server so it knows about the claudeSessionId for --resume
+      // This is critical - without this, server won't find the session when sendMessage is called
+      try {
+        console.log('[ClaudeChat] Registering resumed session with server...');
+        await claudeCodeClient.createSession(tabTitle, workingDirectory, {
+          sessionId: newSessionId, // Use our generated ID
+          existingSessionId: newSessionId,
+          claudeSessionId: conversation.id, // The real Claude session ID for --resume
+          messages: messagesToLoad
+        });
+        console.log('[ClaudeChat] Session registered with server successfully');
+
+        // Set up message listeners for the resumed session
+        useClaudeCodeStore.getState().reconnectSession(newSessionId, conversation.id);
+        console.log('[ClaudeChat] Message listeners set up for resumed session');
+      } catch (err) {
+        console.error('[ClaudeChat] Failed to register session with server:', err);
+        // Continue anyway - session is in UI, user can still view messages
+      }
+
+      console.log('[ClaudeChat] Session restored for resumption with', messagesToLoad.length, 'messages, claudeSessionId:', conversation.id);
 
     } catch (error) {
       console.error('[ClaudeChat] Failed to resume conversation:', error);
@@ -2039,26 +2060,8 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSessionId]);
 
-  // Focus maintenance during streaming - restore focus if lost while streaming
-  useEffect(() => {
-    if (!currentSession?.streaming) return;
-
-    const checkFocus = () => {
-      // If streaming and focus was lost (not to another input/textarea), restore it
-      const activeElement = document.activeElement;
-      const isInputElement = activeElement?.tagName === 'INPUT' || activeElement?.tagName === 'TEXTAREA';
-
-      // Only restore focus if nothing else has focus (e.g., body has focus)
-      if (activeElement === document.body && inputRef.current) {
-        inputRef.current.focus();
-      }
-    };
-
-    // Check periodically during streaming
-    const intervalId = setInterval(checkFocus, 500);
-
-    return () => clearInterval(intervalId);
-  }, [currentSession?.streaming]);
+  // Focus maintenance during streaming - disabled to allow text selection
+  // The aggressive refocus was preventing users from selecting text while agent is active
 
   // Helper function to handle delayed sends
   const handleDelayedSend = async (content: string, attachments: Attachment[], sessionId: string, isBash = false) => {
@@ -2434,10 +2437,14 @@ export const ClaudeChat: React.FC = () => {
     console.log('[ClaudeChat] Checking slash commands, input:', trimmedInput, 'bashCommandMode:', bashCommandMode);
     
     if (trimmedInput === '/clear') {
+      if (currentSession?.streaming) return; // Ignore during streaming
       console.log('[ClaudeChat] Clearing context for session:', currentSessionId);
       setInput('');
       handleClearContextRequest();
       return;
+    } else if (trimmedInput === '/compact') {
+      if (currentSession?.streaming) return; // Ignore during streaming
+      // Falls through to send /compact to Claude CLI
     } else if (trimmedInput === '/model' || trimmedInput.startsWith('/model ')) {
       console.log('[ClaudeChat] Detected /model command - toggling model');
       toggleModel();
@@ -3762,7 +3769,11 @@ export const ClaudeChat: React.FC = () => {
                     <span className="thinking-dots"></span>
                   </span>
                   {currentSessionId && thinkingElapsed[currentSessionId] > 0 && (
-                    <span className="thinking-timer">{thinkingElapsed[currentSessionId]}s</span>
+                    <span className="thinking-timer">
+                      {thinkingElapsed[currentSessionId] >= 60
+                        ? `${Math.floor(thinkingElapsed[currentSessionId] / 60)}m ${thinkingElapsed[currentSessionId] % 60}s`
+                        : `${thinkingElapsed[currentSessionId]}s`}
+                    </span>
                   )}
                 </span>
               </div>
@@ -3818,7 +3829,26 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       )}
-      
+
+      {/* Auto-compact pending indicator - shows when compacting with queued followup */}
+      {currentSession?.compactionState?.isCompacting && currentSessionId && (() => {
+        const pendingMsg = getAutoCompactMessage(currentSessionId);
+        if (!pendingMsg) return null;
+        return (
+          <div className="pending-followup-indicator">
+            <div className="pending-followup-header">
+              <span className="pending-followup-status">compacting context...</span>
+            </div>
+            <div className="pending-followup-preview">
+              <div className="pending-followup-label">will send after compact:</div>
+              <div className="pending-followup-content">
+                {pendingMsg}
+              </div>
+            </div>
+          </div>
+        );
+      })()}
+
       {/* Bash running indicator - shows for both user bash commands and Claude's bash tool */}
       {(currentSession?.runningBash || currentSession?.userBashRunning) && (
         <div className="bash-running-indicator">
@@ -4093,9 +4123,16 @@ export const ClaudeChat: React.FC = () => {
               }
 
               // Determine usage class and auto-compact status (use raw percentage)
-              // 60%+ shows negative color (auto-compact), 65%+ shows critical pulsing (force)
-              // Conservative thresholds like Claude Code (~38% buffer reserved)
-              const usageClass = rawPercentage >= 65 ? 'critical' : rawPercentage >= 60 ? 'high' : 'low';
+              // Color gradient matching tab area:
+              // - 40%+: faint red (0.3 opacity)
+              // - 50%+: medium red (0.8 opacity)
+              // - 60%+: full red (1.0 opacity) - pendingAutoCompact
+              // - 65%+: critical pulsing (force)
+              const isPendingCompact = currentSession?.compactionState?.pendingAutoCompact;
+              const usageClass = rawPercentage >= 65 ? 'critical' :
+                                 isPendingCompact || rawPercentage >= 60 ? 'high' :
+                                 rawPercentage >= 50 ? 'medium' :
+                                 rawPercentage >= 40 ? 'low' : 'minimal';
               const willAutoCompact = rawPercentage >= 60;
               const approachingCompact = rawPercentage >= 55 && rawPercentage < 60;
 
@@ -4103,27 +4140,29 @@ export const ClaudeChat: React.FC = () => {
                 m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
               );
 
+              const isStreaming = currentSession?.streaming;
+
               return (
                 <>
                   <button
                     className="btn-context-icon"
                     onClick={handleClearContextRequest}
-                    disabled={currentSession?.readOnly || !hasActivity}
+                    disabled={currentSession?.readOnly || !hasActivity || isStreaming}
                     title={`clear context (${modKey}+l)`}
-                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
+                    style={{ opacity: (currentSession?.readOnly || !hasActivity || isStreaming) ? 0.5 : 1, pointerEvents: (currentSession?.readOnly || !hasActivity || isStreaming) ? 'none' : 'auto' }}
                   >
                     <IconFlare size={12} stroke={1.5} />
                   </button>
                   <button
                     className="btn-context-icon"
                     onClick={() => {
-                      if (currentSessionId && !currentSession?.readOnly && hasActivity) {
+                      if (currentSessionId && !currentSession?.readOnly && hasActivity && !isStreaming) {
                         handleCompactContextRequest();
                       }
                     }}
-                    disabled={currentSession?.readOnly || !hasActivity}
+                    disabled={currentSession?.readOnly || !hasActivity || isStreaming}
                     title={`compact context (${modKey}+m)`}
-                    style={{ pointerEvents: (currentSession?.readOnly || !hasActivity) ? 'none' : 'auto' }}
+                    style={{ opacity: (currentSession?.readOnly || !hasActivity || isStreaming) ? 0.5 : 1, pointerEvents: (currentSession?.readOnly || !hasActivity || isStreaming) ? 'none' : 'auto' }}
                   >
                     <IconArrowsMinimize size={12} stroke={1.5} />
                   </button>
@@ -4353,7 +4392,7 @@ export const ClaudeChat: React.FC = () => {
               <button
                 className={confirmDialogSelection === 0 ? 'selected' : ''}
                 onClick={() => setShowClearConfirm(false)}
-              >cancel</button>
+              >no</button>
               <button
                 className={`confirm-danger ${confirmDialogSelection === 1 ? 'selected' : ''}`}
                 onClick={confirmClearContext}
@@ -4372,7 +4411,7 @@ export const ClaudeChat: React.FC = () => {
               <button
                 className={confirmDialogSelection === 0 ? 'selected' : ''}
                 onClick={() => setShowCompactConfirm(false)}
-              >cancel</button>
+              >no</button>
               <button
                 className={`confirm-danger ${confirmDialogSelection === 1 ? 'selected' : ''}`}
                 onClick={confirmCompactContext}

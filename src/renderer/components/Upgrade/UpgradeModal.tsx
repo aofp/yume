@@ -29,7 +29,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
   return (
     <div className="upgrade-modal-overlay" onClick={onClose}>
       <div className="upgrade-modal" onClick={e => e.stopPropagation()}>
-        <div className="upgrade-header">
+        <div className="upgrade-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>
             <IconSparkles size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
             upgrade to pro

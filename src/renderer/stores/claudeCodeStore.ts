@@ -6,6 +6,7 @@
 import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { claudeCodeClient } from '../services/claudeCodeClient';
+import { systemPromptService } from '../services/systemPromptService';
 
 // Debounced storage to prevent UI freezes when toggling settings
 // Writes are batched and done asynchronously after 100ms of inactivity
@@ -245,6 +246,7 @@ export interface Session {
   };
   cleanup?: () => void; // Cleanup function for event listeners
   lastAssistantMessageIds?: string[]; // Track last assistant message IDs for virtualization
+  todos?: { content: string; status: 'pending' | 'in_progress' | 'completed'; activeForm?: string }[]; // Track current todo list
 }
 
 interface ClaudeCodeStore {
@@ -591,7 +593,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   
   setSelectedModel: (modelId: string) => {
     set({ selectedModel: modelId });
-    // Could notify the server about model change here if needed
+    // Sync yurucode agents with new model
+    const modelName = modelId.includes('opus') ? 'opus' : 'sonnet';
+    systemPromptService.syncAgentsToFilesystem(modelName);
     console.log('Model changed to:', modelId);
   },
   
@@ -1116,6 +1120,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             
             // Process tool_use through hooks
             if (message.type === 'tool_use' && message.message?.name) {
+              // Extract TodoWrite todos and store in session
+              if (message.message.name === 'TodoWrite' && message.message.input?.todos) {
+                set(state => ({
+                  sessions: state.sessions.map(s =>
+                    s.id === sessionId
+                      ? { ...s, todos: message.message.input.todos }
+                      : s
+                  )
+                }));
+              }
+
               import('../services/hooksService').then(({ hooksService }) => {
                 hooksService.processToolUse(
                   message.message.name,
@@ -1467,17 +1482,27 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 analytics.tokens.output = 0;
                 analytics.tokens.total = 0;
                 analytics.tokens.cacheSize = 0;
-                
+                analytics.tokens.conversationTokens = 0;
+                analytics.tokens.cacheCreation = 0;
+
+                // Reset context window display
+                analytics.contextWindow = {
+                  used: 0,
+                  limit: 200000,
+                  percentage: 0,
+                  remaining: 200000
+                };
+
                 // Reset model-specific counts
                 analytics.tokens.byModel = {
                   opus: { input: 0, output: 0, total: 0 },
                   sonnet: { input: 0, output: 0, total: 0 }
                 };
-                
+
                 // Set compactPending flag so next message knows to use new baseline
                 analytics.compactPending = true;
                 console.log('🗜️ [COMPACT] Set compactPending flag for next message');
-                
+
                 console.log('🗜️ [COMPACT] Token count reset complete. New totals:', analytics.tokens);
               }
               
@@ -2192,9 +2217,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           });
         });
         
-        // Set up focus trigger listener for Windows (restores focus after bash commands)
-        if (navigator.platform.includes('Win')) {
-          console.log('[Store] Setting up focus trigger listener for Windows');
+        // Set up focus trigger listener (restores focus after bash commands)
+        // Enable for both Windows and macOS
+        if (navigator.platform.includes('Win') || navigator.platform.includes('Mac')) {
+          console.log('[Store] Setting up focus trigger listener');
           focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
             console.log('[Store] 🎯 Focus trigger received, restoring window focus');
             // Use Tauri command to restore focus
@@ -2664,9 +2690,10 @@ ${content}`;
       });
     });
     
-    // Set up focus trigger listener for Windows (restores focus after bash commands)
-    if (navigator.platform.includes('Win')) {
-      console.log('[Store] Setting up focus trigger listener for Windows (reconnect)');
+    // Set up focus trigger listener (restores focus after bash commands)
+    // Enable for both Windows and macOS
+    if (navigator.platform.includes('Win') || navigator.platform.includes('Mac')) {
+      console.log('[Store] Setting up focus trigger listener (reconnect)');
       focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
         console.log('[Store] 🎯 Focus trigger received, restoring window focus');
         // Use Tauri command to restore focus
@@ -3230,18 +3257,29 @@ ${content}`;
         console.log(`🧹 [Store] Current claudeSessionId: ${session.claudeSessionId}`);
       }
       
-      // Use the original tab number stored at creation time
-      const tabNumber = session?.originalTabNumber ||
-        (state.sessions.findIndex(s => s.id === sessionId) + 1) || 1;
+      // Get the next tab number (like creating a new tab)
+      const tabNumber = (() => {
+        // Find the maximum tab number and add 1
+        const tabNumbers = state.sessions
+          .map(s => {
+            const match = s.claudeTitle?.match(/^tab (\d+)$/);
+            return match ? parseInt(match[1]) : 0;
+          })
+          .filter(n => n > 0);
+
+        // If no numbered tabs exist (all renamed), start at 1
+        return tabNumbers.length > 0 ? Math.max(...tabNumbers) + 1 : 1;
+      })();
       
       return {
         sessions: state.sessions.map(s => 
           s.id === sessionId 
-            ? { 
-                ...s, 
+            ? {
+                ...s,
                 messages: [], // Clear ALL messages - don't keep any
                 claudeSessionId: undefined, // Clear Claude session to start fresh
-                claudeTitle: session?.userRenamed ? s.claudeTitle : `tab ${tabNumber}`, // Keep custom titles, reset default ones
+                claudeTitle: s.userRenamed ? s.claudeTitle : `tab ${tabNumber}`, // Keep custom titles, reset default ones
+                originalTabNumber: tabNumber, // Update original tab number for future clears
                 pendingToolIds: new Set(), // Clear pending tools
                 streaming: false, // Stop streaming
                 wasCompacted: false, // Reset compacted flag
@@ -3375,6 +3413,9 @@ ${content}`;
       ? (sonnetModel?.id || DEFAULT_MODEL_ID)
       : (opusModel?.id || DEFAULT_MODEL_ID);
     set({ selectedModel: newModel });
+    // Sync yurucode agents with new model
+    const modelName = newModel.includes('opus') ? 'opus' : 'sonnet';
+    systemPromptService.syncAgentsToFilesystem(modelName);
     console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus' : 'Sonnet'}`);
   },
 
