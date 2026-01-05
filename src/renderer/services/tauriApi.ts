@@ -1,6 +1,7 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen } from '@tauri-apps/api/event';
-import { appWindow } from '@tauri-apps/api/window';
+import { Window } from '@tauri-apps/api/window';
+const appWindow = new Window('main');
 
 export interface TauriAPI {
   folder: {

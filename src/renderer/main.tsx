@@ -157,16 +157,24 @@ const sessionCreatedHandler = (data: any) => {
       streaming: false,
       modifiedFiles: new Set(),
       analytics: {
-        totalTokensInput: 0,
-        totalTokensOutput: 0,
-        totalCacheCreationInputTokens: 0,
-        totalCacheReadInputTokens: 0,
-        messageCount: data.messages?.length || 0
+        totalMessages: data.messages?.length || 0,
+        userMessages: 0,
+        assistantMessages: 0,
+        toolUses: 0,
+        tokens: {
+          input: 0,
+          output: 0,
+          total: 0,
+          byModel: { opus: { input: 0, output: 0, total: 0 }, sonnet: { input: 0, output: 0, total: 0 } }
+        },
+        duration: 0,
+        lastActivity: new Date(),
+        thinkingTime: 0
       },
       pendingToolIds: new Set()
-    };
-    
-    useClaudeCodeStore.setState({ 
+    } as any;
+
+    useClaudeCodeStore.setState({
       sessions: [...state.sessions, newSession],
       currentSessionId: data.sessionId
     });

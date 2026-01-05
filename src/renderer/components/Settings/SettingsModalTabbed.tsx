@@ -370,7 +370,7 @@ const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'void',
     name: 'void',
-    backgroundColor: '#030303',
+    backgroundColor: '#010101',
     foregroundColor: '#e8e8e8',
     accentColor: '#8899aa',
     positiveColor: '#7a9988',
@@ -846,7 +846,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       setIsDragging(true);
       try {
         if ((window as any).__TAURI__) {
-          const windowApi = await import('@tauri-apps/api/window');
+          const windowApi = await import('@tauri-apps/api/window') as any;
           let appWindow;
           if (windowApi.getCurrent) {
             appWindow = windowApi.getCurrent();
@@ -2542,79 +2542,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </div>
                 </div>
               )}
-            </div>
-          </div>
-        );
-
-      case 'storage':
-        return (
-          <div className="settings-section">
-            <div className="settings-section-title">storage management</div>
-
-            {loadingStats ? (
-              <div className="loading">loading statistics...</div>
-            ) : dbStats ? (
-              <div className="storage-stats">
-                <div className="stat-item">
-                  <label>database size</label>
-                  <span>{formatBytes(dbStats.database_size || 0)}</span>
-                </div>
-                <div className="stat-item">
-                  <label>sessions</label>
-                  <span>{dbStats.sessions || 0}</span>
-                </div>
-                <div className="stat-item">
-                  <label>messages</label>
-                  <span>{dbStats.messages || 0}</span>
-                </div>
-                <div className="stat-item">
-                  <label>total cost</label>
-                  <span>${(dbStats.total_cost || 0).toFixed(2)}</span>
-                </div>
-              </div>
-            ) : null}
-
-            <div className="storage-actions">
-              <button className="storage-btn export" onClick={handleExportData}>
-                <IconDownload size={14} />
-                export data
-              </button>
-              <button className="storage-btn import" onClick={handleImportData}>
-                <IconUpload size={14} />
-                import data
-              </button>
-              <button className="storage-btn danger" onClick={handleClearDatabase}>
-                <IconTrash size={14} />
-                clear all data
-              </button>
-            </div>
-
-            <div className="storage-info">
-              <p className="info-text">
-                <IconAlertTriangle size={12} />
-                clearing data will permanently delete all sessions and cannot be undone
-              </p>
-            </div>
-          </div>
-        );
-
-      case 'advanced':
-        return (
-          <div className="settings-section">
-            <div className="settings-section-title">advanced settings</div>
-            <div className="advanced-list">
-              <div className="advanced-item">
-                <label>debug logging</label>
-                <input type="checkbox" />
-              </div>
-              <div className="advanced-item">
-                <label>performance monitoring</label>
-                <input type="checkbox" />
-              </div>
-              <div className="advanced-item">
-                <label>experimental features</label>
-                <input type="checkbox" />
-              </div>
             </div>
           </div>
         );

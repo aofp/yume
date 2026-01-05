@@ -55,6 +55,7 @@ class CheckpointService {
     // Socket listeners are not needed since TimelineNavigator is commented out
     return;
 
+    /* Dead code - kept for reference
     const socket = this.socket;
     if (!socket) return;
 
@@ -114,6 +115,7 @@ class CheckpointService {
         detail: { sessionId, timeline, checkpoints }
       }));
     });
+    */
   }
 
   // Create a new checkpoint

@@ -7,6 +7,16 @@ import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 // RecentProjectsModal removed - handled by ClaudeChat component instead
 import './SessionTabs.css';
 
+// Format streaming time for tab display
+const formatTabTime = (seconds: number): { line1: string; line2?: string } => {
+  if (seconds < 60) {
+    return { line1: `${seconds}s` };
+  }
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return { line1: `${mins}m`, line2: `${secs}s` };
+};
+
 export const SessionTabs: React.FC = () => {
   const {
     sessions,
@@ -64,9 +74,42 @@ export const SessionTabs: React.FC = () => {
   const [dragOverRecent, setDragOverRecent] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number } | null>(null);
+  const [streamingTimes, setStreamingTimes] = useState<{ [sessionId: string]: number }>({});
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const tabsContainerRef = useRef<HTMLDivElement>(null);
   const tabRefs = useRef<{ [key: string]: HTMLDivElement | null }>({});
+
+  // Timer effect for streaming sessions
+  useEffect(() => {
+    const hasStreamingSessions = sessions.some(s => s.streaming && (s as any).thinkingStartTime);
+    if (!hasStreamingSessions) {
+      setStreamingTimes({});
+      return;
+    }
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const times: { [sessionId: string]: number } = {};
+      sessions.forEach(s => {
+        if (s.streaming && (s as any).thinkingStartTime) {
+          times[s.id] = Math.floor((now - (s as any).thinkingStartTime) / 1000);
+        }
+      });
+      setStreamingTimes(times);
+    }, 1000);
+
+    // Initial calculation
+    const now = Date.now();
+    const initialTimes: { [sessionId: string]: number } = {};
+    sessions.forEach(s => {
+      if (s.streaming && (s as any).thinkingStartTime) {
+        initialTimes[s.id] = Math.floor((now - (s as any).thinkingStartTime) / 1000);
+      }
+    });
+    setStreamingTimes(initialTimes);
+
+    return () => clearInterval(interval);
+  }, [sessions.map(s => `${s.id}-${s.streaming}-${(s as any).thinkingStartTime}`).join(',')]);
 
   // Close context menu on click outside
   useEffect(() => {
@@ -374,7 +417,7 @@ export const SessionTabs: React.FC = () => {
           {sessions.map((session) => (
           <div
             key={session.id}
-            ref={(el) => tabRefs.current[session.id] = el}
+            ref={(el) => { tabRefs.current[session.id] = el; }}
             data-session-id={session.id}
             className={`session-tab ${currentSessionId === session.id ? 'active' : ''} ${draggedTab === session.id ? 'dragging' : ''} ${dragOverTab === session.id ? 'drag-over' : ''}`}
             onClick={(e) => {
@@ -702,16 +745,13 @@ export const SessionTabs: React.FC = () => {
                   };
 
                   return (
-                    <>
-                      <div
-                        className="context-bar-fill"
-                        style={{
-                          height: `${barPercentage}%`,
-                          background: getColor(rawPercentage)
-                        }}
-                      />
-                      <div className="context-bar-text">{rawPercentage.toFixed(1)}%</div>
-                    </>
+                    <div
+                      className="context-bar-fill"
+                      style={{
+                        height: `${barPercentage}%`,
+                        background: getColor(rawPercentage)
+                      }}
+                    />
                   );
                 })()}
               </div>
@@ -753,6 +793,18 @@ export const SessionTabs: React.FC = () => {
                   </span>
                 )
               )}
+            </div>
+            {/* Streaming timer - fixed width, only shows text when streaming */}
+            <div className={`tab-streaming-timer ${renamingTab === session.id ? 'renaming' : ''}`}>
+              {session.streaming && streamingTimes[session.id] !== undefined && (() => {
+                const time = formatTabTime(streamingTimes[session.id]);
+                return (
+                  <>
+                    <span>{time.line1}</span>
+                    {time.line2 && <span>{time.line2}</span>}
+                  </>
+                );
+              })()}
             </div>
             {/* Show loading icon for pending sessions, streaming, or bash running */}
             {(session.status === 'pending' || session.streaming || (session as any).runningBash || (session as any).userBashRunning) ? (

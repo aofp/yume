@@ -103,23 +103,23 @@ export async function searchFiles(
     
     // Use Tauri command to search files if available
     if (hasTauri && tauriInvoke) {
-      const results = await tauriInvoke<FileSearchResult[]>('search_files', {
+      const results = await (tauriInvoke as any)('search_files', {
         query,
         directory: workingDirectory,
         includeHidden: options.includeHidden || false,
         maxResults: options.maxResults || 50
-      });
-    
+      }) as FileSearchResult[];
+
     // Filter results based on fuzzy matching and normalize paths to Unix-style
-    const filtered = results.map(result => ({
+    const filtered = results.map((result: FileSearchResult) => ({
       ...result,
       relativePath: result.relativePath.replace(/\\/g, '/')
-    })).filter(result => 
+    })).filter((result: FileSearchResult) =>
       fuzzyMatch(query, result.name) || fuzzyMatch(query, result.relativePath)
     );
-    
+
     // Sort results by relevance
-    filtered.sort((a, b) => {
+    filtered.sort((a: FileSearchResult, b: FileSearchResult) => {
       // Exact name matches first
       const aExact = a.name.toLowerCase() === query.toLowerCase();
       const bExact = b.name.toLowerCase() === query.toLowerCase();
@@ -159,11 +159,11 @@ export async function getRecentFiles(workingDirectory: string, limit: number = 1
     const hasTauri = await ensureTauriLoaded();
     
     if (hasTauri && tauriInvoke) {
-      const results = await tauriInvoke<FileSearchResult[]>('get_recent_files', {
+      const results = await (tauriInvoke as any)('get_recent_files', {
         directory: workingDirectory,
         limit
-      });
-      
+      }) as FileSearchResult[];
+
       return results;
     } else {
       // Return mock recent files
@@ -192,15 +192,15 @@ export async function getFolderContents(folderPath: string, maxResults: number =
     if (hasTauri && tauriInvoke) {
       console.log('[FileSearchService] Getting folder contents via Tauri:', folderPath);
       try {
-        const results = await tauriInvoke<FileSearchResult[]>('get_folder_contents', {
+        const results = await (tauriInvoke as any)('get_folder_contents', {
           folderPath,
           maxResults
-        });
-        
+        }) as FileSearchResult[];
+
         console.log('[FileSearchService] Got', results.length, 'results');
-        
+
         // Normalize paths to Unix-style
-        return results.map(result => ({
+        return results.map((result: FileSearchResult) => ({
           ...result,
           relativePath: result.relativePath.replace(/\\/g, '/')
         }));
@@ -246,9 +246,9 @@ export async function getGitChangedFiles(workingDirectory: string): Promise<File
     const hasTauri = await ensureTauriLoaded();
     
     if (hasTauri && tauriInvoke) {
-      const status = await tauriInvoke<GitStatus>('get_git_status', {
+      const status = await (tauriInvoke as any)('get_git_status', {
         directory: workingDirectory
-      });
+      }) as GitStatus;
       
       // Convert git status to FileSearchResult
       const results: FileSearchResult[] = [];

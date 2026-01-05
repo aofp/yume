@@ -3825,97 +3825,28 @@ export const ClaudeChat: React.FC = () => {
         </React.Suspense>
       )}
       
-      {/* Pending followup indicator with message preview */}
+      {/* Pending followup indicator - minimal bottom-right */}
       {pendingFollowupMessage && pendingFollowupRef.current && (
-        <div className="pending-followup-indicator">
-          <div className="pending-followup-header">
-            <span className="pending-followup-status">{pendingFollowupMessage}</span>
-          </div>
-          <div className="pending-followup-preview">
-            <div className="pending-followup-label">next user message:</div>
-            <div className="pending-followup-content">
-              {pendingFollowupRef.current.content}
-            </div>
-            {pendingFollowupRef.current.attachments && pendingFollowupRef.current.attachments.length > 0 && (
-              <div className="pending-followup-attachments">
-                {pendingFollowupRef.current.attachments.length} attachment{pendingFollowupRef.current.attachments.length > 1 ? 's' : ''}
-              </div>
-            )}
-          </div>
+        <div className="status-indicator-minimal">
+          {pendingFollowupRef.current.content.slice(0, 40)}{pendingFollowupRef.current.content.length > 40 ? '...' : ''}
         </div>
       )}
 
-      {/* Auto-compact pending indicator - shows when compacting with queued followup */}
+      {/* Auto-compact pending indicator - minimal bottom-right */}
       {currentSession?.compactionState?.isCompacting && currentSessionId && (() => {
         const pendingMsg = getAutoCompactMessage(currentSessionId);
         if (!pendingMsg) return null;
         return (
-          <div className="pending-followup-indicator">
-            <div className="pending-followup-header">
-              <span className="pending-followup-status">compacting context...</span>
-            </div>
-            <div className="pending-followup-preview">
-              <div className="pending-followup-label">will send after compact:</div>
-              <div className="pending-followup-content">
-                {pendingMsg}
-              </div>
-            </div>
+          <div className="status-indicator-minimal">
+            {pendingMsg.slice(0, 40)}{pendingMsg.length > 40 ? '...' : ''}
           </div>
         );
       })()}
 
-      {/* Bash running indicator - shows for both user bash commands and Claude's bash tool */}
+      {/* Bash running indicator - minimal bottom-right */}
       {(currentSession?.runningBash || currentSession?.userBashRunning) && (
-        <div className="bash-running-indicator">
-          <span className="bash-running-text">
-            bash running<span className="bash-running-dots">{'.'.repeat(bashDotCounts[currentSessionId || ''] || 1)}</span>
-            <span className="bash-running-time">{bashElapsedTimes[currentSessionId || ''] || 0}s</span>
-          </span>
-          <button 
-            className="bash-cancel-btn"
-            onClick={async () => {
-              // Kill bash process if it exists
-              if (currentSession?.bashProcessId) {
-                try {
-                  const { invoke } = await import('@tauri-apps/api/core');
-                  await invoke('kill_bash_process', { 
-                    processId: currentSession.bashProcessId 
-                  });
-                  
-                  // Add cancelled message with elapsed time
-                  const elapsedTime = bashElapsedTimes[currentSessionId || ''] || 0;
-                  const cancelMessage = {
-                    id: `bash-cancel-${Date.now()}`,
-                    type: 'system' as const,
-                    subtype: 'interrupted' as const,
-                    message: `bash command cancelled (${elapsedTime}s)`,
-                    timestamp: Date.now()
-                  };
-                  
-                  if (currentSessionId) {
-                    addMessageToSession(currentSessionId, cancelMessage);
-                  }
-                  
-                  // Clear flags immediately
-                  useClaudeCodeStore.setState(state => ({
-                    sessions: state.sessions.map(s => 
-                      s.id === currentSessionId 
-                        ? { ...s, userBashRunning: false, bashProcessId: undefined } 
-                        : s
-                    )
-                  }));
-                } catch (error) {
-                  console.error('Failed to kill bash process:', error);
-                }
-              } else {
-                // Also interrupt Claude session if needed
-                interruptSession();
-              }
-            }}
-            title="cancel bash (esc)"
-          >
-            cancel
-          </button>
+        <div className="status-indicator-minimal">
+          bash running...
         </div>
       )}
       

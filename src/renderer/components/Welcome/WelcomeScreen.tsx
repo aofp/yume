@@ -2,13 +2,14 @@ import React, { useState, useEffect } from 'react';
 import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
-import { tauriApi } from '../../services/tauriApi';
+import { platformAPI as tauriApi } from '../../services/tauriApi';
 import './WelcomeScreen.css';
 
 interface RecentProject {
   path: string;
   name: string;
-  lastOpened: Date;
+  lastOpened: Date | number;
+  accessCount?: number;
 }
 
 export const WelcomeScreen: React.FC = () => {

@@ -61,7 +61,7 @@ export function usePerformanceMonitor(componentName: string, enabled: boolean = 
 
 // Memory usage monitor
 export function useMemoryMonitor(threshold: number = 200) {
-  const checkInterval = useRef<NodeJS.Timer | null>(null);
+  const checkInterval = useRef<ReturnType<typeof setInterval> | null>(null);
   
   useEffect(() => {
     if (!('memory' in performance)) return;

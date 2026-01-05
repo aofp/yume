@@ -24,7 +24,7 @@ interface ClaudeProject {
 interface ProjectsModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelectSession: (projectPath: string, sessionId: string, title?: string) => void;
+  onSelectSession: (projectPath: string, sessionId: string | null, title?: string, messageCount?: number) => void;
   onProjectAnalytics?: (projectPath: string) => void;
 }
 
@@ -341,8 +341,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
   // Load sessions when project is selected
   useEffect(() => {
     console.log('🎯 [FRONTEND] useEffect triggered - selectedProject:', selectedProject);
-    console.log('🎯 [FRONTEND] Sessions already loaded?', !!sessionsByProject[selectedProject]);
-    
+    console.log('🎯 [FRONTEND] Sessions already loaded?', selectedProject ? !!sessionsByProject[selectedProject] : false);
+
     if (selectedProject && !sessionsByProject[selectedProject]) {
       console.log('🚀 [FRONTEND] Loading sessions for selected project:', selectedProject);
       // Initialize pagination state
@@ -357,15 +357,15 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
     console.log('📋 [FRONTEND] Computing filtered sessions');
     console.log('  - selectedProject:', selectedProject);
     console.log('  - selectedProjectData:', selectedProjectData);
-    console.log('  - sessionsByProject[selectedProject]:', sessionsByProject[selectedProject]);
-    
+    console.log('  - sessionsByProject[selectedProject]:', selectedProject ? sessionsByProject[selectedProject] : undefined);
+
     if (!selectedProjectData) return [];
-    const sessions = sessionsByProject[selectedProject] || selectedProjectData.sessions || [];
+    const sessions = (selectedProject ? sessionsByProject[selectedProject] : null) || selectedProjectData.sessions || [];
     console.log('  - Final sessions array:', sessions);
     
     if (!sessionSearchQuery) return sessions;
     const query = sessionSearchQuery.toLowerCase();
-    return sessions.filter(s => 
+    return sessions.filter((s: any) =>
       s.summary?.toLowerCase().includes(query) ||
       s.id?.toLowerCase().includes(query)
     );
@@ -896,7 +896,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
                 {filteredSessions.length === 0 && !sessionSearchQuery && !loadingSessions && (
                   <div className="sessions-empty">no sessions found</div>
                 )}
-                {filteredSessions.map((session, index) => (
+                {filteredSessions.map((session: any, index: number) => (
                   <div
                     key={session.id}
                     className={`session-item ${focusedIndex === index ? 'focused' : ''}`}

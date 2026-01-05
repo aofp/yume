@@ -405,7 +405,7 @@ export class AutoSave {
     
     // Execute saves in parallel
     await Promise.all(saves.map(({ saveFunc }) => 
-      saveFunc().catch(error => {
+      saveFunc().catch((error: any) => {
         console.error('Auto-save failed:', error);
       })
     ));

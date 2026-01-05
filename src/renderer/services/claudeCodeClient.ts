@@ -239,7 +239,7 @@ export class ClaudeCodeClient {
     }
 
     // Prevent multiple connections
-    if (this.socket && (this.socket.connected || this.socket.connecting)) {
+    if (this.socket && (this.socket.connected || (this.socket as any).connecting)) {
       debugLog('[ClaudeCodeClient] Already connected or connecting, skipping duplicate connection');
       return;
     }
@@ -257,7 +257,7 @@ export class ClaudeCodeClient {
       transports: ['websocket', 'polling'], // Try both transports
       autoConnect: true,
       forceNew: false, // Reuse connection if possible
-      perMessageDeflate: true // Enable compression
+      perMessageDeflate: { threshold: 1024 } // Enable compression for messages > 1KB
     });
     
     // Expose socket globally for claudeDetector to use

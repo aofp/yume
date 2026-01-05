@@ -372,7 +372,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               // Load recent files and update input to show @r
               setLoading(true);
               try {
-                const recentFiles = await getRecentFiles(workingDirectory, 15);
+                const recentFiles = await getRecentFiles(workingDirectory || '', 15);
                 const mentionItems: MentionItem[] = recentFiles.map(result => ({
                   type: 'file',
                   path: result.path,
@@ -403,7 +403,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
               // Load changed files and update input to show @m
               setLoading(true);
               try {
-                const changedFiles = await getGitChangedFiles(workingDirectory);
+                const changedFiles = await getGitChangedFiles(workingDirectory || '');
                 const mentionItems: MentionItem[] = changedFiles.map(result => ({
                   type: 'file',
                   path: result.path,

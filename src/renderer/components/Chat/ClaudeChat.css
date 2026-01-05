@@ -2167,136 +2167,7 @@ textarea.context-full {
   opacity: 0.7;
 }
 
-/* Bash running indicator - ultra minimal with accent colors */
-.bash-running-indicator {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 6px 12px;
-  background: transparent;
-  border-top: 1px solid var(--fg-20);
-}
-
-.bash-running-dots {
-  display: inline-block;
-  width: 15px;
-  text-align: left;
-  font-family: var(--font-mono);
-}
-
-.bash-running-time {
-  font-size: 10px;
-  color: var(--fg-50);
-  font-family: var(--font-mono);
-  margin-left: 8px;
-}
-
-/* Pending followup indicator */
-.pending-followup-indicator {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  padding: 12px;
-  background: rgba(var(--accent-rgb), 0.02);
-  border-top: 1px solid rgba(var(--accent-rgb), 0.08);
-  animation: bashPulse 2s ease-in-out infinite;
-}
-
-.pending-followup-header {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.pending-followup-status {
-  font-size: 11px;
-  color: var(--accent-color);
-  font-style: italic;
-  opacity: 0.9;
-}
-
-.pending-followup-preview {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(var(--accent-rgb), 0.15);
-  border-radius: 4px;
-  padding: 8px 10px;
-  max-height: 120px;
-  overflow: hidden;
-}
-
-.pending-followup-label {
-  font-size: 10px;
-  color: var(--fg-50);
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  font-weight: 500;
-}
-
-.pending-followup-content {
-  font-size: 12px;
-  color: var(--fg-80);
-  line-height: 1.4;
-  white-space: pre-wrap;
-  word-break: break-word;
-  max-height: 80px;
-  overflow-y: auto;
-  /* Firefox scrollbar - thin style */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(var(--foreground-rgb), 0.5) rgba(var(--foreground-rgb), 0.05);
-}
-
-.pending-followup-content::-webkit-scrollbar {
-  width: 3px;
-}
-
-.pending-followup-content::-webkit-scrollbar-track {
-  background: rgba(var(--foreground-rgb), 0.05);
-}
-
-.pending-followup-content::-webkit-scrollbar-thumb {
-  background: rgba(var(--foreground-rgb), 0.5);
-  border-radius: 4px;
-}
-
-.pending-followup-content::-webkit-scrollbar-thumb:hover {
-  background: rgba(var(--foreground-rgb), 0.7);
-}
-
-.pending-followup-attachments {
-  font-size: 10px;
-  color: var(--fg-40);
-  font-style: italic;
-}
-
-.bash-running-text {
-  font-size: 10px;
-  color: var(--accent-color);
-  opacity: 1;
-  font-family: var(--font-mono);
-  letter-spacing: 0.5px;
-}
-
-.bash-cancel-btn {
-  padding: 2px 6px;
-  font-size: 7pt;
-  font-family: var(--font-mono);
-  background: none;
-  border: 1px solid rgba(var(--accent-rgb), 0.3);
-  color: var(--accent-color);
-  opacity: 0.7;
-  border-radius: 2px;
-  cursor: default;
-  transition: all 0.15s ease;
-}
-
-.bash-cancel-btn:hover {
-  border-color: rgba(var(--accent-rgb), 0.5);
-  opacity: 1;
-  background: rgba(var(--accent-rgb), 0.1);
-}
+/* Old bash/followup indicators removed - now using .status-indicator-minimal */
 
 /* Virtualized message list styles */
 .virtualized-messages-container {
@@ -2812,4 +2683,22 @@ textarea.context-full {
 
 .file-tree-item.git-deleted .file-tree-name {
   color: var(--negative-color);
+}
+
+/* Minimal bottom-right status indicators */
+.status-indicator-minimal {
+  position: fixed;
+  bottom: 70px;
+  right: 12px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--fg-40);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 100;
+  max-width: 200px;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }

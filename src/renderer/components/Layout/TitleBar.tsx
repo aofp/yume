@@ -33,9 +33,9 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
       try {
         if ((window as any).__TAURI__) {
           // Import the window module and check what's available
-          const windowApi = await import('@tauri-apps/api/window');
+          const windowApi = await import('@tauri-apps/api/window') as any;
           console.log('TitleBar: Window API exports:', Object.keys(windowApi));
-          
+
           // Try different approaches based on what's available
           let appWindow;
           if (windowApi.getCurrent) {

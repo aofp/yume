@@ -29,11 +29,7 @@ export const SystemPromptSelector: React.FC<SystemPromptSelectorProps> = ({ onSe
     if (settings.mode === 'default') {
       return 'default';
     }
-    
-    if (settings.mode === 'preset' && settings.selectedPreset) {
-      return settings.selectedPreset;
-    }
-    
+
     if (settings.mode === 'custom') {
       // Show character count for custom prompts
       const charCount = settings.customPrompt.length;

@@ -543,10 +543,10 @@ const restoreSessions = (): Session[] => {
       }));
       
       console.log('[Store] Restored', sessions.length, 'sessions from localStorage with',
-        sessions.reduce((acc, s) => acc + s.messages.length, 0), 'total messages');
-      
+        sessions.reduce((acc: number, s: any) => acc + s.messages.length, 0), 'total messages');
+
       // Sessions with claudeSessionId will be reconnected from main.tsx after socket is ready
-      sessions.forEach(s => {
+      sessions.forEach((s: any) => {
         if (s.claudeSessionId) {
           console.log(`[Store] Session ${s.id} has claudeSessionId ${s.claudeSessionId} - will reconnect with --resume`);
         } else {
@@ -801,7 +801,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         console.log(`  - Existing messages: ${existingMessages.length}`);
         console.log(`  - Working directory: ${result.workingDirectory || workingDirectory}`);
         console.log(`  - Claude session ID: ${claudeSessionId || 'none (new session)'}`);
-        const existingResultsWithUsage = existingMessages.filter(m => m.type === 'result' && m.usage);
+        const existingResultsWithUsage = existingMessages.filter((m: any) => m.type === 'result' && m.usage);
         console.log(`  - Result messages with usage: ${existingResultsWithUsage.length}`);
         
         // STEP 3: Update tab to active status with real session ID
@@ -1093,7 +1093,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 wasCompacted: true // Mark that this session was compacted
               };
             });
-            return { sessions };
+            return { sessions: sessions as Session[] };
           });
         }
       });

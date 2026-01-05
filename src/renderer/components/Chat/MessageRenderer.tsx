@@ -162,11 +162,17 @@ const BOLD_MARGIN_STYLE: React.CSSProperties = { marginBottom: '8px', fontWeight
 
 // Complete Claude Code SDK message types
 export interface ClaudeMessage {
-  type: 'system' | 'user' | 'assistant' | 'result' | 'error' | 'permission' | 'tool_approval';
-  subtype?: 'init' | 'success' | 'error_max_turns' | 'error_during_execution' | 'permission_request' | 'permission_response';
+  type: 'system' | 'user' | 'assistant' | 'result' | 'error' | 'permission' | 'tool_approval' | 'tool_use' | 'tool_result';
+  subtype?: 'init' | 'success' | 'error_max_turns' | 'error_during_execution' | 'permission_request' | 'permission_response' | 'compact' | 'rate_limit' | 'interrupted' | 'error';
+  content?: string;
+  errorType?: string;
   message?: {
     role?: string;
     content?: string | ContentBlock[];
+    name?: string;
+    input?: any;
+    output?: any;
+    tool_use_id?: string;
   };
   session_id?: string;
   timestamp?: number;
@@ -182,7 +188,9 @@ export interface ClaudeMessage {
   // Result fields
   duration_ms?: number;
   duration_api_ms?: number;
+  duration?: number;
   is_error?: boolean;
+  success?: boolean;
   num_turns?: number;
   result?: string;
   total_cost_usd?: number;
@@ -214,7 +222,7 @@ export interface ClaudeMessage {
 }
 
 interface ContentBlock {
-  type: 'text' | 'tool_use' | 'tool_result' | 'thinking';
+  type: 'text' | 'tool_use' | 'tool_result' | 'thinking' | 'image';
   text?: string;
   thinking?: string;  // For thinking blocks
   name?: string;
@@ -353,10 +361,10 @@ const getMCPToolDisplay = (toolName: string, input: any) => {
 };
 
 // Custom syntax highlighter style (vs2015-like dark theme)
-const customVs2015 = {
+const customVs2015: { [key: string]: React.CSSProperties } = {
   'hljs': {
     'display': 'block',
-    'overflowX': 'auto',
+    'overflowX': 'auto' as const,
     'padding': '0.5em',
     'background': '#0a0a0a',
     'color': '#DCDCDC'
@@ -662,8 +670,10 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             <div className="markdown-content"><ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
-                code({ node, inline, className, children, ...props }) {
-                  if (inline) {
+                code({ className, children, ...props }) {
+                  // In react-markdown v9+, inline is determined by whether there's a language class
+                  const isInline = !className?.startsWith('language-');
+                  if (isInline) {
                     return <code className={className} {...props}>{children}</code>;
                   }
                   return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
@@ -729,8 +739,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
       <div className="markdown-content"><ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          code({ node, inline, className, children, ...props }) {
-            if (inline) {
+          code({ className, children, ...props }) {
+            const isInline = !className?.startsWith('language-');
+            if (isInline) {
               return <code className={className} {...props}>{children}</code>;
             }
             return <CodeBlock className={className} {...props}>{children}</CodeBlock>;
@@ -1195,7 +1206,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 };
 
                 // Add removed lines
-                oldLines.forEach((line, i) => {
+                oldLines.forEach((line: string, i: number) => {
                   hunk.lines.push({
                     type: 'remove' as const,
                     content: line,
@@ -1204,7 +1215,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 });
 
                 // Add added lines
-                newLines.forEach((line, i) => {
+                newLines.forEach((line: string, i: number) => {
                   hunk.lines.push({
                     type: 'add' as const,
                     content: line,
@@ -1240,7 +1251,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                   };
 
                   // Add removed lines
-                  oldLines.forEach((line, i) => {
+                  oldLines.forEach((line: string, i: number) => {
                     hunk.lines.push({
                       type: 'remove' as const,
                       content: line,
@@ -1249,7 +1260,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                   });
 
                   // Add added lines
-                  newLines.forEach((line, i) => {
+                  newLines.forEach((line: string, i: number) => {
                     hunk.lines.push({
                       type: 'add' as const,
                       content: line,
@@ -1326,7 +1337,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 hunks: [{
                   startLine: 1,
                   endLine: allLines.length,
-                  lines: allLines.map((line, i) => ({
+                  lines: allLines.map((line: string, i: number) => ({
                     type: 'add' as const,
                     content: line,
                     lineNumber: i + 1
@@ -1539,7 +1550,7 @@ const MessageRendererBase: React.FC<{
   switch (message.type) {
     case 'error':
       // Handle error messages from Claude not being installed
-      const errorContent = message.content || message.message || 'An error occurred';
+      const errorContent = message.content || (typeof message.message === 'string' ? message.message : message.message?.content) || 'An error occurred';
       const isInstallError = message.errorType === 'claude_not_installed';
       
       return (
@@ -1554,10 +1565,10 @@ const MessageRendererBase: React.FC<{
                       <div style={BOLD_MARGIN_STYLE}>
                         Claude CLI Not Installed
                       </div>
-                      <div>{errorContent}</div>
+                      <div>{String(errorContent)}</div>
                     </div>
                   ) : (
-                    <div>{errorContent}</div>
+                    <div>{String(errorContent)}</div>
                   )}
                 </div>
               </div>
@@ -1579,7 +1590,7 @@ const MessageRendererBase: React.FC<{
             <div className="message-content">
               <div className="compact-message">
                 <span className="compact-icon">🗜️</span>
-                <span>{compactText}</span>
+                <span>{String(compactText)}</span>
               </div>
             </div>
           </div>
@@ -1599,7 +1610,7 @@ const MessageRendererBase: React.FC<{
             <div className="message-content">
               <div className="rate-limit-message">
                 <IconAlertTriangle size={14} stroke={1.5} />
-                <span>{rateLimitText}</span>
+                <span>{String(rateLimitText)}</span>
               </div>
             </div>
           </div>
@@ -1608,10 +1619,10 @@ const MessageRendererBase: React.FC<{
       
       // Show error messages and interruption messages
       if (message.subtype === 'error') {
-        const errorText = typeof message.message === 'string' 
-          ? message.message 
-          : (typeof message.message === 'object' && message.message?.message) 
-            ? message.message.message 
+        const errorText = typeof message.message === 'string'
+          ? message.message
+          : (typeof message.message === 'object' && (message.message as any)?.message)
+            ? (message.message as any).message
             : 'An error occurred';
             
         const handleContextMenu = (e: React.MouseEvent) => {
@@ -1647,7 +1658,7 @@ const MessageRendererBase: React.FC<{
             <div className="message-content">
               <div className="interrupted-message">
                 <IconPlayerStop size={12} stroke={1.5} />
-                <span>{message.message}</span>
+                <span>{typeof message.message === 'string' ? message.message : (typeof message.message?.content === 'string' ? message.message.content : '')}</span>
               </div>
             </div>
           </div>
@@ -1672,7 +1683,7 @@ const MessageRendererBase: React.FC<{
               // Handle JSON-parsed content blocks
               let userTexts: string[] = [];
               
-              parsedContent.forEach((item) => {
+              parsedContent.forEach((item: any) => {
                 if (item && typeof item === 'object') {
                   if (item.type === 'text' && item.text) {
                     const text = item.text;
@@ -1764,7 +1775,7 @@ const MessageRendererBase: React.FC<{
         if (typeof userContent === 'string' && userContent.startsWith('[{')) {
           try {
             const parsedContent = JSON.parse(userContent);
-            parsedContent.forEach((item) => {
+            parsedContent.forEach((item: any) => {
               if (item?.type === 'text' && item?.text) {
                 const text = item.text;
                 if (text.startsWith('[Attached text]:')) {
@@ -2224,10 +2235,10 @@ const MessageRendererBase: React.FC<{
         } else {
           contentStr = resultContent;
         }
-      } else if (typeof resultContent === 'object' && resultContent.output) {
-        contentStr = resultContent.output;
-      } else if (typeof resultContent === 'object' && resultContent.content !== undefined) {
-        contentStr = resultContent.content;
+      } else if (typeof resultContent === 'object' && !Array.isArray(resultContent) && (resultContent as any).output) {
+        contentStr = (resultContent as any).output;
+      } else if (typeof resultContent === 'object' && !Array.isArray(resultContent) && (resultContent as any).content !== undefined) {
+        contentStr = (resultContent as any).content;
       } else if (Array.isArray(resultContent)) {
         // Handle array of content blocks (e.g., from Task tool)
         const textBlocks = resultContent.filter(block => block?.type === 'text' && block?.text);
@@ -2387,7 +2398,7 @@ const MessageRendererBase: React.FC<{
             };
 
             // Add removed lines
-            oldLines.forEach((line, i) => {
+            oldLines.forEach((line: string, i: number) => {
               hunk.lines.push({
                 type: 'remove' as const,
                 content: line,
@@ -2396,7 +2407,7 @@ const MessageRendererBase: React.FC<{
             });
 
             // Add added lines
-            newLines.forEach((line, i) => {
+            newLines.forEach((line: string, i: number) => {
               hunk.lines.push({
                 type: 'add' as const,
                 content: line,
@@ -2449,7 +2460,7 @@ const MessageRendererBase: React.FC<{
             };
 
             // Add removed lines
-            oldLines.forEach((line, i) => {
+            oldLines.forEach((line: string, i: number) => {
               hunk.lines.push({
                 type: 'remove' as const,
                 content: line,
@@ -2458,7 +2469,7 @@ const MessageRendererBase: React.FC<{
             });
 
             // Add added lines
-            newLines.forEach((line, i) => {
+            newLines.forEach((line: string, i: number) => {
               hunk.lines.push({
                 type: 'add' as const,
                 content: line,
@@ -2619,7 +2630,7 @@ const MessageRendererBase: React.FC<{
           hunks: [{
             startLine: 1,
             endLine: allLines.length,
-            lines: allLines.map((line, i) => ({
+            lines: allLines.map((line: string, i: number) => ({
               type: 'add' as const,
               content: line,
               lineNumber: i + 1
@@ -3028,7 +3039,7 @@ const MessageRendererBase: React.FC<{
         });
         
         // Show elapsed time for successful completion
-        const elapsedMs = message.duration_ms || message.message?.duration_ms || message.duration || 0;
+        const elapsedMs = message.duration_ms || (message.message as any)?.duration_ms || message.duration || 0;
         const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
         const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
         
@@ -3158,9 +3169,10 @@ const MessageRendererBase: React.FC<{
                   <div className="markdown-content"><ReactMarkdown
                     remarkPlugins={[remarkGfm]}
                     components={{
-                      code: ({node, inline, className, children, ...props}) => {
+                      code: ({className, children, ...props}) => {
                         const match = /language-(\w+)/.exec(className || '');
-                        return !inline && match ? (
+                        const isInline = !className?.startsWith('language-');
+                        return !isInline && match ? (
                           <div className="code-block-wrapper">
                             <div className="code-header">
                               <span className="code-language">{match[1]}</span>
@@ -3173,7 +3185,7 @@ const MessageRendererBase: React.FC<{
                               </button>
                             </div>
                             <SyntaxHighlighter
-                              style={customVs2015}
+                              style={customVs2015 as any}
                               language={match[1]}
                               PreTag="div"
                               customStyle={{
@@ -3182,7 +3194,6 @@ const MessageRendererBase: React.FC<{
                                 background: '#0a0a0a',
                                 fontSize: '10px',
                               }}
-                              {...props}
                             >
                               {String(children).replace(/\n$/, '')}
                             </SyntaxHighlighter>

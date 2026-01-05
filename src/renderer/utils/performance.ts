@@ -151,7 +151,9 @@ export function memoize<T extends (...args: any[]) => any>(
     // Limit cache size
     if (cache.size > 100) {
       const firstKey = cache.keys().next().value;
-      cache.delete(firstKey);
+      if (firstKey !== undefined) {
+        cache.delete(firstKey);
+      }
     }
     
     return result;
@@ -168,26 +170,26 @@ export function requestIdleCallback(
   callback: IdleRequestCallback,
   options?: IdleRequestOptions
 ): number {
-  if ('requestIdleCallback' in window) {
-    return window.requestIdleCallback(callback, options);
+  if (typeof (window as any).requestIdleCallback === 'function') {
+    return (window as any).requestIdleCallback(callback, options);
   }
-  
+
   // Fallback to setTimeout
   const start = Date.now();
-  return window.setTimeout(() => {
+  return setTimeout(() => {
     callback({
       didTimeout: false,
       timeRemaining: () => Math.max(0, 50 - (Date.now() - start)),
     } as IdleDeadline);
-  }, 1) as any;
+  }, 1) as unknown as number;
 }
 
 /**
  * Cancel idle callback with fallback
  */
 export function cancelIdleCallback(handle: number): void {
-  if ('cancelIdleCallback' in window) {
-    window.cancelIdleCallback(handle);
+  if (typeof (window as any).cancelIdleCallback === 'function') {
+    (window as any).cancelIdleCallback(handle);
   } else {
     clearTimeout(handle);
   }

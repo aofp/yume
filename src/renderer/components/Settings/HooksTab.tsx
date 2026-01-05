@@ -655,7 +655,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
         </div>
       )}
 
-      <style jsx>{`
+      <style>{`
         .hook-modal-overlay {
           position: fixed;
           top: 0;

@@ -10,6 +10,7 @@ declare global {
 }
 
 interface FontPickerModalProps {
+  isOpen: boolean;
   onClose: () => void;
   onSelect: (font: string) => void;
   currentFont: string;
@@ -21,11 +22,13 @@ const YURUCODE_MONOSPACE_FONTS = ['Comic Mono'];
 const YURUCODE_SANS_FONTS = ['Comic Neue'];
 
 export const FontPickerModal: React.FC<FontPickerModalProps> = ({
+  isOpen,
   onClose,
   onSelect,
   currentFont,
   fontType
 }) => {
+  if (!isOpen) return null;
   const [searchTerm, setSearchTerm] = useState('');
   const [systemFonts, setSystemFonts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -36,7 +39,7 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
       try {
         if (window.__TAURI__) {
           const { invoke } = window.__TAURI__.core;
-          const fonts = await invoke<string[]>('get_system_fonts');
+          const fonts = await (invoke as any)('get_system_fonts') as string[];
           console.log('[FontPicker] Loaded system fonts:', fonts.length);
           setSystemFonts(fonts);
         }

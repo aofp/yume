@@ -3,8 +3,8 @@
  * Replaces Socket.IO with direct Tauri IPC
  */
 
-import { invoke, type Event } from '@tauri-apps/api/core';
-import { listen, type UnlistenFn } from '@tauri-apps/api/event';
+import { invoke } from '@tauri-apps/api/core';
+import { listen, type UnlistenFn, type Event } from '@tauri-apps/api/event';
 import { processWrapperMessage, mapSessionIds } from './wrapperIntegration';
 import { resolveModelId, DEFAULT_MODEL_ID } from '../config/models';
 

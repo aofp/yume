@@ -609,6 +609,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
       {showFontPicker && (
         <FontPickerModal
+          isOpen={!!showFontPicker}
           fontType={showFontPicker}
           currentFont={selectedFont}
           onSelect={(font) => {

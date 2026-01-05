@@ -977,7 +977,7 @@ export const App: React.FC = () => {
         <ProjectsModal
           isOpen={showProjectsModal}
           onClose={() => setShowProjectsModal(false)}
-        onSelectSession={async (projectPath: string, sessionId: string | null, sessionTitle: string, sessionMessageCount?: number) => {
+        onSelectSession={async (projectPath: string, sessionId: string | null, sessionTitle?: string, sessionMessageCount?: number) => {
           // If no sessionId, create a new session in the project
           if (!sessionId) {
             // Format project name from path

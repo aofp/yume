@@ -63,7 +63,8 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
     const newSettings = {
       enabled: true,
       mode: 'default' as const,
-      customPrompt: ''
+      customPrompt: '',
+      agentsEnabled: true
     };
     setLocalSettings(newSettings);
     setPromptText(DEFAULT_PROMPT);
