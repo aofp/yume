@@ -1550,7 +1550,7 @@ textarea.context-full {
 }
 
 .confirm-buttons button.confirm-danger.selected {
-  outline: 2px solid var(--foreground-color);
+  outline: 2px solid var(--accent-color, #6366f1);
   outline-offset: 2px;
 }
 
