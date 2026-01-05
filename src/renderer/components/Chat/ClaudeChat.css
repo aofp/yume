@@ -1325,26 +1325,26 @@ textarea.context-full {
 
 /* 40%+ - faint red */
 .btn-stats.low {
-  color: rgba(var(--negative-rgb), 0.5);
-  border-color: rgba(var(--negative-rgb), 0.15);
+  color: rgba(var(--negative-rgb), 0.7);
+  border-color: rgba(var(--negative-rgb), 0.7);
 }
 
 .btn-stats.low:hover {
   background: rgba(var(--negative-rgb), 0.03);
-  color: rgba(var(--negative-rgb), 0.6);
-  border-color: rgba(var(--negative-rgb), 0.25);
+  color: rgba(var(--negative-rgb), 0.8);
+  border-color: rgba(var(--negative-rgb), 0.8);
 }
 
 /* 50%+ - medium red */
 .btn-stats.medium {
   color: rgba(var(--negative-rgb), 0.8);
-  border-color: rgba(var(--negative-rgb), 0.25);
+  border-color: rgba(var(--negative-rgb), 0.8);
 }
 
 .btn-stats.medium:hover {
   background: rgba(var(--negative-rgb), 0.05);
   color: rgba(var(--negative-rgb), 0.9);
-  border-color: rgba(var(--negative-rgb), 0.4);
+  border-color: rgba(var(--negative-rgb), 0.9);
 }
 
 /* 60%+ - full red (auto-compact triggered) */
