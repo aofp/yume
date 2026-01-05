@@ -1,15 +1,15 @@
 /* Font imports for yurucode */
 
-/* Override CSS variables with proper font stacks for Windows */
+/* Override CSS variables with proper font stacks */
 :root {
-  /* Sans-serif font stack - Inter first for consistency across platforms */
-  --font-sans: 'Inter', 'Helvetica Neue', 'Segoe UI', 'Arial', 'Helvetica', 'Calibri', 'Tahoma', 'Verdana', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
-  
-  /* Monospace font stack with Fira Code and Windows fallbacks */
-  --font-mono: 'Fira Code', 'Cascadia Code', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', 'Lucida Console', 'Menlo', monospace;
+  /* Sans-serif font stack - Comic Neue first for consistency across platforms */
+  --font-sans: 'Comic Neue', 'Helvetica Neue', 'Segoe UI', 'Arial', 'Helvetica', 'Calibri', 'Tahoma', 'Verdana', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
+
+  /* Monospace font stack with Comic Mono as default */
+  --font-mono: 'Comic Mono', 'Cascadia Code', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', 'Lucida Console', 'Menlo', monospace;
 }
 
-/* Ensure Fira Code ligatures are enabled */
+/* Ensure font ligatures are enabled for code */
 code, pre, .monaco-editor {
   font-variant-ligatures: contextual;
   font-feature-settings: "calt" 1;
@@ -30,7 +30,7 @@ code, pre, .monaco-editor {
   body {
     font-weight: 400 !important;
   }
-  
+
   * {
     -webkit-font-smoothing: auto !important;
   }

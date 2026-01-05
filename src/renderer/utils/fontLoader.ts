@@ -6,105 +6,65 @@
 export function loadFonts() {
   // In production, Tauri serves assets from the app's resources
   // We need to inject the font-face rules dynamically with proper paths
-  
+
   const isDev = window.location.hostname === 'localhost';
   const basePath = isDev ? './fonts' : './fonts';
-  
+
   // Create a style element for our font-face rules
   const styleElement = document.createElement('style');
   styleElement.id = 'dynamic-fonts';
-  
-  // Fira Code font-face definitions
-  const firaCodeWeights = [
-    { weight: 300, file: 'Light' },
-    { weight: 400, file: 'Regular' },
-    { weight: 500, file: 'Medium' },
-    { weight: 600, file: 'SemiBold' },
-    { weight: 700, file: 'Bold' }
-  ];
-  
+
   let fontFaceRules = '';
-  
-  // Add Fira Code font-face rules
-  firaCodeWeights.forEach(({ weight, file }) => {
-    fontFaceRules += `
-      @font-face {
-        font-family: 'Fira Code';
-        font-style: normal;
-        font-weight: ${weight};
-        font-display: swap;
-        src: url('${basePath}/woff2/FiraCode-${file}.woff2') format('woff2'),
-             url('${basePath}/woff/FiraCode-${file}.woff') format('woff'),
-             url('${basePath}/ttf/FiraCode-${file}.ttf') format('truetype');
-      }
-    `;
-  });
-  
-  // Add Inter font-face rules
-  const interWeights = [
+
+  // Add Comic Neue font-face rules (sans-serif default) - Regular and Bold only
+  const comicNeueWeights = [
     { weight: 400, file: 'Regular' },
-    { weight: 500, file: 'Medium' },
-    { weight: 600, file: 'SemiBold' },
     { weight: 700, file: 'Bold' }
   ];
-  
-  interWeights.forEach(({ weight, file }) => {
+
+  comicNeueWeights.forEach(({ weight, file }) => {
     fontFaceRules += `
       @font-face {
-        font-family: 'Inter';
+        font-family: 'Comic Neue';
         font-style: normal;
         font-weight: ${weight};
         font-display: swap;
-        src: url('${basePath}/Inter-${file}.ttf') format('truetype');
+        src: url('${basePath}/woff2/ComicNeue-${file}.woff2') format('woff2');
       }
     `;
   });
-  
-  // Add Inter Variable font
+
+  // Add Comic Mono font-face rules (monospace default) - Regular and Bold only
   fontFaceRules += `
     @font-face {
-      font-family: 'Inter Variable';
+      font-family: 'Comic Mono';
       font-style: normal;
-      font-weight: 100 900;
+      font-weight: 400;
       font-display: swap;
-      src: url('${basePath}/Inter-Variable.ttf') format('truetype-variations');
+      src: url('${basePath}/ComicMono.ttf') format('truetype');
+    }
+    @font-face {
+      font-family: 'Comic Mono';
+      font-style: normal;
+      font-weight: 700;
+      font-display: swap;
+      src: url('${basePath}/ComicMono-Bold.ttf') format('truetype');
     }
   `;
-  
-  // Helvetica Neue fallbacks for Windows
-  const helveticaWeights = [
-    { weight: 300, names: ['Helvetica Neue Light', 'HelveticaNeue-Light', 'Segoe UI Light', 'Arial'] },
-    { weight: 400, names: ['Helvetica Neue', 'HelveticaNeue', 'Segoe UI', 'Arial'] },
-    { weight: 500, names: ['Helvetica Neue Medium', 'HelveticaNeue-Medium', 'Segoe UI Semibold', 'Arial'] },
-    { weight: 700, names: ['Helvetica Neue Bold', 'HelveticaNeue-Bold', 'Segoe UI Bold', 'Arial Bold'] }
-  ];
-  
-  helveticaWeights.forEach(({ weight, names }) => {
-    const sources = names.map(name => `local('${name}')`).join(', ');
-    fontFaceRules += `
-      @font-face {
-        font-family: 'Helvetica Neue';
-        font-style: normal;
-        font-weight: ${weight};
-        font-display: swap;
-        src: ${sources};
-      }
-    `;
-  });
-  
+
   // Apply the font face rules
   styleElement.textContent = fontFaceRules;
-  
+
   // Remove existing dynamic fonts if present
   const existing = document.getElementById('dynamic-fonts');
   if (existing) {
     existing.remove();
   }
-  
+
   // Add to head
   document.head.appendChild(styleElement);
-  
-  console.log('[Font Loader] Fonts loaded dynamically');
+
+  console.log('[Font Loader] Comic fonts loaded dynamically');
 }
 
 // Auto-load fonts on module import

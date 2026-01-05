@@ -364,8 +364,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#99ff99',
     negativeColor: '#ff9999',
     opacity: 0.97,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -377,8 +375,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#8ba888',
     negativeColor: '#b88a8a',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -390,8 +386,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#88aa99',
     negativeColor: '#bb8899',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -403,8 +397,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#77aa88',
     negativeColor: '#aa7777',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -416,8 +408,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#70aa90',
     negativeColor: '#bb7080',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -429,8 +419,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#90a080',
     negativeColor: '#a08070',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -442,8 +430,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#70b090',
     negativeColor: '#cc7090',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -455,8 +441,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#90b080',
     negativeColor: '#c09070',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -468,8 +452,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#80c0a0',
     negativeColor: '#c08090',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -481,8 +463,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#60a080',
     negativeColor: '#bb6060',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -494,8 +474,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#60aa80',
     negativeColor: '#cc6070',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -507,8 +485,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#66aa88',
     negativeColor: '#cc6688',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -520,8 +496,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#55aa77',
     negativeColor: '#bb5566',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -533,8 +507,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#99ffbb',
     negativeColor: '#d9b3b3',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -546,8 +518,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#88aa77',
     negativeColor: '#bb6655',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -559,8 +529,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#77aa66',
     negativeColor: '#aa5544',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -572,8 +540,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#88aa66',
     negativeColor: '#cc6644',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -585,8 +551,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#8aa870',
     negativeColor: '#a86860',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -598,8 +562,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#77bb99',
     negativeColor: '#dd7788',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -611,8 +573,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#66ffdd',
     negativeColor: '#ff6699',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -624,8 +584,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#88cc88',
     negativeColor: '#cc7777',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -637,8 +595,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#99ffbb',
     negativeColor: '#ff99bb',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -650,8 +606,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#99ffcc',
     negativeColor: '#ff9999',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -663,8 +617,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#88cc88',
     negativeColor: '#dd6655',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   // Vibrant themes
@@ -677,8 +629,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#88ff66',
     negativeColor: '#ff6666',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -690,8 +640,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#66ff88',
     negativeColor: '#ff6666',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -703,8 +651,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#aaff66',
     negativeColor: '#cc4444',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -716,8 +662,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#aaff66',
     negativeColor: '#ff6666',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -729,8 +673,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#99ff99',
     negativeColor: '#ff6666',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -742,8 +684,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#44ffcc',
     negativeColor: '#ff6688',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'Helvetica Neue',
     isBuiltIn: true
   },
   {
@@ -755,8 +695,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#77bb99',
     negativeColor: '#cc7788',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -768,8 +706,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#88aa88',
     negativeColor: '#cc8888',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   {
@@ -781,8 +717,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#77aa88',
     negativeColor: '#aa6666',
     opacity: 0.92,
-    monoFont: 'Comic Mono',
-    sansFont: 'Comic Neue',
     isBuiltIn: true
   },
   // Loud themes
@@ -795,8 +729,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#77bb77',
     negativeColor: '#cc6666',
     opacity: 0.92,
-    monoFont: 'JetBrains Mono',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   },
   {
@@ -808,8 +740,6 @@ const BUILT_IN_THEMES: Theme[] = [
     positiveColor: '#88bb99',
     negativeColor: '#cc7788',
     opacity: 0.92,
-    monoFont: 'Fira Code',
-    sansFont: 'IBM Plex Sans',
     isBuiltIn: true
   }
 ];
@@ -1101,22 +1031,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     }
   }, [backgroundColor, foregroundColor, accentColor, positiveColor, negativeColor]);
 
-  // Apply a theme
+  // Apply a theme (fonts are independent of themes)
   const applyTheme = (theme: Theme) => {
     handleBackgroundColorChange(theme.backgroundColor);
     handleForegroundColorChange(theme.foregroundColor);
     handleAccentColorChange(theme.accentColor);
     handlePositiveColorChange(theme.positiveColor);
     handleNegativeColorChange(theme.negativeColor);
-    // Apply theme fonts
-    if (theme.monoFont) {
-      setMonoFont(theme.monoFont);
-      document.documentElement.style.setProperty('--font-mono', `"${theme.monoFont}", monospace`);
-    }
-    if (theme.sansFont) {
-      setSansFont(theme.sansFont);
-      document.documentElement.style.setProperty('--font-sans', `"${theme.sansFont}", sans-serif`);
-    }
     setCurrentThemeId(theme.id);
     localStorage.setItem('currentThemeId', theme.id);
     setShowThemeDropdown(false);
@@ -1127,10 +1048,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     const existingTheme = customThemes.find(t => t.name.toLowerCase() === name.toLowerCase());
 
     if (existingTheme) {
-      // Update existing theme with current colors
+      // Update existing theme with current colors (fonts are independent of themes)
       const updatedThemes = customThemes.map(t =>
         t.id === existingTheme.id
-          ? { ...t, backgroundColor, foregroundColor, accentColor, positiveColor, negativeColor, monoFont, sansFont }
+          ? { ...t, backgroundColor, foregroundColor, accentColor, positiveColor, negativeColor }
           : t
       );
       setCustomThemes(updatedThemes);
@@ -1138,7 +1059,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       setCurrentThemeId(existingTheme.id);
       localStorage.setItem('currentThemeId', existingTheme.id);
     } else {
-      // Create new theme
+      // Create new theme (fonts are independent of themes)
       const newTheme: Theme = {
         id: `custom-${Date.now()}`,
         name: name,
@@ -1147,8 +1068,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
         accentColor,
         positiveColor,
         negativeColor,
-        monoFont,
-        sansFont,
         isBuiltIn: false
       };
       const updatedThemes = [...customThemes, newTheme];
@@ -1233,13 +1152,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     return map[colorType];
   };
 
-  // Get current theme's default font
+  // Get default yurucode font (fonts are independent of themes)
   const getThemeFontDefault = (fontType: 'mono' | 'sans'): string => {
-    const theme = getCurrentTheme();
-    if (!theme) {
-      return fontType === 'mono' ? 'Comic Mono' : 'Comic Neue';
-    }
-    return fontType === 'mono' ? (theme.monoFont || 'Comic Mono') : (theme.sansFont || 'Comic Neue');
+    return fontType === 'mono' ? 'Comic Mono' : 'Comic Neue';
   };
 
   // Preview theme on hover (apply temporarily)
@@ -1258,14 +1173,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
     document.documentElement.style.setProperty('--positive-color', theme.positiveColor);
     document.documentElement.style.setProperty('--negative-color', theme.negativeColor);
-
-    // Preview fonts
-    if (theme.monoFont) {
-      document.documentElement.style.setProperty('--font-mono', `"${theme.monoFont}", monospace`);
-    }
-    if (theme.sansFont) {
-      document.documentElement.style.setProperty('--font-sans', `"${theme.sansFont}", sans-serif`);
-    }
+    // Fonts are not previewed with themes - they are independent
   };
 
   // Restore current theme after preview
@@ -1284,10 +1192,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
     document.documentElement.style.setProperty('--positive-color', positiveColor);
     document.documentElement.style.setProperty('--negative-color', negativeColor);
-
-    // Restore fonts
-    document.documentElement.style.setProperty('--font-mono', `"${monoFont}", monospace`);
-    document.documentElement.style.setProperty('--font-sans', `"${sansFont}", sans-serif`);
+    // Fonts are not restored since they weren't changed during preview
   };
 
 

@@ -17,8 +17,8 @@ interface FontPickerModalProps {
 }
 
 // Yurucode bundled fonts - always available (downloaded with app)
-const YURUCODE_MONOSPACE_FONTS = ['Comic Mono', 'Fira Code', 'JetBrains Mono'];
-const YURUCODE_SANS_FONTS = ['Comic Neue', 'Helvetica Neue', 'IBM Plex Sans'];
+const YURUCODE_MONOSPACE_FONTS = ['Comic Mono'];
+const YURUCODE_SANS_FONTS = ['Comic Neue'];
 
 export const FontPickerModal: React.FC<FontPickerModalProps> = ({
   onClose,

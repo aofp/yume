@@ -572,8 +572,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   selectedModel: DEFAULT_MODEL_ID, // Default to Sonnet 4.5 (see config/models.ts)
   claudeMdTokens: 0, // Will be calculated on first use
   globalWatermarkImage: null,
-  monoFont: 'Fira Code', // Default monospace font
-  sansFont: 'Helvetica', // Default sans-serif font
+  monoFont: 'Comic Mono', // Default monospace font
+  sansFont: 'Comic Neue', // Default sans-serif font
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
   autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)

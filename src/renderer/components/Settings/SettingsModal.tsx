@@ -424,21 +424,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <div className="font-controls">
                     <button
                       className="color-reset"
-                      onClick={() => setMonoFont('Fira Code')}
+                      onClick={() => setMonoFont('Comic Mono')}
                       title="reset to default"
-                      disabled={!monoFont || monoFont === 'Fira Code'}
+                      disabled={!monoFont || monoFont === 'Comic Mono'}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
                     <button
                       className="font-input"
                       onClick={() => {
-                        setSelectedFont(monoFont || 'Fira Code');
+                        setSelectedFont(monoFont || 'Comic Mono');
                         setShowFontPicker('monospace');
                       }}
-                      style={{ fontFamily: monoFont || 'Fira Code' }}
+                      style={{ fontFamily: monoFont || 'Comic Mono' }}
                     >
-                      {monoFont || 'Fira Code'}
+                      {monoFont || 'Comic Mono'}
                     </button>
                   </div>
                 </div>
@@ -447,21 +447,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <div className="font-controls">
                     <button
                       className="color-reset"
-                      onClick={() => setSansFont('Helvetica')}
+                      onClick={() => setSansFont('Comic Neue')}
                       title="reset to default"
-                      disabled={!sansFont || sansFont === 'Helvetica'}
+                      disabled={!sansFont || sansFont === 'Comic Neue'}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
                     <button
                       className="font-input"
                       onClick={() => {
-                        setSelectedFont(sansFont || 'Helvetica Neue');
+                        setSelectedFont(sansFont || 'Comic Neue');
                         setShowFontPicker('sans-serif');
                       }}
-                      style={{ fontFamily: sansFont || 'Helvetica Neue' }}
+                      style={{ fontFamily: sansFont || 'Comic Neue' }}
                     >
-                      {sansFont || 'Helvetica Neue'}
+                      {sansFont || 'Comic Neue'}
                     </button>
                   </div>
                 </div>

@@ -615,7 +615,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                 border: '1px solid #333',
                 color: '#fff',
                 fontSize: '11px',
-                fontFamily: 'var(--font-mono, "Fira Code", monospace)',
+                fontFamily: 'var(--font-mono, "Comic Mono", monospace)',
                 borderRadius: '4px',
                 marginBottom: '12px',
                 resize: 'vertical',

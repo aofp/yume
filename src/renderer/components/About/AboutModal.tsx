@@ -52,7 +52,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
         </div>
         
         <div className="about-content">
-          <div className="about-logo" style={{ fontFamily: "'Fira Code', monospace" }}>
+          <div className="about-logo" style={{ fontFamily: "'Comic Mono', monospace" }}>
             <span className="yuru">y</span><span className="code">&gt;</span>
           </div>
           
