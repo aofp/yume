@@ -1736,7 +1736,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     {getCurrentThemeDisplayName()}
                   </span>
                 </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '200px' }}>
                   <span style={{ fontSize: '11px', color: 'var(--fg-50)' }}>opacity</span>
                   <input
                     type="range"
