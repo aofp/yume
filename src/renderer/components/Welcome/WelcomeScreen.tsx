@@ -30,7 +30,7 @@ export const WelcomeScreen: React.FC = () => {
             ...p,
             lastOpened: new Date(p.lastOpened)
           }));
-          setRecentProjects(projects.slice(0, 8)); // Show max 8 recent projects
+          setRecentProjects(projects.slice(0, 10)); // Show max 10 recent projects
         } catch (e) {
           console.error('Failed to load recent projects:', e);
         }
@@ -139,11 +139,11 @@ export const WelcomeScreen: React.FC = () => {
     const updated = [
       newProject,
       ...recentProjects.filter(p => p.path !== path)
-    ].slice(0, 8);
-    
+    ].slice(0, 10);
+
     setRecentProjects(updated);
     localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
-    
+
     // Create new session with this folder
     createSession(name, path);
   };

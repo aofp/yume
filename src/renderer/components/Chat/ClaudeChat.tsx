@@ -2835,7 +2835,7 @@ export const ClaudeChat: React.FC = () => {
               const updated = [
                 newProject,
                 ...recentProjects.filter((p: any) => p.path !== wslPath)
-              ].slice(0, 8);
+              ].slice(0, 10);
               localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
 
               await createSession(sessionName, wslPath);

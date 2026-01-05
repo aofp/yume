@@ -342,7 +342,7 @@ export const SessionTabs: React.FC = () => {
         const updated = [
           newProject,
           ...recentProjects.filter((p: any) => p.path !== directory)
-        ].slice(0, 8);
+        ].slice(0, 10);
 
         localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
 
@@ -975,11 +975,11 @@ export const SessionTabs: React.FC = () => {
                       const updated = [
                         newProject,
                         ...recentProjects.filter((p: any) => p.path !== workingDir)
-                      ].slice(0, 8);
-                      
+                      ].slice(0, 10);
+
                       localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
                       setHasRecentProjects(true);
-                      
+
                       // Optionally create a new tab with this project
                       createSession(undefined, workingDir);
                     }
@@ -1057,12 +1057,12 @@ export const SessionTabs: React.FC = () => {
                 const updated = [
                   newProject,
                   ...recentProjects.filter((p: any) => p.path !== workingDir)
-                ].slice(0, 8);
-                
+                ].slice(0, 10);
+
                 localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
                 setHasRecentProjects(true);
               }
-              
+
               createSession(undefined, workingDir);
             }
             setContextMenu(null);
