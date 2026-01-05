@@ -33,7 +33,9 @@ mod agents;         // Agent management for AI assistants
 
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use tauri::{Manager, Listener};
-use tracing::{info, error};
+use tracing::info;
+#[cfg(target_os = "windows")]
+use tracing::error;
 
 use claude::ClaudeManager;
 use state::AppState;

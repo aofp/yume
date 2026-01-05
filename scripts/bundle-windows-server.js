@@ -72,9 +72,9 @@ writeFileSync(
 const nodeModulesSource = join(projectRoot, 'node_modules');
 const nodeModulesDest = join(resourcesDir, 'node_modules');
 
-if (existsSync(nodeModulesSource) && !existsSync(nodeModulesDest)) {
+if (existsSync(nodeModulesSource)) {
   console.log('📋 Copying Socket.IO dependencies...');
-  
+
   // Complete list of all dependencies (found recursively)
   const requiredModules = [
     '@socket.io',
@@ -172,8 +172,6 @@ if (existsSync(nodeModulesSource) && !existsSync(nodeModulesDest)) {
       cpSync(sourcePath, destPath, { recursive: true });
     }
   }
-} else if (existsSync(nodeModulesDest)) {
-  console.log('✓ node_modules already exist in resources');
 }
 
 console.log('✅ Windows server bundling complete!');
