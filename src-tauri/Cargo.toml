@@ -62,13 +62,18 @@ objc = "0.2"
 windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_UI_Controls", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse"] }
 webview2-com = "0.38"
 
-# Optimization profiles for maximum runtime speed
+# Optimization profiles for maximum runtime speed + anti-reverse-engineering
 [profile.release]
 opt-level = 3            # Maximum speed optimization
 lto = "fat"              # Full LTO for best cross-crate optimization
 codegen-units = 1        # Single codegen unit for better optimization
 strip = true             # Strip symbols from binary
-panic = "abort"          # Faster panic handling
+panic = "abort"          # Faster panic handling, removes unwind info
+debug = false            # No debug info
+debug-assertions = false # Remove debug assertions
+overflow-checks = false  # Remove overflow checks (slightly harder to analyze)
+incremental = false      # Disable incremental for better optimization
+rpath = false            # Don't embed runtime library paths
 
 [profile.dev]
 opt-level = 0

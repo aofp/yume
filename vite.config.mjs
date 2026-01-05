@@ -89,7 +89,25 @@ export default defineConfig({
     outDir: 'dist/renderer',
     emptyOutDir: true,
     sourcemap: false, // Disable sourcemaps for production
-    minify: false, // DISABLED - minification breaks the app in Tauri!
+    minify: 'terser', // Re-enabled with safe settings (patch-vendor.cjs fixes issues)
+    terserOptions: {
+      compress: {
+        drop_console: true, // Remove console.log in production
+        drop_debugger: true,
+        pure_funcs: ['console.log', 'console.info', 'console.debug', 'console.trace'],
+        passes: 2,
+      },
+      mangle: {
+        safari10: true,
+        keep_classnames: true, // Preserve class names for React
+        keep_fnames: false, // Mangle function names (safe with React)
+        properties: false, // Don't mangle properties (critical for React)
+      },
+      format: {
+        comments: false, // Remove all comments
+        ascii_only: true,
+      },
+    },
     reportCompressedSize: false, // Faster builds
     chunkSizeWarningLimit: 500,
     // Copy fonts to dist folder
@@ -107,7 +125,6 @@ export default defineConfig({
         },
         compact: true,
       },
-      plugins: [], // Disabled obfuscator - it breaks React modules
       treeshake: {
         preset: 'recommended',
         moduleSideEffects: false,
@@ -117,7 +134,7 @@ export default defineConfig({
     },
     cssCodeSplit: false, // Single CSS file
     cssTarget: 'chrome89', // Modern CSS features
-    cssMinify: false, // DISABLED - minification breaks the app in Tauri!
+    cssMinify: true, // Re-enabled with esbuild (default)
     assetsInlineLimit: 4096, // Reduced from 10KB to 4KB
   },
   resolve: {
