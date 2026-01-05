@@ -528,10 +528,10 @@ export const App: React.FC = () => {
         setShowAgentsModal(true);
       }
       
-      // Ctrl+, for settings
+      // Ctrl+, for settings (toggle)
       if ((e.ctrlKey || e.metaKey) && e.key === ',') {
         e.preventDefault();
-        setShowSettings(true);
+        setShowSettings(prev => !prev);
       }
       
       // Ctrl+Y for analytics

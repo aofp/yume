@@ -284,11 +284,11 @@
 
 /* Opacity Slider */
 .opacity-slider {
-  width: 80px;
+  width: 200px;
   height: 4px;
   padding: 0;
   margin: 0;
-  background: rgba(var(--foreground-rgb), 0.5);
+  background: linear-gradient(to right, rgba(var(--foreground-rgb), 0.2), rgba(var(--foreground-rgb), 0.4));
   border-radius: 4px;
   appearance: none;
   -webkit-appearance: none;

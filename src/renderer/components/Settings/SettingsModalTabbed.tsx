@@ -1709,7 +1709,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     border: '1px solid var(--fg-15)',
                     borderRadius: '4px',
                     cursor: 'default',
-                    width: '160px',
+                    width: '200px',
                     transition: 'all 0.15s ease'
                   }}
                   onMouseEnter={(e) => {
