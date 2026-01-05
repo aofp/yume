@@ -351,8 +351,11 @@ export function mapSessionIds(tempId: string, realId: string) {
       realSession.outputTokens = Math.max(realSession.outputTokens, tempSession.outputTokens);
       realSession.cacheCreationTokens = Math.max(realSession.cacheCreationTokens, tempSession.cacheCreationTokens);
       realSession.cacheReadTokens = Math.max(realSession.cacheReadTokens, tempSession.cacheReadTokens);
-      realSession.totalTokens = realSession.cacheReadTokens + realSession.cacheCreationTokens + realSession.inputTokens;
+      // BUG FIX: totalTokens is accumulated, not recalculated - preserve the accumulated value
+      realSession.totalTokens = Math.max(realSession.totalTokens, tempSession.totalTokens);
       realSession.messageCount += tempSession.messageCount;
+      // Preserve most recent update time
+      realSession.lastUpdateTime = Math.max(realSession.lastUpdateTime, tempSession.lastUpdateTime);
 
       // Delete the temp session
       wrapperState.sessions.delete(tempId);

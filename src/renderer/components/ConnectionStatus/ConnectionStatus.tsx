@@ -22,42 +22,57 @@ export const ConnectionStatus: React.FC = () => {
     console.log = (...args) => {
       originalLog(...args);
       const message = args.join(' ');
-      
+
+      // Defer state updates to avoid flushSync errors when console.log is called during render
       if (message.includes('Successfully connected to Claude Code server')) {
-        setStatus('connected');
-        setDetails('Connected to server');
+        queueMicrotask(() => {
+          setStatus('connected');
+          setDetails('Connected to server');
+        });
       } else if (message.includes('Disconnected from Claude Code server')) {
-        setStatus('disconnected');
-        setDetails('Server disconnected');
+        queueMicrotask(() => {
+          setStatus('disconnected');
+          setDetails('Server disconnected');
+        });
       } else if (message.includes('Connection attempt')) {
-        setStatus('connecting');
         const match = message.match(/\((\d+)\/10\)/);
-        if (match) {
-          setDetails(`Connecting... (attempt ${match[1]}/10)`);
-        }
+        queueMicrotask(() => {
+          setStatus('connecting');
+          if (match) {
+            setDetails(`Connecting... (attempt ${match[1]}/10)`);
+          }
+        });
       }
     };
 
     console.error = (...args) => {
       originalError(...args);
       const message = args.join(' ');
-      
+
+      // Defer state updates to avoid flushSync errors when console.error is called during render
       if (message.includes('Socket connection error')) {
-        setStatus('disconnected');
-        setDetails('Connection failed');
+        queueMicrotask(() => {
+          setStatus('disconnected');
+          setDetails('Connection failed');
+        });
       } else if (message.includes('No server port available')) {
-        setStatus('disconnected');
-        setDetails('Server not available');
+        queueMicrotask(() => {
+          setStatus('disconnected');
+          setDetails('Server not available');
+        });
       }
     };
 
     console.warn = (...args) => {
       originalWarn(...args);
       const message = args.join(' ');
-      
+
+      // Defer state updates to avoid flushSync errors when console.warn is called during render
       if (message.includes('Max retries reached')) {
-        setStatus('disconnected');
-        setDetails('Server not responding');
+        queueMicrotask(() => {
+          setStatus('disconnected');
+          setDetails('Server not responding');
+        });
       }
     };
 

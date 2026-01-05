@@ -783,15 +783,29 @@ export const SessionTabs: React.FC = () => {
               const todos = (session as any).todos;
               if (!todos || !Array.isArray(todos) || todos.length === 0) return null;
               const completed = todos.filter((t: any) => t.status === 'completed').length;
+              const inProgress = todos.filter((t: any) => t.status === 'in_progress').length;
               const total = todos.length;
-              const percentage = (completed / total) * 100;
+              const completedPct = (completed / total) * 100;
+              const inProgressPct = (inProgress / total) * 100;
               // Hide when 100% complete and not streaming
-              if (percentage === 100 && !session.streaming) return null;
+              if (completedPct === 100 && !session.streaming) return null;
+              // Hide if nothing to show
+              if (completedPct === 0 && inProgressPct === 0) return null;
               return (
-                <div
-                  className="tab-todo-progress"
-                  style={{ width: `${percentage}%` }}
-                />
+                <>
+                  {completedPct > 0 && (
+                    <div
+                      className="tab-todo-progress"
+                      style={{ width: `${completedPct}%` }}
+                    />
+                  )}
+                  {inProgressPct > 0 && (
+                    <div
+                      className="tab-todo-progress in-progress"
+                      style={{ width: `${inProgressPct}%`, left: `${completedPct}%` }}
+                    />
+                  )}
+                </>
               );
             })()}
           </div>

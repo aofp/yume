@@ -68,7 +68,7 @@ export const App: React.FC = () => {
       document.documentElement.style.setProperty('--font-sans', `"${sansFont}", sans-serif`);
     }
     
-    // Apply saved background opacity
+    // Apply saved background opacity and signal app is loaded
     const savedOpacity = localStorage.getItem('yurucode-bg-opacity');
     if (savedOpacity) {
       const opacity = Number(savedOpacity);
@@ -79,6 +79,22 @@ export const App: React.FC = () => {
       // Initialize with default
       setBackgroundOpacity(100);
     }
+
+    // Signal that app is fully loaded - stops the loading animation
+    // and applies the user's saved opacity setting
+    (window as any).__YURUCODE_LOADED__ = true;
+
+    // Apply the target opacity now that app is loaded
+    const targetOpacity = (window as any).__YURUCODE_TARGET_OPACITY__ || 0.8;
+    const isWindows = navigator.platform.indexOf('Win') > -1;
+
+    if (isWindows) {
+      document.documentElement.style.setProperty('--bg-overlay-color', `rgba(0, 0, 0, ${targetOpacity})`);
+    } else {
+      document.documentElement.style.setProperty('--bg-color', `rgba(0, 0, 0, ${targetOpacity})`);
+    }
+    document.documentElement.style.setProperty('--bg-opacity', String(targetOpacity));
+    console.log('[App] Loaded - applied target opacity:', targetOpacity);
     
     return () => clearTimeout(checkConnection);
   }, [loadSessionMappings, monoFont, sansFont, setBackgroundOpacity]);

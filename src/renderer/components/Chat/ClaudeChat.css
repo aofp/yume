@@ -1405,11 +1405,11 @@ textarea.context-full {
 }
 
 .context-usage.medium {
-  color: rgba(255, 204, 0, 0.6);
+  color: rgba(var(--negative-rgb), 0.85);
 }
 
 .context-usage.high {
-  color: rgba(255, 100, 100, 0.8);
+  color: rgba(var(--negative-rgb), 1);
 }
 
 /* New Attachments System */

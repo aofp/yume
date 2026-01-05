@@ -3934,9 +3934,8 @@ export const ClaudeChat: React.FC = () => {
         <div className="input-row">
           {/* Calculate if context is almost full */}
           {(() => {
-            const conversationTokens = currentSession?.analytics?.tokens?.conversationTokens || 0;
-            // cache tokens are system prompts, not part of conversation context
-            const totalContextTokens = conversationTokens;
+            // Use tokens.total for consistency with status bar - ALL tokens count towards context limit
+            const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
             const contextWindowTokens = 200000;
             const percentageNum = (totalContextTokens / contextWindowTokens * 100);
             const isContextFull = percentageNum > 95;

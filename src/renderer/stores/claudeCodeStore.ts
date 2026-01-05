@@ -972,6 +972,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             }));
           }
           
+          // Extract TodoWrite todos and store in session
+          if (message.type === 'tool_use' && message.message?.name === 'TodoWrite' && message.message.input?.todos) {
+            console.log('[Store] 📋 TodoWrite detected on temp channel, updating session todos');
+            set(state => ({
+              sessions: state.sessions.map(s =>
+                s.id === sessionId
+                  ? { ...s, todos: message.message.input.todos }
+                  : s
+              )
+            }));
+          }
+
           // Non-result messages should go through the main handler
           get().addMessageToSession(sessionId, message);
           return;
@@ -1696,8 +1708,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         console.log(`   Reported ${rawPercentage.toFixed(2)}% but this uses cumulative API values, not actual context size`);
                       }
                       
-                      // Update conversation tokens
-                      analytics.tokens.conversationTokens = analytics.tokens.total - (analytics.tokens.cacheSize || 0);
+                      // Update conversation tokens (guard against negative if cacheSize > total somehow)
+                      analytics.tokens.conversationTokens = Math.max(0, analytics.tokens.total - (analytics.tokens.cacheSize || 0));
                       
                       // Update token breakdown
                       analytics.tokens.breakdown = {
