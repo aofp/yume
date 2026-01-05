@@ -51,8 +51,8 @@ body {
   min-width: 0; /* Prevent flex child from overflowing */
   min-height: 0; /* Allow flex child to scroll */
   overflow: hidden;
-  /* Solid background to prevent flash of transparency on tab close (macOS transparent window) */
-  background: var(--background-color);
+  /* 50% darker background to prevent transparency flash when closing tabs */
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
 }
 
 /* Windows-specific fix for zoom issues */
