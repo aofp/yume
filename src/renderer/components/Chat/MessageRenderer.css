@@ -969,6 +969,57 @@ ol {
   font-size: 10px;
 }
 
+/* Edit fallback display - matches DiffViewer font size */
+.edit-content {
+  display: block;
+  margin: 0;
+  padding: 0;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 16px;
+  background: transparent;
+  overflow-x: auto;
+  white-space: pre;
+}
+
+.edit-line {
+  display: flex;
+  line-height: 16px;
+  flex-wrap: nowrap;
+}
+
+.edit-line .line-number {
+  color: rgba(var(--foreground-rgb), 0.3);
+  padding-right: 8px;
+  user-select: none;
+  font-size: 8px;
+}
+
+.edit-line .line-marker {
+  color: rgba(var(--foreground-rgb), 0.4);
+  padding-right: 4px;
+  user-select: none;
+}
+
+.edit-line .line-text {
+  color: rgba(var(--foreground-rgb), 0.8);
+}
+
+.edit-line.changed .line-text {
+  color: rgba(102, 204, 102, 0.9);
+}
+
+.edit-line.changed .line-marker {
+  color: rgba(102, 204, 102, 0.7);
+}
+
+/* Edit output fallback */
+.tool-result.edit-output .result-content {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  line-height: 16px;
+}
+
 .edit-action {
   color: var(--accent-color);
   font-weight: 500;

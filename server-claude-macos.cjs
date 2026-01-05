@@ -54,6 +54,26 @@ console.debug = function(...args) {
 };
 
 // ============================================
+// DEBUG MODE - Set to false in production
+// ============================================
+const DEBUG = process.env.YURUCODE_DEBUG === 'true';
+
+// In production, disable ALL console.log output to reduce log spam
+// Only errors and warnings are kept for critical issues
+if (!DEBUG) {
+  const noop = () => {};
+  console.log = noop;
+  console.info = noop;
+  console.debug = noop;
+  // Keep console.error and console.warn for critical issues
+}
+
+// Debug logging helper - only logs when DEBUG is true
+function debugLog(...args) {
+  if (DEBUG) console.log(...args);
+}
+
+// ============================================
 // WRAPPER_INJECTED - Universal Claude Wrapper
 // ============================================
 
@@ -618,6 +638,77 @@ const pendingStreamingFalseTimers = new Map(); // sessionId -> { timer, timestam
 // Debounce time for streaming=false transitions (ms)
 // In agentic mode, processes cycle rapidly. This delay prevents UI flicker.
 const STREAMING_FALSE_DEBOUNCE_MS = 600;
+
+// ============================================
+// MESSAGE BATCHING - Reduce socket.emit overhead
+// ============================================
+const messageBatches = new Map(); // sessionId -> { messages: [], timer: null, socket: null }
+const BATCH_INTERVAL_MS = 16; // One frame at 60fps
+
+// Add message to batch queue, emit after interval or immediately for priority messages
+function queueMessage(sessionId, message, socket, immediate = false) {
+  if (!messageBatches.has(sessionId)) {
+    messageBatches.set(sessionId, { messages: [], timer: null, socket });
+  }
+
+  const batch = messageBatches.get(sessionId);
+  batch.socket = socket;
+
+  // Priority messages emit immediately: result, error, system, streaming_end
+  const isPriority = immediate ||
+    message.type === 'result' ||
+    message.type === 'error' ||
+    message.type === 'system' ||
+    message.streaming_end === true ||
+    message.streaming === false;
+
+  if (isPriority) {
+    // Flush any pending batch first
+    flushBatch(sessionId);
+    // Emit priority message immediately
+    socket.emit(`message:${sessionId}`, message);
+    return;
+  }
+
+  // Queue non-priority message
+  batch.messages.push(message);
+
+  // Start batch timer if not already running
+  if (!batch.timer) {
+    batch.timer = setTimeout(() => flushBatch(sessionId), BATCH_INTERVAL_MS);
+  }
+}
+
+// Flush all batched messages for a session
+function flushBatch(sessionId) {
+  const batch = messageBatches.get(sessionId);
+  if (!batch) return;
+
+  if (batch.timer) {
+    clearTimeout(batch.timer);
+    batch.timer = null;
+  }
+
+  if (batch.messages.length > 0 && batch.socket) {
+    // Emit batched messages
+    if (batch.messages.length === 1) {
+      batch.socket.emit(`message:${sessionId}`, batch.messages[0]);
+    } else {
+      // Emit as batch for multiple messages
+      batch.socket.emit(`messageBatch:${sessionId}`, batch.messages);
+    }
+    batch.messages = [];
+  }
+}
+
+// Cleanup batch state for a session
+function cleanupBatch(sessionId) {
+  const batch = messageBatches.get(sessionId);
+  if (batch) {
+    if (batch.timer) clearTimeout(batch.timer);
+    messageBatches.delete(sessionId);
+  }
+}
 
 // Helper to cancel pending streaming=false for a session
 function cancelPendingStreamingFalse(sessionId) {
@@ -3231,7 +3322,7 @@ io.on('connection', (socket) => {
       const streamHealthInterval = setInterval(() => {
         const timeSinceLastData = Date.now() - lastDataTime;
         const streamDuration = Date.now() - streamStartTime;
-        console.log(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
+        debugLog(`🩺 [${sessionId}] duration: ${streamDuration}ms | since_last: ${timeSinceLastData}ms | bytes: ${bytesReceived} | msgs: ${messageCount} | buffer: ${lineBuffer.length} | alive: ${activeProcesses.has(sessionId)}`);
         
         if (timeSinceLastData > 30000) {
           console.error(`⚠️ WARNING: No data received for ${timeSinceLastData}ms!`);
@@ -3277,11 +3368,11 @@ io.on('connection', (socket) => {
       
       const processStreamLine = (line) => {
         if (!line.trim()) {
-          console.log(`🔸 [${sessionId}] Empty line received`);
+          debugLog(`🔸 [${sessionId}] Empty line received`);
           return;
         }
-        
-        console.log(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line}`);
+
+        debugLog(`🔹 [${sessionId}] Processing line (${line.length} chars): ${line}`);
         
         // WRAPPER: Process line for API capture and token tracking
         try {
@@ -3506,9 +3597,9 @@ io.on('connection', (socket) => {
                   // Include parent_tool_use_id if this is a subagent message
                   if (jsonData.parent_tool_use_id) {
                     toolUseMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
-                    console.log(`🤖 [${sessionId}] Subagent tool_use (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...): ${block.name}`);
+                    debugLog(`🤖 [${sessionId}] Subagent tool_use (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...): ${block.name}`);
                   }
-                  socket.emit(`message:${sessionId}`, toolUseMessage);
+                  queueMessage(sessionId, toolUseMessage, socket, true); // immediate for tool_use
                 }
               }
               
@@ -3530,9 +3621,9 @@ io.on('connection', (socket) => {
                 // Include parent_tool_use_id if this is a subagent message
                 if (jsonData.parent_tool_use_id) {
                   assistantMessage.parent_tool_use_id = jsonData.parent_tool_use_id;
-                  console.log(`🤖 [${sessionId}] Subagent assistant message (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
+                  debugLog(`🤖 [${sessionId}] Subagent assistant message (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
                 }
-                socket.emit(`message:${sessionId}`, assistantMessage);
+                queueMessage(sessionId, assistantMessage, socket);
                 
                 // Save to session with memory management
                 session.messages.push({
@@ -3950,7 +4041,7 @@ io.on('connection', (socket) => {
             }
             
             // Debug log the full resultMessage before emitting
-            console.log(`📤 [EMIT-DEBUG] About to emit result message with wrapper field:`, {
+            debugLog(`📤 [EMIT-DEBUG] About to emit result message with wrapper field:`, {
               hasWrapper: !!resultMessage.wrapper,
               wrapperTokens: resultMessage.wrapper?.tokens,
               messageKeys: Object.keys(resultMessage),
@@ -3963,8 +4054,8 @@ io.on('connection', (socket) => {
           
         } catch (e) {
           // Not JSON, treat as plain text
-          console.log(`⚠️ [${sessionId}] Failed to parse JSON, treating as plain text:`, e.message);
-          console.log(`⚠️ [${sessionId}] Line was: ${line}`);
+          debugLog(`⚠️ [${sessionId}] Failed to parse JSON, treating as plain text:`, e.message);
+          debugLog(`⚠️ [${sessionId}] Line was: ${line}`);
         }
       };
 
@@ -4039,10 +4130,10 @@ io.on('connection', (socket) => {
         const lines = lineBuffer.split('\n');
         lineBuffer = lines.pop() || '';
         
-        console.log(`📋 [${sessionId}] Split into ${lines.length} lines, buffer remaining: ${lineBuffer.length} chars`);
-        
+        debugLog(`📋 [${sessionId}] Split into ${lines.length} lines, buffer remaining: ${lineBuffer.length} chars`);
+
         for (let i = 0; i < lines.length; i++) {
-          console.log(`📋 [${sessionId}] Processing line ${i + 1}/${lines.length}`);
+          debugLog(`📋 [${sessionId}] Processing line ${i + 1}/${lines.length}`);
           processStreamLine(lines[i]);
         }
       });

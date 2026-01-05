@@ -1,0 +1,76 @@
+.activity-indicator {
+  position: fixed;
+  bottom: 70px;
+  right: 12px;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  max-width: 220px;
+  pointer-events: none;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--fg-40);
+  opacity: 0.8;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 2px 6px;
+  background: var(--bg-secondary);
+  border-radius: 3px;
+  border: 1px solid var(--border-subtle, transparent);
+}
+
+.activity-label {
+  color: var(--fg-60);
+  flex-shrink: 0;
+}
+
+.activity-preview {
+  color: var(--fg-30);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* type-specific styles */
+.activity-bash {
+  border-color: var(--accent-color);
+}
+
+.activity-bash .activity-label {
+  color: var(--accent-color);
+}
+
+.activity-compact {
+  border-color: var(--warning-color, #f59e0b);
+}
+
+.activity-compact .activity-label {
+  color: var(--warning-color, #f59e0b);
+}
+
+.activity-followup .activity-label {
+  color: var(--fg-50);
+}
+
+.activity-attachment {
+  border-color: var(--fg-30);
+}
+
+.activity-thinking {
+  border-color: var(--accent-color);
+  opacity: 0.6;
+}
+
+.activity-more {
+  font-size: 8px;
+  opacity: 0.5;
+}

@@ -397,14 +397,8 @@ fn start_macos_server(port: u16) {
         
         info!("Using server file: {:?}", server_file);
         
-        // Get node_modules path
-        let node_modules = if cfg!(debug_assertions) {
-            // In development
-            server_file.parent().map(|p| p.join("node_modules"))
-        } else {
-            // In production, node_modules are in the same resources directory
-            server_file.parent().map(|p| p.join("node_modules"))
-        };
+        // Get node_modules path (same for dev and prod - sibling to server file)
+        let node_modules = server_file.parent().map(|p| p.join("node_modules"));
         
         // Also check if node_modules exists
         if let Some(ref modules) = node_modules {
@@ -675,14 +669,8 @@ fn start_windows_server(port: u16) {
         info!("Using server file: {:?}", server_file);
         write_log(&format!("Using server file: {:?}", server_file));
         
-        // Get node_modules path - same logic as macOS
-        let node_modules = if cfg!(debug_assertions) {
-            // In development
-            server_file.parent().map(|p| p.join("node_modules"))
-        } else {
-            // In production
-            server_file.parent().map(|p| p.join("node_modules"))
-        };
+        // Get node_modules path (same for dev and prod - sibling to server file)
+        let node_modules = server_file.parent().map(|p| p.join("node_modules"));
         
         if let Some(ref modules) = node_modules {
             if !modules.exists() {
@@ -867,12 +855,8 @@ fn start_linux_server(port: u16) {
         info!("Using server file: {:?}", server_file);
         write_log(&format!("Using server file: {:?}", server_file));
         
-        // Get node_modules path
-        let node_modules = if cfg!(debug_assertions) {
-            server_file.parent().map(|p| p.join("node_modules"))
-        } else {
-            server_file.parent().map(|p| p.join("node_modules"))
-        };
+        // Get node_modules path (same for dev and prod - sibling to server file)
+        let node_modules = server_file.parent().map(|p| p.join("node_modules"));
         
         if let Some(ref modules) = node_modules {
             if !modules.exists() {

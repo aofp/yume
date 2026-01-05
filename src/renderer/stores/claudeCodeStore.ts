@@ -7,6 +7,49 @@ import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
 import { claudeCodeClient } from '../services/claudeCodeClient';
 import { systemPromptService } from '../services/systemPromptService';
+import { isBashPrefix } from '../utils/helpers';
+
+// Fast message hash for deduplication - much faster than JSON.stringify comparison
+// Uses message id + type + content signature
+function getMessageHash(message: any): string {
+  if (message.id) return `id:${message.id}`;
+
+  const type = message.type || '';
+  const content = message.message;
+
+  // For simple string content, use it directly
+  if (typeof content === 'string') {
+    return `${type}:${content.length}:${content.slice(0, 100)}`;
+  }
+
+  // For object content, create a signature from key fields
+  if (content && typeof content === 'object') {
+    const contentStr = content.content;
+    if (typeof contentStr === 'string') {
+      return `${type}:${contentStr.length}:${contentStr.slice(0, 100)}`;
+    }
+    if (Array.isArray(content.content)) {
+      // For array content (thinking blocks etc), hash first item
+      const first = content.content[0];
+      const sig = first?.type || first?.text?.slice(0, 50) || '';
+      return `${type}:arr:${content.content.length}:${sig}`;
+    }
+  }
+
+  // Fallback to type + timestamp for unique signature
+  return `${type}:${message.timestamp || Date.now()}`;
+}
+
+// Cache for message hashes to avoid recomputing
+const messageHashCache = new WeakMap<any, string>();
+function getCachedHash(message: any): string {
+  let hash = messageHashCache.get(message);
+  if (!hash) {
+    hash = getMessageHash(message);
+    messageHashCache.set(message, hash);
+  }
+  return hash;
+}
 
 // Debounced storage to prevent UI freezes when toggling settings
 // Writes are batched and done asynchronously after 100ms of inactivity
@@ -78,10 +121,6 @@ const claudeClient = claudeCodeClient;
 const PENDING_SESSION_TIMEOUT_MS = 5000;
 const PENDING_SESSION_CHECK_INTERVAL_MS = 100;
 
-// Helper to check if text starts with bash mode prefix ($ or !)
-const isBashPrefix = (text: string): boolean => {
-  return text.startsWith('$') || text.startsWith('!');
-};
 
 // Fetch session tokens from session file - single source of truth
 // Called after stream_end to get accurate token counts
@@ -1490,16 +1529,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   existingMessages.push(message);
                 }
               } else {
-                // Messages without ID - check for duplicate content
-                const isDuplicate = existingMessages.some(m => 
-                  m.type === message.type && 
-                  JSON.stringify(m.message) === JSON.stringify(message.message)
+                // Messages without ID - check for duplicate using fast hash comparison
+                const newHash = getCachedHash(message);
+                const isDuplicate = existingMessages.some(m =>
+                  m.type === message.type && getCachedHash(m) === newHash
                 );
                 if (!isDuplicate) {
-                  console.log(`Adding message without ID (type: ${message.type})`);
                   existingMessages.push(message);
-                } else {
-                  console.log(`Skipping duplicate message without ID (type: ${message.type})`);
                 }
               }
               
@@ -2757,17 +2793,18 @@ ${content}`;
               existingMessages.push(message);
             }
           } else {
-            const isDuplicate = existingMessages.some(m => 
-              m.type === message.type && 
-              JSON.stringify(m.message) === JSON.stringify(message.message)
+            // Fast hash-based duplicate check
+            const newHash = getCachedHash(message);
+            const isDuplicate = existingMessages.some(m =>
+              m.type === message.type && getCachedHash(m) === newHash
             );
             if (!isDuplicate) {
               existingMessages.push(message);
             }
           }
-          
-          return { 
-            ...s, 
+
+          return {
+            ...s,
             messages: existingMessages, 
             updatedAt: new Date()
           };
@@ -3002,15 +3039,16 @@ ${content}`;
                 existingMessages.push(message);
               }
             } else {
-              const isDuplicate = existingMessages.some(m => 
-                m.type === message.type && 
-                JSON.stringify(m.message) === JSON.stringify(message.message)
+              // Fast hash-based duplicate check
+              const newHash = getCachedHash(message);
+              const isDuplicate = existingMessages.some(m =>
+                m.type === message.type && getCachedHash(m) === newHash
               );
               if (!isDuplicate) {
                 existingMessages.push(message);
               }
             }
-            
+
             // Extract title from first assistant message
             if (message.type === 'assistant' && s.claudeTitle === 'new session' && message.message?.content) {
               const content = typeof message.message.content === 'string' 
@@ -3622,8 +3660,22 @@ ${content}`;
           // Continue to add the message below
         }
         
-        // Normal message handling
-        let updatedMessages = [...s.messages, message];
+        // Normal message handling - with deduplication
+        // Check if message with same ID already exists (race condition prevention)
+        let updatedMessages: typeof s.messages;
+        if (message.id) {
+          const existingIndex = s.messages.findIndex(m => m.id === message.id);
+          if (existingIndex >= 0) {
+            // Update existing message instead of adding duplicate
+            updatedMessages = [...s.messages];
+            updatedMessages[existingIndex] = message;
+            console.log(`[Store] Updated existing message ${message.id} (dedup)`);
+          } else {
+            updatedMessages = [...s.messages, message];
+          }
+        } else {
+          updatedMessages = [...s.messages, message];
+        }
         const MAX_MESSAGES = 500;
         
         if (updatedMessages.length > MAX_MESSAGES) {

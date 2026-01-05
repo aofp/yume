@@ -43,12 +43,15 @@ import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete'
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { Watermark } from '../Watermark/Watermark';
+import { ActivityIndicator, Activity } from '../ActivityIndicator/ActivityIndicator';
 // PERFORMANCE: Lazy load modals and heavy components - only loaded when user opens them
 const RecentConversationsModal = React.lazy(() => import('../RecentConversationsModal').then(m => ({ default: m.RecentConversationsModal })));
 const KeyboardShortcuts = React.lazy(() => import('../KeyboardShortcuts/KeyboardShortcuts').then(m => ({ default: m.KeyboardShortcuts })));
 const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
 import { FEATURE_FLAGS } from '../../config/features';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
+import { isBashPrefix } from '../../utils/helpers';
+import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
 import './ClaudeChat.css';
 
 // Cached custom commands to avoid parsing localStorage on every command execution
@@ -138,10 +141,6 @@ const getToolDisplay = (name: string, input: any) => {
   }
 };
 
-// Helper to check if text starts with bash mode prefix ($ or !)
-const isBashPrefix = (text: string): boolean => {
-  return text.startsWith('$') || text.startsWith('!');
-};
 
 // Recursive FileTreeNode component for nested folder navigation
 interface FileTreeNodeProps {
@@ -466,6 +465,52 @@ export const ClaudeChat: React.FC = () => {
     const session = state.sessions.find(s => s.id === currentSessionId);
     return session?.messages?.length || 0;
   });
+
+  // Build activities array for ActivityIndicator
+  const activities = useMemo<Activity[]>(() => {
+    const items: Activity[] = [];
+
+    // Bash running
+    if (currentSession?.runningBash || currentSession?.userBashRunning) {
+      items.push({
+        id: 'bash',
+        type: 'bash',
+        label: 'bash',
+        priority: 10
+      });
+    }
+
+    // Pending followup message
+    if (pendingFollowupMessage && pendingFollowupRef.current) {
+      const preview = pendingFollowupRef.current.content.slice(0, 30);
+      items.push({
+        id: 'followup',
+        type: 'followup',
+        label: 'queued:',
+        preview: preview + (pendingFollowupRef.current.content.length > 30 ? '...' : ''),
+        priority: 5
+      });
+    }
+
+    // Auto-compact with queued message
+    if (currentSession?.compactionState?.pendingAutoCompactMessage) {
+      const preview = currentSession.compactionState.pendingAutoCompactMessage.slice(0, 30);
+      items.push({
+        id: 'compact',
+        type: 'compact',
+        label: 'compacting:',
+        preview: preview + (currentSession.compactionState.pendingAutoCompactMessage.length > 30 ? '...' : ''),
+        priority: 8
+      });
+    }
+
+    return items;
+  }, [
+    currentSession?.runningBash,
+    currentSession?.userBashRunning,
+    currentSession?.compactionState?.pendingAutoCompactMessage,
+    pendingFollowupMessage
+  ]);
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
@@ -3812,31 +3857,8 @@ export const ClaudeChat: React.FC = () => {
         </React.Suspense>
       )}
       
-      {/* Pending followup indicator - minimal bottom-right */}
-      {pendingFollowupMessage && pendingFollowupRef.current && (
-        <div className="status-indicator-minimal">
-          {pendingFollowupRef.current.content.slice(0, 40)}{pendingFollowupRef.current.content.length > 40 ? '...' : ''}
-        </div>
-      )}
-
-      {/* Auto-compact pending indicator - shows queued message during compaction */}
-      {/* Note: only check pendingAutoCompactMessage, not isCompacting - isCompacting clears early */}
-      {currentSession?.compactionState?.pendingAutoCompactMessage && (
-        <div className="autocompact-pending-indicator">
-          <span className="autocompact-label">compacting... queued:</span>
-          <span className="autocompact-message">
-            {currentSession.compactionState.pendingAutoCompactMessage.slice(0, 60)}
-            {currentSession.compactionState.pendingAutoCompactMessage.length > 60 ? '...' : ''}
-          </span>
-        </div>
-      )}
-
-      {/* Bash running indicator - minimal bottom-right */}
-      {(currentSession?.runningBash || currentSession?.userBashRunning) && (
-        <div className="status-indicator-minimal">
-          bash running...
-        </div>
-      )}
+      {/* Unified activity indicator - bottom-right */}
+      <ActivityIndicator activities={activities} />
       
       <div 
         className={`chat-input-container ${isDragging ? 'dragging' : ''}`}

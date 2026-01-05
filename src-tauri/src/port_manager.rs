@@ -15,12 +15,50 @@
 
 use std::net::{TcpListener, SocketAddr};
 use std::sync::Mutex;
+use std::path::PathBuf;
+use std::fs;
 use rand::Rng;
-use tracing::{info, warn};
+use tracing::{info, warn, debug};
 
 // Store allocated ports to avoid conflicts between multiple servers
 // Note: This is per-process, not shared between app instances
 static ALLOCATED_PORTS: Mutex<Vec<u16>> = Mutex::new(Vec::new());
+
+// Cached last working port - persisted to disk for faster startup
+static CACHED_PORT: Mutex<Option<u16>> = Mutex::new(None);
+
+/// Gets the path to the port cache file
+fn get_port_cache_path() -> Option<PathBuf> {
+    dirs::config_dir().map(|p| p.join("yurucode").join("last_port.txt"))
+}
+
+/// Loads the cached port from disk
+fn load_cached_port() -> Option<u16> {
+    let path = get_port_cache_path()?;
+    if let Ok(content) = fs::read_to_string(&path) {
+        if let Ok(port) = content.trim().parse::<u16>() {
+            if port >= 20000 && port <= 65000 {
+                debug!("Loaded cached port {} from {:?}", port, path);
+                return Some(port);
+            }
+        }
+    }
+    None
+}
+
+/// Saves the working port to disk cache
+fn save_cached_port(port: u16) {
+    if let Some(path) = get_port_cache_path() {
+        if let Some(parent) = path.parent() {
+            let _ = fs::create_dir_all(parent);
+        }
+        if let Err(e) = fs::write(&path, port.to_string()) {
+            debug!("Failed to cache port: {}", e);
+        } else {
+            debug!("Cached port {} to {:?}", port, path);
+        }
+    }
+}
 
 /// Held port with listener that keeps the port bound until dropped
 /// Use this to minimize TOCTOU race conditions
@@ -44,15 +82,26 @@ impl HeldPort {
 /// This prevents TOCTOU race conditions by keeping the port bound
 /// until the caller explicitly releases it
 pub fn find_and_hold_port() -> Option<HeldPort> {
+    // First, try the cached port from last successful run (instant if available)
+    if let Some(cached) = load_cached_port() {
+        if let Some(held) = try_hold_port(cached) {
+            info!("Using cached port {} from previous run", cached);
+            mark_port_allocated(cached);
+            return Some(held);
+        }
+        debug!("Cached port {} no longer available", cached);
+    }
+
     let mut rng = rand::thread_rng();
     let mut attempts = 0;
     const MAX_ATTEMPTS: u32 = 500;
 
-    // Try random ports first
-    while attempts < MAX_ATTEMPTS / 2 {
+    // Try random ports (reduced to 100 attempts since we tried cached first)
+    while attempts < 100 {
         let port = rng.random_range(20000..=65000);
         if let Some(held) = try_hold_port(port) {
             mark_port_allocated(port);
+            save_cached_port(port); // Cache for next time
             return Some(held);
         }
         attempts += 1;
@@ -64,6 +113,7 @@ pub fn find_and_hold_port() -> Option<HeldPort> {
         let port = 20000 + ((start_port - 20000 + offset) % 45001);
         if let Some(held) = try_hold_port(port) {
             mark_port_allocated(port);
+            save_cached_port(port); // Cache for next time
             return Some(held);
         }
         attempts += 1;
@@ -88,42 +138,53 @@ fn try_hold_port(port: u16) -> Option<HeldPort> {
 }
 
 /// Finds an available port in the range 20000-65000
-/// 
+///
 /// Algorithm:
-/// 1. Try random ports for first half of attempts (better distribution)
-/// 2. Try sequential ports from a random starting point
-/// 3. Return None if no port found after MAX_ATTEMPTS
-/// 
-/// This approach minimizes conflicts between multiple app instances
+/// 1. Try cached port from last run (instant)
+/// 2. Try random ports for first 100 attempts
+/// 3. Try sequential ports from a random starting point
+/// 4. Return None if no port found after MAX_ATTEMPTS
+///
+/// This approach minimizes startup time and conflicts between instances
 pub fn find_available_port() -> Option<u16> {
+    // First, try the cached port from last successful run
+    if let Some(cached) = load_cached_port() {
+        if is_port_available(cached) {
+            info!("Using cached port {} from previous run", cached);
+            mark_port_allocated(cached);
+            return Some(cached);
+        }
+        debug!("Cached port {} no longer available", cached);
+    }
+
     let mut rng = rand::thread_rng();
     let mut attempts = 0;
-    const MAX_ATTEMPTS: u32 = 500; // Increased attempts
-    
+    const MAX_ATTEMPTS: u32 = 500;
+
     // Start with a random port in the range
     let start_port = rng.random_range(20000..=65000);
-    
+
     info!("Searching for available port starting from {}", start_port);
-    
-    // Try random ports first
-    while attempts < MAX_ATTEMPTS / 2 {
+
+    // Try random ports (reduced since we tried cached first)
+    while attempts < 100 {
         let port = rng.random_range(20000..=65000);
-        // ONLY check if port is actually available - don't use ALLOCATED_PORTS
-        // because it's not shared between processes
         if is_port_available(port) {
             info!("Found available port: {}", port);
             mark_port_allocated(port);
+            save_cached_port(port);
             return Some(port);
         }
         attempts += 1;
     }
-    
+
     // If random didn't work, try sequential from start_port
     for offset in 0..=45000 {
         let port = 20000 + ((start_port - 20000 + offset) % 45001);
         if is_port_available(port) {
             info!("Found available port: {}", port);
             mark_port_allocated(port);
+            save_cached_port(port);
             return Some(port);
         }
         attempts += 1;

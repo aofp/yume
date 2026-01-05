@@ -1,19 +1,20 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, Suspense } from 'react';
 import { TitleBar } from './components/Layout/TitleBar';
 import { SessionTabs } from './components/SessionTabs/SessionTabs';
 import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
-import { SettingsModalTabbed } from './components/Settings/SettingsModalTabbed';
-import { AboutModal } from './components/About/AboutModal';
-import { AnalyticsModal } from './components/Analytics/AnalyticsModal';
-import { KeyboardShortcuts } from './components/KeyboardShortcuts/KeyboardShortcuts';
 import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
-import { ServerLogs } from './components/ServerLogs/ServerLogs';
-import { RecentProjectsModal } from './components/RecentProjectsModal/RecentProjectsModal';
-import { ProjectsModal } from './components/ProjectsModal/ProjectsModal';
-import { AgentsModal } from './components/AgentsModal/AgentsModal';
-import { UpgradeModal } from './components/Upgrade/UpgradeModal';
 import { ClaudeNotDetected } from './components/ClaudeNotDetected/ClaudeNotDetected';
+
+// PERFORMANCE: Lazy load modals - only loaded when user opens them
+const SettingsModalTabbed = React.lazy(() => import('./components/Settings/SettingsModalTabbed').then(m => ({ default: m.SettingsModalTabbed })));
+const AboutModal = React.lazy(() => import('./components/About/AboutModal').then(m => ({ default: m.AboutModal })));
+const AnalyticsModal = React.lazy(() => import('./components/Analytics/AnalyticsModal').then(m => ({ default: m.AnalyticsModal })));
+const KeyboardShortcuts = React.lazy(() => import('./components/KeyboardShortcuts/KeyboardShortcuts').then(m => ({ default: m.KeyboardShortcuts })));
+const RecentProjectsModal = React.lazy(() => import('./components/RecentProjectsModal/RecentProjectsModal').then(m => ({ default: m.RecentProjectsModal })));
+const ProjectsModal = React.lazy(() => import('./components/ProjectsModal/ProjectsModal').then(m => ({ default: m.ProjectsModal })));
+const AgentsModal = React.lazy(() => import('./components/AgentsModal/AgentsModal').then(m => ({ default: m.AgentsModal })));
+const UpgradeModal = React.lazy(() => import('./components/Upgrade/UpgradeModal').then(m => ({ default: m.UpgradeModal })));
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { useLicenseStore } from './services/licenseManager';
 import { platformBridge } from './services/platformBridge';
@@ -27,7 +28,6 @@ export const App: React.FC = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  const [showServerLogs, setShowServerLogs] = useState(false);
   const [showRecentModal, setShowRecentModal] = useState(false);
   const [showProjectsModal, setShowProjectsModal] = useState(false);
   const [showAgentsModal, setShowAgentsModal] = useState(false);
@@ -541,12 +541,6 @@ export const App: React.FC = () => {
         setShowAnalytics(true);
       }
       
-      // Ctrl+Shift+L for server logs
-      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === 'L') {
-        e.preventDefault();
-        setShowServerLogs(prev => !prev);
-      }
-      
       // ? for keyboard shortcuts (not in input fields)
       if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
         e.preventDefault();
@@ -558,9 +552,6 @@ export const App: React.FC = () => {
         if (showHelpModal) {
           e.preventDefault();
           setShowHelpModal(false);
-        } else if (showServerLogs) {
-          e.preventDefault();
-          setShowServerLogs(false);
         } else if (showAbout) {
           e.preventDefault();
           setShowAbout(false);
@@ -607,7 +598,7 @@ export const App: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showHelpModal, showServerLogs, showAbout, showSettings, showRecentModal, showProjectsModal, sessions, setCurrentSession]);
+  }, [showHelpModal, showAbout, showSettings, showRecentModal, showProjectsModal, sessions, setCurrentSession]);
 
   // Apply theme colors, zoom level, and window state from localStorage on mount
   useEffect(() => {
@@ -943,40 +934,49 @@ export const App: React.FC = () => {
       
       {showSettings && (
         <ErrorBoundary name="SettingsModal">
-          <SettingsModalTabbed onClose={() => setShowSettings(false)} />
+          <Suspense fallback={null}>
+            <SettingsModalTabbed onClose={() => setShowSettings(false)} />
+          </Suspense>
         </ErrorBoundary>
       )}
       {showAbout && (
         <ErrorBoundary name="AboutModal">
-          <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} onShowUpgrade={() => {
-            setShowAbout(false);
-            setUpgradeReason('trial');
-            setShowUpgradeModal(true);
-          }} />
+          <Suspense fallback={null}>
+            <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} onShowUpgrade={() => {
+              setShowAbout(false);
+              setUpgradeReason('trial');
+              setShowUpgradeModal(true);
+            }} />
+          </Suspense>
         </ErrorBoundary>
       )}
       {showHelpModal && (
         <ErrorBoundary name="KeyboardShortcuts">
-          <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />
+          <Suspense fallback={null}>
+            <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />
+          </Suspense>
         </ErrorBoundary>
       )}
-      <ErrorBoundary name="ServerLogs">
-        <ServerLogs isOpen={showServerLogs} onClose={() => setShowServerLogs(false)} />
-      </ErrorBoundary>
-      <ErrorBoundary name="RecentProjectsModal">
-        <RecentProjectsModal
-          isOpen={showRecentModal}
-          onClose={() => setShowRecentModal(false)}
-          onProjectSelect={(path) => {
-            const name = path.split(/[/\\]/).pop() || path;
-            createSession(name, path);
-          }}
-        />
-      </ErrorBoundary>
-      <ErrorBoundary name="ProjectsModal">
-        <ProjectsModal
-          isOpen={showProjectsModal}
-          onClose={() => setShowProjectsModal(false)}
+      {showRecentModal && (
+        <ErrorBoundary name="RecentProjectsModal">
+          <Suspense fallback={null}>
+            <RecentProjectsModal
+              isOpen={showRecentModal}
+              onClose={() => setShowRecentModal(false)}
+              onProjectSelect={(path) => {
+                const name = path.split(/[/\\]/).pop() || path;
+                createSession(name, path);
+              }}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      {showProjectsModal && (
+        <ErrorBoundary name="ProjectsModal">
+          <Suspense fallback={null}>
+            <ProjectsModal
+              isOpen={showProjectsModal}
+              onClose={() => setShowProjectsModal(false)}
         onSelectSession={async (projectPath: string, sessionId: string | null, sessionTitle?: string, sessionMessageCount?: number) => {
           // If no sessionId, create a new session in the project
           if (!sessionId) {
@@ -1142,38 +1142,50 @@ export const App: React.FC = () => {
           // setAnalyticsProject(projectName);
           // setShowAnalytics(true);
         }}
-        />
-      </ErrorBoundary>
-      <ErrorBoundary name="AgentsModal">
-        <AgentsModal
-          isOpen={showAgentsModal}
-        onClose={() => setShowAgentsModal(false)}
-        onSelectAgent={(agent) => {
-          // Apply selected agent to the store
-          const store = useClaudeCodeStore.getState();
-          store.selectAgent(agent.id);
-          console.log('[App] Selected agent:', agent.name);
-          setShowAgentsModal(false);
-        }}
-        />
-      </ErrorBoundary>
-      <ErrorBoundary name="AnalyticsModal">
-        <AnalyticsModal
-          isOpen={showAnalytics}
-        onClose={() => {
-          setShowAnalytics(false);
-          setAnalyticsProject(undefined);
-        }}
-        initialProject={analyticsProject}
-        />
-      </ErrorBoundary>
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      {showAgentsModal && (
+        <ErrorBoundary name="AgentsModal">
+          <Suspense fallback={null}>
+            <AgentsModal
+              isOpen={showAgentsModal}
+              onClose={() => setShowAgentsModal(false)}
+              onSelectAgent={(agent) => {
+                // Apply selected agent to the store
+                const store = useClaudeCodeStore.getState();
+                store.selectAgent(agent.id);
+                console.log('[App] Selected agent:', agent.name);
+                setShowAgentsModal(false);
+              }}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
+      {showAnalytics && (
+        <ErrorBoundary name="AnalyticsModal">
+          <Suspense fallback={null}>
+            <AnalyticsModal
+              isOpen={showAnalytics}
+              onClose={() => {
+                setShowAnalytics(false);
+                setAnalyticsProject(undefined);
+              }}
+              initialProject={analyticsProject}
+            />
+          </Suspense>
+        </ErrorBoundary>
+      )}
       {showUpgradeModal && (
         <ErrorBoundary name="UpgradeModal">
-          <UpgradeModal
-            isOpen={showUpgradeModal}
-            onClose={() => setShowUpgradeModal(false)}
-            reason={upgradeReason}
-          />
+          <Suspense fallback={null}>
+            <UpgradeModal
+              isOpen={showUpgradeModal}
+              onClose={() => setShowUpgradeModal(false)}
+              reason={upgradeReason}
+            />
+          </Suspense>
         </ErrorBoundary>
       )}
       {claudeNotDetected && connectionCheckDone && (

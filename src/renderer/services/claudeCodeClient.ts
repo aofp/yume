@@ -6,16 +6,7 @@
 import { io, Socket } from 'socket.io-client';
 import platformAPI, { isTauri } from './tauriApi';
 import { hooksService } from './hooksService';
-
-// Check if we're in development mode
-const isDev = import.meta.env?.DEV || process.env.NODE_ENV === 'development';
-
-// Debug logging helper - only logs when in development
-const debugLog = (...args: any[]) => {
-  if (isDev) {
-    console.log(...args);
-  }
-};
+import { debugLog, isDev } from '../utils/helpers';
 
 export class ClaudeCodeClient {
   private socket: Socket | null = null;
@@ -684,6 +675,16 @@ export class ClaudeCodeClient {
 
           // Listen for messages
           this.socket.on(channel, loggingHandler);
+
+          // Also listen for batched messages
+          const batchChannel = `messageBatch:${sessionId}`;
+          const batchHandler = (messages: any[]) => {
+            for (const message of messages) {
+              loggingHandler(message);
+            }
+          };
+          this.messageHandlers.set(batchChannel, batchHandler);
+          this.socket.on(batchChannel, batchHandler);
         }
       }, 100);
 
@@ -697,6 +698,13 @@ export class ClaudeCodeClient {
             this.socket.off(channel, storedHandler);
             this.messageHandlers.delete(channel);
           }
+          // Also cleanup batch handler
+          const batchChannel = `messageBatch:${sessionId}`;
+          const storedBatchHandler = this.messageHandlers.get(batchChannel);
+          if (storedBatchHandler) {
+            this.socket.off(batchChannel, storedBatchHandler);
+            this.messageHandlers.delete(batchChannel);
+          }
         }
       };
     }
@@ -708,7 +716,17 @@ export class ClaudeCodeClient {
     console.log(`[Client] 📡 Setting up socket.on listener for channel: ${channel}`);
     this.socket.on(channel, loggingHandler);
 
-    debugLog(`[Client] Listening for messages on ${channel}`);
+    // Also listen for batched messages
+    const batchChannel = `messageBatch:${sessionId}`;
+    const batchHandler = (messages: any[]) => {
+      for (const message of messages) {
+        loggingHandler(message);
+      }
+    };
+    this.messageHandlers.set(batchChannel, batchHandler);
+    this.socket.on(batchChannel, batchHandler);
+
+    debugLog(`[Client] Listening for messages on ${channel} and ${batchChannel}`);
 
     // Return cleanup function
     return () => {
@@ -718,6 +736,12 @@ export class ClaudeCodeClient {
           this.socket.off(channel, storedHandler);
           this.messageHandlers.delete(channel);
           debugLog(`[Client] Stopped listening on ${channel}`);
+        }
+        // Also cleanup batch handler
+        const storedBatchHandler = this.messageHandlers.get(batchChannel);
+        if (storedBatchHandler) {
+          this.socket.off(batchChannel, storedBatchHandler);
+          this.messageHandlers.delete(batchChannel);
         }
       }
     };

@@ -32,6 +32,7 @@ import {
   IconDots,
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { isBashPrefix } from '../../utils/helpers';
 import './MessageRenderer.css';
 
 // Selection preservation utilities for streaming messages
@@ -236,10 +237,6 @@ interface ContentBlock {
   is_error?: boolean;
 }
 
-// Helper to check if text starts with bash mode prefix ($ or !)
-const isBashPrefix = (text: string): boolean => {
-  return text.startsWith('$') || text.startsWith('!');
-};
 
 // Truncate text to max length (default 256)
 const truncateText = (text: string, maxLen = 256): string => {
@@ -247,89 +244,45 @@ const truncateText = (text: string, maxLen = 256): string => {
   return text.substring(0, maxLen) + '...';
 };
 
-// Tool display configurations
+// PRE-CREATED ICONS - avoid JSX creation on every render (performance optimization)
+const TOOL_ICONS = {
+  Read: <IconFileText size={14} stroke={1.5} className="tool-icon" />,
+  Write: <IconFile size={14} stroke={1.5} className="tool-icon" />,
+  Edit: <IconEdit size={14} stroke={1.5} className="tool-icon" />,
+  MultiEdit: <IconEditCircle size={14} stroke={1.5} className="tool-icon" />,
+  Bash: <IconTerminal size={14} stroke={1.5} className="tool-icon" />,
+  TodoWrite: <IconChecklist size={14} stroke={1.5} className="tool-icon" />,
+  WebSearch: <IconWorld size={14} stroke={1.5} className="tool-icon" />,
+  WebFetch: <IconDownload size={14} stroke={1.5} className="tool-icon" />,
+  Grep: <IconSearch size={14} stroke={1.5} className="tool-icon" />,
+  Glob: <IconFileSearch size={14} stroke={1.5} className="tool-icon" />,
+  LS: <IconFolderOpen size={14} stroke={1.5} className="tool-icon" />,
+  Task: <IconRobot size={14} stroke={1.5} className="tool-icon" />,
+  ExitPlanMode: <IconLogout size={14} stroke={1.5} className="tool-icon" />,
+  NotebookEdit: <IconNotebook size={14} stroke={1.5} className="tool-icon" />,
+  BashOutput: <IconTerminal2 size={14} stroke={1.5} className="tool-icon" />,
+  KillBash: <IconPlayerStop size={14} stroke={1.5} className="tool-icon" />,
+  default: <IconServer size={14} stroke={1.5} className="tool-icon" />,
+} as const;
+
+// Tool display configurations - uses pre-created icons for performance
 const TOOL_DISPLAYS: Record<string, (input: any) => { icon: React.ReactNode; action: string; detail: string; todos?: any[] }> = {
-  'Read': (i) => ({ 
-    icon: <IconFileText size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'reading', 
-    detail: formatPath(i?.file_path) 
-  }),
-  'Write': (i) => ({ 
-    icon: <IconFile size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'writing', 
-    detail: formatPath(i?.file_path) 
-  }),
-  'Edit': (i) => ({ 
-    icon: <IconEdit size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'editing', 
-    detail: formatPath(i?.file_path)
-  }),
-  'MultiEdit': (i) => ({ 
-    icon: <IconEditCircle size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'editing', 
-    detail: formatPath(i?.file_path)
-  }),
-  'Bash': (i) => ({ 
-    icon: <IconTerminal size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'running', 
-    detail: formatCommand(i?.command)
-  }),
-  'TodoWrite': (i) => ({ 
-    icon: <IconChecklist size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'updating todos', 
-    detail: formatTodos(i?.todos),
-    todos: i?.todos
-  }),
-  'WebSearch': (i) => ({
-    icon: <IconWorld size={14} stroke={1.5} className="tool-icon" />,
-    action: 'searching web',
-    detail: truncateText(`"${i?.query || ''}"`, 256)
-  }),
-  'WebFetch': (i) => ({ 
-    icon: <IconDownload size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'fetching', 
-    detail: formatUrl(i?.url)
-  }),
-  'Grep': (i) => ({
-    icon: <IconSearch size={14} stroke={1.5} className="tool-icon" />,
-    action: 'searching',
-    detail: truncateText(`"${i?.pattern || ''}" in ${formatPath(i?.path || '.')}`, 256)
-  }),
-  'Glob': (i) => ({ 
-    icon: <IconFileSearch size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'finding', 
-    detail: i?.pattern || 'files'
-  }),
-  'LS': (i) => ({ 
-    icon: <IconFolderOpen size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'listing', 
-    detail: formatPath(i?.path)
-  }),
-  'Task': (i) => ({
-    icon: <IconRobot size={14} stroke={1.5} className="tool-icon" />,
-    action: truncateText(i?.description || 'running task', 256),
-    detail: i?.subagent_type || 'agent'
-  }),
-  'ExitPlanMode': (i) => ({ 
-    icon: <IconLogout size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'plan complete', 
-    detail: 'ready to execute'
-  }),
-  'NotebookEdit': (i) => ({ 
-    icon: <IconNotebook size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'editing notebook', 
-    detail: formatPath(i?.notebook_path)
-  }),
-  'BashOutput': (i) => ({ 
-    icon: <IconTerminal2 size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'reading output', 
-    detail: `bash ${i?.bash_id || 'session'}`
-  }),
-  'KillBash': (i) => ({ 
-    icon: <IconPlayerStop size={14} stroke={1.5} className="tool-icon" />, 
-    action: 'stopping', 
-    detail: `bash ${i?.shell_id || 'session'}`
-  })
+  'Read': (i) => ({ icon: TOOL_ICONS.Read, action: 'reading', detail: formatPath(i?.file_path) }),
+  'Write': (i) => ({ icon: TOOL_ICONS.Write, action: 'writing', detail: formatPath(i?.file_path) }),
+  'Edit': (i) => ({ icon: TOOL_ICONS.Edit, action: 'editing', detail: formatPath(i?.file_path) }),
+  'MultiEdit': (i) => ({ icon: TOOL_ICONS.MultiEdit, action: 'editing', detail: formatPath(i?.file_path) }),
+  'Bash': (i) => ({ icon: TOOL_ICONS.Bash, action: 'running', detail: formatCommand(i?.command) }),
+  'TodoWrite': (i) => ({ icon: TOOL_ICONS.TodoWrite, action: 'updating todos', detail: formatTodos(i?.todos), todos: i?.todos }),
+  'WebSearch': (i) => ({ icon: TOOL_ICONS.WebSearch, action: 'searching web', detail: truncateText(`"${i?.query || ''}"`, 256) }),
+  'WebFetch': (i) => ({ icon: TOOL_ICONS.WebFetch, action: 'fetching', detail: formatUrl(i?.url) }),
+  'Grep': (i) => ({ icon: TOOL_ICONS.Grep, action: 'searching', detail: truncateText(`"${i?.pattern || ''}" in ${formatPath(i?.path || '.')}`, 256) }),
+  'Glob': (i) => ({ icon: TOOL_ICONS.Glob, action: 'finding', detail: i?.pattern || 'files' }),
+  'LS': (i) => ({ icon: TOOL_ICONS.LS, action: 'listing', detail: formatPath(i?.path) }),
+  'Task': (i) => ({ icon: TOOL_ICONS.Task, action: truncateText(i?.description || 'running task', 256), detail: i?.subagent_type || 'agent' }),
+  'ExitPlanMode': () => ({ icon: TOOL_ICONS.ExitPlanMode, action: 'plan complete', detail: 'ready to execute' }),
+  'NotebookEdit': (i) => ({ icon: TOOL_ICONS.NotebookEdit, action: 'editing notebook', detail: formatPath(i?.notebook_path) }),
+  'BashOutput': (i) => ({ icon: TOOL_ICONS.BashOutput, action: 'reading output', detail: `bash ${i?.bash_id || 'session'}` }),
+  'KillBash': (i) => ({ icon: TOOL_ICONS.KillBash, action: 'stopping', detail: `bash ${i?.shell_id || 'session'}` })
 };
 
 // Helper function to detect and format MCP tools
@@ -355,7 +308,7 @@ const getMCPToolDisplay = (toolName: string, input: any) => {
     }
     
     return {
-      icon: <IconServer size={14} stroke={1.5} className="tool-icon" />,
+      icon: TOOL_ICONS.default,
       action: `mcp: ${tool.replace(/_/g, ' ')}`,
       detail
     };
@@ -3026,7 +2979,9 @@ const MessageRendererBase: React.FC<{
                                resultText.includes('Applied') ||
                                resultText.includes('created') ||
                                resultText.includes('→');
-      const isSuccess = message.is_error === false ||
+      // FIX: Use !message.is_error (falsy check) instead of === false (strict equality)
+      // This handles undefined/null/false all as success
+      const isSuccess = !message.is_error ||
                        message.subtype === 'success' ||
                        message.success === true ||
                        looksLikeSuccess;  // looksLikeSuccess overrides is_error

@@ -166,7 +166,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     count: displayMessages.length,
     getScrollElement: () => parentRef.current,
     estimateSize,
-    overscan: 25, // Render 25 items outside viewport - aggressive buffering to eliminate flicker
+    overscan: 12, // Render 12 items outside viewport - balanced buffering
     // Stable getItemKey using ref - prevents recreation during streaming
     getItemKey: useCallback((index: number) => {
       const msgs = showThinking ? [...messagesRef.current, { type: 'thinking', id: 'thinking-indicator' }] : messagesRef.current;

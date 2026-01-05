@@ -1,12 +1,14 @@
 /**
  * Frontend Wrapper Integration for Token Tracking and Compaction
- * 
+ *
  * This processes messages that come directly from Rust,
  * since the server-side wrapper is bypassed.
  */
 
+import { createDebugLogger } from '../utils/helpers';
+
 // Check if we're in development mode
-const isDev = import.meta.env?.DEV || process.env.NODE_ENV === 'development';
+const isDev = import.meta.env?.DEV || (typeof process !== 'undefined' && process.env?.NODE_ENV === 'development');
 
 // Wrapper state - debug disabled by default in production
 const wrapperState = {
@@ -18,12 +20,8 @@ const wrapperState = {
   autoCompactPending: new Map<string, string>() // Track pending auto-compacts
 };
 
-// Debug logging helper - only logs when debug is enabled
-const debugLog = (...args: any[]) => {
-  if (wrapperState.debug) {
-    console.log(...args);
-  }
-};
+// Debug logging helper - only logs when wrapperState.debug is enabled
+const debugLog = createDebugLogger(() => wrapperState.debug);
 
 interface SessionState {
   id: string;
