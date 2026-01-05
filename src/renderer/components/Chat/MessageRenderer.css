@@ -227,11 +227,10 @@
   flex: unset;
 }
 
-/* Assistant message text elements use accent color */
-.message.assistant .message-bubble span,
+/* Assistant message text elements use code color for code/pre */
 .message.assistant .message-bubble code,
 .message.assistant .message-bubble pre {
-  color: var(--accent-color);
+  color: var(--code-color);
 }
 
 .message.user .message-content {
@@ -275,7 +274,7 @@
 
 .markdown-content code {
   background: rgba(0, 0, 0, 0.5);
-  color: var(--fg-100);
+  color: var(--code-color);
   padding: 2px;
   border-radius: 4px;
   font-size: 10px;
@@ -305,7 +304,7 @@
 
 .markdown-content pre code {
   background: none;
-  color: var(--fg-90);
+  color: var(--code-color);
   padding: 0;
   max-width: 100%;
   display: block;
@@ -661,7 +660,7 @@ ol {
   background: rgba(var(--foreground-rgb), 0.1);
   padding: 1px 4px;
   border-radius: 3px;
-  color: var(--color-accent);
+  color: var(--code-color);
 }
 
 /* Code blocks in thinking blocks */
@@ -686,7 +685,7 @@ ol {
   padding: 8px;
   overflow-x: auto;
   max-width: 100%;
-  color: var(--color-accent);
+  color: var(--code-color);
   box-sizing: border-box;
   scrollbar-width: thin;
 }
@@ -1133,7 +1132,7 @@ pre.edit-diff {
 }
 
 .tool-detail {
-  color: var(--fg-100);
+  color: var(--fg-60);
   font-family: var(--font-mono);
   font-size: 8px !important;
   opacity: 1;
@@ -2453,6 +2452,7 @@ pre code,
   padding: 1px 3px;
   font-size: 10px;
   font-family: var(--font-mono);
+  color: var(--code-color);
 }
 
 /* Compact fallback for simple messages */

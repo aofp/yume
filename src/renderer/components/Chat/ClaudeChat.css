@@ -463,14 +463,6 @@
   font-weight: 500;
 }
 
-.tool-detail {
-  color: var(--fg-100) !important;
-  font-family: var(--font-mono);
-  font-size: 8px;
-  opacity: 1;
-  overflow: visible;
-}
-
 @keyframes toolFade {
   from {
     opacity: 0;
@@ -1930,7 +1922,7 @@ textarea.context-full {
 }
 
 .recent-modal {
-  background: var(--background-color);
+  background: var(--bg-color);
   border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 90%;

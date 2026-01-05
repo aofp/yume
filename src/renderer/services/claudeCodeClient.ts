@@ -591,6 +591,17 @@ export class ClaudeCodeClient {
 
     // Wrap handler with logging (only in development)
     const loggingHandler = (message: any) => {
+      // ALWAYS log bash messages for debugging
+      const isBashMessage = message.id && String(message.id).startsWith('bash-');
+      if (isBashMessage) {
+        console.log(`[Client] 🐚 BASH MESSAGE RECEIVED on channel ${channel}:`, {
+          id: message.id,
+          type: message.type,
+          streaming: message.streaming,
+          contentPreview: JSON.stringify(message.message?.content)?.substring(0, 100)
+        });
+      }
+
       // Enhanced logging for thinking blocks - only in dev
       if (isDev) {
         let contentInfo: any = {

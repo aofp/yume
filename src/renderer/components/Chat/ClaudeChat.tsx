@@ -474,8 +474,14 @@ export const ClaudeChat: React.FC = () => {
     renameSession: state.renameSession
   })));
 
-  // Subscribe to messageUpdateCounter DIRECTLY from store to bypass useShallow issue
-  // This is critical for bash output to show immediately without tab switching
+  // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
+  // useShallow may not detect nested changes properly, causing bash output to not display
+  // until the component re-renders for another reason (like tab switch)
+  const currentSession = useClaudeCodeStore(state =>
+    state.sessions.find(s => s.id === currentSessionId)
+  );
+
+  // Keep messageUpdateCounter subscription for additional safety (forces re-render on message add)
   const messageUpdateCounter = useClaudeCodeStore(state => {
     const session = state.sessions.find(s => s.id === currentSessionId);
     return session?.messageUpdateCounter || 0;
@@ -486,8 +492,6 @@ export const ClaudeChat: React.FC = () => {
     const session = state.sessions.find(s => s.id === currentSessionId);
     return session?.messages?.length || 0;
   });
-
-  const currentSession = useMemo(() => sessions.find(s => s.id === currentSessionId), [sessions, currentSessionId, messageUpdateCounter, messagesLength]);
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
@@ -509,10 +513,15 @@ export const ClaudeChat: React.FC = () => {
     });
   }, [currentSessionId]);
 
-  // DEBUG: Log current session messages length
+  // DEBUG: Log current session messages length and update counter
   React.useEffect(() => {
-    console.log(`[DEBUG] Current session ${currentSessionId} has ${currentSession?.messages?.length || 0} messages`);
-  }, [currentSessionId, currentSession?.messages?.length]);
+    console.log(`[DEBUG] Current session ${currentSessionId} has ${currentSession?.messages?.length || 0} messages, updateCounter: ${messageUpdateCounter}`);
+    // Log last message for bash debugging
+    const lastMsg = currentSession?.messages?.[currentSession.messages.length - 1];
+    if (lastMsg) {
+      console.log(`[DEBUG] Last message:`, { type: lastMsg.type, id: lastMsg.id, streaming: lastMsg.streaming });
+    }
+  }, [currentSessionId, currentSession?.messages?.length, messageUpdateCounter]);
 
   // NO AUTO-CREATION and NO AUTO-RESUME
   // Sessions are ephemeral - they don't survive app restarts
@@ -3671,7 +3680,7 @@ export const ClaudeChat: React.FC = () => {
             }, [] as typeof currentSession.messages);
           
           const filteredMessages = processedMessages;
-          
+
           // Find the index of the last user or assistant message for restore button logic
           let lastRestorableIndex = -1;
           for (let i = filteredMessages.length - 1; i >= 0; i--) {

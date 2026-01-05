@@ -3322,9 +3322,28 @@ const areContentsEqual = (prevContent: any, nextContent: any): boolean => {
 // Export memoized version for performance
 export const MessageRenderer = memo(MessageRendererBase, (prevProps, nextProps) => {
   // Custom comparison - only re-render if message content or streaming state changes
+  const idEqual = prevProps.message.id === nextProps.message.id;
+  const streamingEqual = prevProps.message.streaming === nextProps.message.streaming;
+  const isStreamingEqual = prevProps.isStreaming === nextProps.isStreaming;
+  const contentsEqual = areContentsEqual(prevProps.message.message?.content, nextProps.message.message?.content);
+
+  // Debug bash messages
+  if (nextProps.message.id?.startsWith('bash-')) {
+    console.log('[MEMO] Bash message comparison:', {
+      id: nextProps.message.id,
+      idEqual,
+      streamingEqual,
+      isStreamingEqual,
+      contentsEqual,
+      prevContent: JSON.stringify(prevProps.message.message?.content)?.substring(0, 50),
+      nextContent: JSON.stringify(nextProps.message.message?.content)?.substring(0, 50),
+      willSkipRender: idEqual && streamingEqual && isStreamingEqual && contentsEqual
+    });
+  }
+
   return (
-    prevProps.message.id === nextProps.message.id &&
-    prevProps.message.streaming === nextProps.message.streaming &&
+    idEqual &&
+    streamingEqual &&
     prevProps.isStreaming === nextProps.isStreaming &&
     areContentsEqual(prevProps.message.message?.content, nextProps.message.message?.content)
   );

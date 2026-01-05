@@ -3361,26 +3361,9 @@ io.on('connection', (socket) => {
           timestamp: Date.now()
         });
         
-        // Send initial placeholder for bash command (NO STREAMING)
-        socket.emit(`message:${sessionId}`, {
-          id: bashMessageId,
-          type: 'assistant',
-          message: { content: '' },
-          streaming: false,  // Don't show thinking for bash commands,
-          timestamp: Date.now()
-        });
-        
-        // Also emit to Claude session if different
-        if (session.claudeSessionId && session.claudeSessionId !== sessionId) {
-          socket.emit(`message:${session.claudeSessionId}`, {
-            id: bashMessageId,
-            type: 'assistant',
-            message: { content: '' },
-            streaming: false,  // Don't show thinking for bash commands,
-            timestamp: Date.now()
-          });
-        }
-        
+        // NOTE: Removed empty placeholder message - it was causing display issues
+        // The actual result message will be sent when the command completes
+
         console.log(`🐚 [BASH] Started streaming with message ID: ${bashMessageId}`);
         
         // Execute the command

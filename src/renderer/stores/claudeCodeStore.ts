@@ -879,12 +879,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
         console.log('[Store] Received title for session:', sessionId, title);
         set(state => ({
-          sessions: state.sessions.map(s => 
-            // Only update title if user hasn't manually renamed
-            s.id === sessionId && !s.userRenamed
-              ? { ...s, claudeTitle: title } 
-              : s
-          )
+          sessions: state.sessions.map(s => {
+            // Only update title if:
+            // 1. This is the right session
+            // 2. User hasn't manually renamed
+            // 3. Current title is not a "tab X" pattern (cleared context keeps tab name)
+            const isTabTitle = s.claudeTitle?.match(/^tab \d+$/);
+            if (s.id === sessionId && !s.userRenamed && !isTabTitle) {
+              return { ...s, claudeTitle: title };
+            }
+            return s;
+          })
         }));
       });
       
@@ -1320,6 +1325,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               }
               
               // Handle messages with proper deduplication
+              // BASH DEBUG: Log when bash message is being added to session
+              const isBashMessage = message.id && String(message.id).startsWith('bash-');
+              if (isBashMessage) {
+                console.log(`[Store] 🐚 BASH MESSAGE IN SET STATE - adding to session ${sessionId}:`, {
+                  messageId: message.id,
+                  existingMessagesCount: existingMessages.length,
+                  streaming: message.streaming
+                });
+              }
+
               if (message.id) {
                 const existingIndex = existingMessages.findIndex(m => m.id === message.id);
                 if (existingIndex >= 0) {
@@ -2605,14 +2620,16 @@ ${content}`;
     const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
       console.log('[Store] Received title for reconnected session:', sessionId, title);
       set(state => ({
-        sessions: state.sessions.map(s => 
-          s.id === sessionId && !s.userRenamed
-            ? { ...s, claudeTitle: title } 
-            : s
-        )
+        sessions: state.sessions.map(s => {
+          const isTabTitle = s.claudeTitle?.match(/^tab \d+$/);
+          if (s.id === sessionId && !s.userRenamed && !isTabTitle) {
+            return { ...s, claudeTitle: title };
+          }
+          return s;
+        })
       }));
     });
-    
+
     // Set up error handler for resumed session
     const errorCleanup = claudeClient.onError(sessionId, (error) => {
       console.error('[Store] Error received for resumed session:', sessionId, error);
@@ -2850,13 +2867,16 @@ ${content}`;
       const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
         console.log('[Store] Received title for resumed session:', sessionId, title);
         set(state => ({
-          sessions: state.sessions.map(s => 
-            // Only update title if user hasn't manually renamed
-            s.id === sessionId && !s.userRenamed ? { ...s, claudeTitle: title } : s
-          )
+          sessions: state.sessions.map(s => {
+            const isTabTitle = s.claudeTitle?.match(/^tab \d+$/);
+            if (s.id === sessionId && !s.userRenamed && !isTabTitle) {
+              return { ...s, claudeTitle: title };
+            }
+            return s;
+          })
         }));
       });
-      
+
       // Set up error handler for loaded session
       const errorCleanup = claudeClient.onError(sessionId, (error) => {
         console.error('[Store] Error received for loaded session:', sessionId, error);
@@ -3340,10 +3360,14 @@ ${content}`;
     // Log the result
     const clearedSession = get().sessions.find(s => s.id === sessionId);
     if (clearedSession) {
+      console.log(`🧹 [Store] After clear - claudeTitle: ${clearedSession.claudeTitle}`);
       console.log(`🧹 [Store] After clear - analytics:`, clearedSession.analytics);
       console.log(`🧹 [Store] After clear - messages count: ${clearedSession.messages.length}`);
       console.log(`🧹 [Store] After clear - claudeSessionId: ${clearedSession.claudeSessionId}`);
     }
+
+    // Persist sessions after clearing context
+    persistSessions(get().sessions);
 
     // Notify server to clear the Claude session - use the imported singleton
     claudeClient.clearSession(sessionId).catch(error => {
@@ -3432,6 +3456,11 @@ ${content}`;
   },
 
   addMessageToSession: (sessionId: string, message: SDKMessage) => {
+    // DEBUG: Log bash messages specifically
+    const isBash = message.id?.startsWith?.('bash-');
+    if (isBash) {
+      console.log(`🐚 [BASH DEBUG] addMessageToSession called:`, { sessionId, messageId: message.id, type: message.type, streaming: message.streaming });
+    }
     set(state => {
       // Log the current thinking state for debugging
       const currentSession = state.sessions.find(s => s.id === sessionId);
@@ -3682,13 +3711,18 @@ ${content}`;
           }
         }
 
+        const newCounter = (s.messageUpdateCounter || 0) + 1;
+        // DEBUG: Log bash message update
+        if (message.id?.startsWith?.('bash-')) {
+          console.log(`🐚 [BASH DEBUG] Session updated:`, { sessionId, newMsgCount: updatedMessages.length, newCounter });
+        }
         return {
           ...s,
           messages: updatedMessages,
           updatedAt: new Date(),
           analytics,
           // Force React re-render by updating a counter (fixes bash output not showing)
-          messageUpdateCounter: (s.messageUpdateCounter || 0) + 1,
+          messageUpdateCounter: newCounter,
           // Clear thinkingStartTime after we've used it for result
           ...(shouldClearThinkingTime ? { thinkingStartTime: undefined } : {})
         };

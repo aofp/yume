@@ -38,6 +38,9 @@
   --accent-color: #ff9999;
   --accent-rgb: 255, 153, 153;
 
+  /* Code color - 50/50 blend of accent and foreground */
+  --code-color: color-mix(in srgb, var(--accent-color) 50%, var(--foreground-color) 50%);
+
   /* Positive/Negative Colors - can be changed via settings */
   --positive-color: #99ff99;  /* default green for additions/success */
   --positive-rgb: 153, 255, 153;
@@ -387,6 +390,7 @@ code {
   background: var(--background-color);
   padding: 0;
   border-radius: var(--radius-sm);
+  color: var(--code-color);
 }
 
 pre {
@@ -397,6 +401,7 @@ pre {
   padding: 0;
   border-radius: 2px !important;
   overflow-x: auto;
+  color: var(--code-color);
 }
 
 /* Utility Classes */
