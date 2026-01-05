@@ -419,7 +419,11 @@ pub fn run() {
                     
                     // Make the window transparent
                     let _: () = msg_send![ns_window, setOpaque: NO];
-                    
+
+                    // CRITICAL: Enable window shadow for transparent windows
+                    // Must be explicitly set after setOpaque:NO
+                    let _: () = msg_send![ns_window, setHasShadow: YES];
+
                     // Set the layer background to clear for transparency
                     // Do NOT set to black as it prevents transparency
                     let clear_cg: id = msg_send![clear, CGColor];
