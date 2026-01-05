@@ -288,7 +288,7 @@
   height: 4px;
   padding: 0;
   margin: 0;
-  background: linear-gradient(to right, rgba(var(--foreground-rgb), 0.1), rgba(var(--foreground-rgb), 0.2));
+  background: rgba(var(--foreground-rgb), 0.1);
   border-radius: 4px;
   appearance: none;
   -webkit-appearance: none;

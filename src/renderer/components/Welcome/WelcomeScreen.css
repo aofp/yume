@@ -189,7 +189,7 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: color-mix(in srgb, var(--background-color) 50%, black);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -284,6 +284,30 @@
 .clear-all-icon:hover {
   background: rgba(var(--negative-rgb), 0.1);
   color: var(--negative-color);
+}
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--fg-30);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: var(--fg-10);
+  color: var(--fg-60);
 }
 
 .modal-close {

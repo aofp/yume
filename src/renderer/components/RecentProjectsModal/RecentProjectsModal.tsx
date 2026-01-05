@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconFolderOpen, IconTrash, IconX } from '@tabler/icons-react';
+import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 
 interface RecentProject {
   path: string;
@@ -22,6 +23,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   const [isSelecting, setIsSelecting] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
+  const [showClearConfirm, setShowClearConfirm] = React.useState(false);
   // Ref to track current open state in event handlers
   const isOpenRef = React.useRef(isOpen);
   
@@ -95,12 +97,14 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     }
   };
 
-  const clearAllProjects = async () => {
-    if (await confirm('clear all recent projects?')) {
-      localStorage.removeItem('yurucode-recent-projects');
-      onClose();
-    }
-    // don't close modal if user cancels
+  const clearAllProjects = () => {
+    setShowClearConfirm(true);
+  };
+
+  const handleConfirmClear = () => {
+    localStorage.removeItem('yurucode-recent-projects');
+    setShowClearConfirm(false);
+    onClose();
   };
 
   const formatFolderPath = React.useCallback((fullPath: string): string => {
@@ -333,19 +337,39 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
             <IconFolderOpen size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
             recent projects
           </span>
-          <button 
-            className="clear-all-icon"
-            onClick={clearAllProjects}
-            title="clear all"
-          >
-            <IconTrash size={14} />
-          </button>
+          <div className="modal-header-actions">
+            <button
+              className="clear-all-icon"
+              onClick={clearAllProjects}
+              title="clear all"
+            >
+              <IconTrash size={14} />
+            </button>
+            <button
+              className="modal-close-btn"
+              onClick={onClose}
+              title="close"
+            >
+              <IconX size={14} />
+            </button>
+          </div>
         </div>
         
         <div className="modal-content">
           {renderProjects()}
         </div>
       </div>
+
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        title="clear recent projects"
+        message="this will remove all projects from the recent list. this cannot be undone."
+        confirmText="clear all"
+        cancelText="cancel"
+        isDangerous={true}
+        onConfirm={handleConfirmClear}
+        onCancel={() => setShowClearConfirm(false)}
+      />
     </div>
   );
 };
