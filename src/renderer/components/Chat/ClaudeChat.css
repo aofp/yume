@@ -1955,7 +1955,7 @@ textarea.context-full {
   justify-content: space-between;
   align-items: center;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--fg-15);
+  border-bottom: 1px solid var(--fg-05);
   margin-bottom: 0;
   flex-shrink: 0;
   position: sticky;
