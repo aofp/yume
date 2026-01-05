@@ -255,9 +255,10 @@ body.tab-dragging * {
   font-size: 7px;
   font-family: var(--font-mono);
   color: var(--fg-50);
-  opacity: 0.5;
+  opacity: 0.7;
   line-height: 1;
   white-space: wrap;
+  overflow: visible;
   pointer-events: none;
   flex-shrink: 0;
   text-align: center;
