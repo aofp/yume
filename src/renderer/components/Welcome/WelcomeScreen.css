@@ -18,7 +18,12 @@
 
 /* macOS: 50% darker background like textarea - opacity is handled by html element */
 .platform-darwin .welcome-screen {
-  background: linear-gradient(rgba(var(--background-rgb), 1), rgba(var(--background-rgb), 1)), #000000;
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+}
+
+/* Windows: 50% darker background like textarea - opacity is handled by html element */
+.platform-win32 .welcome-screen {
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
 }
 
 .welcome-content {

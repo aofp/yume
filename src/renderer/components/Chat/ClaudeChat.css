@@ -21,9 +21,10 @@
   background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
 }
 
-/* Windows-specific fix for zoom issues */
+/* Windows: 50% darker background like textarea - opacity is handled by html element */
 .platform-win32 .chat-container {
   height: 100%;
+  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
 }
 
 /* Search bar - fixed top right minimal UI */

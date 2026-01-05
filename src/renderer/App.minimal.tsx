@@ -85,15 +85,10 @@ export const App: React.FC = () => {
     (window as any).__YURUCODE_LOADED__ = true;
 
     // Apply the target opacity now that app is loaded
+    // Use document.documentElement.style.opacity for actual transparency effect
+    // This works on both Windows and macOS
     const targetOpacity = (window as any).__YURUCODE_TARGET_OPACITY__ || 0.8;
-    const isWindows = navigator.platform.indexOf('Win') > -1;
-
-    if (isWindows) {
-      document.documentElement.style.setProperty('--bg-overlay-color', `rgba(0, 0, 0, ${targetOpacity})`);
-    } else {
-      document.documentElement.style.setProperty('--bg-color', `rgba(0, 0, 0, ${targetOpacity})`);
-    }
-    document.documentElement.style.setProperty('--bg-opacity', String(targetOpacity));
+    document.documentElement.style.opacity = String(targetOpacity);
     console.log('[App] Loaded - applied target opacity:', targetOpacity);
     
     return () => clearTimeout(checkConnection);

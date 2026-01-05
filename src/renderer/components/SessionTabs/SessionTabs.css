@@ -193,7 +193,7 @@ body.tab-dragging .session-tab {
   left: 0;
   height: 2px;
   background: var(--accent-color);
-  opacity: 0.4;
+  opacity: 0.5;
   border-radius: 0;
   transition: width 0.3s ease, left 0.3s ease;
   pointer-events: none;

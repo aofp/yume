@@ -22,59 +22,24 @@
         // Store target opacity for when app loads
         window.__YURUCODE_TARGET_OPACITY__ = alpha;
 
-        // Start with lower opacity during loading and animate to 0.7 over 5s
-        var loadingAlpha = 0.2;
-
         // Detect platform - Windows requires special handling
         var isWindows = navigator.platform.indexOf('Win') > -1;
 
-        // WebView2 on Windows ONLY supports alpha=0 (transparent) or alpha=255 (opaque)
-        // Semi-transparent values silently fail and render as opaque
-        // So we use transparent background + overlay for the tint effect
+        // Apply saved opacity immediately (no loading animation)
+        // CSS variables are set for compatibility but actual opacity uses document.documentElement.style.opacity
         if (isWindows) {
-          // Windows: Use fully transparent background, overlay provides tint
           document.documentElement.style.setProperty('--bg-color', 'transparent');
-          document.documentElement.style.setProperty('--bg-overlay-color', 'rgba(0, 0, 0, ' + loadingAlpha + ')');
-          document.documentElement.style.setProperty('--bg-opacity', loadingAlpha);
+          document.documentElement.style.setProperty('--bg-overlay-color', 'rgba(0, 0, 0, ' + alpha + ')');
           document.documentElement.style.setProperty('--is-windows', '1');
-          console.log('[Early Init] Windows mode: transparent bg + overlay alpha:', loadingAlpha, '(target:', alpha, ')');
         } else {
-          // macOS/Linux: Native semi-transparency works
-          var bgColor = 'rgba(0, 0, 0, ' + loadingAlpha + ')';
-          document.documentElement.style.setProperty('--bg-color', bgColor);
+          document.documentElement.style.setProperty('--bg-color', 'rgba(0, 0, 0, ' + alpha + ')');
           document.documentElement.style.setProperty('--bg-overlay-color', 'transparent');
-          document.documentElement.style.setProperty('--bg-opacity', loadingAlpha);
           document.documentElement.style.setProperty('--is-windows', '0');
-          console.log('[Early Init] macOS/Linux mode: --bg-color:', bgColor, '(target:', alpha, ')');
         }
-
-        // Animate opacity from 0.2 to 0.7 over 5 seconds during loading
-        var startTime = Date.now();
-        var startAlpha = 0.2;
-        var endAlpha = 0.7;
-        var duration = 5000; // 5 seconds
-
-        function updateLoadingOpacity() {
-          var elapsed = Date.now() - startTime;
-          var progress = Math.min(elapsed / duration, 1);
-          // Ease out cubic for smooth deceleration
-          var eased = 1 - Math.pow(1 - progress, 3);
-          var currentAlpha = startAlpha + (endAlpha - startAlpha) * eased;
-
-          if (isWindows) {
-            document.documentElement.style.setProperty('--bg-overlay-color', 'rgba(0, 0, 0, ' + currentAlpha + ')');
-          } else {
-            document.documentElement.style.setProperty('--bg-color', 'rgba(0, 0, 0, ' + currentAlpha + ')');
-          }
-          document.documentElement.style.setProperty('--bg-opacity', currentAlpha);
-
-          if (progress < 1 && !window.__YURUCODE_LOADED__) {
-            requestAnimationFrame(updateLoadingOpacity);
-          }
-        }
-
-        // Start the animation
-        requestAnimationFrame(updateLoadingOpacity);
+        document.documentElement.style.setProperty('--bg-opacity', String(alpha));
+        // Apply actual opacity via style attribute (works on both platforms)
+        document.documentElement.style.opacity = String(alpha);
+        console.log('[Early Init] Applied saved opacity:', alpha);
 
         // Polyfill Object.assign
         if (typeof Object.assign !== 'function') {

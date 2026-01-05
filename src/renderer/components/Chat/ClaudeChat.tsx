@@ -474,14 +474,20 @@ export const ClaudeChat: React.FC = () => {
     renameSession: state.renameSession
   })));
 
-  // Track messageUpdateCounter explicitly to ensure React re-renders on message changes
-  // This fixes bash output not showing until switching tabs
-  const currentSessionUpdateCounter = useMemo(() => {
-    const session = sessions.find(s => s.id === currentSessionId);
+  // Subscribe to messageUpdateCounter DIRECTLY from store to bypass useShallow issue
+  // This is critical for bash output to show immediately without tab switching
+  const messageUpdateCounter = useClaudeCodeStore(state => {
+    const session = state.sessions.find(s => s.id === currentSessionId);
     return session?.messageUpdateCounter || 0;
-  }, [sessions, currentSessionId]);
+  });
 
-  const currentSession = useMemo(() => sessions.find(s => s.id === currentSessionId), [sessions, currentSessionId, currentSessionUpdateCounter]);
+  // Also subscribe to the messages array length as a backup trigger
+  const messagesLength = useClaudeCodeStore(state => {
+    const session = state.sessions.find(s => s.id === currentSessionId);
+    return session?.messages?.length || 0;
+  });
+
+  const currentSession = useMemo(() => sessions.find(s => s.id === currentSessionId), [sessions, currentSessionId, messageUpdateCounter, messagesLength]);
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;

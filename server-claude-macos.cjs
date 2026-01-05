@@ -611,6 +611,24 @@ const spawningProcesses = new Map(); // sessionId -> { startTime, aborted }
 // Track pending interrupts that need to be processed once spawn completes
 const pendingInterrupts = new Map(); // sessionId -> callback
 
+// Track pending streaming=false timers to prevent premature state changes in agentic mode
+// When a process exits, we wait before marking streaming=false to allow for follow-up processes
+const pendingStreamingFalseTimers = new Map(); // sessionId -> { timer, timestamp }
+
+// Debounce time for streaming=false transitions (ms)
+// In agentic mode, processes cycle rapidly. This delay prevents UI flicker.
+const STREAMING_FALSE_DEBOUNCE_MS = 600;
+
+// Helper to cancel pending streaming=false for a session
+function cancelPendingStreamingFalse(sessionId) {
+  const pending = pendingStreamingFalseTimers.get(sessionId);
+  if (pending) {
+    clearTimeout(pending.timer);
+    pendingStreamingFalseTimers.delete(sessionId);
+    console.log(`🔄 [${sessionId}] Cancelled pending streaming=false (new process starting)`);
+  }
+}
+
 // Helper function to generate title with Sonnet
 async function generateTitle(sessionId, userMessage, socket, onSuccess) {
   try {
@@ -2732,12 +2750,37 @@ io.on('connection', (socket) => {
           queueLength: processSpawnQueue.length
         });
 
+        // RACE CONDITION FIX: Check if a process is currently being spawned for this session
+        // This prevents duplicate processes when multiple messages arrive in quick succession
+        if (spawningProcesses.has(sessionId)) {
+          const spawnState = spawningProcesses.get(sessionId);
+          const spawnAge = Date.now() - spawnState.startTime;
+
+          console.log(`⏳ [${sessionId}] Process is currently spawning (${spawnAge}ms ago) - queueing message`);
+
+          // Send a status message to the client
+          socket.emit(`message:${sessionId}`, {
+            type: 'system',
+            subtype: 'info',
+            message: 'processing previous message, will send yours next...',
+            timestamp: Date.now()
+          });
+
+          // Re-queue this request to try again later
+          setTimeout(() => {
+            processSpawnQueue.push(spawnRequest);
+            processNextInQueue();
+          }, 1500);
+
+          return; // Exit early without spawning another process
+        }
+
         // Check if there's an existing process for this session
         if (activeProcesses.has(sessionId)) {
           const existingProcess = activeProcesses.get(sessionId);
           const processStartTime = activeProcessStartTimes.get(sessionId) || Date.now();
           const processAge = Date.now() - processStartTime;
-          
+
           // If process is very young (< 3 seconds), queue this message instead of killing
           if (processAge < 3000) {
             console.log(`⏳ Process for session ${sessionId} is only ${processAge}ms old, queueing message instead of killing`);
@@ -2989,6 +3032,10 @@ io.on('connection', (socket) => {
       // Store process reference and start time
       activeProcesses.set(sessionId, claudeProcess);
       activeProcessStartTimes.set(sessionId, Date.now());
+
+      // Cancel any pending streaming=false from previous process exit
+      // This prevents UI flicker in agentic mode where processes cycle rapidly
+      cancelPendingStreamingFalse(sessionId);
 
       // Check if this session was marked for abort during spawning
       const spawnState = spawningProcesses.get(sessionId);
@@ -3832,21 +3879,16 @@ io.on('connection', (socket) => {
               console.log(`   Note: Tracked total persists even when Anthropic's cache expires`);
             }
             
-            // If we have a last assistant message, send an update to mark it as done streaming
+            // NOTE: Do NOT mark streaming=false here on result message!
+            // In agentic mode (using Task tool, subagents), there can be multiple
+            // result messages per conversation as each "turn" completes.
+            // Marking streaming=false here causes premature UI state changes.
+            // The process exit handler will mark streaming=false with a debounce
+            // to properly handle both normal and agentic workflows.
             const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
             if (lastAssistantMessageId) {
-              console.log(`✅ Marking assistant message ${lastAssistantMessageId} as streaming=false (result received)`);
-              const session = sessions.get(sessionId);
-              const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
-              
-              socket.emit(`message:${sessionId}`, {
-                type: 'assistant',
-                id: lastAssistantMessageId,
-                message: lastAssistantMsg?.message || { content: '' },
-                streaming: false,
-                timestamp: Date.now()
-              });
-              lastAssistantMessageIds.delete(sessionId); // Reset
+              console.log(`📋 [${sessionId}] Result received with last assistant message ${lastAssistantMessageId} - deferring streaming=false to process exit`);
+              // Don't delete lastAssistantMessageIds here - process exit handler needs it
             }
             
             // Just send the result message with model info and session ID
@@ -4167,29 +4209,58 @@ io.on('connection', (socket) => {
         if (session?.wasInterrupted) {
           console.log(`🔄 Skipping streaming=false for interrupted process (new process is running)`);
         } else {
+          // Use debounced streaming=false to prevent UI flicker in agentic mode
+          // In agentic mode, processes cycle rapidly (result -> new message -> new process)
+          // Without debounce, UI briefly shows "not streaming" then "streaming" again
           const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
-          if (lastAssistantMessageId) {
-            console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on process exit`);
-            // Get the last assistant message to preserve its content
-            const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
 
+          // Cancel any existing pending timer for this session
+          cancelPendingStreamingFalse(sessionId);
+
+          console.log(`⏱️ [${sessionId}] Scheduling streaming=false with ${STREAMING_FALSE_DEBOUNCE_MS}ms debounce`);
+
+          const timer = setTimeout(() => {
+            // Check if a new process has started while we were waiting
+            if (activeProcesses.has(sessionId)) {
+              console.log(`🔄 [${sessionId}] New process started during debounce - skipping streaming=false`);
+              pendingStreamingFalseTimers.delete(sessionId);
+              return;
+            }
+
+            // Check if session was interrupted while we were waiting
+            const currentSession = sessions.get(sessionId);
+            if (currentSession?.wasInterrupted) {
+              console.log(`🔄 [${sessionId}] Session interrupted during debounce - skipping streaming=false`);
+              pendingStreamingFalseTimers.delete(sessionId);
+              return;
+            }
+
+            if (lastAssistantMessageId) {
+              console.log(`🔴 [${sessionId}] Debounce complete - marking streaming=false for ${lastAssistantMessageId}`);
+              const lastAssistantMsg = currentSession?.messages.find(m => m.id === lastAssistantMessageId);
+
+              socket.emit(`message:${sessionId}`, {
+                type: 'assistant',
+                id: lastAssistantMessageId,
+                message: lastAssistantMsg?.message || { content: '' },
+                streaming: false,
+                timestamp: Date.now()
+              });
+              lastAssistantMessageIds.delete(sessionId);
+            }
+
+            // Always ensure streaming is marked as false for all messages
             socket.emit(`message:${sessionId}`, {
-              type: 'assistant',
-              id: lastAssistantMessageId,
-              message: lastAssistantMsg?.message || { content: '' },
+              type: 'system',
+              subtype: 'stream_end',
               streaming: false,
               timestamp: Date.now()
             });
-            lastAssistantMessageIds.delete(sessionId);
-          }
 
-          // Always ensure streaming is marked as false for all messages
-          socket.emit(`message:${sessionId}`, {
-            type: 'system',
-            subtype: 'stream_end',
-            streaming: false,
-            timestamp: Date.now()
-          });
+            pendingStreamingFalseTimers.delete(sessionId);
+          }, STREAMING_FALSE_DEBOUNCE_MS);
+
+          pendingStreamingFalseTimers.set(sessionId, { timer, timestamp: Date.now() });
         }
         
         // Handle unexpected exit codes
@@ -4239,12 +4310,16 @@ io.on('connection', (socket) => {
         });
         
         // Clean up any streaming state - send complete message update
+        // For errors, we mark streaming=false immediately (no debounce) since
+        // the process definitely failed and user needs to know to retry
+        cancelPendingStreamingFalse(sessionId); // Cancel any pending debounced timer
+
         const lastAssistantMessageId = lastAssistantMessageIds.get(sessionId);
         if (lastAssistantMessageId) {
           console.log(`🔴 Forcing streaming=false for assistant message ${lastAssistantMessageId} on process error`);
           const session = sessions.get(sessionId);
           const lastAssistantMsg = session?.messages.find(m => m.id === lastAssistantMessageId);
-          
+
           socket.emit(`message:${sessionId}`, {
             type: 'assistant',
             id: lastAssistantMessageId,
@@ -4252,6 +4327,7 @@ io.on('connection', (socket) => {
             streaming: false,
             timestamp: Date.now()
           });
+          lastAssistantMessageIds.delete(sessionId);
         }
         
         socket.emit(`message:${sessionId}`, { 
@@ -4463,6 +4539,8 @@ io.on('connection', (socket) => {
     const { sessionId } = data;
     sessions.delete(sessionId);
     lastAssistantMessageIds.delete(sessionId);  // Clean up tracking
+    cancelPendingStreamingFalse(sessionId);  // Clean up pending streaming timers
+    spawningProcesses.delete(sessionId);  // Clean up spawning state
     callback({ success: true });
   });
 
@@ -4497,6 +4575,8 @@ io.on('connection', (socket) => {
           activeProcessStartTimes.delete(sessionId);
         }
         lastAssistantMessageIds.delete(sessionId);
+        cancelPendingStreamingFalse(sessionId);  // Clean up pending streaming timers
+        spawningProcesses.delete(sessionId);  // Clean up spawning state
       }
     }
   });
