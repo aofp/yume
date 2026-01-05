@@ -1,12 +1,17 @@
 /// Dynamic port allocation module
 /// Manages port allocation for the Node.js backend server to avoid conflicts
 /// when running multiple instances of the application
-/// 
+///
 /// Port allocation strategy:
 /// - Uses ports in the 20000-65000 range to avoid common service conflicts
 /// - First tries random ports for better distribution
 /// - Falls back to sequential search if random fails
 /// - Has hardcoded fallback ports as last resort
+///
+/// TOCTOU Mitigation:
+/// - Provides find_and_hold_port() that returns a held listener
+/// - Caller can hold listener until server is ready to bind
+/// - Minimizes window between check and use
 
 use std::net::{TcpListener, SocketAddr};
 use std::sync::Mutex;
@@ -16,6 +21,71 @@ use tracing::{info, warn};
 // Store allocated ports to avoid conflicts between multiple servers
 // Note: This is per-process, not shared between app instances
 static ALLOCATED_PORTS: Mutex<Vec<u16>> = Mutex::new(Vec::new());
+
+/// Held port with listener that keeps the port bound until dropped
+/// Use this to minimize TOCTOU race conditions
+pub struct HeldPort {
+    pub port: u16,
+    listener: TcpListener,
+}
+
+impl HeldPort {
+    /// Release the port for use by another process (e.g., Node.js server)
+    /// Returns the port number after releasing the listener
+    pub fn release(self) -> u16 {
+        let port = self.port;
+        drop(self.listener);
+        info!("Released held port {}", port);
+        port
+    }
+}
+
+/// Finds an available port and holds it with a TcpListener
+/// This prevents TOCTOU race conditions by keeping the port bound
+/// until the caller explicitly releases it
+pub fn find_and_hold_port() -> Option<HeldPort> {
+    let mut rng = rand::thread_rng();
+    let mut attempts = 0;
+    const MAX_ATTEMPTS: u32 = 500;
+
+    // Try random ports first
+    while attempts < MAX_ATTEMPTS / 2 {
+        let port = rng.random_range(20000..=65000);
+        if let Some(held) = try_hold_port(port) {
+            mark_port_allocated(port);
+            return Some(held);
+        }
+        attempts += 1;
+    }
+
+    // Try sequential from a random starting point
+    let start_port = rng.random_range(20000..=65000);
+    for offset in 0..=45000 {
+        let port = 20000 + ((start_port - 20000 + offset) % 45001);
+        if let Some(held) = try_hold_port(port) {
+            mark_port_allocated(port);
+            return Some(held);
+        }
+        attempts += 1;
+        if attempts >= MAX_ATTEMPTS {
+            break;
+        }
+    }
+
+    warn!("Could not find an available port to hold after {} attempts", attempts);
+    None
+}
+
+/// Tries to bind to a port and returns HeldPort if successful
+fn try_hold_port(port: u16) -> Option<HeldPort> {
+    match TcpListener::bind(SocketAddr::from(([0, 0, 0, 0], port))) {
+        Ok(listener) => {
+            info!("Holding port {}", port);
+            Some(HeldPort { port, listener })
+        }
+        Err(_) => None,
+    }
+}
 
 /// Finds an available port in the range 20000-65000
 /// 
@@ -31,13 +101,13 @@ pub fn find_available_port() -> Option<u16> {
     const MAX_ATTEMPTS: u32 = 500; // Increased attempts
     
     // Start with a random port in the range
-    let start_port = rng.gen_range(20000..=65000);
+    let start_port = rng.random_range(20000..=65000);
     
     info!("Searching for available port starting from {}", start_port);
     
     // Try random ports first
     while attempts < MAX_ATTEMPTS / 2 {
-        let port = rng.gen_range(20000..=65000);
+        let port = rng.random_range(20000..=65000);
         // ONLY check if port is actually available - don't use ALLOCATED_PORTS
         // because it's not shared between processes
         if is_port_available(port) {

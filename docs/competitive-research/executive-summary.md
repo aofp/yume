@@ -1,0 +1,223 @@
+# Executive Summary: Yurucode & Claude Code CLI
+
+*Prepared for presentation to Claude Code team*
+
+*January 2026*
+
+---
+
+## What is Yurucode?
+
+**Yurucode** is a native desktop GUI for Claude Code CLI. It wraps the existing Claude Code CLI to provide a flicker-free, lag-free desktop experience while preserving all of Claude Code's capabilities.
+
+**Pricing**: $9 one-time purchase (uses user's existing Claude Pro/Max subscription)
+
+---
+
+## Why We Built This
+
+We love Claude Code. It's genuinely revolutionary:
+
+> "As a product it's a mile ahead of Codex in QoL features. The harness, prompts and the model make for a magical experience."
+
+> "Claude Code dominated the CLI coding product experience this year."
+
+But terminal rendering issues create real friction for users. We wanted to solve this specific problem without competing with Claude Code's core capabilities.
+
+---
+
+## The Problem We Solve
+
+### Terminal Flickering (Issue #1913)
+- **221+ upvotes**, 138+ comments, 9+ months open
+- Technical analysis documented **4,000-6,700 scroll events/second**
+- VS Code/Cursor crashes after 10-20 minutes, **losing unsaved work**
+- Still open as of January 5, 2026
+
+### Root Cause
+Claude Code's React Ink renderer performs full terminal redraws on each streaming chunk. Anthropic rewrote the renderer from scratch (v2.0.72+), which reduced flickering—but IDE-specific issues persist.
+
+### Why It's Hard to Fix
+The Claude Code team made thoughtful tradeoffs:
+
+> "We value this native experience a lot. We may explore alternate screen mode in the future, but our bar is quite high." — Thariq, Anthropic
+
+They preserved terminal muscle memory (text selection, scrollback, search) rather than taking over the terminal completely. This is the right call for a CLI tool, but introduces rendering complexity.
+
+---
+
+## Our Approach
+
+### What We Do
+- Wrap Claude Code CLI in a native Tauri (Rust) desktop app
+- React frontend renders in proper WebView (not terminal)
+- Eliminates terminal rendering layer entirely
+- Uses the Claude Agent SDK / CLI under the hood
+
+### What We Don't Do
+- We don't replace Claude Code—we complement it
+- We don't compete on model capabilities
+- We don't reimplement the agent loop
+- We don't charge recurring fees
+
+### Technical Architecture
+```
+┌────────────────────────────────────┐
+│     Yurucode Desktop Window        │ ← Native (Tauri)
+├────────────────────────────────────┤
+│       React UI (WebView)           │ ← Proper rendering
+├────────────────────────────────────┤
+│      Claude Code CLI Process       │ ← Your code, unchanged
+├────────────────────────────────────┤
+│         Claude API                 │ ← User's subscription
+└────────────────────────────────────┘
+```
+
+---
+
+## Claude Code Strengths We Preserve
+
+Everything that makes Claude Code great:
+
+| Capability | Status |
+|------------|--------|
+| 80.9% SWE-bench (leads market) | ✓ Unchanged |
+| Plan mode | ✓ Unchanged |
+| Subagents | ✓ Unchanged |
+| Background agents | ✓ Unchanged |
+| MCP integration (8M+ downloads) | ✓ Unchanged |
+| CLAUDE.md context | ✓ Unchanged |
+| Skills system | ✓ Unchanged |
+| Hooks | ✓ Unchanged |
+| Checkpoints / /rewind | ✓ Unchanged |
+| Git integration | ✓ Unchanged |
+
+---
+
+## What We Add
+
+### Immediate Value
+| Problem | CLI Experience | Yurucode |
+|---------|----------------|----------|
+| Flickering | 4,000+ events/sec | 0 (native rendering) |
+| VS Code crashes | 10-20 min | Never |
+| Input lag | 100ms-10s | <50ms target |
+| Paste freeze (#16335) | Breaks in Jan 2026 | Native paste |
+| Korean panic (#16327) | Crashes | Unicode-safe |
+| IME support | Fixed but fragile | Native OS IME |
+
+### Already Implemented
+- ✅ Visual file tree (with git status indicators)
+- ✅ Visual diff preview (DiffViewer component)
+- ✅ Session management (RecentProjectsModal)
+- ✅ Usage dashboard (full AnalyticsModal)
+- ✅ MCP visual manager (MCPTab)
+- ✅ Keyboard shortcuts system
+- ✅ Conversation search
+
+### Future Enhancements
+- Enable checkpoint timeline (code exists, disabled)
+- Light mode theme
+- Command palette
+- System notifications
+
+---
+
+## Target Users
+
+We serve users who:
+1. **Love Claude Code** but hate terminal lag
+2. **Use IDE terminals** (VS Code, Cursor) where crashes are worst
+3. **Need IME support** (Japanese, Chinese, Korean developers)
+4. **Work on long sessions** where degradation accumulates
+5. **Prefer visual interfaces** over pure CLI
+
+We're not trying to replace CLI power users who love the terminal.
+
+---
+
+## Business Model
+
+### Why $9 One-Time?
+
+| Approach | Why We Chose It |
+|----------|-----------------|
+| **Not subscription** | Developers hate subscription fatigue |
+| **Not API-based** | Uses existing Claude subscription |
+| **Not free** | We need to sustain development |
+| **Low price** | $9 is impulse-buy, not budget decision |
+| **One-time** | Ownership > renting |
+
+### Revenue Model
+- $9 per license
+- No recurring fees
+- No API markup
+- No upsells
+
+---
+
+## What This Means for Anthropic
+
+### Potential Benefits
+1. **Expands Claude Code's reach** - Users who can't tolerate terminal issues can still use Claude Code
+2. **Reduces support burden** - We handle desktop-specific issues
+3. **Increases Claude subscription value** - One subscription, multiple interfaces
+4. **Validates market** - Desktop GUI demand without Anthropic's investment
+
+### Not Competing
+- We use Claude Code CLI—we don't replace it
+- We don't access Claude API directly—users use their subscription
+- We don't modify or redistribute Claude Code source
+- We're additive, not competitive
+
+---
+
+## About Us
+
+**yurucode** = Japanese for "loose/relaxed code"
+
+We're building tools that make AI coding more accessible. This is our first product.
+
+### Why We Care
+We use Claude Code daily. We've experienced the flickering. We've lost work to crashes. We built the tool we wanted to exist.
+
+---
+
+## Open Questions for Claude Code Team
+
+If you'd consider engaging, we'd love to understand:
+
+1. **Are there plans for an official desktop client?** We'd happily sunset if so.
+
+2. **Would a partnership make sense?** We could share usage patterns, bug reports, or user feedback.
+
+3. **Any guidance on CLI integration?** We use the CLI as a subprocess—are there preferred patterns?
+
+4. **Future API considerations?** The Agent SDK is powerful—would a desktop-focused integration be welcome?
+
+---
+
+## Technical Details
+
+For engineering review, see:
+- [Claude Code CLI Analysis](./claude-code-cli.md)
+- [Technical Architecture](./technical-architecture.md)
+- [UI Improvement Opportunities](./ui-improvement-opportunities.md)
+
+---
+
+## Contact
+
+[Your contact information here]
+
+---
+
+## Sources
+
+- [How Claude Code is Built - Pragmatic Engineer](https://newsletter.pragmaticengineer.com/p/how-claude-code-is-built)
+- [Boris Cherny Interview - Developing.dev](https://www.developing.dev/p/boris-cherny-creator-of-claude-code)
+- [The Signature Flicker - Peter Steinberger](https://steipete.me/posts/2025/signature-flicker)
+- [GitHub Issue #1913](https://github.com/anthropics/claude-code/issues/1913)
+- [Anthropic Engineering - Claude Code Best Practices](https://www.anthropic.com/engineering/claude-code-best-practices)
+- [Claude Agent SDK](https://github.com/anthropics/claude-agent-sdk-typescript)
+- [How Anthropic Teams Use Claude Code](https://www.anthropic.com/news/how-anthropic-teams-use-claude-code)

@@ -273,7 +273,7 @@
 }
 
 .markdown-content code {
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.15);
   color: var(--code-color);
   padding: 2px;
   border-radius: 4px;
@@ -558,12 +558,12 @@ ol {
 .thinking-text {
   font-family: var(--font-sans);
   font-size: 10px;
-  line-height: 1.5;
+  line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
   margin: 0;
   padding: 0;
-  color: rgba(var(--foreground-rgb), 0.6);
+  color: rgba(var(--foreground-rgb), 0.8);
 }
 
 .thinking-content {
@@ -643,6 +643,21 @@ ol {
   margin: 12px 0;
 }
 
+.thinking-markdown pre {
+  background: var(--background-color, #000000);
+  border: 1px solid rgba(255, 153, 153, 0.1);
+  border-radius: 2px;
+  padding: 8px;
+  margin: 8px 0;
+  overflow-x: auto;
+  scrollbar-width: thin;
+}
+
+.thinking-markdown pre code {
+  background: none;
+  padding: 0;
+}
+
 /* Thinking block code formatting (legacy - keep for compatibility) */
 .thinking-text-container {
   font-family: var(--font-sans);
@@ -657,7 +672,7 @@ ol {
 .thinking-inline-code {
   font-family: var(--font-mono);
   font-size: 9px;
-  background: rgba(var(--foreground-rgb), 0.1);
+  background: rgba(var(--foreground-rgb), 0.05);
   padding: 1px 4px;
   border-radius: 3px;
   color: var(--code-color);
@@ -666,7 +681,7 @@ ol {
 /* Code blocks in thinking blocks */
 .thinking-code-block {
   margin: 8px 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.1);
   border-radius: 4px;
   overflow: hidden;
 }
@@ -676,7 +691,7 @@ ol {
   font-size: 8px;
   color: rgba(var(--foreground-rgb), 0.4);
   padding: 4px 8px;
-  background: rgba(0, 0, 0, 0.2);
+  background: rgba(0, 0, 0, 0.08);
   text-transform: lowercase;
 }
 
@@ -694,7 +709,7 @@ ol {
   font-family: var(--font-mono);
   font-size: 9px;
   line-height: 1.4;
-  color: rgba(var(--foreground-rgb), 0.8);
+  color: var(--foreground-color);
   white-space: pre;
 }
 

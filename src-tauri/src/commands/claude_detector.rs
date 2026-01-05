@@ -203,8 +203,6 @@ pub fn get_env_var(name: String) -> Result<Option<String>, String> {
 /// Returns a JSON object with common Windows paths
 #[tauri::command]
 pub fn get_windows_paths() -> Result<serde_json::Value, String> {
-    use std::path::PathBuf;
-
     let mut paths = serde_json::Map::new();
 
     // Get USERPROFILE

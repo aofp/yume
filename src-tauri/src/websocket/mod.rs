@@ -112,7 +112,7 @@ async fn handle_connection(
     tokio::spawn(async move {
         while let Some(msg) = rx.recv().await {
             if let Ok(json) = serde_json::to_string(&msg) {
-                let _ = ws_sender.send(Message::Text(json)).await;
+                let _ = ws_sender.send(Message::Text(json.into())).await;
             }
         }
     });

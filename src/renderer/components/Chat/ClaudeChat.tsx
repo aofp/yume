@@ -39,17 +39,13 @@ import { VirtualizedMessageList, VirtualizedMessageListRef } from './Virtualized
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
-import { RecentConversationsModal } from '../RecentConversationsModal';
 import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete';
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
-import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { Watermark } from '../Watermark/Watermark';
-import { getAutoCompactMessage } from '../../services/wrapperIntegration';
-// Lazy load heavy components to avoid breaking production build
-// REMOVED: These features were overengineered and unnecessary - just use chat instead
-// const CheckpointButton = React.lazy(() => import('../Checkpoint/CheckpointButton').then(m => ({ default: m.CheckpointButton })));
-// const TimelineNavigator = React.lazy(() => import('../Timeline/TimelineNavigator').then(m => ({ default: m.TimelineNavigator })));
+// PERFORMANCE: Lazy load modals and heavy components - only loaded when user opens them
+const RecentConversationsModal = React.lazy(() => import('../RecentConversationsModal').then(m => ({ default: m.RecentConversationsModal })));
+const KeyboardShortcuts = React.lazy(() => import('../KeyboardShortcuts/KeyboardShortcuts').then(m => ({ default: m.KeyboardShortcuts })));
 const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
 import { FEATURE_FLAGS } from '../../config/features';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
@@ -79,88 +75,67 @@ export const invalidateCommandsCache = () => {
   cachedCommandsTimestamp = 0;
 };
 
-// Helper function to format tool displays
+// PRE-CREATED ICONS - avoid JSX creation on every render (performance optimization)
+const TOOL_ICONS = {
+  Read: <IconBook size={14} stroke={1.5} />,
+  Write: <IconPencil size={14} stroke={1.5} />,
+  Edit: <IconScissors size={14} stroke={1.5} />,
+  MultiEdit: <IconScissors size={14} stroke={1.5} />,
+  Bash: <IconTerminal size={14} stroke={1.5} />,
+  TodoWrite: <IconChecklist size={14} stroke={1.5} />,
+  WebSearch: <IconSearch size={14} stroke={1.5} />,
+  WebFetch: <IconWorld size={14} stroke={1.5} />,
+  Grep: <IconFileSearch size={14} stroke={1.5} />,
+  Glob: <IconFolder size={14} stroke={1.5} />,
+  LS: <IconFolderOpen2 size={14} stroke={1.5} />,
+  Task: <IconRobot size={14} stroke={1.5} />,
+  ExitPlanMode: <IconCheck size={14} stroke={1.5} />,
+  NotebookEdit: <IconNotebook size={14} stroke={1.5} />,
+  default: <IconTool size={14} stroke={1.5} />,
+} as const;
+
+// Pre-compiled regex for path stripping (avoid regex compilation in hot path)
+const PATH_STRIP_REGEX = /^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//;
+
+// Helper function to format tool displays - optimized to reuse pre-created icons
 const getToolDisplay = (name: string, input: any) => {
-  const displays: Record<string, (input: any) => { icon: React.ReactNode; name: string; detail: string }> = {
-    'Read': (i) => ({ 
-      icon: <IconBook size={14} stroke={1.5} />, 
-      name: 'reading', 
-      detail: i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file' 
-    }),
-    'Write': (i) => ({ 
-      icon: <IconPencil size={14} stroke={1.5} />, 
-      name: 'writing', 
-      detail: i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file' 
-    }),
-    'Edit': (i) => ({ 
-      icon: <IconScissors size={14} stroke={1.5} />, 
-      name: 'editing', 
-      detail: `${i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file'}${i?.old_string ? ` (${i.old_string.substring(0, 20)}...)` : ''}` 
-    }),
-    'MultiEdit': (i) => ({ 
-      icon: <IconScissors size={14} stroke={1.5} />, 
-      name: 'multi-edit', 
-      detail: `${i?.file_path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'file'} (${i?.edits?.length || 0} changes)` 
-    }),
-    'Bash': (i) => ({
-      icon: <IconTerminal size={14} stroke={1.5} />,
-      name: 'running',
-      detail: i?.command || 'command'
-    }),
-    'TodoWrite': (i) => ({ 
-      icon: <IconChecklist size={14} stroke={1.5} />, 
-      name: 'todos', 
-      detail: `${i?.todos?.length || 0} items` 
-    }),
-    'WebSearch': (i) => ({ 
-      icon: <IconSearch size={14} stroke={1.5} />, 
-      name: 'searching', 
-      detail: i?.query || 'web' 
-    }),
-    'WebFetch': (i) => ({ 
-      icon: <IconWorld size={14} stroke={1.5} />, 
-      name: 'fetching', 
-      detail: i?.url ? new URL(i.url).hostname : 'webpage' 
-    }),
-    'Grep': (i) => ({ 
-      icon: <IconFileSearch size={14} stroke={1.5} />, 
-      name: 'searching', 
-      detail: `"${i?.pattern || ''}" in ${i?.path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || '.'}` 
-    }),
-    'Glob': (i) => ({ 
-      icon: <IconFolder size={14} stroke={1.5} />, 
-      name: 'finding', 
-      detail: i?.pattern || 'files' 
-    }),
-    'LS': (i) => ({ 
-      icon: <IconFolderOpen2 size={14} stroke={1.5} />, 
-      name: 'listing', 
-      detail: i?.path?.replace(/^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//, '') || 'directory' 
-    }),
-    'Task': (i) => ({ 
-      icon: <IconRobot size={14} stroke={1.5} />, 
-      name: 'task', 
-      detail: i?.description || 'running agent' 
-    }),
-    'ExitPlanMode': (i) => ({ 
-      icon: <IconCheck size={14} stroke={1.5} />, 
-      name: 'plan ready', 
-      detail: 'exiting plan mode' 
-    }),
-    'NotebookEdit': (i) => ({ 
-      icon: <IconNotebook size={14} stroke={1.5} />, 
-      name: 'notebook', 
-      detail: i?.notebook_path || 'jupyter notebook' 
-    })
-  };
-  
-  const defaultDisplay = { 
-    icon: <IconTool size={14} stroke={1.5} />, 
-    name: name || 'tool', 
-    detail: input ? JSON.stringify(input).substring(0, 50) + '...' : '' 
-  };
-  
-  return displays[name || ''] ? displays[name || ''](input) : defaultDisplay;
+  const icon = TOOL_ICONS[name as keyof typeof TOOL_ICONS] || TOOL_ICONS.default;
+  const stripPath = (p: string) => p?.replace(PATH_STRIP_REGEX, '') || '';
+
+  switch (name) {
+    case 'Read':
+      return { icon, name: 'reading', detail: stripPath(input?.file_path) || 'file' };
+    case 'Write':
+      return { icon, name: 'writing', detail: stripPath(input?.file_path) || 'file' };
+    case 'Edit':
+      return { icon, name: 'editing', detail: `${stripPath(input?.file_path) || 'file'}${input?.old_string ? ` (${input.old_string.substring(0, 20)}...)` : ''}` };
+    case 'MultiEdit':
+      return { icon, name: 'multi-edit', detail: `${stripPath(input?.file_path) || 'file'} (${input?.edits?.length || 0} changes)` };
+    case 'Bash':
+      return { icon, name: 'running', detail: input?.command || 'command' };
+    case 'TodoWrite':
+      return { icon, name: 'todos', detail: `${input?.todos?.length || 0} items` };
+    case 'WebSearch':
+      return { icon, name: 'searching', detail: input?.query || 'web' };
+    case 'WebFetch':
+      try {
+        return { icon, name: 'fetching', detail: input?.url ? new URL(input.url).hostname : 'webpage' };
+      } catch { return { icon, name: 'fetching', detail: 'webpage' }; }
+    case 'Grep':
+      return { icon, name: 'searching', detail: `"${input?.pattern || ''}" in ${stripPath(input?.path) || '.'}` };
+    case 'Glob':
+      return { icon, name: 'finding', detail: input?.pattern || 'files' };
+    case 'LS':
+      return { icon, name: 'listing', detail: stripPath(input?.path) || 'directory' };
+    case 'Task':
+      return { icon, name: 'task', detail: input?.description || 'running agent' };
+    case 'ExitPlanMode':
+      return { icon, name: 'plan ready', detail: 'exiting plan mode' };
+    case 'NotebookEdit':
+      return { icon, name: 'notebook', detail: input?.notebook_path || 'jupyter notebook' };
+    default:
+      return { icon, name: name || 'tool', detail: input ? JSON.stringify(input).substring(0, 50) + '...' : '' };
+  }
 };
 
 // Helper to check if text starts with bash mode prefix ($ or !)
@@ -377,7 +352,6 @@ export const ClaudeChat: React.FC = () => {
   const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [draftMessage, setDraftMessage] = useState<{ [sessionId: string]: string }>({});
-  const [thinkingStartTimes, setThinkingStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [thinkingElapsed, setThinkingElapsed] = useState<{ [sessionId: string]: number }>({});
   const [scrollPositions, setScrollPositions] = useState<{ [sessionId: string]: number }>({});
   const [inputContainerHeight, setInputContainerHeight] = useState(120);
@@ -809,29 +783,9 @@ export const ClaudeChat: React.FC = () => {
   //   return () => observer.disconnect();
   // }, [currentSessionId, isAtBottom, scrollToBottomHelper]);
 
-  // Track thinking time per session and clean up streaming start times
+  // Clean up streaming start time after streaming ends
   useEffect(() => {
-    if (currentSession?.streaming && currentSessionId) {
-      // Start timing when streaming begins
-      if (!thinkingStartTimes[currentSessionId]) {
-        setThinkingStartTimes(prev => ({
-          ...prev,
-          [currentSessionId]: Date.now()
-        }));
-        setThinkingElapsed(prev => ({
-          ...prev,
-          [currentSessionId]: 0
-        }));
-      }
-    } else if (currentSessionId && !currentSession?.streaming) {
-      // When streaming stops, keep the final elapsed time for display
-      // Don't delete it immediately - let it persist
-      setThinkingStartTimes(prev => {
-        const newTimes = { ...prev };
-        delete newTimes[currentSessionId];
-        return newTimes;
-      });
-      
+    if (currentSessionId && !currentSession?.streaming) {
       // Clean up streaming start time after streaming ends
       // (but only after a delay to ensure followups work correctly)
       setTimeout(() => {
@@ -845,21 +799,47 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
 
-  // Update elapsed time every 100ms for smooth display
+  // Update elapsed time using session.thinkingStartTime from store (same as SessionTabs)
+  // This ensures the timer is always in sync with the store's state
   useEffect(() => {
-    if (currentSession?.streaming && currentSessionId && thinkingStartTimes[currentSessionId]) {
+    const thinkingStartTime = (currentSession as any)?.thinkingStartTime;
+    if (currentSession?.streaming && currentSessionId && thinkingStartTime) {
       const interval = setInterval(() => {
-        const startTime = thinkingStartTimes[currentSessionId];
-        if (startTime) {
-          setThinkingElapsed(prev => ({
-            ...prev,
-            [currentSessionId]: Math.floor((Date.now() - startTime) / 1000)
-          }));
-        }
+        setThinkingElapsed(prev => ({
+          ...prev,
+          [currentSessionId]: Math.floor((Date.now() - thinkingStartTime) / 1000)
+        }));
       }, 100);
+      // Initial calculation
+      setThinkingElapsed(prev => ({
+        ...prev,
+        [currentSessionId]: Math.floor((Date.now() - thinkingStartTime) / 1000)
+      }));
       return () => clearInterval(interval);
     }
-  }, [currentSession?.streaming, currentSessionId, currentSessionId ? thinkingStartTimes[currentSessionId] : undefined]);
+  }, [currentSession?.streaming, currentSessionId, (currentSession as any)?.thinkingStartTime]);
+
+  // macOS focus fix: Restore textarea focus when streaming ends
+  // On macOS, window.set_focus() can disrupt webview's internal focus state
+  // causing the textarea to lose focus even though the window appears focused
+  const prevStreamingRef = useRef<boolean | undefined>(undefined);
+  useEffect(() => {
+    const wasStreaming = prevStreamingRef.current;
+    const isStreaming = currentSession?.streaming;
+    prevStreamingRef.current = isStreaming;
+
+    // Only on macOS, when streaming just stopped
+    if (isMac && wasStreaming === true && isStreaming === false) {
+      // Small delay to let any pending focus operations complete
+      const timeoutId = setTimeout(() => {
+        // Only refocus if window is active and no modal is open
+        if (document.hasFocus() && !document.querySelector('.modal-overlay')) {
+          inputRef.current?.focus();
+        }
+      }, 100);
+      return () => clearTimeout(timeoutId);
+    }
+  }, [currentSession?.streaming, isMac]);
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {
@@ -2064,7 +2044,7 @@ export const ClaudeChat: React.FC = () => {
       requestAnimationFrame(() => {
         if (inputRef.current) {
           const scrollHeight = inputRef.current.scrollHeight;
-          const newHeight = Math.min(Math.max(scrollHeight, 44), 90);
+          const newHeight = Math.min(Math.max(scrollHeight, 44), 106);
           inputRef.current.style.height = `${newHeight}px`;
           setOverlayHeight(newHeight);
           if (newHeight !== savedHeight) {
@@ -3142,7 +3122,7 @@ export const ClaudeChat: React.FC = () => {
     // Simple auto-resize without jumps
     const textarea = e.target;
     const minHeight = 44; // Match CSS min-height exactly
-    const maxHeight = 90; // 5 lines * 18px
+    const maxHeight = 106; // 5 lines * 18px + 16px padding (match CSS max-height)
     
     // Check if we're at bottom before resizing
     const container = chatContainerRef.current;
@@ -3253,8 +3233,15 @@ export const ClaudeChat: React.FC = () => {
     return () => observer.disconnect();
   }, []);
 
-
-
+  // Sync overlay scroll with textarea when input changes (fixes ultrathink position on mount)
+  useEffect(() => {
+    // Use requestAnimationFrame to ensure overlay is fully rendered before syncing
+    requestAnimationFrame(() => {
+      if (inputOverlayRef.current && inputRef.current) {
+        inputOverlayRef.current.scrollTop = inputRef.current.scrollTop;
+      }
+    });
+  }, [input]);
 
 
 
@@ -3832,16 +3819,17 @@ export const ClaudeChat: React.FC = () => {
         </div>
       )}
 
-      {/* Auto-compact pending indicator - minimal bottom-right */}
-      {currentSession?.compactionState?.isCompacting && currentSessionId && (() => {
-        const pendingMsg = getAutoCompactMessage(currentSessionId);
-        if (!pendingMsg) return null;
-        return (
-          <div className="status-indicator-minimal">
-            {pendingMsg.slice(0, 40)}{pendingMsg.length > 40 ? '...' : ''}
-          </div>
-        );
-      })()}
+      {/* Auto-compact pending indicator - shows queued message during compaction */}
+      {/* Note: only check pendingAutoCompactMessage, not isCompacting - isCompacting clears early */}
+      {currentSession?.compactionState?.pendingAutoCompactMessage && (
+        <div className="autocompact-pending-indicator">
+          <span className="autocompact-label">compacting... queued:</span>
+          <span className="autocompact-message">
+            {currentSession.compactionState.pendingAutoCompactMessage.slice(0, 60)}
+            {currentSession.compactionState.pendingAutoCompactMessage.length > 60 ? '...' : ''}
+          </span>
+        </div>
+      )}
 
       {/* Bash running indicator - minimal bottom-right */}
       {(currentSession?.runningBash || currentSession?.userBashRunning) && (

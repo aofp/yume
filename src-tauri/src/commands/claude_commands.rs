@@ -170,10 +170,11 @@ pub async fn send_claude_message(
             // The result will be emitted on the NEW session channel, but frontend is listening on OLD channel
             if is_compact {
                 info!("Detected /compact command - storing original session for result relay");
-                
-                // Store the original session ID so spawner can emit compact result on it
-                std::env::set_var("COMPACT_ORIGINAL_SESSION", &original_session_id);
-                
+
+                // Store the mapping in thread-safe state (not global env vars)
+                // This allows multiple simultaneous /compact commands without race conditions
+                state.register_compact_session(&result.session_id, &original_session_id);
+
                 // Also emit the session update so frontend knows there's a new session
                 let _ = app.emit(
                     &format!("claude-session-id-update:{}", original_session_id),

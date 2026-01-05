@@ -249,6 +249,31 @@ pub fn stop_logged_server() {
     }
 }
 
+/// Starts the Node.js backend server with a held port (TOCTOU-safe)
+/// The held port is released right before spawning the server process
+/// to minimize the race condition window
+pub fn start_logged_server_with_held_port(held_port: crate::port_manager::HeldPort) {
+    let port = held_port.port;
+    info!("Starting server on port {} (releasing held port)", port);
+
+    // Stop any existing server first to avoid port conflicts
+    stop_logged_server();
+
+    // Store the port
+    if let Ok(mut port_guard) = SERVER_PORT.lock() {
+        *port_guard = Some(port);
+    }
+
+    // Release the held port RIGHT BEFORE spawning the server
+    // This minimizes the TOCTOU race window
+    held_port.release();
+
+    // Small sleep to ensure OS registers port release (typically < 10ms needed)
+    std::thread::sleep(std::time::Duration::from_millis(50));
+
+    start_server_internal(port);
+}
+
 /// Starts the Node.js backend server on the specified port
 /// All platforms now use external server files:
 /// - macOS: server-claude-macos.cjs
@@ -256,18 +281,31 @@ pub fn stop_logged_server() {
 /// - Linux: server-claude-linux.cjs
 /// The server is started as a detached process that survives parent crashes
 pub fn start_logged_server(port: u16) {
-    info!("Starting server on port {}", port);
-    
+    info!("Starting server on port {} (legacy mode)", port);
+
     // Stop any existing server first to avoid port conflicts
     stop_logged_server();
-    
+
     // Store the port
     if let Ok(mut port_guard) = SERVER_PORT.lock() {
         *port_guard = Some(port);
     }
-    
-    // Wait a bit for the port to be released
-    std::thread::sleep(std::time::Duration::from_millis(500));
+
+    // Platform-specific wait times for port release
+    // Windows has slower port release due to TIME_WAIT state handling
+    #[cfg(target_os = "windows")]
+    let wait_ms = 1000u64; // Windows needs longer wait
+    #[cfg(not(target_os = "windows"))]
+    let wait_ms = 300u64; // macOS/Linux are faster
+
+    info!("Waiting {}ms for port release (platform-specific)", wait_ms);
+    std::thread::sleep(std::time::Duration::from_millis(wait_ms));
+
+    start_server_internal(port);
+}
+
+/// Internal function that actually starts the server
+fn start_server_internal(port: u16) {
     
     // On macOS, use the bundled server file directly
     #[cfg(target_os = "macos")]
@@ -845,15 +883,18 @@ fn start_linux_server(port: u16) {
         }
         
         // Try to start server with Node.js
+        // Use env_clear().envs() for consistency with macOS/Windows
         let mut cmd = Command::new("node");
         cmd.arg(&server_file)
+           .env_clear()
+           .envs(std::env::vars())
            .env("PORT", port.to_string());
-        
+
         if let Some(ref modules) = node_modules {
             write_log(&format!("Setting NODE_PATH to: {:?}", modules));
             cmd.env("NODE_PATH", modules);
         }
-        
+
         // Linux doesn't need special process flags
         cmd.stdout(Stdio::piped())
            .stderr(Stdio::piped());

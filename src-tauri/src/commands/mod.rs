@@ -307,6 +307,7 @@ pub async fn maximize_window(window: Window) -> Result<(), String> {
 /// On Windows, uses SetLayeredWindowAttributes for true window transparency
 /// On macOS/Linux, this is a no-op as CSS opacity works for those platforms
 #[tauri::command]
+#[allow(unused_variables)]
 pub async fn set_window_opacity(window: Window, opacity: f64) -> Result<(), String> {
     use tracing::info;
 

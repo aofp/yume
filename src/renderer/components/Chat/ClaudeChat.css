@@ -266,11 +266,12 @@
 .message {
   margin-bottom: 8px;
   margin-right: 8px;
-  /* animation removed - conflicts with virtualizer transform positioning */
   max-width: 100%;
   box-sizing: border-box;
   overflow-x: hidden;
   overflow-y: hidden;
+  /* NOTE: will-change and contain moved to VirtualItemWrapper in JS
+   * Having them here AND on wrapper causes duplicate GPU layers = worse perf */
 }
 
 @keyframes messageSlide {
@@ -598,7 +599,7 @@
   color: var(--accent-color);
   font-weight: bold;
   font-size: 8px;
-  opacity: 0.8;
+  opacity: 0.9;
   font-family: var(--font-mono);
 }
 
@@ -2006,6 +2007,7 @@ textarea.context-full {
   flex: 1;
   overflow-y: auto;
   padding: 2px;
+  background: var(--background-color);
 }
 
 .no-recent {
@@ -2184,10 +2186,11 @@ textarea.context-full {
   padding-right: 0;
   padding-top: 7px;
   /* Use 'paint' containment only - 'layout style' can break text selection during streaming
-   * See: https://developer.mozilla.org/en-US/docs/Web/CSS/contain
-   * 'layout' containment can cause selection state to be reset during reflows */
+   * 'strict' containment causes flicker during scroll as it contains size
+   * See: https://developer.mozilla.org/en-US/docs/Web/CSS/contain */
   contain: paint;
-  will-change: scroll-position;
+  /* NOTE: will-change:scroll-position removed - causes GPU layer thrashing when
+   * combined with will-change:transform on child elements */
   /* GPU acceleration for smooth scrolling */
   transform: translateZ(0);
   /* prevent scroll anchor jumping */
@@ -2701,4 +2704,38 @@ textarea.context-full {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+
+/* Auto-compact pending message indicator */
+.autocompact-pending-indicator {
+  position: fixed;
+  bottom: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bg-secondary);
+  border: 1px solid var(--warning-color, #f59e0b);
+  border-radius: 4px;
+  padding: 6px 12px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  color: var(--fg-80);
+  z-index: 200;
+  max-width: 500px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.autocompact-pending-indicator .autocompact-label {
+  color: var(--warning-color, #f59e0b);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.autocompact-pending-indicator .autocompact-message {
+  color: var(--fg-60);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }

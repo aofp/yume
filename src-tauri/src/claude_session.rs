@@ -49,26 +49,43 @@ pub fn generate_synthetic_session_id() -> String {
 }
 
 /// Extracts session ID from Claude's initial output
-/// CRITICAL: Must complete within 500ms or session is lost
+/// Uses a 3-second timeout to handle slow Claude startup
+/// Logs warnings at 1s and 2s if still waiting
 pub async fn extract_session_id_from_child(child: &mut Child) -> Result<SessionIdResult> {
     let stdout = child.stdout.take()
         .ok_or_else(|| anyhow!("No stdout available from child process"))?;
-    
+
     let reader = BufReader::new(stdout);
     let mut lines = reader.lines();
-    
-    // CRITICAL: 500ms window to extract session ID
+
+    // Timeout increased from 500ms to 3000ms to handle slow Claude startup
+    // This prevents synthetic ID fallback which breaks --resume functionality
+    const EXTRACTION_TIMEOUT_MS: u64 = 3000;
+    const WARNING_INTERVAL_MS: u64 = 1000;
+
+    let start = std::time::Instant::now();
+
     let extraction_future = async {
+        let mut last_warning = std::time::Instant::now();
+
         while let Ok(Some(line)) = lines.next_line().await {
             debug!("Claude output line: {}", line);
-            
+
+            // Log progress warnings if taking too long
+            let elapsed = start.elapsed().as_millis() as u64;
+            if last_warning.elapsed().as_millis() as u64 >= WARNING_INTERVAL_MS {
+                warn!("Still waiting for session ID after {}ms...", elapsed);
+                last_warning = std::time::Instant::now();
+            }
+
             // Try to parse as JSON
             if let Ok(json) = serde_json::from_str::<serde_json::Value>(&line) {
                 // Look for init message: {"type":"system","subtype":"init","session_id":"..."}
                 if json["type"] == "system" && json["subtype"] == "init" {
                     if let Some(session_id) = json["session_id"].as_str() {
-                        info!("Extracted Claude session ID: {}", session_id);
-                        
+                        let elapsed = start.elapsed().as_millis();
+                        info!("Extracted Claude session ID: {} (took {}ms)", session_id, elapsed);
+
                         // Validate the session ID
                         if validate_session_id(session_id) {
                             return Ok(SessionIdResult::Extracted(session_id.to_string()));
@@ -79,16 +96,17 @@ pub async fn extract_session_id_from_child(child: &mut Child) -> Result<SessionI
                 }
             }
         }
-        
-        warn!("No session ID found in Claude output");
+
+        warn!("No session ID found in Claude output after reading all lines");
         Ok(SessionIdResult::Synthetic(generate_synthetic_session_id()))
     };
-    
-    // Apply 500ms timeout
-    match timeout(Duration::from_millis(500), extraction_future).await {
+
+    // Apply 3-second timeout (increased from 500ms)
+    match timeout(Duration::from_millis(EXTRACTION_TIMEOUT_MS), extraction_future).await {
         Ok(result) => result,
         Err(_) => {
-            warn!("Session ID extraction timed out after 500ms");
+            error!("Session ID extraction timed out after {}ms - Claude may be very slow to start", EXTRACTION_TIMEOUT_MS);
+            warn!("Falling back to synthetic session ID - --resume may not work correctly");
             Ok(SessionIdResult::Timeout)
         }
     }

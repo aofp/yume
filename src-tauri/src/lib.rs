@@ -1,3 +1,10 @@
+// Suppress warnings from deprecated cocoa/objc APIs - migration to objc2 is a future task
+#![allow(deprecated)]
+// Suppress cfg warnings from objc macro internals
+#![allow(unexpected_cfgs)]
+// Suppress dead code warnings - some functions are prepared for future use
+#![allow(dead_code)]
+
 // MacOS-specific imports must be at crate root
 // The objc crate provides Objective-C runtime bindings for macOS-specific window customization
 #[cfg(target_os = "macos")]
@@ -73,17 +80,26 @@ pub fn run() {
             // Dynamic port allocation strategy to avoid conflicts
             // Each app instance gets its own port in the 20000-65000 range
             // This prevents multiple instances from conflicting
+            // TOCTOU mitigation: hold the port until server is ready to bind
             let server_port = {
-                info!("Allocating dynamic port for this instance");
-                port_manager::find_available_port()
-                    .unwrap_or_else(|| port_manager::get_fallback_port())
+                info!("Allocating dynamic port for this instance (with TOCTOU protection)");
+                if let Some(held_port) = port_manager::find_and_hold_port() {
+                    // Pass held port to server - it will release right before binding
+                    let port = held_port.port;
+                    info!("Starting LOGGED Node.js server on port: {} (releasing held port)", port);
+                    logged_server::start_logged_server_with_held_port(held_port);
+                    info!("Server started on port {}", port);
+                    port
+                } else {
+                    // Fallback to legacy approach if holding fails
+                    let port = port_manager::find_available_port()
+                        .unwrap_or_else(|| port_manager::get_fallback_port());
+                    info!("Starting LOGGED Node.js server on port: {} (fallback mode)", port);
+                    logged_server::start_logged_server(port);
+                    info!("Server started on port {}", port);
+                    port
+                }
             };
-            
-            // Start the Node.js backend server that bridges between Tauri and Claude CLI
-            // This server handles spawning Claude processes and parsing their output
-            info!("Starting LOGGED Node.js server on port: {}", server_port);
-            logged_server::start_logged_server(server_port);
-            info!("Server started on port {}", server_port);
 
             // Initialize centralized application state
             // Contains: sessions, settings, recent projects, Claude manager reference

@@ -3,7 +3,7 @@ use std::process::Stdio;
 use std::sync::Arc;
 use tokio::io::{AsyncBufReadExt, BufReader};
 use tokio::process::{Child, Command};
-use tauri::{AppHandle, Emitter};
+use tauri::{AppHandle, Emitter, Manager};
 use tracing::{debug, error, info, warn};
 
 use crate::claude_binary::{find_claude_binary, create_command_with_env};
@@ -11,6 +11,7 @@ use crate::claude_session::{
     SessionInfo, SessionManager, generate_synthetic_session_id,
 };
 use crate::process::{ProcessRegistry, ProcessType};
+use crate::state::AppState;
 use crate::stream_parser::{StreamProcessor, ClaudeStreamMessage};
 
 /// Options for spawning a Claude process
@@ -96,17 +97,44 @@ impl ClaudeSpawner {
         info!("Registered process with temporary session ID: {} and run_id: {}", temp_session_id, run_id);
 
         // Get the child back from registry for session ID extraction
-        let mut child = self.take_child_for_extraction(run_id).await?;
+        let mut child = match self.take_child_for_extraction(run_id).await {
+            Ok(child) => child,
+            Err(e) => {
+                // Cleanup: remove the registry entry since we can't proceed
+                error!("Failed to take child for extraction, cleaning up: {}", e);
+                let _ = self.registry.unregister_process(run_id);
+                return Err(e);
+            }
+        };
 
         // Take stdout and stderr immediately before they're consumed
-        let stdout = child.stdout.take()
-            .ok_or_else(|| anyhow!("No stdout available"))?;
-        let stderr = child.stderr.take()
-            .ok_or_else(|| anyhow!("No stderr available"))?;
+        // On failure, return child and cleanup to prevent orphans
+        let stdout = match child.stdout.take() {
+            Some(stdout) => stdout,
+            None => {
+                error!("No stdout available, returning child and cleaning up");
+                let _ = self.registry.return_child(run_id, child);
+                let _ = self.registry.kill_process(run_id).await;
+                return Err(anyhow!("No stdout available"));
+            }
+        };
+        let stderr = match child.stderr.take() {
+            Some(stderr) => stderr,
+            None => {
+                error!("No stderr available, returning child and cleaning up");
+                let _ = self.registry.return_child(run_id, child);
+                let _ = self.registry.kill_process(run_id).await;
+                return Err(anyhow!("No stderr available"));
+            }
+        };
 
         // Return the child to registry after taking streams
-        self.registry.return_child(run_id, child)
-            .map_err(|e| anyhow!(e))?;
+        if let Err(e) = self.registry.return_child(run_id, child) {
+            error!("Failed to return child to registry: {}", e);
+            // Kill the process to prevent orphan
+            let _ = self.registry.kill_process(run_id).await;
+            return Err(anyhow!("Failed to return child to registry: {}", e));
+        }
 
         // We'll extract session ID from the stream handler itself
         // For now, use the temporary session ID
@@ -292,12 +320,13 @@ impl ClaudeSpawner {
                 // This is because /compact creates a NEW session but frontend is still on OLD channel
                 if line.contains("\"subtype\":\"success\"") && line.contains("\"num_turns\"") {
                     // This looks like a compact result - check if we have an original session to emit to
-                    if let Ok(original_session) = std::env::var("COMPACT_ORIGINAL_SESSION") {
-                        let original_channel = format!("claude-message:{}", original_session);
-                        info!("Detected compact result - also emitting on original channel: {}", original_channel);
-                        let _ = app_stdout.emit(&original_channel, &line);
-                        // Clear the env var after use
-                        std::env::remove_var("COMPACT_ORIGINAL_SESSION");
+                    // Use thread-safe state instead of global env vars (fixes race condition)
+                    if let Some(state) = app_stdout.try_state::<AppState>() {
+                        if let Some(original_session) = state.take_compact_original_session(&real_session_id) {
+                            let original_channel = format!("claude-message:{}", original_session);
+                            info!("Detected compact result - also emitting on original channel: {}", original_channel);
+                            let _ = app_stdout.emit(&original_channel, &line);
+                        }
                     }
                 }
                 
@@ -475,7 +504,7 @@ impl ClaudeSpawner {
         } else {
             // Check if this is a temporary session ID that's been replaced
             let all_sessions = self.session_manager.list_sessions().await;
-            all_sessions.into_iter().find(|s| {
+            all_sessions.into_iter().find(|_s| {
                 // Check if session_id starts with "temp-" and matches pattern
                 session_id.starts_with("temp-") || session_id.starts_with("syn_")
             })
@@ -506,18 +535,17 @@ impl ClaudeSpawner {
             // This handles cases where the session was just spawned
             if let Ok(processes) = self.registry.get_running_claude_sessions() {
                 for process in processes {
-                    if let ProcessType::ClaudeSession { session_id: proc_session_id } = &process.process_type {
-                        if proc_session_id == session_id {
-                            info!("Found process by registry lookup, sending prompt to run_id {}", process.run_id);
-                            let prompt_with_newline = if prompt.ends_with('\n') {
-                                prompt.to_string()
-                            } else {
-                                format!("{}\n", prompt)
-                            };
-                            self.registry.write_to_stdin(process.run_id, &prompt_with_newline).await
-                                .map_err(|e| anyhow!("Failed to write prompt: {}", e))?;
-                            return Ok(());
-                        }
+                    let ProcessType::ClaudeSession { session_id: proc_session_id } = &process.process_type;
+                    if proc_session_id == session_id {
+                        info!("Found process by registry lookup, sending prompt to run_id {}", process.run_id);
+                        let prompt_with_newline = if prompt.ends_with('\n') {
+                            prompt.to_string()
+                        } else {
+                            format!("{}\n", prompt)
+                        };
+                        self.registry.write_to_stdin(process.run_id, &prompt_with_newline).await
+                            .map_err(|e| anyhow!("Failed to write prompt: {}", e))?;
+                        return Ok(());
                     }
                 }
             }

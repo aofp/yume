@@ -13,7 +13,7 @@ use anyhow::Result;
 #[allow(unused_imports)]
 use parking_lot::RwLock;
 use serde_json::Value;
-use std::collections::VecDeque;
+use std::collections::{HashMap, VecDeque};
 use std::path::PathBuf;
 use std::sync::Arc;
 
@@ -39,6 +39,9 @@ pub struct AppState {
     recent_projects: Arc<RwLock<VecDeque<String>>>,          // Recently opened project paths
     database: Option<Arc<Database>>,                          // SQLite database for persistence
     pub compaction_manager: Arc<Mutex<CompactionManager>>,    // Manages context compaction and auto-trigger
+    // Thread-safe tracker for /compact operations
+    // Maps new_session_id -> original_session_id to route results to correct listeners
+    compact_session_map: Arc<RwLock<HashMap<String, String>>>,
 }
 
 impl AppState {
@@ -71,7 +74,33 @@ impl AppState {
             recent_projects: Arc::new(RwLock::new(VecDeque::new())),
             database,
             compaction_manager: Arc::new(Mutex::new(CompactionManager::new())),
+            compact_session_map: Arc::new(RwLock::new(HashMap::new())),
         }
+    }
+
+    /// Registers a compact session mapping (new_session -> original_session)
+    /// Thread-safe: can be called from multiple /compact commands simultaneously
+    pub fn register_compact_session(&self, new_session_id: &str, original_session_id: &str) {
+        let mut map = self.compact_session_map.write();
+        map.insert(new_session_id.to_string(), original_session_id.to_string());
+        tracing::info!("Registered compact mapping: {} -> {}", new_session_id, original_session_id);
+    }
+
+    /// Gets and removes the original session ID for a compact operation
+    /// Returns None if no mapping exists (not a compact result)
+    pub fn take_compact_original_session(&self, new_session_id: &str) -> Option<String> {
+        let mut map = self.compact_session_map.write();
+        let result = map.remove(new_session_id);
+        if result.is_some() {
+            tracing::info!("Retrieved and removed compact mapping for: {}", new_session_id);
+        }
+        result
+    }
+
+    /// Gets the original session ID without removing (for peeking)
+    pub fn get_compact_original_session(&self, new_session_id: &str) -> Option<String> {
+        let map = self.compact_session_map.read();
+        map.get(new_session_id).cloned()
     }
 
     /// Returns the port number where the Node.js backend server is running

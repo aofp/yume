@@ -499,16 +499,13 @@ export class TauriClaudeClient {
     });
 
     // Listen for session ID updates to switch channels
+    // CRITICAL: Set up new listener BEFORE cleaning up old to prevent message loss
     listen(updateChannel, async (event: Event<any>) => {
       const { old_session_id, new_session_id } = event.payload;
+      const oldChannel = channel;
+      const oldUnlisten = currentUnlisten;
 
-      // Clean up old listener
-      if (currentUnlisten) {
-        currentUnlisten();
-        activeListeners.delete(channel);
-      }
-
-      // Set up new listener on the new channel
+      // Set up new listener FIRST (before cleanup) to prevent gap
       channel = `claude-message:${new_session_id}`;
 
       // Map the temp session ID to the real session ID in the wrapper
@@ -516,9 +513,17 @@ export class TauriClaudeClient {
 
       currentSessionId = new_session_id; // Update the current session ID for wrapper
 
+      // Set up new listener before cleaning up old one
       const newUnlisten = await listen(channel, messageHandler);
       currentUnlisten = newUnlisten;
       activeListeners.set(channel, newUnlisten);
+
+      // NOW clean up old listener (after new one is ready)
+      // This ensures overlap rather than gap - no messages lost
+      if (oldUnlisten) {
+        oldUnlisten();
+        activeListeners.delete(oldChannel);
+      }
 
       // Also update token listener to new session ID
       setupTokenListener(new_session_id);

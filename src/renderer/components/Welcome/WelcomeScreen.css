@@ -335,6 +335,7 @@
   overflow-x: hidden;
   padding: 2px;
   max-height: calc(70vh - 45px); /* Account for header height */
+  background: var(--background-color);
 }
 
 .recent-item-container {
@@ -358,8 +359,9 @@
   color: var(--fg-80);
 }
 
-.recent-item:hover {
-  background: rgba(var(--accent-rgb), 0.05);
+.recent-item:hover,
+.recent-item-container.hovered .recent-item {
+  background: var(--bg-hover);
   color: var(--accent-color);
 }
 

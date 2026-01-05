@@ -234,10 +234,13 @@ class CompactionService {
     setAutoCompactMessage(sessionId, pendingUserMessage);
     console.log('[Compaction] 💾 Saved pending user message for send after compact');
 
-    // Update compaction state
+    // Update compaction state - include the pending message for UI visibility
     console.log('[Compaction] 📝 Setting compacting state');
     store.setCompacting(sessionId, true);
-    store.updateCompactionState(sessionId, { pendingAutoCompact: false }); // Clear the flag
+    store.updateCompactionState(sessionId, {
+      pendingAutoCompact: false,
+      pendingAutoCompactMessage: pendingUserMessage // Store for UI display
+    });
 
     try {
       // Generate and save context manifest before compaction
@@ -259,10 +262,11 @@ class CompactionService {
       // The compact result handler will send the pending user message
     } catch (error) {
       console.error('[Compaction] ❌ Auto-compact failed:', error);
-      // Clear the pending message on failure
+      // Clear the pending message on failure from both stores
       import('./wrapperIntegration').then(({ clearAutoCompactMessage }) => {
         clearAutoCompactMessage(sessionId);
       });
+      store.updateCompactionState(sessionId, { pendingAutoCompactMessage: undefined });
     } finally {
       this.compactingSessionIds.delete(sessionId);
       store.setCompacting(sessionId, false);
@@ -271,32 +275,15 @@ class CompactionService {
   }
 
   /**
-   * Force compaction at 90%
+   * Force compaction at 65% - sets flag to compact on next user message
+   * (Same as auto, but triggered at higher threshold)
    */
   async triggerForceCompaction(sessionId: string): Promise<void> {
-    this.compactingSessionIds.add(sessionId);
+    console.log('[Compaction] 🎯 triggerForceCompaction called for session:', sessionId);
 
-    const store = useClaudeCodeStore.getState();
-    store.setCompacting(sessionId, true);
-
-    try {
-      // Generate and save context manifest
-      await this.generateAndSaveManifest(sessionId);
-      store.updateCompactionState(sessionId, { manifestSaved: true });
-
-      // Force compact
-      await store.sendMessage('/compact', false);
-
-      // Reset backend flags so compaction can trigger again later
-      await invoke('reset_compaction_flags', { sessionId });
-
-      console.log('[Compaction] Force-compact completed');
-    } catch (error) {
-      console.error('[Compaction] Force-compact failed:', error);
-    } finally {
-      this.compactingSessionIds.delete(sessionId);
-      store.setCompacting(sessionId, false);
-    }
+    // Force uses same flag mechanism as auto - only compact when user submits a message
+    // This prevents /compact from being sent when user isn't actively chatting
+    await this.triggerAutoCompaction(sessionId);
   }
 
   /**

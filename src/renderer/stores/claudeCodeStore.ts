@@ -15,6 +15,28 @@ const createDebouncedStorage = (): StateStorage => {
   let pendingValue: string | null = null;
   let pendingKey: string | null = null;
 
+  // Flush pending writes immediately (prevents data loss on app close)
+  const flushPending = () => {
+    if (writeTimeout) {
+      clearTimeout(writeTimeout);
+      writeTimeout = null;
+    }
+    if (pendingKey && pendingValue !== null) {
+      try {
+        localStorage.setItem(pendingKey, pendingValue);
+      } catch (e) {
+        console.error('[DebouncedStorage] Failed to flush:', e);
+      }
+      pendingKey = null;
+      pendingValue = null;
+    }
+  };
+
+  // Register beforeunload to flush pending writes before app closes
+  if (typeof window !== 'undefined') {
+    window.addEventListener('beforeunload', flushPending);
+  }
+
   return {
     getItem: (name: string): string | null => {
       return localStorage.getItem(name);
@@ -38,6 +60,7 @@ const createDebouncedStorage = (): StateStorage => {
       }, 100);
     },
     removeItem: (name: string): void => {
+      flushPending(); // Flush before removing
       localStorage.removeItem(name);
     },
   };
@@ -238,11 +261,12 @@ export interface Session {
   wasCompacted?: boolean; // Track if session was compacted to prevent old ID restoration
   messageUpdateCounter?: number; // Counter to force React re-render on message updates
   compactionState?: { // Track compaction state
-    isCompacting: boolean;
+    isCompacting?: boolean;
     lastCompacted?: Date;
     manifestSaved?: boolean;
     autoTriggered?: boolean;
     pendingAutoCompact?: boolean; // Flag: needs compaction on next user message
+    pendingAutoCompactMessage?: string; // User message queued to send after compaction
   };
   cleanup?: () => void; // Cleanup function for event listeners
   lastAssistantMessageIds?: string[]; // Track last assistant message IDs for virtualization
@@ -316,6 +340,14 @@ interface ClaudeCodeStore {
   restoreToMessage: (sessionId: string, messageIndex: number) => void;
   addMessageToSession: (sessionId: string, message: SDKMessage) => void;
   setSessionStreaming: (sessionId: string, streaming: boolean) => void;
+  updateSessionAnalyticsFromFile: (sessionId: string, tokens: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens: number;
+    cache_creation_input_tokens: number;
+    total_context: number;
+    context_percentage: number;
+  }) => void;
   updateCompactionState: (sessionId: string, compactionState: Partial<Session['compactionState']>) => void;
   setCompacting: (sessionId: string, isCompacting: boolean) => void;
   
@@ -966,10 +998,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             set(state => ({
               sessions: state.sessions.map(s => {
                 if (s.id === sessionId) {
-                  return { 
-                    ...s, 
+                  return {
+                    ...s,
                     streaming: true,
-                    // Don't reset thinkingStartTime - it should be maintained from the original send
+                    // Ensure thinkingStartTime is set if not already (safeguard for timer display)
+                    thinkingStartTime: s.thinkingStartTime || Date.now(),
                   };
                 }
                 return s;
@@ -1075,9 +1108,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 if (pendingMessage) {
                   console.log('[Store] 🔄 AUTO-COMPACT COMPLETE - Resending user message with summary');
                   clearAutoCompactMessage(sessionId);
+                  // Clear the pending message from store (UI indicator)
+                  get().updateCompactionState(sessionId, { pendingAutoCompactMessage: undefined });
 
                   // Wait a bit for state to settle, then send the message with summary
                   setTimeout(() => {
+                    // CRITICAL: Switch to the correct session before sending
+                    // User may have switched tabs during compact
+                    const currentState = get();
+                    if (currentState.currentSessionId !== sessionId) {
+                      console.log('[Store] 🔄 Switching back to compacted session before sending followup:', sessionId);
+                      get().setCurrentSession(sessionId);
+                    }
                     // The sendMessage function will automatically prepend the summary
                     // since wasCompacted is true
                     get().sendMessage(pendingMessage);
@@ -1250,26 +1292,39 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               }
               
               // Initialize analytics object early so we can update it with wrapper tokens
-              const analytics = s.analytics || {
+              // Use type assertion to avoid union type issues when accessing optional properties
+              const analytics: SessionAnalytics = s.analytics || {
                 totalMessages: 0,
                 userMessages: 0,
                 assistantMessages: 0,
                 toolUses: 0,
-                tokens: { 
-                  input: 0, 
-                  output: 0, 
+                systemMessages: 0,
+                tokens: {
+                  input: 0,
+                  output: 0,
                   total: 0,
                   cacheSize: 0,
+                  cacheCreation: 0,
+                  cacheRead: 0,
+                  conversationTokens: 0,
+                  systemTokens: 0,
+                  average: 0,
                   byModel: {
                     opus: { input: 0, output: 0, total: 0 },
                     sonnet: { input: 0, output: 0, total: 0 }
-                  }
+                  },
+                  breakdown: { user: 0, assistant: 0 }
                 },
                 duration: 0,
                 lastActivity: new Date(),
-                createdAt: s.createdAt || new Date(),
                 thinkingTime: 0,
-                cost: { total: 0, byModel: { opus: 0, sonnet: 0 } }
+                cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+                contextWindow: {
+                  used: 0,
+                  limit: 200000,
+                  percentage: 0,
+                  remaining: 200000
+                }
               };
               
               // Debug log incoming message
@@ -1293,15 +1348,26 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   beforeTotal: analytics.tokens.total,
                   afterTotal: message.wrapper.tokens.total
                 });
-                
+
                 // wrapper.tokens.total now includes ALL tokens (including cache)
                 // This is the actual context size in use
-                analytics.tokens.total = message.wrapper.tokens.total || analytics.tokens.total;
-                analytics.tokens.input = message.wrapper.tokens.input || analytics.tokens.input;
-                analytics.tokens.output = message.wrapper.tokens.output || analytics.tokens.output;
+                // IMPORTANT: Use ?? (nullish coalescing) not || to allow 0 values (e.g., after compact)
+                analytics.tokens.total = message.wrapper.tokens.total ?? analytics.tokens.total;
+                analytics.tokens.input = message.wrapper.tokens.input ?? analytics.tokens.input;
+                analytics.tokens.output = message.wrapper.tokens.output ?? analytics.tokens.output;
                 // cache_read is the SIZE of cached context, not incremental
-                analytics.tokens.cacheSize = message.wrapper.tokens.cache_read || 0;
-                analytics.tokens.cacheCreation = message.wrapper.tokens.cache_creation || 0;
+                analytics.tokens.cacheSize = message.wrapper.tokens.cache_read ?? 0;
+                analytics.tokens.cacheCreation = message.wrapper.tokens.cache_creation ?? 0;
+
+                // Also update contextWindow to reflect current token state (especially after compact)
+                const currentTotal = analytics.tokens.total;
+                const percentage = (currentTotal / 200000) * 100;
+                analytics.contextWindow = {
+                  used: currentTotal,
+                  limit: 200000,
+                  percentage: percentage,
+                  remaining: Math.max(0, 200000 - currentTotal)
+                };
               } else if (message.type === 'result') {
                 // Only log missing wrapper for result messages (where we expect tokens)
                 console.log('❌ [STORE-TOKENS] Result message WITHOUT wrapper tokens:', {
@@ -1700,12 +1766,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       };
 
                       // Check for context warnings at 90%
-                      if (rawPercentage >= 90) {
+                      if (rawPercentage >= 90 && analytics.contextWindow) {
+                        const cw = analytics.contextWindow; // Capture for TypeScript
                         import('../services/hooksService').then(({ hooksService }) => {
                           hooksService.processContextWarning(
-                            analytics.contextWindow.percentage,
-                            analytics.contextWindow.used,
-                            analytics.contextWindow.limit,
+                            cw.percentage,
+                            cw.used,
+                            cw.limit,
                             sessionId
                           );
                         });
@@ -1917,10 +1984,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // Update streaming state based on the message's streaming flag
               console.log(`[THINKING TIME DEBUG] ${message.type} message - streaming: ${message.streaming}, sessionId: ${sessionId}`);
               if (message.streaming === true) {
-                // Don't reset thinkingStartTime here - it's already set when user sends message
-                console.log(`[THINKING TIME DEBUG] ${message.type} streaming started, keeping existing thinkingStartTime`);
+                // Ensure thinkingStartTime is set if not already (safeguard for timer display)
+                console.log(`[THINKING TIME DEBUG] ${message.type} streaming started, ensuring thinkingStartTime exists`);
                 sessions = sessions.map(s =>
-                  s.id === sessionId ? { ...s, streaming: true, lastMessageTime: Date.now() } : s
+                  s.id === sessionId ? { ...s, streaming: true, lastMessageTime: Date.now(), thinkingStartTime: s.thinkingStartTime || Date.now() } : s
                 );
               } else if (message.streaming === false) {
                 // CRITICAL FIX: Don't clear streaming when individual messages complete!
@@ -2132,11 +2199,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 // Clear streaming and bash running on interruption, error, or stream_end
                 // BUT preserve streaming state if there are pending tools (subagent tasks still running)
                 const session = sessions.find(s => s.id === sessionId);
-                const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+                const hasPendingTools = session?.pendingToolIds && (session.pendingToolIds?.size ?? 0) > 0;
 
                 if (hasPendingTools && message.subtype === 'stream_end') {
                   // CRITICAL FIX: Don't clear streaming if subagent tasks are still pending
-                  console.log(`[Store] stream_end received but ${session.pendingToolIds.size} tools still pending - keeping streaming=true`);
+                  console.log(`[Store] stream_end received but ${session?.pendingToolIds?.size ?? 0} tools still pending - keeping streaming=true`);
                   sessions = sessions.map(s =>
                     s.id === sessionId
                       ? { ...s, runningBash: false, userBashRunning: false }
@@ -2209,11 +2276,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     pendingTools.add(toolId);
                     console.log(`[Store] Added tool ${toolId} to pending. Total pending: ${pendingTools.size}`);
                   }
-                  return { 
-                    ...s, 
+                  return {
+                    ...s,
                     streaming: true,
                     runningBash: isBash ? true : s.runningBash,
-                    pendingToolIds: pendingTools
+                    pendingToolIds: pendingTools,
+                    // Ensure thinkingStartTime is set if not already (safeguard for timer display)
+                    thinkingStartTime: s.thinkingStartTime || Date.now(),
                   };
                 }
                 return s;
@@ -2375,7 +2444,8 @@ ${content}`;
     }
     
     // Check if we need to reconnect to server (lazy reconnection)
-    let sessionToUse = currentSessionId;
+    // Note: currentSessionId is guaranteed non-null here due to early return above
+    let sessionToUse: string = currentSessionId!;
     const currentSession = get().sessions.find(s => s.id === currentSessionId);
     
     // Handle lazy reconnection for existing sessions
@@ -2430,19 +2500,20 @@ ${content}`;
         // Check if currentSessionId has been updated (temp replaced with real)
         const newSessionId = get().currentSessionId;
         const session = get().sessions.find(s => s.id === newSessionId);
-        if (session?.status === 'active') {
+        if (session?.status === 'active' && newSessionId) {
           console.log('[Store] Session is now active, proceeding with message');
           sessionToUse = newSessionId;
           break;
         }
         retries--;
       }
-      const finalSession = get().sessions.find(s => s.id === get().currentSessionId);
-      if (finalSession?.status !== 'active') {
+      const finalSessionId = get().currentSessionId;
+      const finalSession = get().sessions.find(s => s.id === finalSessionId);
+      if (finalSession?.status !== 'active' || !finalSessionId) {
         console.error(`[Store] Session failed to activate after waiting ${PENDING_SESSION_TIMEOUT_MS}ms`);
         return;
       }
-      sessionToUse = get().currentSessionId;
+      sessionToUse = finalSessionId;
     }
     
     // Add user message immediately with unique ID
@@ -2522,12 +2593,13 @@ ${content}`;
       
       // CRITICAL: Ensure claudeClient is connected before proceeding
       if (!claudeClient.isConnected()) {
-        console.error('[Store] Client not connected! Attempting to reconnect...');
-        // Force reconnection
-        await claudeClient.initialize();
-        // Wait a bit for connection
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        
+        console.error('[Store] Client not connected! Waiting for auto-reconnection...');
+        // Wait for auto-reconnection (client handles this internally)
+        let retries = 10;
+        while (retries > 0 && !claudeClient.isConnected()) {
+          await new Promise(resolve => setTimeout(resolve, 500));
+          retries--;
+        }
         if (!claudeClient.isConnected()) {
           throw new Error('Unable to connect to server');
         }
@@ -2549,21 +2621,22 @@ ${content}`;
       // Messages are handled by the onMessage listener
       // The streaming state will be cleared when we receive the result message
       console.log('[Store] Message sent successfully, waiting for response...');
-    } catch (error) {
+    } catch (error: unknown) {
+      const err = error as Error;
       console.error('[Store] Error sending message:', error);
-      console.error('[Store] Error stack:', error.stack);
-      
+      console.error('[Store] Error stack:', err?.stack);
+
       // Add error message to chat
       set(state => ({
-        sessions: state.sessions.map(s => 
-          s.id === sessionToUse 
-            ? { 
-                ...s, 
+        sessions: state.sessions.map(s =>
+          s.id === sessionToUse
+            ? {
+                ...s,
                 messages: (() => {
                   const newMessage = {
                     type: 'system',
                     subtype: 'error',
-                    message: `Failed to send message: ${error.message}`,
+                    message: `Failed to send message: ${err?.message || 'Unknown error'}`,
                     timestamp: Date.now()
                   };
                   let updatedMessages = [...s.messages, newMessage];
@@ -2614,7 +2687,6 @@ ${content}`;
     
     // Initialize cleanup functions
     let focusCleanup: (() => void) | null = null;
-    let tempMessageCleanup: (() => void) | null = null;
     
     // Listen for title updates
     const titleCleanup = claudeClient.onTitle(sessionId, (title: string) => {
@@ -2745,7 +2817,6 @@ ${content}`;
     const session = get().sessions.find(s => s.id === sessionId);
     if (session) {
       (session as any).cleanup = () => {
-        if (tempMessageCleanup) tempMessageCleanup();
         if (messageCleanup) messageCleanup();
         if (focusCleanup) focusCleanup();
         titleCleanup();
@@ -3495,9 +3566,9 @@ ${content}`;
             userMessages: 0,
             assistantMessages: 0,
             toolUses: 0,
-            tokens: { 
-              input: 0, 
-              output: 0, 
+            tokens: {
+              input: 0,
+              output: 0,
               total: 0,
               cacheSize: 0,
               byModel: {
@@ -3506,6 +3577,7 @@ ${content}`;
               }
             },
             duration: 0,
+            lastActivity: new Date(),
             thinkingTime: 0
           };
           
@@ -3569,9 +3641,9 @@ ${content}`;
             assistantMessages: 0,
             toolUses: 0,
             systemMessages: 0,
-            tokens: { 
-              input: 0, 
-              output: 0, 
+            tokens: {
+              input: 0,
+              output: 0,
               total: 0,
               cacheSize: 0,
               byModel: {
@@ -3580,6 +3652,7 @@ ${content}`;
               }
             },
             duration: 0,
+            lastActivity: new Date(),
             thinkingTime: 0,
             cost: { total: 0, byModel: { opus: 0, sonnet: 0 } }
           };
@@ -3672,26 +3745,24 @@ ${content}`;
             messageCost = message.total_cost_usd;
           }
           
-          // Initialize cost if needed
-          if (!analytics.cost) {
-            analytics.cost = { total: 0, byModel: { opus: 0, sonnet: 0 } };
-          }
-          
+          // Initialize cost if needed and capture for type safety
+          const currentCost = analytics.cost || { total: 0, byModel: { opus: 0, sonnet: 0 } };
+
           // Update cost
           analytics = {
             ...analytics,
             cost: {
-              total: analytics.cost.total + messageCost,
+              total: currentCost.total + messageCost,
               byModel: {
-                opus: analytics.cost.byModel.opus + (isOpus ? messageCost : 0),
-                sonnet: analytics.cost.byModel.sonnet + (!isOpus ? messageCost : 0)
+                opus: currentCost.byModel.opus + (isOpus ? messageCost : 0),
+                sonnet: currentCost.byModel.sonnet + (!isOpus ? messageCost : 0)
               }
             }
           };
           
           console.log(`💵 [COST] Updated cost in addMessageToSession:`, {
             messageCost,
-            totalCost: analytics.cost.total,
+            totalCost: analytics.cost?.total ?? 0,
             model: isOpus ? 'opus' : 'sonnet'
           });
 
@@ -3734,11 +3805,68 @@ ${content}`;
   setSessionStreaming: (sessionId: string, streaming: boolean) => {
     console.log(`[Store] Setting session ${sessionId} streaming to ${streaming}`);
     set(state => ({
-      sessions: state.sessions.map(s => 
-        s.id === sessionId 
+      sessions: state.sessions.map(s =>
+        s.id === sessionId
           ? { ...s, streaming, thinkingStartTime: streaming ? Date.now() : undefined }
           : s
       )
+    }));
+  },
+
+  updateSessionAnalyticsFromFile: (sessionId: string, tokens: {
+    input_tokens: number;
+    output_tokens: number;
+    cache_read_input_tokens: number;
+    cache_creation_input_tokens: number;
+    total_context: number;
+    context_percentage: number;
+  }) => {
+    console.log('[Store] Updating session analytics from file:', { sessionId, tokens });
+    set(state => ({
+      sessions: state.sessions.map(s => {
+        if (s.id !== sessionId) return s;
+
+        const analytics = s.analytics || {
+          totalMessages: 0,
+          userMessages: 0,
+          assistantMessages: 0,
+          toolUses: 0,
+          tokens: {
+            input: 0,
+            output: 0,
+            total: 0,
+            byModel: {
+              opus: { input: 0, output: 0, total: 0 },
+              sonnet: { input: 0, output: 0, total: 0 }
+            }
+          },
+          duration: 0,
+          lastActivity: new Date(),
+          thinkingTime: 0
+        };
+
+        return {
+          ...s,
+          analytics: {
+            ...analytics,
+            tokens: {
+              ...analytics.tokens,
+              input: tokens.input_tokens,
+              output: tokens.output_tokens,
+              total: tokens.total_context,
+              cacheSize: tokens.cache_read_input_tokens,
+              cacheCreation: tokens.cache_creation_input_tokens
+            },
+            contextWindow: {
+              used: tokens.total_context,
+              limit: 200000,
+              percentage: tokens.context_percentage,
+              remaining: Math.max(0, 200000 - tokens.total_context)
+            },
+            lastActivity: new Date()
+          }
+        };
+      })
     }));
   },
 
@@ -3764,6 +3892,8 @@ ${content}`;
             totalMessages: restoredMessages.length,
             userMessages: restoredMessages.filter(m => m.type === 'user').length,
             assistantMessages: restoredMessages.filter(m => m.type === 'assistant').length,
+            toolUses: restoredMessages.filter(m => m.type === 'tool_use').length,
+            duration: session.analytics?.duration || 0,
             // Keep existing token counts as they reflect actual usage
             tokens: session.analytics?.tokens || {
               input: 0,
@@ -3917,11 +4047,14 @@ ${content}`;
         // Use enhanced format with full tab information
         tabData = JSON.parse(enhancedStored);
         console.log('[Store] Restoring enhanced tabs:', tabData);
-      } else {
+      } else if (legacyStored) {
         // Fall back to legacy format (just paths)
         const tabPaths = JSON.parse(legacyStored) as string[];
         tabData = tabPaths.map((path, index) => ({ path, order: index }));
         console.log('[Store] Restoring legacy tabs:', tabPaths);
+      } else {
+        // Shouldn't happen due to early return, but satisfies TypeScript
+        return;
       }
       
       // Wait for socket connection before creating sessions

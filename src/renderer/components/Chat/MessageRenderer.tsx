@@ -139,6 +139,9 @@ const CODE_BLOCK_REGEX = /```([\w]*)?[\r\n]+([\s\S]*?)```/g;
 const INLINE_CODE_REGEX = /`([^`]+)`/g;
 const THINKING_TAG_REGEX = /<thinking>([\s\S]*?)<\/thinking>/g;
 
+// PERFORMANCE: Pre-create remarkPlugins array to avoid allocation on every render
+const REMARK_PLUGINS = [remarkGfm];
+
 // Convert <thinking>...</thinking> tags to italic markdown
 const processThinkingTags = (text: string): string => {
   return text.replace(THINKING_TAG_REGEX, (_match, content) => `*${content.trim()}*`);
@@ -668,7 +671,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
         if (parsed.text && typeof parsed.text === 'string') {
           return (
             <div className="markdown-content"><ReactMarkdown
-              remarkPlugins={[remarkGfm]}
+              remarkPlugins={REMARK_PLUGINS}
               components={{
                 code({ className, children, ...props }) {
                   // In react-markdown v9+, inline is determined by whether there's a language class
@@ -737,7 +740,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
     
     return (
       <div className="markdown-content"><ReactMarkdown
-        remarkPlugins={[remarkGfm]}
+        remarkPlugins={REMARK_PLUGINS}
         components={{
           code({ className, children, ...props }) {
             const isInline = !className?.startsWith('language-');
@@ -841,7 +844,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           return (
             <div key={idx} className="content-text">
               <ReactMarkdown
-                remarkPlugins={[remarkGfm]}
+                remarkPlugins={REMARK_PLUGINS}
                 components={{
                   a({ children }) {
                     return <>{children}</>;
@@ -877,7 +880,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
               </div>
               <div className="thinking-content">
                 <div className="thinking-markdown"><ReactMarkdown
-                  remarkPlugins={[remarkGfm]}
+                  remarkPlugins={REMARK_PLUGINS}
                   components={{
                     a({ children }) {
                       return <>{children}</>;
@@ -3142,7 +3145,7 @@ const MessageRendererBase: React.FC<{
                 {resultText && (
                   <div className="compact-summary-content">
                     <div className="compact-summary-text">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      <ReactMarkdown remarkPlugins={REMARK_PLUGINS}>
                         {resultText}
                       </ReactMarkdown>
                     </div>
@@ -3167,7 +3170,7 @@ const MessageRendererBase: React.FC<{
               <div className="assistant-bubble">
                 <div className="message-content">
                   <div className="markdown-content"><ReactMarkdown
-                    remarkPlugins={[remarkGfm]}
+                    remarkPlugins={REMARK_PLUGINS}
                     components={{
                       code: ({className, children, ...props}) => {
                         const match = /language-(\w+)/.exec(className || '');

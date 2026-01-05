@@ -138,10 +138,10 @@
   --titlebar-height: 52px;
   --statusbar-height: 28px;
   
-  /* Transitions */
-  --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-base: 200ms cubic-bezier(0.4, 0, 0.2, 1);
-  --transition-slow: 300ms cubic-bezier(0.4, 0, 0.2, 1);
+  /* Transitions - optimized for snappy feel */
+  --transition-fast: 100ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-base: 150ms cubic-bezier(0.4, 0, 0.2, 1);
+  --transition-slow: 200ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 /* Reset */
@@ -149,6 +149,11 @@
   margin: 0;
   padding: 0;
   box-sizing: border-box;
+}
+
+/* PERFORMANCE: Faster touch response on all interactive elements */
+button, a, input, textarea, [role="button"] {
+  touch-action: manipulation;
 }
 
 html,
@@ -159,6 +164,9 @@ body,
   overflow: hidden;
   /* CRITICAL: Force transparency for WebView2 window transparency on Windows */
   background: transparent !important;
+  /* PERFORMANCE: Optimize text rendering */
+  text-rendering: optimizeSpeed;
+  -webkit-font-smoothing: antialiased;
 }
 
 body {
@@ -501,4 +509,16 @@ pre {
 
 #debug {
   display: none !important;
+}
+
+/* PERFORMANCE: Respect user preference for reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }

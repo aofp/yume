@@ -27,8 +27,14 @@ const VirtualItemWrapper = memo(({
         left: 0,
         width: '100%',
         maxWidth: '100%',
-        transform: `translateY(${virtualItem.start}px)`,
+        // Use translate3d for GPU acceleration - prevents flicker during scroll
+        transform: `translate3d(0, ${virtualItem.start}px, 0)`,
         boxSizing: 'border-box',
+        // GPU compositing hints - critical for smooth scrolling
+        willChange: 'transform',
+        backfaceVisibility: 'hidden',
+        // Isolate paint to prevent affecting siblings
+        contain: 'layout paint',
       }}
     >
       {children}
@@ -78,12 +84,10 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const scrollToBottomRequestedRef = useRef(false);
   const pendingScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAutoScrollingRef = useRef(false); // Track when we're auto-scrolling (to ignore in handleScroll)
-  const streamingScrollIntervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const followUpScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Scroll anchoring refs - used to maintain position when user has scrolled up
   const scrollAnchorRef = useRef<{ index: number; offset: number } | null>(null);
-  const prevTotalSizeRef = useRef<number>(0);
 
   // CRITICAL: Store messages in ref for stable callbacks - prevents virtualizer recreation
   const messagesRef = useRef(messages);
@@ -162,7 +166,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     count: displayMessages.length,
     getScrollElement: () => parentRef.current,
     estimateSize,
-    overscan: 5, // Render 5 items outside viewport for smoother scrolling
+    overscan: 25, // Render 25 items outside viewport - aggressive buffering to eliminate flicker
     // Stable getItemKey using ref - prevents recreation during streaming
     getItemKey: useCallback((index: number) => {
       const msgs = showThinking ? [...messagesRef.current, { type: 'thinking', id: 'thinking-indicator' }] : messagesRef.current;
@@ -376,18 +380,26 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     }
   }, [contentHash, displayMessages.length, performAutoScroll]);
 
+  // Track last content hash for scroll anchoring - only anchor on actual content changes
+  const lastAnchorContentHashRef = useRef('');
+
   // CRITICAL: Scroll anchoring - maintain position when user has scrolled up
-  // When new content arrives and virtualizer re-measures, restore scroll to anchored item
+  // Only restore anchor when NEW CONTENT arrives (contentHash changes), not during normal remeasurement
   useLayoutEffect(() => {
     if (!parentRef.current || !userHasScrolledRef.current || !scrollAnchorRef.current) return;
 
-    const newTotalSize = virtualizer.getTotalSize();
-    const oldTotalSize = prevTotalSizeRef.current;
-    prevTotalSizeRef.current = newTotalSize;
+    // Only process if content actually changed (new message, not just remeasurement)
+    if (contentHash === lastAnchorContentHashRef.current) return;
+    lastAnchorContentHashRef.current = contentHash;
 
-    // If total size changed, we need to restore scroll position
-    if (oldTotalSize > 0 && newTotalSize !== oldTotalSize) {
-      const anchor = scrollAnchorRef.current;
+    const anchor = scrollAnchorRef.current;
+
+    // Use requestAnimationFrame to batch with browser paint cycle - prevents flicker
+    requestAnimationFrame(() => {
+      if (!parentRef.current || !scrollAnchorRef.current) return;
+
+      // Re-check anchor is still valid (user might have scrolled back to bottom)
+      if (!userHasScrolledRef.current) return;
 
       // Find the current position of the anchored item
       const virtualItems = virtualizer.getVirtualItems();
@@ -396,67 +408,80 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       if (anchorItem) {
         // Restore scroll to keep the same item at the same position
         const newScrollTop = anchorItem.start + anchor.offset;
-        isAutoScrollingRef.current = true;
-        parentRef.current.scrollTop = newScrollTop;
-        setTimeout(() => { isAutoScrollingRef.current = false; }, 50);
-      } else {
-        // Item not in view, use virtualizer's scrollToIndex
-        isAutoScrollingRef.current = true;
-        virtualizer.scrollToIndex(anchor.index, { align: 'start' });
-        // Adjust for offset after scroll
-        setTimeout(() => {
-          if (parentRef.current) {
-            parentRef.current.scrollTop += anchor.offset;
-          }
-          isAutoScrollingRef.current = false;
-        }, 50);
+        const currentScrollTop = parentRef.current!.scrollTop;
+
+        // Only adjust if there's a meaningful difference (> 2px) to avoid micro-jitters
+        if (Math.abs(newScrollTop - currentScrollTop) > 2) {
+          isAutoScrollingRef.current = true;
+          parentRef.current!.scrollTop = newScrollTop;
+          setTimeout(() => { isAutoScrollingRef.current = false; }, 50);
+        }
       }
-    }
+    });
   }, [virtualizer, contentHash]);
 
-  // Ref for auto-scroll reset timeout
-  const autoScrollResetTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // RAF-based scroll during streaming/thinking - syncs with browser paint cycle for zero flicker
+  // Uses requestAnimationFrame instead of setInterval for smoother operation
+  const rafIdRef = useRef<number | null>(null);
+  const lastRafScrollTimeRef = useRef(0);
 
-  // Interval-based scroll during streaming/thinking - SMART bottom sticking
-  // Always start interval when streaming/thinking - the ref check is inside the interval
-  // so that forceScrollToBottom can reset userHasScrolledRef and scrolling resumes
   useEffect(() => {
     if (isStreaming || showThinking) {
-      // Start interval for continuous scroll during streaming
-      streamingScrollIntervalRef.current = setInterval(() => {
-        // Check ref INSIDE interval so forceScrollToBottom can reset it mid-stream
-        if (!parentRef.current || userHasScrolledRef.current) return;
+      const scrollLoop = () => {
+        // Check if we should continue
+        if (!parentRef.current) {
+          rafIdRef.current = requestAnimationFrame(scrollLoop);
+          return;
+        }
 
-        // CRITICAL: Don't scroll if user is actively selecting text
-        // This prevents selection from being disrupted during streaming
-        if (hasActiveSelection()) return;
+        // Skip if user has manually scrolled up
+        if (userHasScrolledRef.current) {
+          rafIdRef.current = requestAnimationFrame(scrollLoop);
+          return;
+        }
+
+        // Skip if user is selecting text
+        if (hasActiveSelection()) {
+          rafIdRef.current = requestAnimationFrame(scrollLoop);
+          return;
+        }
+
+        // Throttle to ~30fps (every 33ms) to avoid excessive scroll operations
+        const now = performance.now();
+        if (now - lastRafScrollTimeRef.current < 33) {
+          rafIdRef.current = requestAnimationFrame(scrollLoop);
+          return;
+        }
+        lastRafScrollTimeRef.current = now;
 
         const { scrollHeight, clientHeight, scrollTop } = parentRef.current;
         const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
 
-        // Always scroll to bottom when streaming (aggressive auto-scroll for better UX)
-        // Reduced threshold to 5px for immediate scrolling
+        // Only scroll if not already at bottom (5px threshold)
         if (distanceFromBottom > 5) {
           isAutoScrollingRef.current = true;
           parentRef.current.scrollTop = scrollHeight - clientHeight;
-          // Reset flag after scroll events have been processed (async)
-          if (autoScrollResetTimeoutRef.current) {
-            clearTimeout(autoScrollResetTimeoutRef.current);
-          }
-          autoScrollResetTimeoutRef.current = setTimeout(() => {
+          // Reset flag on next frame
+          requestAnimationFrame(() => {
             isAutoScrollingRef.current = false;
-          }, 50);
+          });
         }
-      }, 100); // 100ms for faster, more responsive scrolling
+
+        // Continue the loop while streaming
+        rafIdRef.current = requestAnimationFrame(scrollLoop);
+      };
+
+      // Start the RAF loop
+      rafIdRef.current = requestAnimationFrame(scrollLoop);
     }
 
     return () => {
-      if (streamingScrollIntervalRef.current) {
-        clearInterval(streamingScrollIntervalRef.current);
-        streamingScrollIntervalRef.current = null;
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
       }
     };
-  }, [isStreaming, showThinking]);
+  }, [isStreaming, showThinking, hasActiveSelection]);
 
   // Cleanup pending scroll on unmount
   useEffect(() => {
@@ -464,14 +489,11 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       if (pendingScrollTimeoutRef.current) {
         clearTimeout(pendingScrollTimeoutRef.current);
       }
-      if (streamingScrollIntervalRef.current) {
-        clearInterval(streamingScrollIntervalRef.current);
-      }
       if (followUpScrollTimeoutRef.current) {
         clearTimeout(followUpScrollTimeoutRef.current);
       }
-      if (autoScrollResetTimeoutRef.current) {
-        clearTimeout(autoScrollResetTimeoutRef.current);
+      if (rafIdRef.current) {
+        cancelAnimationFrame(rafIdRef.current);
       }
     };
   }, []);
@@ -500,6 +522,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     >
       <div
         style={{
+          // Use minHeight instead of height to prevent shrinking during remeasurement
+          // This eliminates flicker when item sizes change
+          minHeight: `${virtualizer.getTotalSize()}px`,
           height: `${virtualizer.getTotalSize()}px`,
           width: '100%',
           maxWidth: '100%', // Ensure child doesn't exceed parent
@@ -508,9 +533,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
           boxSizing: 'border-box',
           overflowX: 'hidden', // Prevent child overflow
           // Use 'paint' containment instead of 'layout style' to preserve text selection
-          // 'layout style' can reset selection state during layout recalculations
           contain: 'paint',
-          willChange: 'transform',
         }}
       >
         {virtualItems.map((virtualItem) => {
