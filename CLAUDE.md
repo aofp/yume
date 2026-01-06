@@ -93,14 +93,6 @@ When building on Windows for Windows, ensure:
 - Sessions recovered from `AppData/Roaming/yurucode/crash-recovery/`
 - Claude projects stored in user's `.claude/projects/` directory
 
-## Agent Preferences
-
-### Path Display
-- Always use relative paths from project root when running commands like `find`, `grep`, etc.
-- Use `cd /c/Users/muuko/Desktop/yurucode &&` before commands to ensure relative paths
-- Example: `cd /c/Users/muuko/Desktop/yurucode && find src/renderer -type f -name "*.tsx"`
-- This keeps output clean and portable across different machines
-
 ## Common Development Tasks
 
 ### Fixing Template Literal Escaping Issues
