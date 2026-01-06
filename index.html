@@ -41,6 +41,36 @@
         document.documentElement.style.opacity = String(alpha);
         console.log('[Early Init] Applied saved opacity:', alpha);
 
+        // CRITICAL: Apply theme colors BEFORE any CSS loads to prevent modal flash
+        var savedBgColor = localStorage.getItem('backgroundColor') || '#0f0f0f';
+        if (isWindows) {
+          document.documentElement.style.setProperty('--background-color', 'transparent');
+        } else {
+          document.documentElement.style.setProperty('--background-color', savedBgColor);
+        }
+        var bgHex = savedBgColor.replace('#', '');
+        var bgR = parseInt(bgHex.substr(0, 2), 16) || 10;
+        var bgG = parseInt(bgHex.substr(2, 2), 16) || 10;
+        var bgB = parseInt(bgHex.substr(4, 2), 16) || 10;
+        document.documentElement.style.setProperty('--background-rgb', bgR + ', ' + bgG + ', ' + bgB);
+
+        var savedFgColor = localStorage.getItem('foregroundColor') || '#ffffff';
+        document.documentElement.style.setProperty('--foreground-color', savedFgColor);
+        var fgHex = savedFgColor.replace('#', '');
+        var fgR = parseInt(fgHex.substr(0, 2), 16) || 255;
+        var fgG = parseInt(fgHex.substr(2, 2), 16) || 255;
+        var fgB = parseInt(fgHex.substr(4, 2), 16) || 255;
+        document.documentElement.style.setProperty('--foreground-rgb', fgR + ', ' + fgG + ', ' + fgB);
+
+        var savedAccentColor = localStorage.getItem('accentColor') || '#bb99ff';
+        document.documentElement.style.setProperty('--accent-color', savedAccentColor);
+        var accentHex = savedAccentColor.replace('#', '');
+        var accentR = parseInt(accentHex.substr(0, 2), 16) || 187;
+        var accentG = parseInt(accentHex.substr(2, 2), 16) || 153;
+        var accentB = parseInt(accentHex.substr(4, 2), 16) || 255;
+        document.documentElement.style.setProperty('--accent-rgb', accentR + ', ' + accentG + ', ' + accentB);
+        console.log('[Early Init] Applied theme colors:', savedBgColor, savedFgColor, savedAccentColor);
+
         // Polyfill Object.assign
         if (typeof Object.assign !== 'function') {
           Object.defineProperty(Object, 'assign', {

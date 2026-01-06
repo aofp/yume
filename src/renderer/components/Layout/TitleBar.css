@@ -283,7 +283,7 @@
 }
 
 .stats-modal {
-  background: var(--background-color);
+  background: var(--background-color, #0f0f0f);
   border: 1px solid var(--fg-20);
   border-radius: 8px;
   width: 400px;

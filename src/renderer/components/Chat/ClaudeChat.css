@@ -16,15 +16,15 @@
   isolation: isolate;
 }
 
-/* macOS: 50% darker background like textarea - opacity is handled by html element */
+/* macOS: darkened background - opacity is handled by html element */
 .platform-darwin .chat-container {
-  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+  background: var(--bg-overlay);
 }
 
-/* Windows: 50% darker background like textarea - opacity is handled by html element */
+/* Windows: darkened background - opacity is handled by html element */
 .platform-win32 .chat-container {
   height: 100%;
-  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+  background: var(--bg-overlay);
 }
 
 /* Search bar - fixed top right minimal UI */
@@ -804,7 +804,7 @@ textarea.context-full {
 
 .chat-input {
   flex: 1;
-  background: linear-gradient(rgba(var(--background-rgb), 0.25), rgba(var(--background-rgb), 0.25)), #000000;
+  background: var(--bg-overlay);
   border: 1px solid rgba(var(--accent-rgb), 0.4);
   color: var(--foreground-color);
   caret-color: var(--accent-color);
@@ -828,7 +828,7 @@ textarea.context-full {
 }
 
 .chat-input:focus {
-  background: linear-gradient(rgba(var(--background-rgb), 0.25), rgba(var(--background-rgb), 0.25)), #000000;
+  background: var(--bg-overlay);
   border-color: rgba(var(--accent-rgb), 0.9);
   overflow-y: auto; /* Show scrollbar on focus if content overflows */
 }
@@ -1306,6 +1306,41 @@ textarea.context-full {
   font-family: var(--font-mono);
 }
 
+.btn-stats-container {
+  position: relative;
+  display: inline-block;
+}
+
+.btn-stats-limit-bar {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--fg-05);
+  overflow: hidden;
+}
+
+.btn-stats-limit-bar.five-hour {
+  bottom: -1px;
+}
+
+.btn-stats-limit-bar.seven-day {
+  bottom: -2px;
+}
+
+.btn-stats-limit-fill {
+  height: 100%;
+  transition: width 0.3s ease;
+}
+
+.btn-stats-limit-fill.normal {
+  background: var(--accent-color);
+}
+
+.btn-stats-limit-fill.warning {
+  background: var(--negative-color);
+}
+
 /* Color coding for token usage levels matching tab area gradient:
    - minimal (<40%): grey
    - low (40%+): faint red (0.3 opacity)
@@ -1707,7 +1742,7 @@ textarea.context-full {
 }
 
 .stats-modal {
-  background: var(--background-color);
+  background: var(--background-color, #0f0f0f);
   border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 90%;
@@ -1751,7 +1786,8 @@ textarea.context-full {
   padding: 12px;
   display: grid;
   grid-template-columns: repeat(2, minmax(150px, 1fr));
-  gap: 8px;
+  column-gap: 8px;
+  row-gap: 0px;
   justify-content: center;
 }
 
@@ -1875,6 +1911,14 @@ textarea.context-full {
   background: rgba(255, 100, 100, 0.8);
 }
 
+/* Stats section divider */
+.stats-divider {
+  grid-column: span 2;
+  border: none;
+  border-top: 1px solid var(--fg-10);
+  margin: 8px 0;
+}
+
 /* Usage bar styles for weekly/context limits */
 .usage-bar-container {
   display: flex;
@@ -1892,7 +1936,8 @@ textarea.context-full {
 
 .usage-bar-label span:first-child {
   text-transform: lowercase;
-  opacity: 0.7;
+  font-weight: 600;
+  color: var(--foreground-color);
 }
 
 .usage-bar-label span:last-child {
@@ -1900,17 +1945,20 @@ textarea.context-full {
   color: var(--accent-color);
 }
 
+.usage-bar-label span.usage-negative {
+  color: var(--negative-color, #ff6b6b);
+}
+
 .usage-bar {
-  height: 6px;
+  height: 2px;
   background: var(--fg-10);
-  border-radius: 3px;
+  border-radius: 1px;
   overflow: hidden;
 }
 
 .usage-bar-fill {
   height: 100%;
-  border-radius: 3px;
-  transition: width 0.3s ease, background 0.3s ease;
+  border-radius: 1px;
 }
 
 @keyframes fadeIn {
@@ -1924,7 +1972,46 @@ textarea.context-full {
   }
 }
 
+/* Stats footer - full width section below grid */
+.stats-footer {
+  padding: 12px;
+  border-top: 1px solid var(--fg-10);
+  margin-top: 0;
+}
 
+.stats-footer-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.stats-footer-label {
+  font-size: 10px;
+  color: var(--fg-60);
+  font-family: var(--font-sans);
+  text-transform: lowercase;
+}
+
+.stats-footer-label.stats-footer-label-bold {
+  font-weight: 600;
+  color: var(--foreground-color);
+}
+
+.stats-footer-limit-name {
+  font-family: 'Comic Neue', cursive;
+}
+
+.stats-footer-value {
+  font-size: 10px;
+  font-family: var(--font-mono);
+  font-weight: 600;
+  color: var(--accent-color);
+}
+
+.stats-footer-value.usage-negative {
+  color: var(--negative-color, #ff6b6b);
+}
 
 /* Search bar - minimal fixed position top right */
 /* Duplicate search styles removed - see top of file for search-bar styles */
@@ -1949,7 +2036,7 @@ textarea.context-full {
   left: 0;
   width: 100%;
   height: 100%;
-  background: color-mix(in srgb, var(--background-color) 50%, black);
+  background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1959,7 +2046,7 @@ textarea.context-full {
 }
 
 .recent-modal {
-  background: var(--background-color);
+  background: var(--background-color, #0f0f0f);
   border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 90%;

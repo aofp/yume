@@ -1,5 +1,37 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
+
+// Import theme config FIRST (before CSS) to use default values
+import { DEFAULT_COLORS } from './config/themes';
+
+// Apply theme colors synchronously BEFORE any CSS loads to prevent flash
+(() => {
+  const isWindows = navigator.platform.indexOf('Win') > -1;
+  const savedBackgroundColor = localStorage.getItem('backgroundColor') || DEFAULT_COLORS.background;
+
+  if (isWindows) {
+    document.documentElement.style.setProperty('--background-color', 'transparent');
+  } else {
+    document.documentElement.style.setProperty('--background-color', savedBackgroundColor);
+  }
+
+  const bgHex = savedBackgroundColor.replace('#', '');
+  const bgR = parseInt(bgHex.substr(0, 2), 16) || 10;
+  const bgG = parseInt(bgHex.substr(2, 2), 16) || 10;
+  const bgB = parseInt(bgHex.substr(4, 2), 16) || 10;
+  document.documentElement.style.setProperty('--background-rgb', `${bgR}, ${bgG}, ${bgB}`);
+
+  const savedForegroundColor = localStorage.getItem('foregroundColor') || DEFAULT_COLORS.foreground;
+  document.documentElement.style.setProperty('--foreground-color', savedForegroundColor);
+  const fgHex = savedForegroundColor.replace('#', '');
+  document.documentElement.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16) || 255}, ${parseInt(fgHex.substr(2, 2), 16) || 255}, ${parseInt(fgHex.substr(4, 2), 16) || 255}`);
+
+  const savedAccentColor = localStorage.getItem('accentColor') || DEFAULT_COLORS.accent;
+  document.documentElement.style.setProperty('--accent-color', savedAccentColor);
+  const accentHex = savedAccentColor.replace('#', '');
+  document.documentElement.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16) || 187}, ${parseInt(accentHex.substr(2, 2), 16) || 153}, ${parseInt(accentHex.substr(4, 2), 16) || 255}`);
+})();
+
 import { App } from './App.minimal';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import ErrorBoundary from './components/common/ErrorBoundary';
@@ -292,6 +324,30 @@ if (window.electronAPI && window.electronAPI.ipcRenderer) {
   });
 }
 
+// Track last reconnection attempt to prevent rapid reconnects
+let lastReconnectAttempt = 0;
+const RECONNECT_DEBOUNCE_MS = 5000; // Minimum 5 seconds between reconnect attempts
+
+// Focus preservation helper - saves and restores focus across async operations
+const preserveFocus = async (asyncOperation: () => Promise<void>) => {
+  const activeElement = document.activeElement as HTMLElement | null;
+  const wasTextareaFocused = activeElement?.classList.contains('chat-input');
+
+  try {
+    await asyncOperation();
+  } finally {
+    // Restore focus after async operation completes
+    if (wasTextareaFocused && document.hasFocus()) {
+      requestAnimationFrame(() => {
+        const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+        if (textarea && !document.querySelector('.modal-overlay')) {
+          textarea.focus();
+        }
+      });
+    }
+  }
+};
+
 // Handle window focus/blur for better session management
 window.addEventListener('focus', () => {
   // WORKAROUND: Force hover state re-evaluation on window focus
@@ -299,17 +355,32 @@ window.addEventListener('focus', () => {
   document.body.style.pointerEvents = 'none';
   requestAnimationFrame(() => {
     document.body.style.pointerEvents = '';
+
+    // Restore textarea focus after pointer events are re-enabled
+    // This fixes focus loss caused by the pointer events workaround
+    const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+    if (textarea && !document.querySelector('.modal-overlay')) {
+      textarea.focus();
+    }
   });
 
   const store = useClaudeCodeStore.getState();
   const { sessions, currentSessionId } = store;
 
-  // Check if current session needs refresh
+  // Check if current session needs refresh (with debouncing)
+  const now = Date.now();
+  if (now - lastReconnectAttempt < RECONNECT_DEBOUNCE_MS) {
+    return; // Skip reconnection if we recently attempted one
+  }
+
   const currentSession = sessions.find(s => s.id === currentSessionId);
   if (currentSession && currentSession.status === 'paused') {
     if (currentSession.claudeSessionId) {
-      store.createSession(currentSession.name, currentSession.workingDirectory, currentSession.id)
-        .catch(() => { /* Session already active or reconnection not needed */ });
+      lastReconnectAttempt = now;
+      preserveFocus(async () => {
+        await store.createSession(currentSession.name, currentSession.workingDirectory, currentSession.id)
+          .catch(() => { /* Session already active or reconnection not needed */ });
+      });
     }
   }
 });
@@ -329,17 +400,33 @@ document.addEventListener('visibilitychange', () => {
     // Page is becoming visible, check if we need to restore
     const timeDiff = now - lastActiveTime;
 
+    // Check debounce before attempting reconnection
+    if (now - lastReconnectAttempt < RECONNECT_DEBOUNCE_MS) {
+      return; // Skip if we recently attempted reconnection
+    }
+
     if (timeDiff > 60000) { // 1 minute - just refresh connections
-      // Just ensure sessions are still connected
-      store.sessions.forEach(async (session) => {
-        if (session.claudeSessionId && session.status === 'paused') {
-          try {
-            await store.createSession(session.name, session.workingDirectory, session.id);
-          } catch (err) {
-            // Connection refresh not needed
+      lastReconnectAttempt = now;
+      // Just ensure sessions are still connected - use sequential processing to avoid focus issues
+      const refreshSessions = async () => {
+        for (const session of store.sessions) {
+          if (session.claudeSessionId && session.status === 'paused') {
+            try {
+              await store.createSession(session.name, session.workingDirectory, session.id);
+            } catch (err) {
+              // Connection refresh not needed
+            }
           }
         }
-      });
+        // Restore focus after all reconnections
+        requestAnimationFrame(() => {
+          const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+          if (textarea && document.hasFocus() && !document.querySelector('.modal-overlay')) {
+            textarea.focus();
+          }
+        });
+      };
+      refreshSessions();
     }
   }
 });

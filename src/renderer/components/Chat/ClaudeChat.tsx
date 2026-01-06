@@ -328,6 +328,24 @@ interface Attachment {
   preview?: string; // short preview for display
 }
 
+// format reset time as relative time string
+const formatResetTime = (resetAt: string | undefined): string => {
+  if (!resetAt) return '';
+  const resetDate = new Date(resetAt);
+  const now = new Date();
+  const diffMs = resetDate.getTime() - now.getTime();
+  if (diffMs <= 0) return 'now';
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (diffHours > 24) {
+    const days = Math.floor(diffHours / 24);
+    const hrs = diffHours % 24;
+    return hrs > 0 ? `${days}d ${hrs}h` : `${days}d`;
+  }
+  if (diffHours > 0) return `${diffHours}h ${diffMins}m`;
+  return `${diffMins}m`;
+};
+
 export const ClaudeChat: React.FC = () => {
   // Platform detection for keyboard shortcuts
   const isMac = navigator.platform.toLowerCase().includes('mac');
@@ -538,13 +556,13 @@ export const ClaudeChat: React.FC = () => {
     });
   }, [currentSessionId]);
 
-  // Fetch usage limits when stats modal opens (with 30-min cache)
-  useEffect(() => {
-    if (showStatsModal && !usageLimits) {
-      const CACHE_KEY = 'yurucode_usage_limits_cache';
-      const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+  // Fetch usage limits with 10-min cache, refresh every 10min
+  const fetchUsageLimits = useCallback((force = false) => {
+    const CACHE_KEY = 'yurucode_usage_limits_cache';
+    const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
 
-      // Check cache first
+    // Check cache first (unless forced)
+    if (!force) {
       try {
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
@@ -557,25 +575,39 @@ export const ClaudeChat: React.FC = () => {
       } catch (e) {
         // Cache read failed, fetch fresh
       }
-
-      invoke<{
-        five_hour?: { utilization: number; resets_at: string };
-        seven_day?: { utilization: number; resets_at: string };
-        subscription_type?: string;
-        rate_limit_tier?: string;
-      }>('get_claude_usage_limits')
-        .then(data => {
-          setUsageLimits(data);
-          // Cache the result
-          try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
-          } catch (e) {
-            // Cache write failed, ignore
-          }
-        })
-        .catch(err => console.error('Failed to fetch usage limits:', err));
     }
-  }, [showStatsModal, usageLimits]);
+
+    invoke<{
+      five_hour?: { utilization: number; resets_at: string };
+      seven_day?: { utilization: number; resets_at: string };
+      subscription_type?: string;
+      rate_limit_tier?: string;
+    }>('get_claude_usage_limits')
+      .then(data => {
+        setUsageLimits(data);
+        // Cache the result
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+        } catch (e) {
+          // Cache write failed, ignore
+        }
+      })
+      .catch(err => console.error('Failed to fetch usage limits:', err));
+  }, []);
+
+  // Fetch usage limits on mount and refresh every 10min
+  useEffect(() => {
+    fetchUsageLimits();
+    const interval = setInterval(() => fetchUsageLimits(true), 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchUsageLimits]);
+
+  // Also force refresh when modal opens
+  useEffect(() => {
+    if (showStatsModal) {
+      fetchUsageLimits(true);
+    }
+  }, [showStatsModal, fetchUsageLimits]);
 
   // DEBUG: Log current session messages length and update counter
   React.useEffect(() => {
@@ -918,17 +950,7 @@ export const ClaudeChat: React.FC = () => {
     const isStreaming = currentSession?.streaming;
     prevStreamingRef.current = isStreaming;
 
-    // Only on macOS, when streaming just stopped
-    if (isMac && wasStreaming === true && isStreaming === false) {
-      // Small delay to let any pending focus operations complete
-      const timeoutId = setTimeout(() => {
-        // Only refocus if window is active and no modal is open
-        if (document.hasFocus() && !document.querySelector('.modal-overlay')) {
-          inputRef.current?.focus();
-        }
-      }, 100);
-      return () => clearTimeout(timeoutId);
-    }
+    // Removed aggressive auto-focus - let user control focus naturally
   }, [currentSession?.streaming, isMac]);
 
   // Handle bash running timer and dots animation per session
@@ -4169,16 +4191,38 @@ export const ClaudeChat: React.FC = () => {
                   >
                     <IconArrowsMinimize size={12} stroke={1.5} />
                   </button>
-                  <button
-                    className={`btn-stats ${usageClass}`}
-                    onClick={() => setShowStatsModal(true)}
-                    disabled={false}
-                    title={hasActivity ?
-                      `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 60%' : ''} - click for details (${modKey}+.)` :
-                      `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (${modKey}+.)`}
-                  >
-                    {percentage}%
-                  </button>
+                  <div className="btn-stats-container">
+                    <button
+                      className={`btn-stats ${usageClass}`}
+                      onClick={() => setShowStatsModal(true)}
+                      disabled={false}
+                      title={hasActivity ?
+                        `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 60%' : ''} - click for details (${modKey}+.)` :
+                        `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (${modKey}+.)`}
+                    >
+                      {percentage}%
+                    </button>
+                    {/* 5h limit bar */}
+                    <div className="btn-stats-limit-bar five-hour">
+                      <div
+                        className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
+                        style={{
+                          width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
+                          opacity: 0.2 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 80) / 80) * 0.8
+                        }}
+                      />
+                    </div>
+                    {/* 7d limit bar */}
+                    <div className="btn-stats-limit-bar seven-day">
+                      <div
+                        className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
+                        style={{
+                          width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                          opacity: 0.2 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 80) / 80) * 0.8
+                        }}
+                      />
+                    </div>
+                  </div>
                 </>
               );
             })()}
@@ -4249,13 +4293,13 @@ export const ClaudeChat: React.FC = () => {
                         <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
                           <div className="usage-bar-label">
                             <span>{(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k</span>
-                            <span>{((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100).toFixed(1)}%</span>
+                            <span className={((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100) >= 60 ? 'usage-negative' : ''}>{((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100).toFixed(2)}%</span>
                           </div>
                           <div className="usage-bar">
                             <div className="usage-bar-fill" style={{
                               width: `${Math.min((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100, 100)}%`,
-                              background: ((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100) > 80
-                                ? 'var(--error-color, #ff6b6b)'
+                              background: ((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100) >= 60
+                                ? 'var(--negative-color, #ff6b6b)'
                                 : 'var(--accent-color)'
                             }} />
                           </div>
@@ -4380,31 +4424,44 @@ export const ClaudeChat: React.FC = () => {
                 </div>
               </div>
 
-              {/* Weekly Usage Section with Progress Bar */}
-              <div className="stats-column" style={{ gridColumn: 'span 2' }}>
-                <div className="stats-section">
-                  <div className="usage-bar-container">
-                    <div className="usage-bar-label">
-                      <span>weekly limit: {usageLimits?.subscription_type || 'pro'}</span>
-                      <span>{usageLimits?.seven_day?.utilization?.toFixed(1) ?? '...'}%</span>
-                    </div>
-                    <div className="usage-bar">
-                      <div
-                        className="usage-bar-fill"
-                        style={{
-                          width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
-                          background: (usageLimits?.seven_day?.utilization ?? 0) > 80
-                            ? 'var(--error-color, #ff6b6b)'
-                            : 'var(--accent-color)'
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
                   </>
                 );
               })()}
+            </div>
+            <div className="stats-footer">
+              {/* Session Limit (5-hour) */}
+              <div className="stats-footer-row">
+                <span className="stats-footer-label"><span className="stats-footer-limit-name">5h limit</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '...'}</span>
+                <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) : '...'}%</span>
+              </div>
+              <div className="usage-bar" style={{ marginBottom: '8px' }}>
+                <div
+                  className="usage-bar-fill"
+                  style={{
+                    width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
+                    background: (usageLimits?.five_hour?.utilization ?? 0) >= 90
+                      ? 'var(--negative-color, #ff6b6b)'
+                      : 'var(--accent-color)'
+                  }}
+                />
+              </div>
+
+              {/* Weekly Limit (7-day) */}
+              <div className="stats-footer-row">
+                <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">7d limit</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '...'}</span>
+                <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) : '...'}%</span>
+              </div>
+              <div className="usage-bar">
+                <div
+                  className="usage-bar-fill"
+                  style={{
+                    width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                    background: (usageLimits?.seven_day?.utilization ?? 0) >= 90
+                      ? 'var(--negative-color, #ff6b6b)'
+                      : 'var(--accent-color)'
+                  }}
+                />
+              </div>
             </div>
           </div>
         </div>

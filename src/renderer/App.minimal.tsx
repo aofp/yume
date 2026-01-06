@@ -5,6 +5,7 @@ import { ClaudeChat } from './components/Chat/ClaudeChat';
 import { WindowControls } from './components/WindowControls/WindowControls';
 import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 import { ClaudeNotDetected } from './components/ClaudeNotDetected/ClaudeNotDetected';
+import { DEFAULT_COLORS } from './config/themes';
 
 // PERFORMANCE: Lazy load modals - only loaded when user opens them
 const SettingsModalTabbed = React.lazy(() => import('./components/Settings/SettingsModalTabbed').then(m => ({ default: m.SettingsModalTabbed })));
@@ -604,7 +605,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     // Apply background color - but on Windows, we need transparent for WebView2
     const isWindows = navigator.platform.indexOf('Win') > -1;
-    const savedBackgroundColor = localStorage.getItem('backgroundColor') || '#000000';
+    const savedBackgroundColor = localStorage.getItem('backgroundColor') || DEFAULT_COLORS.background;
 
     // On Windows, --background-color must be transparent for window transparency
     // The overlay (body::before) provides the tinted effect instead
@@ -622,7 +623,7 @@ export const App: React.FC = () => {
     document.documentElement.style.setProperty('--background-rgb', `${bgR}, ${bgG}, ${bgB}`);
 
     // Apply foreground color
-    const savedForegroundColor = localStorage.getItem('foregroundColor') || '#ffffff';
+    const savedForegroundColor = localStorage.getItem('foregroundColor') || DEFAULT_COLORS.foreground;
     document.documentElement.style.setProperty('--foreground-color', savedForegroundColor);
     const fgHex = savedForegroundColor.replace('#', '');
     const fgR = parseInt(fgHex.substr(0, 2), 16);
@@ -630,8 +631,8 @@ export const App: React.FC = () => {
     const fgB = parseInt(fgHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--foreground-rgb', `${fgR}, ${fgG}, ${fgB}`);
 
-    // Apply accent color - use the same default as SettingsModal (#bb99ff)
-    const savedAccentColor = localStorage.getItem('accentColor') || '#bb99ff';
+    // Apply accent color
+    const savedAccentColor = localStorage.getItem('accentColor') || DEFAULT_COLORS.accent;
     document.documentElement.style.setProperty('--accent-color', savedAccentColor);
     const accentHex = savedAccentColor.replace('#', '');
     const accentR = parseInt(accentHex.substr(0, 2), 16);
@@ -639,8 +640,8 @@ export const App: React.FC = () => {
     const accentB = parseInt(accentHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--accent-rgb', `${accentR}, ${accentG}, ${accentB}`);
 
-    // Apply positive color - use the same default as SettingsModal (#99ff99)
-    const savedPositiveColor = localStorage.getItem('positiveColor') || '#99ff99';
+    // Apply positive color
+    const savedPositiveColor = localStorage.getItem('positiveColor') || DEFAULT_COLORS.positive;
     document.documentElement.style.setProperty('--positive-color', savedPositiveColor);
     const positiveHex = savedPositiveColor.replace('#', '');
     const positiveR = parseInt(positiveHex.substr(0, 2), 16);
@@ -648,8 +649,8 @@ export const App: React.FC = () => {
     const positiveB = parseInt(positiveHex.substr(4, 2), 16);
     document.documentElement.style.setProperty('--positive-rgb', `${positiveR}, ${positiveG}, ${positiveB}`);
 
-    // Apply negative color - use the same default as SettingsModal (#ff9999)
-    const savedNegativeColor = localStorage.getItem('negativeColor') || '#ff9999';
+    // Apply negative color
+    const savedNegativeColor = localStorage.getItem('negativeColor') || DEFAULT_COLORS.negative;
     document.documentElement.style.setProperty('--negative-color', savedNegativeColor);
     const negativeHex = savedNegativeColor.replace('#', '');
     const negativeR = parseInt(negativeHex.substr(0, 2), 16);

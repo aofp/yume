@@ -1799,8 +1799,11 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
     
     #[cfg(target_os = "macos")]
     {
-        // On macOS, use the window's set_focus method
-        let _ = window.set_focus();
+        // On macOS, do NOT call window.set_focus() - it disrupts webview's internal focus state
+        // causing the textarea to lose focus even though the window appears focused.
+        // The webview handles focus better without native intervention.
+        // Focus restoration is handled in the frontend instead.
+        let _ = window; // Suppress unused warning
     }
 
     #[cfg(target_os = "linux")]

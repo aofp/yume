@@ -405,7 +405,7 @@ const customVs2015: { [key: string]: React.CSSProperties } = {
     'display': 'block',
     'overflowX': 'auto' as const,
     'padding': '0.5em',
-    'background': '#0a0a0a',
+    'background': '#0f0f0f',
     'color': '#DCDCDC'
   },
   'hljs-keyword': { 'color': '#569CD6' },
@@ -3232,7 +3232,7 @@ const MessageRendererBase: React.FC<{
                               customStyle={{
                                 margin: 0,
                                 borderRadius: 0,
-                                background: '#0a0a0a',
+                                background: '#0f0f0f',
                                 fontSize: '10px',
                               }}
                             >

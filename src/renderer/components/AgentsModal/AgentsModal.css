@@ -6,13 +6,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--background-color, #0a0a0a);
+  background: var(--background-color, #0f0f0f);
   z-index: 999999;
   cursor: default;
 }
 
 .agents-modal {
-  background: var(--background-color, #0a0a0a);
+  background: var(--background-color, #0f0f0f);
   width: 100%;
   height: 100%;
   display: flex;
@@ -414,7 +414,7 @@
 }
 
 .agent-model-select option {
-  background: var(--background-color, #0a0a0a);
+  background: var(--background-color, #0f0f0f);
   color: #fff;
 }
 

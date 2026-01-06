@@ -16,14 +16,14 @@
   -webkit-user-select: none;
 }
 
-/* macOS: 50% darker background like textarea - opacity is handled by html element */
+/* macOS: darkened background - opacity is handled by html element */
 .platform-darwin .welcome-screen {
-  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+  background: var(--bg-overlay);
 }
 
-/* Windows: 50% darker background like textarea - opacity is handled by html element */
+/* Windows: darkened background - opacity is handled by html element */
 .platform-win32 .welcome-screen {
-  background: linear-gradient(rgba(var(--background-rgb), 0.5), rgba(var(--background-rgb), 0.5)), #000000;
+  background: var(--bg-overlay);
 }
 
 .welcome-content {
@@ -208,7 +208,7 @@
 }
 
 .recent-modal {
-  background: var(--background-color);
+  background: var(--background-color, #0f0f0f);
   border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 90%;

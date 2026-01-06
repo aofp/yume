@@ -1,8 +1,8 @@
 /* CSS Variables - Minimal Black Theme */
 :root {
   /* Background Color - can be changed via settings */
-  --background-color: #0a0a0a;
-  --background-rgb: 10, 10, 10;
+  --background-color: #0f0f0f;
+  --background-rgb: 15, 15, 15;
 
   /* Foreground Color - can be changed via settings */
   /* Used for text, borders, etc. at varying opacities */
@@ -28,11 +28,16 @@
 
   /* Background opacity variants - derived from background color */
   --bg-100: rgba(var(--background-rgb), 1);      /* Solid background */
+  --bg-95: rgba(var(--background-rgb), 0.95);    /* Near-solid */
   --bg-90: rgba(var(--background-rgb), 0.9);     /* Near-solid */
   --bg-80: rgba(var(--background-rgb), 0.8);     /* Strong overlay */
   --bg-60: rgba(var(--background-rgb), 0.6);     /* Medium overlay */
   --bg-50: rgba(var(--background-rgb), 0.5);     /* Half overlay */
   --bg-30: rgba(var(--background-rgb), 0.3);     /* Light overlay */
+  --bg-20: rgba(var(--background-rgb), 0.2);     /* Subtle overlay */
+
+  /* Darkened background overlay - use for container backgrounds */
+  --bg-overlay: linear-gradient(var(--bg-20), var(--bg-20)), #000000;
 
   /* Accent Color - can be changed via settings */
   --accent-color: #ff9999;
