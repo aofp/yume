@@ -1,7 +1,6 @@
 .session-tabs {
-  /* Use background color instead of transparent */
-  background: var(--background-color);
-  border-bottom: 1px solid var(--fg-20);
+  background: #000000;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   height: 32px; /* Fixed height - no wrapping */
   display: flex;
   align-items: center;
@@ -23,18 +22,6 @@
   padding: 0 3px;
   /* Make tabs not draggable */
   -webkit-app-region: no-drag;
-}
-
-.tabs-scroll-container {
-  position: relative;
-  flex: 0 1 auto; /* Don't grow, can shrink, auto basis */
-  min-width: 0;
-  max-width: 100%; /* Allow shrinking when needed */
-}
-
-/* Only expand to fill space when there's overflow */
-.tabs-scroll-container:has(.tabs-scrollable.has-overflow) {
-  flex: 1 1 auto;
 }
 
 .tabs-scrollable {
@@ -77,40 +64,40 @@
 }
 
 .tabs-scrollable {
-  /* Hide native scrollbars completely */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
+  /* Firefox scrollbar properties removed for cleaner look */
 }
 
 .tabs-scrollable::-webkit-scrollbar {
-  display: none;
+  height: 1px !important;
+  background: transparent;
 }
 
-/* Custom 1px scroll indicator */
-.scroll-indicator {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  height: 1px;
-  background: var(--accent-color);
-  pointer-events: none;
-  z-index: 10;
-  opacity: 0.7;
-  transition: opacity 0.2s ease;
+.tabs-scrollable::-webkit-scrollbar-track {
+  background: transparent;
+  height: 1px !important;
 }
 
-.tabs-scrollable:hover + .scroll-indicator,
-.scroll-indicator:hover {
-  opacity: 1;
+.tabs-scrollable::-webkit-scrollbar-thumb {
+  background: rgba(var(--accent-rgb), 0.3);
+  border-radius: 0;
+  height: 1px !important;
+  min-height: 1px !important;
+  max-height: 1px !important;
+}
+
+.tabs-scrollable::-webkit-scrollbar-thumb:hover {
+  background: rgba(var(--accent-rgb), 0.5);
+  height: 1px !important;
 }
 
 .session-tab {
   display: flex;
   align-items: center;
-  padding: 2px 2px 2px 5px; /* Added 1px to left padding */
-  background: var(--fg-08);
+  gap: 6px;
+  padding: 2px 2px 2px 4px; /* Reduced padding by half */
+  background: #000000;
   border: none;
-  border-radius: 3px; /* Uniform radius */
+  border-radius: 6px; /* Uniform radius */
   cursor: default;
   transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   height: 26px;
@@ -120,12 +107,6 @@
   flex-shrink: 0; /* Prevent tabs from shrinking */
   user-select: none;
   -webkit-user-select: none;
-  opacity: 0.8;
-}
-
-/* Override cursor for dragging states */
-body.tab-dragging .session-tab {
-  cursor: grabbing !important;
 }
 
 /* Ripple effect with animation */
@@ -133,11 +114,11 @@ body.tab-dragging .session-tab {
   0% {
     width: 0;
     height: 0;
-    opacity: 0.6;
+    opacity: 0.4;
   }
   100% {
-    width: 80px;
-    height: 80px;
+    width: 60px;
+    height: 60px;
     opacity: 0;
   }
 }
@@ -150,21 +131,27 @@ body.tab-dragging .session-tab {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: rgba(var(--accent-rgb), 0.4);
+  background: rgba(var(--accent-rgb), 0.2);
   transform: translate(-50%, -50%);
   pointer-events: none;
-  z-index: 10;
 }
 
 .session-tab.ripple-active::before {
-  animation: ripple-expand 1s ease-out;
+  animation: ripple-expand 0.8s ease-out;
 }
 
-/* Make ripple more visible on active tabs */
-.session-tab.active.ripple-active::before {
-  background: rgba(var(--accent-rgb), 0.5);
+.session-tab.ripple-held::after {
+  content: 'held';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: rgba(var(--accent-rgb), 0.5);
+  text-transform: lowercase;
+  pointer-events: none;
+  animation: fade-in 0.2s ease-in;
 }
-
 
 @keyframes fade-in {
   from { opacity: 0; }
@@ -172,20 +159,21 @@ body.tab-dragging .session-tab {
 }
 
 .session-tab:hover {
-  background: rgba(var(--accent-rgb), 0.15);
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .session-tab.active {
-  opacity: 1;
-  background: rgba(var(--accent-rgb), 0.20);
+  background: rgba(var(--accent-rgb), 0.15);
 }
 
 .session-tab.dragging {
   opacity: 0.5;
-  cursor: grabbing !important;
 }
 
-/* Todo progress bar at bottom of tab */
+.session-tab.drag-over {
+  background: rgba(var(--accent-rgb), 0.08);
+}
+
 .tab-todo-progress {
   position: absolute;
   bottom: 0;
@@ -202,17 +190,6 @@ body.tab-dragging .session-tab {
   opacity: 0.2;
 }
 
-.session-tab.drag-over {
-  background: rgba(var(--accent-rgb), 0.15);
-  cursor: grabbing !important;
-}
-
-/* Apply grabbing cursor to entire body when dragging */
-body.tab-dragging,
-body.tab-dragging * {
-  cursor: grabbing !important;
-}
-
 .tab-content {
   display: flex;
   align-items: center;
@@ -226,7 +203,7 @@ body.tab-dragging * {
 .tab-context-bar {
   width: 2px;
   height: 16px;
-  background: var(--fg-15);
+  background: rgba(255, 255, 255, 0.15);
   border-radius: 0;
   position: relative;
   overflow: hidden;
@@ -241,35 +218,13 @@ body.tab-dragging * {
   transition: height 0.3s ease, background 0.3s ease;
 }
 
-/* Streaming timer - fixed width box left of close button */
-.tab-streaming-timer {
-  position:relative;
-  top: 1px;
-  left: 3px;
-  width: 17px;
-  height: 17px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: 8px;
-  font-weight:bold;
-  font-family: var(--font-mono);
-  color: var(--accent-color);
-  line-height: 1;
-  white-space: wrap;
-  overflow: visible;
-  pointer-events: none;
-  flex-shrink: 0;
-  text-align: center;
-}
-
-.tab-streaming-timer.renaming {
-  width: 12px;
+.context-bar-text {
+  position: absolute;
+  display: none; /* Hide percentage text - ultra minimal */
 }
 
 .session-tab.active .tab-name {
-  color: var(--fg-70);
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .tab-folder {
@@ -277,7 +232,7 @@ body.tab-dragging * {
   color: var(--accent-color);
   white-space: nowrap;
   font-weight: 600;
-  font-family: var(--font-mono);
+  font-family: 'Fira Code', monospace;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -291,47 +246,70 @@ body.tab-dragging * {
 }
 
 .tab-title {
-  font-size: 7pt;
-  color: var(--fg-80);
+  font-size: 9px;
+  color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   flex: 1;
   font-weight: 400;
-  font-family: var(--font-sans);
+  font-family: 'Fira Code', monospace;
   user-select: none;
   -webkit-user-select: none;
-  position: relative;
-  top: 0;
 }
 
 .session-tab.active .tab-title {
-  color: var(--foreground-color);
+  color: #ffffff;
 }
 
 .tab-rename-input {
-  background: rgba(0, 0, 0, 0.1);
-  border: none;
-  border-radius: 0;
+  background: transparent;
+  border: 1px solid var(--accent-color);
+  border-radius: 2px;
   color: var(--text-secondary);
-  font-family: var(--font-sans);
-  font-size: 9px;
-  padding: 0;
-  margin: 0;
+  font-family: 'Fira Code', monospace;
+  font-size: 11px;
+  padding: 2px 4px;
+  margin-left: 4px;
   width: 120px;
   outline: none;
   cursor: text;
-  transition: none;
 }
 
 .tab-rename-input:focus {
   color: var(--accent-color);
-  border: none;
+  border-color: var(--accent-magenta);
 }
 
 .streaming-icon {
   color: rgba(255, 230, 153, 0.7);
   animation: spin 1s linear infinite;
+}
+
+.tab-streaming-timer {
+  position: relative;
+  top: 1px;
+  left: 3px;
+  width: 17px;
+  height: 17px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-size: 8px;
+  font-weight: bold;
+  font-family: var(--font-mono, 'Fira Code', monospace);
+  color: var(--accent-color);
+  line-height: 1;
+  white-space: wrap;
+  overflow: visible;
+  pointer-events: none;
+  flex-shrink: 0;
+  text-align: center;
+}
+
+.tab-streaming-timer.renaming {
+  width: 12px;
 }
 
 .tab-progress {
@@ -353,16 +331,16 @@ body.tab-dragging * {
 /* Removed - using LoadingIndicator component now */
 
 .tab-close {
-  background: transparent;
+  background: transparent !important;
   border: none;
-  color: rgba(var(--accent-rgb), 0.4); /* Accent color with lower opacity */
+  color: rgba(255, 255, 255, 0.4); /* Dimmer default color */
   cursor: default !important;
   padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 3px;
-  transition: background 0.2s ease, color 0.2s ease;
+  transition: color 0.2s ease, opacity 0.2s ease;
   opacity: 1;
   width: 18px;
   height: 18px;
@@ -372,13 +350,13 @@ body.tab-dragging * {
 }
 
 .tab-close:hover {
-  background: transparent;
-  color: var(--negative-color);
+  background: transparent !important;
+  color: var(--accent-color) !important; /* Accent color on hover */
   opacity: 1 !important;
 }
 
 .tab-new {
-  background: rgba(var(--accent-rgb), 0.20);
+  background: rgba(var(--accent-rgb), 0.15);
   border: none;
   color: var(--accent-color);
   cursor: default;
@@ -387,8 +365,8 @@ body.tab-dragging * {
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px; /* Uniform radius */
-  transition: background 0.1s ease, color 0.1s ease;
+  border-radius: 6px; /* Uniform radius */
+  transition: all 0.2s ease;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -414,36 +392,47 @@ body.tab-dragging * {
   animation: ripple-expand 0.8s ease-out;
 }
 
+.tab-new.ripple-held::after {
+  content: 'held';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: rgba(var(--accent-rgb), 0.5);
+  text-transform: lowercase;
+  pointer-events: none;
+  animation: fade-in 0.2s ease-in;
+}
 
 .tab-new:hover {
-  background: rgba(var(--accent-rgb), 0.30);
+  background: rgba(var(--accent-rgb), 0.25);
   color: var(--accent-color);
 }
 
 .tab-new.drag-over-duplicate {
-  background: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.25);
 }
 
 /* Recent button - gray style */
 .tab-recent {
-  background: var(--fg-08);
+  background: transparent;
   border: none;
-  color: var(--fg-40);
+  color: rgba(255, 255, 255, 0.4);
   cursor: default;
   width: 26px;
   height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 3px;
-  transition: background 0.1s ease, color 0.1s ease, opacity 0.1s ease;
+  border-radius: 6px;
+  transition: all 0.2s ease;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
   position: relative;
   margin: 0;
   flex-shrink: 0;
-  opacity: 0.8;
 }
 
 .tab-recent::before {
@@ -454,7 +443,7 @@ body.tab-dragging * {
   width: 0;
   height: 0;
   border-radius: 50%;
-  background: var(--fg-20);
+  background: rgba(255, 255, 255, 0.2);
   transform: translate(-50%, -50%);
   pointer-events: none;
 }
@@ -463,16 +452,28 @@ body.tab-dragging * {
   animation: ripple-expand 0.8s ease-out;
 }
 
+.tab-recent.ripple-held::after {
+  content: 'held';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 8px;
+  color: rgba(255, 255, 255, 0.3);
+  text-transform: lowercase;
+  pointer-events: none;
+  animation: fade-in 0.2s ease-in;
+}
 
 .tab-recent:hover {
-  background: rgba(var(--accent-rgb), 0.30);
+  background: rgba(var(--accent-rgb), 0.25);
   color: var(--accent-color);
-  opacity: 1;
 }
 
 .tab-recent.drag-over-save {
-  background: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.3);
   color: var(--accent-color);
+  animation: pulse 0.5s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -483,13 +484,13 @@ body.tab-dragging * {
 /* Context menu */
 .tab-context-menu {
   position: fixed;
-  background: var(--background-color);
-  border: 1px solid var(--fg-20);
+  background: #1a1a1a;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 6px;
   padding: 4px;
   z-index: 1000;
   min-width: 150px;
-  box-shadow: 0 4px 12px var(--bg-50);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
 }
 
 .tab-context-menu button {
@@ -499,7 +500,7 @@ body.tab-dragging * {
   padding: 6px 12px;
   background: transparent;
   border: none;
-  color: var(--fg-70);
+  color: rgba(255, 255, 255, 0.7);
   font-size: 11px;
   cursor: default;
   border-radius: 4px;
@@ -514,7 +515,7 @@ body.tab-dragging * {
 
 .tab-context-menu .separator {
   height: 1px;
-  background: var(--fg-15);
+  background: rgba(255, 255, 255, 0.15);
   margin: 2px;
 }
 
@@ -540,9 +541,9 @@ body.tab-dragging * {
   display: flex;
   align-items: center;
   gap: 4px;
-  background: var(--fg-08);
+  background: rgba(255, 255, 255, 0.08);
   border: none;
-  color: var(--fg-60);
+  color: rgba(255, 255, 255, 0.6);
   padding: 4px 8px;
   border-radius: 6px;
   font-size: 10px;
@@ -560,15 +561,15 @@ body.tab-dragging * {
 
 .btn-open-folder:hover,
 .btn-quick-start:hover {
-  background: var(--fg-10);
-  color: var(--fg-80);
+  background: rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.8);
 }
 
 /* Recent projects modal styles */
 .recent-item-number {
-  font-family: var(--font-mono);
+  font-family: 'Fira Code', monospace;
   font-size: 10px;
-  color: var(--fg-30);
+  color: rgba(255, 255, 255, 0.3);
   min-width: 12px;
   text-align: center;
 }

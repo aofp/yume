@@ -268,8 +268,6 @@
   margin-right: 8px;
   max-width: 100%;
   box-sizing: border-box;
-  overflow-x: hidden;
-  overflow-y: hidden;
   /* NOTE: will-change and contain moved to VirtualItemWrapper in JS
    * Having them here AND on wrapper causes duplicate GPU layers = worse perf */
 }

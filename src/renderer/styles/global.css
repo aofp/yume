@@ -512,6 +512,7 @@ pre {
 }
 
 /* PERFORMANCE: Respect user preference for reduced motion */
+/* DISABLED - breaks LoadingIndicator on Windows
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -522,3 +523,4 @@ pre {
     scroll-behavior: auto !important;
   }
 }
+*/
