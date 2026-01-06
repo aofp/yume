@@ -100,8 +100,9 @@ impl ClaudeSpawner {
         let mut child = match self.take_child_for_extraction(run_id).await {
             Ok(child) => child,
             Err(e) => {
-                // Cleanup: remove the registry entry since we can't proceed
-                error!("Failed to take child for extraction, cleaning up: {}", e);
+                // Cleanup: kill the process by PID as fallback since we lost the handle
+                error!("Failed to take child for extraction, attempting PID kill: {}", e);
+                let _ = self.registry.kill_process_by_pid(run_id, pid);
                 let _ = self.registry.unregister_process(run_id);
                 return Err(e);
             }
@@ -317,6 +318,11 @@ impl ClaudeSpawner {
                 let emit_result = app_stdout.emit(&channel, &line);
                 if let Err(e) = emit_result {
                     error!("Failed to emit message: {:?}", e);
+                    // Emit error on generic channel so frontend knows
+                    let _ = app_stdout.emit("claude-emit-error", &serde_json::json!({
+                        "session_id": &session_id_stdout,
+                        "error": format!("{:?}", e)
+                    }));
                 }
                 
                 // SPECIAL HANDLING FOR /compact: Also emit on original session channel

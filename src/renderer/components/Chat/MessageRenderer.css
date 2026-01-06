@@ -1706,6 +1706,29 @@ body.platform-win32 .tool-detail {
   line-height: 1.4;
 }
 
+/* Background Agent Launch */
+.tool-result.task-result.background-agent {
+  border-left: 2px solid var(--color-blue);
+  padding: 6px 8px;
+}
+
+.tool-result.task-result.background-agent .task-header {
+  margin-bottom: 2px;
+}
+
+.tool-result.task-result.background-agent .agent-id {
+  font-size: 7pt;
+  color: rgba(var(--foreground-rgb), 0.4);
+  margin-left: 4px;
+}
+
+.task-status {
+  font-family: var(--font-mono);
+  font-size: 7pt;
+  color: var(--color-blue);
+  opacity: 0.8;
+}
+
 /* Agent Launch Display */
 .agent-launch {
   display: flex;

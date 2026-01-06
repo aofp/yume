@@ -14,6 +14,30 @@ const activeListeners = new Map<string, UnlistenFn>();
 // Keep track of ALL assistant message IDs during streaming for each session
 const streamingAssistantMessages = new Map<string, Set<string>>();
 
+// Module-level session store for tracking pending spawns (replaces window global)
+const claudeSessionStore = new Map<string, {
+  sessionId: string;
+  workingDirectory: string;
+  model: string;
+  pendingSpawn: boolean;
+  claudeSessionId?: string;
+}>();
+
+// Clean up all listeners for a session prefix
+function cleanupSessionListeners(sessionId: string) {
+  const prefixes = [`claude-message:${sessionId}`, `claude-error:${sessionId}`,
+                    `claude-tokens:${sessionId}`, `claude-session-id-update:${sessionId}`,
+                    `claude-title:${sessionId}`, `claude-complete:${sessionId}`];
+  prefixes.forEach(prefix => {
+    const unlisten = activeListeners.get(prefix);
+    if (unlisten) {
+      unlisten();
+      activeListeners.delete(prefix);
+    }
+  });
+  streamingAssistantMessages.delete(sessionId);
+}
+
 export class TauriClaudeClient {
   private connected = true; // Always connected with Tauri
   private messageHandlers = new Map<string, (message: any) => void>();
@@ -26,11 +50,6 @@ export class TauriClaudeClient {
   constructor() {
     // No connection needed - Tauri IPC is always available
     this.connectionStatus = 'connected';
-
-    // Initialize global session store for tracking pending spawns
-    if (!(window as any).__claudeSessionStore) {
-      (window as any).__claudeSessionStore = {};
-    }
   }
 
   isConnected(): boolean {
@@ -57,12 +76,12 @@ export class TauriClaudeClient {
         const tempSessionId = options?.sessionId || `session-${Date.now()}`;
         
         // Store session data for deferred spawn
-        (window as any).__claudeSessionStore[tempSessionId] = {
+        claudeSessionStore.set(tempSessionId, {
           sessionId: tempSessionId,
           workingDirectory: workingDirectory,
           model: mappedModel,
           pendingSpawn: true
-        };
+        });
         
         return {
           sessionId: tempSessionId,
@@ -124,8 +143,11 @@ export class TauriClaudeClient {
   }
 
   async deleteSession(sessionId: string): Promise<void> {
-    // Not implemented in Tauri backend yet
-    // Sessions are cleaned up automatically
+    // Clean up listeners for this session
+    cleanupSessionListeners(sessionId);
+    // Clean up session store
+    claudeSessionStore.delete(sessionId);
+    // Sessions are cleaned up automatically in Tauri backend
   }
 
   async interrupt(sessionId: string): Promise<void> {
@@ -141,9 +163,8 @@ export class TauriClaudeClient {
     try {
       // Check if this session needs to be spawned first
       // This happens when createSession was called without a prompt OR when resuming a past conversation
-      const sessionStore = (window as any).__claudeSessionStore;
-      if (sessionStore && sessionStore[sessionId]?.pendingSpawn) {
-        const sessionData = sessionStore[sessionId];
+      const sessionData = claudeSessionStore.get(sessionId);
+      if (sessionData?.pendingSpawn) {
         const mappedModel = model ? resolveModelId(model) : sessionData.model;
 
         // Check if this is a resume of a past conversation (has claudeSessionId)
@@ -167,11 +188,11 @@ export class TauriClaudeClient {
 
         // Update session store with the real Claude session ID
         const realSessionId = (response as any).session_id;
-        sessionStore[sessionId] = {
+        claudeSessionStore.set(sessionId, {
           ...sessionData,
           claudeSessionId: realSessionId,
           pendingSpawn: false
-        };
+        });
 
         // Emit a session created event so the store can update the mapping
         if (this.sessionCreatedCallback) {
@@ -525,8 +546,6 @@ export class TauriClaudeClient {
         activeListeners.delete(oldChannel);
       }
 
-      // Also update token listener to new session ID
-      setupTokenListener(new_session_id);
     }).then(unlisten => {
       if (cleanupRequested) {
         unlisten();
@@ -536,41 +555,12 @@ export class TauriClaudeClient {
       }
     });
 
-    // Token listener - will be updated when session ID changes
-    let tokenChannel = `claude-tokens:${sessionId}`;
-    let tokenUnlisten: UnlistenFn | null = null;
-
-    const setupTokenListener = (newSessionId: string) => {
-      // Clean up old token listener if exists
-      if (tokenUnlisten) {
-        tokenUnlisten();
-        activeListeners.delete(tokenChannel);
-      }
-
-      // Set up new token listener
-      tokenChannel = `claude-tokens:${newSessionId}`;
-
-      // Token listener - tokens are already processed via the main message channel
-      // This listener is for debugging/monitoring only
-      listen(tokenChannel, () => {}).then(unlisten => {
-        if (cleanupRequested) {
-          unlisten();
-        } else {
-          tokenUnlisten = unlisten;
-          activeListeners.set(tokenChannel, unlisten);
-        }
-      });
-    };
-
-    // Set up initial token listener
-    setupTokenListener(sessionId);
-
     // Return cleanup function
     return () => {
       cleanupRequested = true;
 
       // Clean up all listeners for this session
-      [channel, tokenChannel, updateChannel].forEach(ch => {
+      [channel, updateChannel].forEach(ch => {
         const unlisten = activeListeners.get(ch);
         if (unlisten) {
           unlisten();
@@ -598,6 +588,8 @@ export class TauriClaudeClient {
 
   async clearSession(sessionId: string): Promise<void> {
     try {
+      // Clean up listeners for this session
+      cleanupSessionListeners(sessionId);
       await invoke('clear_claude_context', { session_id: sessionId });
     } catch (error) {
       throw error;

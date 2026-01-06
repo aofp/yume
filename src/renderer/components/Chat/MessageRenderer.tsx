@@ -2885,6 +2885,26 @@ const MessageRendererBase: React.FC<{
       if (resultToolName === 'Task') {
         const description = associatedToolUse?.message?.input?.description || 'task';
         const subagentType = associatedToolUse?.message?.input?.subagent_type || 'agent';
+
+        // Check if this is an async agent launch - hide the internal instructions
+        if (contentStr.includes('Async agent launched successfully')) {
+          const agentIdMatch = contentStr.match(/agentId:\s*([a-f0-9]+)/);
+          const agentId = agentIdMatch?.[1] || '';
+          return (
+            <div className="message tool-result-message">
+              <div className="tool-result standalone task-result background-agent">
+                <div className="task-header">
+                  <IconPlayerPlay size={12} stroke={1.5} />
+                  <span className="task-desc">{description}</span>
+                  <span className="task-type">{subagentType}</span>
+                  {agentId && <span className="agent-id">{agentId.slice(0, 7)}</span>}
+                </div>
+                <div className="task-status">running in background</div>
+              </div>
+            </div>
+          );
+        }
+
         const allLines = contentStr.split('\n');
         const MAX_LINES = 15;
         const visibleLines = allLines.slice(0, MAX_LINES);

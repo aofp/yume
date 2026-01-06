@@ -489,9 +489,18 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
           handleSelect(items[selectedIndex]);
           break;
         case 'Backspace':
-          // If we're at just @ (empty searchQuery), close the autocomplete
+          // If we're at just @ (empty searchQuery), close the autocomplete and delete the @
           if (searchQuery === '') {
-            // Don't prevent default - let it delete @ and close naturally
+            e.preventDefault();
+            if (inputRef.current) {
+              const text = inputRef.current.value;
+              const atPosition = cursorPosition - 1; // Position of the @
+              const newValue = text.substring(0, atPosition) + text.substring(cursorPosition);
+              inputRef.current.value = newValue;
+              inputRef.current.selectionStart = inputRef.current.selectionEnd = atPosition;
+              const changeEvent = new Event('input', { bubbles: true });
+              inputRef.current.dispatchEvent(changeEvent);
+            }
             onClose();
             return;
           }

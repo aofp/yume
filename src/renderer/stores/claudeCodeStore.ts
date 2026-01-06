@@ -2350,9 +2350,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         });
         
         // Set up focus trigger listener (restores focus after bash commands)
-        // Enable for both Windows and macOS
-        if (navigator.platform.includes('Win') || navigator.platform.includes('Mac')) {
-          console.log('[Store] Setting up focus trigger listener');
+        // Only enable for Windows - macOS handles focus better without intervention
+        // CRITICAL: window.focus() on macOS disrupts webview's internal focus state
+        // causing random focus loss even when the window appears focused
+        if (navigator.platform.includes('Win')) {
+          console.log('[Store] Setting up focus trigger listener (Windows only)');
           focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
             console.log('[Store] 🎯 Focus trigger received, restoring window focus');
             // Use Tauri command to restore focus
@@ -2361,7 +2363,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 invoke('restore_window_focus').catch(console.warn);
               });
             }
-            // Also try web-based focus restoration
+            // Also try web-based focus restoration (Windows only)
             window.focus();
             // Focus the input if we have a reference (correct class name)
             const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;

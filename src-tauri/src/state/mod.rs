@@ -103,6 +103,26 @@ impl AppState {
         map.get(new_session_id).cloned()
     }
 
+    /// Removes a compact session mapping without returning it (for error cleanup)
+    pub fn remove_compact_session(&self, new_session_id: &str) {
+        let mut map = self.compact_session_map.write();
+        if map.remove(new_session_id).is_some() {
+            tracing::info!("Cleaned up compact mapping for: {}", new_session_id);
+        }
+    }
+
+    /// Clean up compact mappings older than the given duration
+    /// Call this periodically to prevent memory leaks from failed compactions
+    pub fn cleanup_stale_compact_sessions(&self, _max_age: std::time::Duration) {
+        // For now just clear all - in future could track timestamps
+        let mut map = self.compact_session_map.write();
+        let count = map.len();
+        if count > 100 { // Only clear if too many accumulated
+            map.clear();
+            tracing::warn!("Cleared {} stale compact session mappings", count);
+        }
+    }
+
     /// Returns the port number where the Node.js backend server is running
     pub fn server_port(&self) -> u16 {
         self.server_port

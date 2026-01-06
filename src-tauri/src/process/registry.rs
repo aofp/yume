@@ -3,7 +3,11 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::process::{Child, ChildStdin};
+use tokio::sync::Mutex as AsyncMutex;
 use tracing::{info, warn, error};
+
+/// Maximum size for live output buffer (1MB)
+const MAX_LIVE_OUTPUT_SIZE: usize = 1_000_000;
 
 /// Type of process being tracked
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -29,7 +33,7 @@ pub struct ProcessInfo {
 pub struct ProcessHandle {
     pub info: ProcessInfo,
     pub child: Arc<Mutex<Option<Child>>>,
-    pub stdin: Arc<Mutex<Option<ChildStdin>>>,
+    pub stdin: Arc<AsyncMutex<Option<ChildStdin>>>,
     pub live_output: Arc<Mutex<String>>,
 }
 
@@ -104,7 +108,7 @@ impl ProcessRegistry {
         let process_handle = ProcessHandle {
             info: process_info,
             child: Arc::new(Mutex::new(None)), // No child handle initially
-            stdin: Arc::new(Mutex::new(None)), // No stdin initially
+            stdin: Arc::new(AsyncMutex::new(None)), // No stdin initially
             live_output: Arc::new(Mutex::new(String::new())),
         };
 
@@ -144,7 +148,7 @@ impl ProcessRegistry {
         let process_handle = ProcessHandle {
             info: process_info,
             child: Arc::new(Mutex::new(Some(child))),
-            stdin: Arc::new(Mutex::new(stdin)),
+            stdin: Arc::new(AsyncMutex::new(stdin)),
             live_output: Arc::new(Mutex::new(String::new())),
         };
 
@@ -471,6 +475,13 @@ impl ProcessRegistry {
             let mut live_output = handle.live_output.lock().map_err(|e| e.to_string())?;
             live_output.push_str(output);
             live_output.push('\n');
+
+            // Bound buffer size to prevent unbounded memory growth
+            if live_output.len() > MAX_LIVE_OUTPUT_SIZE {
+                // Drain first 100KB to make room
+                let drain_size = 100_000;
+                live_output.drain(..drain_size);
+            }
         }
         Ok(())
     }
@@ -499,43 +510,29 @@ impl ProcessRegistry {
     /// Write to stdin of a process
     pub async fn write_to_stdin(&self, run_id: i64, data: &str) -> Result<(), String> {
         use tokio::io::AsyncWriteExt;
-        
-        // First, get the stdin handle in a non-async block to avoid holding guards across await
-        let stdin_option = {
+
+        // Get the stdin Arc while holding processes lock briefly
+        let stdin_arc = {
             let processes = self.processes.lock().map_err(|e| e.to_string())?;
             if let Some(handle) = processes.get(&run_id) {
-                let mut stdin_guard = handle.stdin.lock().map_err(|e| e.to_string())?;
-                stdin_guard.take()
+                handle.stdin.clone()
             } else {
                 return Err(format!("Process {} not found in registry", run_id));
             }
         };
-        
-        // Now do the async write operation without holding any locks
-        if let Some(mut stdin) = stdin_option {
-            let write_result = async {
-                stdin.write_all(data.as_bytes()).await
-                    .map_err(|e| format!("Failed to write to stdin: {}", e))?;
-                stdin.write_all(b"\n").await
-                    .map_err(|e| format!("Failed to write newline: {}", e))?;
-                stdin.flush().await
-                    .map_err(|e| format!("Failed to flush stdin: {}", e))?;
-                Ok::<_, String>(stdin)
-            }.await;
-            
-            // Put the stdin back
-            match write_result {
-                Ok(stdin) => {
-                    let processes = self.processes.lock().map_err(|e| e.to_string())?;
-                    if let Some(handle) = processes.get(&run_id) {
-                        let mut stdin_guard = handle.stdin.lock().map_err(|e| e.to_string())?;
-                        *stdin_guard = Some(stdin);
-                    }
-                    info!("Wrote {} bytes to stdin of process {}", data.len(), run_id);
-                    Ok(())
-                }
-                Err(e) => Err(e)
-            }
+
+        // Lock stdin asynchronously - this serializes concurrent writes
+        let mut stdin_guard = stdin_arc.lock().await;
+
+        if let Some(ref mut stdin) = *stdin_guard {
+            stdin.write_all(data.as_bytes()).await
+                .map_err(|e| format!("Failed to write to stdin: {}", e))?;
+            stdin.write_all(b"\n").await
+                .map_err(|e| format!("Failed to write newline: {}", e))?;
+            stdin.flush().await
+                .map_err(|e| format!("Failed to flush stdin: {}", e))?;
+            info!("Wrote {} bytes to stdin of process {}", data.len(), run_id);
+            Ok(())
         } else {
             Err(format!("No stdin available for process {}", run_id))
         }
