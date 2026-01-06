@@ -365,7 +365,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px; /* Uniform radius */
+  border-radius: 3px; /* Uniform radius */
   transition: all 0.2s ease;
   overflow: hidden;
   user-select: none;
@@ -425,7 +425,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 6px;
+  border-radius: 3px;
   transition: all 0.2s ease;
   overflow: hidden;
   user-select: none;
@@ -545,7 +545,7 @@
   border: none;
   color: rgba(255, 255, 255, 0.6);
   padding: 4px 8px;
-  border-radius: 6px;
+  border-radius: 3px;
   font-size: 10px;
   text-transform: lowercase;
   cursor: default;

@@ -18,8 +18,8 @@
   -webkit-app-region: no-drag;
 }
 
-/* Hover state with accent color - but not for active tabs */
-.tab-btn:hover:not(:disabled):not(.active) {
+/* Hover state with accent color - use JS-controlled class for webview compatibility */
+.tab-btn.hovered {
   border-color: var(--accent-color);
   color: var(--accent-color);
   background: rgba(var(--accent-rgb), 0.05);

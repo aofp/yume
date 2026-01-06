@@ -294,6 +294,13 @@ if (window.electronAPI && window.electronAPI.ipcRenderer) {
 
 // Handle window focus/blur for better session management
 window.addEventListener('focus', () => {
+  // WORKAROUND: Force hover state re-evaluation on window focus
+  // Tauri webview doesn't always update :hover correctly without this
+  document.body.style.pointerEvents = 'none';
+  requestAnimationFrame(() => {
+    document.body.style.pointerEvents = '';
+  });
+
   const store = useClaudeCodeStore.getState();
   const { sessions, currentSessionId } = store;
 
