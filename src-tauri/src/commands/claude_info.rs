@@ -1,8 +1,9 @@
 /// Claude binary information command
 /// Provides info about Claude installations for display in settings
 
-use serde::Serialize;
+use serde::{Serialize, Deserialize};
 use tracing::info;
+use std::collections::HashMap;
 use crate::claude_binary::{discover_claude_installations, ClaudeInstallation};
 
 /// Response structure for Claude binary information
@@ -52,4 +53,337 @@ pub async fn get_claude_binary_info() -> Result<ClaudeBinaryInfo, String> {
         platform,
         wsl_available,
     })
+}
+
+/// Daily token usage by model
+#[derive(Debug, Serialize, Deserialize)]
+pub struct DailyModelTokens {
+    pub date: String,
+    #[serde(rename = "tokensByModel")]
+    pub tokens_by_model: HashMap<String, u64>,
+}
+
+/// Model usage statistics
+#[derive(Debug, Serialize, Deserialize, Default)]
+pub struct ModelUsageStats {
+    #[serde(rename = "inputTokens", default)]
+    pub input_tokens: u64,
+    #[serde(rename = "outputTokens", default)]
+    pub output_tokens: u64,
+    #[serde(rename = "cacheReadInputTokens", default)]
+    pub cache_read_input_tokens: u64,
+    #[serde(rename = "cacheCreationInputTokens", default)]
+    pub cache_creation_input_tokens: u64,
+}
+
+/// Claude stats cache structure
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClaudeStatsCache {
+    pub version: Option<u32>,
+    #[serde(rename = "lastComputedDate")]
+    pub last_computed_date: Option<String>,
+    #[serde(rename = "dailyModelTokens", default)]
+    pub daily_model_tokens: Vec<DailyModelTokens>,
+    #[serde(rename = "modelUsage", default)]
+    pub model_usage: HashMap<String, ModelUsageStats>,
+    #[serde(rename = "totalMessages", default)]
+    pub total_messages: u64,
+    #[serde(rename = "totalSessions", default)]
+    pub total_sessions: u64,
+}
+
+/// Weekly usage summary
+#[derive(Debug, Serialize)]
+pub struct WeeklyUsageSummary {
+    pub total_tokens: u64,
+    pub opus_tokens: u64,
+    pub sonnet_tokens: u64,
+    pub haiku_tokens: u64,
+    pub days_with_data: u32,
+    pub daily_breakdown: Vec<DailyModelTokens>,
+}
+
+/// Reads Claude stats-cache.json and returns weekly usage summary
+#[tauri::command]
+pub async fn get_claude_weekly_usage() -> Result<WeeklyUsageSummary, String> {
+    info!("get_claude_weekly_usage command called");
+
+    // Get home directory
+    let home = dirs::home_dir()
+        .ok_or_else(|| "Could not determine home directory".to_string())?;
+
+    // Path to stats-cache.json
+    let stats_path = home.join(".claude").join("stats-cache.json");
+
+    if !stats_path.exists() {
+        return Ok(WeeklyUsageSummary {
+            total_tokens: 0,
+            opus_tokens: 0,
+            sonnet_tokens: 0,
+            haiku_tokens: 0,
+            days_with_data: 0,
+            daily_breakdown: vec![],
+        });
+    }
+
+    // Read and parse the file
+    let content = std::fs::read_to_string(&stats_path)
+        .map_err(|e| format!("Failed to read stats-cache.json: {}", e))?;
+
+    let stats: ClaudeStatsCache = serde_json::from_str(&content)
+        .map_err(|e| format!("Failed to parse stats-cache.json: {}", e))?;
+
+    // Calculate date 7 days ago
+    let now = chrono::Utc::now();
+    let seven_days_ago = now - chrono::Duration::days(7);
+    let cutoff_date = seven_days_ago.format("%Y-%m-%d").to_string();
+
+    // Filter to last 7 days and sum tokens
+    let mut total_tokens: u64 = 0;
+    let mut opus_tokens: u64 = 0;
+    let mut sonnet_tokens: u64 = 0;
+    let mut haiku_tokens: u64 = 0;
+    let mut days_with_data: u32 = 0;
+    let mut daily_breakdown: Vec<DailyModelTokens> = vec![];
+
+    for day in &stats.daily_model_tokens {
+        if day.date >= cutoff_date {
+            days_with_data += 1;
+            daily_breakdown.push(DailyModelTokens {
+                date: day.date.clone(),
+                tokens_by_model: day.tokens_by_model.clone(),
+            });
+
+            for (model, tokens) in &day.tokens_by_model {
+                total_tokens += tokens;
+                let model_lower = model.to_lowercase();
+                if model_lower.contains("opus") {
+                    opus_tokens += tokens;
+                } else if model_lower.contains("sonnet") {
+                    sonnet_tokens += tokens;
+                } else if model_lower.contains("haiku") {
+                    haiku_tokens += tokens;
+                }
+            }
+        }
+    }
+
+    Ok(WeeklyUsageSummary {
+        total_tokens,
+        opus_tokens,
+        sonnet_tokens,
+        haiku_tokens,
+        days_with_data,
+        daily_breakdown,
+    })
+}
+
+/// Usage limit info from API
+#[derive(Debug, Serialize, Deserialize, Clone)]
+pub struct UsageLimit {
+    pub utilization: Option<f64>,
+    pub resets_at: Option<String>,
+}
+
+/// Claude usage limits from API
+#[derive(Debug, Serialize, Deserialize)]
+pub struct ClaudeUsageLimits {
+    pub five_hour: Option<UsageLimit>,
+    pub seven_day: Option<UsageLimit>,
+    pub seven_day_opus: Option<UsageLimit>,
+    pub seven_day_sonnet: Option<UsageLimit>,
+    pub subscription_type: Option<String>,
+    pub rate_limit_tier: Option<String>,
+}
+
+/// Stored credentials structure
+#[derive(Debug, Deserialize)]
+struct ClaudeCredentials {
+    #[serde(rename = "claudeAiOauth")]
+    claude_ai_oauth: Option<OAuthCredentials>,
+}
+
+#[derive(Debug, Deserialize)]
+struct OAuthCredentials {
+    #[serde(rename = "accessToken")]
+    access_token: String,
+    #[serde(rename = "subscriptionType")]
+    subscription_type: Option<String>,
+    #[serde(rename = "rateLimitTier")]
+    rate_limit_tier: Option<String>,
+}
+
+/// API response structure
+#[derive(Debug, Deserialize)]
+struct UsageApiResponse {
+    five_hour: Option<UsageLimit>,
+    seven_day: Option<UsageLimit>,
+    seven_day_opus: Option<UsageLimit>,
+    seven_day_sonnet: Option<UsageLimit>,
+}
+
+/// Gets Claude usage limits from the API
+#[tauri::command]
+pub async fn get_claude_usage_limits() -> Result<ClaudeUsageLimits, String> {
+    info!("get_claude_usage_limits command called");
+
+    // Get credentials based on platform
+    let (access_token, subscription_type, rate_limit_tier) = get_claude_credentials()?;
+
+    // Make API request
+    let client = reqwest::Client::new();
+    let response = client
+        .get("https://api.anthropic.com/api/oauth/usage")
+        .header("Accept", "application/json, text/plain, */*")
+        .header("Content-Type", "application/json")
+        .header("User-Agent", "claude-code/2.0.76")
+        .header("Authorization", format!("Bearer {}", access_token))
+        .header("anthropic-beta", "oauth-2025-04-20")
+        .send()
+        .await
+        .map_err(|e| format!("Failed to call usage API: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let body = response.text().await.unwrap_or_default();
+        return Err(format!("Usage API returned {}: {}", status, body));
+    }
+
+    let api_response: UsageApiResponse = response
+        .json()
+        .await
+        .map_err(|e| format!("Failed to parse usage API response: {}", e))?;
+
+    Ok(ClaudeUsageLimits {
+        five_hour: api_response.five_hour,
+        seven_day: api_response.seven_day,
+        seven_day_opus: api_response.seven_day_opus,
+        seven_day_sonnet: api_response.seven_day_sonnet,
+        subscription_type,
+        rate_limit_tier,
+    })
+}
+
+/// Get Claude credentials from platform-specific storage
+fn get_claude_credentials() -> Result<(String, Option<String>, Option<String>), String> {
+    #[cfg(target_os = "macos")]
+    {
+        get_credentials_macos()
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        get_credentials_windows()
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        Err("Linux credential storage not yet implemented".to_string())
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn get_credentials_macos() -> Result<(String, Option<String>, Option<String>), String> {
+    use std::process::{Command, Stdio};
+
+    // Use explicit Stdio to prevent any focus stealing
+    let output = Command::new("security")
+        .args(["find-generic-password", "-s", "Claude Code-credentials", "-w"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output()
+        .map_err(|e| format!("Failed to read keychain: {}", e))?;
+
+    if !output.status.success() {
+        return Err("No Claude credentials found in keychain".to_string());
+    }
+
+    let json_str = String::from_utf8(output.stdout)
+        .map_err(|e| format!("Invalid UTF-8 in credentials: {}", e))?;
+
+    let creds: ClaudeCredentials = serde_json::from_str(&json_str)
+        .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
+
+    let oauth = creds.claude_ai_oauth
+        .ok_or_else(|| "No OAuth credentials found".to_string())?;
+
+    Ok((
+        oauth.access_token,
+        oauth.subscription_type,
+        oauth.rate_limit_tier,
+    ))
+}
+
+#[cfg(target_os = "windows")]
+fn get_credentials_windows() -> Result<(String, Option<String>, Option<String>), String> {
+    // On Windows, Claude Code stores credentials in the Windows Credential Manager
+    // We can use the `cmdkey` command or the windows-credentials crate
+    // For now, try reading from a file-based fallback or credential manager
+
+    use std::process::{Command, Stdio};
+    use std::os::windows::process::CommandExt;
+
+    // Try using PowerShell to read from Windows Credential Manager
+    let script = r#"
+        $cred = Get-StoredCredential -Target "Claude Code-credentials" -AsCredentialObject
+        if ($cred) {
+            $cred.Password
+        }
+    "#;
+
+    let output = Command::new("powershell")
+        .args(["-WindowStyle", "Hidden", "-Command", script])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .creation_flags(0x08000000) // CREATE_NO_WINDOW
+        .output()
+        .map_err(|e| format!("Failed to read Windows credentials: {}", e))?;
+
+    if !output.status.success() || output.stdout.is_empty() {
+        // Fallback: try reading from AppData
+        let home = dirs::home_dir()
+            .ok_or_else(|| "Could not determine home directory".to_string())?;
+
+        let cred_path = home
+            .join("AppData")
+            .join("Roaming")
+            .join("Claude Code")
+            .join("credentials.json");
+
+        if cred_path.exists() {
+            let json_str = std::fs::read_to_string(&cred_path)
+                .map_err(|e| format!("Failed to read credentials file: {}", e))?;
+
+            let creds: ClaudeCredentials = serde_json::from_str(&json_str)
+                .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
+
+            let oauth = creds.claude_ai_oauth
+                .ok_or_else(|| "No OAuth credentials found".to_string())?;
+
+            return Ok((
+                oauth.access_token,
+                oauth.subscription_type,
+                oauth.rate_limit_tier,
+            ));
+        }
+
+        return Err("No Claude credentials found".to_string());
+    }
+
+    let json_str = String::from_utf8(output.stdout)
+        .map_err(|e| format!("Invalid UTF-8 in credentials: {}", e))?;
+
+    let creds: ClaudeCredentials = serde_json::from_str(json_str.trim())
+        .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
+
+    let oauth = creds.claude_ai_oauth
+        .ok_or_else(|| "No OAuth credentials found".to_string())?;
+
+    Ok((
+        oauth.access_token,
+        oauth.subscription_type,
+        oauth.rate_limit_tier,
+    ))
 }

@@ -232,7 +232,7 @@
   color: var(--accent-color);
   white-space: nowrap;
   font-weight: 600;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -253,7 +253,7 @@
   text-overflow: ellipsis;
   flex: 1;
   font-weight: 400;
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   user-select: none;
   -webkit-user-select: none;
 }
@@ -267,7 +267,7 @@
   border: 1px solid var(--accent-color);
   border-radius: 2px;
   color: var(--text-secondary);
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 11px;
   padding: 2px 4px;
   margin-left: 4px;
@@ -567,7 +567,7 @@
 
 /* Recent projects modal styles */
 .recent-item-number {
-  font-family: 'Fira Code', monospace;
+  font-family: var(--font-mono);
   font-size: 10px;
   color: rgba(255, 255, 255, 0.3);
   min-width: 12px;

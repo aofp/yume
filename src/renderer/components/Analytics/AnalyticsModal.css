@@ -4,13 +4,13 @@
   left: 0;
   right: 0;
   bottom: 0;
-  background: #000;
+  background: var(--background-color);
   z-index: 999999;
   cursor: default;
 }
 
 .analytics-modal {
-  background: #000;
+  background: var(--background-color);
   width: 100%;
   height: 100%;
   display: flex;
@@ -129,7 +129,7 @@
 }
 
 .stat-card {
-  background: #0a0a0a;
+  background: var(--fg-5);
   padding: 12px;
   display: flex;
   flex-direction: column;
@@ -212,7 +212,7 @@
 }
 
 .model-stat {
-  background: #0a0a0a;
+  background: var(--fg-5);
   padding: 10px;
 }
 
@@ -270,7 +270,7 @@
   height: 100px;
   gap: 1px;
   padding: 4px;
-  background: #0a0a0a;
+  background: var(--fg-5);
 }
 
 .chart-bar-container {
@@ -326,7 +326,7 @@
   align-items: center;
   width: 100%;
   padding: 8px 10px;
-  background: #0a0a0a;
+  background: var(--fg-5);
 }
 
 .analytics-project-item.clickable {
@@ -335,7 +335,7 @@
 }
 
 .analytics-project-item.clickable:hover {
-  background: #141414;
+  background: var(--fg-10);
 }
 
 .analytics-project-info {

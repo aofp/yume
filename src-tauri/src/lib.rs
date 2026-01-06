@@ -822,6 +822,8 @@ pub fn run() {
             commands::claude_commands::list_active_sessions,
             commands::claude_commands::get_session_output,
             commands::claude_info::get_claude_binary_info,
+            commands::claude_info::get_claude_weekly_usage,
+            commands::claude_info::get_claude_usage_limits,
             // UI commands
             commands::set_zoom_level,
             commands::minimize_window,

@@ -338,6 +338,12 @@ export const ClaudeChat: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [usageLimits, setUsageLimits] = useState<{
+    five_hour?: { utilization: number; resets_at: string };
+    seven_day?: { utilization: number; resets_at: string };
+    subscription_type?: string;
+    rate_limit_tier?: string;
+  } | null>(null);
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
   const recognitionRef = useRef<any>(null);
@@ -531,6 +537,45 @@ export const ClaudeChat: React.FC = () => {
       return { ...prev, [currentSessionId]: { ...current, git: newGit, files: newGit ? false : current.files } };
     });
   }, [currentSessionId]);
+
+  // Fetch usage limits when stats modal opens (with 30-min cache)
+  useEffect(() => {
+    if (showStatsModal && !usageLimits) {
+      const CACHE_KEY = 'yurucode_usage_limits_cache';
+      const CACHE_DURATION = 30 * 60 * 1000; // 30 minutes
+
+      // Check cache first
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            setUsageLimits(data);
+            return;
+          }
+        }
+      } catch (e) {
+        // Cache read failed, fetch fresh
+      }
+
+      invoke<{
+        five_hour?: { utilization: number; resets_at: string };
+        seven_day?: { utilization: number; resets_at: string };
+        subscription_type?: string;
+        rate_limit_tier?: string;
+      }>('get_claude_usage_limits')
+        .then(data => {
+          setUsageLimits(data);
+          // Cache the result
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+          } catch (e) {
+            // Cache write failed, ignore
+          }
+        })
+        .catch(err => console.error('Failed to fetch usage limits:', err));
+    }
+  }, [showStatsModal, usageLimits]);
 
   // DEBUG: Log current session messages length and update counter
   React.useEffect(() => {
@@ -2006,36 +2051,39 @@ export const ClaudeChat: React.FC = () => {
   }, [currentSessionId]);
 
   // Cancel pending followup countdown when streaming ends or messages are received
+  // IMPORTANT: Only handles messages with timeoutId (delayed countdown case).
+  // The interrupt case (no timeoutId) is handled by the interruptSession().then() callback.
   useEffect(() => {
-    if (pendingFollowupRef.current && pendingFollowupRef.current.sessionId === currentSessionId) {
+    // Only handle the countdown case (has timeoutId). Interrupt case handles itself.
+    if (pendingFollowupRef.current &&
+        pendingFollowupRef.current.sessionId === currentSessionId &&
+        pendingFollowupRef.current.timeoutId) {
       const session = sessions.find(s => s.id === currentSessionId);
-      
+
       // Check if streaming has ended or if we have received messages/results
       const hasAssistantResponse = session?.messages?.some(m => m.type === 'assistant') || false;
       const isStreamingEnded = !session?.streaming;
-      const hasRecentResult = session?.messages?.some(m => 
-        m.type === 'result' && 
+      const hasRecentResult = session?.messages?.some(m =>
+        m.type === 'result' &&
         Date.now() - (m.timestamp || 0) < 5000 // Result received within last 5 seconds
       ) || false;
-      
+
       if (isStreamingEnded || hasAssistantResponse || hasRecentResult) {
         console.log('[ClaudeChat] Streaming ended or messages received - cancelling waiting countdown and sending immediately');
         console.log(`[ClaudeChat] Debug: isStreamingEnded=${isStreamingEnded}, hasAssistantResponse=${hasAssistantResponse}, hasRecentResult=${hasRecentResult}`);
-        
+
         // Cancel the timeout
-        if (pendingFollowupRef.current.timeoutId) {
-          clearTimeout(pendingFollowupRef.current.timeoutId);
-        }
-        
+        clearTimeout(pendingFollowupRef.current.timeoutId);
+
         // Send the message immediately
         const pendingMessage = pendingFollowupRef.current;
         pendingFollowupRef.current = null;
         setPendingFollowupMessage(null);
-        
+
         // Send the delayed message now
         handleDelayedSend(
-          pendingMessage.content, 
-          pendingMessage.attachments, 
+          pendingMessage.content,
+          pendingMessage.attachments,
           pendingMessage.sessionId
         ).catch(error => {
           console.error('[ClaudeChat] Failed to send message immediately after streaming ended:', error);
@@ -4198,15 +4246,19 @@ export const ClaudeChat: React.FC = () => {
                   <>
                     <div className="stats-column" style={{ gridColumn: 'span 2' }}>
                       <div className="stats-section">
-                        <div className="stat-row">
-                          <div className="stat-keys">
-                            <IconChartBubbleFilled size={14} />
-                            <span className="stat-name">total context</span>
+                        <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
+                          <div className="usage-bar-label">
+                            <span>{(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k</span>
+                            <span>{((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100).toFixed(1)}%</span>
                           </div>
-                          <span className="stat-dots"></span>
-                          <span className="stat-desc" style={{ fontWeight: 600, color: 'var(--accent-color)' }}>
-                            {(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k ({((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100).toFixed(1)}%)
-                          </span>
+                          <div className="usage-bar">
+                            <div className="usage-bar-fill" style={{
+                              width: `${Math.min((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100, 100)}%`,
+                              background: ((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100) > 80
+                                ? 'var(--error-color, #ff6b6b)'
+                                : 'var(--accent-color)'
+                            }} />
+                          </div>
                         </div>
                         <div className="stat-row">
                           <div className="stat-keys">
@@ -4232,7 +4284,6 @@ export const ClaudeChat: React.FC = () => {
                     </div>
               <div className="stats-column">
                 <div className="stats-section">
-                  <h4>usage</h4>
                   <div className="stat-row">
                     <div className="stat-keys">
                       <IconSend size={14} />
@@ -4275,7 +4326,6 @@ export const ClaudeChat: React.FC = () => {
               
               <div className="stats-column">
                 <div className="stats-section">
-                  <h4>cost</h4>
                   <div className="stat-row">
                     <div className="stat-keys">
                       <IconBrain size={14} />
@@ -4326,6 +4376,29 @@ export const ClaudeChat: React.FC = () => {
                         return (opusCost + sonnetCost).toFixed(2);
                       })()}
                     </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Weekly Usage Section with Progress Bar */}
+              <div className="stats-column" style={{ gridColumn: 'span 2' }}>
+                <div className="stats-section">
+                  <div className="usage-bar-container">
+                    <div className="usage-bar-label">
+                      <span>weekly limit: {usageLimits?.subscription_type || 'pro'}</span>
+                      <span>{usageLimits?.seven_day?.utilization?.toFixed(1) ?? '...'}%</span>
+                    </div>
+                    <div className="usage-bar">
+                      <div
+                        className="usage-bar-fill"
+                        style={{
+                          width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                          background: (usageLimits?.seven_day?.utilization ?? 0) > 80
+                            ? 'var(--error-color, #ff6b6b)'
+                            : 'var(--accent-color)'
+                        }}
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

@@ -7,7 +7,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: var(--bg-color);
+  background: var(--background-color);
   padding: 20px;
   z-index: 9999;
 }
@@ -84,7 +84,7 @@
 .error-btn-primary {
   background: var(--accent-color);
   border-color: var(--accent-color);
-  color: var(--bg-color);
+  color: var(--background-color);
 }
 
 .error-btn-primary:hover {
