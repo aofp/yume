@@ -252,6 +252,7 @@
 }
 
 /* Markdown Content */
+.content-text,
 .markdown-content {
   color: var(--fg-100);
   font-size: 11px;
@@ -264,10 +265,12 @@
   word-break: break-word;
 }
 
+.content-text p,
 .markdown-content p {
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
 }
 
+.content-text p:last-child,
 .markdown-content p:last-child {
   margin-bottom: 0;
 }
@@ -275,7 +278,7 @@
 .markdown-content code {
   background: rgba(0, 0, 0, 0.15);
   color: var(--code-color);
-  padding: 2px;
+  padding: 0;
   border-radius: 4px;
   font-size: 10px;
   font-family: var(--font-mono);
@@ -285,6 +288,8 @@
   overflow-wrap: normal;
   word-break: normal;
   scrollbar-width: thin;
+  vertical-align: text-bottom;
+  line-height: 1;
 }
 
 .markdown-content pre {
@@ -390,7 +395,7 @@
 
 .markdown-content ul,
 .markdown-content ol {
-  margin: 0;
+  margin: 0 0 2px 0;
   padding-left: 12px;
   list-style-position: outside;
 }
@@ -574,6 +579,7 @@ ol {
   box-sizing: border-box;
   word-wrap: break-word;
   overflow-wrap: break-word;
+  line-height: 1.2;
 }
 
 /* Markdown styling for thinking blocks */
@@ -585,7 +591,7 @@ ol {
 }
 
 .thinking-markdown p {
-  margin: 0 0 8px 0;
+  margin: 0 0 2px 0;
 }
 
 .thinking-markdown p:last-child {
@@ -651,11 +657,13 @@ ol {
   margin: 8px 0;
   overflow-x: auto;
   scrollbar-width: thin;
+  line-height: 1.2;
 }
 
 .thinking-markdown pre code {
   background: none;
   padding: 0;
+  line-height: 1.2;
 }
 
 /* Thinking block code formatting (legacy - keep for compatibility) */
@@ -703,12 +711,13 @@ ol {
   color: var(--code-color);
   box-sizing: border-box;
   scrollbar-width: thin;
+  line-height: 1.2;
 }
 
 .thinking-code {
   font-family: var(--font-mono);
   font-size: 9px;
-  line-height: 1.4;
+  line-height: 1.2;
   color: var(--foreground-color);
   white-space: pre;
 }
@@ -1263,8 +1272,10 @@ body.platform-win32 .tool-detail {
 }
 
 .tool-result.success {
-  background: transparent;
+  background: rgba(var(--positive-rgb), 0.18);
   color: var(--positive-color);
+  padding: 2px 4px;
+  border-radius: 2px;
 }
 
 .tool-result.error {
@@ -1708,8 +1719,7 @@ body.platform-win32 .tool-detail {
 
 /* Background Agent Launch */
 .tool-result.task-result.background-agent {
-  border-left: 2px solid var(--color-blue);
-  padding: 6px 8px;
+  padding: 4px 0;
 }
 
 .tool-result.task-result.background-agent .task-header {
@@ -1734,12 +1744,10 @@ body.platform-win32 .tool-detail {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 8px;
+  padding: 2px 0;
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(var(--foreground-rgb), 0.6);
-  border-left: 2px solid var(--color-blue);
-  margin: 2px 0;
+  color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .agent-launch-icon {
@@ -1764,27 +1772,13 @@ body.platform-win32 .tool-detail {
 /* TaskOutput Result - Agent Progress Display */
 .tool-result.taskoutput-result {
   display: block;
-  padding: 6px 8px;
-  border-left: 2px solid rgba(var(--foreground-rgb), 0.2);
-}
-
-.tool-result.taskoutput-result.running {
-  border-left-color: var(--color-blue);
-}
-
-.tool-result.taskoutput-result.complete {
-  border-left-color: var(--color-green);
-}
-
-.tool-result.taskoutput-result.error {
-  border-left-color: var(--color-magenta);
+  padding: 4px 0;
 }
 
 .taskoutput-header {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
+  gap: 4px;
 }
 
 .taskoutput-header .status-icon {
@@ -1812,7 +1806,7 @@ body.platform-win32 .tool-detail {
 .taskoutput-status {
   font-family: var(--font-mono);
   font-size: 8pt;
-  color: rgba(var(--foreground-rgb), 0.7);
+  color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .taskoutput-id {
@@ -1825,7 +1819,8 @@ body.platform-win32 .tool-detail {
 .taskoutput-tools {
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 1px;
+  margin-top: 2px;
 }
 
 .taskoutput-hidden {
@@ -2515,7 +2510,7 @@ pre code,
 }
 
 .compact-summary-text p {
-  margin: 0 0 4px 0;
+  margin: 0 0 2px 0;
 }
 
 .compact-summary-text p:last-child {

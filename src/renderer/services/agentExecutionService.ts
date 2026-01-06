@@ -1,4 +1,5 @@
 import { claudeCodeClient } from './claudeCodeClient';
+import type { Socket } from 'socket.io-client';
 
 export interface AgentConfig {
   name: string;
@@ -21,7 +22,7 @@ export interface AgentRun {
   endTime: string | null;
   output: Array<{
     timestamp: string;
-    data: any;
+    data: unknown;
   }>;
   metrics: {
     messagesProcessed: number;
@@ -31,9 +32,59 @@ export interface AgentRun {
   };
 }
 
+// Type definitions for socket events
+interface AgentStartedEvent {
+  runId: string;
+  sessionId: string;
+  config: AgentConfig;
+  projectPath?: string;
+}
+
+// Pending request tracking for projectPath
+interface PendingRequest {
+  sessionId: string;
+  projectPath?: string;
+}
+
+interface AgentProgressEvent {
+  runId: string;
+  sessionId: string;
+  data: unknown;
+  metrics: AgentRun['metrics'];
+}
+
+interface AgentCompletedEvent {
+  runId: string;
+  sessionId: string;
+  status: AgentRun['status'];
+  metrics: AgentRun['metrics'];
+}
+
+interface AgentStoppedEvent {
+  runId: string;
+}
+
+interface AgentErrorEvent {
+  runId: string;
+  sessionId: string;
+  error: string;
+}
+
+interface AgentRunsDataEvent {
+  sessionId: string;
+  runs: AgentRun[];
+}
+
 class AgentExecutionService {
+  // Limits to prevent memory leaks
+  private static readonly MAX_RUNS_PER_SESSION = 100;
+  private static readonly MAX_OUTPUT_ENTRIES = 1000;
+
   private activeRuns = new Map<string, AgentRun>();
   private runHistory = new Map<string, AgentRun[]>(); // sessionId -> runs
+  private pendingRequests = new Map<string, PendingRequest>(); // sessionId -> pending request
+  private currentSocket: Socket | null = null;
+  private intervalId: ReturnType<typeof setInterval> | null = null;
 
   private get socket() {
     return claudeCodeClient.getSocket();
@@ -41,23 +92,66 @@ class AgentExecutionService {
 
   constructor() {
     this.setupListeners();
+    // Check for socket changes periodically (handles reconnection)
+    this.intervalId = setInterval(() => this.ensureListenersAttached(), 5000);
   }
 
-  private setupListeners() {
-    const socket = this.socket;
-    if (!socket) return;
+  // Cleanup method for destroying the service
+  destroy(): void {
+    if (this.intervalId) {
+      clearInterval(this.intervalId);
+      this.intervalId = null;
+    }
+    if (this.currentSocket) {
+      this.removeListeners(this.currentSocket);
+      this.currentSocket = null;
+    }
+    this.activeRuns.clear();
+    this.runHistory.clear();
+    this.pendingRequests.clear();
+  }
 
-    socket.on('agent-started', (data: { runId: string; sessionId: string; config: AgentRun['config'] }) => {
+  private ensureListenersAttached() {
+    const socket = this.socket;
+    if (socket === this.currentSocket) return;
+
+    // Remove old listeners if socket changed
+    if (this.currentSocket) {
+      this.removeListeners(this.currentSocket);
+    }
+
+    this.currentSocket = socket;
+    if (socket) {
+      this.attachListeners(socket);
+    }
+  }
+
+  private removeListeners(socket: Socket) {
+    socket.off('agent-started');
+    socket.off('agent-progress');
+    socket.off('agent-completed');
+    socket.off('agent-stopped');
+    socket.off('agent-error');
+    socket.off('agent-runs-data');
+  }
+
+  private attachListeners(socket: Socket) {
+    socket.on('agent-started', (data: AgentStartedEvent) => {
       console.log('[Agent] Started:', data);
-      const { runId, sessionId, config } = data;
-      
+      const { runId, sessionId, config, projectPath: serverProjectPath } = data;
+
+      // Get projectPath from pending request or server response
+      const pending = this.pendingRequests.get(sessionId);
+      const projectPath = serverProjectPath || pending?.projectPath || '';
+      this.pendingRequests.delete(sessionId);
+
       // Create initial run record
       const run: AgentRun = {
         id: runId,
         sessionId,
         status: 'running',
         config,
-        projectPath: '',
+        projectPath,
         startTime: new Date().toISOString(),
         endTime: null,
         output: [],
@@ -68,25 +162,28 @@ class AgentExecutionService {
           errors: 0,
         },
       };
-      
+
       this.activeRuns.set(runId, run);
       this.addToHistory(sessionId, run);
-      
+
       // Notify UI
       window.dispatchEvent(new CustomEvent('agent-started', {
-        detail: { runId, sessionId, config }
+        detail: { runId, sessionId, config, projectPath }
       }));
     });
 
-    socket.on('agent-progress', (data: { runId: string; sessionId: string; data: unknown; metrics: AgentRun['metrics'] }) => {
+    socket.on('agent-progress', (data: AgentProgressEvent) => {
       const { runId, sessionId, data: progressData, metrics } = data;
 
       const run = this.activeRuns.get(runId);
       if (run) {
-        run.output.push({
-          timestamp: new Date().toISOString(),
-          data: progressData,
-        });
+        // Limit output array size to prevent memory leak
+        if (run.output.length < AgentExecutionService.MAX_OUTPUT_ENTRIES) {
+          run.output.push({
+            timestamp: new Date().toISOString(),
+            data: progressData,
+          });
+        }
         run.metrics = metrics;
       }
 
@@ -96,7 +193,7 @@ class AgentExecutionService {
       }));
     });
 
-    socket.on('agent-completed', (data: { runId: string; sessionId: string; status: AgentRun['status']; metrics: AgentRun['metrics'] }) => {
+    socket.on('agent-completed', (data: AgentCompletedEvent) => {
       console.log('[Agent] Completed:', data);
       const { runId, sessionId, status, metrics } = data;
 
@@ -113,7 +210,7 @@ class AgentExecutionService {
       }));
     });
 
-    socket.on('agent-stopped', (data: { runId: string }) => {
+    socket.on('agent-stopped', (data: AgentStoppedEvent) => {
       console.log('[Agent] Stopped:', data);
       const { runId } = data;
 
@@ -129,7 +226,7 @@ class AgentExecutionService {
       }));
     });
 
-    socket.on('agent-error', (data: { runId: string; sessionId: string; error: string }) => {
+    socket.on('agent-error', (data: AgentErrorEvent) => {
       console.error('[Agent] Error:', data);
       const { runId, sessionId, error } = data;
 
@@ -143,7 +240,7 @@ class AgentExecutionService {
       }));
     });
 
-    socket.on('agent-runs-data', (data: { sessionId: string; runs: AgentRun[] }) => {
+    socket.on('agent-runs-data', (data: AgentRunsDataEvent) => {
       const { sessionId, runs } = data;
       this.runHistory.set(sessionId, runs);
 
@@ -153,116 +250,187 @@ class AgentExecutionService {
     });
   }
 
+  private setupListeners() {
+    const socket = this.socket;
+    if (!socket) return;
+
+    this.currentSocket = socket;
+    this.attachListeners(socket);
+  }
+
   private addToHistory(sessionId: string, run: AgentRun) {
     if (!this.runHistory.has(sessionId)) {
       this.runHistory.set(sessionId, []);
     }
-    this.runHistory.get(sessionId)?.push(run);
+    const history = this.runHistory.get(sessionId)!;
+    history.push(run);
+
+    // Trim old entries to prevent memory leak
+    if (history.length > AgentExecutionService.MAX_RUNS_PER_SESSION) {
+      history.splice(0, history.length - AgentExecutionService.MAX_RUNS_PER_SESSION);
+    }
   }
 
   // Execute an agent
   executeAgent(sessionId: string, config: AgentConfig, projectPath?: string): Promise<string> {
+    // Capture socket reference once to avoid race condition
+    const socket = this.socket;
+    if (!socket) {
+      return Promise.reject(new Error('Socket not connected'));
+    }
+
     return new Promise((resolve, reject) => {
       console.log(`🤖 Executing agent for session ${sessionId}:`, config);
-      
-      const handleStarted = (event: any) => {
-        const detail = event.detail;
+
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const cleanup = (clearPending = false) => {
+        settled = true;
+        clearTimeout(timeoutId);
+        window.removeEventListener('agent-started', handleStarted);
+        window.removeEventListener('agent-error', handleError);
+        if (clearPending) {
+          this.pendingRequests.delete(sessionId);
+        }
+      };
+
+      const handleStarted = (event: Event) => {
+        if (settled) return;
+        const detail = (event as CustomEvent<{ runId: string; sessionId: string }>).detail;
         if (detail.sessionId === sessionId) {
-          window.removeEventListener('agent-started', handleStarted);
-          window.removeEventListener('agent-error', handleError);
+          cleanup(); // Don't clear pending - agent-started handler will
           resolve(detail.runId);
         }
       };
-      
-      const handleError = (event: any) => {
-        const detail = event.detail;
+
+      const handleError = (event: Event) => {
+        if (settled) return;
+        const detail = (event as CustomEvent<{ sessionId: string; error: string }>).detail;
         if (detail.sessionId === sessionId) {
-          window.removeEventListener('agent-started', handleStarted);
-          window.removeEventListener('agent-error', handleError);
+          cleanup(true); // Clear pending on error
           reject(new Error(detail.error));
         }
       };
-      
+
       window.addEventListener('agent-started', handleStarted);
       window.addEventListener('agent-error', handleError);
-      
-      this.socket?.emit('execute-agent', {
+
+      // Store pending request for projectPath tracking
+      this.pendingRequests.set(sessionId, { sessionId, projectPath });
+
+      socket.emit('execute-agent', {
         sessionId,
         agentConfig: config,
         projectPath,
       });
-      
+
       // Timeout after 10 seconds
-      setTimeout(() => {
-        window.removeEventListener('agent-started', handleStarted);
-        window.removeEventListener('agent-error', handleError);
-        reject(new Error('Agent execution timeout'));
+      timeoutId = setTimeout(() => {
+        if (!settled) {
+          cleanup(true); // Clear pending on timeout
+          reject(new Error('Agent execution timeout'));
+        }
       }, 10000);
     });
   }
 
   // Stop a running agent
   stopAgent(runId: string): Promise<void> {
+    // Capture socket reference once to avoid race condition
+    const socket = this.socket;
+    if (!socket) {
+      return Promise.reject(new Error('Socket not connected'));
+    }
+
     return new Promise((resolve, reject) => {
       console.log(`⏹️ Stopping agent ${runId}`);
-      
-      const handleStopped = (event: any) => {
-        const detail = event.detail;
+
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const cleanup = () => {
+        settled = true;
+        clearTimeout(timeoutId);
+        window.removeEventListener('agent-stopped', handleStopped);
+        window.removeEventListener('agent-error', handleError);
+      };
+
+      const handleStopped = (event: Event) => {
+        if (settled) return;
+        const detail = (event as CustomEvent<{ runId: string }>).detail;
         if (detail.runId === runId) {
-          window.removeEventListener('agent-stopped', handleStopped);
-          window.removeEventListener('agent-error', handleError);
+          cleanup();
           resolve();
         }
       };
-      
-      const handleError = (event: any) => {
-        const detail = event.detail;
+
+      const handleError = (event: Event) => {
+        if (settled) return;
+        const detail = (event as CustomEvent<{ runId: string; error: string }>).detail;
         if (detail.runId === runId) {
-          window.removeEventListener('agent-stopped', handleStopped);
-          window.removeEventListener('agent-error', handleError);
+          cleanup();
           reject(new Error(detail.error));
         }
       };
-      
+
       window.addEventListener('agent-stopped', handleStopped);
       window.addEventListener('agent-error', handleError);
-      
-      this.socket?.emit('stop-agent', { runId });
-      
+
+      socket.emit('stop-agent', { runId });
+
       // Timeout after 5 seconds
-      setTimeout(() => {
-        window.removeEventListener('agent-stopped', handleStopped);
-        window.removeEventListener('agent-error', handleError);
-        reject(new Error('Agent stop timeout'));
+      timeoutId = setTimeout(() => {
+        if (!settled) {
+          cleanup();
+          reject(new Error('Agent stop timeout'));
+        }
       }, 5000);
     });
   }
 
   // Get agent runs for a session
   getAgentRuns(sessionId: string): Promise<AgentRun[]> {
+    // Return cached immediately if available (including empty arrays)
+    if (this.runHistory.has(sessionId)) {
+      return Promise.resolve(this.runHistory.get(sessionId)!);
+    }
+
+    // Capture socket reference once to avoid race condition
+    const socket = this.socket;
+    if (!socket) {
+      return Promise.resolve([]);
+    }
+
     return new Promise((resolve) => {
-      // Check cache first
-      const cached = this.runHistory.get(sessionId);
-      if (cached) {
-        resolve(cached);
-      }
-      
-      const handleRuns = (event: any) => {
-        const detail = event.detail;
+      let settled = false;
+      let timeoutId: ReturnType<typeof setTimeout>;
+
+      const cleanup = () => {
+        settled = true;
+        clearTimeout(timeoutId);
+        window.removeEventListener('agent-runs-updated', handleRuns);
+      };
+
+      const handleRuns = (event: Event) => {
+        if (settled) return;
+        const detail = (event as CustomEvent<{ sessionId: string; runs: AgentRun[] }>).detail;
         if (detail.sessionId === sessionId) {
-          window.removeEventListener('agent-runs-updated', handleRuns);
+          cleanup();
           resolve(detail.runs);
         }
       };
-      
+
       window.addEventListener('agent-runs-updated', handleRuns);
-      
-      this.socket?.emit('get-agent-runs', { sessionId });
-      
-      // Return cached or empty after 2 seconds
-      setTimeout(() => {
-        window.removeEventListener('agent-runs-updated', handleRuns);
-        resolve(cached || []);
+
+      socket.emit('get-agent-runs', { sessionId });
+
+      // Return empty after 2 seconds
+      timeoutId = setTimeout(() => {
+        if (!settled) {
+          cleanup();
+          resolve([]);
+        }
       }, 2000);
     });
   }
@@ -275,6 +443,11 @@ class AgentExecutionService {
   // Get specific run
   getRun(runId: string): AgentRun | undefined {
     return this.activeRuns.get(runId);
+  }
+
+  // Clear history for a session (for cleanup)
+  clearHistory(sessionId: string): void {
+    this.runHistory.delete(sessionId);
   }
 
   // The 5 Yurucode Core Agents

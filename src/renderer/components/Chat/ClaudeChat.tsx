@@ -4199,6 +4199,9 @@ export const ClaudeChat: React.FC = () => {
                       title={hasActivity ?
                         `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 60%' : ''} - click for details (${modKey}+.)` :
                         `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (${modKey}+.)`}
+                      style={{
+                        background: `linear-gradient(to right, rgba(var(--foreground-rgb), 0.05) ${Math.min(percentageNum, 100)}%, transparent ${Math.min(percentageNum, 100)}%)`
+                      }}
                     >
                       {percentage}%
                     </button>
