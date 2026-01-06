@@ -657,7 +657,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   isDraggingTab: false, // No tab is being dragged initially
   agents: [], // No agents initially, will load from localStorage
   currentAgentId: null, // No agent selected initially
-  backgroundOpacity: 100, // Default to 100% opacity (fully opaque)
+  backgroundOpacity: 97, // Default to 97% opacity
   streamingMessage: '',
   isLoadingHistory: false,
   availableSessions: [],

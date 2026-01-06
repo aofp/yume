@@ -134,7 +134,7 @@ export default defineConfig({
     },
     cssCodeSplit: false, // Single CSS file
     cssTarget: 'chrome89', // Modern CSS features
-    cssMinify: true, // Re-enabled with esbuild (default)
+    cssMinify: false, // Disabled for dev/prod consistency
     assetsInlineLimit: 4096, // Reduced from 10KB to 4KB
   },
   resolve: {

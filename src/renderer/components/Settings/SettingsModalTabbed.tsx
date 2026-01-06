@@ -1331,35 +1331,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     }
   };
 
-  const handleResetAllTheme = () => {
-    handleBackgroundColorChange('#0a0a0a');
-    handleForegroundColorChange('#ffffff');
-    handleAccentColorChange('#bb99ff');
-    handlePositiveColorChange('#99ff99');
-    handleNegativeColorChange('#ff9999');
-  };
-
-  const isDefaultTheme = backgroundColor === '#0a0a0a' &&
-    foregroundColor === '#ffffff' &&
-    accentColor === '#bb99ff' &&
-    positiveColor === '#99ff99' &&
-    negativeColor === '#ff9999';
-
-  const handleResetAllFonts = () => {
-    setMonoFont('Comic Mono');
-    setSansFont('Comic Neue');
-  };
-
-  const isDefaultFonts = monoFont === 'Comic Mono' && sansFont === 'Comic Neue';
-
-  const formatBytes = (bytes: number): string => {
-    if (bytes === 0) return '0 B';
-    const k = 1024;
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(k));
-    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
-  };
-
   const renderTabContent = () => {
     switch (activeTab) {
       case 'general':

@@ -687,9 +687,9 @@ pub fn run() {
                 console.log('Document body:', document.body ? 'exists' : 'missing');
                 console.log('Root element:', document.getElementById('root'));
 
-                // Get saved opacity from localStorage (default to 80 for visible transparency)
+                // Get saved opacity from localStorage (default to 97)
                 const savedOpacity = localStorage.getItem('yurucode-bg-opacity');
-                const opacityPercent = savedOpacity ? parseInt(savedOpacity, 10) : 80;
+                const opacityPercent = savedOpacity ? parseInt(savedOpacity, 10) : 97;
                 const alpha = Math.max(0, Math.min(1, opacityPercent / 100));
 
                 // Detect platform - Windows requires special handling

@@ -1,5 +1,5 @@
 .session-tabs {
-  background: #000000;
+  background: var(--background-color);
   border-bottom: 1px solid rgba(255, 255, 255, 0.15);
   height: 32px; /* Fixed height - no wrapping */
   display: flex;
@@ -93,11 +93,11 @@
 .session-tab {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 0px;
   padding: 2px 2px 2px 4px; /* Reduced padding by half */
-  background: #000000;
+  background: var(--background-color);
   border: none;
-  border-radius: 6px; /* Uniform radius */
+  border-radius: 3px; /* Uniform radius */
   cursor: default;
   transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   height: 26px;

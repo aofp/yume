@@ -48,7 +48,11 @@
 /* Tab container for header integration */
 .header-tabs {
   display: flex;
-  gap: 8px;
   margin-left: 16px;
   -webkit-app-region: no-drag;
+}
+
+/* Use margin instead of gap for consistent minification */
+.header-tabs > .tab-btn + .tab-btn {
+  margin-left: 4px;
 }
