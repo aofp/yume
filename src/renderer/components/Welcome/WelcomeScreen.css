@@ -592,3 +592,22 @@
 .platform-darwin .model-selector-container {
   bottom: 2px; /* 1px down from default 3px */
 }
+
+/* Usage limit bars container - fixed bottom right */
+.welcome-usage-container {
+  position: fixed;
+  bottom: 3px;
+  right: 3px;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.welcome-usage-container .btn-stats-limit-fill {
+  transition: none;
+}
+
+/* Hidden stats button - invisible but provides structure for limit bars */
+.welcome-stats-hidden {
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

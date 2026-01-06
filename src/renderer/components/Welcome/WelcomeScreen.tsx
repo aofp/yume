@@ -1,8 +1,9 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { platformAPI as tauriApi } from '../../services/tauriApi';
+import { invoke } from '@tauri-apps/api/core';
 import './WelcomeScreen.css';
 
 interface RecentProject {
@@ -16,10 +17,51 @@ export const WelcomeScreen: React.FC = () => {
   const { createSession } = useClaudeCodeStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [usageLimits, setUsageLimits] = useState<{
+    five_hour?: { utilization: number; resets_at: string };
+    seven_day?: { utilization: number; resets_at: string };
+  }>({});
 
   // Platform detection for keyboard shortcuts
   const isMac = navigator.platform.toLowerCase().includes('mac');
   const modKey = isMac ? 'cmd' : 'ctrl';
+
+  // Fetch usage limits with 10-min cache
+  const fetchUsageLimits = useCallback((force = false) => {
+    const CACHE_KEY = 'yurucode_usage_limits_cache';
+    const CACHE_DURATION = 10 * 60 * 1000;
+
+    if (!force) {
+      try {
+        const cached = localStorage.getItem(CACHE_KEY);
+        if (cached) {
+          const { data, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < CACHE_DURATION) {
+            setUsageLimits(data);
+            return;
+          }
+        }
+      } catch (e) {}
+    }
+
+    invoke<{
+      five_hour?: { utilization: number; resets_at: string };
+      seven_day?: { utilization: number; resets_at: string };
+    }>('get_claude_usage_limits')
+      .then(data => {
+        setUsageLimits(data);
+        try {
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+        } catch (e) {}
+      })
+      .catch(err => console.error('Failed to fetch usage limits:', err));
+  }, []);
+
+  useEffect(() => {
+    fetchUsageLimits();
+    const interval = setInterval(() => fetchUsageLimits(true), 10 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, [fetchUsageLimits]);
 
   useEffect(() => {
     // Load recent projects from localStorage
@@ -255,6 +297,34 @@ export const WelcomeScreen: React.FC = () => {
         </div>
       </div>
 
+      {/* Usage limit bars - bottom right like chat */}
+      <div className="welcome-usage-container">
+        <div className="btn-stats-container">
+          <button className="btn-stats welcome-stats-hidden">
+            0.00%
+          </button>
+          {/* 5h limit bar */}
+          <div className="btn-stats-limit-bar five-hour">
+            <div
+              className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
+              style={{
+                width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
+                opacity: 0.2 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 80) / 80) * 0.8
+              }}
+            />
+          </div>
+          {/* 7d limit bar */}
+          <div className="btn-stats-limit-bar seven-day">
+            <div
+              className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
+              style={{
+                width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                opacity: 0.2 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 80) / 80) * 0.8
+              }}
+            />
+          </div>
+        </div>
+      </div>
 
       {/* Help Modal - using shared component */}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
