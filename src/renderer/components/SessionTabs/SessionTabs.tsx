@@ -52,14 +52,9 @@ export const SessionTabs: React.FC = () => {
   const measureTextWidth = (text: string): number => {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
-    if (!context) return text.length * 5.2;
-    
-    // Match the input's font style (9px now)
-    context.font = '9px Helvetica, "Helvetica Neue", Arial, sans-serif';
-    const metrics = context.measureText(text);
-    
-    // Add minimal width for cursor visibility
-    return Math.ceil(metrics.width) + 2;
+    if (!context) return text.length * 6 + 5;
+    context.font = '9px "Comic Mono", "Fira Code", monospace';
+    return Math.ceil(context.measureText(text).width) + 5;
   };
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);

@@ -4211,7 +4211,7 @@ export const ClaudeChat: React.FC = () => {
                         className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
                         style={{
                           width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
-                          opacity: 0.2 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 80) / 80) * 0.8
+                          opacity: 0.1 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 90) / 90) * 0.9
                         }}
                       />
                     </div>
@@ -4221,7 +4221,7 @@ export const ClaudeChat: React.FC = () => {
                         className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
                         style={{
                           width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
-                          opacity: 0.2 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 80) / 80) * 0.8
+                          opacity: 0.1 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 90) / 90) * 0.9
                         }}
                       />
                     </div>
