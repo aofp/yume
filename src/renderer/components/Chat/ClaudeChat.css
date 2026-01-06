@@ -1304,6 +1304,8 @@ textarea.context-full {
 
 .btn-stats {
   font-family: var(--font-mono);
+  width: 100px;
+  text-align: center;
 }
 
 .btn-stats-container {
