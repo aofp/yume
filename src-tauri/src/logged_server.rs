@@ -330,140 +330,127 @@ fn start_server_internal(port: u16) {
 }
 
 /// macOS-specific server startup
-/// Uses an external server file (server-claude-macos.cjs) rather than embedded code
-/// This allows for easier debugging and avoids code signing issues
-/// Handles both development (project root) and production (.app bundle) scenarios
+/// Uses compiled binary (server-macos-arm64 or server-macos-x64) instead of Node.js
+/// This hides source code and removes Node.js dependency for end users
 #[cfg(target_os = "macos")]
 fn start_macos_server(port: u16) {
     info!("Starting macOS server on port {}", port);
-    clear_log(); // Clear logs from previous run
-    write_log("=== Starting macOS server ===");
-    
-    // Get the executable path for debugging
+    clear_log();
+    write_log("=== Starting macOS server (binary mode) ===");
+
     let exe_path = std::env::current_exe().unwrap_or_default();
     info!("Executable path: {:?}", exe_path);
     write_log(&format!("Executable path: {:?}", exe_path));
-    
-    // Find the server file
+
+    // Detect architecture
+    let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
+    let binary_name = format!("server-macos-{}", arch);
+    write_log(&format!("Architecture: {}, binary: {}", arch, binary_name));
+
+    // Find the server binary
     let server_path = if cfg!(debug_assertions) {
-        // In development, use project root
-        info!("Development mode - looking for server in project root");
-        write_log("Development mode - looking for server in project root");
+        // In development, use project root resources
+        info!("Development mode - looking for binary in project root");
+        write_log("Development mode - looking for binary in project root");
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("server-claude-macos.cjs"))
+            .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
     } else {
-        // In production, try both .js and .cjs versions
-        info!("Production mode - looking for server in .app bundle");
-        write_log("Production mode - looking for server in .app bundle");
-        
-        let result = std::env::current_exe()
+        // In production, look in .app bundle
+        info!("Production mode - looking for binary in .app bundle");
+        write_log("Production mode - looking for binary in .app bundle");
+
+        std::env::current_exe()
             .ok()
             .and_then(|p| {
                 write_log(&format!("Exe: {:?}", p));
                 let macos_dir = p.parent()?;
-                write_log(&format!("MacOS dir: {:?}", macos_dir));
                 let contents_dir = macos_dir.parent()?;
-                write_log(&format!("Contents dir: {:?}", contents_dir));
                 let resources_dir = contents_dir.join("Resources").join("resources");
                 write_log(&format!("Resources dir: {:?}", resources_dir));
-                
-                // Try .cjs first (current bundled file)
-                let server_cjs = resources_dir.join("server-claude-macos.cjs");
-                if server_cjs.exists() {
-                    write_log(&format!("Found server.js at: {:?}", server_cjs));
-                    return Some(server_cjs);
+
+                let binary_path = resources_dir.join(&binary_name);
+                if binary_path.exists() {
+                    write_log(&format!("Found binary at: {:?}", binary_path));
+                    return Some(binary_path);
                 }
-                
-                // Fall back to .js (legacy)
-                let server_js = resources_dir.join("server-claude-macos.js");
-                write_log(&format!("Looking for server.js at: {:?}", server_js));
-                Some(server_js)
-            });
-        
-        if result.is_none() {
-            write_log("Failed to construct production server path");
-        }
-        
-        result
+
+                // Fallback to .cjs file for backwards compatibility
+                let cjs_path = resources_dir.join("server-claude-macos.cjs");
+                if cjs_path.exists() {
+                    write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
+                    return Some(cjs_path);
+                }
+
+                write_log("No server binary or .cjs found");
+                None
+            })
     };
-    
+
     if let Some(server_file) = server_path {
         if !server_file.exists() {
-            info!("Server file not found at: {:?}", server_file);
+            info!("Server not found at: {:?}", server_file);
+            write_log(&format!("ERROR: Server not found at: {:?}", server_file));
             return;
         }
-        
-        info!("Using server file: {:?}", server_file);
-        
-        // Get node_modules path (same for dev and prod - sibling to server file)
-        let node_modules = server_file.parent().map(|p| p.join("node_modules"));
-        
-        // Also check if node_modules exists
-        if let Some(ref modules) = node_modules {
-            if !modules.exists() {
-                write_log(&format!("Warning: node_modules not found at: {:?}", modules));
-            } else {
-                write_log(&format!("node_modules found at: {:?}", modules));
-            }
-        }
-        
-        write_log(&format!("Attempting to spawn Node.js server on port {}...", port));
-        let mut cmd = Command::new("node");
-        cmd.arg(&server_file)
-           .env_clear()
+
+        info!("Using server: {:?}", server_file);
+        write_log(&format!("Using server: {:?}", server_file));
+
+        // Check if this is a binary or .cjs file
+        let is_binary = !server_file.extension().map_or(false, |e| e == "cjs" || e == "js");
+
+        let mut cmd = if is_binary {
+            // Direct binary execution
+            write_log("Spawning compiled binary directly");
+            Command::new(&server_file)
+        } else {
+            // Fallback: run with node
+            write_log("Fallback: spawning with node");
+            let mut c = Command::new("node");
+            c.arg(&server_file);
+            c
+        };
+
+        cmd.env_clear()
            .envs(std::env::vars())
-           .env("PORT", port.to_string());
-
-        if let Some(ref modules) = node_modules {
-            write_log(&format!("Setting NODE_PATH to: {:?}", modules));
-            cmd.env("NODE_PATH", modules);
-        }
-
-        // Always capture output for logging
-        cmd.stdout(Stdio::piped())
+           .env("PORT", port.to_string())
+           .stdout(Stdio::piped())
            .stderr(Stdio::piped());
 
-        // Set working directory to resources folder for relative requires
         if let Some(working_dir) = server_file.parent() {
             cmd.current_dir(working_dir);
             write_log(&format!("Working directory: {:?}", working_dir));
         }
 
-        write_log(&format!("Spawn command: node {:?}", &server_file));
+        write_log(&format!("Spawn command on port {}", port));
         match cmd.spawn() {
             Ok(mut child) => {
                 let pid = child.id();
                 write_log(&format!("✅ macOS server spawned with PID: {}", pid));
                 info!("✅ macOS server spawned with PID: {}", pid);
-                
-                // Take stdout and stderr for monitoring
+
                 let stdout = child.stdout.take();
                 let stderr = child.stderr.take();
-                
-                // Create the process guard
+
                 let guard = Arc::new(ServerProcessGuard::new(child));
                 let guard_clone1 = Arc::clone(&guard);
                 let guard_clone2 = Arc::clone(&guard);
-                
-                // Spawn threads to log stdout and stderr with bounded buffers
+
                 if let Some(stdout) = stdout {
                     std::thread::spawn(move || {
                         use std::io::{BufRead, BufReader};
                         let reader = BufReader::new(stdout);
                         let mut total_bytes = 0;
-                        
+
                         for line in reader.lines() {
-                            // Check if we should stop
                             if guard_clone1.shutdown_flag.load(Ordering::Relaxed) {
                                 break;
                             }
-                            
+
                             if let Ok(line) = line {
                                 total_bytes += line.len();
-                                
-                                // Limit total buffer size
                                 if total_bytes < MAX_BUFFER_SIZE {
                                     guard_clone1.add_stdout_line(line.clone());
                                     write_log(&format!("[SERVER OUT] {}", line));
@@ -473,23 +460,20 @@ fn start_macos_server(port: u16) {
                         }
                     });
                 }
-                
+
                 if let Some(stderr) = stderr {
                     std::thread::spawn(move || {
                         use std::io::{BufRead, BufReader};
                         let reader = BufReader::new(stderr);
                         let mut total_bytes = 0;
-                        
+
                         for line in reader.lines() {
-                            // Check if we should stop
                             if guard_clone2.shutdown_flag.load(Ordering::Relaxed) {
                                 break;
                             }
-                            
+
                             if let Ok(line) = line {
                                 total_bytes += line.len();
-                                
-                                // Limit total buffer size
                                 if total_bytes < MAX_BUFFER_SIZE {
                                     guard_clone2.add_stderr_line(line.clone());
                                     write_log(&format!("[SERVER ERR] {}", line));
@@ -499,110 +483,17 @@ fn start_macos_server(port: u16) {
                         }
                     });
                 }
-                
-                // Store the guarded process
+
                 if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
                     *process_guard = Some(guard);
                     SERVER_RUNNING.store(true, Ordering::Relaxed);
                 }
-                
+
                 info!("✅ macOS server process tracking set up");
             }
             Err(e) => {
                 write_log(&format!("❌ Failed to start macOS server: {}", e));
-                write_log(&format!("Error kind: {:?}", e.kind()));
-                write_log(&format!("Current dir: {:?}", std::env::current_dir()));
                 info!("❌ Failed to start macOS server: {}", e);
-                
-                // Try to check if node exists
-                write_log("Checking for Node.js installation...");
-                match Command::new("which").arg("node").output() {
-                    Ok(output) => {
-                        let node_path = String::from_utf8_lossy(&output.stdout);
-                        if node_path.trim().is_empty() {
-                            write_log("Node.js not found in PATH!");
-                        } else {
-                            write_log(&format!("Node location: {}", node_path));
-                        }
-                    }
-                    Err(e) => {
-                        write_log(&format!("Could not run 'which node': {}", e));
-                    }
-                }
-                
-                // Try common node locations on macOS
-                let common_paths = vec![
-                    "/usr/local/bin/node",
-                    "/opt/homebrew/bin/node",
-                    "/usr/bin/node",
-                ];
-                
-                for path in common_paths {
-                    if std::path::Path::new(path).exists() {
-                        write_log(&format!("Found node at: {}", path));
-                        // Try to spawn with absolute path
-                        write_log(&format!("Retrying with absolute path: {} on port {}", path, port));
-                        let mut retry_cmd = Command::new(path);
-                        retry_cmd.arg(&server_file)
-                                 .env_clear()
-                                 .envs(std::env::vars())
-                                 .env("PORT", port.to_string());
-
-                        if let Some(ref modules) = node_modules {
-                            retry_cmd.env("NODE_PATH", modules);
-                        }
-                        
-                        if let Some(working_dir) = server_file.parent() {
-                            retry_cmd.current_dir(working_dir);
-                        }
-                        
-                        retry_cmd.stdout(Stdio::piped())
-                                 .stderr(Stdio::piped());
-                        
-                        match retry_cmd.spawn() {
-                            Ok(mut child) => {
-                                write_log(&format!("✅ Retry successful with {}, PID: {}", path, child.id()));
-                                
-                                // Handle stdout
-                                if let Some(stdout) = child.stdout.take() {
-                                    std::thread::spawn(move || {
-                                        use std::io::{BufRead, BufReader};
-                                        let reader = BufReader::new(stdout);
-                                        for line in reader.lines() {
-                                            if let Ok(line) = line {
-                                                write_log(&format!("[SERVER OUT] {}", line));
-                                            }
-                                        }
-                                    });
-                                }
-                                
-                                // Handle stderr
-                                if let Some(stderr) = child.stderr.take() {
-                                    std::thread::spawn(move || {
-                                        use std::io::{BufRead, BufReader};
-                                        let reader = BufReader::new(stderr);
-                                        for line in reader.lines() {
-                                            if let Ok(line) = line {
-                                                write_log(&format!("[SERVER ERR] {}", line));
-                                            }
-                                        }
-                                    });
-                                }
-                                
-                                // Store process handle
-                                let guard = Arc::new(ServerProcessGuard::new(child));
-                                if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
-                                    *process_guard = Some(guard);
-                                }
-                                
-                                return;
-                            }
-                            Err(e) => {
-                                write_log(&format!("Retry with {} failed: {}", path, e));
-                            }
-                        }
-                    }
-                }
             }
         }
     } else {
@@ -612,92 +503,97 @@ fn start_macos_server(port: u16) {
 }
 
 /// Windows-specific server startup
-/// Uses an external server file (server-claude-windows.cjs) similar to macOS
-/// This aligns Windows behavior with macOS for consistency
+/// Uses compiled binary (server-windows-x64.exe) instead of Node.js
+/// This hides source code and removes Node.js dependency for end users
 #[cfg(target_os = "windows")]
 fn start_windows_server(port: u16) {
     info!("Starting Windows server on port {}", port);
     clear_log();
-    write_log("=== Starting Windows server ===");
-    
+    write_log("=== Starting Windows server (binary mode) ===");
+
     let exe_path = std::env::current_exe().unwrap_or_default();
     info!("Executable path: {:?}", exe_path);
     write_log(&format!("Executable path: {:?}", exe_path));
-    
-    // Find the server file
+
+    // Windows binary name
+    let binary_name = "server-windows-x64.exe";
+    write_log(&format!("Binary: {}", binary_name));
+
+    // Find the server binary
     let server_path = if cfg!(debug_assertions) {
-        // In development, use project root
-        info!("Development mode - looking for server in project root");
-        write_log("Development mode - looking for server in project root");
+        // In development, use project root resources
+        info!("Development mode - looking for binary in project root");
+        write_log("Development mode - looking for binary in project root");
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("server-claude-windows.cjs"))
+            .map(|p| p.join("src-tauri").join("resources").join(binary_name))
     } else {
-        // In production, look in Resources directory
-        info!("Production mode - looking for server in Resources");
-        write_log("Production mode - looking for server in Resources");
-        
+        // In production, look in resources directory
+        info!("Production mode - looking for binary in resources");
+        write_log("Production mode - looking for binary in resources");
+
         std::env::current_exe()
             .ok()
             .and_then(|p| {
                 let parent = p.parent()?;
                 let resources_dir = parent.join("resources");
                 write_log(&format!("Resources dir: {:?}", resources_dir));
-                
-                let server_file = resources_dir.join("server-claude-windows.cjs");
-                if server_file.exists() {
-                    write_log(&format!("Found server at: {:?}", server_file));
-                    return Some(server_file);
+
+                let binary_path = resources_dir.join(binary_name);
+                if binary_path.exists() {
+                    write_log(&format!("Found binary at: {:?}", binary_path));
+                    return Some(binary_path);
                 }
-                
-                // Fallback to embedded server location
-                write_log("Server not found in resources, falling back to temp");
+
+                // Fallback to .cjs file for backwards compatibility
+                let cjs_path = resources_dir.join("server-claude-windows.cjs");
+                if cjs_path.exists() {
+                    write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
+                    return Some(cjs_path);
+                }
+
+                write_log("No server binary or .cjs found");
                 None
             })
     };
-    
+
     if let Some(server_file) = server_path {
         if !server_file.exists() {
-            info!("Server file not found at: {:?}", server_file);
-            write_log(&format!("Server file not found at: {:?}", server_file));
-            // Fall back to embedded server
+            info!("Server not found at: {:?}", server_file);
+            write_log(&format!("ERROR: Server not found at: {:?}", server_file));
             start_embedded_windows_server(port);
             return;
         }
-        
-        info!("Using server file: {:?}", server_file);
-        write_log(&format!("Using server file: {:?}", server_file));
-        
-        // Get node_modules path (same for dev and prod - sibling to server file)
-        let node_modules = server_file.parent().map(|p| p.join("node_modules"));
-        
-        if let Some(ref modules) = node_modules {
-            if !modules.exists() {
-                write_log(&format!("Warning: node_modules not found at: {:?}", modules));
-            } else {
-                write_log(&format!("node_modules found at: {:?}", modules));
-            }
-        }
 
-        // Try to start server with Node.js
-        let mut cmd = Command::new("node");
-        cmd.arg(&server_file)
-           .env_clear()
+        info!("Using server: {:?}", server_file);
+        write_log(&format!("Using server: {:?}", server_file));
+
+        // Check if this is a binary (.exe) or .cjs file
+        let is_binary = server_file.extension().map_or(false, |e| e == "exe");
+
+        let mut cmd = if is_binary {
+            // Direct binary execution
+            write_log("Spawning compiled binary directly");
+            Command::new(&server_file)
+        } else {
+            // Fallback: run with node
+            write_log("Fallback: spawning with node");
+            let mut c = Command::new("node");
+            c.arg(&server_file);
+            c
+        };
+
+        cmd.env_clear()
            .envs(std::env::vars())
            .env("PORT", port.to_string());
-
-        if let Some(ref modules) = node_modules {
-            write_log(&format!("Setting NODE_PATH to: {:?}", modules));
-            cmd.env("NODE_PATH", modules);
-        }
 
         // Windows-specific process flags
         use std::os::windows::process::CommandExt;
         const CREATE_NEW_CONSOLE: u32 = 0x00000010;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         const DETACHED_PROCESS: u32 = 0x00000008;
-        
+
         let flags = if YURUCODE_SHOW_CONSOLE {
             info!("Console VISIBLE + DETACHED");
             CREATE_NEW_CONSOLE | DETACHED_PROCESS
@@ -705,38 +601,41 @@ fn start_windows_server(port: u16) {
             info!("Console HIDDEN + DETACHED");
             CREATE_NO_WINDOW | DETACHED_PROCESS
         };
-        
+
         cmd.creation_flags(flags);
         cmd.stdout(Stdio::piped())
            .stderr(Stdio::piped());
-        
+
+        if let Some(working_dir) = server_file.parent() {
+            cmd.current_dir(working_dir);
+            write_log(&format!("Working directory: {:?}", working_dir));
+        }
+
+        write_log(&format!("Spawn command on port {}", port));
         match cmd.spawn() {
             Ok(mut child) => {
                 let pid = child.id();
                 info!("✅ Server started with PID: {}", pid);
                 write_log(&format!("✅ Server started with PID: {}", pid));
-                
-                // Take stdout and stderr for monitoring
+
                 let stdout = child.stdout.take();
                 let stderr = child.stderr.take();
-                
-                // Create the process guard
+
                 let guard = Arc::new(ServerProcessGuard::new(child));
                 let guard_clone1 = Arc::clone(&guard);
                 let guard_clone2 = Arc::clone(&guard);
-                
-                // Spawn threads to capture output
+
                 if let Some(stdout) = stdout {
                     std::thread::spawn(move || {
                         use std::io::{BufRead, BufReader};
                         let reader = BufReader::new(stdout);
                         let mut total_bytes = 0;
-                        
+
                         for line in reader.lines() {
                             if guard_clone1.shutdown_flag.load(Ordering::Relaxed) {
                                 break;
                             }
-                            
+
                             if let Ok(line) = line {
                                 total_bytes += line.len();
                                 if total_bytes < MAX_BUFFER_SIZE {
@@ -751,18 +650,18 @@ fn start_windows_server(port: u16) {
                         }
                     });
                 }
-                
+
                 if let Some(stderr) = stderr {
                     std::thread::spawn(move || {
                         use std::io::{BufRead, BufReader};
                         let reader = BufReader::new(stderr);
                         let mut total_bytes = 0;
-                        
+
                         for line in reader.lines() {
                             if guard_clone2.shutdown_flag.load(Ordering::Relaxed) {
                                 break;
                             }
-                            
+
                             if let Ok(line) = line {
                                 total_bytes += line.len();
                                 if total_bytes < MAX_BUFFER_SIZE {
@@ -777,136 +676,144 @@ fn start_windows_server(port: u16) {
                         }
                     });
                 }
-                
-                // Store the guarded process
+
                 if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
                     *process_guard = Some(guard);
                     SERVER_RUNNING.store(true, Ordering::Relaxed);
                 }
-                
-                return;
+
+                info!("✅ Windows server process tracking set up");
             }
             Err(e) => {
-                info!("Failed to start server: {}", e);
-                write_log(&format!("Failed to start server: {}", e));
-                // Fall back to embedded server
+                write_log(&format!("❌ Failed to start Windows server: {}", e));
+                info!("❌ Failed to start Windows server: {}", e);
                 start_embedded_windows_server(port);
             }
         }
     } else {
-        // No external server found, use embedded
+        write_log("ERROR: Could not determine server path");
+        info!("Could not determine server path");
         start_embedded_windows_server(port);
     }
 }
 
 /// Linux-specific server startup
-/// Uses an external server file (server-claude-linux.cjs)
-/// Aligned with macOS and Windows for consistency
+/// Uses compiled binary (server-linux-x64) instead of Node.js
+/// This hides source code and removes Node.js dependency for end users
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn start_linux_server(port: u16) {
     info!("Starting Linux server on port {}", port);
     clear_log();
-    write_log("=== Starting Linux server ===");
-    
+    write_log("=== Starting Linux server (binary mode) ===");
+
     let exe_path = std::env::current_exe().unwrap_or_default();
     info!("Executable path: {:?}", exe_path);
     write_log(&format!("Executable path: {:?}", exe_path));
-    
-    // Find the server file
+
+    // Linux binary name (currently only x64 supported)
+    let binary_name = "server-linux-x64";
+    write_log(&format!("Binary: {}", binary_name));
+
+    // Find the server binary
     let server_path = if cfg!(debug_assertions) {
-        // In development, use project root
-        info!("Development mode - looking for server in project root");
-        write_log("Development mode - looking for server in project root");
+        // In development, use project root resources
+        info!("Development mode - looking for binary in project root");
+        write_log("Development mode - looking for binary in project root");
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("server-claude-linux.cjs"))
+            .map(|p| p.join("src-tauri").join("resources").join(binary_name))
     } else {
-        // In production, look in Resources directory
-        info!("Production mode - looking for server in Resources");
-        write_log("Production mode - looking for server in Resources");
-        
+        // In production, look in resources directory
+        info!("Production mode - looking for binary in resources");
+        write_log("Production mode - looking for binary in resources");
+
         std::env::current_exe()
             .ok()
             .and_then(|p| {
                 let parent = p.parent()?;
                 let resources_dir = parent.join("resources");
                 write_log(&format!("Resources dir: {:?}", resources_dir));
-                
-                let server_file = resources_dir.join("server-claude-linux.cjs");
-                if server_file.exists() {
-                    write_log(&format!("Found server at: {:?}", server_file));
-                    Some(server_file)
-                } else {
-                    write_log("Server file not found");
-                    None
+
+                let binary_path = resources_dir.join(binary_name);
+                if binary_path.exists() {
+                    write_log(&format!("Found binary at: {:?}", binary_path));
+                    return Some(binary_path);
                 }
+
+                // Fallback to .cjs file for backwards compatibility
+                let cjs_path = resources_dir.join("server-claude-linux.cjs");
+                if cjs_path.exists() {
+                    write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
+                    return Some(cjs_path);
+                }
+
+                write_log("No server binary or .cjs found");
+                None
             })
     };
-    
+
     if let Some(server_file) = server_path {
         if !server_file.exists() {
-            info!("Server file not found at: {:?}", server_file);
-            write_log(&format!("ERROR: Server file not found at: {:?}", server_file));
-            write_log("Please ensure server-claude-linux.cjs is in the correct location");
+            info!("Server not found at: {:?}", server_file);
+            write_log(&format!("ERROR: Server not found at: {:?}", server_file));
             return;
         }
-        
-        info!("Using server file: {:?}", server_file);
-        write_log(&format!("Using server file: {:?}", server_file));
-        
-        // Get node_modules path (same for dev and prod - sibling to server file)
-        let node_modules = server_file.parent().map(|p| p.join("node_modules"));
-        
-        if let Some(ref modules) = node_modules {
-            if !modules.exists() {
-                write_log(&format!("Warning: node_modules not found at: {:?}", modules));
-            } else {
-                write_log(&format!("node_modules found at: {:?}", modules));
-            }
-        }
-        
-        // Try to start server with Node.js
-        // Use env_clear().envs() for consistency with macOS/Windows
-        let mut cmd = Command::new("node");
-        cmd.arg(&server_file)
-           .env_clear()
+
+        info!("Using server: {:?}", server_file);
+        write_log(&format!("Using server: {:?}", server_file));
+
+        // Check if this is a binary or .cjs file
+        let is_binary = !server_file.extension().map_or(false, |e| e == "cjs" || e == "js");
+
+        let mut cmd = if is_binary {
+            // Direct binary execution
+            write_log("Spawning compiled binary directly");
+            Command::new(&server_file)
+        } else {
+            // Fallback: run with node
+            write_log("Fallback: spawning with node");
+            let mut c = Command::new("node");
+            c.arg(&server_file);
+            c
+        };
+
+        cmd.env_clear()
            .envs(std::env::vars())
-           .env("PORT", port.to_string());
+           .env("PORT", port.to_string())
+           .stdout(Stdio::piped())
+           .stderr(Stdio::piped());
 
-        if let Some(ref modules) = node_modules {
-            write_log(&format!("Setting NODE_PATH to: {:?}", modules));
-            cmd.env("NODE_PATH", modules);
+        if let Some(working_dir) = server_file.parent() {
+            cmd.current_dir(working_dir);
+            write_log(&format!("Working directory: {:?}", working_dir));
         }
 
-        // Linux doesn't need special process flags
-        cmd.stdout(Stdio::piped())
-           .stderr(Stdio::piped());
-        
+        write_log(&format!("Spawn command on port {}", port));
         match cmd.spawn() {
             Ok(mut child) => {
                 let pid = child.id();
                 info!("✅ Server started with PID: {}", pid);
                 write_log(&format!("✅ Server started with PID: {}", pid));
-                
+
                 let stdout = child.stdout.take();
                 let stderr = child.stderr.take();
-                
+
                 let guard = Arc::new(ServerProcessGuard::new(child));
                 let guard_clone1 = Arc::clone(&guard);
                 let guard_clone2 = Arc::clone(&guard);
-                
+
                 if let Some(stdout) = stdout {
                     std::thread::spawn(move || {
                         use std::io::{BufRead, BufReader};
                         let reader = BufReader::new(stdout);
                         let mut total_bytes = 0;
-                        
+
                         for line in reader.lines() {
                             if guard_clone1.shutdown_flag.load(Ordering::Relaxed) {
                                 break;
                             }
-                            
+
                             if let Ok(line) = line {
                                 total_bytes += line.len();
                                 if total_bytes < MAX_BUFFER_SIZE {
@@ -918,18 +825,18 @@ fn start_linux_server(port: u16) {
                         }
                     });
                 }
-                
+
                 if let Some(stderr) = stderr {
                     std::thread::spawn(move || {
                         use std::io::{BufRead, BufReader};
                         let reader = BufReader::new(stderr);
                         let mut total_bytes = 0;
-                        
+
                         for line in reader.lines() {
                             if guard_clone2.shutdown_flag.load(Ordering::Relaxed) {
                                 break;
                             }
-                            
+
                             if let Ok(line) = line {
                                 total_bytes += line.len();
                                 if total_bytes < MAX_BUFFER_SIZE {
@@ -941,7 +848,7 @@ fn start_linux_server(port: u16) {
                         }
                     });
                 }
-                
+
                 if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
                     *process_guard = Some(guard);
                     SERVER_RUNNING.store(true, Ordering::Relaxed);

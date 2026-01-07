@@ -13,6 +13,9 @@
   z-index: 9999;
   /* Remove app-region to allow HTML5 drag and drop */
   -webkit-app-region: no-drag;
+  /* Disable text selection */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tabs-wrapper {

@@ -3943,8 +3943,28 @@ export const ClaudeChat: React.FC = () => {
       
       {/* Unified activity indicator - bottom-right */}
       <ActivityIndicator activities={activities} />
-      
-      <div 
+
+      {/* Attachment preview area - outside input container to avoid overflow clipping */}
+      {attachments.length > 0 && !currentSession?.readOnly && (
+        <div className="attachments-container">
+          {attachments.map((att) => (
+            <div key={att.id} className="attachment-item">
+              <span className="attachment-text">
+                {att.type === 'image' ? `image: ${formatBytes(att.size || 0)}` : `text: ${att.preview}`}
+              </span>
+              <button
+                className="attachment-remove"
+                onClick={() => removeAttachment(att.id)}
+                title="remove"
+              >
+                <IconX size={10} stroke={2} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div
         className={`chat-input-container ${isDragging ? 'dragging' : ''}`}
         ref={inputContainerRef}
         onDragOver={handleDragOver}
@@ -3952,25 +3972,6 @@ export const ClaudeChat: React.FC = () => {
         onDrop={handleDrop}
         style={{ display: currentSession?.readOnly ? 'none' : 'block' }}
       >
-        {/* Attachment preview area */}
-        {attachments.length > 0 && (
-          <div className="attachments-container">
-            {attachments.map((att, index) => (
-              <div key={att.id} className="attachment-item">
-                <span className="attachment-text">
-                  {att.type === 'image' ? `image: ${formatBytes(att.size || 0)}` : `text: ${att.preview}`}
-                </span>
-                <button 
-                  className="attachment-remove" 
-                  onClick={() => removeAttachment(att.id)}
-                  title="remove"
-                >
-                  <IconX size={10} stroke={2} />
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
         <div className="input-row">
           {/* Calculate if context is almost full */}
           {(() => {
@@ -4227,7 +4228,7 @@ export const ClaudeChat: React.FC = () => {
                       style={{
                         background: `linear-gradient(to right, ${
                           usageClass === 'minimal' ? `rgba(var(--foreground-rgb), ${(0.05 + (Math.min(percentageNum, 80) / 80) * 0.05).toFixed(3)})` :
-                          `rgba(var(--negative-rgb), ${(0.05 + (Math.min(percentageNum, 80) / 80) * 0.05).toFixed(3)})`
+                          `rgba(var(--negative-rgb), ${(0.1 + (Math.min(percentageNum, 80) / 80) * 0.1).toFixed(3)})`
                         } ${Math.min(percentageNum, 100)}%, transparent ${Math.min(percentageNum, 100)}%)`
                       }}
                     >

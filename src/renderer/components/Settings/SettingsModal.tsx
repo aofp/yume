@@ -239,8 +239,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
 
 
   const getZoomPercentage = () => {
-    // Convert zoom level to percentage (0 = 100%, 1 = 110%, -1 = 90%, etc.)
-    return 100 + (zoomLevel * 10);
+    // Convert zoom level to percentage (0 = 100%, 1 = 105%, -1 = 95%, etc.)
+    return 100 + (zoomLevel * 5);
   };
 
   // Handle Escape key and Ctrl+,

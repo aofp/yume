@@ -70,7 +70,7 @@ class PlatformBridge {
         currentZoom = Math.round(bodyZoom * 100);
       }
       
-      const newZoom = Math.min(currentZoom + 10, 200);
+      const newZoom = Math.min(currentZoom + 5, 200);
       console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
       
       // Apply CSS zoom (1.0 = 100%, 1.1 = 110%, etc)
@@ -93,8 +93,8 @@ class PlatformBridge {
         });
       }
       
-      // Calculate zoom level for display (-5 to +10, where 0 = 100%)
-      const zoomLevel = (newZoom - 100) / 10;
+      // Calculate zoom level for display (-10 to +20, where 0 = 100%)
+      const zoomLevel = (newZoom - 100) / 5;
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
       console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
       return zoomLevel;
@@ -121,7 +121,7 @@ class PlatformBridge {
         currentZoom = Math.round(bodyZoom * 100);
       }
       
-      const newZoom = Math.max(currentZoom - 10, 50);
+      const newZoom = Math.max(currentZoom - 5, 50);
       console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
       
       // Apply CSS zoom
@@ -145,7 +145,7 @@ class PlatformBridge {
       }
       
       // Calculate zoom level for display
-      const zoomLevel = (newZoom - 100) / 10;
+      const zoomLevel = (newZoom - 100) / 5;
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
       console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
       return zoomLevel;
@@ -183,10 +183,10 @@ class PlatformBridge {
     },
     getLevel: async (): Promise<number> => {
       const currentZoom = parseInt(localStorage.getItem('zoomPercent') || '100');
-      return (currentZoom - 100) / 10;
+      return (currentZoom - 100) / 5;
     },
     setLevel: async (level: number): Promise<void> => {
-      const zoomPercent = 100 + (level * 10);
+      const zoomPercent = 100 + (level * 5);
       
       // Apply CSS zoom
       document.body.style.zoom = `${zoomPercent / 100}`;

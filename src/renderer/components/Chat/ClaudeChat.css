@@ -659,7 +659,7 @@
   min-height: 60px;
   max-height: 40vh;
   overflow-y: auto;
-  position: relative; /* Add relative positioning for attachment container */
+  position: relative;
 }
 
 /* macOS-specific padding */
@@ -1301,7 +1301,7 @@ textarea.context-full {
 
 .btn-stats {
   font-family: var(--font-mono);
-  width: 100px;
+  width: 80px;
   text-align: center;
 }
 
@@ -1445,10 +1445,6 @@ textarea.context-full {
   padding: 4px;
   background: var(--background-color, #000000);
   flex-wrap: wrap;
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  right: 0;
   border-bottom: 1px solid var(--fg-10);
 }
 
