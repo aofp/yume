@@ -924,22 +924,35 @@ export const ClaudeChat: React.FC = () => {
   // Update elapsed time using session.thinkingStartTime from store (same as SessionTabs)
   // This ensures the timer is always in sync with the store's state
   useEffect(() => {
-    const thinkingStartTime = (currentSession as any)?.thinkingStartTime;
-    if (currentSession?.streaming && currentSessionId && thinkingStartTime) {
-      const interval = setInterval(() => {
-        setThinkingElapsed(prev => ({
-          ...prev,
-          [currentSessionId]: Math.floor((Date.now() - thinkingStartTime) / 1000)
-        }));
-      }, 100);
-      // Initial calculation
-      setThinkingElapsed(prev => ({
-        ...prev,
-        [currentSessionId]: Math.floor((Date.now() - thinkingStartTime) / 1000)
-      }));
-      return () => clearInterval(interval);
+    const hasStreamingSessions = sessions.some(s => s.streaming && (s as any).thinkingStartTime);
+    if (!hasStreamingSessions) {
+      setThinkingElapsed({});
+      return;
     }
-  }, [currentSession?.streaming, currentSessionId, (currentSession as any)?.thinkingStartTime]);
+
+    const interval = setInterval(() => {
+      const now = Date.now();
+      const times: { [sessionId: string]: number } = {};
+      sessions.forEach(s => {
+        if (s.streaming && (s as any).thinkingStartTime) {
+          times[s.id] = Math.floor((now - (s as any).thinkingStartTime) / 1000);
+        }
+      });
+      setThinkingElapsed(times);
+    }, 1000);
+
+    // Initial calculation
+    const now = Date.now();
+    const initialTimes: { [sessionId: string]: number } = {};
+    sessions.forEach(s => {
+      if (s.streaming && (s as any).thinkingStartTime) {
+        initialTimes[s.id] = Math.floor((now - (s as any).thinkingStartTime) / 1000);
+      }
+    });
+    setThinkingElapsed(initialTimes);
+
+    return () => clearInterval(interval);
+  }, [sessions.map(s => `${s.id}-${s.streaming}-${(s as any).thinkingStartTime}`).join(',')]);
 
   // macOS focus fix: Restore textarea focus when streaming ends
   // On macOS, window.set_focus() can disrupt webview's internal focus state
@@ -4200,7 +4213,10 @@ export const ClaudeChat: React.FC = () => {
                         `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 60%' : ''} - click for details (${modKey}+.)` :
                         `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (${modKey}+.)`}
                       style={{
-                        background: `linear-gradient(to right, rgba(var(--foreground-rgb), 0.05) ${Math.min(percentageNum, 100)}%, transparent ${Math.min(percentageNum, 100)}%)`
+                        background: `linear-gradient(to right, ${
+                          usageClass === 'minimal' ? `rgba(var(--foreground-rgb), ${(0.05 + (Math.min(percentageNum, 80) / 80) * 0.05).toFixed(3)})` :
+                          `rgba(var(--negative-rgb), ${(0.05 + (Math.min(percentageNum, 80) / 80) * 0.05).toFixed(3)})`
+                        } ${Math.min(percentageNum, 100)}%, transparent ${Math.min(percentageNum, 100)}%)`
                       }}
                     >
                       {percentage}%

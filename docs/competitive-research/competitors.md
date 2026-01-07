@@ -1,58 +1,90 @@
 # Competitor Deep Dives
 
+*Last Updated: January 2026*
+
 ## IDE-Based Competitors
 
 ### Cursor
 
 **Type**: AI-augmented IDE (VS Code fork)
-**Price**: $20/mo Pro, pay-as-you-go after limits
+**Valuation**: $29.3B (2025), $500M+ ARR
+**Adoption**: 50%+ Fortune 500 companies
+**Price**: $20/mo Pro, $200/mo Ultra, $40/user Teams
 
 **Key Features**:
-- Codebase indexing via RAG embeddings
-- Agent mode: 8 parallel agents, isolated git worktrees
-- Instant grep (all searches <100ms)
-- Tab completion with sub-100ms response
-- Multi-file coordinated patches
-- Agent self-gathers context (removed manual @mentions)
+- **Tab Completion**: Proprietary model generating at 250 tokens/sec, 28% higher accept rate
+- **Agent Mode (Cmd+I)**: Plans multi-step tasks, edits multiple files, runs terminal
+- **Composer**: MoE model with codebase-wide semantic search
+- **Background Agents (v0.50)**: Parallel tasks via git worktrees
+- **Bugbot**: Watches code changes, flags potential errors (mid-2025)
+- **Debug Mode (v2.2)**: Generates hypotheses, instruments logging, verifies fixes
+- **Visual Editor (v2.2)**: Design + code with browser sidebar and component tree
+- **Memories**: AI recalls context from previous sessions
 
 **Strengths**:
-- Familiar VS Code interface
-- Fast completions
-- Great for complex refactoring
-- Large ecosystem (VS Code extensions)
+- Market leader with massive adoption
+- VS Code extension ecosystem
+- Multi-model support (OpenAI, Claude, Gemini, xAI)
+- Enterprise-ready (SOC 2, SSO)
+- Proprietary speed-optimized models
 
 **Weaknesses**:
-- VectorDB context search (worse than treesitter)
-- Electron-based (heavier than native)
-- Can feel cluttered
+- Performance issues since v0.45.9 (freezing, memory leaks)
+- Context "forgets" mid-conversation (v0.46+)
+- AI breaks code during complex edits
+- Expensive for heavy users ($200-500/mo actual costs)
+- Hijacks VS Code shortcuts, auto-updates forced
+- WSL integration memory issues
 
-**Relevance to Yurucode**: Cursor is the "productivity IDE" benchmark. Yurucode should match key UX patterns (parallel agents, visual diff, instant search).
+**Recent Updates (2025)**:
+- v2.3 (Dec): Process separation for stability
+- v2.2 (Dec): Debug Mode, Visual Editor, Plan Mode with Mermaid diagrams
+- v1.7 (Oct): Agent Autocomplete, Hooks (beta), Team Rules
+- June: Token-based pricing (was request-based), caused user backlash
+
+**Relevance to Yurucode**: Cursor's scale proves demand. But performance complaints validate yurucode's native Rust approach. Their Visual Editor and Debug Mode are differentiators we lack.
 
 ---
 
 ### Windsurf
 
-**Type**: AI IDE (VS Code fork, by Cognition/Devin team)
-**Price**: $15/mo
+**Type**: AI IDE (VS Code fork, by Codeium)
+**Price**: $15/mo Pro, $30/user Teams, $60+/user Enterprise
+**Status**: OpenAI tried to acquire for $3B (May 2025), Google acqui-hired founders instead
 
 **Key Features**:
-- Cascade: Original IDE agent (pre-dates Cursor's agent mode)
-- SWE-1.5 model: 13x faster than Claude Sonnet 4.5
-- Fast Context: Rapid codebase understanding
-- Codemaps: Visual code navigation
-- Cleaner UI than Cursor ("Apple vs Microsoft")
+- **Cascade**: Agent combining copilot + autonomous modes
+- **SWE-1.5 Model**: 950 tok/s, near Claude 4.5 performance at 13x speed
+- **Fast Context**: 2,800+ tok/s codebase understanding
+- **Memories**: User rules + auto-generated preferences
+- **Planning Mode (Wave 10)**: Short/long-term project understanding
+- **Multi-Agent Sessions (Wave 13)**: Parallel agent workflows with git worktrees
+- **Codemaps (Beta)**: Visual code mapping
+- **Lifeguard (Beta)**: In-IDE bug detection
 
 **Strengths**:
-- Best-in-class UX polish
-- Lower price than Cursor
-- Proprietary speed-optimized models
-- Enterprise-ready
+- Best automatic context selection (no manual @ tagging)
+- Handles large codebases (millions of lines)
+- Cleaner UI than Cursor
+- Cheaper pricing ($15 vs $20)
+- Plugins for 40+ IDEs (JetBrains, Vim, XCode)
 
 **Weaknesses**:
-- Smaller ecosystem than Cursor
-- Less community content/tutorials
+- Struggles with files >300-500 lines
+- Cascade "forgets" mid-session
+- Credit system discrepancies
+- WSL crashing issues
+- Not SOC2 compliant
+- "Beta experience" feel
 
-**Relevance to Yurucode**: Windsurf sets the UX bar. "Clean like Apple product" is the target aesthetic.
+**Recent Updates (2025)**:
+- Wave 13 (Dec 24): Multi-agent, git worktrees, SWE-1.5 default
+- New models: GPT-5.2, Claude Opus 4.5, Gemini 3 Flash
+- MCP gains GitLab support, GitHub OAuth
+
+**Corporate Drama**: OpenAI's $3B acquisition blocked; Google acqui-hired founders for DeepMind; Cognition acquired remaining tech for $250M.
+
+**Relevance to Yurucode**: Windsurf sets UX bar and automatic context handling. Their multi-agent visualization is something we should match.
 
 ---
 
@@ -224,24 +256,62 @@
 
 ---
 
-## Comparison Matrix
+## Comparison Matrix (January 2026)
 
-| Tool | Type | Price | Agentic | UI Speed | Context Quality |
-|------|------|-------|---------|----------|-----------------|
-| **Cursor** | IDE | $20/mo | Yes (8 parallel) | Fast | Good (VectorDB) |
-| **Windsurf** | IDE | $15/mo | Yes (Cascade) | Fast | Good |
-| **Zed** | IDE | Free | Yes | Fastest | Good |
-| **Claude Code CLI** | CLI | API costs | Yes | Slow (TUI) | Good |
-| **Aider** | CLI | API costs | No | N/A | Best (treesitter) |
-| **Cline** | Extension | API costs | Yes | Medium | Good |
-| **Copilot** | Extension | $19/mo | Yes | Fast | Good |
-| **Continue** | Extension | Free | Limited | Fast | Good |
-| **Amazon Q** | Extension | $19/mo | Yes | Fast | Good |
+| Tool | Type | Price | Agentic | Tab Complete | Multi-Agent | Native |
+|------|------|-------|---------|--------------|-------------|--------|
+| **Cursor** | IDE | $20-200/mo | Yes (background) | Yes (250 tok/s) | Yes (8 parallel) | No (Electron) |
+| **Windsurf** | IDE | $15-60/mo | Yes (Cascade) | Yes | Yes (Wave 13) | No (Electron) |
+| **Zed** | IDE | Free | Yes | Yes | No | Yes (Rust) |
+| **Claude Code CLI** | CLI | Pro/Max | Yes (subagents) | No | Yes | Terminal |
+| **Yurucode** | Desktop | $9 one-time | Yes (via Claude) | No | Partial | Yes (Tauri/Rust) |
+| **Aider** | CLI | API costs | No | No | No | Terminal |
+| **Cline** | Extension | API costs | Yes | No | No | No (VS Code) |
+| **Copilot** | Extension | $19-39/mo | Yes | Yes | No | No |
+| **Continue** | Extension | Free | Limited | Yes | No | No |
 
-## Key Insights
+## Feature Gap Summary (Yurucode vs Leaders)
 
-1. **Speed matters**: Zed's Rust-native performance proves users value responsiveness
-2. **Context quality varies**: Aider's treesitter approach beats VectorDB
-3. **Agent mode is standard**: All major tools now have autonomous capabilities
-4. **Price clustering**: $15-20/mo is the sweet spot
-5. **Open source thrives**: Aider, Continue, Cline, Zed all have strong communities
+| Feature | Cursor | Windsurf | Yurucode | Gap? |
+|---------|--------|----------|----------|------|
+| Smooth UI | Issues | Good | ✅ Best (native) | No |
+| Tab completion | ✅ 250 tok/s | ✅ | ❌ (different product category) | N/A - IDE feature |
+| Visual diff | ✅ | ✅ | ✅ | No |
+| Cost tracking | ❌ | Partial | ✅ Full | **Advantage** |
+| Checkpoints | ❌ | ❌ | ✅ **Enabled** | **Unique Advantage** |
+| Auto-compact | ❌ | ❌ | ✅ 85% | **Unique** |
+| MCP support | ❌ | ✅ | ✅ Full UI | No |
+| Themes | ~5 | ~3 | ✅ **31 themes** | **Advantage** |
+| Built-in agents | ❌ | ❌ | ✅ **5 agents** | **Unique** |
+| Custom commands | ❌ | ❌ | ✅ Full | **Unique** |
+| Hooks system | Partial | ❌ | ✅ 9 events | **Advantage** |
+| Light mode | ✅ | ✅ | ❌ | Gap |
+| Memories | ✅ | ✅ | ❌ | Gap |
+| Command palette | ✅ | ✅ | ❌ | Gap |
+| Background agents | ✅ | ✅ | ✅ Via Claude | No |
+
+## Key Insights (Updated January 2026)
+
+1. **Native performance validated**: Cursor's memory/performance issues prove Electron struggles at scale. Zed and yurucode's Rust approach is correct.
+
+2. **Tab completion is an IDE feature**: Cursor/Windsurf are code editors with inline completion. Yurucode is a chat interface - different product category. Not a real gap.
+
+3. **Subscriptions cause friction**: Cursor's June pricing changes caused backlash. Yurucode's $9 one-time is a major differentiator.
+
+4. **Context memory matters**: Both Cursor and Windsurf added "Memories" - persisting preferences across sessions. Gap for yurucode.
+
+5. **Checkpoint/timeline is NOW LIVE**: ✅ Yurucode has visual checkpoint UI enabled - no competitor has this. **Unique advantage**.
+
+6. **Auto-compaction is unique**: No competitor auto-compacts at 85%. This is a genuine yurucode innovation.
+
+7. **31 themes vs ~5**: Yurucode has massively more theming options than any competitor.
+
+8. **5 built-in agents**: Yurucode agents (architect, explorer, implementer, guardian, specialist) are unique - no competitor has this.
+
+9. **Custom commands system**: Slash commands with templates - competitors don't have this.
+
+10. **Hooks system (9 events)**: More comprehensive than any competitor's hook/extension system.
+
+11. **Market consolidation**: OpenAI tried to buy Windsurf, Google grabbed the founders. Cursor at $29B. Small players getting squeezed.
+
+12. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.

@@ -72,12 +72,15 @@ Must match Claude Code CLI:
 - [x] Command execution
 - [x] Git operations
 - [x] Multi-file context
-- [x] Subagents (via Claude's Task tool + custom agent system)
+- [x] Subagents (via Claude's Task tool + 5 built-in yurucode agents)
 - [x] Background agents (supported via Claude's Task tool)
-- [~] Checkpoints/rewind (code exists but disabled)
+- [x] **Checkpoints/rewind (NOW ENABLED with visual UI)**
+- [x] **Timeline navigator (UNIQUE)**
 - [x] Skills system (supported via Claude)
-- [x] Hooks (supported via Claude)
+- [x] Hooks (9 event types - most comprehensive)
 - [x] MCP integration (full UI for server management)
+- [x] Custom commands (with templates - UNIQUE)
+- [x] 31 themes (best in class)
 
 ## Competitive Positioning
 
@@ -121,23 +124,29 @@ Must match Claude Code CLI:
 
 ## Differentiation Strategy
 
-### Short-term (Now)
-1. **Nail the basics**: Smooth input, no lag, stable UI
-2. **Visual polish**: Clean, modern interface
-3. **Session management**: Better than CLI
-4. **Crash recovery**: Never lose work
+### ✅ COMPLETED (January 2026)
+1. **Nail the basics**: Smooth input, no lag, stable UI ✅
+2. **Visual polish**: Clean, modern interface ✅
+3. **Session management**: Better than CLI ✅
+4. **Crash recovery**: Never lose work ✅
+5. **Feature parity**: Subagents, checkpoints, MCP ✅
+6. **Enhanced visuals**: Diff views, file trees, syntax highlighting ✅
+7. **Checkpoints + Timeline**: Visual UI (UNIQUE) ✅
+8. **31 themes**: Best in class ✅
+9. **5 built-in agents**: architect, explorer, implementer, guardian, specialist ✅
+10. **Custom commands**: Slash commands with templates ✅
+11. **9 hook events**: Most comprehensive ✅
+12. **Platform coverage**: macOS, Windows, Linux ✅
 
-### Medium-term (Next)
-1. **Feature parity**: Subagents, checkpoints, MCP
-2. **Enhanced visuals**: Diff views, file trees, syntax highlighting
-3. **Performance optimization**: Faster than competitors
-4. **Platform coverage**: macOS, Windows, Linux
+### Remaining (Short-term)
+1. **Light mode**: Accessibility
+2. **Command palette**: Cmd+K expected UX
 
-### Long-term (Future)
-1. **Unique features**: Things CLI can't do
-2. **Collaboration**: Team features
-3. **Enterprise**: SSO, audit logs, compliance
-4. **Ecosystem**: Plugins, themes, integrations
+### Future Consideration
+1. **Collaboration**: Team features
+2. **Enterprise**: SSO, audit logs, compliance
+
+Note: Tab completion not applicable - yurucode is a chat interface, not a code editor. Users use Cursor/Copilot for inline completion alongside yurucode for complex tasks.
 
 ## Messaging
 
@@ -147,15 +156,31 @@ Must match Claude Code CLI:
 - "Claude's Power, Desktop Performance"
 - "No More Terminal Lag"
 
-### Key Messages
+### Key Messages - UPDATED
 1. **Performance**: "Input that keeps up with your thoughts"
 2. **Reliability**: "An interface that just works"
 3. **Visual**: "See your code, not escape sequences"
 4. **Desktop**: "Native app, native experience"
+5. **Checkpoints**: "Time-travel through your changes - only on yurucode"
+6. **Agents**: "5 specialized AI agents built-in"
+7. **Value**: "$9 one-time vs $20-200/mo subscriptions"
+8. **Themes**: "31 themes - make it yours"
+
+### Unique Selling Points (vs ALL Competitors)
+| USP | Details |
+|-----|---------|
+| Visual checkpoint/timeline | Only yurucode - Cursor/Windsurf don't have this |
+| 5 built-in agents | architect, explorer, implementer, guardian, specialist |
+| Custom commands | Slash commands with $ARGUMENTS templates |
+| 31 themes | Cursor has ~5, Windsurf has ~3 |
+| 9 hook events | Most comprehensive hook system |
+| Auto-compact 85% | No competitor does this |
+| $9 one-time | vs $240-2400/year subscriptions |
 
 ## Success Metrics
 
-1. **Performance**: <50ms input latency (vs 100ms-10s CLI)
-2. **Stability**: Zero rendering corruption
-3. **Adoption**: Users switching from CLI
-4. **Satisfaction**: "Would recommend" score
+1. **Performance**: <50ms input latency (vs 100ms-10s CLI) ✅
+2. **Stability**: Zero rendering corruption ✅
+3. **Unique features**: More than any competitor ✅
+4. **Adoption**: Users switching from CLI
+5. **Satisfaction**: "Would recommend" score

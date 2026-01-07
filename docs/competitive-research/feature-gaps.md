@@ -1,21 +1,30 @@
 # Feature Gap Analysis & Improvement Opportunities
 
+*Last Updated: January 2026*
+
+## Executive Summary
+
+Yurucode has achieved **P0 and P1 feature parity**. The next step to being "100% best Claude Code UI" requires:
+1. **Enable existing features** (checkpoints - code exists!)
+2. **Fill UX gaps** (command palette, light mode, notifications)
+3. **Consider tab completion** (biggest differentiator gap vs Cursor/Windsurf)
+
+---
+
 ## Priority Tiers
 
-### P0 - Must Have (Competitive Baseline)
+### P0 - Must Have (Competitive Baseline) ✅ COMPLETE
 
-These features are required to compete. Without them, users will stay with CLI or switch to alternatives.
-
-| Feature | Claude Code CLI | Cursor | Yurucode Status | Priority |
-|---------|-----------------|--------|-----------------|----------|
-| Smooth input (no lag) | Broken | Yes | ✅ Yes | P0 |
-| Stable rendering | Broken | Yes | ✅ Yes | P0 |
-| File editing | Yes | Yes | ✅ Yes | P0 |
-| Command execution | Yes | Yes | ✅ Yes | P0 |
-| Git operations | Yes | Yes | ✅ Yes | P0 |
-| Multi-file context | Yes | Yes | ✅ Yes | P0 |
-| Session persistence | Partial | Yes | ✅ Yes (auto-save) | P0 |
-| Crash recovery | No | Yes | ✅ Yes (24hr window) | P0 |
+| Feature | Claude Code CLI | Cursor | Yurucode Status |
+|---------|-----------------|--------|-----------------|
+| Smooth input (no lag) | Broken | Yes | ✅ Native rendering |
+| Stable rendering | Broken | Issues v0.45+ | ✅ Best in class |
+| File editing | Yes | Yes | ✅ Yes |
+| Command execution | Yes | Yes | ✅ Yes |
+| Git operations | Yes | Yes | ✅ Yes |
+| Multi-file context | Yes | Yes | ✅ Yes |
+| Session persistence | Partial | Yes | ✅ Auto-save |
+| Crash recovery | No | Yes | ✅ 24hr window |
 
 ### P1 - Should Have (Competitive Advantage)
 
@@ -38,15 +47,20 @@ These create "wow" moments and build loyalty.
 
 | Feature | Description | Yurucode Status |
 |---------|-------------|-----------------|
-| Parallel agents visual | See multiple agents working | ⚠️ Partial (AgentsModal exists) |
-| Agent activity timeline | Visual history of agent actions | ⚠️ Code exists but disabled |
-| Checkpoint visual UI | Time-travel through changes | ⚠️ Code exists but disabled |
-| Theme support | Dark/light/custom themes | ✅ Color customization (dark only) |
+| Parallel agents visual | See multiple agents working | ✅ AgentsModal + 5 built-in agents |
+| Agent activity timeline | Visual history of agent actions | ✅ **Enabled** |
+| Checkpoint visual UI | Time-travel through changes | ✅ **Enabled** (CheckpointButton + TimelineNavigator) |
+| Theme support | Dark/light/custom themes | ✅ **31 themes** (dark only) |
 | Syntax highlighting | In code blocks | ✅ Implemented |
 | Markdown rendering | Pretty message display | ✅ Implemented |
 | Keyboard shortcuts | Power user efficiency | ✅ Full shortcut system |
-| Command palette | Quick actions | ❌ Not implemented |
+| Custom commands | Slash commands with templates | ✅ Implemented |
+| Font customization | Monospace + UI fonts | ✅ Implemented (Comic Mono/Neue) |
+| System prompts | Custom system prompts | ✅ Implemented |
+| Smart file mentions | @r recent, @m modified | ✅ Implemented |
+| Command palette | Quick actions (Cmd+K) | ❌ Not implemented |
 | Split views | Multiple conversations | ❌ Not implemented |
+| Light mode | Light theme option | ❌ Not implemented |
 
 ---
 
@@ -222,15 +236,23 @@ These create "wow" moments and build loyalty.
 | Cost tracking | Partial | No | No | No | Yes | ✅ Yes (full) |
 | Token display | Partial | No | No | Yes | Yes | ✅ Yes (by model) |
 | Image paste | Partial | Yes | Yes | Yes | Partial | ✅ Yes |
-| Checkpoints | Yes | No | No | No | No | ⚠️ Disabled |
+| Checkpoints | Yes | No | No | No | No | ✅ **Enabled** |
+| Timeline UI | No | No | No | No | No | ✅ **Unique** |
 | MCP | Yes | No | No | No | Yes | ✅ Full UI |
+| Built-in agents | No | No | No | No | No | ✅ **5 agents** |
+| Custom commands | No | No | No | No | No | ✅ **Unique** |
+| Hooks system | Partial | Partial | No | No | No | ✅ **9 events** |
+| Themes | No | ~5 | ~3 | No | No | ✅ **31 themes** |
+| Font customization | No | Yes | No | No | No | ✅ Yes |
 | Subagents | Yes | Yes | Yes | No | No | ✅ Via Claude |
 | Offline mode | No | No | No | Yes | No | ❌ No |
 | Multi-project | Partial | Yes | Yes | Yes | Partial | ✅ Yes |
+| Light mode | No | Yes | Yes | No | No | ❌ No |
+| Command palette | No | Yes | Yes | No | No | ❌ No |
 
 ---
 
-## Implementation Roadmap Suggestion
+## Implementation Roadmap Status
 
 ### Phase 1: Foundation (P0) ✅ COMPLETE
 1. ✅ Eliminate all input lag
@@ -244,17 +266,23 @@ These create "wow" moments and build loyalty.
 3. ✅ Cost/token tracking (full analytics)
 4. ✅ Image paste support
 
-### Phase 3: Power Features (P1-P2) ⚠️ PARTIAL
-1. ⚠️ Checkpoint/timeline UI (code exists but disabled)
-2. ⚠️ Visual agent status (AgentsModal exists)
+### Phase 3: Power Features (P1-P2) ✅ COMPLETE
+1. ✅ **Checkpoint/timeline UI (NOW ENABLED)**
+2. ✅ Visual agent status (AgentsModal + 5 built-in agents)
 3. ✅ Conversation search
-4. ❌ Quick actions menu (command palette)
+4. ✅ Custom commands system
+5. ✅ Hooks system (9 events)
+6. ❌ Command palette (Cmd+K)
 
-### Phase 4: Advanced (P2) ⚠️ PARTIAL
+### Phase 4: Advanced (P2) ✅ MOSTLY COMPLETE
 1. ✅ MCP visual manager
 2. ✅ Keyboard shortcut system
-3. ✅ Theme support (dark mode + color customization)
-4. ❌ Split views
+3. ✅ **31 themes** (dark mode only)
+4. ✅ Font customization
+5. ✅ System prompts
+6. ✅ Smart file mentions (@r, @m)
+7. ❌ Split views
+8. ❌ Light mode
 
 ### Phase 5: Differentiation (Future)
 1. ❌ Smart context suggestions
@@ -262,30 +290,99 @@ These create "wow" moments and build loyalty.
 3. ❌ Team/enterprise features
 4. ❌ Plugin system
 
+Note: Tab completion removed - it's an IDE feature, not applicable to chat interfaces.
+
 ---
 
-## Quick Wins
+## Quick Wins (January 2026)
 
-Low effort, high impact features to implement soon:
+### ✅ Already Done (Updated)
+- Token counter (AnalyticsModal)
+- Cost estimate (full breakdown by model)
+- Keyboard shortcuts (full system)
+- Window state persistence
+- **31 themes** (major upgrade from 9)
+- 5 built-in yurucode agents (architect, explorer, implementer, guardian, specialist)
+- Custom commands with templates (global/project)
+- Hooks system (**9 event types**)
+- MCP visual manager
+- **Checkpoints ENABLED** (unique vs competitors)
+- **Timeline UI ENABLED** (unique vs competitors)
+- Font customization (Comic Mono/Neue)
+- System prompts selector
+- Smart file mentions (@r recent, @m modified)
 
-1. ✅ **Token counter** - Implemented in AnalyticsModal
-2. ✅ **Cost estimate** - Full cost breakdown available
-3. ✅ **Keyboard shortcuts** - Full shortcut system
-4. ⚠️ **Theme toggle** - Dark only, color customization available
-5. ✅ **Window state persistence** - Implemented
-6. ❌ **System notifications** - Not yet implemented
+### 🎯 Remaining Priorities (To Be "100% Best")
 
-### Remaining Quick Wins
-1. **Light mode theme** - Add light mode option
-2. **System notifications** - Alert when long task completes
-3. **Command palette** - Quick actions via Cmd+K/Ctrl+K
-4. **Enable checkpoint/timeline** - Code exists, just needs enabling
+| Feature | Effort | Impact | Why |
+|---------|--------|--------|-----|
+| **Light mode** | LOW | MEDIUM | Infrastructure exists. Many users need it. |
+| **System notifications** | LOW | MEDIUM | Native OS feature. Alert on task completion. |
+| **Command palette** | MEDIUM | HIGH | Cmd+K is expected. Every competitor has it. |
+
+### 📈 Stretch Goals (Competitive Parity)
+
+| Feature | Effort | Impact | Why |
+|---------|--------|--------|-----|
+| **Memories/preferences** | MEDIUM | MEDIUM | Cursor & Windsurf have it. Persist coding style. |
+| **Tab completion** | HIGH | CRITICAL | Biggest gap. Every competitor has it. Consider basic implementation. |
+| **Web preview pane** | MEDIUM | MEDIUM | Windsurf has it. See changes in-app. |
+
+---
+
+## Strategic Analysis
+
+### Yurucode's Unique Advantages (Lean Into These)
+1. **Auto-compaction at 85%** - No competitor does this
+2. **$9 one-time purchase** - Cursor charges $20-200/mo, Windsurf $15-60/mo
+3. **Native Rust performance** - Cursor has memory issues, Windsurf WSL crashes
+4. **Full Claude ecosystem** - MCP, hooks, skills, checkpoints all supported
+5. **Visual checkpoints + timeline** - **UNIQUE** - no competitor has this
+6. **31 themes** - way more than Cursor (~5) or Windsurf (~3)
+7. **5 built-in agents** - architect, explorer, implementer, guardian, specialist - **UNIQUE**
+8. **Custom commands system** - slash commands with templates - **UNIQUE**
+9. **9 hook events** - most comprehensive hook system
+10. **Smart file mentions** - @r recent, @m modified - better UX
+11. **No telemetry** - Privacy advantage
+12. **80.9% SWE-bench** - Claude leads, we're Claude-native
+
+### Competitor Weaknesses to Exploit
+1. **Cursor**: Performance issues since v0.45.9, expensive for heavy users, no checkpoint UI
+2. **Windsurf**: Beta feel, files >300 lines struggle, credit discrepancies, no custom agents
+3. **Both**: Subscriptions cause friction (Cursor June pricing backlash), fewer themes, no command system
+
+### What NOT to Build
+- Full IDE features (let Claude Code handle it)
+- Proprietary models (use Claude's superiority)
+- Extension marketplace (wrong target market)
+- Cloud sync/collaboration (privacy is our advantage)
+
+---
+
+## Implementation Roadmap
+
+### Phase 1: Quick Wins (1-2 weeks)
+1. [ ] Enable checkpoint/timeline UI (uncomment existing code)
+2. [ ] Add light mode theme
+3. [ ] Implement system notifications (Tauri has native support)
+4. [ ] Add command palette (Cmd+K)
+
+### Phase 2: UX Polish (2-4 weeks)
+1. [ ] Memories/preferences system
+2. [ ] Improved agent visualization
+3. [ ] Better error states
+
+### Phase 3: Differentiation (Consider)
+1. [ ] Basic tab completion (Claude API direct calls?)
+2. [ ] Web preview integration
+3. [ ] Voice input support
+
+---
 
 ## Sources
 
-- [GitHub Copilot Features](https://github.com/features/copilot)
-- [Cursor Features](https://cursor.com/features)
-- [Windsurf vs Cursor](https://windsurf.com/compare/windsurf-vs-cursor)
-- [Cline GitHub](https://github.com/cline/cline)
-- [Aider Documentation](https://aider.chat/docs/)
-- [Zed Blog](https://zed.dev/blog/fastest-ai-code-editor)
+- [Cursor Features](https://cursor.com/features) - $29.3B valuation, 50%+ Fortune 500
+- [Windsurf Wave 13](https://windsurf.com/changelog) - Multi-agent, SWE-1.5
+- [Cursor Pricing Backlash](https://techcrunch.com/2025/07/07/cursor-apologizes-for-unclear-pricing-changes-that-upset-users/)
+- [Zed Performance](https://zed.dev/blog/fastest-ai-code-editor)
+- [Claude Code SWE-bench](https://www.anthropic.com/engineering/claude-code-best-practices) - 80.9% leads market
