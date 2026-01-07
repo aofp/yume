@@ -1025,24 +1025,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               <h4>menu</h4>
 
               <div className="checkbox-setting">
-                <span className="checkbox-label">projects</span>
-                <input
-                  type="checkbox"
-                  className="checkbox-input"
-                  id="showProjectsMenu"
-                  checked={showProjectsMenu}
-                  onChange={(e) => setShowProjectsMenu(e.target.checked)}
-                />
-                <div className="toggle-switch-container">
-                  <label htmlFor="showProjectsMenu" className={`toggle-switch ${showProjectsMenu ? 'active' : ''}`}>
-                    <span className="toggle-switch-slider" />
-                    <span className="toggle-switch-label off">OFF</span>
-                    <span className="toggle-switch-label on">ON</span>
-                  </label>
-                </div>
-              </div>
-
-              <div className="checkbox-setting">
                 <span className="checkbox-label">agents</span>
                 <input
                   type="checkbox"
@@ -1076,6 +1058,24 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     <span className="toggle-switch-label on">ON</span>
                   </label>
                 </div>
+              </div>
+            </div>
+
+            <div className="checkbox-setting">
+              <span className="checkbox-label">projects</span>
+              <input
+                type="checkbox"
+                className="checkbox-input"
+                id="showProjectsMenu"
+                checked={showProjectsMenu}
+                onChange={(e) => setShowProjectsMenu(e.target.checked)}
+              />
+              <div className="toggle-switch-container">
+                <label htmlFor="showProjectsMenu" className={`toggle-switch ${showProjectsMenu ? 'active' : ''}`}>
+                  <span className="toggle-switch-slider" />
+                  <span className="toggle-switch-label off">OFF</span>
+                  <span className="toggle-switch-label on">ON</span>
+                </label>
               </div>
             </div>
 
