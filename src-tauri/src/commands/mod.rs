@@ -1612,18 +1612,36 @@ pub async fn get_folder_contents(
     }
 }
 
+/// Check if git index is locked and wait briefly if so
+fn wait_for_git_lock(dir_path: &PathBuf) -> bool {
+    let lock_path = dir_path.join(".git/index.lock");
+    for _ in 0..5 {
+        if !lock_path.exists() {
+            return true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+    // Lock still exists after 500ms, skip this operation
+    false
+}
+
 /// Returns the Git status for a repository
 /// Parses output from `git status --porcelain`
 /// Returns an error if the directory is not a Git repository
 #[tauri::command]
 pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
     use std::process::Command;
-    
+
     let dir_path = PathBuf::from(&directory);
     if !dir_path.exists() {
         return Err(format!("Directory does not exist: {}", directory));
     }
-    
+
+    // Wait for any existing git lock to clear
+    if !wait_for_git_lock(&dir_path) {
+        return Err("Git is busy (index.lock exists)".to_string());
+    }
+
     // Run git status command
     #[cfg(target_os = "windows")]
     let output = {
@@ -1693,6 +1711,11 @@ pub async fn get_git_diff_numstat(directory: String) -> Result<String, String> {
     let dir_path = PathBuf::from(&directory);
     if !dir_path.exists() {
         return Err(format!("Directory does not exist: {}", directory));
+    }
+
+    // Wait for any existing git lock to clear
+    if !wait_for_git_lock(&dir_path) {
+        return Err("Git is busy (index.lock exists)".to_string());
     }
 
     // Run git diff --numstat command using native git
