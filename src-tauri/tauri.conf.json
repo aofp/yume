@@ -56,7 +56,7 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "resources/**/*"
+      "resources/server-*"
     ],
     "macOS": {
       "frameworks": [],
