@@ -2343,6 +2343,10 @@ const MessageRendererBase: React.FC<{
           m.type === 'tool_use' &&
           (m.message?.id === toolUseId || m.id === toolUseId)
         );
+        if (!associatedToolUse) {
+          console.log('[tool_result] Could not find tool_use by id:', toolUseId,
+            'Available tool_use ids:', sessionMessages.filter(m => m.type === 'tool_use').map(m => ({ msgId: m.id, toolId: m.message?.id })));
+        }
       }
 
       // Fallback: look for the most recent tool_use message before this tool_result
@@ -2354,6 +2358,9 @@ const MessageRendererBase: React.FC<{
             associatedToolUse = sessionMessages[i];
             break;
           }
+        }
+        if (!associatedToolUse) {
+          console.log('[tool_result] Fallback search also failed, no tool_use found before index', searchIndex);
         }
       }
       
@@ -2373,7 +2380,8 @@ const MessageRendererBase: React.FC<{
       }
       
       // Check if this is an Edit result - detect by associated tool name (more reliable)
-      const isEditResultByContent = (contentStr.includes('has been updated') && contentStr.includes('→')) ||
+      // Note: replace_all edits say "were successfully replaced" without line numbers
+      const isEditResultByContent = contentStr.includes('has been updated') ||
                           (contentStr.includes('Applied') && (contentStr.includes('edit to') || contentStr.includes('edits to')));
       // Use tool name detection as primary, content detection as fallback
       const isEditResult = isEditOperation || isEditResultByContent;
@@ -2473,6 +2481,10 @@ const MessageRendererBase: React.FC<{
         if (!isMultiEdit && associatedToolUse?.message?.input) {
           const oldString = associatedToolUse.message.input.old_string || '';
           const newString = associatedToolUse.message.input.new_string || '';
+
+          console.log('[Edit] associatedToolUse found:', associatedToolUse.message?.name,
+            'has old_string:', !!oldString, 'has new_string:', !!newString,
+            'filePath:', filePath || associatedToolUse.message?.input?.file_path);
 
           if (oldString && newString) {
             // Try to extract the starting line number from the result output
@@ -2633,6 +2645,11 @@ const MessageRendererBase: React.FC<{
         }
         
         // Fallback to simple display if no line numbers found
+        console.log('[Edit] FALLBACK - no associatedToolUse or missing input',
+          'hasAssociatedToolUse:', !!associatedToolUse,
+          'toolName:', associatedToolUse?.message?.name,
+          'hasInput:', !!associatedToolUse?.message?.input,
+          'contentPreview:', contentStr.substring(0, 100));
         return (
           <div className="message tool-result-message">
             <div className="tool-result standalone edit-output">

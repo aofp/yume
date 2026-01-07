@@ -74,13 +74,17 @@ Must match Claude Code CLI:
 - [x] Multi-file context
 - [x] Subagents (via Claude's Task tool + 5 built-in yurucode agents)
 - [x] Background agents (supported via Claude's Task tool)
-- [x] **Checkpoints/rewind (NOW ENABLED with visual UI)**
+- [x] **Checkpoints/rewind (ENABLED with visual UI)**
 - [x] **Timeline navigator (UNIQUE)**
 - [x] Skills system (supported via Claude)
 - [x] Hooks (9 event types - most comprehensive)
 - [x] MCP integration (full UI for server management)
-- [x] Custom commands (with templates - UNIQUE)
-- [x] 31 themes (best in class)
+- [x] Custom commands (12 defaults with $ARGUMENTS templates - UNIQUE)
+- [x] 30 themes (best in class)
+- [x] **5h + 7-day Anthropic limit tracking (UNIQUE)**
+- [x] **Keyboard-first design (30+ shortcuts)**
+- [x] **Drag & drop (tabs, files)**
+- [x] **Git diff viewer**
 
 ## Competitive Positioning
 
@@ -164,18 +168,25 @@ Note: Tab completion not applicable - yurucode is a chat interface, not a code e
 5. **Checkpoints**: "Time-travel through your changes - only on yurucode"
 6. **Agents**: "5 specialized AI agents built-in"
 7. **Value**: "$9 one-time vs $20-200/mo subscriptions"
-8. **Themes**: "31 themes - make it yours"
+8. **Themes**: "30 themes - make it yours"
+9. **Limits**: "Track your actual Anthropic 5h + 7-day limits"
+10. **Keyboard-first**: "30+ shortcuts - never leave the keyboard"
 
 ### Unique Selling Points (vs ALL Competitors)
 | USP | Details |
 |-----|---------|
+| **5h + 7-day limit tracking** | Only yurucode tracks actual Anthropic subscription limits |
 | Visual checkpoint/timeline | Only yurucode - Cursor/Windsurf don't have this |
 | 5 built-in agents | architect, explorer, implementer, guardian, specialist |
-| Custom commands | Slash commands with $ARGUMENTS templates |
-| 31 themes | Cursor has ~5, Windsurf has ~3 |
-| 9 hook events | Most comprehensive hook system |
-| Auto-compact 85% | No competitor does this |
-| $9 one-time | vs $240-2400/year subscriptions |
+| Custom commands | 12 defaults + slash commands with $ARGUMENTS templates |
+| 30 themes | Cursor has ~5, Windsurf has ~3, Opcode has ~0 |
+| 9 hook events | Most comprehensive hook system (Opcode has 0) |
+| Auto-compact 60%/65% | No competitor does this |
+| Keyboard-first | 30+ shortcuts, bash mode (!/$) |
+| Drag & drop | Tab reordering, file drops |
+| Git diff viewer | Visual diff preview |
+| Crash recovery | Auto-save every 5 min |
+| $9 one-time | vs $240-2400/year subscriptions (Opcode is free but less features) |
 
 ## Success Metrics
 

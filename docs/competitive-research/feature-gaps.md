@@ -50,7 +50,7 @@ These create "wow" moments and build loyalty.
 | Parallel agents visual | See multiple agents working | ✅ AgentsModal + 5 built-in agents |
 | Agent activity timeline | Visual history of agent actions | ✅ **Enabled** |
 | Checkpoint visual UI | Time-travel through changes | ✅ **Enabled** (CheckpointButton + TimelineNavigator) |
-| Theme support | Dark/light/custom themes | ✅ **31 themes** (dark only) |
+| Theme support | Dark/light/custom themes | ✅ **30 themes** (dark only) |
 | Syntax highlighting | In code blocks | ✅ Implemented |
 | Markdown rendering | Pretty message display | ✅ Implemented |
 | Keyboard shortcuts | Power user efficiency | ✅ Full shortcut system |
@@ -228,27 +228,32 @@ These create "wow" moments and build loyalty.
 
 ## Competitive Feature Matrix
 
-| Feature | Claude CLI | Cursor | Windsurf | Aider | Cline | Yurucode |
-|---------|------------|--------|----------|-------|-------|----------|
-| Smooth UI | No | Yes | Yes | N/A | Yes | ✅ Yes |
-| File tree | No | Yes | Yes | No | Partial | ✅ Yes (w/ git) |
-| Visual diff | No | Yes | Yes | No | Partial | ✅ Yes |
-| Cost tracking | Partial | No | No | No | Yes | ✅ Yes (full) |
-| Token display | Partial | No | No | Yes | Yes | ✅ Yes (by model) |
-| Image paste | Partial | Yes | Yes | Yes | Partial | ✅ Yes |
-| Checkpoints | Yes | No | No | No | No | ✅ **Enabled** |
-| Timeline UI | No | No | No | No | No | ✅ **Unique** |
-| MCP | Yes | No | No | No | Yes | ✅ Full UI |
-| Built-in agents | No | No | No | No | No | ✅ **5 agents** |
-| Custom commands | No | No | No | No | No | ✅ **Unique** |
-| Hooks system | Partial | Partial | No | No | No | ✅ **9 events** |
-| Themes | No | ~5 | ~3 | No | No | ✅ **31 themes** |
-| Font customization | No | Yes | No | No | No | ✅ Yes |
-| Subagents | Yes | Yes | Yes | No | No | ✅ Via Claude |
-| Offline mode | No | No | No | Yes | No | ❌ No |
-| Multi-project | Partial | Yes | Yes | Yes | Partial | ✅ Yes |
-| Light mode | No | Yes | Yes | No | No | ❌ No |
-| Command palette | No | Yes | Yes | No | No | ❌ No |
+| Feature | Claude CLI | Cursor | Windsurf | Opcode | Yurucode |
+|---------|------------|--------|----------|--------|----------|
+| Smooth UI | No | Yes | Yes | ? | ✅ Yes |
+| File tree | No | Yes | Yes | Yes | ✅ Yes (w/ git) |
+| Visual diff | No | Yes | Yes | Yes | ✅ Yes |
+| Cost tracking | Partial | No | No | Yes | ✅ Yes (full) |
+| **5h/7d limit tracking** | No | No | No | No | ✅ **Unique** |
+| Token display | Partial | No | No | Partial | ✅ Yes (by model) |
+| Image paste | Partial | Yes | Yes | ? | ✅ Yes |
+| Checkpoints | Yes | No | No | Yes | ✅ **Enabled** |
+| Timeline UI | No | No | No | Yes | ✅ Yes |
+| MCP | Yes | No | No | Yes | ✅ Full UI |
+| Built-in agents | No | No | No | No | ✅ **5 agents** |
+| Custom commands | No | No | No | No | ✅ **12 defaults** |
+| Hooks system | Partial | Partial | No | No | ✅ **9 events** |
+| Themes | No | ~5 | ~3 | No | ✅ **30 themes** |
+| Auto-compaction | No | No | No | No | ✅ **60%/65%** |
+| Crash recovery | No | No | No | No | ✅ **Unique** |
+| Keyboard shortcuts | No | Yes | Yes | No | ✅ **30+** |
+| Drag & drop | No | Yes | Yes | No | ✅ Yes |
+| Font customization | No | Yes | No | No | ✅ Yes |
+| Subagents | Yes | Yes | Yes | Yes | ✅ Via Claude |
+| CLAUDE.md editor | No | No | No | Yes | ❌ No |
+| Multi-project | Partial | Yes | Yes | Yes | ✅ Yes |
+| Light mode | No | Yes | Yes | ? | ❌ No |
+| Command palette | No | Yes | Yes | No | ❌ No |
 
 ---
 
@@ -277,7 +282,7 @@ These create "wow" moments and build loyalty.
 ### Phase 4: Advanced (P2) ✅ MOSTLY COMPLETE
 1. ✅ MCP visual manager
 2. ✅ Keyboard shortcut system
-3. ✅ **31 themes** (dark mode only)
+3. ✅ **30 themes** (dark mode only)
 4. ✅ Font customization
 5. ✅ System prompts
 6. ✅ Smart file mentions (@r, @m)
@@ -296,21 +301,28 @@ Note: Tab completion removed - it's an IDE feature, not applicable to chat inter
 
 ## Quick Wins (January 2026)
 
-### ✅ Already Done (Updated)
+### ✅ Already Done (Updated January 2026)
+- **5h + 7-day Anthropic limit tracking** (UNIQUE - no competitor has this)
 - Token counter (AnalyticsModal)
 - Cost estimate (full breakdown by model)
-- Keyboard shortcuts (full system)
+- **30+ keyboard shortcuts** (keyboard-first design)
+- **Drag & drop** (tab reordering, file drops)
+- **Git diff viewer** (visual diff preview)
 - Window state persistence
-- **31 themes** (major upgrade from 9)
+- **30 themes** (way more than Cursor ~5, Windsurf ~3, Opcode 0)
 - 5 built-in yurucode agents (architect, explorer, implementer, guardian, specialist)
-- Custom commands with templates (global/project)
-- Hooks system (**9 event types**)
+- **12 default custom commands** with templates (global/project)
+- Hooks system (**9 event types** - Opcode has 0)
 - MCP visual manager
-- **Checkpoints ENABLED** (unique vs competitors)
-- **Timeline UI ENABLED** (unique vs competitors)
+- **Checkpoints ENABLED** (Opcode also has this)
+- **Timeline UI ENABLED** (Opcode also has this)
+- **Auto-compaction at 60%/65%** (UNIQUE)
+- **Crash recovery** (auto-save every 5 min - UNIQUE)
 - Font customization (Comic Mono/Neue)
 - System prompts selector
 - Smart file mentions (@r recent, @m modified)
+- Virtualized message list (handles long sessions)
+- Bash mode (!/$) for direct commands
 
 ### 🎯 Remaining Priorities (To Be "100% Best")
 
@@ -333,23 +345,28 @@ Note: Tab completion removed - it's an IDE feature, not applicable to chat inter
 ## Strategic Analysis
 
 ### Yurucode's Unique Advantages (Lean Into These)
-1. **Auto-compaction at 85%** - No competitor does this
-2. **$9 one-time purchase** - Cursor charges $20-200/mo, Windsurf $15-60/mo
-3. **Native Rust performance** - Cursor has memory issues, Windsurf WSL crashes
-4. **Full Claude ecosystem** - MCP, hooks, skills, checkpoints all supported
-5. **Visual checkpoints + timeline** - **UNIQUE** - no competitor has this
-6. **31 themes** - way more than Cursor (~5) or Windsurf (~3)
-7. **5 built-in agents** - architect, explorer, implementer, guardian, specialist - **UNIQUE**
-8. **Custom commands system** - slash commands with templates - **UNIQUE**
-9. **9 hook events** - most comprehensive hook system
-10. **Smart file mentions** - @r recent, @m modified - better UX
-11. **No telemetry** - Privacy advantage
-12. **80.9% SWE-bench** - Claude leads, we're Claude-native
+1. **5h + 7-day Anthropic limit tracking** - **UNIQUE** - Only yurucode tracks actual subscription limits
+2. **Auto-compaction at 60%/65%** - No competitor does this (not Opcode, not Cursor, not Windsurf)
+3. **$9 one-time purchase** - Cursor charges $20-200/mo, Windsurf $15-60/mo, Opcode is free but fewer features
+4. **Native Rust performance** - Cursor has memory issues, Windsurf WSL crashes, Opcode likely Electron
+5. **Full Claude ecosystem** - MCP, hooks, skills, checkpoints all supported
+6. **9 hook events** - Most comprehensive hook system (Opcode has 0)
+7. **30 themes** - Way more than Cursor (~5), Windsurf (~3), or Opcode (0)
+8. **5 built-in agents** - architect, explorer, implementer, guardian, specialist - **UNIQUE** (Opcode doesn't have this)
+9. **12 default custom commands** - Slash commands with $ARGUMENTS templates - **UNIQUE**
+10. **30+ keyboard shortcuts** - Keyboard-first design, bash mode (!/$)
+11. **Crash recovery** - Auto-save every 5 min - **UNIQUE** (Opcode doesn't have this)
+12. **Drag & drop** - Tab reordering, file drops
+13. **Git diff viewer** - Visual diff preview
+14. **Virtualized messages** - Handles long sessions without lag
+15. **No telemetry** - Privacy advantage
+16. **80.9% SWE-bench** - Claude leads, we're Claude-native
 
 ### Competitor Weaknesses to Exploit
 1. **Cursor**: Performance issues since v0.45.9, expensive for heavy users, no checkpoint UI
 2. **Windsurf**: Beta feel, files >300 lines struggle, credit discrepancies, no custom agents
-3. **Both**: Subscriptions cause friction (Cursor June pricing backlash), fewer themes, no command system
+3. **Opcode**: YC-backed but missing: hooks, themes, built-in agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands, 5h/7d limit tracking
+4. **All**: No one tracks actual Anthropic 5h/7d limits except yurucode
 
 ### What NOT to Build
 - Full IDE features (let Claude Code handle it)
@@ -361,21 +378,21 @@ Note: Tab completion removed - it's an IDE feature, not applicable to chat inter
 
 ## Implementation Roadmap
 
-### Phase 1: Quick Wins (1-2 weeks)
-1. [ ] Enable checkpoint/timeline UI (uncomment existing code)
+### Phase 1: Quick Wins ✅ DONE
+1. ✅ Enable checkpoint/timeline UI
 2. [ ] Add light mode theme
 3. [ ] Implement system notifications (Tauri has native support)
 4. [ ] Add command palette (Cmd+K)
 
-### Phase 2: UX Polish (2-4 weeks)
+### Phase 2: UX Polish
 1. [ ] Memories/preferences system
-2. [ ] Improved agent visualization
-3. [ ] Better error states
+2. [ ] CLAUDE.md editor (Opcode has this)
+3. [ ] Improved agent visualization
+4. [ ] Better error states
 
 ### Phase 3: Differentiation (Consider)
-1. [ ] Basic tab completion (Claude API direct calls?)
-2. [ ] Web preview integration
-3. [ ] Voice input support
+1. [ ] Web preview integration
+2. [ ] Voice input support
 
 ---
 

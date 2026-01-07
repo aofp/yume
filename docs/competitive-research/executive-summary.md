@@ -107,18 +107,28 @@ Everything that makes Claude Code great:
 | IME support | Fixed but fragile | Native OS IME |
 
 ### Already Implemented
+- ✅ **5h + 7-day Anthropic limit tracking** (unique - tracks actual subscription limits)
 - ✅ Visual file tree (with git status indicators)
-- ✅ Visual diff preview (DiffViewer component)
-- ✅ Session management (RecentProjectsModal)
+- ✅ Git diff viewer (visual diff preview)
+- ✅ **9-event hook system** (user_prompt_submit, pre/post_tool_use, session_start/end, etc.)
+- ✅ **Drag & drop** (tab reordering, file drops)
+- ✅ **30+ keyboard shortcuts** (keyboard-first design)
+- ✅ **30 themes** (most in class)
+- ✅ **5 built-in agents** (architect, explorer, implementer, guardian, specialist)
+- ✅ **Auto-compaction** at 60%/65% thresholds
+- ✅ **Crash recovery** (auto-save every 5 min)
+- ✅ Session management with tabs
 - ✅ Usage dashboard (full AnalyticsModal)
 - ✅ MCP visual manager (MCPTab)
-- ✅ Keyboard shortcuts system
+- ✅ **Checkpoint + Timeline navigator** (visual git-style UI)
+- ✅ **12 default custom commands** (/code-review, /commit, /pr, etc.)
+- ✅ Virtualized message list (handles long sessions)
+- ✅ Bash mode (!/$) for direct commands
 - ✅ Conversation search
 
 ### Future Enhancements
-- Enable checkpoint timeline (code exists, disabled)
 - Light mode theme
-- Command palette
+- Command palette (Cmd+K)
 - System notifications
 
 ---

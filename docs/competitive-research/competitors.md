@@ -115,6 +115,65 @@
 
 ---
 
+## Direct Claude Code GUI Competitors
+
+### Opcode
+
+**Type**: Claude Code desktop GUI (open source)
+**Price**: Free
+**GitHub**: github.com/winfunc/opcode
+
+**Key Features**:
+- Visual project browser (~/.claude/projects/)
+- Session history with context
+- Custom AI agents with system prompts
+- Background agent execution
+- Usage analytics (cost tracking)
+- MCP server management UI
+- Timeline & checkpoints
+- CLAUDE.md editor
+- Process isolation for agents
+
+**Strengths**:
+- Free/open source
+- CLAUDE.md visual editor
+- Per-agent permission controls
+- No telemetry
+
+**Weaknesses**:
+- ❌ No 5h/7-day Anthropic limit tracking (only cost)
+- ❌ No hook system (0 events vs yurucode's 9)
+- ❌ No themes (yurucode has 30)
+- ❌ No built-in agents (yurucode has 5)
+- ❌ No auto-compaction
+- ❌ No crash recovery
+- ❌ No keyboard-first design
+- ❌ No drag & drop tabs
+- ❌ No custom commands with templates
+- ❌ No virtualized message list
+
+**Yurucode vs Opcode Summary**:
+| Feature | Yurucode | Opcode |
+|---------|----------|--------|
+| 5h + 7d limit tracking | ✅ | ❌ |
+| Hook system | ✅ 9 events | ❌ |
+| Themes | ✅ 30 | ❌ |
+| Built-in agents | ✅ 5 | ❌ |
+| Auto-compaction | ✅ 60%/65% | ❌ |
+| Crash recovery | ✅ | ❌ |
+| Keyboard shortcuts | ✅ 30+ | ❌ |
+| Custom commands | ✅ 12 defaults | ❌ |
+| Drag & drop | ✅ | ❌ |
+| Git diff viewer | ✅ | ✅ |
+| MCP support | ✅ | ✅ |
+| Checkpoints | ✅ | ✅ |
+| CLAUDE.md editor | ❌ | ✅ |
+| Price | $9 one-time | Free |
+
+**Relevance to Yurucode**: Direct competitor. Opcode is Y Combinator backed but technically inferior in almost every way. Yurucode's paid model funds development of superior features.
+
+---
+
 ## CLI Competitors
 
 ### Aider
@@ -264,7 +323,8 @@
 | **Windsurf** | IDE | $15-60/mo | Yes (Cascade) | Yes | Yes (Wave 13) | No (Electron) |
 | **Zed** | IDE | Free | Yes | Yes | No | Yes (Rust) |
 | **Claude Code CLI** | CLI | Pro/Max | Yes (subagents) | No | Yes | Terminal |
-| **Yurucode** | Desktop | $9 one-time | Yes (via Claude) | No | Partial | Yes (Tauri/Rust) |
+| **Yurucode** | Desktop | $9 one-time | Yes (via Claude) | No | Yes (5 agents) | Yes (Tauri/Rust) |
+| **Opcode** | Desktop | Free | Yes | No | Yes | No (Electron?) |
 | **Aider** | CLI | API costs | No | No | No | Terminal |
 | **Cline** | Extension | API costs | Yes | No | No | No (VS Code) |
 | **Copilot** | Extension | $19-39/mo | Yes | Yes | No | No |
@@ -272,23 +332,28 @@
 
 ## Feature Gap Summary (Yurucode vs Leaders)
 
-| Feature | Cursor | Windsurf | Yurucode | Gap? |
-|---------|--------|----------|----------|------|
-| Smooth UI | Issues | Good | ✅ Best (native) | No |
-| Tab completion | ✅ 250 tok/s | ✅ | ❌ (different product category) | N/A - IDE feature |
-| Visual diff | ✅ | ✅ | ✅ | No |
-| Cost tracking | ❌ | Partial | ✅ Full | **Advantage** |
-| Checkpoints | ❌ | ❌ | ✅ **Enabled** | **Unique Advantage** |
-| Auto-compact | ❌ | ❌ | ✅ 85% | **Unique** |
-| MCP support | ❌ | ✅ | ✅ Full UI | No |
-| Themes | ~5 | ~3 | ✅ **31 themes** | **Advantage** |
-| Built-in agents | ❌ | ❌ | ✅ **5 agents** | **Unique** |
-| Custom commands | ❌ | ❌ | ✅ Full | **Unique** |
-| Hooks system | Partial | ❌ | ✅ 9 events | **Advantage** |
-| Light mode | ✅ | ✅ | ❌ | Gap |
-| Memories | ✅ | ✅ | ❌ | Gap |
-| Command palette | ✅ | ✅ | ❌ | Gap |
-| Background agents | ✅ | ✅ | ✅ Via Claude | No |
+| Feature | Cursor | Windsurf | Opcode | Yurucode | Gap? |
+|---------|--------|----------|--------|----------|------|
+| Smooth UI | Issues | Good | ? | ✅ Best (native) | No |
+| Tab completion | ✅ 250 tok/s | ✅ | ❌ | ❌ (different product) | N/A - IDE feature |
+| Visual diff | ✅ | ✅ | ✅ | ✅ | No |
+| Cost tracking | ❌ | Partial | ✅ | ✅ Full | No |
+| **5h/7d limit tracking** | ❌ | ❌ | ❌ | ✅ | **Unique** |
+| Checkpoints | ❌ | ❌ | ✅ | ✅ | No |
+| Auto-compact | ❌ | ❌ | ❌ | ✅ 60%/65% | **Unique** |
+| MCP support | ❌ | ✅ | ✅ | ✅ Full UI | No |
+| Themes | ~5 | ~3 | ❌ | ✅ **30 themes** | **Advantage** |
+| Built-in agents | ❌ | ❌ | ❌ | ✅ **5 agents** | **Unique** |
+| Custom commands | ❌ | ❌ | ❌ | ✅ 12 defaults | **Unique** |
+| Hooks system | Partial | ❌ | ❌ | ✅ 9 events | **Advantage** |
+| Crash recovery | ❌ | ❌ | ❌ | ✅ | **Unique** |
+| Keyboard shortcuts | ✅ | ✅ | ❌ | ✅ 30+ | No |
+| Drag & drop | ✅ | ✅ | ❌ | ✅ | No |
+| Light mode | ✅ | ✅ | ? | ❌ | Gap |
+| Memories | ✅ | ✅ | ❌ | ❌ | Gap |
+| Command palette | ✅ | ✅ | ❌ | ❌ | Gap |
+| CLAUDE.md editor | ❌ | ❌ | ✅ | ❌ | Gap |
+| Background agents | ✅ | ✅ | ✅ | ✅ Via Claude | No |
 
 ## Key Insights (Updated January 2026)
 
@@ -296,22 +361,30 @@
 
 2. **Tab completion is an IDE feature**: Cursor/Windsurf are code editors with inline completion. Yurucode is a chat interface - different product category. Not a real gap.
 
-3. **Subscriptions cause friction**: Cursor's June pricing changes caused backlash. Yurucode's $9 one-time is a major differentiator.
+3. **Subscriptions cause friction**: Cursor's June pricing changes caused backlash. Yurucode's $9 one-time is a major differentiator vs Cursor/Windsurf. Opcode is free but has fewer features.
 
 4. **Context memory matters**: Both Cursor and Windsurf added "Memories" - persisting preferences across sessions. Gap for yurucode.
 
-5. **Checkpoint/timeline is NOW LIVE**: ✅ Yurucode has visual checkpoint UI enabled - no competitor has this. **Unique advantage**.
+5. **Checkpoint/timeline**: ✅ Both yurucode and Opcode have this. No longer unique, but still differentiator vs IDEs.
 
-6. **Auto-compaction is unique**: No competitor auto-compacts at 85%. This is a genuine yurucode innovation.
+6. **Auto-compaction is unique**: No competitor (including Opcode) auto-compacts at 60%/65%. Genuine yurucode innovation.
 
-7. **31 themes vs ~5**: Yurucode has massively more theming options than any competitor.
+7. **30 themes vs ~5**: Yurucode has massively more theming options than any competitor. Opcode has none.
 
-8. **5 built-in agents**: Yurucode agents (architect, explorer, implementer, guardian, specialist) are unique - no competitor has this.
+8. **5 built-in agents**: Yurucode agents (architect, explorer, implementer, guardian, specialist) are unique - Opcode doesn't have this.
 
-9. **Custom commands system**: Slash commands with templates - competitors don't have this.
+9. **Custom commands system**: 12 defaults + slash commands with templates - Opcode doesn't have this.
 
-10. **Hooks system (9 events)**: More comprehensive than any competitor's hook/extension system.
+10. **Hooks system (9 events)**: More comprehensive than any competitor's. Opcode has 0 events.
 
-11. **Market consolidation**: OpenAI tried to buy Windsurf, Google grabbed the founders. Cursor at $29B. Small players getting squeezed.
+11. **5h + 7-day limit tracking**: **UNIQUE** - Only yurucode tracks actual Anthropic subscription limits. Opcode only does cost tracking.
 
-12. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.
+12. **Keyboard-first design**: 30+ shortcuts, bash mode (!/$). Opcode lacks keyboard focus.
+
+13. **Crash recovery**: Auto-save every 5 min. Opcode doesn't have this.
+
+14. **Market consolidation**: OpenAI tried to buy Windsurf, Google grabbed the founders. Cursor at $29B. Small players getting squeezed.
+
+15. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.
+
+16. **Opcode is YC-backed but feature-poor**: They have funding but yurucode is technically superior in almost every category except CLAUDE.md editor.

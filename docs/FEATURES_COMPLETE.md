@@ -859,17 +859,24 @@ use windows::Win32::*;
 
 | Feature | Yurucode | Opcode | Claudia | Continue |
 |---------|----------|--------|---------|----------|
-| Auto-compact at 97% | ✅ | ❌ | ❌ | ❌ |
+| **5h + 7d limit tracking** | ✅ | ❌ | ❌ | ❌ |
+| Auto-compact at 60%/65% | ✅ | ❌ | ❌ | ❌ |
 | Multi-session tabs | ✅ | ✅ | ❌ | ✅ |
 | Token tracking | ✅ | ✅ | ⚠️ | ✅ |
 | Cost calculation | ✅ | ✅ | ❌ | ❌ |
 | Crash recovery | ✅ | ❌ | ❌ | ❌ |
-| Hook system | ✅ | ❌ | ❌ | ⚠️ |
-| MCP support | ✅ | ❌ | ❌ | ❌ |
+| Hook system (9 events) | ✅ | ❌ | ❌ | ⚠️ |
+| MCP support | ✅ | ✅ | ❌ | ❌ |
 | Virtual scrolling | ✅ | ⚠️ | ❌ | ✅ |
-| Diff viewer | ✅ | ✅ | ❌ | ✅ |
-| Database storage | ✅ | ⚠️ | ❌ | ✅ |
-| No telemetry | ✅ | ❌ | ❌ | ❌ |
+| Git diff viewer | ✅ | ✅ | ❌ | ✅ |
+| 30 themes | ✅ | ❌ | ❌ | ❌ |
+| 5 built-in agents | ✅ | ❌ | ❌ | ❌ |
+| 12 custom commands | ✅ | ❌ | ❌ | ❌ |
+| 30+ keyboard shortcuts | ✅ | ❌ | ❌ | ✅ |
+| Drag & drop tabs | ✅ | ❌ | ❌ | ❌ |
+| Checkpoints + timeline | ✅ | ✅ | ❌ | ❌ |
+| CLAUDE.md editor | ❌ | ✅ | ❌ | ❌ |
+| No telemetry | ✅ | ✅ | ❌ | ❌ |
 | Embedded server | ✅ | ❌ | ❌ | ❌ |
 | Platform support | 3 | 3 | 2 | 3 |
 
@@ -887,12 +894,22 @@ use windows::Win32::*;
 
 ## Conclusion
 
-Yurucode offers a comprehensive feature set that surpasses competitors in key areas:
+Yurucode offers a comprehensive feature set that surpasses competitors (including YC-backed Opcode) in key areas:
 
-1. **Unique Features**: Auto-compaction, embedded server, crash recovery
-2. **Performance**: Virtual scrolling, bounded buffers, lazy loading
+1. **Unique Features**:
+   - 5h + 7-day Anthropic limit tracking (no competitor has this)
+   - Auto-compaction at 60%/65%
+   - Crash recovery (auto-save every 5 min)
+   - 5 built-in agents (architect, explorer, implementer, guardian, specialist)
+   - 12 default custom commands with templates
+   - 9-event hook system
+2. **Performance**: Virtual scrolling, bounded buffers, lazy loading, native Tauri/Rust
 3. **Privacy**: No telemetry, local-only operation
-4. **Extensibility**: Hooks, MCP support, plugin-ready architecture
-5. **Polish**: OLED theme, native window controls, keyboard shortcuts
+4. **Extensibility**: Hooks (9 events), MCP support, custom commands
+5. **Polish**: 30 themes, 30+ keyboard shortcuts, drag & drop, git diff viewer
+
+**Yurucode vs Opcode**: Opcode is YC-backed but yurucode is technically superior in almost every category:
+- Yurucode has: 5h/7d limit tracking, hooks, themes, agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands
+- Opcode has: CLAUDE.md editor (yurucode doesn't have this yet)
 
 The combination of advanced features with a focus on performance and privacy makes Yurucode the most capable Claude GUI available.

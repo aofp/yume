@@ -1,6 +1,6 @@
 .session-tabs {
   background: var(--background-color);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.15);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   height: 32px; /* Fixed height - no wrapping */
   display: flex;
   align-items: center;
@@ -22,6 +22,10 @@
   padding: 0 3px;
   /* Make tabs not draggable */
   -webkit-app-region: no-drag;
+}
+
+.tabs-scroll-container {
+  margin-right:1px;
 }
 
 .tabs-scrollable {
@@ -52,7 +56,7 @@
   flex-shrink: 0;
   position: relative;
   top: -2px;
-  margin-left: 2px;
+  margin-left: 1px;
   /* Make tabs not draggable */
   -webkit-app-region: no-drag;
 }
