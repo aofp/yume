@@ -1442,10 +1442,14 @@ textarea.context-full {
 .attachments-container {
   display: flex;
   gap: 4px;
-  padding: 0;
+  padding: 4px;
   background: var(--background-color, #000000);
-  margin-bottom: 4px;
   flex-wrap: wrap;
+  position: absolute;
+  bottom: 100%;
+  left: 0;
+  right: 0;
+  border-bottom: 1px solid var(--fg-10);
 }
 
 /* removed animation */
@@ -1454,11 +1458,11 @@ textarea.context-full {
   position: relative;
   display: flex;
   align-items: center;
-  gap: 6px;
-  padding: 4px 8px;
+  gap: 4px;
+  padding: 2px 6px;
   background: var(--background-color, #000000);
   border: 1px solid var(--fg-15);
-  border-radius: 4px;
+  border-radius: 3px;
   transition: all 0.2s;
   user-select: none;
 }
@@ -1470,8 +1474,8 @@ textarea.context-full {
 
 
 .attachment-text {
-  font-size: 11px;
-  color: var(--fg-90);
+  font-size: 9px;
+  color: var(--fg-70);
   font-family: var(--font-mono);
   opacity: 1;
 }
@@ -1479,7 +1483,7 @@ textarea.context-full {
 .attachment-remove {
   background: transparent;
   border: none;
-  color: var(--fg-60);
+  color: rgba(var(--negative-rgb), 0.6);
   padding: 0;
   display: flex;
   align-items: center;
@@ -1491,7 +1495,7 @@ textarea.context-full {
 }
 
 .attachment-remove:hover {
-  color: rgba(var(--accent-rgb), 0.9);
+  color: rgba(var(--negative-rgb), 1);
 }
 
 /* Message attachment preview (in chat bubbles) */
@@ -1527,64 +1531,6 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   z-index: 10000;
-}
-
-/* Confirm Dialog */
-.confirm-dialog {
-  background: var(--background-color);
-  border: 1px solid var(--fg-15);
-  border-radius: 8px;
-  padding: 16px 20px;
-  text-align: center;
-  min-width: 200px;
-}
-
-.confirm-dialog p {
-  margin: 0 0 16px 0;
-  color: var(--fg-70);
-  font-size: 13px;
-}
-
-.confirm-buttons {
-  display: flex;
-  gap: 8px;
-  justify-content: center;
-}
-
-.confirm-buttons button {
-  padding: 6px 16px;
-  border-radius: 4px;
-  border: 1px solid var(--fg-15);
-  background: transparent;
-  color: var(--fg-70);
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.15s ease;
-}
-
-.confirm-buttons button:hover {
-  background: var(--fg-05);
-  color: var(--foreground-color);
-}
-
-.confirm-buttons button.confirm-danger {
-  background: var(--negative-color);
-  border-color: var(--negative-color);
-  color: var(--background-color);
-}
-
-.confirm-buttons button.confirm-danger:hover {
-  filter: brightness(1.1);
-}
-
-.confirm-buttons button.selected {
-  outline: 2px solid var(--accent-color, #6366f1);
-  outline-offset: 2px;
-}
-
-.confirm-buttons button.confirm-danger.selected {
-  outline: 2px solid var(--accent-color, #6366f1);
-  outline-offset: 2px;
 }
 
 /* Help Modal (Keyboard Shortcuts) */
@@ -2767,6 +2713,22 @@ textarea.context-full {
 }
 
 .git-lines-deleted {
+  color: var(--negative-color);
+}
+
+/* Total git line stats next to git button */
+.git-total-stats {
+  font-size: 8px;
+  display: flex;
+  gap: 4px;
+  margin-left: 4px;
+}
+
+.git-total-added {
+  color: var(--positive-color);
+}
+
+.git-total-deleted {
   color: var(--negative-color);
 }
 

@@ -599,7 +599,10 @@
   bottom: 3px;
   right: 3px;
   z-index: 100;
-  pointer-events: none;
+}
+
+.welcome-usage-container .btn-stats-container {
+  pointer-events: auto;
 }
 
 .welcome-usage-container .btn-stats-limit-fill {

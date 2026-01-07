@@ -67,7 +67,7 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.4);
-  cursor: pointer;
+  cursor: default;
   padding: 4px;
   display: flex;
   align-items: center;
@@ -105,7 +105,7 @@
   border-radius: 4px;
   font-size: 12px;
   font-weight: 500;
-  cursor: pointer;
+  cursor: default;
   transition: background 0.2s, color 0.2s, border-color 0.2s;
   border: none;
 }
@@ -147,4 +147,11 @@
 .confirm-modal-btn:focus-visible {
   outline: 2px solid rgba(153, 187, 255, 0.5);
   outline-offset: 2px;
+}
+
+/* Key hint styling */
+.confirm-modal-key-hint {
+  opacity: 0.5;
+  font-size: 11px;
+  margin-left: 4px;
 }

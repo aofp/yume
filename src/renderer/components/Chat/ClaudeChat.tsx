@@ -44,6 +44,7 @@ import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete'
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { Watermark } from '../Watermark/Watermark';
 import { ActivityIndicator, Activity } from '../ActivityIndicator/ActivityIndicator';
+import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 // PERFORMANCE: Lazy load modals and heavy components - only loaded when user opens them
 const RecentConversationsModal = React.lazy(() => import('../RecentConversationsModal').then(m => ({ default: m.RecentConversationsModal })));
 const KeyboardShortcuts = React.lazy(() => import('../KeyboardShortcuts/KeyboardShortcuts').then(m => ({ default: m.KeyboardShortcuts })));
@@ -4132,6 +4133,17 @@ export const ClaudeChat: React.FC = () => {
             >
               <IconGitBranch size={12} stroke={1.5} />
             </button>
+            {/* Git total line stats */}
+            {showGitPanel && Object.keys(gitLineStats).length > 0 && (() => {
+              const totalAdded = Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0);
+              const totalDeleted = Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0);
+              return (
+                <span className="git-total-stats">
+                  <span className="git-total-added">+{totalAdded}</span>
+                  <span className="git-total-deleted">-{totalDeleted}</span>
+                </span>
+              );
+            })()}
           </div>
 
           {/* Right - stats and clear */}
@@ -4488,42 +4500,28 @@ export const ClaudeChat: React.FC = () => {
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
 
       {/* Clear context confirmation dialog */}
-      {showClearConfirm && (
-        <div className="modal-overlay" onClick={() => setShowClearConfirm(false)}>
-          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
-            <p>clear context?</p>
-            <div className="confirm-buttons">
-              <button
-                className={confirmDialogSelection === 0 ? 'selected' : ''}
-                onClick={() => setShowClearConfirm(false)}
-              >no</button>
-              <button
-                className={`confirm-danger ${confirmDialogSelection === 1 ? 'selected' : ''}`}
-                onClick={confirmClearContext}
-              >clear</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showClearConfirm}
+        title="clear context"
+        message="this will clear all messages in this session. this cannot be undone."
+        confirmText="clear"
+        cancelText="no"
+        isDangerous={true}
+        onConfirm={confirmClearContext}
+        onCancel={() => setShowClearConfirm(false)}
+      />
 
       {/* Compact context confirmation dialog */}
-      {showCompactConfirm && (
-        <div className="modal-overlay" onClick={() => setShowCompactConfirm(false)}>
-          <div className="confirm-dialog" onClick={e => e.stopPropagation()}>
-            <p>compact context?</p>
-            <div className="confirm-buttons">
-              <button
-                className={confirmDialogSelection === 0 ? 'selected' : ''}
-                onClick={() => setShowCompactConfirm(false)}
-              >no</button>
-              <button
-                className={`confirm-danger ${confirmDialogSelection === 1 ? 'selected' : ''}`}
-                onClick={confirmCompactContext}
-              >compact</button>
-            </div>
-          </div>
-        </div>
-      )}
+      <ConfirmModal
+        isOpen={showCompactConfirm}
+        title="compact context"
+        message="this will summarize the conversation to reduce token usage."
+        confirmText="compact"
+        cancelText="no"
+        isDangerous={true}
+        onConfirm={confirmCompactContext}
+        onCancel={() => setShowCompactConfirm(false)}
+      />
 
       {/* Resume conversations modal */}
       <RecentConversationsModal

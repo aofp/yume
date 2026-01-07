@@ -472,8 +472,10 @@ export const SessionTabs: React.FC = () => {
                 // Add ripple effect immediately on mousedown
                 const target = e.currentTarget;
                 const rect = target.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
+                const zoomLevel = parseFloat(document.body.style.zoom || '1');
+                // Adjust for zoom: rect is in screen coords, clientX/Y need to be scaled
+                const x = (e.clientX - rect.left) / zoomLevel;
+                const y = (e.clientY - rect.top) / zoomLevel;
                 
                 // Create ripple element directly in DOM to avoid React re-render interruption
                 const ripple = document.createElement('div');
@@ -869,9 +871,10 @@ export const SessionTabs: React.FC = () => {
               if (e.button === 0) { // Left click only
                 const target = e.currentTarget;
                 const rect = target.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                
+                const zoomLevel = parseFloat(document.body.style.zoom || '1');
+                const x = (e.clientX - rect.left) / zoomLevel;
+                const y = (e.clientY - rect.top) / zoomLevel;
+
                 // Create ripple element directly in DOM to avoid React re-render interruption
                 const ripple = document.createElement('div');
                 ripple.style.cssText = `
@@ -965,9 +968,10 @@ export const SessionTabs: React.FC = () => {
                 if (e.button === 0) { // Left click only
                   const target = e.currentTarget;
                   const rect = target.getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const y = e.clientY - rect.top;
-                  
+                  const zoomLevel = parseFloat(document.body.style.zoom || '1');
+                  const x = (e.clientX - rect.left) / zoomLevel;
+                  const y = (e.clientY - rect.top) / zoomLevel;
+
                   // Create ripple element directly in DOM to avoid React re-render interruption
                   const ripple = document.createElement('div');
                   ripple.style.cssText = `

@@ -2266,12 +2266,143 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
         res.end();
       }
     } else {
-      // Non-Windows implementation
-      res.json({ sessions: [] });
+      // macOS/Linux implementation
+      const { readdir: readdirAsync, stat: statAsync, readFile: readFileAsync } = await import('fs/promises');
+      const claudeDir = join(homedir(), '.claude', 'projects');
+      const projectPath = join(claudeDir, projectName);
+
+      try {
+        if (!existsSync(projectPath)) {
+          console.log('Project path not found:', projectPath);
+          res.write('data: {"done": true, "sessions": []}\n\n');
+          res.end();
+          return;
+        }
+
+        // Get all .jsonl files
+        const files = await readdirAsync(projectPath);
+        const sessionFiles = files.filter(f => f.endsWith('.jsonl'));
+
+        // Get stats for each file and sort by modification time
+        const filesWithStats = await Promise.all(
+          sessionFiles.map(async (filename) => {
+            try {
+              const filePath = join(projectPath, filename);
+              const stats = await statAsync(filePath);
+              return {
+                filename,
+                timestamp: stats.mtimeMs
+              };
+            } catch (e) {
+              return null;
+            }
+          })
+        );
+
+        const validFiles = filesWithStats
+          .filter(f => f !== null)
+          .sort((a, b) => b.timestamp - a.timestamp)
+          .slice(0, 50);
+
+        if (validFiles.length === 0) {
+          console.log('No sessions found in:', projectPath);
+          res.write('data: {"done": true, "sessions": []}\n\n');
+          res.end();
+          return;
+        }
+
+        // Process each file
+        for (let i = 0; i < validFiles.length; i++) {
+          const { filename, timestamp } = validFiles[i];
+          try {
+            const filePath = join(projectPath, filename);
+            const content = await readFileAsync(filePath, 'utf8');
+            const lines = content.trim().split('\n');
+
+            const sessionId = filename.replace('.jsonl', '');
+            let summary = 'Untitled session';
+            let title = null;
+
+            // Check last line for title/metadata
+            if (lines.length > 0) {
+              try {
+                const lastData = JSON.parse(lines[lines.length - 1]);
+                if (lastData.type === 'title' && lastData.title) {
+                  title = lastData.title;
+                } else if (lastData.type === 'metadata' && lastData.title) {
+                  title = lastData.title;
+                } else if (lastData.title && !lastData.role) {
+                  title = lastData.title;
+                }
+              } catch (e) {}
+            }
+
+            // Check first line if no title yet
+            if (!title && lines.length > 0) {
+              try {
+                const data = JSON.parse(lines[0]);
+                if (data.summary) {
+                  summary = data.summary;
+                  title = data.summary;
+                }
+                if (data.title) {
+                  title = data.title;
+                }
+                if (!title && data.role === 'user' && data.content) {
+                  if (typeof data.content === 'string') {
+                    summary = data.content.substring(0, 100);
+                    title = summary;
+                  } else if (Array.isArray(data.content)) {
+                    const textBlock = data.content.find(c => c.type === 'text');
+                    if (textBlock && textBlock.text) {
+                      summary = textBlock.text.substring(0, 100);
+                      title = summary;
+                    }
+                  }
+                }
+                if (data.type === 'summary' && data.summary) {
+                  title = data.summary;
+                  summary = data.summary;
+                }
+              } catch (e) {}
+            }
+
+            const session = {
+              id: sessionId,
+              summary: summary,
+              title: title,
+              timestamp: timestamp,
+              path: filename,
+              messageCount: Math.min(lines.length, 50)
+            };
+
+            res.write(`data: ${JSON.stringify({ session, index: i, total: validFiles.length })}\n\n`);
+            console.log(`  📄 Sent session ${i + 1}/${validFiles.length}: ${sessionId}`);
+
+          } catch (e) {
+            console.log(`Error processing ${filename}:`, e.message);
+          }
+        }
+
+        res.write('data: {"done": true}\n\n');
+        console.log(`✅ Streamed all sessions`);
+        res.end();
+
+      } catch (e) {
+        console.error('Error loading sessions:', e.message);
+        res.write('data: {"error": true, "message": "' + e.message + '"}\n\n');
+        res.end();
+      }
     }
   } catch (error) {
     console.error('Error loading project sessions:', error);
-    res.status(500).json({ error: 'Failed to load sessions' });
+    // Headers already sent, so just end the stream
+    try {
+      res.write(`data: {"error": true, "message": "${error.message}"}\n\n`);
+      res.end();
+    } catch (e) {
+      // Response already ended
+    }
   }
 });
 

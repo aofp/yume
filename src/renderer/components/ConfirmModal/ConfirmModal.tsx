@@ -23,17 +23,24 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   onConfirm,
   onCancel
 }) => {
-  // Handle escape key
+  // Handle keyboard shortcuts
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
+
+      if (e.key === 'Escape') {
+        e.stopPropagation(); // Prevent stopping streaming
         onCancel();
+      } else if (e.key === 'Enter') {
+        e.preventDefault();
+        e.stopPropagation();
+        onConfirm();
       }
     };
-    
-    document.addEventListener('keydown', handleEscape);
-    return () => document.removeEventListener('keydown', handleEscape);
-  }, [isOpen, onCancel]);
+
+    document.addEventListener('keydown', handleKeyDown, true); // Use capture phase
+    return () => document.removeEventListener('keydown', handleKeyDown, true);
+  }, [isOpen, onCancel, onConfirm]);
   
   if (!isOpen) return null;
 
@@ -66,18 +73,18 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
         </div>
         
         <div className="confirm-modal-footer">
-          <button 
-            className="confirm-modal-btn confirm-modal-btn-cancel" 
+          <button
+            className="confirm-modal-btn confirm-modal-btn-cancel"
             onClick={onCancel}
           >
-            {cancelText}
+            {cancelText} <span className="confirm-modal-key-hint">(esc)</span>
           </button>
-          <button 
+          <button
             className={`confirm-modal-btn confirm-modal-btn-confirm ${isDangerous ? 'dangerous' : ''}`}
             onClick={handleConfirm}
             autoFocus
           >
-            {confirmText}
+            {confirmText} <span className="confirm-modal-key-hint">(enter)</span>
           </button>
         </div>
       </div>

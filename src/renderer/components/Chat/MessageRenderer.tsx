@@ -3093,12 +3093,31 @@ const MessageRendererBase: React.FC<{
       // Also check explicit success subtype or success field
       // Additionally, check result content for success patterns (like edit completions)
       // IMPORTANT: looksLikeSuccess should OVERRIDE is_error since Claude sometimes sets it incorrectly
-      const resultText = message.result || '';
-      const looksLikeSuccess = resultText.includes('has been updated') ||
-                               resultText.includes('successfully') ||
-                               resultText.includes('Applied') ||
-                               resultText.includes('created') ||
-                               resultText.includes('→');
+      let resultTextForCheck = message.result || '';
+
+      // Parse JSON content blocks if present to extract actual text for success check
+      if (resultTextForCheck && typeof resultTextForCheck === 'string' && resultTextForCheck.startsWith('[')) {
+        try {
+          const parsed = JSON.parse(resultTextForCheck);
+          if (Array.isArray(parsed)) {
+            const textContent = parsed
+              .filter(block => block.type === 'text')
+              .map(block => block.text)
+              .join('\n');
+            if (textContent) {
+              resultTextForCheck = textContent;
+            }
+          }
+        } catch (e) {
+          // Not JSON, use as-is
+        }
+      }
+
+      const looksLikeSuccess = resultTextForCheck.includes('has been updated') ||
+                               resultTextForCheck.includes('successfully') ||
+                               resultTextForCheck.includes('Applied') ||
+                               resultTextForCheck.includes('created') ||
+                               resultTextForCheck.includes('→');
       // FIX: Use !message.is_error (falsy check) instead of === false (strict equality)
       // This handles undefined/null/false all as success
       const isSuccess = !message.is_error ||
@@ -3156,7 +3175,7 @@ const MessageRendererBase: React.FC<{
         
         // Only show result text if there's no assistant message with text content
         let resultText = message.result || '';
-        
+
         // Parse JSON content blocks if present
         if (resultText && typeof resultText === 'string' && resultText.startsWith('[')) {
           try {
@@ -3176,10 +3195,29 @@ const MessageRendererBase: React.FC<{
             // Not JSON or parsing failed, use as-is
           }
         }
-        
+
+        // Also check if any assistant message in the session has the same content
+        // This handles async race conditions where assistant message arrives after result
+        const resultTextNormalized = resultText.trim();
+        const hasDuplicateAssistantContent = resultTextNormalized && sessionMessages.some(msg => {
+          if (msg.type !== 'assistant' || !msg.message?.content) return false;
+          const content = msg.message.content;
+          if (typeof content === 'string') {
+            return content.trim() === resultTextNormalized;
+          } else if (Array.isArray(content)) {
+            const textContent = content
+              .filter(block => block.type === 'text')
+              .map(block => block.text)
+              .join('\n')
+              .trim();
+            return textContent === resultTextNormalized;
+          }
+          return false;
+        });
+
         // Always show compact results, otherwise only show if no assistant message
         const isCompactResult = message.wrapper_compact || resultText.includes('Conversation compacted');
-        const showResultText = resultText && (isCompactResult || !hasAssistantMessage);
+        const showResultText = resultText && (isCompactResult || (!hasAssistantMessage && !hasDuplicateAssistantContent));
 
         // Render beautiful compact summary card for compaction results
         if (isCompactResult && message.wrapper_compact) {

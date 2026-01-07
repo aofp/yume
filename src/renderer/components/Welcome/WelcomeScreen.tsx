@@ -1,10 +1,29 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown } from '@tabler/icons-react';
+import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartDots, IconMessage, IconArtboardFilled, IconSend, IconTool, IconBrain, IconCoin } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { platformAPI as tauriApi } from '../../services/tauriApi';
 import { invoke } from '@tauri-apps/api/core';
 import './WelcomeScreen.css';
+import '../Chat/ClaudeChat.css'; // for stats modal styles
+
+// format reset time as relative time string
+const formatResetTime = (resetAt: string | undefined): string => {
+  if (!resetAt) return '';
+  const resetDate = new Date(resetAt);
+  const now = new Date();
+  const diffMs = resetDate.getTime() - now.getTime();
+  if (diffMs <= 0) return 'now';
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
+  if (diffHours > 24) {
+    const days = Math.floor(diffHours / 24);
+    const hrs = diffHours % 24;
+    return hrs > 0 ? `${days}d ${hrs}h` : `${days}d`;
+  }
+  if (diffHours > 0) return `${diffHours}h ${diffMins}m`;
+  return `${diffMins}m`;
+};
 
 interface RecentProject {
   path: string;
@@ -17,6 +36,7 @@ export const WelcomeScreen: React.FC = () => {
   const { createSession } = useClaudeCodeStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [showStatsModal, setShowStatsModal] = useState(false);
   const [usageLimits, setUsageLimits] = useState<{
     five_hour?: { utilization: number; resets_at: string };
     seven_day?: { utilization: number; resets_at: string };
@@ -300,8 +320,12 @@ export const WelcomeScreen: React.FC = () => {
       {/* Usage limit bars - bottom right like chat */}
       <div className="welcome-usage-container">
         <div className="btn-stats-container">
-          <button className="btn-stats welcome-stats-hidden">
-            0.00%
+          <button
+            className="btn-stats"
+            onClick={() => setShowStatsModal(true)}
+            title="context usage"
+          >
+            usage
           </button>
           {/* 5h limit bar */}
           <div className="btn-stats-limit-bar five-hour">
@@ -325,6 +349,130 @@ export const WelcomeScreen: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Stats Modal */}
+      {showStatsModal && (
+        <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
+          <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
+            <div className="stats-header">
+              <h3>
+                <IconChartDots size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                context usage
+              </h3>
+              <button className="stats-close" onClick={() => setShowStatsModal(false)}>
+                <IconX size={16} />
+              </button>
+            </div>
+            <div className="stats-content" style={{ opacity: 0.5, pointerEvents: 'none' }}>
+              {/* Current tab section - disabled since no active tab */}
+              <div className="stats-column" style={{ gridColumn: 'span 2' }}>
+                <div className="stats-section">
+                  <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
+                    <div className="usage-bar-label">
+                      <span>0 / 200k</span>
+                      <span>0.00%</span>
+                    </div>
+                    <div className="usage-bar">
+                      <div className="usage-bar-fill" style={{ width: '0%' }} />
+                    </div>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconMessage size={14} />
+                      <span className="stat-name">actual tokens</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">0 (in: 0, out: 0)</span>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconArtboardFilled size={14} />
+                      <span className="stat-name">cache tokens</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">0 (read: 0, new: 0)</span>
+                  </div>
+                </div>
+              </div>
+              <div className="stats-column">
+                <div className="stats-section">
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconSend size={14} />
+                      <span className="stat-name">messages</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">0</span>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconTool size={14} />
+                      <span className="stat-name">tool uses</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">0</span>
+                  </div>
+                </div>
+              </div>
+              <div className="stats-column">
+                <div className="stats-section">
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconBrain size={14} />
+                      <span className="stat-name">opus %</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">0%</span>
+                  </div>
+                  <div className="stat-row">
+                    <div className="stat-keys">
+                      <IconCoin size={14} />
+                      <span className="stat-name">total</span>
+                    </div>
+                    <span className="stat-dots"></span>
+                    <span className="stat-desc">$0.00</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div className="stats-footer">
+              {/* Session Limit (5-hour) */}
+              <div className="stats-footer-row">
+                <span className="stats-footer-label"><span className="stats-footer-limit-name">5h limit</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '...'}</span>
+                <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) : '...'}%</span>
+              </div>
+              <div className="usage-bar" style={{ marginBottom: '8px' }}>
+                <div
+                  className="usage-bar-fill"
+                  style={{
+                    width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
+                    background: (usageLimits?.five_hour?.utilization ?? 0) >= 90
+                      ? 'var(--negative-color, #ff6b6b)'
+                      : 'var(--accent-color)'
+                  }}
+                />
+              </div>
+
+              {/* Weekly Limit (7-day) */}
+              <div className="stats-footer-row">
+                <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">7d limit</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '...'}</span>
+                <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) : '...'}%</span>
+              </div>
+              <div className="usage-bar">
+                <div
+                  className="usage-bar-fill"
+                  style={{
+                    width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                    background: (usageLimits?.seven_day?.utilization ?? 0) >= 90
+                      ? 'var(--negative-color, #ff6b6b)'
+                      : 'var(--accent-color)'
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Help Modal - using shared component */}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
