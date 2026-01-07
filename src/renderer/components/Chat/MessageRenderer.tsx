@@ -3118,12 +3118,22 @@ const MessageRendererBase: React.FC<{
                                resultTextForCheck.includes('Applied') ||
                                resultTextForCheck.includes('created') ||
                                resultTextForCheck.includes('→');
+
+      // Check if there's actual error content - if is_error is true but no error message, treat as success
+      // Claude CLI sometimes sets is_error:true even when everything completed fine
+      // Check result field for actual error indicators
+      const hasActualErrorContent = resultTextForCheck.toLowerCase().includes('error') ||
+                                    resultTextForCheck.toLowerCase().includes('failed') ||
+                                    resultTextForCheck.toLowerCase().includes('fatal');
+
       // FIX: Use !message.is_error (falsy check) instead of === false (strict equality)
       // This handles undefined/null/false all as success
+      // Also treat as success if is_error is true but no actual error content exists
       const isSuccess = !message.is_error ||
                        message.subtype === 'success' ||
                        message.success === true ||
-                       looksLikeSuccess;  // looksLikeSuccess overrides is_error
+                       looksLikeSuccess ||
+                       (message.is_error && !hasActualErrorContent);  // is_error but no actual error = success
       
       if (isSuccess) {
         // Debug log to see what fields we have

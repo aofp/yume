@@ -249,19 +249,24 @@ pub async fn get_claude_usage_limits() -> Result<ClaudeUsageLimits, String> {
         return Err(format!("Usage API returned {}: {}", status, body));
     }
 
-    let api_response: UsageApiResponse = response
-        .json()
-        .await
-        .map_err(|e| format!("Failed to parse usage API response: {}", e))?;
+    // Get raw text first to log it
+    let raw_body = response.text().await
+        .map_err(|e| format!("Failed to read usage API response: {}", e))?;
+    info!("Usage API raw response: {}", raw_body);
 
-    Ok(ClaudeUsageLimits {
+    let api_response: UsageApiResponse = serde_json::from_str(&raw_body)
+        .map_err(|e| format!("Failed to parse usage API response: {} - raw: {}", e, raw_body))?;
+
+    let result = ClaudeUsageLimits {
         five_hour: api_response.five_hour,
         seven_day: api_response.seven_day,
         seven_day_opus: api_response.seven_day_opus,
         seven_day_sonnet: api_response.seven_day_sonnet,
         subscription_type,
         rate_limit_tier,
-    })
+    };
+    info!("Usage API parsed result: {:?}", result);
+    Ok(result)
 }
 
 /// Get Claude credentials from platform-specific storage

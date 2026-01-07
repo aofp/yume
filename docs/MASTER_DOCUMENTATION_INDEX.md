@@ -1,8 +1,9 @@
 # Yurucode Master Documentation Index
 
-**Created:** January 3, 2025  
-**Total Documentation:** 7 comprehensive guides, ~50,000+ words  
-**Coverage:** 100% of codebase analyzed and documented
+**Created:** January 3, 2025
+**Updated:** January 7, 2026
+**Total Documentation:** 6 comprehensive guides
+**Coverage:** Core codebase documented
 
 ---
 
@@ -25,11 +26,11 @@
 - **Architecture Decision Records**: 4 key decisions documented
 
 #### Unique Insights:
-- Embedded server as 6,840-line Rust string constant
+- Compiled server binaries (no Node.js dependency for end users)
 - Dynamic port allocation algorithm (20000-65000 range)
 - ServerProcessGuard with automatic cleanup via Drop trait
-- Bounded buffers preventing memory leaks (10MB limit)
-- 97% compaction threshold scientifically chosen
+- Bounded buffers preventing memory leaks
+- Auto-compaction threshold
 
 ---
 
@@ -54,7 +55,7 @@
 
 #### Exclusive Features:
 - Only GUI with automatic compaction at 97%
-- Embedded server (no external dependencies)
+- Compiled server binaries (no Node.js dependency for end users)
 - Crash recovery with session restoration
 - True token cost tracking (accurate to cent)
 - Zero telemetry/tracking
@@ -238,41 +239,25 @@
 
 #### Unique Selling Points:
 1. Only GUI with 97% auto-compaction
-2. Embedded server architecture
+2. Compiled server binary architecture
 3. Crash recovery system
 4. Zero telemetry
 5. Production-ready status
 
 ---
 
-### 7. [MASTER_DOCUMENTATION_INDEX.md](MASTER_DOCUMENTATION_INDEX.md) (This File)
-**Purpose:** Complete documentation overview with deep analysis
+### 6. [MASTER_DOCUMENTATION_INDEX.md](MASTER_DOCUMENTATION_INDEX.md) (This File)
+**Purpose:** Documentation overview and navigation
 
 ---
 
-## 📊 Documentation Statistics
+## Documentation Overview
 
-### Code Coverage Analysis
-
-| Component | Files | Lines | Documentation Coverage |
-|-----------|-------|-------|----------------------|
-| Rust Backend | 24 modules | ~15,000 | 100% |
-| React Frontend | 50+ components | ~12,000 | 100% |
-| Node.js Server | 1 embedded | 6,840 | 100% |
-| Configuration | 10+ files | ~2,000 | 100% |
-| **Total** | **85+ files** | **~35,840** | **100%** |
-
-### Documentation Metrics
-
-| Document | Words | Code Examples | Diagrams | Tables |
-|----------|-------|--------------|----------|--------|
-| Architecture | 8,500 | 45 | 8 | 5 |
-| Features | 9,000 | 52 | 3 | 8 |
-| API Reference | 7,500 | 38 | 0 | 4 |
-| Production | 6,500 | 65 | 2 | 6 |
-| Troubleshooting | 10,000 | 78 | 0 | 3 |
-| README | 4,000 | 25 | 4 | 7 |
-| **Total** | **45,500** | **303** | **17** | **33** |
+### Core Components Documented
+- Rust Backend modules
+- React Frontend components
+- Node.js Compiled Server Binaries
+- Configuration files
 
 ---
 
@@ -280,12 +265,12 @@
 
 ### Architectural Innovations
 
-1. **Embedded Server Pattern**
-   - Eliminates deployment complexity
-   - Single binary distribution
-   - No dependency management
-   - Faster startup times
-   - Simplified updates
+1. **Compiled Server Binaries**
+   - Eliminates Node.js dependency for end users
+   - Platform-specific binaries (macOS ARM64/x64, Windows, Linux)
+   - Hidden source code for distribution
+   - Fallback .cjs files for development
+   - Simplified deployment
 
 2. **Three-Process Isolation**
    - Security through separation
@@ -387,71 +372,46 @@ if usage >= 0.97 {
 5. Create new session with summary
 6. Seamlessly continue conversation
 
-#### Embedded Server Architecture
+#### Compiled Server Binary Architecture
 
-**The Challenge**: External servers add complexity
-**Our Solution**: Embed entire server in Rust binary
+**The Challenge**: External servers add complexity and require Node.js
+**Our Solution**: Compile server to platform-specific binaries using @yao-pkg/pkg
 
-```rust
-pub const EMBEDDED_SERVER: &str = r###"
-// 6,840 lines of Node.js code
-// Entire server as string constant
-// Written to temp file at runtime
-// Executed as child process
-"###;
-```
+Server binaries are stored in `src-tauri/resources/` for each platform:
+- `server-macos-arm64` / `server-macos-x64` for macOS
+- `server-windows-x64.exe` for Windows
+- `server-linux-x64` for Linux
 
 **Benefits**:
-- Single file distribution
-- No npm install required
-- Version consistency
-- Simplified deployment
-- Reduced attack surface
+- No Node.js required for end users
+- Hidden source code
+- Platform-specific optimization
+- Fallback .cjs files for development
+- Simplified distribution
 
 #### Crash Recovery Implementation
 
 **Components**:
-1. State snapshots every 5 minutes
+1. State snapshots
 2. Window position tracking
 3. Session state preservation
 4. Unsaved work backup
 5. Automatic restoration
 
-**Recovery Process**:
-```rust
-if let Some(snapshot) = check_for_recovery() {
-    restore_window_position(snapshot.window_state);
-    restore_session_state(snapshot.sessions);
-    restore_unsaved_work(snapshot.unsaved);
-    notify_user_of_recovery();
-}
-```
-
 ---
 
-## 🎯 Documentation Completeness
+## Documentation Completeness
 
 ### Areas Covered
-- ✅ System architecture (100%)
-- ✅ All features documented
-- ✅ Complete API reference
-- ✅ Production deployment
-- ✅ Troubleshooting guide
-- ✅ Security analysis
-- ✅ Performance optimization
-- ✅ Platform specifics
-- ✅ Development workflow
-- ✅ Testing strategies
-
-### Documentation Quality
-- **Clarity**: Technical yet accessible
-- **Depth**: Implementation-level detail
-- **Examples**: 300+ code snippets
-- **Visuals**: ASCII diagrams, tables
-- **Organization**: Logical structure
-- **Cross-references**: Linked documents
-- **Searchability**: Clear headings
-- **Maintenance**: Update procedures
+- System architecture
+- Feature documentation
+- API reference
+- Production deployment
+- Troubleshooting guide
+- Security analysis
+- Performance optimization
+- Platform specifics
+- Development workflow
 
 ---
 
@@ -506,60 +466,6 @@ if let Some(snapshot) = check_for_recovery() {
 
 ---
 
-## 🎖️ Documentation Achievements
+## Conclusion
 
-1. **100% Code Coverage**: Every module documented
-2. **45,500+ Words**: Comprehensive coverage
-3. **303 Code Examples**: Practical implementations
-4. **Zero Gaps**: All features explained
-5. **Production Ready**: Deployment fully documented
-6. **Problem Solving**: 100+ troubleshooting solutions
-7. **API Complete**: Every endpoint documented
-8. **Future Proof**: Maintenance procedures included
-
----
-
-## 🔮 Future Documentation Plans
-
-### Planned Additions
-- Video tutorials
-- Interactive demos
-- API playground
-- Architecture animations
-- Performance dashboards
-- Security audit reports
-- User testimonials
-- Case studies
-
-### Continuous Improvement
-- User feedback integration
-- Common issue documentation
-- Performance baseline updates
-- Security best practices
-- Platform-specific guides
-- Integration examples
-- Plugin development
-- Advanced workflows
-
----
-
-## 📝 Conclusion
-
-This documentation suite represents one of the most comprehensive technical documentation efforts for a desktop application. With over 45,000 words, 300+ code examples, and 100% code coverage, Yurucode's documentation sets a new standard for technical documentation completeness.
-
-Every aspect of the application - from the three-process architecture to the 97% auto-compaction algorithm - has been documented with implementation-level detail. This documentation serves as both a user guide and a technical reference, ensuring that developers, users, and contributors have all the information they need.
-
-**Documentation by the numbers:**
-- 7 comprehensive guides
-- 45,500+ total words
-- 303 code examples
-- 17 architectural diagrams
-- 33 reference tables
-- 100% code coverage
-- 0 documentation gaps
-
-**Yurucode: Where Documentation Matches Code Quality**
-
----
-
-*This master index serves as the definitive guide to all Yurucode documentation. For questions or clarifications, refer to the specific guides listed above or contact the development team.*
+This documentation suite covers the core aspects of Yurucode - architecture, features, API reference, deployment, and troubleshooting. For questions or clarifications, refer to the specific guides listed above.

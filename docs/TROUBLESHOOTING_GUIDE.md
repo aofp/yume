@@ -1,7 +1,7 @@
 # Yurucode Complete Troubleshooting Guide
 
-**Version:** 1.0.0  
-**Last Updated:** January 3, 2025  
+**Version:** 0.1.0
+**Last Updated:** January 2025
 **Platforms:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -168,14 +168,14 @@ sudo apt install libgtk-3-0             # GTK3
 
 **Step 1: Check logs**
 ```bash
-# macOS
-cat ~/Library/Application\ Support/yurucode/logs/main.log
+# macOS server logs
+cat ~/Library/Logs/yurucode/server.log
 
-# Windows
-type %APPDATA%\yurucode\logs\main.log
+# Windows server logs
+type %LOCALAPPDATA%\yurucode\logs\server.log
 
-# Linux
-cat ~/.config/yurucode/logs/main.log
+# Linux server logs
+cat ~/.yurucode/logs/server.log
 ```
 
 **Step 2: Run with debug mode**
@@ -199,9 +199,9 @@ export YURUCODE_DEBUG=true
 # See if process is running
 ps aux | grep yurucode
 
-# Check port usage
-netstat -an | grep -E "60946|35000|20000"
-lsof -i :60946  # macOS/Linux
+# Check port usage (ports are dynamically allocated in 20000-65000 range)
+netstat -an | grep -E "20[0-9]{3}|[3-6][0-9]{4}"
+lsof -i :20000-65000  # macOS/Linux
 ```
 
 ### 2.2 Window Doesn't Appear
@@ -403,6 +403,13 @@ console.log('Connected:', store.isConnected);
 console.log('Server port:', store.serverPort);
 ```
 
+**Note:** The server runs as a compiled binary on each platform:
+- macOS: `server-macos-arm64` (Apple Silicon) or `server-macos-x64` (Intel)
+- Windows: `server-windows-x64.exe`
+- Linux: `server-linux-x64`
+
+Fallback .cjs files exist for backwards compatibility when binaries fail.
+
 **2. Test WebSocket connection**:
 ```javascript
 // Test WebSocket manually
@@ -456,9 +463,9 @@ mv ~/.config/yurucode/hooks.json ~/.config/yurucode/hooks.json.bak
 # Monitor network interruptions
 ping -t 127.0.0.1 | grep -E "timeout|unreachable"
 
-# Check for port conflicts
-lsof -i :60946
-netstat -an | grep 60946
+# Check for port conflicts (dynamic port range 20000-65000)
+lsof -i :20000-65000
+netstat -an | grep -E "20[0-9]{3}|[3-6][0-9]{4}"
 ```
 
 **2. Resource limits**:
@@ -692,12 +699,11 @@ pgrep -f "EMBEDDED_SERVER"
 
 **2. Port availability**:
 ```bash
-# Check if ports are in use
-lsof -i :60946
-lsof -i :35000-45000
+# Check if ports are in use (dynamic range 20000-65000)
+lsof -i :20000-65000
 
-# Kill conflicting processes
-kill -9 $(lsof -t -i :60946)
+# Kill conflicting processes on a specific port
+kill -9 $(lsof -t -i :PORT_NUMBER)
 ```
 
 **3. Firewall issues**:
@@ -709,9 +715,8 @@ sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /Applications/Yurucod
 # Windows
 netsh advfirewall firewall add rule name="Yurucode" dir=in action=allow program="C:\Program Files\Yurucode\yurucode.exe"
 
-# Linux
-sudo ufw allow 60946/tcp
-sudo ufw allow 35000:45000/tcp
+# Linux (allow dynamic port range)
+sudo ufw allow 20000:65000/tcp
 ```
 
 ### 7.2 Connection Keeps Dropping
@@ -1108,6 +1113,7 @@ procmon.exe /Quiet /Minimized /BackingFile trace.pml
 # macOS
 rm -rf ~/Library/Application\ Support/yurucode
 rm -rf ~/Library/Caches/yurucode
+rm -rf ~/Library/Logs/yurucode
 rm -rf ~/Library/Preferences/be.yuru.yurucode.plist
 
 # Windows
@@ -1119,6 +1125,7 @@ reg delete HKCU\Software\yurucode /f
 rm -rf ~/.config/yurucode
 rm -rf ~/.cache/yurucode
 rm -rf ~/.local/share/yurucode
+rm -rf ~/.yurucode
 ```
 
 ### Health Check Script
@@ -1128,13 +1135,13 @@ rm -rf ~/.local/share/yurucode
 echo "=== Yurucode Health Check ==="
 
 # Check process
-pgrep yurucode > /dev/null && echo "✓ Process running" || echo "✗ Process not running"
+pgrep yurucode > /dev/null && echo "Process running" || echo "Process not running"
 
-# Check ports
-lsof -i :60946 > /dev/null 2>&1 && echo "✓ UI port open" || echo "✗ UI port closed"
+# Check ports (dynamic allocation in 20000-65000 range)
+lsof -i :20000-65000 > /dev/null 2>&1 && echo "Port(s) open" || echo "No ports open"
 
 # Check Claude
-which claude > /dev/null && echo "✓ Claude found" || echo "✗ Claude not found"
+which claude > /dev/null && echo "Claude found" || echo "Claude not found"
 
 # Check disk space
 df -h . | awk 'NR==2 {print "Disk usage: " $5}'
@@ -1185,13 +1192,21 @@ cd yurucode-debug
 uname -a > system.txt
 yurucode --version >> system.txt
 
-# Collect logs
-cp ~/Library/Application\ Support/yurucode/logs/* .
+# Collect logs (macOS)
+cp ~/Library/Logs/yurucode/server.log . 2>/dev/null
+
+# Collect logs (Linux - run this instead on Linux)
+# cp ~/.yurucode/logs/server.log . 2>/dev/null
 
 # Create archive
 cd ..
 tar -czf yurucode-debug.tar.gz yurucode-debug/
 echo "Debug bundle created: yurucode-debug.tar.gz"
+```
+
+For Windows, collect logs from:
+```powershell
+copy %LOCALAPPDATA%\yurucode\logs\server.log yurucode-debug\
 ```
 
 ---

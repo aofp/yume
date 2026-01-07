@@ -316,7 +316,7 @@ console.log('══════════════════════�
 // Claude CLI path - try multiple locations
 const { execSync, spawn } = require("child_process");
 const fs = require("fs");
-const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync } = fs;
+const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } = fs;
 const { dirname, join, isAbsolute } = require("path");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
@@ -1120,7 +1120,6 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     // Create the directory if it doesn't exist
     try {
       if (!existsSync(titleGenDir)) {
-        const { mkdirSync } = require('fs');
         mkdirSync(titleGenDir, { recursive: true });
         console.log('📁 Created title generation directory:', titleGenDir);
       }
@@ -3133,18 +3132,85 @@ function removePidFile() {
   }
 }
 
-// Clean up on exit
-process.on('SIGINT', () => {
-  console.log('\n🛑 Server shutting down...');
-  removePidFile();
-  process.exit(0);
-});
+// Graceful shutdown function
+let isShuttingDown = false;
+function gracefulShutdown(signal) {
+  if (isShuttingDown) return;
+  isShuttingDown = true;
 
-process.on('SIGTERM', () => {
-  console.log('\n🛑 Server terminated');
+  console.log(`\n🛑 ${signal} received - graceful shutdown starting...`);
+
+  // 1. Kill all active Claude processes
+  const activeCount = activeProcesses.size;
+  if (activeCount > 0) {
+    console.log(`🔪 Killing ${activeCount} active Claude process(es)...`);
+    for (const [sessionId, proc] of activeProcesses.entries()) {
+      try {
+        proc.kill('SIGTERM');
+        console.log(`   Killed process for session ${sessionId}`);
+      } catch (e) {
+        // Process may already be dead
+      }
+    }
+    activeProcesses.clear();
+    activeProcessStartTimes.clear();
+  }
+
+  // 2. Kill active bash processes
+  const bashCount = activeBashProcesses.size;
+  if (bashCount > 0) {
+    console.log(`🔪 Killing ${bashCount} active bash process(es)...`);
+    for (const [sessionId, proc] of activeBashProcesses.entries()) {
+      try {
+        proc.kill('SIGTERM');
+      } catch (e) {}
+    }
+    activeBashProcesses.clear();
+  }
+
+  // 3. Clear all health check intervals and timeouts
+  for (const [sessionId, interval] of streamHealthChecks.entries()) {
+    clearInterval(interval);
+  }
+  streamHealthChecks.clear();
+
+  for (const [sessionId, timeout] of streamTimeouts.entries()) {
+    clearTimeout(timeout);
+  }
+  streamTimeouts.clear();
+
+  // 4. Clear pending streaming false timers
+  for (const [sessionId, timerData] of pendingStreamingFalseTimers.entries()) {
+    if (timerData.timer) clearTimeout(timerData.timer);
+  }
+  pendingStreamingFalseTimers.clear();
+
+  // 5. Disconnect all Socket.IO clients
+  io.disconnectSockets(true);
+
+  // 6. Close HTTP server
+  httpServer.close(() => {
+    console.log('✅ HTTP server closed');
+  });
+
+  // 7. Remove PID file
   removePidFile();
-  process.exit(0);
-});
+
+  // 8. Clear session data
+  sessions.clear();
+  lastAssistantMessageIds.clear();
+  allAssistantMessageIds.clear();
+  stoppedSessions.clear();
+
+  console.log('✅ Graceful shutdown complete');
+
+  // Give a moment for cleanup, then exit
+  setTimeout(() => process.exit(0), 100);
+}
+
+// Clean up on exit
+process.on('SIGINT', () => gracefulShutdown('SIGINT'));
+process.on('SIGTERM', () => gracefulShutdown('SIGTERM'));
 
 process.on('exit', () => {
   removePidFile();
@@ -3158,8 +3224,8 @@ process.on('uncaughtException', (error) => {
 
 process.on('unhandledRejection', (reason, promise) => {
   console.error('💥 Unhandled rejection at:', promise, 'reason:', reason);
-  removePidFile();
-  process.exit(1);
+  // Don't exit on unhandled rejections - just log them
+  // This prevents spurious crashes from network issues
 });
 
 // Socket.IO connection handling - EXACTLY LIKE WINDOWS
@@ -6513,7 +6579,6 @@ httpServer.listen(PORT, () => {
   if (existsSync(projectsDir)) {
     console.log('✅ Claude projects directory exists');
     try {
-      const { readdirSync } = require('fs');
       const projects = readdirSync(projectsDir);
       console.log(`📊 Found ${projects.length} project directory(s)`);
       if (projects.length > 0 && platform() === 'win32') {

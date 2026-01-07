@@ -1,7 +1,7 @@
 # Yurucode Project Status
 
-**Date:** January 3, 2025  
-**Version:** 0.1.0 (Pre-Release)  
+**Date:** January 7, 2026
+**Version:** 0.1.0 (Pre-Release)
 **Status:** ALPHA - Production Hardening Required
 
 ## Executive Summary
@@ -20,15 +20,15 @@ Yurucode is a sophisticated GUI for Claude CLI with intelligent context manageme
 
 ### ⚠️ Critical Issues
 1. **Memory leaks** - Process cleanup issues, unbounded buffers
-2. **Security gaps** - CSP disabled, no code signing
-3. **No error boundaries** - UI crashes on component errors
+2. **Security gaps** - No code signing (CSP now enabled)
+3. ~~**No error boundaries**~~ - Error boundaries implemented
 4. **Missing monitoring** - No crash reporting or telemetry
 5. **Platform issues** - WSL edge cases, macOS notarization
 
 ### 📊 Code Quality Metrics
-- **Total Lines of Code:** ~15,000
-- **Console.log statements:** 10+ files (needs cleanup)
-- **Unsafe Rust blocks:** 13 instances
+- **Total Lines of Code:** ~51,000 (39k TypeScript/TSX + 12k Rust)
+- **Console.log statements:** 41 files, 523 occurrences (needs cleanup)
+- **Unsafe Rust blocks:** 16 occurrences in 2 files
 - **Missing error handling:** 15+ locations
 - **Test coverage:** < 5% (needs improvement)
 
@@ -36,17 +36,17 @@ Yurucode is a sophisticated GUI for Claude CLI with intelligent context manageme
 
 ### Three-Process Design
 1. **Tauri Main** (Rust) - Window management, native APIs
-2. **Node.js Server** (Embedded in logged_server.rs) - Claude CLI control
+2. **Node.js Server** (Compiled binaries in `src-tauri/resources/`) - Claude CLI control
 3. **React Frontend** - UI with Zustand state management
 
-### Key Innovation: Embedded Server
-The Node.js server is embedded as a string constant in Rust code, eliminating external dependencies and simplifying deployment.
+### Key Innovation: Compiled Server Binaries
+The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for each platform, eliminating Node.js dependency for end users and hiding source code.
 
 ### Unique Features vs Competition
 | Feature | Yurucode | Opcode | Claudia |
 |---------|----------|--------|---------|
 | Auto-compact | ✅ 97% | ❌ | ❌ Manual |
-| Embedded server | ✅ | ❌ | ❌ |
+| Compiled server | ✅ | ❌ | ❌ |
 | Token accuracy | ✅ Fixed | ✅ | ❓ |
 | Performance | ✅ Optimized | ⭕ Standard | ⭕ Standard |
 
@@ -116,10 +116,10 @@ The Node.js server is embedded as a string constant in Rust code, eliminating ex
 ## Recommendations
 
 ### Immediate Actions (This Week)
-1. ✅ Fix critical memory leaks
+1. Fix critical memory leaks
 2. ✅ Implement error boundaries
-3. ✅ Remove all console.log statements
-4. ✅ Set up crash reporting
+3. Remove console.log statements (523 remaining)
+4. Set up crash reporting
 
 ### Pre-Launch Requirements
 1. Complete all items in TODO.md "Critical Blockers"
@@ -151,7 +151,7 @@ The Node.js server is embedded as a string constant in Rust code, eliminating ex
 
 Yurucode has strong technical foundations and a unique value proposition with auto-compact at 97%. However, it requires 4-6 weeks of production hardening before commercial release. The primary risks are technical (memory, security) rather than market-related.
 
-**Recommendation:** Proceed with production hardening sprint, targeting end-of-January 2025 release with "Beta" designation for first 3 months.
+**Recommendation:** Proceed with production hardening sprint, targeting Q1 2026 release with "Beta" designation for first 3 months.
 
 ---
 

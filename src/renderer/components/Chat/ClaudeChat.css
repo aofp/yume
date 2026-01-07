@@ -1305,6 +1305,10 @@ textarea.context-full {
   text-align: center;
 }
 
+.btn-stats:hover {
+  font-weight: bolder;
+}
+
 .btn-stats-container {
   position: relative;
   display: inline-block;
@@ -1445,7 +1449,7 @@ textarea.context-full {
   padding: 4px;
   background: var(--background-color, #000000);
   flex-wrap: wrap;
-  border-bottom: 1px solid var(--fg-10);
+  border-top: 1px solid var(--fg-10);
 }
 
 /* removed animation */
@@ -1892,7 +1896,7 @@ textarea.context-full {
 
 .usage-bar {
   height: 2px;
-  background: var(--fg-10);
+  background: rgba(255, 255, 255, 0.2);
   border-radius: 1px;
   overflow: hidden;
 }

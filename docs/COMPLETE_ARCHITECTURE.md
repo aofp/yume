@@ -1,7 +1,7 @@
 # Yurucode Complete Architecture Documentation
 
-**Version:** 1.0.0  
-**Last Updated:** January 3, 2025  
+**Version:** 1.1.0
+**Last Updated:** January 7, 2026
 **Status:** Production Ready
 
 ## Table of Contents
@@ -36,7 +36,7 @@ Yurucode employs a sophisticated three-process architecture that ensures separat
                          │ IPC (Tauri Commands)
 ┌────────────────────────▼───────────────────────────────────────┐
 │                     PROCESS 2: REACT UI                         │
-│                    (Frontend - Port 60946)                      │
+│                    (Frontend - Vite Dev Server)                 │
 │                                                                  │
 │  • User Interface          • State Management (Zustand)         │
 │  • WebSocket Client        • Session Tabs                       │
@@ -46,7 +46,7 @@ Yurucode employs a sophisticated three-process architecture that ensures separat
                          │ WebSocket (Socket.IO)
 ┌────────────────────────▼───────────────────────────────────────┐
 │                  PROCESS 3: NODE.JS SERVER                      │
-│              (Embedded - Dynamic Port 20000-65000)              │
+│          (Compiled Binary - Dynamic Port 20000-65000)           │
 │                                                                  │
 │  • Claude CLI Spawning     • Stream Processing                  │
 │  • Message Routing         • Session Management                 │
@@ -67,7 +67,7 @@ Yurucode employs a sophisticated three-process architecture that ensures separat
 
 ### 1.2 Key Architectural Decisions
 
-1. **Embedded Server Strategy**: Node.js server code is embedded as a Rust constant, eliminating external dependencies
+1. **Compiled Server Binaries**: Node.js server is compiled to platform-specific binaries using @yao-pkg/pkg, eliminating Node.js dependency for end users
 2. **Dynamic Port Allocation**: Prevents conflicts by allocating ports dynamically (20000-65000 range)
 3. **Process Isolation**: Each process runs independently with clear boundaries
 4. **Lazy Reconnection**: Sessions reconnect only when accessed, saving resources
@@ -92,31 +92,44 @@ claude/mod.rs           // Claude manager and process control
 claude_binary.rs        // Binary detection and validation
 claude_session.rs       // Session state management
 claude_spawner.rs       // Process spawning and IPC
+agents.rs               // Agent management
 
 // Server Management
-logged_server.rs        // Embedded Node.js server (6840 lines!)
-port_manager.rs         // Dynamic port allocation
+logged_server.rs        // Server process management (spawns compiled binaries)
+port_manager.rs         // Dynamic port allocation (20000-65000 range)
 
 // State & Storage
 state/mod.rs            // Application state management
-db/mod.rs               // SQLite database operations
+db/mod.rs               // SQLite database (sessions, messages, analytics)
 config.rs               // Production configuration
 
+// Commands (src-tauri/src/commands/)
+commands/mod.rs         // Main command handlers (file ops, agents, etc.)
+commands/claude_commands.rs    // Claude session spawning
+commands/claude_info.rs        // Claude CLI info retrieval
+commands/claude_detector.rs    // Claude CLI detection
+commands/database.rs           // Database operations
+commands/hooks.rs              // Hook execution
+commands/compaction.rs         // Compaction triggers
+commands/mcp.rs                // MCP server management
+commands/custom_commands.rs    // Custom command utilities
+
 // Advanced Features
-compaction/mod.rs       // Auto-compaction at 97% context
+compaction/mod.rs       // Auto-compaction at 60%/65% context thresholds
 hooks/mod.rs            // Hook system for customization
 mcp/mod.rs              // Model Context Protocol support
 crash_recovery.rs       // Session recovery after crashes
 
 // Utilities
-stream_parser.rs        // JSON stream parsing
+stream_parser.rs        // JSON stream parsing with token accumulation
 websocket/mod.rs        // WebSocket server implementation
-process/mod.rs          // Process registry and management
+process/mod.rs          // Process utilities
+process/registry.rs     // Process registry and management
 ```
 
 #### Critical Components:
 
-**1. ServerProcessGuard (logged_server.rs:34-102)**
+**1. ServerProcessGuard (logged_server.rs)**
 ```rust
 struct ServerProcessGuard {
     child: Mutex<Child>,
@@ -126,37 +139,53 @@ struct ServerProcessGuard {
     shutdown_flag: AtomicBool,
 }
 
+impl ServerProcessGuard {
+    fn new(child: Child) -> Self { ... }
+    fn kill(&self) -> std::io::Result<()> { ... }
+    fn force_kill(pid: u32) { ... }  // Platform-specific
+    fn add_stdout_line(&self, line: String) { ... }
+    fn add_stderr_line(&self, line: String) { ... }
+}
+
 impl Drop for ServerProcessGuard {
     fn drop(&mut self) {
         // Automatic cleanup on drop
-        info!("ServerProcessGuard dropping for PID: {}", self.pid);
         let _ = self.kill();
     }
 }
 ```
 - Ensures process cleanup even on panic
-- Bounded buffers prevent memory leaks
+- Bounded buffers (1000 lines max) prevent memory leaks
 - Atomic shutdown flags for thread safety
+- Platform-specific force kill (taskkill on Windows, kill -9 on Unix)
 
 **2. Port Management (port_manager.rs)**
 ```rust
-pub fn find_available_port() -> Option<u16> {
-    let mut rng = rand::thread_rng();
-    let mut attempts = 0;
-    
-    while attempts < 100 {
-        let port = rng.gen_range(20000..65000);
-        if is_port_available(port) {
-            return Some(port);
-        }
-        attempts += 1;
-    }
-    None
+// Port holding to prevent TOCTOU race conditions
+pub struct HeldPort {
+    pub port: u16,
+    listener: TcpListener,
 }
+
+pub fn find_and_hold_port() -> Option<HeldPort> {
+    // 1. Try cached port from last run (instant startup)
+    // 2. Try 100 random ports in 20000-65000 range
+    // 3. Fall back to sequential search from random starting point
+    // 4. Use fallback ports (30001, 30002, 40001, 50001, 3001)
+}
+
+pub fn find_available_port() -> Option<u16> {
+    // Same algorithm but without holding
+}
+
+// Port cache stored at:
+// - macOS/Linux: ~/.config/yurucode/last_port.txt
+// - Windows: %APPDATA%\yurucode\last_port.txt
 ```
-- Dynamic allocation prevents conflicts
-- Wide range (20000-65000) for reliability
-- Fallback mechanism for edge cases
+- **Port Caching**: Persists last working port to disk for instant startup on subsequent launches
+- **TOCTOU Protection**: HeldPort keeps listener bound until server is ready
+- **Dynamic Allocation**: Wide range (20000-65000) prevents conflicts
+- **Multi-stage Fallback**: Cached -> Random -> Sequential -> Predefined ports
 
 ### 2.2 Frontend Architecture (React/TypeScript)
 
@@ -166,20 +195,26 @@ pub fn find_available_port() -> Option<u16> {
 
 ```
 App.minimal.tsx                    // Root component
-├── TitleBar.tsx                   // Custom window controls
+├── TitleBar.tsx                   // Custom window title bar
+├── WindowControls.tsx             // Window minimize/maximize/close
 ├── SessionTabs.tsx                // Tab management
 │   └── ClaudeChat.tsx             // Main chat interface
-│       ├── MessageRenderer.tsx    // Message display
+│       ├── MessageRenderer.tsx    // Message display with markdown
 │       ├── DiffViewer.tsx         // Code diff visualization
-│       └── VirtualizedMessageList // Performance optimization
-├── ModelSelector.tsx              // Model selection
-├── ConnectionStatus.tsx          // Server connection status
-├── ErrorBoundary.tsx              // Error recovery
-└── Various Modals/
-    ├── SettingsModal.tsx         // Configuration
-    ├── AgentsModal.tsx           // Agent management
-    ├── ProjectsModal.tsx         // Project browser
-    └── AboutModal.tsx            // Application info
+│       └── VirtualizedMessageList.tsx // Performance optimization
+├── ModelSelector/ModelSelector.tsx // Model selection
+├── ConnectionStatus/ConnectionStatus.tsx // Server connection status
+├── common/ErrorBoundary.tsx       // Error recovery
+├── ClaudeNotDetected/             // Claude CLI detection failure UI
+└── Modals (lazy-loaded)/
+    ├── Settings/SettingsModalTabbed.tsx  // Configuration tabs
+    ├── AgentsModal/AgentsModal.tsx       // Agent management
+    ├── ProjectsModal/ProjectsModal.tsx   // Project browser
+    ├── RecentProjectsModal/              // Recent projects
+    ├── Analytics/AnalyticsModal.tsx      // Usage analytics
+    ├── About/AboutModal.tsx              // Application info
+    ├── Upgrade/UpgradeModal.tsx          // Upgrade prompts
+    └── KeyboardShortcuts/                // Keyboard shortcuts help
 ```
 
 #### State Management (Zustand):
@@ -187,55 +222,104 @@ App.minimal.tsx                    // Root component
 **Location**: `src/renderer/stores/claudeCodeStore.ts`
 
 ```typescript
-interface ClaudeCodeState {
-  // Session Management
-  sessions: Map<string, SessionState>
-  activeSessionId: string | null
-  
-  // UI State
-  tabs: TabState[]
-  activeTabId: string | null
-  
-  // Server State
-  isConnected: boolean
-  serverPort: number
-  
-  // Settings
-  settings: AppSettings
-  
-  // Performance
-  metrics: PerformanceMetrics
+interface ClaudeCodeStore {
+  // Sessions
+  sessions: Session[];
+  currentSessionId: string | null;
+  persistedSessionId: string | null;
+  sessionMappings: Record<string, any>;
+
+  // Model
+  selectedModel: string;
+
+  // UI Customization
+  monoFont: string;
+  sansFont: string;
+  backgroundOpacity: number;
+  globalWatermarkImage: string | null;
+
+  // Tab Persistence
+  rememberTabs: boolean;
+  savedTabs: string[];
+
+  // Menu Visibility
+  showProjectsMenu: boolean;
+  showAgentsMenu: boolean;
+  showAnalyticsMenu: boolean;
+
+  // Agents
+  agents: Agent[];
+  currentAgentId: string | null;
+
+  // Actions (partial list)
+  createSession: (name?: string, directory?: string) => Promise<string>;
+  sendMessage: (content: string, bashMode?: boolean) => Promise<void>;
+  interruptSession: (sessionId?: string) => Promise<void>;
+  // ... many more actions
+}
+
+interface Session {
+  id: string;
+  name: string;
+  status: 'pending' | 'active' | 'paused' | 'completed' | 'error';
+  messages: SDKMessage[];
+  workingDirectory?: string;
+  claudeSessionId?: string;
+  analytics?: SessionAnalytics;
+  compactionState?: CompactionState;
+  todos?: TodoItem[];
+  // ... additional fields
 }
 ```
 
 Key Features:
-- Centralized state management
-- Persistence to localStorage
-- Optimistic updates
-- Computed values with selectors
+- Centralized state management with Zustand persist middleware
+- Debounced localStorage writes to prevent UI freezes
+- Session-level analytics tracking
+- Compaction state per session
+- Agent management
 
-### 2.3 Embedded Server Architecture
+### 2.3 Compiled Server Architecture
 
-**Location**: `src-tauri/src/logged_server.rs`
+**Location**: `src-tauri/resources/` (binaries), `src-tauri/src/logged_server.rs` (process management)
 
-The Node.js server is embedded as a 6840-line Rust string constant:
+The Node.js server is distributed as compiled binaries using @yao-pkg/pkg, with .cjs fallback files for development and backwards compatibility:
+
+**Compiled Binaries:**
+- `server-macos-arm64` - macOS Apple Silicon
+- `server-macos-x64` - macOS Intel
+- `server-windows-x64.exe` - Windows x64
+- `server-linux-x64` - Linux x64
+
+**Fallback .cjs Files:**
+- `server-claude-macos.cjs`
+- `server-claude-windows.cjs`
+- `server-claude-linux.cjs`
 
 ```rust
-pub const EMBEDDED_SERVER: &str = r###"
-const express = require('express');
-const { Server } = require('socket.io');
-const { spawn } = require('child_process');
-// ... 6800+ lines of Node.js code
-"###;
+// Configuration in logged_server.rs
+pub const YURUCODE_SHOW_CONSOLE: bool = false;  // Debug flag
+
+// Global state
+static SERVER_PROCESS: Mutex<Option<Arc<ServerProcessGuard>>> = ...;
+static SERVER_PORT: Mutex<Option<u16>> = ...;
+static SERVER_RUNNING: AtomicBool = ...;
+
+const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024; // 10MB
 ```
+
+**Build Process:**
+1. Source .cjs files are bundled with esbuild
+2. Bundled output is compiled to binaries with pkg
+3. Binaries are copied to resources folder for distribution
 
 Server Responsibilities:
 1. **Process Management**: Spawns and controls Claude CLI
 2. **Stream Processing**: Parses stream-json output
-3. **Message Routing**: Routes messages between UI and Claude
+3. **Message Routing**: Routes messages between UI and Claude via Socket.IO
 4. **Session Management**: Maintains session state
-5. **Token Counting**: Accurate token tracking
-6. **Buffer Management**: Prevents memory overflow
+5. **Token Counting**: Accurate token tracking from session files
+6. **Buffer Management**: Bounded 10MB buffers prevent memory overflow
 
 ## 3. Backend Architecture (Rust/Tauri)
 
@@ -245,23 +329,43 @@ Tauri commands exposed to frontend (`src-tauri/src/commands/`):
 
 ```rust
 #[tauri::command]
-pub async fn spawn_claude_safe(
-    state: State<'_, AppState>,
-    session_id: String,
-    working_dir: Option<String>,
-) -> Result<SessionInfo, String> {
-    // Thread-safe session spawning
+pub async fn spawn_claude_session(request: SpawnRequest) -> Result<SpawnResponse, String> {
+    // Spawns Claude CLI with proper arguments
+}
+
+#[tauri::command]
+pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
+    // Native folder selection dialog
 }
 ```
 
-**Available Commands** (681 lines of invoke handlers):
-- File Operations: `open_in_editor`, `open_file_in_system`
-- Claude Management: `spawn_claude_safe`, `send_message_to_claude_safe`
-- Session Control: `get_all_sessions_safe`, `restart_claude_safe`
-- Database: `save_checkpoint`, `load_checkpoint`, `search_history`
-- Hooks: `execute_hook_command`, `validate_hook_command`
-- Compaction: `trigger_compaction`, `get_compaction_status`
-- MCP: `mcp_list`, `mcp_add`, `mcp_test_connection`
+**Available Commands** (organized by module):
+
+*Core Commands (mod.rs):*
+- Window: `toggle_devtools`, `minimize_window`, `maximize_window`, `close_window`, `new_window`
+- File System: `select_folder`, `check_is_directory`, `search_files`, `get_recent_files`, `get_folder_contents`
+- Settings: `save_settings`, `load_settings`, `get_recent_projects`, `add_recent_project`
+- Agents: `load_claude_agents`, `load_project_agents`, `save_global_agent`, `save_project_agent`, `delete_global_agent`
+- Git: `get_git_status`, `get_git_diff_numstat`
+- Bash: `execute_bash`, `spawn_bash`, `kill_bash_process`
+- System: `get_home_directory`, `get_current_directory`, `get_system_fonts`, `open_external`
+- Server: `get_server_port`, `get_server_logs`, `get_server_log_path`, `clear_server_logs`
+- Claude: `get_claude_version`, `get_claude_path`
+
+*Claude Commands (claude_commands.rs):*
+- `spawn_claude_session`, `send_message_to_session`, `interrupt_session`, `clear_session_context`
+
+*Database Commands (database.rs):*
+- Session CRUD, message storage, analytics tracking
+
+*Hooks Commands (hooks.rs):*
+- `execute_hook`, `test_hook`, `get_hook_events`, `get_sample_hooks`
+
+*Compaction Commands (compaction.rs):*
+- `update_context_usage`, `reset_compaction_flags`, `generate_context_manifest`
+
+*MCP Commands (mcp.rs):*
+- `mcp_list_servers`, `mcp_add_server`, `mcp_test_connection`
 
 ### 3.2 Process Registry
 
@@ -288,29 +392,62 @@ impl ProcessRegistry {
 
 **Location**: `src-tauri/src/db/mod.rs`
 
-SQLite database for persistent storage:
-- Checkpoints and session history
-- Settings and preferences
-- Compaction history
-- Hook configurations
-- MCP server configurations
+SQLite database for persistent storage with WAL mode for concurrency:
+
+```rust
+pub struct Database {
+    conn: Mutex<Connection>,
+}
+
+// Key structs
+pub struct Session { id, name, status, working_directory, claude_session_id, ... }
+pub struct Message { id, session_id, message_type, role, content, tool_uses, usage, ... }
+pub struct Analytics { session_id, tokens_input, tokens_output, tokens_cache, cost_usd, ... }
+```
 
 Schema:
 ```sql
-CREATE TABLE checkpoints (
-    id INTEGER PRIMARY KEY,
-    session_id TEXT NOT NULL,
-    timestamp INTEGER NOT NULL,
-    messages TEXT NOT NULL,
+CREATE TABLE sessions (
+    id TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    status TEXT DEFAULT 'pending',
+    working_directory TEXT,
+    claude_session_id TEXT,
+    claude_title TEXT,
+    user_renamed INTEGER DEFAULT 0,
+    created_at TEXT DEFAULT CURRENT_TIMESTAMP,
+    updated_at TEXT DEFAULT CURRENT_TIMESTAMP,
     metadata TEXT
 );
 
-CREATE TABLE settings (
-    key TEXT PRIMARY KEY,
-    value TEXT NOT NULL,
-    updated_at INTEGER
+CREATE TABLE messages (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    message_type TEXT NOT NULL,
+    role TEXT,
+    content TEXT,
+    tool_uses TEXT,
+    usage TEXT,
+    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
+);
+
+CREATE TABLE analytics (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    session_id TEXT NOT NULL,
+    tokens_input INTEGER DEFAULT 0,
+    tokens_output INTEGER DEFAULT 0,
+    tokens_cache INTEGER DEFAULT 0,
+    cost_usd REAL DEFAULT 0,
+    model TEXT,
+    timestamp TEXT DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (session_id) REFERENCES sessions(id) ON DELETE CASCADE
 );
 ```
+
+Database location:
+- Windows: `%APPDATA%\yurucode\yurucode.db`
+- macOS/Linux: `~/.yurucode/yurucode.db`
 
 ### 3.4 Crash Recovery System
 
@@ -321,24 +458,37 @@ pub struct CrashRecoveryManager {
     state_path: PathBuf,
     snapshot_path: PathBuf,
     recovery_state: Arc<Mutex<CrashRecoveryState>>,
+    auto_save_enabled: bool,
 }
 
-impl CrashRecoveryManager {
-    pub fn create_snapshot(&self) -> Result<(), String> {
-        // Periodic snapshots every 5 minutes
-    }
-    
-    pub fn recover_session(&self, snapshot: AppStateSnapshot) {
-        // Restore window position, session state, open files
-    }
+pub struct AppStateSnapshot {
+    session_id: String,
+    timestamp: DateTime<Utc>,
+    working_directory: Option<String>,
+    open_files: Vec<String>,
+    window_state: WindowState,
+    active_processes: Vec<ProcessInfo>,
+}
+
+pub struct WindowState {
+    x: i32, y: i32,
+    width: u32, height: u32,
+    maximized: bool, fullscreen: bool,
 }
 ```
 
 Features:
-- Automatic session recovery after crash
-- Window state restoration
-- Unsaved work recovery
-- Cleanup of old recovery files
+- Automatic session recovery after crash (snapshots within 24 hours)
+- Window position/size restoration
+- Unsaved work recovery (up to 50 files tracked)
+- Periodic snapshots every 5 minutes
+- Cleanup of old recovery files (>7 days)
+- Panic hook integration for crash recording
+
+Recovery paths:
+- macOS: `~/Library/Application Support/yurucode/recovery/`
+- Windows: `%APPDATA%\yurucode\recovery\`
+- Linux: `~/.config/yurucode/recovery/`
 
 ## 4. Frontend Architecture (React/TypeScript)
 
@@ -408,43 +558,56 @@ class PerformanceMonitor {
 ```
 
 **3. CompactionService** (`compactionService.ts`)
-- Monitors token usage
-- Triggers at 97% threshold
-- Manages compaction UI
-- Handles compaction results
+- Monitors context usage percentage
+- Auto-triggers at 60%, force-triggers at 65%
+- Sets pending flags for next-message compaction
+- Generates context manifests before compaction
+- Coordinates with Rust backend via Tauri commands
 
 ### 4.3 Hook System
 
 **Location**: `src/renderer/services/hooksService.ts`
 
 ```typescript
-interface HookConfig {
-  name: string;
-  trigger: HookTrigger;
-  command: string;
-  blocking: boolean;
-  timeout: number;
+interface HookScriptConfig {
+  event: string;
+  enabled: boolean;
+  script: string;
+  name?: string;
+}
+
+interface HookResponse {
+  action: 'continue' | 'block' | 'modify';
+  message?: string;
+  modifications?: Record<string, unknown>;
+  exit_code: number;
 }
 
 class HooksService {
-  async executeHook(trigger: HookTrigger, data: any) {
-    const hooks = await this.getHooksForTrigger(trigger);
-    for (const hook of hooks) {
-      if (hook.blocking) {
-        await this.runHook(hook, data);
-      } else {
-        this.runHook(hook, data); // Fire and forget
-      }
-    }
+  async executeHook(event: string, data: Record<string, unknown>, sessionId: string): Promise<HookResponse | null> {
+    // Executes hook via Tauri backend with 5s timeout
+  }
+
+  async processUserPrompt(prompt: string, sessionId: string): Promise<string> {
+    // Can modify or block user prompts
+  }
+
+  async processToolUse(tool: string, input: Record<string, unknown>, sessionId: string, phase: 'pre' | 'post') {
+    // Can block or modify tool executions
   }
 }
 ```
 
-Available Triggers:
-- `before-message`: Modify messages before sending
-- `after-message`: Process responses
-- `on-compact`: Custom compaction behavior
-- `on-error`: Error handling hooks
+Available Hook Events:
+- `user_prompt_submit`: Modify/block user messages before sending
+- `pre_tool_use`: Intercept tool calls before execution
+- `post_tool_use`: Process tool results after execution
+- `assistant_response`: Process Claude responses
+- `session_start`: Session initialization
+- `session_end`: Session cleanup
+- `context_warning`: Context usage alerts
+- `compaction_trigger`: Custom compaction behavior
+- `error`: Error handling
 
 ## 5. Process Communication Architecture
 
@@ -559,41 +722,51 @@ interface TokenStats {
 ```
 
 Token Tracking Flow:
-1. Claude emits token stats in stream
-2. Server aggregates counts
-3. Frontend calculates costs
-4. Auto-compact triggers at 97%
+1. Claude emits token stats in stream-json output
+2. StreamParser in Rust extracts usage from messages
+3. TokenAccumulator aggregates input/output/cache tokens
+4. Frontend fetches session tokens from server endpoint
+5. Auto-compact triggers at 60% context usage
 
 ## 7. Critical Systems
 
 ### 7.1 Auto-Compaction System
 
-**Threshold**: 97% context usage  
+**Thresholds**: 55% warning, 60% auto-trigger, 65% force-trigger
 **Location**: `src-tauri/src/compaction/mod.rs`
 
 ```rust
-pub struct CompactionManager {
-    threshold: f32, // 0.97
-    auto_trigger: bool,
-    preserve_count: usize, // Keep last N messages
+pub struct CompactionConfig {
+    pub auto_threshold: f32,     // 0.60 (60%) - auto-compact
+    pub force_threshold: f32,    // 0.65 (65%) - force-compact
+    pub preserve_context: bool,
+    pub generate_manifest: bool,
 }
 
-impl CompactionManager {
-    pub async fn check_and_compact(&self, usage: f32) {
-        if usage >= self.threshold && self.auto_trigger {
-            self.trigger_compaction().await;
-        }
-    }
+pub enum CompactionAction {
+    None,
+    Notice,       // deprecated
+    Warning,      // 55%+
+    AutoTrigger,  // 60%+ (38% buffer like Claude Code)
+    Force,        // 65%+
+}
+
+pub struct CompactionManager {
+    config: Arc<Mutex<CompactionConfig>>,
+    states: Arc<Mutex<HashMap<String, CompactionState>>>,
+    manifest_dir: PathBuf,
 }
 ```
 
 Compaction Process:
-1. Detect 97% threshold
-2. Save current state
-3. Trigger `/compact` command
-4. Create new session with summary
-5. Restore working context
-6. Continue conversation
+1. Detect threshold (60% auto, 65% force)
+2. Set `pendingAutoCompact` flag in session
+3. On next user message, generate context manifest
+4. Send `/compact` command to Claude
+5. Reset compaction flags for future triggers
+6. Send queued user message after compaction completes
+
+Frontend service (`src/renderer/services/compactionService.ts`) coordinates with backend and manages UI state.
 
 ### 7.2 Memory Management
 
@@ -699,12 +872,26 @@ All user input validated at multiple levels:
 
 ### 9.2 Performance Monitoring
 
+**Location**: `src/renderer/services/performanceMonitor.ts`
+
+Performance thresholds defined in code:
+```typescript
+const thresholds: PerformanceThreshold[] = [
+  { metric: 'app.startup', warning: 3000, critical: 5000, unit: 'ms' },
+  { metric: 'render.frame', warning: 16, critical: 33, unit: 'ms' },
+  { metric: 'memory.heap', warning: 100MB, critical: 200MB, unit: 'bytes' },
+  { metric: 'session.create', warning: 1000, critical: 2000, unit: 'ms' },
+  { metric: 'message.send', warning: 500, critical: 1000, unit: 'ms' },
+  { metric: 'compact.duration', warning: 5000, critical: 10000, unit: 'ms' }
+];
+```
+
 Metrics Tracked:
-- **FPS**: Target 60fps, warn at 30fps
-- **Memory**: Warn at 500MB, critical at 1GB
-- **Startup**: Target <3s, warn at 5s
-- **Message Latency**: Target <100ms
-- **Compaction Time**: Target <5s
+- **FPS**: Target 60fps, warn at 30fps (via requestAnimationFrame)
+- **Memory**: Warn at 100MB heap, critical at 200MB
+- **Startup**: Target <3s, critical at 5s
+- **Long Tasks**: Logged when >50ms, warned when >200ms
+- **Layout Shifts**: Cumulative layout shift score tracking
 
 ### 9.3 Resource Management
 
@@ -806,20 +993,20 @@ npm run tauri:build:linux # Build for Linux
 
 ## Architecture Decisions Record (ADR)
 
-### ADR-001: Embedded Server Architecture
-**Decision**: Embed Node.js server as Rust string constant  
-**Rationale**: Eliminates external dependencies, simplifies deployment  
-**Trade-offs**: Larger binary size, harder to update  
+### ADR-001: Compiled Server Binaries
+**Decision**: Compile Node.js server to platform-specific binaries using @yao-pkg/pkg
+**Rationale**: Eliminates Node.js dependency for end users, hides source code, simplifies deployment
+**Trade-offs**: Larger binary size (~50MB per platform), requires separate build step per platform  
 
 ### ADR-002: Three-Process Model
 **Decision**: Separate Tauri, React, and Node.js processes  
 **Rationale**: Better isolation, security, and debugging  
 **Trade-offs**: More complex IPC, higher memory usage  
 
-### ADR-003: 97% Auto-Compaction
-**Decision**: Automatically compact at 97% context usage  
-**Rationale**: Prevents context overflow, maintains conversation flow  
-**Trade-offs**: Brief interruption during compaction  
+### ADR-003: 60%/65% Auto-Compaction
+**Decision**: Automatically compact at 60% context usage (force at 65%)
+**Rationale**: Maintains 38-40% buffer like Claude Code, prevents context overflow
+**Trade-offs**: Earlier compaction, but smoother user experience  
 
 ### ADR-004: No Telemetry/Auto-Updates
 **Decision**: Remove all tracking and auto-update code  
@@ -835,4 +1022,4 @@ Yurucode's architecture prioritizes:
 4. **User Experience**: Auto-compaction, fast responses, clean UI
 5. **Privacy**: No telemetry, local-only operation
 
-The three-process architecture with embedded server provides a unique balance of simplicity and power, making Yurucode a production-ready Claude GUI that respects user privacy while delivering exceptional performance.
+The three-process architecture with compiled server binaries provides a unique balance of simplicity and power, making Yurucode a production-ready Claude GUI that respects user privacy while delivering exceptional performance.

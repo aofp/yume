@@ -1,8 +1,8 @@
 # Yurucode Production Deployment Guide
 
-**Version:** 1.0.0  
-**Last Updated:** January 3, 2025  
-**Status:** Production Ready
+**Version:** 0.1.0
+**Last Updated:** January 2025
+**Status:** Development
 
 ## Table of Contents
 
@@ -41,11 +41,8 @@ grep -r -E "(api_key|secret|password|token)" src/ --exclude-dir=node_modules
 # Check for unsafe Rust code
 grep -r "unsafe" src-tauri/src/
 
-# Run linter
-npm run lint
-
-# Run type checking
-npm run typecheck
+# Run type checking (requires tsc to be available)
+npx tsc --noEmit
 ```
 
 ### 1.2 Testing
@@ -56,11 +53,8 @@ npm run typecheck
 cd src-tauri
 cargo test --release
 
-# Run frontend tests
-npm test
-
-# Run integration tests
-npm run test:integration
+# Build and verify frontend compiles
+npm run build
 ```
 
 #### Manual Testing Checklist
@@ -136,17 +130,17 @@ xcode-select --install
 ```json
 // package.json
 {
-  "version": "1.0.0"
+  "version": "X.Y.Z"
 }
 
 // src-tauri/tauri.conf.json
 {
-  "version": "1.0.0"
+  "version": "X.Y.Z"
 }
 
 // src-tauri/Cargo.toml
 [package]
-version = "1.0.0"
+version = "X.Y.Z"
 ```
 
 #### Production Environment Variables
@@ -214,7 +208,41 @@ npm run tauri:build:linux
 npm run tauri build -- --bundles appimage,deb,rpm
 ```
 
-### 2.4 Build Optimization
+### 2.4 Server Binary Builds
+
+The Node.js server is compiled into platform-specific binaries using @yao-pkg/pkg. These binaries hide source code and remove the Node.js dependency for end users.
+
+#### Server Binary Commands
+```bash
+# Build macOS server binary (arm64 and x64)
+npm run build:server:macos
+
+# Build Windows server binary (x64)
+npm run build:server:windows
+
+# Build Linux server binary (x64)
+npm run build:server:linux
+
+# Build all platform binaries
+npm run build:server:all
+```
+
+#### Server Binary Locations
+After building, binaries are placed in `src-tauri/resources/`:
+- macOS Apple Silicon: `server-macos-arm64`
+- macOS Intel: `server-macos-x64`
+- Windows: `server-windows-x64.exe`
+- Linux: `server-linux-x64`
+
+#### Fallback .cjs Files
+For backwards compatibility, .cjs fallback files exist:
+- `server-claude-macos.cjs`
+- `server-claude-windows.cjs`
+- `server-claude-linux.cjs`
+
+These are used when the compiled binary is not found or fails to execute.
+
+### 2.5 Build Optimization
 
 #### Rust Optimizations
 ```toml
@@ -664,14 +692,14 @@ const errors = JSON.parse(
 
 #### Log Collection
 ```bash
-# macOS logs
-~/Library/Application Support/yurucode/logs/
+# macOS server logs
+~/Library/Logs/yurucode/server.log
 
-# Windows logs
-%APPDATA%\yurucode\logs\
+# Windows server logs
+%LOCALAPPDATA%\yurucode\logs\server.log
 
-# Linux logs
-~/.config/yurucode/logs/
+# Linux server logs
+~/.yurucode/logs/server.log
 ```
 
 ### 7.2 Performance Monitoring

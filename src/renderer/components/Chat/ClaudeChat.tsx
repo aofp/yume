@@ -557,10 +557,10 @@ export const ClaudeChat: React.FC = () => {
     });
   }, [currentSessionId]);
 
-  // Fetch usage limits with 10-min cache, refresh every 10min
+  // Fetch usage limits with 20-min cache, refresh every 20min
   const fetchUsageLimits = useCallback((force = false) => {
     const CACHE_KEY = 'yurucode_usage_limits_cache';
-    const CACHE_DURATION = 10 * 60 * 1000; // 10 minutes
+    const CACHE_DURATION = 20 * 60 * 1000; // 20 minutes
 
     // Check cache first (unless forced)
     if (!force) {
@@ -568,23 +568,27 @@ export const ClaudeChat: React.FC = () => {
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
           const { data, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < CACHE_DURATION) {
+          const age = Date.now() - timestamp;
+          if (age < CACHE_DURATION) {
+            console.log('[UsageLimits] Using cached data, age:', Math.round(age / 1000), 's');
             setUsageLimits(data);
             return;
           }
+          console.log('[UsageLimits] Cache expired, age:', Math.round(age / 1000), 's');
         }
       } catch (e) {
-        // Cache read failed, fetch fresh
+        console.log('[UsageLimits] Cache read failed:', e);
       }
     }
 
     invoke<{
-      five_hour?: { utilization: number; resets_at: string };
-      seven_day?: { utilization: number; resets_at: string };
+      five_hour?: { utilization: number | null; resets_at: string | null };
+      seven_day?: { utilization: number | null; resets_at: string | null };
       subscription_type?: string;
       rate_limit_tier?: string;
     }>('get_claude_usage_limits')
       .then(data => {
+        console.log('[UsageLimits] API response:', JSON.stringify(data));
         setUsageLimits(data);
         // Cache the result
         try {
@@ -593,13 +597,13 @@ export const ClaudeChat: React.FC = () => {
           // Cache write failed, ignore
         }
       })
-      .catch(err => console.error('Failed to fetch usage limits:', err));
+      .catch(err => console.error('[UsageLimits] Failed to fetch:', err));
   }, []);
 
-  // Fetch usage limits on mount and refresh every 10min
+  // Fetch usage limits on mount and refresh every 20min
   useEffect(() => {
     fetchUsageLimits();
-    const interval = setInterval(() => fetchUsageLimits(true), 10 * 60 * 1000);
+    const interval = setInterval(() => fetchUsageLimits(true), 20 * 60 * 1000);
     return () => clearInterval(interval);
   }, [fetchUsageLimits]);
 
@@ -2811,7 +2815,17 @@ export const ClaudeChat: React.FC = () => {
   const handlePaste = async (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
     const text = e.clipboardData.getData('text/plain');
-    
+
+    // Check if at bottom before paste (to scroll after if needed)
+    const wasAtBottom = currentSessionId ? isAtBottom[currentSessionId] !== false : true;
+
+    // Helper to scroll after attachment added
+    const scrollAfterAttachment = () => {
+      if (wasAtBottom) {
+        requestAnimationFrame(() => scrollToBottomHelper('auto'));
+      }
+    };
+
     // Handle text paste - only create attachment if it's substantial text (5+ lines AND 512+ bytes)
     const lines = text.split('\n').length;
     const bytes = new Blob([text]).size;
@@ -2825,9 +2839,10 @@ export const ClaudeChat: React.FC = () => {
         preview: `${lines} lines, ${formatBytes(bytes)}`
       };
       setAttachments(prev => [...prev, newAttachment]);
+      scrollAfterAttachment();
       return;
     }
-    
+
     // Handle image paste
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
@@ -2846,6 +2861,7 @@ export const ClaudeChat: React.FC = () => {
               preview: 'Image'
             };
             setAttachments(prev => [...prev, newAttachment]);
+            scrollAfterAttachment();
           };
           reader.readAsDataURL(blob);
         }
@@ -4463,8 +4479,8 @@ export const ClaudeChat: React.FC = () => {
             <div className="stats-footer">
               {/* Session Limit (5-hour) */}
               <div className="stats-footer-row">
-                <span className="stats-footer-label"><span className="stats-footer-limit-name">5h limit</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '...'}</span>
-                <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) : '...'}%</span>
+                <span className="stats-footer-label"><span className="stats-footer-limit-name">5h limit</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '?'}</span>
+                <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) + '%' : '?'}</span>
               </div>
               <div className="usage-bar" style={{ marginBottom: '8px' }}>
                 <div
@@ -4480,8 +4496,8 @@ export const ClaudeChat: React.FC = () => {
 
               {/* Weekly Limit (7-day) */}
               <div className="stats-footer-row">
-                <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">7d limit</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '...'}</span>
-                <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) : '...'}%</span>
+                <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">7d limit</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '?'}</span>
+                <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) + '%' : '?'}</span>
               </div>
               <div className="usage-bar">
                 <div

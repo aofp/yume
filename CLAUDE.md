@@ -7,7 +7,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 Yurucode is a Tauri desktop application that provides a GUI for Claude CLI. It consists of:
 - **Frontend**: React/TypeScript with Vite
 - **Backend**: Rust (Tauri)  
-- **Embedded Server**: Node.js server embedded in `src-tauri/src/logged_server.rs` that handles Claude CLI integration
+- **Server**: Compiled Node.js server binaries (or .cjs fallback) bundled in `src-tauri/resources/` that handle Claude CLI integration
 
 ## Essential Commands
 
@@ -20,7 +20,7 @@ npm install
 npm run tauri:dev
 
 # Run frontend only (for UI development)
-npm run dev
+npm run dev:frontend
 ```
 
 ### Building
@@ -34,11 +34,17 @@ npm run tauri:build:mac     # macOS (creates .dmg)
 npm run tauri:build:linux   # Linux (creates .AppImage and .deb)
 ```
 
-### Testing & Validation
+### Server Binaries
 ```bash
-# Run TypeScript type checking
-npm run typecheck
+# Build server binary for specific platform
+npm run build:server:macos     # Build macOS server binary
+npm run build:server:windows   # Build Windows server binary
+npm run build:server:linux     # Build Linux server binary
+npm run build:server:all       # Build all platform binaries
+```
 
+### Utilities
+```bash
 # Kill any processes using development ports
 npm run prestart
 ```
@@ -47,29 +53,38 @@ npm run prestart
 
 ### Three-Process Model
 1. **Tauri Process** (Rust) - Native window management, IPC, system integration
-2. **Embedded Node.js Server** - Claude CLI process spawning and stream parsing (embedded directly in `logged_server.rs`)
+2. **Node.js Server** - Claude CLI process spawning and stream parsing (compiled binaries in `src-tauri/resources/`)
 3. **React Frontend** - UI rendering and state management via Zustand
 
 ### Key Directories
 - `src/renderer/` - React frontend components and services
 - `src-tauri/src/` - Rust backend code
 - `src-tauri/src/commands/` - Tauri IPC command handlers
-- `src-tauri/resources/` - Embedded server resources
+- `src-tauri/resources/` - Server binaries and .cjs files
 - `scripts/` - Build and utility scripts
 
 ### Critical Files
-- `src-tauri/src/logged_server.rs` - Contains the entire embedded Node.js server code as a string literal
+- `src-tauri/src/logged_server.rs` - Server process management (spawning, lifecycle, logging)
+- `src-tauri/resources/server-macos-arm64` / `server-macos-x64` - Compiled macOS server binaries
+- `src-tauri/resources/server-windows-x64.exe` - Compiled Windows server binary
+- `src-tauri/resources/server-linux-x64` - Compiled Linux server binary
+- `src-tauri/resources/server-claude-*.cjs` - Fallback .cjs server files
 - `src/renderer/stores/claudeCodeStore.ts` - Main Zustand store for application state
 - `src/renderer/services/tauriClaudeClient.ts` - Bridge between frontend and Claude CLI
 - `src-tauri/src/commands/mod.rs` - All Tauri command implementations
 
 ## Important Implementation Details
 
-### Server Embedding
-The Node.js server is **not** a separate file - it's embedded as a string literal (`const EMBEDDED_SERVER: &str`) in `src-tauri/src/logged_server.rs`. When editing server code:
-1. Edit the JavaScript code within the Rust string literal
-2. Be careful with escaping - template literals in the embedded JS need proper handling
-3. After editing, rebuild the application for changes to take effect
+### Server Architecture
+The Node.js server is now distributed as compiled binaries (using @yao-pkg/pkg) for each platform:
+- macOS: `server-macos-arm64` (Apple Silicon) and `server-macos-x64` (Intel)
+- Windows: `server-windows-x64.exe`
+- Linux: `server-linux-x64`
+
+Fallback .cjs files exist for backwards compatibility. When editing server code:
+1. Edit the source .js files in `src-tauri/resources/`
+2. Run `npm run build:server:macos/windows/linux` to compile new binaries
+3. The binaries hide source code and remove Node.js dependency for end users
 
 ### Token Analytics Fix
 Analytics parsing looks for `data.type === 'assistant'` and `data.message.usage` in Claude session files, not `data.type === 'result'`.
@@ -80,7 +95,11 @@ Analytics parsing looks for `data.type === 'assistant'` and `data.message.usage`
 - macOS/Linux: `~/.claude/projects`
 
 ### Port Management
-The application uses dynamic port allocation starting from port 20223 to avoid conflicts. Check `src-tauri/src/port_manager.rs` for the implementation.
+The application uses dynamic port allocation in the 20000-65000 range to avoid conflicts:
+- First tries cached last-working port for faster startup
+- Then tries random ports for better distribution
+- Falls back to sequential search if random fails
+- Check `src-tauri/src/port_manager.rs` for the implementation.
 
 ### Cross-Platform Compilation
 When building on Windows for Windows, ensure:
@@ -95,23 +114,22 @@ When building on Windows for Windows, ensure:
 
 ## Common Development Tasks
 
-### Fixing Template Literal Escaping Issues
-If you see syntax errors about escaped backticks (`\``), check `src-tauri/src/logged_server.rs` for improperly escaped template literals in the embedded server string.
-
 ### Debugging Server Issues
-Server logs are written to temp directory. Check:
-- Windows: `C:\Users\[username]\AppData\Local\Temp\yurucode-server\`
-- The server.cjs file is extracted here at runtime
+Server logs are written to platform-specific locations:
+- macOS: `~/Library/Logs/yurucode/server.log`
+- Windows: `%LOCALAPPDATA%\yurucode\logs\server.log`
+- Linux: `~/.yurucode/logs/server.log`
 
 ### Adding New Tauri Commands
 1. Add command handler in `src-tauri/src/commands/mod.rs`
 2. Register in `tauri::Builder` in `src-tauri/src/lib.rs`
 3. Add TypeScript types in `src/renderer/services/tauriApi.ts`
 
-### Modifying the Embedded Server
-1. Edit the JavaScript within `const EMBEDDED_SERVER: &str` in `logged_server.rs`
-2. Test carefully - syntax errors will prevent the app from starting
-3. Use `console.log()` for debugging (visible in server logs)
+### Modifying the Server
+1. Edit the source .js/.cjs files in `src-tauri/resources/`
+2. Test with `npm run tauri:dev` (uses .cjs fallback in development)
+3. Run `npm run build:server:<platform>` to compile new binaries for production
+4. Use `console.log()` for debugging (visible in server logs)
 
 ## Build Output Locations
 

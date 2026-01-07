@@ -1,12 +1,28 @@
 # Yurucode API Reference
 
-**Version:** 1.0.0  
-**Last Updated:** January 3, 2025
+**Version:** 2.1.0
+**Last Updated:** January 7, 2026
 
 ## Table of Contents
 
 1. [Tauri Commands API](#tauri-commands-api)
-2. [WebSocket API](#websocket-api)
+   - [Session Management](#session-management)
+   - [Window Management](#window-management)
+   - [Claude Binary Detection](#claude-binary-detection)
+   - [Settings Management](#settings-management)
+   - [Project Management](#project-management)
+   - [File Operations](#file-operations)
+   - [Bash Execution](#bash-execution)
+   - [System Commands](#system-commands)
+   - [Database Operations](#database-operations)
+   - [Hook Operations](#hook-operations)
+   - [Compaction Operations](#compaction-operations)
+   - [MCP Operations](#mcp-operations)
+   - [Agent Management](#agent-management-in-memory)
+   - [Claude Agents](#claude-agents-file-based)
+   - [Yurucode Agents Sync](#yurucode-agents-sync)
+   - [Custom Commands](#custom-commands)
+2. [Tauri Events API](#tauri-events-api)
 3. [Frontend Services API](#frontend-services-api)
 4. [Store API](#store-api)
 5. [Hook System API](#hook-system-api)
@@ -18,507 +34,548 @@
 
 ## Tauri Commands API
 
-Tauri commands are invoked from the frontend using the `invoke` function. All commands return Promises.
+Tauri commands are invoked from the frontend using the `invoke` function from `@tauri-apps/api/core`. All commands return Promises.
 
 ### Session Management
 
-#### `spawn_claude_safe`
-Spawns a new Claude session.
+#### `spawn_claude_session`
+Spawns a new Claude session with the given options.
 
 ```typescript
-invoke('spawn_claude_safe', {
-  session_id: string,
-  working_dir?: string,
-  model?: string,
-  env?: Record<string, string>
-}) => Promise<SessionInfo>
+invoke('spawn_claude_session', {
+  request: {
+    project_path: string,
+    model: string,
+    prompt: string,
+    resume_session_id?: string | null
+  }
+}) => Promise<SpawnSessionResponse>
+```
+
+**Returns:**
+```typescript
+interface SpawnSessionResponse {
+  session_id: string;
+  run_id: number;  // i64 from Rust
+  pid: number;     // u32 from Rust
+  resumed: boolean;
+}
+```
+
+#### `send_claude_message`
+Sends a message to a Claude session by spawning a new process with --resume.
+
+```typescript
+invoke('send_claude_message', {
+  request: {
+    session_id: string,
+    message: string
+  }
+}) => Promise<void>
+```
+
+#### `resume_claude_session`
+Resumes an existing Claude session.
+
+```typescript
+invoke('resume_claude_session', {
+  request: {
+    session_id: string,
+    project_path: string,
+    model: string,
+    prompt?: string | null
+  }
+}) => Promise<SpawnSessionResponse>
+```
+
+#### `interrupt_claude_session`
+Interrupts an active Claude session (equivalent to Ctrl+C).
+
+```typescript
+invoke('interrupt_claude_session', {
+  sessionId: string
+}) => Promise<void>
+```
+
+#### `clear_claude_context`
+Clears the context for a Claude session (ends the session).
+
+```typescript
+invoke('clear_claude_context', {
+  sessionId: string
+}) => Promise<void>
+```
+
+#### `get_session_info`
+Gets information about a specific Claude session.
+
+```typescript
+invoke('get_session_info', {
+  sessionId: string
+}) => Promise<SessionInfoResponse>
+```
+
+**Returns:**
+```typescript
+interface SessionInfoResponse {
+  session_id: string;
+  project_path: string;
+  model: string;
+  streaming: boolean;
+  run_id?: number | null;  // i64 from Rust
+}
+```
+
+#### `get_token_stats`
+Gets token statistics for a Claude session.
+
+```typescript
+invoke('get_token_stats', {
+  sessionId: string
+}) => Promise<TokenStatsResponse>
+```
+
+**Returns:**
+```typescript
+interface TokenStatsResponse {
+  input_tokens: number;   // usize from Rust
+  output_tokens: number;  // usize from Rust
+  cache_creation_tokens: number;
+  cache_read_tokens: number;
+  total_tokens: number;
+}
+```
+
+#### `list_active_sessions`
+Lists all active Claude sessions.
+
+```typescript
+invoke('list_active_sessions') => Promise<ActiveSessionsResponse>
+```
+
+**Returns:**
+```typescript
+interface ActiveSessionsResponse {
+  sessions: SessionInfoResponse[];
+}
+```
+
+#### `get_session_output`
+Gets the buffered output for a specific Claude session.
+
+```typescript
+invoke('get_session_output', {
+  sessionId: string
+}) => Promise<string>
+```
+
+#### `get_sessions` (Legacy)
+Returns information about all active sessions. Legacy command maintained for compatibility.
+
+```typescript
+invoke('get_sessions') => Promise<SessionInfo[]>
 ```
 
 **Returns:**
 ```typescript
 interface SessionInfo {
-  session_id: string;
-  pid: number;
-  status: 'active' | 'idle' | 'terminated';
-  created_at: number;
-  working_directory: string;
+  id: string;
+  working_dir: string;
+  model: string;
+  message_count: number;
+  token_count: number;
 }
 ```
 
-#### `send_message_to_claude_safe`
-Sends a message to an active Claude session.
+#### `send_message` (Legacy)
+Placeholder command for legacy compatibility. Actual implementation uses `send_claude_message`.
 
 ```typescript
-invoke('send_message_to_claude_safe', {
-  session_id: string,
+invoke('send_message', {
+  sessionId: string,
   message: string,
-  attachments?: string[]
-}) => Promise<MessageResult>
-```
-
-**Returns:**
-```typescript
-interface MessageResult {
-  success: boolean;
-  message_id: string;
-  timestamp: number;
-}
-```
-
-#### `kill_claude_safe`
-Terminates a Claude session.
-
-```typescript
-invoke('kill_claude_safe', {
-  session_id: string,
-  force?: boolean
+  workingDir: string,
+  model: string
 }) => Promise<void>
 ```
 
-#### `get_all_sessions_safe`
-Retrieves all active sessions.
+#### `interrupt_session` (Legacy)
+Placeholder command for legacy compatibility. Use `interrupt_claude_session` instead.
 
 ```typescript
-invoke('get_all_sessions_safe') => Promise<SessionInfo[]>
-```
-
-#### `restart_claude_safe`
-Restarts a Claude session.
-
-```typescript
-invoke('restart_claude_safe', {
-  session_id: string,
-  preserve_context?: boolean
-}) => Promise<SessionInfo>
-```
-
-#### `clear_session_history_safe`
-Clears the message history of a session.
-
-```typescript
-invoke('clear_session_history_safe', {
-  session_id: string
+invoke('interrupt_session', {
+  sessionId: string
 }) => Promise<void>
 ```
 
-#### `get_session_messages_safe`
-Retrieves messages for a session.
+#### `clear_session` (Legacy)
+Placeholder command for legacy compatibility. Use `clear_claude_context` instead.
 
 ```typescript
-invoke('get_session_messages_safe', {
-  session_id: string,
-  limit?: number,
-  offset?: number
-}) => Promise<Message[]>
-```
-
-### File Operations
-
-#### `open_in_editor`
-Opens a file in the system's default editor.
-
-```typescript
-invoke('open_in_editor', {
-  path: string
+invoke('clear_session', {
+  sessionId: string
 }) => Promise<void>
 ```
 
-#### `open_file_in_system`
-Opens a file with the system's default application.
+### Window Management
+
+#### `toggle_devtools`
+Toggles the Chrome DevTools window (debug builds only). Triggered by F12 key in the frontend.
 
 ```typescript
-invoke('open_file_in_system', {
-  path: string
+invoke('toggle_devtools') => Promise<void>
+```
+
+#### `select_folder`
+Opens a native folder selection dialog using Tauri's dialog plugin.
+
+```typescript
+invoke('select_folder') => Promise<string | null>
+```
+
+#### `new_window`
+Creates a new application window with unique ID for multi-window support.
+
+```typescript
+invoke('new_window') => Promise<void>
+```
+
+#### `minimize_window`
+Minimizes the application window to the taskbar/dock.
+
+```typescript
+invoke('minimize_window') => Promise<void>
+```
+
+#### `maximize_window`
+Toggles window maximization state. If maximized, restores to previous size.
+
+```typescript
+invoke('maximize_window') => Promise<void>
+```
+
+#### `close_window`
+Closes the current window. Server cleanup happens when last window closes.
+
+```typescript
+invoke('close_window') => Promise<void>
+```
+
+#### `set_zoom_level`
+Sets the zoom level for the webview. Currently handled via frontend CSS transforms.
+
+```typescript
+invoke('set_zoom_level', {
+  level: number
 }) => Promise<void>
 ```
 
-#### `get_available_fonts`
-Retrieves available system fonts.
+#### `set_window_opacity`
+Sets the window opacity (0.65 to 1.0). On Windows, uses SetLayeredWindowAttributes. On macOS/Linux, handled by CSS.
 
 ```typescript
-invoke('get_available_fonts') => Promise<string[]>
+invoke('set_window_opacity', {
+  opacity: number
+}) => Promise<void>
+```
+
+#### `restore_window_focus`
+Restores focus to the application window. Primarily used on Windows after bash command execution to prevent focus loss.
+
+```typescript
+invoke('restore_window_focus') => Promise<void>
+```
+
+#### `show_context_menu`
+Shows a context menu at the specified coordinates. Placeholder for future implementation with Tauri's menu API.
+
+```typescript
+invoke('show_context_menu', {
+  x: number,
+  y: number,
+  hasSelection: boolean
+}) => Promise<void>
 ```
 
 ### Claude Binary Detection
 
-#### `check_claude_binary_sync`
-Synchronously checks if Claude binary exists.
+#### `get_claude_binary_info`
+Gets information about available Claude binaries. Discovers all Claude installations on the system.
 
 ```typescript
-invoke('check_claude_binary_sync', {
-  path?: string
-}) => Promise<boolean>
-```
-
-#### `get_claude_installations`
-Finds all Claude installations on the system.
-
-```typescript
-invoke('get_claude_installations') => Promise<ClaudeInstallation[]>
+invoke('get_claude_binary_info') => Promise<ClaudeBinaryInfo>
 ```
 
 **Returns:**
 ```typescript
+interface ClaudeBinaryInfo {
+  installations: ClaudeInstallation[];
+  selected?: ClaudeInstallation | null;
+  platform: string;  // "windows" | "macos" | "linux"
+  wsl_available: boolean;
+}
+
 interface ClaudeInstallation {
   path: string;
   version: string;
-  location: 'system' | 'user' | 'wsl';
-  is_valid: boolean;
+  source: string;
+  is_wsl: boolean;
 }
 ```
 
-#### `test_claude_binary_with_version`
-Tests a Claude binary and retrieves its version.
+#### `get_claude_version`
+Gets the Claude CLI version by running `claude --version`.
 
 ```typescript
-invoke('test_claude_binary_with_version', {
-  path: string
-}) => Promise<ClaudeVersion>
+invoke('get_claude_version') => Promise<string>
 ```
 
-#### `detect_claude_system`
-Detects the Claude installation method.
+#### `get_claude_path`
+Gets the Claude CLI binary path using `which` (Unix) or `where` (Windows).
 
 ```typescript
-invoke('detect_claude_system') => Promise<ClaudeSystem>
+invoke('get_claude_path') => Promise<string>
+```
+
+#### `get_claude_weekly_usage`
+Gets weekly usage statistics from `~/.claude/stats-cache.json`. Returns data for the last 7 days.
+
+```typescript
+invoke('get_claude_weekly_usage') => Promise<WeeklyUsageSummary>
 ```
 
 **Returns:**
 ```typescript
-interface ClaudeSystem {
-  method: 'native' | 'wsl' | 'docker' | 'none';
-  binary_path?: string;
-  version?: string;
+interface DailyModelTokens {
+  date: string;
+  tokensByModel: Record<string, number>;  // Map of model name to token count
 }
+
+interface WeeklyUsageSummary {
+  total_tokens: number;  // u64 from Rust
+  opus_tokens: number;
+  sonnet_tokens: number;
+  haiku_tokens: number;
+  days_with_data: number;
+  daily_breakdown: DailyModelTokens[];
+}
+```
+
+#### `get_claude_usage_limits`
+Gets Claude usage limits from the Anthropic API. Requires valid OAuth credentials.
+
+```typescript
+invoke('get_claude_usage_limits') => Promise<ClaudeUsageLimits>
+```
+
+**Returns:**
+```typescript
+interface UsageLimit {
+  utilization?: number | null;  // f64, percentage 0.0-1.0
+  resets_at?: string | null;    // ISO 8601 timestamp
+}
+
+interface ClaudeUsageLimits {
+  five_hour?: UsageLimit | null;
+  seven_day?: UsageLimit | null;
+  seven_day_opus?: UsageLimit | null;
+  seven_day_sonnet?: UsageLimit | null;
+  subscription_type?: string | null;
+  rate_limit_tier?: string | null;
+}
+```
+
+#### `check_file_exists`
+Checks if a file exists on the filesystem.
+
+```typescript
+invoke('check_file_exists', {
+  path: string
+}) => Promise<boolean>
+```
+
+#### `check_wsl_available`
+Checks if WSL is available on the system (Windows only). Returns false on non-Windows platforms.
+
+```typescript
+invoke('check_wsl_available') => Promise<boolean>
+```
+
+#### `get_wsl_username`
+Gets the WSL username by running `whoami` in WSL (Windows only). Returns error on non-Windows platforms.
+
+```typescript
+invoke('get_wsl_username') => Promise<string>
+```
+
+#### `check_wsl_file_exists`
+Checks if a file exists in WSL (Windows only). Returns error on non-Windows platforms.
+
+```typescript
+invoke('check_wsl_file_exists', {
+  path: string
+}) => Promise<boolean>
+```
+
+#### `execute_wsl_command`
+Executes a command in WSL via `wsl -e bash -c` (Windows only). Returns error on non-Windows platforms.
+
+```typescript
+invoke('execute_wsl_command', {
+  command: string
+}) => Promise<string>
+```
+
+#### `execute_command`
+Executes a system command with arguments. On Windows, uses CREATE_NO_WINDOW flag.
+
+```typescript
+invoke('execute_command', {
+  command: string,
+  args: string[]
+}) => Promise<string>
 ```
 
 ### Settings Management
 
 #### `save_claude_settings`
-Saves Claude configuration settings.
+Saves Claude configuration settings to `<config_dir>/yurucode/claude_settings.json`.
 
 ```typescript
 invoke('save_claude_settings', {
-  settings: ClaudeSettings
+  settings: any  // serde_json::Value - any valid JSON
 }) => Promise<void>
 ```
 
-**Settings Structure:**
+#### `load_claude_settings`
+Loads Claude configuration settings from persistent storage. Returns null if file doesn't exist.
+
 ```typescript
-interface ClaudeSettings {
-  binary_path: string;
-  default_model: string;
-  api_key?: string;
-  max_tokens: number;
-  temperature: number;
-  stream: boolean;
-}
+invoke('load_claude_settings') => Promise<any | null>
 ```
 
-#### `get_saved_claude_settings`
-Retrieves saved Claude settings.
+#### `save_settings`
+Saves a setting value to persistent storage. Settings are stored as JSON.
 
 ```typescript
-invoke('get_saved_claude_settings') => Promise<ClaudeSettings>
+invoke('save_settings', {
+  key: string,
+  value: any  // serde_json::Value - any valid JSON
+}) => Promise<void>
+```
+
+#### `load_settings`
+Loads a setting value from persistent storage. Returns null if key doesn't exist.
+
+```typescript
+invoke('load_settings', {
+  key: string
+}) => Promise<any | null>
+```
+
+#### `get_env_var`
+Gets an environment variable value. Returns null if not set.
+
+```typescript
+invoke('get_env_var', {
+  name: string
+}) => Promise<string | null>
+```
+
+#### `get_windows_paths`
+Gets Windows-specific paths for Claude detection. Returns object with common Windows paths.
+
+```typescript
+invoke('get_windows_paths') => Promise<WindowsPaths>
+```
+
+**Returns:**
+```typescript
+interface WindowsPaths {
+  userprofile?: string;
+  appdata?: string;
+  localappdata?: string;
+  path_dirs?: string[];
+  home?: string;
+}
 ```
 
 ### Project Management
 
 #### `get_recent_projects`
-Retrieves the list of recent projects.
+Retrieves the list of recent project directories.
 
 ```typescript
-invoke('get_recent_projects') => Promise<Project[]>
-```
-
-**Returns:**
-```typescript
-interface Project {
-  path: string;
-  name: string;
-  last_accessed: number;
-  session_count: number;
-}
+invoke('get_recent_projects') => Promise<string[]>
 ```
 
 #### `add_recent_project`
-Adds a project to the recent list.
+Adds a project directory to the recent list.
 
 ```typescript
 invoke('add_recent_project', {
-  path: string,
-  name?: string
-}) => Promise<void>
-```
-
-#### `remove_recent_project`
-Removes a project from the recent list.
-
-```typescript
-invoke('remove_recent_project', {
   path: string
 }) => Promise<void>
 ```
 
-#### `clear_recent_projects`
-Clears all recent projects.
+### File Operations
+
+#### `search_files`
+Searches for files and directories matching a query string.
 
 ```typescript
-invoke('clear_recent_projects') => Promise<void>
-```
-
-### Database Operations
-
-#### `init_database_command`
-Initializes the database.
-
-```typescript
-invoke('init_database_command') => Promise<void>
-```
-
-#### `save_checkpoint`
-Saves a conversation checkpoint.
-
-```typescript
-invoke('save_checkpoint', {
-  session_id: string,
-  title: string,
-  messages: Message[],
-  metadata?: Record<string, any>
-}) => Promise<number> // checkpoint_id
-```
-
-#### `load_checkpoint`
-Loads a checkpoint.
-
-```typescript
-invoke('load_checkpoint', {
-  checkpoint_id: number
-}) => Promise<Checkpoint>
-```
-
-#### `list_checkpoints`
-Lists all checkpoints.
-
-```typescript
-invoke('list_checkpoints', {
-  session_id?: string,
-  limit?: number,
-  offset?: number
-}) => Promise<Checkpoint[]>
-```
-
-#### `delete_checkpoint`
-Deletes a checkpoint.
-
-```typescript
-invoke('delete_checkpoint', {
-  checkpoint_id: number
-}) => Promise<void>
-```
-
-#### `search_checkpoints`
-Searches checkpoints by content.
-
-```typescript
-invoke('search_checkpoints', {
+invoke('search_files', {
   query: string,
-  limit?: number
-}) => Promise<Checkpoint[]>
-```
-
-#### `search_history`
-Searches message history.
-
-```typescript
-invoke('search_history', {
-  query: string,
-  session_id?: string,
-  limit?: number
-}) => Promise<Message[]>
-```
-
-### Hook System
-
-#### `get_hooks_config`
-Retrieves hook configurations.
-
-```typescript
-invoke('get_hooks_config') => Promise<HookConfig[]>
-```
-
-#### `save_hooks_config_command`
-Saves hook configurations.
-
-```typescript
-invoke('save_hooks_config_command', {
-  hooks: HookConfig[]
-}) => Promise<void>
-```
-
-#### `validate_hook_command`
-Validates a hook command.
-
-```typescript
-invoke('validate_hook_command', {
-  command: string,
-  args: string[]
-}) => Promise<ValidationResult>
-```
-
-#### `execute_hook_command`
-Executes a hook.
-
-```typescript
-invoke('execute_hook_command', {
-  hook: HookConfig,
-  data: any
-}) => Promise<HookResult>
-```
-
-#### `test_hook_command`
-Tests a hook configuration.
-
-```typescript
-invoke('test_hook_command', {
-  hook: HookConfig
-}) => Promise<TestResult>
-```
-
-### Compaction
-
-#### `detect_compaction`
-Detects if compaction is needed.
-
-```typescript
-invoke('detect_compaction', {
-  session_id: string
-}) => Promise<CompactionStatus>
+  directory: string,
+  include_hidden: boolean,
+  max_results: number
+}) => Promise<FileSearchResult[]>
 ```
 
 **Returns:**
 ```typescript
-interface CompactionStatus {
-  needed: boolean;
-  usage: number; // percentage
-  threshold: number;
+interface FileSearchResult {
+  type: string;  // "file" or "directory"
+  path: string;
+  name: string;
+  relativePath: string;
+  lastModified?: number;
 }
 ```
 
-#### `trigger_compaction`
-Manually triggers compaction.
+#### `get_recent_files`
+Returns the most recently modified files in a directory.
 
 ```typescript
-invoke('trigger_compaction', {
-  session_id: string,
-  preserve_count?: number
-}) => Promise<CompactionResult>
+invoke('get_recent_files', {
+  directory: string,
+  limit: number
+}) => Promise<FileSearchResult[]>
 ```
 
-#### `get_compaction_status`
-Gets current compaction status.
+#### `get_folder_contents`
+Returns the immediate contents of a folder (non-recursive).
 
 ```typescript
-invoke('get_compaction_status', {
-  session_id: string
-}) => Promise<CompactionProgress>
+invoke('get_folder_contents', {
+  folder_path: string,
+  max_results: number
+}) => Promise<FileSearchResult[]>
 ```
 
-#### `cancel_compaction`
-Cancels ongoing compaction.
+#### `check_is_directory`
+Checks if a given path is a directory.
 
 ```typescript
-invoke('cancel_compaction', {
-  session_id: string
-}) => Promise<void>
+invoke('check_is_directory', {
+  path: string
+}) => Promise<boolean>
 ```
 
-#### `get_compaction_history`
-Retrieves compaction history.
-
-```typescript
-invoke('get_compaction_history', {
-  session_id?: string,
-  limit?: number
-}) => Promise<CompactionEvent[]>
-```
-
-### MCP (Model Context Protocol)
-
-#### `mcp_list`
-Lists MCP servers.
-
-```typescript
-invoke('mcp_list') => Promise<McpServer[]>
-```
-
-#### `mcp_add`
-Adds an MCP server.
-
-```typescript
-invoke('mcp_add', {
-  server: McpServer
-}) => Promise<void>
-```
-
-#### `mcp_remove`
-Removes an MCP server.
-
-```typescript
-invoke('mcp_remove', {
-  name: string
-}) => Promise<void>
-```
-
-#### `mcp_test_connection`
-Tests MCP server connection.
-
-```typescript
-invoke('mcp_test_connection', {
-  name: string
-}) => Promise<ConnectionResult>
-```
-
-### System Commands
-
-#### `get_machine_id`
-Gets unique machine identifier.
-
-```typescript
-invoke('get_machine_id') => Promise<string>
-```
-
-#### `open_external`
-Opens URL in default browser.
-
-```typescript
-invoke('open_external', {
-  url: string
-}) => Promise<void>
-```
-
-#### `run_bash`
-Executes a bash command.
-
-```typescript
-invoke('run_bash', {
-  command: string,
-  cwd?: string,
-  env?: Record<string, string>
-}) => Promise<BashResult>
-```
-
-**Returns:**
-```typescript
-interface BashResult {
-  stdout: string;
-  stderr: string;
-  exit_code: number;
-}
-```
+### Git Operations
 
 #### `get_git_status`
-Gets git repository status.
+Returns the Git status for a repository.
 
 ```typescript
 invoke('get_git_status', {
@@ -526,177 +583,940 @@ invoke('get_git_status', {
 }) => Promise<GitStatus>
 ```
 
+**Returns:**
+```typescript
+interface GitStatus {
+  modified: string[];
+  added: string[];
+  deleted: string[];
+  renamed: string[];
+}
+```
+
+#### `get_git_diff_numstat`
+Returns git diff numstat for line additions/deletions per file.
+
+```typescript
+invoke('get_git_diff_numstat', {
+  directory: string
+}) => Promise<string>
+```
+
+### Bash Execution
+
+#### `execute_bash`
+Executes a bash command and returns the output. Platform-specific implementation:
+- **Windows**: Tries WSL, then Git Bash, then cmd
+- **macOS/Linux**: Uses native bash
+
+Has a 30-second timeout.
+
+```typescript
+invoke('execute_bash', {
+  command: string,
+  workingDir?: string | null
+}) => Promise<string>
+```
+
+#### `spawn_bash`
+Spawns a bash command and streams output in real-time via Tauri events. Emits:
+- `bash-output-{process_id}` - stdout lines
+- `bash-error-{process_id}` - stderr lines
+- `bash-complete-{process_id}` - exit code when done
+
+```typescript
+invoke('spawn_bash', {
+  command: string,
+  workingDir?: string | null
+}) => Promise<string>  // Returns process_id (UUID)
+```
+
+#### `kill_bash_process`
+Kills a specific bash process by its process ID.
+
+```typescript
+invoke('kill_bash_process', {
+  processId: string
+}) => Promise<void>
+```
+
+### System Commands
+
+#### `open_external`
+Opens a URL in the system's default browser. Platform-specific:
+- **Windows**: `cmd /C start`
+- **macOS**: `open`
+- **Linux**: `xdg-open`
+
+```typescript
+invoke('open_external', {
+  url: string
+}) => Promise<void>
+```
+
+#### `get_system_fonts`
+Returns a list of available system fonts by scanning font directories:
+- **macOS**: `/System/Library/Fonts`, `/Library/Fonts`, `~/Library/Fonts`
+- **Windows**: `C:\Windows\Fonts`
+- **Linux**: `/usr/share/fonts`, `/usr/local/share/fonts`, `~/.fonts`, `~/.local/share/fonts`
+
+```typescript
+invoke('get_system_fonts') => Promise<string[]>
+```
+
+#### `toggle_console_visibility`
+Toggles the YURUCODE_SHOW_CONSOLE environment variable. Changes take effect on next server restart.
+
+```typescript
+invoke('toggle_console_visibility') => Promise<string>
+```
+
+**Returns:** Status message ("Console will be visible/hidden on next server restart")
+
+#### `get_server_port`
+Returns the port number where the Node.js backend server is running. Dynamically allocated at startup.
+
+```typescript
+invoke('get_server_port') => Promise<number>
+```
+
+#### `read_port_file`
+Reads the port number from the `~/.yurucode/current-port.txt` file.
+
+```typescript
+invoke('read_port_file') => Promise<number>
+```
+
+#### `get_server_logs`
+Returns the current Node.js server logs from memory.
+
+```typescript
+invoke('get_server_logs') => Promise<string>
+```
+
+#### `get_server_log_path`
+Returns the file path where server logs are stored:
+- **macOS**: `~/Library/Logs/yurucode/server.log`
+- **Windows**: `%LOCALAPPDATA%\yurucode\logs\server.log`
+- **Linux**: `~/.yurucode/logs/server.log`
+
+```typescript
+invoke('get_server_log_path') => Promise<string>
+```
+
+#### `clear_server_logs`
+Clears the server logs file.
+
+```typescript
+invoke('clear_server_logs') => Promise<void>
+```
+
+#### `get_home_directory`
+Gets the user's home directory path.
+
+```typescript
+invoke('get_home_directory') => Promise<string>
+```
+
+#### `get_current_directory`
+Gets the current working directory.
+
+```typescript
+invoke('get_current_directory') => Promise<string>
+```
+
+### Database Operations
+
+#### `db_save_session`
+Saves or updates a session in the database.
+
+```typescript
+invoke('db_save_session', {
+  session: Session
+}) => Promise<void>
+```
+
+**Session Structure:**
+```typescript
+interface Session {
+  id: string;
+  title?: string;
+  project_path?: string;
+  model?: string;
+  created_at: number;
+  updated_at: number;
+  metadata?: object;
+}
+```
+
+#### `db_load_session`
+Loads a specific session from the database.
+
+```typescript
+invoke('db_load_session', {
+  session_id: string
+}) => Promise<Session | null>
+```
+
+#### `db_load_all_sessions`
+Loads all sessions from the database.
+
+```typescript
+invoke('db_load_all_sessions') => Promise<Session[]>
+```
+
+#### `db_delete_session`
+Deletes a session from the database.
+
+```typescript
+invoke('db_delete_session', {
+  session_id: string
+}) => Promise<void>
+```
+
+#### `db_save_message`
+Saves a message to the database.
+
+```typescript
+invoke('db_save_message', {
+  message: Message
+}) => Promise<void>
+```
+
+**Message Structure:**
+```typescript
+interface Message {
+  id: string;
+  session_id: string;
+  role: string;
+  content: string;
+  timestamp: number;
+  tokens?: number;
+}
+```
+
+#### `db_load_messages`
+Loads all messages for a session.
+
+```typescript
+invoke('db_load_messages', {
+  session_id: string
+}) => Promise<Message[]>
+```
+
+#### `db_save_analytics`
+Saves analytics data to the database.
+
+```typescript
+invoke('db_save_analytics', {
+  analytics: Analytics
+}) => Promise<void>
+```
+
+#### `db_load_analytics`
+Loads analytics for a session.
+
+```typescript
+invoke('db_load_analytics', {
+  session_id: string
+}) => Promise<Analytics[]>
+```
+
+#### `db_get_statistics`
+Gets database statistics.
+
+```typescript
+invoke('db_get_statistics') => Promise<object>
+```
+
+#### `db_clear_all_data`
+Clears all data from the database (requires confirmation).
+
+```typescript
+invoke('db_clear_all_data', {
+  confirm: boolean
+}) => Promise<void>
+```
+
+#### `db_export_data`
+Exports all database data as JSON.
+
+```typescript
+invoke('db_export_data') => Promise<object>
+```
+
+#### `db_import_data`
+Imports database data from JSON.
+
+```typescript
+invoke('db_import_data', {
+  data: object
+}) => Promise<void>
+```
+
+### Hook Operations
+
+#### `execute_hook`
+Executes a hook script with the given input. Script type is auto-detected from content (python, node, bash).
+
+```typescript
+invoke('execute_hook', {
+  event: string,
+  script: string,
+  data: any,  // serde_json::Value
+  sessionId: string,
+  timeoutMs?: number | null  // Defaults to 5000ms
+}) => Promise<HookResponse>
+```
+
+**Returns:**
+```typescript
+interface HookResponse {
+  action: string;      // "continue", "block", "modify"
+  message?: string | null;
+  exit_code: number;   // i32 from Rust
+  modifications?: any | null;
+}
+```
+
+#### `test_hook`
+Tests a hook script with sample data appropriate for the event type.
+
+```typescript
+invoke('test_hook', {
+  script: string,
+  event: string
+}) => Promise<string>  // Formatted result string
+```
+
+#### `get_hook_events`
+Gets available hook event types. Returns a Vec of strings.
+
+```typescript
+invoke('get_hook_events') => Promise<string[]>
+```
+
+**Available Events:**
+- `user_prompt_submit`
+- `pre_tool_use`
+- `post_tool_use`
+- `assistant_response`
+- `session_start`
+- `session_end`
+- `context_warning`
+- `compaction_trigger`
+- `error`
+
+#### `get_sample_hooks`
+Gets sample yurucode hook scripts.
+
+```typescript
+invoke('get_sample_hooks') => Promise<[string, string, string][]>
+// Returns array of [name, event, script] tuples
+```
+
+### Compaction Operations
+
+#### `update_context_usage`
+Updates context usage for a session and returns the action to take.
+
+```typescript
+invoke('update_context_usage', {
+  sessionId: string,
+  usage: number  // f32, 0.0 to 1.0 (percentage as decimal)
+}) => Promise<string>  // JSON-serialized CompactionActionType
+```
+
+**Action Types:**
+- `"None"` - No action needed
+- `"Notice"` - Notice level (deprecated)
+- `"Warning"` - Warning at 55%
+- `"AutoTrigger"` - Auto-compact at 60%
+- `"Force"` - Force compact at 65%
+
+#### `save_context_manifest`
+Saves a context manifest for a session.
+
+```typescript
+invoke('save_context_manifest', {
+  sessionId: string,
+  manifestData: ContextManifest  // serde_json::Value
+}) => Promise<string>
+```
+
+#### `load_context_manifest`
+Loads a context manifest for a session.
+
+```typescript
+invoke('load_context_manifest', {
+  sessionId: string
+}) => Promise<ContextManifest>
+```
+
+**Returns:**
+```typescript
+interface ContextManifest {
+  version: string;
+  task_id?: string | null;
+  session_id: string;
+  timestamp: string;  // ISO 8601
+  context: {
+    files: string[];
+    functions: string[];
+    dependencies: string[];
+    decisions: Array<{
+      decision: string;
+      rationale: string;
+      timestamp: string;
+    }>;
+  };
+  scope?: string | null;
+  entry_points: string[];
+  test_files: string[];
+}
+```
+
+#### `get_compaction_state`
+Gets the compaction state for a session.
+
+```typescript
+invoke('get_compaction_state', {
+  sessionId: string
+}) => Promise<CompactionState | null>
+```
+
+**Returns:**
+```typescript
+interface CompactionState {
+  session_id: string;
+  current_usage: number;  // f32
+  last_action: string;
+  auto_triggered: boolean;
+  force_triggered: boolean;
+  last_update: string;  // ISO 8601
+}
+```
+
+#### `reset_compaction_state`
+Resets the compaction state for a session (removes from state map).
+
+```typescript
+invoke('reset_compaction_state', {
+  sessionId: string
+}) => Promise<void>
+```
+
+#### `reset_compaction_flags`
+Resets compaction trigger flags (auto_triggered, force_triggered) for a session without removing state.
+
+```typescript
+invoke('reset_compaction_flags', {
+  sessionId: string
+}) => Promise<void>
+```
+
+#### `update_compaction_config`
+Updates the compaction configuration.
+
+```typescript
+invoke('update_compaction_config', {
+  config: CompactionConfig
+}) => Promise<void>
+```
+
+**Config:**
+```typescript
+interface CompactionConfig {
+  auto_threshold: number;  // f32, default 0.60
+  force_threshold: number; // f32, default 0.65
+  preserve_context: boolean;
+  generate_manifest: boolean;
+}
+```
+
+#### `get_compaction_config`
+Gets the current compaction configuration.
+
+```typescript
+invoke('get_compaction_config') => Promise<CompactionConfig>
+```
+
+#### `generate_context_manifest`
+Generates and saves a context manifest for a session.
+
+```typescript
+invoke('generate_context_manifest', {
+  sessionId: string,
+  taskId?: string | null,
+  scope?: string | null,
+  files: string[],
+  functions: string[],
+  dependencies: string[],
+  decisions: object[]
+}) => Promise<ContextManifest>
+```
+
+### MCP Operations (Model Context Protocol)
+
+These commands manage MCP servers that extend Claude's capabilities.
+
+#### `mcp_list`
+Lists all configured MCP servers from `~/.claude/settings.json`.
+
+```typescript
+invoke('mcp_list') => Promise<MCPServer[]>
+```
+
+**Returns:**
+```typescript
+interface MCPServer {
+  name: string;
+  transport: string;  // "stdio" | "sse"
+  command?: string | null;  // For stdio transport
+  args: string[];
+  env: Record<string, string>;  // HashMap<String, String>
+  url?: string | null;  // For SSE transport
+  scope: string;  // "user" | "project"
+  connected: boolean;  // Always false (connection state not tracked)
+}
+```
+
+#### `mcp_add`
+Adds an MCP server to Claude's settings.
+
+```typescript
+invoke('mcp_add', {
+  name: string,
+  transport: string,
+  command?: string | null,
+  args: string[],
+  env: Record<string, string>,
+  url?: string | null,
+  scope: string
+}) => Promise<AddServerResult>
+```
+
+**Returns:**
+```typescript
+interface AddServerResult {
+  success: boolean;
+  message: string;
+}
+```
+
+#### `mcp_remove`
+Removes an MCP server from Claude's settings.
+
+```typescript
+invoke('mcp_remove', {
+  name: string
+}) => Promise<string>  // Success/error message
+```
+
+#### `mcp_test_connection`
+Tests MCP server connection by attempting to start and communicate with it.
+
+```typescript
+invoke('mcp_test_connection', {
+  name: string
+}) => Promise<string>  // Connection status message
+```
+
+#### `mcp_import_claude_desktop`
+Imports MCP servers from Claude Desktop configuration (`claude_desktop_config.json`).
+
+```typescript
+invoke('mcp_import_claude_desktop') => Promise<ImportResult>
+```
+
+**Returns:**
+```typescript
+interface ImportResult {
+  imported: number;
+  skipped: number;
+  servers: string[];
+}
+```
+
+#### `mcp_export_config`
+Exports MCP configuration as JSON string.
+
+```typescript
+invoke('mcp_export_config') => Promise<string>  // JSON string
+```
+
+### Agent Management (In-Memory)
+
+These commands manage agents stored in memory for the current session.
+
+#### `list_agents`
+Lists all in-memory agents.
+
+```typescript
+invoke('list_agents') => Promise<Agent[]>
+```
+
+**Returns:**
+```typescript
+interface Agent {
+  id?: number | null;  // i32 from Rust
+  name: string;
+  icon: string;
+  system_prompt: string;
+  default_task?: string | null;
+  model: string;
+  created_at: number;  // i64 timestamp
+  updated_at: number;  // i64 timestamp
+}
+```
+
+#### `load_default_agents`
+Loads the 5 Yurucode Core Agents from `default-agents.json` resource or hardcoded fallback:
+- **architect** - Plans, designs, decomposes tasks
+- **explorer** - Finds, reads, understands codebase
+- **implementer** - Codes, edits, builds
+- **guardian** - Reviews, audits, verifies
+- **specialist** - Domain-specific tasks
+
+```typescript
+invoke('load_default_agents') => Promise<Agent[]>
+```
+
+#### `create_agent`
+Creates a new in-memory agent with auto-assigned ID.
+
+```typescript
+invoke('create_agent', {
+  agent: Agent
+}) => Promise<Agent>
+```
+
+#### `delete_agent`
+Deletes an in-memory agent by ID.
+
+```typescript
+invoke('delete_agent', {
+  id: number
+}) => Promise<void>
+```
+
+### Claude Agents (File-based)
+
+These commands manage agents stored as `.md` files in the filesystem with YAML frontmatter.
+
+#### `load_claude_agents`
+Loads Claude agents from `~/.claude/agents` directory (global agents). Does NOT include yurucode built-in agents.
+
+```typescript
+invoke('load_claude_agents') => Promise<ClaudeAgent[]>
+```
+
+**Returns:**
+```typescript
+interface ClaudeAgent {
+  id: string;           // Format: "claude-agent-{name}"
+  name: string;         // From YAML frontmatter
+  model: string;        // From YAML frontmatter, defaults to "opus"
+  system_prompt: string; // Markdown body after frontmatter
+  created_at: number;   // u64 Unix timestamp
+  updated_at: number;   // u64 Unix timestamp
+}
+```
+
+**File Format:**
+```yaml
+---
+name: agent-name
+model: opus
+description: Agent description
 ---
 
-## WebSocket API
-
-WebSocket communication between frontend and embedded Node.js server.
-
-### Client → Server Events
-
-#### `spawn-claude`
-Spawns a new Claude session.
-
-```javascript
-socket.emit('spawn-claude', {
-  sessionId: string,
-  workingDir: string,
-  model?: string,
-  env?: object
-}, callback)
+System prompt content here...
 ```
 
-#### `send-message`
-Sends a message to Claude.
+#### `load_project_agents`
+Loads project-specific Claude agents from `<directory>/.claude/agents`.
 
-```javascript
-socket.emit('send-message', {
-  sessionId: string,
-  message: string
-}, callback)
+```typescript
+invoke('load_project_agents', {
+  directory: string
+}) => Promise<ClaudeAgent[]>
 ```
 
-#### `interrupt`
-Interrupts Claude's response.
+#### `save_global_agent`
+Saves a Claude agent to `~/.claude/agents/{name}.md`.
 
-```javascript
-socket.emit('interrupt', {
-  sessionId: string
-})
+```typescript
+invoke('save_global_agent', {
+  agent: ClaudeAgent
+}) => Promise<void>
 ```
 
-#### `clear-context`
-Clears session context.
+#### `save_project_agent`
+Saves a Claude agent to `<directory>/.claude/agents/{name}.md`.
 
-```javascript
-socket.emit('clear-context', {
-  sessionId: string
-})
+```typescript
+invoke('save_project_agent', {
+  agent: ClaudeAgent,
+  directory: string
+}) => Promise<void>
 ```
 
-#### `get-sessions`
-Retrieves all sessions.
+#### `delete_global_agent`
+Deletes a Claude agent file from `~/.claude/agents`.
 
-```javascript
-socket.emit('get-sessions', {}, callback)
+```typescript
+invoke('delete_global_agent', {
+  agentName: string
+}) => Promise<void>
 ```
 
-#### `get-session-info`
-Gets session information.
+#### `delete_project_agent`
+Deletes a project agent file.
 
-```javascript
-socket.emit('get-session-info', {
-  sessionId: string
-}, callback)
+```typescript
+invoke('delete_project_agent', {
+  agentName: string,
+  directory: string
+}) => Promise<void>
 ```
 
-#### `kill-session`
-Terminates a session.
+### Yurucode Agents Sync
 
-```javascript
-socket.emit('kill-session', {
-  sessionId: string
-})
+These commands manage syncing the 5 Yurucode Core Agents to `~/.claude/agents/` for Claude CLI integration.
+
+#### `sync_yurucode_agents`
+Writes or removes yurucode agent files (`yurucode-*.md`) to `~/.claude/agents/` based on enabled state. Uses PID tracking to support multiple instances.
+
+```typescript
+invoke('sync_yurucode_agents', {
+  enabled: boolean,
+  model?: string | null  // Defaults to "opus"
+}) => Promise<void>
 ```
 
-### Server → Client Events
+#### `cleanup_yurucode_agents_on_exit`
+Cleans up yurucode agents on app exit. Only removes agent files if no other yurucode instances are running.
 
-#### `session-created`
-Emitted when session is created.
-
-```javascript
-socket.on('session-created', (data: {
-  sessionId: string,
-  pid: number,
-  workingDir: string
-}) => {})
+```typescript
+invoke('cleanup_yurucode_agents_on_exit') => Promise<void>
 ```
 
-#### `stream-start`
-Emitted when streaming begins.
+#### `are_yurucode_agents_synced`
+Checks if all 5 yurucode agent files exist in `~/.claude/agents/`.
 
-```javascript
-socket.on('stream-start', (data: {
-  sessionId: string,
-  messageId: string
-}) => {})
+```typescript
+invoke('are_yurucode_agents_synced') => Promise<boolean>
 ```
 
-#### `stream-chunk`
-Emitted for each stream chunk.
+### Custom Commands
 
-```javascript
-socket.on('stream-chunk', (data: {
-  sessionId: string,
-  messageId: string,
-  content: string,
-  delta: string
-}) => {})
+These commands manage custom slash commands stored as `.md` files in `~/.claude/commands`.
+
+#### `load_custom_commands`
+Loads custom commands from `~/.claude/commands` directory (global commands).
+
+```typescript
+invoke('load_custom_commands') => Promise<CustomCommand[]>
 ```
 
-#### `stream-complete`
-Emitted when streaming completes.
-
-```javascript
-socket.on('stream-complete', (data: {
-  sessionId: string,
-  messageId: string,
-  content: string,
-  tokens: TokenStats
-}) => {})
+**Returns:**
+```typescript
+interface CustomCommand {
+  id: string;          // Format: "custom-cmd-{name}"
+  name: string;        // From filename (without .md)
+  description: string; // From YAML frontmatter
+  template: string;    // Markdown body after frontmatter
+  category: string;    // From YAML frontmatter, defaults to "custom"
+  has_params: boolean; // True if template contains $ARGUMENTS or $1
+  enabled: boolean;    // From YAML frontmatter, defaults to true
+  created_at: number;  // u64 Unix timestamp
+  updated_at: number;  // u64 Unix timestamp
+}
 ```
 
-#### `token-update`
-Emitted with token statistics.
+**File Format:**
+```yaml
+---
+description: "Command description"
+category: custom
+argument-hint: "Enter parameters"
+enabled: true
+---
 
-```javascript
-socket.on('token-update', (data: {
-  sessionId: string,
-  stats: TokenStats
-}) => {})
+Command template with $ARGUMENTS placeholder...
 ```
 
-#### `error`
-Emitted on error.
+#### `load_project_commands`
+Loads project-specific custom commands from `<directory>/.claude/commands`.
 
-```javascript
-socket.on('error', (data: {
-  sessionId?: string,
-  error: string,
-  code?: string
-}) => {})
+```typescript
+invoke('load_project_commands', {
+  directory: string
+}) => Promise<CustomCommand[]>
 ```
 
-#### `session-terminated`
-Emitted when session ends.
+#### `save_custom_command`
+Saves a custom command to `~/.claude/commands/{name}.md`.
 
-```javascript
-socket.on('session-terminated', (data: {
-  sessionId: string,
-  reason: string
-}) => {})
+```typescript
+invoke('save_custom_command', {
+  command: CustomCommand
+}) => Promise<void>
 ```
 
-#### `compact-triggered`
-Emitted when auto-compact triggers.
+#### `save_project_command`
+Saves a custom command to `<directory>/.claude/commands/{name}.md`.
 
-```javascript
-socket.on('compact-triggered', (data: {
-  sessionId: string,
-  usage: number
-}) => {})
+```typescript
+invoke('save_project_command', {
+  command: CustomCommand,
+  directory: string
+}) => Promise<void>
 ```
 
-#### `compact-complete`
-Emitted when compaction completes.
+#### `delete_custom_command`
+Deletes a custom command from `~/.claude/commands`.
 
-```javascript
-socket.on('compact-complete', (data: {
-  sessionId: string,
-  newSessionId: string,
-  summary: string
-}) => {})
+```typescript
+invoke('delete_custom_command', {
+  commandName: string
+}) => Promise<void>
 ```
+
+#### `delete_project_command`
+Deletes a project command file.
+
+```typescript
+invoke('delete_project_command', {
+  commandName: string,
+  directory: string
+}) => Promise<void>
+```
+
+#### `load_all_commands`
+Loads all commands, merging file system commands with cached commands. File commands take precedence.
+
+```typescript
+invoke('load_all_commands', {
+  cachedCommands?: CustomCommand[] | null
+}) => Promise<CustomCommand[]>
+```
+
+#### `migrate_commands_to_filesystem`
+Migrates commands from localStorage cache to `~/.claude/commands`. Only migrates commands with IDs starting with "cached-".
+
+```typescript
+invoke('migrate_commands_to_filesystem', {
+  commands: CustomCommand[]
+}) => Promise<void>
+```
+
+---
+
+## Tauri Events API
+
+Tauri events are used for real-time communication between the Rust backend and the frontend. Events are emitted via `app.emit()` and listened to via `listen()` from `@tauri-apps/api/event`.
+
+### Claude Session Events
+
+Events are namespaced by session ID for multiplexing multiple sessions.
+
+#### `claude-message:{sessionId}`
+Emitted for each message from Claude. Payload is raw JSON string that needs parsing.
+
+```typescript
+import { listen } from '@tauri-apps/api/event';
+
+listen(`claude-message:${sessionId}`, (event) => {
+  const message = JSON.parse(event.payload as string);
+  // message types: text, assistant, user, tool_use, tool_result, result, error, etc.
+});
+```
+
+**Message Types:**
+- `text` - Streaming text content
+- `assistant` - Complete assistant message with content blocks
+- `user` - User message echo
+- `tool_use` - Tool invocation
+- `tool_result` - Tool result
+- `result` - Completion with usage stats
+- `error` - Error message
+- `system` - System messages (subtype: session_id, etc.)
+- `thinking` - Thinking indicator
+
+#### `claude-error:{sessionId}`
+Emitted on session errors.
+
+```typescript
+listen(`claude-error:${sessionId}`, (event) => {
+  const error = event.payload;
+  // { message: string, code?: string }
+});
+```
+
+#### `claude-title:{sessionId}`
+Emitted when Claude suggests a conversation title.
+
+```typescript
+listen(`claude-title:${sessionId}`, (event) => {
+  const title = event.payload;  // string or { title: string }
+});
+```
+
+#### `claude-session-id-update:{sessionId}`
+Emitted when the Claude session ID changes (e.g., after /compact creates a new session).
+
+```typescript
+listen(`claude-session-id-update:${sessionId}`, (event) => {
+  const { old_session_id, new_session_id, real_claude_session_id } = event.payload;
+  // Update listeners to new channel
+});
+```
+
+#### `claude-complete:{sessionId}`
+Emitted when a Claude response is complete.
+
+```typescript
+listen(`claude-complete:${sessionId}`, (event) => {
+  const data = event.payload;
+});
+```
+
+### Bash Process Events
+
+Events for streaming bash command output.
+
+#### `bash-output-{processId}`
+Emitted for each stdout line from a spawned bash process.
+
+```typescript
+listen(`bash-output-${processId}`, (event) => {
+  const line = event.payload as string;
+});
+```
+
+#### `bash-error-{processId}`
+Emitted for each stderr line from a spawned bash process.
+
+```typescript
+listen(`bash-error-${processId}`, (event) => {
+  const line = event.payload as string;
+});
+```
+
+#### `bash-complete-{processId}`
+Emitted when a bash process exits.
+
+```typescript
+listen(`bash-complete-${processId}`, (event) => {
+  const exitCode = event.payload as number | null;
+});
+```
+
+### Legacy WebSocket API (Deprecated)
+
+The WebSocket API via embedded Node.js server is maintained for backwards compatibility but is being phased out in favor of direct Tauri commands. New code should use Tauri commands and events instead.
 
 ---
 
@@ -706,86 +1526,142 @@ socket.on('compact-complete', (data: {
 
 **Location:** `src/renderer/services/tauriClaudeClient.ts`
 
+Main client for communicating with Claude via Tauri IPC commands. Replaces Socket.IO with direct Tauri invoke calls.
+
 ```typescript
 class TauriClaudeClient {
+  // Connection (always connected with Tauri)
+  isConnected(): boolean
+  getServerPort(): number | null
+
   // Session Management
-  spawnSession(config: SessionConfig): Promise<SessionInfo>
-  sendMessage(sessionId: string, message: string): Promise<void>
-  killSession(sessionId: string): Promise<void>
-  getSessions(): Promise<SessionInfo[]>
-  
-  // File Operations
-  openFile(path: string): Promise<void>
-  openInEditor(path: string): Promise<void>
-  
-  // Settings
-  saveSettings(settings: AppSettings): Promise<void>
-  loadSettings(): Promise<AppSettings>
+  createSession(name: string, workingDirectory: string, options?: {
+    model?: string;
+    prompt?: string;
+    claudeSessionId?: string;
+    sessionId?: string;
+  }): Promise<{
+    sessionId: string;
+    messages: any[];
+    workingDirectory: string;
+    claudeSessionId?: string;
+    pendingSpawn?: boolean;
+    model?: string;
+  }>
+
+  sendMessage(sessionId: string, content: string, model?: string): Promise<void>
+  interrupt(sessionId: string): Promise<void>
+  clearSession(sessionId: string): Promise<void>
+  deleteSession(sessionId: string): Promise<void>
+  listSessions(): Promise<any[]>
+  getSessionHistory(sessionId: string): Promise<any>
+
+  // Event Listeners (return cleanup functions)
+  onMessage(sessionId: string, handler: (message: any) => void): () => void
+  onError(sessionId: string, handler: (error: any) => void): () => void
+  onTitle(sessionId: string, handler: (title: string) => void): () => void
+  onSessionCreated(handler: (data: any) => void): void
+
+  // Lifecycle
+  disconnect(): void
+  checkHealth(): Promise<boolean>
 }
 ```
 
-### PerformanceMonitor
+### TauriAPI
 
-**Location:** `src/renderer/services/performanceMonitor.ts`
+**Location:** `src/renderer/services/tauriApi.ts`
+
+High-level wrapper for Tauri commands.
 
 ```typescript
-class PerformanceMonitor {
-  // Monitoring
-  startMonitoring(): void
-  stopMonitoring(): void
-  
-  // Metrics
-  recordMetric(name: string, value: number, unit: string): void
-  getMetric(name: string): PerformanceMetric
-  getAllMetrics(): PerformanceMetric[]
-  
-  // Thresholds
-  setThreshold(metric: string, warning: number, critical: number): void
-  checkThresholds(): ThresholdViolation[]
-  
-  // Reporting
-  generateReport(): PerformanceReport
-  exportMetrics(): string
+interface TauriAPI {
+  folder: {
+    select: () => Promise<string | null>;
+  };
+  window: {
+    minimize: () => Promise<void>;
+    maximize: () => Promise<void>;
+    close: () => Promise<void>;
+    setZoomLevel: (level: number) => Promise<void>;
+    setOpacity: (opacity: number) => Promise<void>;
+  };
+  claude: {
+    sendMessage: (sessionId: string, message: string, workingDir: string, model: string) => Promise<void>;
+    interruptSession: (sessionId: string) => Promise<void>;
+    clearSession: (sessionId: string) => Promise<void>;
+    getSessions: () => Promise<any[]>;
+    getServerPort: () => Promise<number>;
+    readPortFile: () => Promise<number>;
+  };
+  settings: {
+    save: (key: string, value: any) => Promise<void>;
+    load: (key: string) => Promise<any>;
+  };
+  projects: {
+    getRecent: () => Promise<string[]>;
+    addRecent: (path: string) => Promise<void>;
+  };
+  contextMenu: {
+    show: (x: number, y: number, hasSelection: boolean) => Promise<void>;
+  };
 }
+
+// Helper function
+export const isTauri = (): boolean  // Returns true if running in Tauri
 ```
 
 ### CompactionService
 
 **Location:** `src/renderer/services/compactionService.ts`
 
+Handles context compaction with auto-trigger at 60% (with 38% buffer like Claude Code).
+
 ```typescript
 class CompactionService {
-  // Monitoring
-  monitorUsage(sessionId: string): void
-  stopMonitoring(sessionId: string): void
-  
-  // Compaction
-  triggerCompaction(sessionId: string): Promise<CompactionResult>
-  getCompactionStatus(sessionId: string): CompactionStatus
-  
-  // Settings
-  setThreshold(threshold: number): void
-  setAutoTrigger(enabled: boolean): void
+  // Context Monitoring
+  updateContextUsage(sessionId: string, usagePercentage: number): Promise<void>
+
+  // Compaction Triggers
+  triggerAutoCompaction(sessionId: string): Promise<void>  // Flags for compact on next message
+  triggerForceCompaction(sessionId: string): Promise<void>
+  executeAutoCompaction(sessionId: string, pendingUserMessage: string): Promise<void>
+
+  // Manifest Management
+  generateAndSaveManifest(sessionId: string): Promise<void>
+  loadManifest(sessionId: string): Promise<ContextManifest | null>
+
+  // Configuration
+  updateConfig(config: Partial<CompactionConfig>): Promise<void>
+  getConfig(): Promise<CompactionConfig>
+
+  // Status
+  isCompacting(sessionId: string): boolean
 }
+
+interface CompactionConfig {
+  autoThreshold: number;   // 0.60 (60%)
+  forceThreshold: number;  // 0.65 (65%)
+  preserveContext: boolean;
+  generateManifest: boolean;
+}
+
+type CompactionActionType = 'None' | 'Notice' | 'Warning' | 'AutoTrigger' | 'Force';
 ```
 
 ### HooksService
 
 **Location:** `src/renderer/services/hooksService.ts`
 
+Executes hook scripts at various trigger points.
+
 ```typescript
 class HooksService {
-  // Configuration
-  getHooks(): Promise<HookConfig[]>
-  saveHooks(hooks: HookConfig[]): Promise<void>
-  
   // Execution
-  executeHook(trigger: HookTrigger, data: any): Promise<HookResult>
-  executeHooksForTrigger(trigger: HookTrigger, data: any): Promise<HookResult[]>
-  
-  // Validation
-  validateHook(hook: HookConfig): Promise<ValidationResult>
-  testHook(hook: HookConfig): Promise<TestResult>
+  executeHook(trigger: HookTrigger, data: any, sessionId: string): Promise<HookResponse>
+
+  // Sample Hooks
+  getSampleHooks(): Promise<[string, string, string][]>  // [name, event, script]
 }
 ```
 
@@ -869,16 +1745,16 @@ interface HookConfig {
 ### Hook Triggers
 
 ```typescript
-type HookTrigger = 
-  | 'before-message'
-  | 'after-message'
-  | 'on-error'
-  | 'session-start'
-  | 'session-end'
-  | 'session-compact'
-  | 'file-change'
-  | 'app-start'
-  | 'app-shutdown'
+type HookTrigger =
+  | 'user_prompt_submit'
+  | 'pre_tool_use'
+  | 'post_tool_use'
+  | 'assistant_response'
+  | 'session_start'
+  | 'session_end'
+  | 'context_warning'
+  | 'compaction_trigger'
+  | 'error'
 ```
 
 ### Hook Variables
@@ -1184,15 +2060,12 @@ interface PerformanceMetric {
   tags?: Record<string, string>
 }
 
-// Git Status
+// Git Status (from get_git_status command)
 interface GitStatus {
-  branch: string
-  ahead: number
-  behind: number
-  staged: string[]
   modified: string[]
-  untracked: string[]
-  conflicts: string[]
+  added: string[]
+  deleted: string[]
+  renamed: string[]
 }
 ```
 
@@ -1245,127 +2118,200 @@ enum ErrorCode {
 
 ```typescript
 // Frontend
-import { invoke } from '@tauri-apps/api';
+import { invoke } from '@tauri-apps/api/core';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 
 async function createNewSession() {
   const store = useClaudeCodeStore.getState();
-  
+
   // Create session via Tauri
-  const sessionInfo = await invoke('spawn_claude_safe', {
-    session_id: crypto.randomUUID(),
-    working_dir: '/path/to/project',
-    model: 'claude-3-sonnet'
+  const response = await invoke('spawn_claude_session', {
+    request: {
+      project_path: '/path/to/project',
+      model: 'opus',
+      prompt: 'Hello, Claude!'
+    }
   });
-  
-  // Update store
+
+  // Update store with session info
   store.createSession({
-    id: sessionInfo.session_id,
-    workingDirectory: sessionInfo.working_directory
+    id: response.session_id,
+    workingDirectory: '/path/to/project'
   });
-  
-  // Connect via WebSocket
-  socket.emit('spawn-claude', {
-    sessionId: sessionInfo.session_id,
-    workingDir: sessionInfo.working_directory
-  });
+
+  console.log('Session created:', response.session_id);
 }
 ```
 
 ### Sending a Message
 
 ```typescript
-async function sendMessage(message: string) {
-  const { activeSessionId } = useClaudeCodeStore.getState();
-  
-  // Send via WebSocket
-  socket.emit('send-message', {
-    sessionId: activeSessionId,
-    message
-  }, (response) => {
-    if (response.error) {
-      console.error('Failed to send message:', response.error);
-    }
-  });
-  
-  // Listen for response
-  socket.on('stream-chunk', (data) => {
-    if (data.sessionId === activeSessionId) {
-      // Update UI with streaming content
-      updateMessage(data.content);
-    }
-  });
+import { invoke } from '@tauri-apps/api/core';
+
+async function sendMessage(sessionId: string, message: string) {
+  try {
+    // Send message to Claude session
+    await invoke('send_claude_message', {
+      request: {
+        session_id: sessionId,
+        message: message
+      }
+    });
+
+    console.log('Message sent successfully');
+  } catch (error) {
+    console.error('Failed to send message:', error);
+  }
 }
+
+// Listen for Claude events via Tauri event system
+import { listen } from '@tauri-apps/api/event';
+
+// Listen for streaming chunks
+const unlisten = await listen(`claude-stream:${sessionId}`, (event) => {
+  const { content } = event.payload;
+  // Update UI with streaming content
+  updateMessage(content);
+});
 ```
 
-### Implementing a Hook
+### Executing a Hook
 
 ```typescript
-// Define hook configuration
-const formatCodeHook: HookConfig = {
-  name: 'format-code',
-  trigger: 'before-message',
-  command: 'prettier',
-  args: ['--write', '${file}'],
-  blocking: true,
-  timeout: 5000,
-  enabled: true
-};
+import { invoke } from '@tauri-apps/api/core';
 
-// Save hook
-await invoke('save_hooks_config_command', {
-  hooks: [formatCodeHook]
+// Execute a hook with custom script
+const response = await invoke('execute_hook', {
+  event: 'pre_tool_use',
+  script: `#!/bin/bash
+    input=$(cat)
+    tool=$(echo "$input" | jq -r '.data.tool')
+    echo '{"action":"continue"}'
+  `,
+  data: { tool: 'Edit', input: { file_path: '/path/to/file.ts' } },
+  session_id: sessionId,
+  timeout_ms: 5000
 });
 
-// Hook will automatically execute before messages are sent
-```
-
-### Monitoring Performance
-
-```typescript
-import { perfMonitor } from './services/performanceMonitor';
-
-// Start monitoring
-perfMonitor.startMonitoring();
-
-// Record custom metric
-perfMonitor.recordMetric('custom.operation', 150, 'ms');
-
-// Check for violations
-const violations = perfMonitor.checkThresholds();
-if (violations.length > 0) {
-  console.warn('Performance issues detected:', violations);
-}
-
-// Generate report
-const report = perfMonitor.generateReport();
-console.log('Performance Report:', report);
+console.log('Hook result:', response);
 ```
 
 ### Database Operations
 
 ```typescript
-// Save checkpoint
-const checkpointId = await invoke('save_checkpoint', {
-  session_id: sessionId,
-  title: 'Important milestone',
-  messages: currentMessages,
-  metadata: {
-    model: 'claude-3-sonnet',
+import { invoke } from '@tauri-apps/api/core';
+
+// Save a session to the database
+await invoke('db_save_session', {
+  session: {
+    id: sessionId,
+    title: 'My Session',
+    project_path: '/path/to/project',
+    model: 'opus',
+    created_at: Date.now(),
+    updated_at: Date.now()
+  }
+});
+
+// Load all sessions
+const sessions = await invoke('db_load_all_sessions');
+
+// Save a message
+await invoke('db_save_message', {
+  message: {
+    id: messageId,
+    session_id: sessionId,
+    role: 'user',
+    content: 'Hello, Claude!',
     timestamp: Date.now()
   }
 });
 
-// Search history
-const results = await invoke('search_history', {
-  query: 'implement feature',
-  limit: 10
+// Export all data for backup
+const exportData = await invoke('db_export_data');
+console.log('Exported data:', exportData);
+```
+
+### Managing Custom Commands
+
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+// Load all custom commands
+const commands = await invoke('load_custom_commands');
+
+// Save a new custom command
+await invoke('save_custom_command', {
+  command: {
+    id: 'custom-cmd-review',
+    name: 'review',
+    description: 'Review the current code changes',
+    template: 'Please review the following changes and provide feedback:\n$ARGUMENTS',
+    category: 'code',
+    has_params: true,
+    enabled: true,
+    created_at: Date.now(),
+    updated_at: Date.now()
+  }
 });
 
-// Load checkpoint
-const checkpoint = await invoke('load_checkpoint', {
-  checkpoint_id: checkpointId
+// Delete a command
+await invoke('delete_custom_command', {
+  command_name: 'review'
 });
+```
+
+### Compaction Management
+
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+// Update context usage (triggers auto-compaction at 96%)
+const action = await invoke('update_context_usage', {
+  session_id: sessionId,
+  usage: 0.85  // 85%
+});
+
+// Get compaction configuration
+const config = await invoke('get_compaction_config');
+console.log('Auto-trigger threshold:', config.auto_trigger_threshold);
+
+// Update compaction configuration
+await invoke('update_compaction_config', {
+  config: {
+    auto_trigger_threshold: 0.96,
+    force_trigger_threshold: 0.98,
+    enabled: true
+  }
+});
+```
+
+### MCP Server Management
+
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+// List all MCP servers
+const servers = await invoke('mcp_list');
+
+// Add a new MCP server
+await invoke('mcp_add', {
+  name: 'my-mcp-server',
+  transport: 'stdio',
+  command: 'npx',
+  args: ['-y', '@modelcontextprotocol/server-filesystem', '/path/to/dir'],
+  env: {},
+  scope: 'global'
+});
+
+// Test connection
+const result = await invoke('mcp_test_connection', {
+  name: 'my-mcp-server'
+});
+
+// Import from Claude Desktop
+const importResult = await invoke('mcp_import_claude_desktop');
+console.log('Imported servers:', importResult);
 ```
 
 ---
@@ -1382,18 +2328,6 @@ const checkpoint = await invoke('load_checkpoint', {
 8. **Hooks**: Test hooks thoroughly before enabling
 9. **MCP**: Validate server configurations before connecting
 10. **Monitoring**: Track performance metrics in production
-
----
-
-## Rate Limits
-
-| Operation | Limit | Window |
-|-----------|-------|--------|
-| Session creation | 10 | 1 minute |
-| Message sending | 60 | 1 minute |
-| Database queries | 100 | 1 minute |
-| Hook executions | 30 | 1 minute |
-| File operations | 50 | 1 minute |
 
 ---
 
@@ -1422,11 +2356,12 @@ try {
 For migrating from other Claude GUIs:
 
 1. **Export data** from previous application
-2. **Import checkpoints** using database API
-3. **Configure hooks** to match workflow
-4. **Set up MCP servers** if using
-5. **Adjust settings** to preference
+2. **Import sessions** using `db_import_data` command
+3. **Configure hooks** using `execute_hook` and `test_hook` commands
+4. **Set up MCP servers** using `mcp_add` and `mcp_import_claude_desktop`
+5. **Import custom commands** using `migrate_commands_to_filesystem`
+6. **Adjust settings** using `save_settings` and `save_claude_settings`
 
 ---
 
-This API reference covers all public APIs in Yurucode. For internal implementation details, refer to the source code.
+This API reference covers all public Tauri commands in Yurucode. For internal implementation details, refer to the source code in `src-tauri/src/commands/`.

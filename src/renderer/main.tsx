@@ -352,17 +352,21 @@ const preserveFocus = async (asyncOperation: () => Promise<void>) => {
 window.addEventListener('focus', () => {
   // WORKAROUND: Force hover state re-evaluation on window focus
   // Tauri webview doesn't always update :hover correctly without this
-  document.body.style.pointerEvents = 'none';
-  requestAnimationFrame(() => {
-    document.body.style.pointerEvents = '';
+  // Skip on macOS - it handles focus well and this workaround can cause focus loss
+  const isMac = platform.includes('mac');
+  if (!isMac) {
+    document.body.style.pointerEvents = 'none';
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = '';
 
-    // Restore textarea focus after pointer events are re-enabled
-    // This fixes focus loss caused by the pointer events workaround
-    const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-    if (textarea && !document.querySelector('.modal-overlay')) {
-      textarea.focus();
-    }
-  });
+      // Restore textarea focus after pointer events are re-enabled
+      // This fixes focus loss caused by the pointer events workaround (Windows only)
+      const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+      if (textarea && !document.querySelector('.modal-overlay')) {
+        textarea.focus();
+      }
+    });
+  }
 
   const store = useClaudeCodeStore.getState();
   const { sessions, currentSessionId } = store;
@@ -418,13 +422,17 @@ document.addEventListener('visibilitychange', () => {
             }
           }
         }
-        // Restore focus after all reconnections
-        requestAnimationFrame(() => {
-          const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-          if (textarea && document.hasFocus() && !document.querySelector('.modal-overlay')) {
-            textarea.focus();
-          }
-        });
+        // Restore focus after all reconnections (Windows only)
+        // Skip on macOS - aggressive focus restoration disrupts webview focus state
+        const isMac = platform.includes('mac');
+        if (!isMac) {
+          requestAnimationFrame(() => {
+            const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+            if (textarea && document.hasFocus() && !document.querySelector('.modal-overlay')) {
+              textarea.focus();
+            }
+          });
+        }
       };
       refreshSessions();
     }

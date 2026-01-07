@@ -877,7 +877,7 @@ use windows::Win32::*;
 | Checkpoints + timeline | ✅ | ✅ | ❌ | ❌ |
 | CLAUDE.md editor | ❌ | ✅ | ❌ | ❌ |
 | No telemetry | ✅ | ✅ | ❌ | ❌ |
-| Embedded server | ✅ | ❌ | ❌ | ❌ |
+| Compiled server | ✅ | ❌ | ❌ | ❌ |
 | Platform support | 3 | 3 | 2 | 3 |
 
 ## Performance Benchmarks

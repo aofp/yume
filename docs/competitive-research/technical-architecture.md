@@ -172,7 +172,7 @@ Best of all worlds, but complex to implement.
 - Native window: No terminal issues
 - React in WebView: Proper rendering engine
 - Tauri: Performance + security
-- Embedded server: Full CLI compatibility
+- Compiled server binaries: Full CLI compatibility, no Node.js dependency
 
 ---
 
