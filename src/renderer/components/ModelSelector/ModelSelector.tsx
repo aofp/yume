@@ -53,7 +53,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
         onMouseLeave={() => setIsHovered(false)}
         title={`toggle model (${modKey}+o)`}
       >
-        {selectedModel.name}
+        <span className="model-selector-text">{selectedModel.name}</span>
       </button>
     </div>
   );

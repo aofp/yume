@@ -54,7 +54,7 @@
 13. **Platform Features**: Native integrations for each OS
 
 #### Exclusive Features:
-- Only GUI with automatic compaction at 97%
+- Only GUI with conservative auto-compaction (60%/65% thresholds, 38% buffer)
 - Compiled server binaries (no Node.js dependency for end users)
 - Crash recovery with session restoration
 - True token cost tracking (accurate to cent)
@@ -222,31 +222,19 @@
 
 ---
 
-### 6. [README_COMPREHENSIVE.md](../README_COMPREHENSIVE.md)
-**Size:** ~4,000 words  
-**Depth:** Complete project overview
+### 6. [README.md](../README.md)
+**Size:** ~500 words
+**Depth:** Quick project overview
 
 #### Sections:
-- Why Yurucode (unique value proposition)
-- Complete feature list
-- Installation guides (all platforms)
-- Development setup
+- Features overview
+- Development commands
+- Requirements
 - Architecture overview
-- Performance benchmarks
-- Security & privacy
-- Comparisons with competitors
-- Roadmap and future plans
-
-#### Unique Selling Points:
-1. Only GUI with 97% auto-compaction
-2. Compiled server binary architecture
-3. Crash recovery system
-4. Zero telemetry
-5. Production-ready status
 
 ---
 
-### 6. [MASTER_DOCUMENTATION_INDEX.md](MASTER_DOCUMENTATION_INDEX.md) (This File)
+### 7. [MASTER_DOCUMENTATION_INDEX.md](MASTER_DOCUMENTATION_INDEX.md) (This File)
 **Purpose:** Documentation overview and navigation
 
 ---
@@ -348,27 +336,29 @@
 
 ### Unique Features Deep Dive
 
-#### Auto-Compaction at 97%
+#### Auto-Compaction at 60%/65%
 
-**Why 97%?**
-- Leaves 3% buffer for safety
-- Prevents overflow during processing
-- Optimal for user experience
-- Scientifically tested threshold
-- Industry-unique feature
+**Why 60%/65%?**
+- Uses same 38% buffer as Claude Code for reliability
+- 55%: Warning notification
+- 60%: Auto-compact triggers (sets flag for next message)
+- 65%: Force compact
+- Prevents context overflow with comfortable margin
 
 **Implementation**:
 ```rust
-if usage >= 0.97 {
-    trigger_compaction();
+if usage >= 0.65 {
+    trigger_force_compaction();
+} else if usage >= 0.60 {
+    trigger_auto_compaction();
 }
 ```
 
 **Process**:
 1. Monitor token usage continuously
-2. Detect 97% threshold
-3. Save current conversation state
-4. Send /compact command to Claude
+2. Detect 60% (auto) or 65% (force) threshold
+3. Set pending compaction flag
+4. Send /compact command with next user message
 5. Create new session with summary
 6. Seamlessly continue conversation
 

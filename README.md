@@ -7,8 +7,8 @@ A powerful, minimal GUI for Claude Code with intelligent context management.
 ## ✨ Features
 
 ### 🎯 Intelligent Context Management
-- **Auto-compact at 96%** - Never hit token limits
-- **Multi-tier warnings** - Get notified at 75%, 90%, 96%
+- **Auto-compact at 60%** - Conservative 38% buffer like Claude Code
+- **Multi-tier warnings** - Get notified at 55%, 60%, 65%
 - **Context preservation** - Saves important context before compacting
 - **Visual indicators** - Color-coded token usage (grey → orange → red)
 
@@ -60,7 +60,7 @@ npm run tauri:build:linux # Linux
 Yurucode uses a three-process architecture:
 
 1. **Tauri Main Process** - Window management and native APIs
-2. **Node.js Server** - Claude CLI integration (embedded in logged_server.rs)
+2. **Node.js Server** - Claude CLI integration (compiled binaries, no Node.js needed for end users)
 3. **React Frontend** - User interface with Zustand state management
 
 ## 📄 License

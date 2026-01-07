@@ -339,6 +339,9 @@ interface ClaudeCodeStore {
   // Title generation
   autoGenerateTitle: boolean; // Whether to auto-generate titles for new sessions
 
+  // Auto-compact
+  autoCompactEnabled: boolean; // Whether to auto-compact at 60% threshold
+
   // Menu visibility
   showProjectsMenu: boolean; // Whether to show projects button in menu
   showAgentsMenu: boolean; // Whether to show agents button in menu
@@ -428,6 +431,9 @@ interface ClaudeCodeStore {
   
   // Title generation
   setAutoGenerateTitle: (autoGenerate: boolean) => void;
+
+  // Auto-compact
+  setAutoCompactEnabled: (enabled: boolean) => void;
 
   // Menu visibility
   setShowProjectsMenu: (show: boolean) => void;
@@ -648,6 +654,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
   autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
+  autoCompactEnabled: true, // Default to enabled (auto-compact at 60%)
   showProjectsMenu: false, // Default to hidden
   showAgentsMenu: false, // Default to hidden
   showAnalyticsMenu: false, // Default to hidden
@@ -4164,6 +4171,12 @@ ${content}`;
     console.log('[Store] Auto-generate title:', autoGenerate);
   },
 
+  setAutoCompactEnabled: (enabled: boolean) => {
+    set({ autoCompactEnabled: enabled });
+    localStorage.setItem('yurucode-auto-compact-enabled', JSON.stringify(enabled));
+    console.log('[Store] Auto-compact enabled:', enabled);
+  },
+
   setShowProjectsMenu: (show: boolean) => {
     set({ showProjectsMenu: show });
     localStorage.setItem('yurucode-show-projects-menu', JSON.stringify(show));
@@ -4395,6 +4408,7 @@ ${content}`;
         sansFont: state.sansFont,
         rememberTabs: state.rememberTabs,
         autoGenerateTitle: state.autoGenerateTitle,
+        autoCompactEnabled: state.autoCompactEnabled,
         showProjectsMenu: state.showProjectsMenu,
         showAgentsMenu: state.showAgentsMenu,
         showAnalyticsMenu: state.showAnalyticsMenu,

@@ -43,10 +43,11 @@ pub struct ClaudeSpawner {
 ```
 
 **Supported Models**:
-- Claude 3 Opus
-- Claude 3 Sonnet
-- Claude 3 Haiku
-- Claude 3.5 Sonnet
+- Claude Opus 4.5 (claude-opus-4-5-20251101)
+- Claude Sonnet 4 (claude-sonnet-4-20250514)
+- Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)
+- Claude 3.5 Haiku (claude-3-5-haiku-20241022)
+- Claude 3 Opus (claude-3-opus-20240229)
 
 **CLI Arguments**:
 ```bash
@@ -174,9 +175,9 @@ pub struct CrashRecoveryManager {
 
 ### 3.1 Overview
 
-**Description**: Automatically compacts conversation context when reaching 97% capacity.
+**Description**: Automatically compacts conversation context with conservative thresholds (55% warning, 60% auto, 65% force).
 
-**Unique Feature**: No other Claude GUI offers automatic compaction at optimal threshold.
+**Unique Feature**: Uses same 38% buffer as Claude Code for reliable context management.
 
 ### 3.2 Technical Implementation
 
@@ -185,12 +186,15 @@ pub struct CrashRecoveryManager {
 **Threshold Detection**:
 ```rust
 pub struct CompactionManager {
-    threshold: f32, // 0.97 (97%)
-    
+    auto_threshold: f32,  // 0.60 (60%)
+    force_threshold: f32, // 0.65 (65%)
+
     pub async fn monitor_usage(&self, stats: TokenStats) {
         let usage = stats.context_tokens as f32 / stats.max_tokens as f32;
-        if usage >= self.threshold {
-            self.trigger_compaction().await;
+        if usage >= self.force_threshold {
+            self.trigger_force_compaction().await;
+        } else if usage >= self.auto_threshold {
+            self.trigger_auto_compaction().await;
         }
     }
 }
@@ -199,9 +203,9 @@ pub struct CompactionManager {
 ### 3.3 Compaction Process
 
 **Steps**:
-1. **Detection**: Monitor reaches 97% threshold
+1. **Detection**: Monitor reaches 60% (auto) or 65% (force) threshold
 2. **Preparation**: Save current state
-3. **Trigger**: Send `/compact` command
+3. **Trigger**: Send `/compact` command on next user message
 4. **Processing**: Claude creates summary
 5. **Transition**: Start new session with context
 6. **Restoration**: Resume conversation
@@ -216,11 +220,11 @@ pub struct CompactionManager {
 
 ```typescript
 interface CompactionSettings {
-  autoTrigger: boolean;      // Enable auto-compaction
-  threshold: number;          // 0.97 (97%)
-  preserveMessages: number;   // Keep last N messages
-  createCheckpoint: boolean;  // Save before compaction
-  notifyUser: boolean;        // Show notification
+  autoTrigger: boolean;        // Enable auto-compaction
+  autoThreshold: number;       // 0.60 (60%)
+  forceThreshold: number;      // 0.65 (65%)
+  preserveContext: boolean;    // Preserve important context
+  generateManifest: boolean;   // Create compaction manifest
 }
 ```
 
@@ -268,10 +272,11 @@ interface TokenStats {
 
 | Model | Input | Output |
 |-------|-------|--------|
-| Claude 3 Opus | $15 | $75 |
-| Claude 3 Sonnet | $3 | $15 |
-| Claude 3 Haiku | $0.25 | $1.25 |
+| Claude Opus 4.5 | $15 | $75 |
+| Claude Sonnet 4 | $3 | $15 |
 | Claude 3.5 Sonnet | $3 | $15 |
+| Claude 3.5 Haiku | $0.80 | $4 |
+| Claude 3 Opus | $15 | $75 |
 
 **Session Cost Aggregation**:
 - Per-message cost
@@ -860,7 +865,7 @@ use windows::Win32::*;
 | Feature | Yurucode | Opcode | Claudia | Continue |
 |---------|----------|--------|---------|----------|
 | **5h + 7d limit tracking** | ✅ | ❌ | ❌ | ❌ |
-| Auto-compact at 60%/65% | ✅ | ❌ | ❌ | ❌ |
+| Auto-compact (60% auto, 65% force) | ✅ | ❌ | ❌ | ❌ |
 | Multi-session tabs | ✅ | ✅ | ❌ | ✅ |
 | Token tracking | ✅ | ✅ | ⚠️ | ✅ |
 | Cost calculation | ✅ | ✅ | ❌ | ❌ |
@@ -898,11 +903,11 @@ Yurucode offers a comprehensive feature set that surpasses competitors (includin
 
 1. **Unique Features**:
    - 5h + 7-day Anthropic limit tracking (no competitor has this)
-   - Auto-compaction at 60%/65%
+   - Auto-compaction (55% warn, 60% auto, 65% force) - same 38% buffer as Claude Code
    - Crash recovery (auto-save every 5 min)
-   - 5 built-in agents (architect, explorer, implementer, guardian, specialist)
-   - 12 default custom commands with templates
-   - 9-event hook system
+   - Built-in agents (architect, explorer, implementer, guardian, specialist)
+   - Custom commands with templates
+   - Hook system for behavior customization
 2. **Performance**: Virtual scrolling, bounded buffers, lazy loading, native Tauri/Rust
 3. **Privacy**: No telemetry, local-only operation
 4. **Extensibility**: Hooks (9 events), MCP support, custom commands

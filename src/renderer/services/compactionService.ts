@@ -80,6 +80,13 @@ class CompactionService {
   async updateContextUsage(sessionId: string, usagePercentage: number): Promise<void> {
     console.log(`[Compaction] 📊 updateContextUsage called: ${usagePercentage.toFixed(2)}% for session ${sessionId}`);
 
+    // Check if auto-compact is enabled (defaults to true if undefined)
+    const store = useClaudeCodeStore.getState();
+    if (store.autoCompactEnabled === false) {
+      console.log('[Compaction] ⚠️ Auto-compact disabled, skipping');
+      return;
+    }
+
     // Don't process if already compacting
     if (this.compactingSessionIds.has(sessionId)) {
       console.log('[Compaction] ⚠️ Already compacting, skipping update');

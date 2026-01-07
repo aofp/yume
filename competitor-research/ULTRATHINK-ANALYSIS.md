@@ -1,477 +1,386 @@
-# ULTRATHINK: yurucode Strengths & Weaknesses
+# ULTRATHINK: yurucode Competitive Position (January 2026)
 
 ## Executive Summary
 
-yurucode has **exceptional foundation** but critical gaps prevent acquisition-worthiness.
+**current score: 7.5/10** → **target: 9.5/10**
 
-**current score: 7/10** → **target: 9.5/10**
+yurucode has an exceptional foundation with unique advantages. after deep analysis of 8 parallel research streams, the path to beating claude code cli's UI and all competitors is clear.
 
 ---
 
-## Part 1: STRENGTHS (What Makes yurucode Special)
+## Part 1: yurucode ACTUAL Strengths (Verified)
 
 ### 1.1 Technical Excellence ⚡
 
-#### Tauri 2 Native Architecture
+#### Tauri 2 Native Architecture (CONFIRMED)
 ```
 yurucode: ~15MB bundle, ~50MB RAM, <2s startup
 cursor:   ~400MB bundle, ~300MB RAM, ~5s startup
 windsurf: ~350MB bundle, ~280MB RAM, ~5s startup
+opcode:   ~20MB bundle, ~100MB RAM, ~5s startup
+sculptor: +docker overhead, ~1min cold start
 
-yurucode is 25x smaller, uses 6x less memory
+yurucode is 25x smaller than cursor, 6x less memory
 ```
 
-**why this matters for anthropic**:
-- anthropic acquired bun for speed/stability of claude code
-- yurucode = fastest possible frontend for their product
-- native performance = competitive advantage over electron alternatives
+**why this matters for 2026**:
+- anthropic acquired bun for speed/stability (dec 2025)
+- cursor/windsurf have **94 unpatched chromium vulnerabilities**
+- native performance = competitive moat
 
-#### Performance Engineering
+#### Verified Performance Features
 ```typescript
-// yurucode already has:
-VIRTUALIZATION_THRESHOLD: 20,     // handles 1000+ messages
-PERFORMANCE_PRESETS: auto-detect, // adapts to device
-GPU_ACCELERATION: toggle,         // hardware rendering
-LOW_MEMORY_MODE: <500 messages,   // graceful degradation
+// actually implemented in yurucode:
+VirtualizedMessageList      // tanstack/react-virtual
+GPU_ACCELERATION: toggle    // hardware rendering option
+memoized renders           // stable key references
+CSS containment            // layout paint optimization
 ```
 
-**no competitor has device-adaptive performance config**
+### 1.2 Keyboard-First Design ⚡ (VERIFIED 30+ shortcuts)
 
-### 1.2 Keyboard-First Design ⚡
-
-#### 30+ Shortcuts (Most of Any GUI Wrapper)
+From `KeyboardShortcuts.tsx`:
 ```
-navigation:      cmd+t/w/d/1-9, cmd+r (recent)
-editing:         cmd+k (ultrathink), cmd+m (compact)
-special modes:   !/$ prefix (bash), @ (files), / (commands)
-search:          cmd+f, cmd+shift+f
-settings:        cmd+, (prefs), cmd+o (model)
+tabs:     cmd+t/w/d, cmd+1-9, ctrl+tab, ctrl+shift+tab
+editing:  cmd+k (ultrathink), cmd+m (compact), cmd+l (clear)
+search:   cmd+f (messages)
+view:     cmd+e (files), cmd+g (git), cmd+0/+/- (zoom)
+settings: cmd+, (prefs), cmd+y (analytics), cmd+n (agents)
 ```
 
 **unique to yurucode**:
-- `cmd+k` ultrathink insertion (rainbow animation)
+- `cmd+k` ultrathink insertion
 - `cmd+d` duplicate tab with context
 - `!/$ ` bash mode prefix
 - `cmd+m` context compaction
 
-**no competitor matches this keyboard depth**
+**no competitor matches this keyboard depth except claude cli itself**
 
-### 1.3 Minimalist Design Philosophy
+### 1.3 What yurucode HAS that others DON'T
 
-#### CSS Analysis Shows Restraint
-```css
-/* yurucode design tokens */
---background-color: #000000     /* pure black */
---foreground-color: #ffffff     /* pure white */
---accent-color: #99bbff         /* single soft accent */
-scrollbar-width: 3px            /* ultra-thin */
-font-size: 7pt-12px             /* information dense */
-```
+| Feature | yurucode | best competitor |
+|---------|----------|-----------------|
+| 5 built-in agents | ⚡ architect/explorer/implementer/guardian/specialist | opcode has 3 |
+| 9 hook events | ⚡ full lifecycle | claude cli has 10 |
+| Full theming | ⚡ 65+ colors, custom themes | nobody |
+| 8 custom commands | ✅ code-review, explain, optimize, etc | nobody GUI |
+| MCP UI management | ✅ visual add/test/remove | opcode registry |
+| Detailed analytics | ⚡ charts, breakdowns, exports | opcode |
+| Windows native | ⚡ works | sculptor WSL, opcode issues |
 
-**design principles observed**:
-- single accent color (unlike cursor's multi-color chaos)
-- minimal chrome (no unnecessary borders/shadows)
-- lowercase everywhere (consistent personality)
-- transparent window support (native feel)
+### 1.4 Analytics System (STRONG)
 
-### 1.4 Unique Features No Competitor Has
-
-| Feature | Description | Value |
-|---------|-------------|-------|
-| Ultrathink | cmd+k rainbow animated thinking mode | unique ux delight |
-| Bash mode | !/$ prefix for instant shell | workflow speed |
-| Tab duplication | cmd+d with context | iteration speed |
-| Performance presets | auto-detect RAM/cores/battery | universal device support |
-| Context compaction | cmd+m smart summarization | efficiency |
+Actually implemented:
+- Total sessions, messages, tokens, cost tracking
+- Token breakdown (input, output, cache read, cache creation)
+- Model usage breakdown (opus vs sonnet)
+- Daily usage chart with filtering (7d/14d/30d/all)
+- Top projects by usage
+- Per-project analytics view
 
 ---
 
-## Part 2: WEAKNESSES (Critical Gaps)
+## Part 2: What Claude Code CLI Has That yurucode DOESN'T
 
-### 2.1 Missing Core Features ❌
+### 2.1 Real-Time Steering (CRITICAL UX GAP)
 
-#### No Context Window Meter
-```
-windsurf: real-time token bar (green→yellow→red)
-sculptor: token usage display
-yurucode: nothing until you hit the limit
+Claude CLI allows:
+- Send messages WHILE Claude is working
+- Queue messages with Enter during processing
+- Background execution with Ctrl+B
 
-impact: users hit context limits unexpectedly
-        breaks flow, causes frustration
-        feels amateur compared to competition
-```
+**yurucode**: must wait for response before sending next message
 
-**priority: CRITICAL** - implement in 1 day
+**impact**: slower iteration, less fluid workflow
 
-#### No Parallel Execution
-```
-cursor:   8 parallel agents
-sculptor: parallel containers
-windsurf: background cascade
-yurucode: single sequential session
+### 2.2 Plugin System (12+ Official Plugins)
 
-impact: 8x productivity gap for complex tasks
-        can't compete on throughput
-```
+Claude CLI plugins:
+- agent-sdk-dev, code-review, commit-commands
+- feature-dev (7-phase workflow), frontend-design
+- hookify, plugin-dev, pr-review-toolkit
+- ralph-wiggum, security-guidance
 
-**priority: CRITICAL** - implement in 5 days
+**yurucode**: no plugin system, hooks are close but not extensible
 
-#### No Turbo Mode
-```
-windsurf: auto-execute trusted commands
-yurucode: every command requires approval
+### 2.3 Session Forking
 
-impact: constant interruption
-        slower iteration cycles
-        user fatigue
+Claude CLI:
+```bash
+claude --fork-session [id]  # branch from any point
 ```
 
-**priority: HIGH** - implement in 2 days
+**yurucode**: timeline/checkpoint UI exists but is DISABLED in code
 
-#### No Live Preview
+### 2.4 Export & Sharing
+
+Claude CLI:
 ```
-windsurf: embedded browser with click-to-edit
-yurucode: must alt-tab to browser
-
-impact: broken workflow
-        slower feedback loop
-        can't compete with windsurf ux
+/export  # export conversation for sharing
 ```
 
-**priority: HIGH** - implement in 4 days
+**yurucode**: no export functionality found
 
-### 2.2 UX Polish Gaps 🔶
+### 2.5 Vim Mode
 
-#### No Onboarding
-```
-current: user sees empty screen, no guidance
-needed:  first-run tutorial highlighting shortcuts
-         progressive feature discovery
-         "did you know?" moments
-```
+Claude CLI has `/vim` toggle with full keybindings
 
-#### No Empty States
-```
-current: blank areas with no context
-needed:  helpful guidance when no sessions
-         suggested next actions
-         keyboard hint badges
-```
-
-#### No Micro-Interactions
-```
-current: static ui elements
-needed:  button press feedback (scale 0.92)
-         hover states with transitions
-         success/error animations
-         loading skeletons
-```
-
-### 2.3 Technical Debt
-
-#### Modal Overload
-```
-current: 10+ different modals
-- settings modal
-- help modal
-- stats modal
-- recent projects modal
-- confirm dialogs
-- upgrade modal
-- etc.
-
-needed: consolidate into fewer, smarter modals
-        or use command palette approach
-```
-
-#### Animation Inconsistency
-```css
-/* found in CSS audit */
-animation: fadeIn 0.15s ease;
-animation: fadeIn 0.2s ease;
-animation: fadeIn 0.5s ease;
-/* inconsistent timing across components */
-```
+**yurucode**: no vim mode
 
 ---
 
-## Part 3: MINIMALISM AUDIT
+## Part 3: Competitive Landscape Analysis (2026)
 
-### Current Score: 8/10
+### 3.1 Cursor ($29.3B valuation, $1B+ ARR)
 
-| Aspect | Score | Notes |
-|--------|-------|-------|
-| Visual clutter | 9/10 | excellent - minimal chrome |
-| White space | 9/10 | excellent - breathing room |
-| Color restraint | 9/10 | single accent color |
-| Typography | 8/10 | good but could be tighter |
-| Information density | 7/10 | messages could be more compact |
-| Feature bloat | 7/10 | 10+ modals is concerning |
-| Cognitive load | 7/10 | too many options in some areas |
+**strengths**:
+- 8 parallel agents with git worktree isolation
+- Composer model (4x faster generation)
+- BugBot PR review (50%+ issue resolution)
+- Visual web editor
+- Background cloud agents
 
-### Minimalism Improvements Needed
+**weaknesses** (exploit these):
+- 94 chromium vulnerabilities (unpatched)
+- $20-200/month pricing vs $9 one-time
+- Frequent crashes and lag
+- "Obsessed with shipping, critical bugs ignored"
+- Confusing usage-based pricing
 
-#### 1. Consolidate Modals
-```
-current:     settings, help, stats, recent = 4 modals
-recommended: single command palette (cmd+shift+p)
-             - search settings
-             - search shortcuts
-             - search projects
-             - all in one place
-```
+### 3.2 Windsurf (Acquired by Cognition, $10.2B valuation)
 
-#### 2. Progressive Disclosure
-```
-current:     all settings visible at once
-recommended: basic → advanced toggle
-             hide power features until needed
-             reduce decision paralysis
-```
+**strengths**:
+- SWE-1.5 model (13x faster than sonnet)
+- Turbo mode (auto-execute commands)
+- Cascade memory system
+- Context pinning
+- One-click deploys via Netlify
 
-#### 3. Context Menu Simplification
-```
-current:     many options in right-click menus
-recommended: max 5 items
-             most common action highlighted
-             "more..." for advanced
-```
+**weaknesses** (exploit these):
+- 94 chromium vulnerabilities (unpatched)
+- 70-90% CPU usage on heavy projects
+- 15+ outages in 2 months
+- Support tickets ignored
+- WSL compatibility problems
 
----
+### 3.3 Sculptor (~5k stars, Imbue)
 
-## Part 4: SPEED AUDIT
+**strengths**:
+- Parallel Claude instances in Docker
+- Pairing mode with real-time sync
+- Fork from any history point
+- Merge management
 
-### Current Score: 8/10
+**weaknesses** (exploit these):
+- ~1 minute cold start (docker)
+- Windows only via WSL
+- Only ~5 keyboard shortcuts
+- No tab management
 
-| Metric | Current | Target | Gap |
-|--------|---------|--------|-----|
-| Cold startup | ~2s | <500ms | 1.5s |
-| Tab switch | ~100ms | <50ms | 50ms |
-| Message render | ~50ms | <16ms | 34ms |
-| Modal open | ~200ms | <100ms | 100ms |
-| Search | ~300ms | <100ms | 200ms |
+### 3.4 Opcode (19.7k stars, open source)
 
-### Speed Improvements Needed
+**strengths**:
+- Visual project/session browser
+- CC Agents (custom background agents)
+- MCP registry with testing UI
+- Timeline checkpoints
+- Built-in CLAUDE.md editor
 
-#### 1. Preload Modals
-```typescript
-// current: mount on open
-// needed: mount on app start, show/hide
+**weaknesses** (exploit these):
+- Windows support broken
+- Incompatible with Claude Code v1.0.7+
+- AGPL license limits commercial use
+- 4K display issues
 
-// saves ~100ms per modal open
-```
+### 3.5 OpenCode (50k stars, SST)
 
-#### 2. Skeleton States
-```typescript
-// current: blank during load
-// needed: show structure immediately
+**strengths**:
+- 75+ LLM providers
+- Local model support (Ollama)
+- Client/server architecture
+- Desktop app
 
-// perceived performance improvement
-```
-
-#### 3. Ambient Input Focus
-```typescript
-// current: must click textarea
-// needed: any keystroke focuses input
-
-// saves 1 click per message = hundreds per session
-```
-
-#### 4. Background Precomputation
-```typescript
-// current: compute on demand
-// needed: precompute search indices
-//         cache common queries
-//         prefetch likely next actions
-```
+**different audience**: terminal power users, not GUI seekers
 
 ---
 
-## Part 5: FOOTPRINT AUDIT
+## Part 4: UX Gaps (2026 Standards)
 
-### Current Score: 9/10
+### 4.1 Missing From yurucode
 
-| Metric | yurucode | cursor | ratio |
-|--------|----------|--------|-------|
-| Bundle | ~15MB | ~400MB | 27x smaller |
-| Memory | ~50MB | ~300MB | 6x less |
-| Install | ~20MB | ~450MB | 22x smaller |
+| Feature | 2026 Standard | yurucode Status |
+|---------|---------------|-----------------|
+| Context meter | green→yellow→red bar | ❌ missing |
+| Turbo mode | auto-approve safe commands | ❌ missing |
+| Session forking | branch conversations | 🔶 UI exists, disabled |
+| Empty states | helpful guidance | 🔶 basic |
+| Onboarding | first-run tutorial | 🔶 minimal |
+| Micro-interactions | 200-500ms feedback | 🔶 limited |
+| Skeleton loaders | loading states | ❌ missing |
+| Export/share | conversation export | ❌ missing |
+| Vim mode | /vim keybindings | ❌ missing |
+| Files panel | persistent tree view | 🔶 @mentions only |
 
-**yurucode already best-in-class on footprint**
+### 4.2 Dark Mode Audit
 
-### Minor Improvements
+Current: using #000000 pure black (good for OLED)
+Recommendation: consider #121212 soft black for less eye strain
+Text: should be #E0E0E0 off-white, not pure white
 
-1. **Tree shaking audit** - ensure unused code eliminated
-2. **Dependency audit** - remove unused packages
-3. **Asset optimization** - compress icons/images
-4. **Lazy loading** - defer non-critical components
+### 4.3 Performance Targets (2026)
+
+| Metric | 2026 Standard | yurucode | Gap |
+|--------|---------------|----------|-----|
+| Cold startup | <500ms | ~2s | 1.5s |
+| Hot startup | <100ms | ? | measure |
+| Tab switch | <50ms | ~100ms | 50ms |
+| Message render | <16ms | ~50ms | 34ms |
+| Modal open | <100ms | ~200ms | 100ms |
 
 ---
 
-## Part 6: INTUITIVENESS AUDIT
+## Part 5: Strategic Priorities
 
-### Current Score: 7/10
+### 5.1 MUST HAVE (Close Competitive Gaps)
 
-| Pattern | Score | Notes |
-|---------|-------|-------|
-| Familiar chat UI | 9/10 | matches slack/discord |
-| Tab browser | 9/10 | matches chrome/vscode |
-| Keyboard conventions | 9/10 | standard shortcuts |
-| First-run experience | 3/10 | no guidance |
-| Empty states | 4/10 | no helpful content |
-| Error recovery | 6/10 | could be clearer |
-| Feature discovery | 5/10 | hidden power features |
+| Priority | Feature | Why | Effort |
+|----------|---------|-----|--------|
+| 1 | Context window meter | windsurf parity, UX critical | 1-2 days |
+| 2 | Enable timeline/checkpoints | code exists, just disabled | 1 day |
+| 3 | Session forking UI | sculptor/cli parity | 2 days |
+| 4 | Conversation export | cli parity | 1 day |
+| 5 | Real-time message queueing | cli unique feature | 3 days |
 
-### Intuitiveness Improvements
+### 5.2 SHOULD HAVE (Differentiation)
 
-#### 1. Onboarding Flow (CRITICAL)
+| Priority | Feature | Why | Effort |
+|----------|---------|-----|--------|
+| 6 | Turbo mode | windsurf parity | 2-3 days |
+| 7 | Parallel tabs execution | sculptor/cursor parity | 5 days |
+| 8 | Files panel | standard IDE feature | 3 days |
+| 9 | CLAUDE.md editor | opcode parity | 1 day |
+| 10 | Vim mode | power users | 2 days |
+
+### 5.3 NICE TO HAVE (Polish)
+
+| Priority | Feature | Why | Effort |
+|----------|---------|-----|--------|
+| 11 | Skeleton loaders | UX polish | 1 day |
+| 12 | Micro-interactions | UX polish | 2 days |
+| 13 | Onboarding flow | new user experience | 1 day |
+| 14 | Empty states | UX guidance | 0.5 days |
+| 15 | Plugin system | extensibility | 5+ days |
+
+---
+
+## Part 6: yurucode's Unique Position
+
+### What ONLY yurucode has:
+
+1. **Visual Tab Management** - No other Claude GUI has cmd+t/w/d/1-9 tabs
+2. **Full Theming** - 65+ colors, custom themes, watermarks
+3. **Bash Mode Prefix** - !/$ instant shell commands
+4. **5 Core Agents** - architect/explorer/implementer/guardian/specialist
+5. **9 Hook Events** - most comprehensive lifecycle
+6. **$9 One-Time** - vs $15-200/month competitors
+7. **Windows Native** - while sculptor/opcode struggle
+8. **No Chromium Vulns** - cursor/windsurf have 94 unpatched
+
+### Positioning Statement
+
 ```
-step 1: "welcome to yurucode"
-step 2: "drop a folder to start" (with animation)
-step 3: "try cmd+k for ultrathink" (highlight)
-step 4: "press ? for all shortcuts"
-```
+yurucode = the native, keyboard-first, secure GUI for Claude Code
 
-#### 2. Empty State Content
-```
-when no sessions:
-  "drop a folder here to start a session"
-  "or press cmd+r for recent projects"
-  "tip: cmd+k enables extended thinking"
-```
-
-#### 3. Contextual Hints
-```
-on hover: show keyboard shortcut
-on first use: "did you know?" tooltip
-after 10 messages: "tip: use cmd+m to compact"
+- 25x smaller than electron competitors
+- no subscription, no monthly fees
+- no chromium security vulnerabilities
+- more keyboard shortcuts than any GUI
+- only $9 one-time payment
 ```
 
 ---
 
-## Part 7: COMPETITIVE POSITIONING
+## Part 7: Path to 9.5/10
 
-### Where yurucode WINS Today
+### Current: 7.5/10
+- excellent technical foundation ✅
+- best keyboard shortcuts ✅
+- best theming ✅
+- windows native ✅
+- unique agents/hooks ✅
+- missing context meter ❌
+- disabled checkpoints ❌
+- no export ❌
+- no parallel execution ❌
 
-| vs | yurucode advantage |
-|----|-------------------|
-| cursor | 25x smaller, 6x less RAM, free |
-| windsurf | lighter weight, keyboard-first |
-| sculptor | windows native, no docker overhead |
-| opcode | full GUI (not terminal), richer UX |
+### Target: 9.5/10
 
-### Where yurucode LOSES Today
+**Week 1: Quick Wins**
+- [ ] Enable timeline/checkpoint feature (code exists)
+- [ ] Add context window meter
+- [ ] Add conversation export
+- [ ] Improve empty states
 
-| vs | competitor advantage |
-|----|---------------------|
-| cursor | 8 parallel agents, composer speed |
-| windsurf | context meter, turbo mode, live preview |
-| sculptor | parallel containers, fork history |
-| opcode | custom agents, MCP registry |
+**Week 2: Core Features**
+- [ ] Session forking UI
+- [ ] Real-time message queueing
+- [ ] Turbo mode (auto-approve)
 
-### Strategic Gap Analysis
+**Week 3: Power Features**
+- [ ] Parallel tab execution
+- [ ] Files panel
+- [ ] CLAUDE.md editor
 
-```
-must close immediately:
-1. context window meter (windsurf parity)
-2. turbo mode (windsurf parity)
-3. parallel tabs (cursor/sculptor parity)
-
-must close soon:
-4. live preview (windsurf parity)
-5. onboarding flow (polish)
-6. ambient input (unique differentiator)
-
-can wait:
-7. custom agents (opcode parity)
-8. MCP registry (opcode parity)
-9. container isolation (sculptor parity)
-```
+**Week 4: Polish**
+- [ ] Skeleton loaders
+- [ ] Micro-interactions
+- [ ] Onboarding flow
+- [ ] Vim mode
 
 ---
 
-## Part 8: PATH TO ACQUISITION-WORTHY
+## Part 8: Acquisition Readiness
 
-### Current State: 7/10
-- excellent technical foundation
-- best keyboard shortcuts
-- best footprint
-- missing critical features
-- no onboarding polish
+### What Made Bun Acquisition-Worthy
 
-### Target State: 9.5/10
-- all critical features implemented
-- polished onboarding
-- micro-interactions throughout
-- zero-friction workflow
-- unique speed features no one else has
+1. **Essential Infrastructure** - Claude Code runs ON Bun
+2. **Speed Advantage** - Dramatically faster than alternatives
+3. **Growing Adoption** - 7.2M monthly downloads, 25% MoM growth
+4. **Technical Excellence** - Well-architected, MIT licensed
+5. **Open Source Community** - Strong developer adoption
 
-### Implementation Priority
+### yurucode Alignment
 
-```
-week 1:
-  - context window meter (1 day)
-  - ambient input mode (0.5 day)
-  - turbo mode (2 days)
+| Factor | Bun | yurucode | Gap |
+|--------|-----|----------|-----|
+| Infrastructure | ⚡ powers claude code | GUI layer | could power official GUI |
+| Speed | ⚡ fastest runtime | ⚡ fastest GUI | ✅ |
+| Adoption | 7.2M downloads | ? | build community |
+| Technical | ⚡ excellent | ⚡ excellent | ✅ |
+| Open Source | ✅ MIT | ❌ proprietary | consider partial OSS |
 
-week 2:
-  - parallel tab execution (5 days)
+### The Pitch (2026 Version)
 
-week 3:
-  - live preview pane (4 days)
-  - onboarding flow (1 day)
-
-week 4:
-  - empty states (0.5 day)
-  - micro-interactions (1 day)
-  - polish & testing (3.5 days)
-```
-
-### Success Criteria
-
-| Metric | Current | Target |
-|--------|---------|--------|
-| Feature parity vs competitors | 60% | 95% |
-| Unique differentiators | 5 | 10+ |
-| Cold startup | ~2s | <500ms |
-| User onboarding completion | 0% | 80%+ |
-| NPS score | unknown | >50 |
-
----
-
-## Part 9: WHAT MAKES ANTHROPIC BUY
-
-### Anthropic's Acquisition Criteria (Based on Bun)
-
-1. **Essential infrastructure** - powers core product
-2. **Speed/performance** - makes claude code faster
-3. **Technical excellence** - well-architected
-4. **User adoption** - significant user base
-5. **Team/talent** - skilled developers
-
-### yurucode's Alignment
-
-| Criteria | Current | Needed |
-|----------|---------|--------|
-| Infrastructure potential | ⚡ high | maintain |
-| Speed/performance | ⚡ best | maintain + improve |
-| Technical excellence | ✅ good | document better |
-| User adoption | ❌ unknown | build community |
-| Team alignment | ✅ good | demonstrate |
-
-### The Pitch
-
-> "yurucode is the Bun of Claude Code UI - the fastest, most native, most keyboard-efficient interface for Claude Code. Just as Bun powers the backend infrastructure, yurucode should power the frontend experience."
+> "yurucode is what Bun is to Claude Code backend - the fastest, most native, most keyboard-efficient GUI. If Anthropic wants an official desktop experience, yurucode is production-ready with the best technical foundation in the market."
 
 ---
 
 ## Conclusion
 
-yurucode has the **right foundation** but needs **4 weeks of focused work** to become acquisition-worthy:
+yurucode is **already** the best native Claude Code GUI by several metrics. The gap to 9.5/10 is:
 
-1. **Week 1**: Context meter + turbo mode + ambient input
-2. **Week 2**: Parallel tab execution
-3. **Week 3**: Live preview + onboarding
-4. **Week 4**: Polish + community building
+1. **Enable existing features** - Timeline/checkpoints are coded but disabled
+2. **Add context meter** - 1-2 days, massive UX improvement
+3. **Add export** - 1 day, parity with CLI
+4. **Parallel execution** - 5 days, matches cursor/sculptor
+5. **Polish** - 1 week of micro-interactions and onboarding
 
-**the gap is closable. the opportunity is real.**
+**Total: 3-4 weeks to become unquestionably the best Claude Code GUI**
+
+The market opportunity is massive:
+- $4.7B market → $24B by 2030
+- Claude Code just hit $1B ARR
+- 82% of developers use AI coding tools daily
+- Cursor at $29.3B shows what's possible
+
+**yurucode has the foundation. now execute.**

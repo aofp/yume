@@ -25,6 +25,11 @@
   justify-content: center;
 }
 
+.model-selector-text {
+  position: relative;
+  top: 1px;
+}
+
 /* only show hover via js-controlled class, not css :hover */
 .model-selector-trigger.hovered {
   background: var(--fg-05);

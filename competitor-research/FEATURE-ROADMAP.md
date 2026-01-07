@@ -1,41 +1,108 @@
-# yurucode Speed Dominance Roadmap
+# yurucode Feature Roadmap (January 2026)
 
-## Mission: FASTEST Claude Code GUI - Beat Everyone
+## Strategic Goal: Beat Claude Code CLI's UX in Every Way a GUI Can
 
 ---
 
-## Phase 1: Speed Foundation (Critical)
+## Implementation Phases
 
-### 1.1 Context Window Meter
-**beats**: windsurf, sculptor
+### Phase 0: Quick Wins (Week 1) - Unlock Disabled Features
+
+These features are **already coded** but disabled:
+
+| Feature | File | Action | Effort |
+|---------|------|--------|--------|
+| Timeline checkpoints | `checkpointService.ts` | Re-enable listeners | 0.5 days |
+| Timeline navigator | `TimelineNavigator.tsx` | Wire to UI | 0.5 days |
+| Agent execution | `agentExecutionService.ts` | Verify integration | 1 day |
+
+**Why this matters**: Get 3 features for ~2 days work. Immediate competitive boost.
+
+---
+
+### Phase 1: Context Awareness (Week 1-2)
+
+#### 1.1 Context Window Meter
+**beats**: windsurf (their best feature), sculptor, cli
+**complexity**: low-medium
+**impact**: CRITICAL
+
+```
+implementation:
+- add token counter component to status bar or chat header
+- track input_tokens, output_tokens, cache_read, cache_creation
+- calculate percentage: (current / 200k) * 100
+- visual: progress bar green (<50%) → yellow (50-80%) → red (>80%)
+- tooltip: show breakdown (input/output/cache)
+- click to expand: per-message token costs
+- integrate with existing analytics system
+- shortcut: cmd+. already shows stats, enhance it
+```
+
+**Files to modify**:
+- `src/renderer/components/Chat/ClaudeChat.tsx` - add meter component
+- `src/renderer/stores/claudeCodeStore.ts` - track token state
+- Create `src/renderer/components/ContextMeter/ContextMeter.tsx`
+
+#### 1.2 Conversation Export
+**beats**: parity with cli `/export`
 **complexity**: low
 **impact**: high
 
 ```
 implementation:
-- add token counter to status bar
-- real-time update during streaming
-- color coding: green (<50%) → yellow (50-80%) → red (>80%)
-- click to show breakdown by message
-- shortcut: cmd+. to toggle visibility
+- add "Export" button to session menu
+- export formats: markdown, json, html
+- include: messages, model, project, timestamps
+- exclude: internal state, sensitive data
+- shortcut: cmd+shift+e
+- save to clipboard or file picker
 ```
 
-### 1.2 Parallel Tab Execution
-**beats**: sculptor (containers), cursor (8 agents)
-**complexity**: high
-**impact**: critical
+**Files to modify**:
+- `src/renderer/services/exportService.ts` (create)
+- `src/renderer/components/SessionTabs/SessionTabs.tsx` - add menu option
+
+---
+
+### Phase 2: Real-Time Interaction (Week 2)
+
+#### 2.1 Real-Time Message Queueing
+**beats**: unique cli feature no GUI has
+**complexity**: medium-high
+**impact**: CRITICAL for power users
 
 ```
 implementation:
-- each tab runs independent claude session
-- shared project context across tabs
-- tab status indicators (running/idle/complete)
-- result aggregation view
-- shortcut: cmd+shift+enter = run in new parallel tab
-- visual: split view to monitor multiple tabs
+- allow typing while Claude is responding
+- show "queued" indicator on pending messages
+- messages send automatically after response
+- cmd+enter to force-queue even during streaming
+- visual: pending message appears dimmed in chat
+- can cancel queued messages
 ```
 
-### 1.3 Turbo Mode (Auto-Execute)
+**Why this is critical**: Claude CLI's "real-time steering" is its most unique UX innovation. Users can send messages while Claude works, queue commands, and maintain flow. No GUI has this.
+
+#### 2.2 Background Task Indicator
+**beats**: cli Ctrl+B feature
+**complexity**: medium
+**impact**: high
+
+```
+implementation:
+- show running background processes in sidebar/status bar
+- indicator: spinning icon + count
+- click to expand: list of running tasks
+- can cancel individual tasks
+- integrate with existing session state
+```
+
+---
+
+### Phase 3: Turbo Mode (Week 2-3)
+
+#### 3.1 Auto-Execute Safe Commands
 **beats**: windsurf turbo mode
 **complexity**: medium
 **impact**: high
@@ -43,281 +110,249 @@ implementation:
 ```
 implementation:
 - toggle in settings + status bar indicator
-- auto-approve: npm/yarn commands, file creates, git ops
-- configurable allow/deny lists per project
-- hold cmd to pause turbo mode
+- auto-approve: npm/yarn commands, file creates, git status/diff
+- configurable allow-list per project
+- configurable deny-list (rm -rf, force push, etc.)
+- visual: turbo lightning icon in status bar
+- hold cmd to pause turbo mode temporarily
 - shortcut: cmd+shift+t to toggle
-- security: sandbox commands in turbo mode
+- audit log: show what was auto-approved
 ```
 
-### 1.4 Instant Actions Bar
-**beats**: everyone
-**complexity**: medium
-**impact**: high
-
-```
-implementation:
-- floating action bar appears on text selection
-- quick actions: explain, fix, optimize, test
-- appears above selected text (like notion)
-- keyboard: select + space to trigger
-- customizable action slots
-```
+**Safety first**:
+- default deny-list: `rm -rf`, `sudo`, `chmod 777`, `force push`
+- sandbox npm commands (no postinstall scripts in turbo)
+- revert capability for auto-approved file changes
 
 ---
 
-## Phase 2: Preview & Context (Differentiators)
+### Phase 4: Session Management (Week 3)
 
-### 2.1 Live Preview Pane
-**beats**: windsurf click-to-edit
-**complexity**: high
-**impact**: high
-
-```
-implementation:
-- split pane with embedded browser
-- auto-detect dev server port
-- hot reload integration
-- click element → generates @mention
-- shortcut: cmd+shift+p to toggle preview
-- lightweight: use webview not full browser
-```
-
-### 2.2 Real-Time Action Tracking
-**beats**: windsurf cascade awareness
-**complexity**: high
-**impact**: high
-
-```
-implementation:
-- track: clipboard, recent files, git changes, terminal commands
-- sidebar showing recent context
-- auto-inject relevant context on send
-- opt-in with granular controls
-- indicator: "claude sees: 5 recent actions"
-- shortcut: cmd+shift+a to show action log
-```
-
-### 2.3 Smart Context Injection
-**beats**: all competitors
+#### 4.1 Session Forking UI
+**beats**: sculptor (their killer feature), cli --fork-session
 **complexity**: medium
 **impact**: high
 
 ```
 implementation:
-- auto-detect related files from mentions
-- pull in imports/dependencies automatically
-- show injected context preview before send
-- user can remove items
-- learns from usage patterns
+- right-click any message: "Fork from here"
+- creates new tab with conversation up to that point
+- visual: fork icon in message menu
+- timeline view shows branch points
+- shortcut: cmd+b to fork from current
+- compare branches side-by-side (stretch goal)
 ```
 
-### 2.4 Fork/Branch Timeline
-**beats**: sculptor fork feature
-**complexity**: medium
-**impact**: medium
+**Integration with existing**:
+- Timeline UI already exists (disabled)
+- Checkpoint system partially implemented
+- Just need to wire fork action and branch visualization
 
-```
-implementation:
-- any message can be branched from
-- visual timeline with branch points
-- cmd+click message = "branch from here"
-- compare branches side-by-side
-- merge branches back
-- shortcut: cmd+b to branch from current
-```
-
----
-
-## Phase 3: Agent Power (Competitive Parity)
-
-### 3.1 Agent Library
-**beats**: opcode pre-built agents, sculptor custom agents
-**complexity**: medium
-**impact**: medium
-
-```
-implementation:
-- pre-built agents: git-committer, test-writer, security-audit, docs-gen
-- custom agent creation ui
-- agent marketplace/sharing
-- one-click agent activation
-- shortcut: cmd+n opens agent picker
-- agents stored in ~/.yurucode/agents/
-```
-
-### 3.2 MCP Server Registry
-**beats**: sculptor/opcode mcp management
-**complexity**: medium
-**impact**: medium
-
-```
-implementation:
-- settings tab for mcp servers
-- add/remove/test servers
-- import from claude desktop config
-- per-project mcp overrides
-- status indicators
-```
-
-### 3.3 CLAUDE.md Editor
-**beats**: opcode built-in editor
-**complexity**: low
-**impact**: low
-
-```
-implementation:
-- dedicated tab for CLAUDE.md editing
-- syntax highlighting
-- live preview
-- project-wide search for CLAUDE.md files
-- template library
-- shortcut: cmd+shift+c to open
-```
-
----
-
-## Phase 4: Speed Optimizations (Polish)
-
-### 4.1 Predictive Commands
-**beats**: no one has this
-**complexity**: high
-**impact**: medium
-
-```
-implementation:
-- analyze command history patterns
-- suggest likely next commands
-- ghost text in input field
-- tab to accept
-- learns per-project patterns
-```
-
-### 4.2 Ambient Input Mode
-**beats**: no one has this
-**complexity**: low
-**impact**: high
-
-```
-implementation:
-- typing anywhere focuses input immediately
-- no need to click input field
-- escape clears and blurs
-- maintains context from previous focus
-```
-
-### 4.3 Speed Dial Projects
-**beats**: no one has this
+#### 4.2 Named Sessions
+**beats**: cli /rename feature
 **complexity**: low
 **impact**: medium
 
 ```
 implementation:
-- pin up to 9 projects
-- cmd+shift+1-9 instant switch
-- reorder via drag
-- shows in title bar or sidebar
-- persists across sessions
+- extend existing /title command to persist as session name
+- show named sessions in recent projects modal
+- searchable by name
+- auto-suggest names based on content (stretch goal)
 ```
 
-### 4.4 Command Chaining
-**beats**: no one has this
+---
+
+### Phase 5: Parallel Execution (Week 3-4)
+
+#### 5.1 Parallel Tab Execution
+**beats**: sculptor (docker containers), cursor (8 agents)
+**complexity**: HIGH
+**impact**: CRITICAL for power users
+
+```
+implementation strategy A (simpler):
+- each tab is already independent Claude session
+- add "Run in parallel" action to send same prompt to multiple tabs
+- aggregate results view
+- no file isolation (trust user)
+
+implementation strategy B (sculptor-like):
+- git worktree per tab for isolation
+- merge management UI
+- more complex but safer
+
+recommendation: start with A, add B later if needed
+```
+
+**Cursor's approach**:
+- 8 parallel agents max
+- git worktrees for isolation
+- automatic best-solution selection
+
+**Sculptor's approach**:
+- docker containers
+- mutagen file sync
+- more isolation but slower
+
+**yurucode approach**:
+- leverage existing multi-tab
+- add parallel dispatch
+- manual result comparison (v1)
+- automatic selection (v2)
+
+---
+
+### Phase 6: Files Panel (Week 4)
+
+#### 6.1 File Tree Panel
+**beats**: standard IDE expectation
 **complexity**: medium
 **impact**: medium
 
 ```
 implementation:
-- "then" keyword chains commands
-- example: "fix the bug then write tests then commit"
-- visual progress through chain
-- can pause/skip steps
-- abort on error option
+- sidebar panel showing project file tree
+- toggle with cmd+e (already mapped)
+- file actions: open, rename, delete, create
+- integrates with @ mentions
+- shows git status on files
+- search/filter files
 ```
 
-### 4.5 Session Templates
-**beats**: no one has this
+**Note**: Currently only @mentions provide file access. A persistent panel is standard expectation.
+
+#### 6.2 Git Panel
+**beats**: standard IDE expectation
+**complexity**: medium
+**impact**: medium
+
+```
+implementation:
+- toggle with cmd+g (already mapped)
+- show: unstaged, staged, recent commits
+- actions: stage, unstage, commit, diff view
+- integrates with checkpoint system
+```
+
+---
+
+### Phase 7: Power User Features (Week 4+)
+
+#### 7.1 CLAUDE.md Editor
+**beats**: opcode built-in editor, cli /memory
 **complexity**: low
 **impact**: medium
 
 ```
 implementation:
-- save current setup as template
-- includes: model, system prompt, mcp servers, turbo settings
-- one-click apply to new tab
-- bundled templates for common workflows
+- tab/modal for editing CLAUDE.md
+- syntax highlighting for markdown
+- preview mode
+- find all CLAUDE.md files in project
+- templates library
+- shortcut: cmd+shift+c
+```
+
+#### 7.2 Vim Mode
+**beats**: cli /vim
+**complexity**: medium
+**impact**: medium (power users)
+
+```
+implementation:
+- toggle in settings + /vim command
+- basic vim keybindings: hjkl, w/b, d/c, u, etc.
+- show mode indicator (normal/insert/visual)
+- escape to normal mode
+- integrate with existing keyboard system
+```
+
+#### 7.3 Plugin System (Future)
+**beats**: cli's 12+ official plugins
+**complexity**: HIGH
+**impact**: future extensibility
+
+```
+concept:
+- json/yaml plugin manifest
+- hook into existing hooks system
+- custom commands
+- custom agents
+- marketplace/discovery
 ```
 
 ---
 
-## Phase 5: Advanced (Future)
+## UX Polish Checklist
 
-### 5.1 Container Isolation (Optional)
-**beats**: sculptor docker containers
-**complexity**: very high
-**impact**: low (niche users)
+### Micro-Interactions (Throughout)
 
-```
-implementation:
-- optional docker sandboxing
-- custom dockerfiles support
-- devcontainer.json compatibility
-- performance mode vs safe mode toggle
-```
+| Element | Current | Target |
+|---------|---------|--------|
+| Button press | static | scale 0.95, 200ms |
+| Hover states | basic | smooth transitions |
+| Loading states | basic | skeleton loaders |
+| Success feedback | none | subtle animation |
+| Error feedback | alert | inline + shake |
 
-### 5.2 Multi-Model Racing
-**beats**: cursor parallel attempts
-**complexity**: high
-**impact**: medium
+### Empty States
 
-```
-implementation:
-- same prompt to multiple models
-- first good answer wins
-- or: aggregate best parts
-- cost vs speed tradeoff setting
-```
+| Screen | Current | Add |
+|--------|---------|-----|
+| New tab | blank | "drop folder or cmd+r for recent" |
+| No sessions | list | "start your first session" |
+| Search empty | none | "no matches found" |
+| Analytics empty | none | "no usage data yet" |
 
-### 5.3 Voice Input
-**beats**: no one has this
-**complexity**: medium
-**impact**: low (accessibility)
+### Onboarding Flow
 
 ```
-implementation:
-- push-to-talk or always-on
-- transcription + send
-- voice commands for actions
-- shortcut: cmd+shift+v to toggle
+step 1: "welcome to yurucode" (first launch only)
+step 2: "drop a folder to start" (animated)
+step 3: "key shortcuts" (highlight 5 most used)
+step 4: "try cmd+k for ultrathink" (demo)
+step 5: "press ? anytime for help"
 ```
 
 ---
 
 ## Implementation Priority Queue
 
-### Must Have (Phase 1+2)
-1. Context Window Meter - 1 day
-2. Turbo Mode - 2 days
-3. Parallel Tab Execution - 5 days
-4. Ambient Input Mode - 0.5 days
-5. Live Preview Pane - 4 days
-6. Instant Actions Bar - 2 days
+### Must Have (4 weeks)
+| # | Feature | Days | Cumulative |
+|---|---------|------|------------|
+| 1 | Enable timeline/checkpoints | 1 | 1 |
+| 2 | Context window meter | 2 | 3 |
+| 3 | Conversation export | 1 | 4 |
+| 4 | Empty states | 0.5 | 4.5 |
+| 5 | Session forking UI | 2 | 6.5 |
+| 6 | Real-time message queueing | 3 | 9.5 |
+| 7 | Turbo mode | 3 | 12.5 |
+| 8 | Parallel tab execution | 5 | 17.5 |
 
-### Should Have (Phase 3)
-7. Agent Library - 3 days
-8. Fork/Branch Timeline - 3 days
-9. Real-Time Action Tracking - 4 days
-10. MCP Server Registry - 2 days
+### Should Have (2 weeks)
+| # | Feature | Days | Cumulative |
+|---|---------|------|------------|
+| 9 | File tree panel | 3 | 20.5 |
+| 10 | Git panel | 2 | 22.5 |
+| 11 | CLAUDE.md editor | 1 | 23.5 |
+| 12 | Vim mode | 2 | 25.5 |
 
-### Nice to Have (Phase 4+5)
-11. Speed Dial Projects - 1 day
-12. Predictive Commands - 4 days
-13. Command Chaining - 2 days
-14. Session Templates - 1 day
-15. CLAUDE.md Editor - 1 day
+### Nice to Have (ongoing)
+| # | Feature | Days |
+|---|---------|------|
+| 13 | Skeleton loaders | 1 |
+| 14 | Micro-interactions | 2 |
+| 15 | Onboarding flow | 1 |
+| 16 | Named sessions | 1 |
+| 17 | Plugin system | 5+ |
 
 ---
 
-## Speed KPIs to Track
+## Success Metrics
+
+### Speed KPIs
 
 | Metric | Current | Phase 1 | Phase 2 | Phase 3 |
 |--------|---------|---------|---------|---------|
@@ -325,21 +360,40 @@ implementation:
 | Keystrokes per task | 100+ | 50 | 30 | 20 |
 | Wait time % | 60% | 40% | 25% | 15% |
 | Context switches | many | few | rare | none |
-| Parallel throughput | 1x | 4x | 6x | 8x |
+| Parallel throughput | 1x | 2x | 4x | 8x |
+
+### Feature Parity
+
+| Competitor | Current Parity | Target |
+|------------|----------------|--------|
+| Claude CLI | 65% | 95% |
+| Cursor | 40% | 80% |
+| Windsurf | 45% | 85% |
+| Sculptor | 50% | 90% |
+| Opcode | 55% | 90% |
 
 ---
 
 ## Competitive Taglines
 
-**vs sculptor**: "faster without docker overhead"
-**vs opcode**: "same features, faster ui, better shortcuts"
-**vs cursor**: "native speed, lower cost, claude-focused"
-**vs windsurf**: "all the awareness, none of the bloat"
+**vs sculptor**: "faster without docker overhead, native windows support"
+**vs opcode**: "more shortcuts, stable windows, better analytics"
+**vs cursor**: "25x smaller, $9 not $20/month, no chromium vulns"
+**vs windsurf**: "native speed, keyboard-first, no security risks"
+**vs claude cli**: "visual tabs, full theming, point-and-click everything"
+
+---
 
 ## Ultimate Goal
 
-**yurucode = fastest possible claude code experience**
+```
+yurucode = the FASTEST, most NATIVE, most KEYBOARD-EFFICIENT Claude Code GUI
+
 - sub-second everything
 - keyboard-first always
-- parallel by default
+- parallel by default (coming)
 - zero friction workflow
+- native, not electron
+- secure, not chromium
+- $9 one-time, not $20/month
+```

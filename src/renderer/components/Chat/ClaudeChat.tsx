@@ -32,6 +32,8 @@ import {
   IconGitBranch,
   IconFile,
   IconChevronRight,
+  IconToggleLeftFilled,
+  IconToggleRightFilled,
 } from '@tabler/icons-react';
 import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
@@ -452,7 +454,9 @@ export const ClaudeChat: React.FC = () => {
     loadPersistedSession,
     updateSessionDraft,
     addMessageToSession,
-    renameSession
+    renameSession,
+    autoCompactEnabled,
+    setAutoCompactEnabled
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -469,7 +473,9 @@ export const ClaudeChat: React.FC = () => {
     loadPersistedSession: state.loadPersistedSession,
     updateSessionDraft: state.updateSessionDraft,
     addMessageToSession: state.addMessageToSession,
-    renameSession: state.renameSession
+    renameSession: state.renameSession,
+    autoCompactEnabled: state.autoCompactEnabled,
+    setAutoCompactEnabled: state.setAutoCompactEnabled
   })));
 
   // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
@@ -4239,8 +4245,13 @@ export const ClaudeChat: React.FC = () => {
                       onClick={() => setShowStatsModal(true)}
                       disabled={false}
                       title={hasActivity ?
-                        `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()})${willAutoCompact ? ' - AUTO-COMPACT TRIGGERED' : approachingCompact ? ' - approaching auto-compact at 60%' : ''} - click for details (${modKey}+.)` :
-                        `0 / ${contextWindowTokens.toLocaleString()} tokens - click for details (${modKey}+.)`}
+                        `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()}) | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'}${willAutoCompact ? ' - TRIGGERED' : approachingCompact ? ' - approaching 60%' : ''} (${modKey}+.) | right-click to toggle` :
+                        `0 / ${contextWindowTokens.toLocaleString()} tokens | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'} (${modKey}+.) | right-click to toggle`}
+                      onContextMenu={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
+                      }}
                       style={{
                         background: `linear-gradient(to right, ${
                           usageClass === 'minimal' ? `rgba(var(--foreground-rgb), ${(0.05 + (Math.min(percentageNum, 80) / 80) * 0.05).toFixed(3)})` :
@@ -4248,7 +4259,12 @@ export const ClaudeChat: React.FC = () => {
                         } ${Math.min(percentageNum, 100)}%, transparent ${Math.min(percentageNum, 100)}%)`
                       }}
                     >
-                      {percentage}%
+                      <span className="btn-stats-text">{percentage}%</span>
+                      {autoCompactEnabled !== false ? (
+                        <IconToggleRightFilled size={12} style={{ marginLeft: '3px', opacity: 0.6 }} />
+                      ) : (
+                        <IconToggleLeftFilled size={12} style={{ marginLeft: '3px', opacity: 0.4 }} />
+                      )}
                     </button>
                     {/* 5h limit bar */}
                     <div className="btn-stats-limit-bar five-hour">
@@ -4311,9 +4327,26 @@ export const ClaudeChat: React.FC = () => {
                 <IconChartDots size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                 context usage
               </h3>
-              <button className="stats-close" onClick={() => setShowStatsModal(false)}>
-                <IconX size={16} />
-              </button>
+              <div className="stats-header-right">
+                <div className="stats-toggle-container">
+                  <span className="stats-toggle-label">auto-compact:</span>
+                  <div
+                    className={`toggle-switch compact ${autoCompactEnabled !== false ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
+                    }}
+                    title={autoCompactEnabled !== false ? 'auto-compact enabled (60% threshold)' : 'auto-compact disabled'}
+                  >
+                    <span className="toggle-switch-label off">off</span>
+                    <span className="toggle-switch-label on">on</span>
+                    <div className="toggle-switch-slider" />
+                  </div>
+                </div>
+                <button className="stats-close" onClick={() => setShowStatsModal(false)}>
+                  <IconX size={16} />
+                </button>
+              </div>
             </div>
             <div className="stats-content">
               {(() => {
