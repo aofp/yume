@@ -28,16 +28,15 @@ import {
   IconChartDots,
   IconMessage,
   IconFlare,
-  IconArrowsMinimize,
   IconGitBranch,
   IconFile,
   IconChevronRight,
-  IconToggleLeftFilled,
-  IconToggleRightFilled,
+  IconCancel,
+  IconArrowsMinimize,
 } from '@tabler/icons-react';
 import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
-import { VirtualizedMessageList, VirtualizedMessageListRef } from './VirtualizedMessageList';
+import { VirtualizedMessageList, VirtualizedMessageListRef, ThinkingTimer } from './VirtualizedMessageList';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
@@ -49,7 +48,6 @@ import { ActivityIndicator, Activity } from '../ActivityIndicator/ActivityIndica
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 // PERFORMANCE: Lazy load modals and heavy components - only loaded when user opens them
 const RecentConversationsModal = React.lazy(() => import('../RecentConversationsModal').then(m => ({ default: m.RecentConversationsModal })));
-const KeyboardShortcuts = React.lazy(() => import('../KeyboardShortcuts/KeyboardShortcuts').then(m => ({ default: m.KeyboardShortcuts })));
 const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
 import { FEATURE_FLAGS } from '../../config/features';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
@@ -378,7 +376,6 @@ export const ClaudeChat: React.FC = () => {
   const [messageHistory, setMessageHistory] = useState<{ [sessionId: string]: string[] }>({});
   const [historyIndex, setHistoryIndex] = useState(-1);
   const [draftMessage, setDraftMessage] = useState<{ [sessionId: string]: string }>({});
-  const [thinkingElapsed, setThinkingElapsed] = useState<{ [sessionId: string]: number }>({});
   const [scrollPositions, setScrollPositions] = useState<{ [sessionId: string]: number }>({});
   const [inputContainerHeight, setInputContainerHeight] = useState(120);
   const [viewportHeight, setViewportHeight] = useState(window.innerHeight);
@@ -390,7 +387,6 @@ export const ClaudeChat: React.FC = () => {
   const [bashCommandMode, setBashCommandMode] = useState(false);
   const [isAtBottom, setIsAtBottom] = useState<{ [sessionId: string]: boolean }>({});
   const [pendingFollowupMessage, setPendingFollowupMessage] = useState<string | null>(null);
-  const [showHelpModal, setShowHelpModal] = useState(false);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showCompactConfirm, setShowCompactConfirm] = useState(false);
   const [confirmDialogSelection, setConfirmDialogSelection] = useState(1); // 0 = cancel, 1 = confirm (default)
@@ -931,39 +927,6 @@ export const ClaudeChat: React.FC = () => {
       }, 10000); // Clean up after 10 seconds
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
-
-  // Update elapsed time using session.thinkingStartTime from store (same as SessionTabs)
-  // This ensures the timer is always in sync with the store's state
-  useEffect(() => {
-    const hasStreamingSessions = sessions.some(s => s.streaming && (s as any).thinkingStartTime);
-    if (!hasStreamingSessions) {
-      setThinkingElapsed({});
-      return;
-    }
-
-    const interval = setInterval(() => {
-      const now = Date.now();
-      const times: { [sessionId: string]: number } = {};
-      sessions.forEach(s => {
-        if (s.streaming && (s as any).thinkingStartTime) {
-          times[s.id] = Math.floor((now - (s as any).thinkingStartTime) / 1000);
-        }
-      });
-      setThinkingElapsed(times);
-    }, 1000);
-
-    // Initial calculation
-    const now = Date.now();
-    const initialTimes: { [sessionId: string]: number } = {};
-    sessions.forEach(s => {
-      if (s.streaming && (s as any).thinkingStartTime) {
-        initialTimes[s.id] = Math.floor((now - (s as any).thinkingStartTime) / 1000);
-      }
-    });
-    setThinkingElapsed(initialTimes);
-
-    return () => clearInterval(interval);
-  }, [sessions.map(s => `${s.id}-${s.streaming}-${(s as any).thinkingStartTime}`).join(',')]);
 
   // macOS focus fix: Restore textarea focus when streaming ends
   // On macOS, window.set_focus() can disrupt webview's internal focus state
@@ -3188,10 +3151,9 @@ export const ClaudeChat: React.FC = () => {
     
     // Check if ? is typed as first character when input was empty
     if (input === '' && newValue === '?') {
-      // Prevent the ? from being typed and show help
-      e.preventDefault();
+      // Prevent the ? from being typed and show help via event
       setInput('');
-      setShowHelpModal(true);
+      window.dispatchEvent(new CustomEvent('showHelpModal'));
       return;
     }
     
@@ -3846,7 +3808,7 @@ export const ClaudeChat: React.FC = () => {
                   lastAssistantMessageIds={currentSession?.lastAssistantMessageIds || []}
                   className="virtualized-messages-container"
                   showThinking={shouldShowThinking}
-                  thinkingElapsed={currentSessionId && thinkingElapsed[currentSessionId] || 0}
+                  thinkingStartTime={(currentSession as any)?.thinkingStartTime}
                   onScrollStateChange={(atBottom) => {
                     if (currentSessionId) {
                       setIsAtBottom(prev => ({ ...prev, [currentSessionId]: atBottom }));
@@ -3921,12 +3883,8 @@ export const ClaudeChat: React.FC = () => {
                     ))}
                     <span className="thinking-dots"></span>
                   </span>
-                  {currentSessionId && thinkingElapsed[currentSessionId] > 0 && (
-                    <span className="thinking-timer">
-                      {thinkingElapsed[currentSessionId] >= 60
-                        ? `${Math.floor(thinkingElapsed[currentSessionId] / 60)}m ${thinkingElapsed[currentSessionId] % 60}s`
-                        : `${thinkingElapsed[currentSessionId]}s`}
-                    </span>
+                  {(currentSession as any)?.thinkingStartTime && (
+                    <ThinkingTimer startTime={(currentSession as any).thinkingStartTime} />
                   )}
                 </span>
               </div>
@@ -4087,6 +4045,7 @@ export const ClaudeChat: React.FC = () => {
                         }}
                         title="compress context to continue"
                       >
+                        <IconViewportShort size={14} stroke={1.5} />
                         compact
                       </button>
                       <button
@@ -4097,6 +4056,7 @@ export const ClaudeChat: React.FC = () => {
                         }}
                         title="clear all messages"
                       >
+                        <IconFileShredder size={14} stroke={1.5} />
                         clear
                       </button>
                     </div>
@@ -4224,7 +4184,7 @@ export const ClaudeChat: React.FC = () => {
                     title={`clear context (${modKey}+l)`}
                     style={{ opacity: (currentSession?.readOnly || !hasActivity || isStreaming) ? 0.5 : 1, pointerEvents: (currentSession?.readOnly || !hasActivity || isStreaming) ? 'none' : 'auto' }}
                   >
-                    <IconFlare size={12} stroke={1.5} />
+                    <IconCancel size={12} stroke={1.5} />
                   </button>
                   <button
                     className="btn-context-icon"
@@ -4259,12 +4219,13 @@ export const ClaudeChat: React.FC = () => {
                         } ${Math.min(percentageNum, 100)}%, transparent ${Math.min(percentageNum, 100)}%)`
                       }}
                     >
-                      <span className="btn-stats-text">{percentage}%</span>
-                      {autoCompactEnabled !== false ? (
-                        <IconToggleRightFilled size={12} style={{ marginLeft: '3px', opacity: 0.6 }} />
-                      ) : (
-                        <IconToggleLeftFilled size={12} style={{ marginLeft: '3px', opacity: 0.4 }} />
-                      )}
+                      <span className="btn-stats-text">{percentage}%
+                        {autoCompactEnabled !== false ? (
+                          <span className="btn-stats-auto">auto</span>
+                        ) : (
+                          <span className="btn-stats-auto">user</span>
+                        )}
+                      </span>
                     </button>
                     {/* 5h limit bar */}
                     <div className="btn-stats-limit-bar five-hour">
@@ -4547,7 +4508,6 @@ export const ClaudeChat: React.FC = () => {
           </div>
         </div>
       )}
-      {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
 
       {/* Clear context confirmation dialog */}
       <ConfirmModal

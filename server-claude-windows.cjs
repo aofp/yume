@@ -3132,6 +3132,39 @@ function removePidFile() {
   }
 }
 
+// Track all spawned child process PIDs for cleanup
+const allChildPids = new Set();
+
+// Helper function to forcefully kill all child processes
+function forceKillAllChildren() {
+  console.log('🔪 Force killing all child processes...');
+
+  // First, kill tracked PIDs
+  for (const pid of allChildPids) {
+    try {
+      process.kill(pid, 'SIGKILL');
+      console.log(`   SIGKILL sent to PID ${pid}`);
+    } catch (e) {
+      // Process may already be dead
+    }
+  }
+  allChildPids.clear();
+
+  // Windows: use taskkill as fallback
+  try {
+    const { execSync } = require('child_process');
+    execSync('taskkill /F /IM claude.exe 2>nul', {
+      encoding: 'utf8',
+      timeout: 2000,
+      stdio: 'pipe',
+      windowsHide: true
+    });
+    console.log('   taskkill cleanup executed');
+  } catch (e) {
+    // taskkill may fail if no processes found
+  }
+}
+
 // Graceful shutdown function
 let isShuttingDown = false;
 function gracefulShutdown(signal) {
@@ -3140,20 +3173,22 @@ function gracefulShutdown(signal) {
 
   console.log(`\n🛑 ${signal} received - graceful shutdown starting...`);
 
-  // 1. Kill all active Claude processes
+  // 1. First, send SIGTERM to all active Claude processes
   const activeCount = activeProcesses.size;
+  const pidsToKill = [];
   if (activeCount > 0) {
-    console.log(`🔪 Killing ${activeCount} active Claude process(es)...`);
+    console.log(`🔪 Sending SIGTERM to ${activeCount} active Claude process(es)...`);
     for (const [sessionId, proc] of activeProcesses.entries()) {
       try {
-        proc.kill('SIGTERM');
-        console.log(`   Killed process for session ${sessionId}`);
+        if (proc.pid) {
+          pidsToKill.push(proc.pid);
+          proc.kill('SIGTERM');
+          console.log(`   SIGTERM sent to process for session ${sessionId} (PID: ${proc.pid})`);
+        }
       } catch (e) {
         // Process may already be dead
       }
     }
-    activeProcesses.clear();
-    activeProcessStartTimes.clear();
   }
 
   // 2. Kill active bash processes
@@ -3201,11 +3236,29 @@ function gracefulShutdown(signal) {
   lastAssistantMessageIds.clear();
   allAssistantMessageIds.clear();
   stoppedSessions.clear();
+  activeProcesses.clear();
+  activeProcessStartTimes.clear();
 
-  console.log('✅ Graceful shutdown complete');
+  // 9. Wait 500ms for SIGTERM to take effect, then SIGKILL any survivors
+  setTimeout(() => {
+    console.log('🔪 Sending SIGKILL to any surviving processes...');
+    for (const pid of pidsToKill) {
+      try {
+        process.kill(pid, 'SIGKILL');
+        console.log(`   SIGKILL sent to PID ${pid}`);
+      } catch (e) {
+        // Process already dead
+      }
+    }
 
-  // Give a moment for cleanup, then exit
-  setTimeout(() => process.exit(0), 100);
+    // Force kill any remaining child processes
+    forceKillAllChildren();
+
+    console.log('✅ Graceful shutdown complete');
+
+    // Wait another 200ms then exit
+    setTimeout(() => process.exit(0), 200);
+  }, 500);
 }
 
 // Clean up on exit
@@ -4240,6 +4293,11 @@ Format as a clear, structured summary that preserves all important context.`;
       activeProcesses.set(sessionId, claudeProcess);
       activeProcessStartTimes.set(sessionId, Date.now());
 
+      // Track PID for cleanup on shutdown
+      if (claudeProcess.pid) {
+        allChildPids.add(claudeProcess.pid);
+      }
+
       // Cancel any pending streaming=false from previous process exit
       // This prevents UI flicker in agentic mode where processes cycle rapidly
       cancelPendingStreamingFalse(sessionId);
@@ -4291,10 +4349,9 @@ Format as a clear, structured summary that preserves all important context.`;
         return; // Don't continue with normal processing
       }
 
-      // On Unix systems, detached processes need special handling
-      if (process.platform !== 'win32') {
-        claudeProcess.unref(); // Allow parent to exit independently
-      }
+      // REMOVED: claudeProcess.unref() - this was causing zombie processes
+      // We want child processes to be killed when the server exits
+      // The unref() call was allowing processes to survive parent death
 
       // Send input based on session state
       if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
@@ -5338,10 +5395,13 @@ Format as a clear, structured summary that preserves all important context.`;
             console.log(`✅ [${sessionId}] Sending result message with model: ${model}`);
             
             // Don't include session_id in result if this was a compact command
+            // NOTE: Do NOT include streaming: false here!
+            // In agentic mode, result messages are intermediate - streaming state
+            // is controlled by the process exit handler with debounce.
             const resultMessage = {
               type: 'result',
               ...jsonData,
-              streaming: false,
+              // streaming: false, -- REMOVED: causes premature UI state change in agentic mode
               id: `result-${sessionId}-${Date.now()}`,
               model: model || 'unknown' // Use model from outer scope directly
             };
@@ -5532,6 +5592,11 @@ Format as a clear, structured summary that preserves all important context.`;
 
       // Handle process exit
       claudeProcess.on('close', (code) => {
+        // Remove PID from tracking set
+        if (claudeProcess.pid) {
+          allChildPids.delete(claudeProcess.pid);
+        }
+
         // Clean stdin on exit
         if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) {
           try {
@@ -5963,13 +6028,24 @@ Format as a clear, structured summary that preserves all important context.`;
         lastAssistantMessageIds.delete(sessionId);
       }
       
+      // Include wrapper tokens so frontend can update context usage even on interrupt
+      const wrapperSession = getWrapperSession(sessionId);
       socket.emit(`message:${sessionId}`, {
         type: 'system',
         subtype: 'interrupted',
         message: 'task interrupted by user',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        wrapper: {
+          tokens: {
+            input: wrapperSession.inputTokens || 0,
+            output: wrapperSession.outputTokens || 0,
+            total: wrapperSession.totalTokens || 0,
+            cache_read: wrapperSession.cacheReadTokens || 0,
+            cache_creation: wrapperSession.cacheCreationTokens || 0
+          }
+        }
       });
-      
+
       // Send callback response so client knows interrupt completed
       if (callback) {
         callback({ success: true });

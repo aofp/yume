@@ -823,7 +823,7 @@ pub async fn spawn_bash(
 #[tauri::command]
 pub fn kill_bash_process(process_id: String) -> Result<(), String> {
     let mut processes = BASH_PROCESSES.lock().unwrap();
-    
+
     if let Some(mut child) = processes.remove(&process_id) {
         match child.kill() {
             Ok(_) => {
@@ -837,6 +837,26 @@ pub fn kill_bash_process(process_id: String) -> Result<(), String> {
         }
     } else {
         Err("Process not found".to_string())
+    }
+}
+
+/// Kill all running bash processes - called on app exit
+/// This is a public function that can be called from lib.rs
+pub fn kill_all_bash_processes() {
+    let mut processes = BASH_PROCESSES.lock().unwrap();
+    let count = processes.len();
+
+    if count > 0 {
+        tracing::info!("Killing {} bash processes on shutdown...", count);
+        for (process_id, mut child) in processes.drain() {
+            match child.kill() {
+                Ok(_) => tracing::info!("Killed bash process: {}", process_id),
+                Err(e) => tracing::warn!("Failed to kill bash process {}: {}", process_id, e),
+            }
+            // Wait briefly for process to exit
+            let _ = child.wait();
+        }
+        tracing::info!("All bash processes killed");
     }
 }
 
@@ -1613,16 +1633,87 @@ pub async fn get_folder_contents(
 }
 
 /// Check if git index is locked and wait briefly if so
+/// Removes stale lock files that were left behind by crashed processes
 fn wait_for_git_lock(dir_path: &PathBuf) -> bool {
     let lock_path = dir_path.join(".git/index.lock");
+
+    if !lock_path.exists() {
+        return true;
+    }
+
+    // Lock exists - check if there's actually a git process running
+    if !is_git_process_running() {
+        // No git process running, this is a stale lock from a crash
+        if std::fs::remove_file(&lock_path).is_ok() {
+            eprintln!("Removed stale git lock file (no git process running): {:?}", lock_path);
+            return true;
+        }
+    }
+
+    // Git process might be running, wait briefly
     for _ in 0..5 {
         if !lock_path.exists() {
             return true;
         }
         std::thread::sleep(std::time::Duration::from_millis(100));
     }
-    // Lock still exists after 500ms, skip this operation
+
+    // Lock still exists after 500ms - check again for stale lock
+    if !is_git_process_running() {
+        if std::fs::remove_file(&lock_path).is_ok() {
+            eprintln!("Removed stale git lock file after wait: {:?}", lock_path);
+            return true;
+        }
+    }
+
+    // Last resort: check file age (older than 2 seconds = stale)
+    if let Ok(metadata) = std::fs::metadata(&lock_path) {
+        if let Ok(modified) = metadata.modified() {
+            if let Ok(elapsed) = modified.elapsed() {
+                if elapsed.as_secs() > 2 {
+                    if std::fs::remove_file(&lock_path).is_ok() {
+                        eprintln!("Removed stale git lock file (older than 2s): {:?}", lock_path);
+                        return true;
+                    }
+                }
+            }
+        }
+    }
+
     false
+}
+
+/// Check if any git process is currently running
+fn is_git_process_running() -> bool {
+    use std::process::Command;
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        if let Ok(output) = Command::new("tasklist")
+            .args(&["/FI", "IMAGENAME eq git.exe"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            return stdout.contains("git.exe");
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        if let Ok(output) = Command::new("pgrep")
+            .args(&["-x", "git"])
+            .output()
+        {
+            return output.status.success();
+        }
+    }
+
+    // If we can't check, assume git might be running
+    true
 }
 
 /// Returns the Git status for a repository
@@ -1700,6 +1791,104 @@ pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
     }
     
     Ok(status)
+}
+
+/// Cleans up stale git lock files in a directory
+/// Called on app close and can be called manually
+/// Returns the path of the removed lock file if one was removed
+#[tauri::command]
+pub fn cleanup_git_lock(directory: String) -> Option<String> {
+    let dir_path = PathBuf::from(&directory);
+    let lock_path = dir_path.join(".git/index.lock");
+
+    if lock_path.exists() {
+        // Check if git process is running before removing
+        if !is_git_process_running() {
+            if std::fs::remove_file(&lock_path).is_ok() {
+                eprintln!("Cleaned up git lock file on request: {:?}", lock_path);
+                return Some(lock_path.to_string_lossy().to_string());
+            }
+        }
+    }
+    None
+}
+
+/// Public function to clean git locks - can be called from lib.rs on app close
+pub fn cleanup_git_lock_sync(directory: &str) {
+    let dir_path = PathBuf::from(directory);
+    let lock_path = dir_path.join(".git/index.lock");
+
+    if lock_path.exists() {
+        // On app close, always remove the lock (no git process check needed)
+        if std::fs::remove_file(&lock_path).is_ok() {
+            eprintln!("Cleaned up git lock file on app close: {:?}", lock_path);
+        }
+    }
+}
+
+/// Cleanup all stale git lock files on startup
+/// Scans common locations for leftover lock files from crashed sessions
+pub fn cleanup_stale_git_locks_on_startup() {
+    // Only cleanup if no git process is running
+    if is_git_process_running() {
+        eprintln!("Git process running, skipping startup lock cleanup");
+        return;
+    }
+
+    let mut cleaned = 0;
+
+    // Get home directory
+    if let Some(home) = dirs::home_dir() {
+        // Check current working directory
+        if let Ok(cwd) = std::env::current_dir() {
+            if cleanup_single_git_lock(&cwd) {
+                cleaned += 1;
+            }
+        }
+
+        // Check common project locations (avoid Documents/Desktop to prevent macOS permission prompts)
+        let project_dirs = vec![
+            home.join("yurucode"),
+            home.join("projects"),
+            home.join("code"),
+            home.join("dev"),
+        ];
+
+        for dir in project_dirs {
+            if dir.exists() && dir.is_dir() {
+                if cleanup_single_git_lock(&dir) {
+                    cleaned += 1;
+                }
+                // Also check immediate subdirectories (common project structure)
+                if let Ok(entries) = std::fs::read_dir(&dir) {
+                    for entry in entries.flatten() {
+                        let path = entry.path();
+                        if path.is_dir() {
+                            if cleanup_single_git_lock(&path) {
+                                cleaned += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if cleaned > 0 {
+        eprintln!("Startup: cleaned {} stale git lock file(s)", cleaned);
+    }
+}
+
+/// Helper to cleanup a single git lock file
+fn cleanup_single_git_lock(dir: &PathBuf) -> bool {
+    let lock_path = dir.join(".git/index.lock");
+    if lock_path.exists() {
+        if std::fs::remove_file(&lock_path).is_ok() {
+            eprintln!("Removed stale git lock: {:?}", lock_path);
+            return true;
+        }
+    }
+    false
 }
 
 /// Returns git diff numstat for line additions/deletions per file

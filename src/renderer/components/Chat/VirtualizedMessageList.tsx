@@ -3,6 +3,31 @@ import React, { useRef, useEffect, useLayoutEffect, useCallback, useMemo, useImp
 import { MessageRenderer } from './MessageRenderer';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 
+// Self-updating timer component - manages its own interval to bypass parent memo
+// Exported for use in ClaudeChat bottom bar
+export const ThinkingTimer = ({ startTime }: { startTime: number }) => {
+  const [elapsed, setElapsed] = React.useState(() =>
+    Math.floor((Date.now() - startTime) / 1000)
+  );
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  if (elapsed <= 0) return null;
+
+  return (
+    <span className="thinking-timer">
+      {elapsed >= 60
+        ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
+        : `${elapsed}s`}
+    </span>
+  );
+};
+
 // Pre-computed thinking characters to avoid splitting on every render
 const THINKING_CHARS = 'thinking'.split('');
 
@@ -55,7 +80,7 @@ interface VirtualizedMessageListProps {
   isStreaming?: boolean;
   lastAssistantMessageIds?: string[];
   showThinking?: boolean;
-  thinkingElapsed?: number;
+  thinkingStartTime?: number;
   onScrollStateChange?: (isAtBottom: boolean) => void;
 }
 
@@ -72,7 +97,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   isStreaming = false,
   lastAssistantMessageIds = [],
   showThinking = false,
-  thinkingElapsed = 0,
+  thinkingStartTime,
   onScrollStateChange
 }, ref) => {
   const parentRef = useRef<HTMLDivElement>(null);
@@ -567,13 +592,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                           ))}
                           <span className="thinking-dots"></span>
                         </span>
-                        {thinkingElapsed > 0 && (
-                          <span className="thinking-timer">
-                            {thinkingElapsed >= 60
-                              ? `${Math.floor(thinkingElapsed / 60)}m ${thinkingElapsed % 60}s`
-                              : `${thinkingElapsed}s`}
-                          </span>
-                        )}
+                        {thinkingStartTime && <ThinkingTimer startTime={thinkingStartTime} />}
                       </span>
                     </div>
                   </div>

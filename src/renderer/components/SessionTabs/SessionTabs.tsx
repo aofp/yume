@@ -57,6 +57,23 @@ export const SessionTabs: React.FC = () => {
     return Math.ceil(context.measureText(text).width) + 5;
   };
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
+
+  // Helper to get fallback title for a session (used when claudeTitle is empty)
+  const getFallbackTitle = (session: any) => {
+    // If session has a title, use it
+    if (session.claudeTitle) return session.claudeTitle;
+    // If session has originalTabNumber, use that
+    if (session.originalTabNumber) return `tab ${session.originalTabNumber}`;
+    // Otherwise calculate next available tab number
+    const tabNumbers = sessions
+      .map(s => {
+        const match = (s as any).claudeTitle?.match(/^tab (\d+)$/);
+        return match ? parseInt(match[1]) : 0;
+      })
+      .filter(n => n > 0);
+    const tabNumber = tabNumbers.length > 0 ? Math.max(...tabNumbers) + 1 : 1;
+    return `tab ${tabNumber}`;
+  };
   const [dragOverTab, setDragOverTab] = useState<string | null>(null);
   const [dragOverNewTab, setDragOverNewTab] = useState(false);
   
@@ -448,7 +465,7 @@ export const SessionTabs: React.FC = () => {
             onDoubleClick={(e) => {
               // Double-click to rename any tab
               e.stopPropagation();
-              const title = (session as any).claudeTitle || 'new session';
+              const title = getFallbackTitle(session);
               setRenameValue(title);
               setRenameInputWidth(measureTextWidth(title));
               setRenamingTab(session.id);
@@ -784,11 +801,9 @@ export const SessionTabs: React.FC = () => {
                   style={{ width: `${renameInputWidth}px` }}
                 />
               ) : (
-                (session as any).claudeTitle && (
-                  <span className="tab-title">
-                    {(session as any).claudeTitle}
-                  </span>
-                )
+                <span className="tab-title">
+                  {getFallbackTitle(session)}
+                </span>
               )}
             </div>
             {/* Streaming timer - fixed width, only shows text when streaming */}
@@ -1117,18 +1132,18 @@ export const SessionTabs: React.FC = () => {
               createSession(undefined, workingDir);
             }
             setContextMenu(null);
-          }}>new session in same dir</button>
+          }}>duplicate tab ({modKey}+d)</button>
           
           <button onClick={() => {
             const session = sessions.find(s => s.id === contextMenu.sessionId);
             if (session) {
-              const title = (session as any).claudeTitle || 'new session';
+              const title = getFallbackTitle(session);
               setRenameValue(title);
               setRenameInputWidth(measureTextWidth(title));
               setRenamingTab(contextMenu.sessionId);
               setContextMenu(null);
             }
-          }}>rename tab</button>
+          }}>rename tab (double click)</button>
           
           <div className="separator" />
           
@@ -1185,7 +1200,7 @@ export const SessionTabs: React.FC = () => {
                     opacity: hasMessages ? 1 : 0.3,
                     cursor: 'default'
                   }}
-                >clear session</button>
+                >clear session ({modKey}+l)</button>
               </>
             );
           })()}

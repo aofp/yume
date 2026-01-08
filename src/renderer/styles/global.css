@@ -367,6 +367,12 @@ button:disabled {
   cursor: not-allowed;
 }
 
+.btn-stats-auto {
+  margin-left: 2px;
+  font-size: 95%;
+  opacity: .9;
+}
+
 /* Input Base Styles */
 input,
 textarea {

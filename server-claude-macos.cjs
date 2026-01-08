@@ -2829,6 +2829,39 @@ function removePidFile() {
   }
 }
 
+// Track all spawned child process PIDs for cleanup
+const allChildPids = new Set();
+
+// Helper function to forcefully kill all child processes
+function forceKillAllChildren() {
+  console.log('🔪 Force killing all child processes...');
+
+  // First, kill tracked PIDs with SIGKILL
+  for (const pid of allChildPids) {
+    try {
+      process.kill(pid, 'SIGKILL');
+      console.log(`   SIGKILL sent to PID ${pid}`);
+    } catch (e) {
+      // Process may already be dead
+    }
+  }
+  allChildPids.clear();
+
+  // Then use pkill as a fallback to catch any orphans
+  try {
+    const { execSync } = require('child_process');
+    // Kill any claude processes that might be orphaned
+    execSync('pkill -9 -f "claude" 2>/dev/null || true', {
+      encoding: 'utf8',
+      timeout: 2000,
+      stdio: 'pipe'
+    });
+    console.log('   pkill cleanup executed');
+  } catch (e) {
+    // pkill may fail if no processes found, that's OK
+  }
+}
+
 // Graceful shutdown function
 let isShuttingDown = false;
 function gracefulShutdown(signal) {
@@ -2837,20 +2870,22 @@ function gracefulShutdown(signal) {
 
   console.log(`\n🛑 ${signal} received - graceful shutdown starting...`);
 
-  // 1. Kill all active Claude processes
+  // 1. First, send SIGTERM to all active Claude processes
   const activeCount = activeProcesses.size;
+  const pidsToKill = [];
   if (activeCount > 0) {
-    console.log(`🔪 Killing ${activeCount} active Claude process(es)...`);
+    console.log(`🔪 Sending SIGTERM to ${activeCount} active Claude process(es)...`);
     for (const [sessionId, proc] of activeProcesses.entries()) {
       try {
-        proc.kill('SIGTERM');
-        console.log(`   Killed process for session ${sessionId}`);
+        if (proc.pid) {
+          pidsToKill.push(proc.pid);
+          proc.kill('SIGTERM');
+          console.log(`   SIGTERM sent to process for session ${sessionId} (PID: ${proc.pid})`);
+        }
       } catch (e) {
         // Process may already be dead
       }
     }
-    activeProcesses.clear();
-    activeProcessStartTimes.clear();
   }
 
   // 2. Clear all health check intervals and timeouts
@@ -2891,11 +2926,29 @@ function gracefulShutdown(signal) {
   sessions.clear();
   lastAssistantMessageIds.clear();
   allAssistantMessageIds.clear();
+  activeProcesses.clear();
+  activeProcessStartTimes.clear();
 
-  console.log('✅ Graceful shutdown complete');
+  // 9. Wait 500ms for SIGTERM to take effect, then SIGKILL any survivors
+  setTimeout(() => {
+    console.log('🔪 Sending SIGKILL to any surviving processes...');
+    for (const pid of pidsToKill) {
+      try {
+        process.kill(pid, 'SIGKILL');
+        console.log(`   SIGKILL sent to PID ${pid}`);
+      } catch (e) {
+        // Process already dead, good
+      }
+    }
 
-  // Give a moment for cleanup, then exit
-  setTimeout(() => process.exit(0), 100);
+    // Force kill any remaining child processes
+    forceKillAllChildren();
+
+    console.log('✅ Graceful shutdown complete');
+
+    // Wait another 200ms then exit
+    setTimeout(() => process.exit(0), 200);
+  }, 500);
 }
 
 // Clean up on exit
@@ -3426,6 +3479,11 @@ io.on('connection', (socket) => {
       activeProcesses.set(sessionId, claudeProcess);
       activeProcessStartTimes.set(sessionId, Date.now());
 
+      // Track PID for cleanup on shutdown
+      if (claudeProcess.pid) {
+        allChildPids.add(claudeProcess.pid);
+      }
+
       // Cancel any pending streaming=false from previous process exit
       // This prevents UI flicker in agentic mode where processes cycle rapidly
       cancelPendingStreamingFalse(sessionId);
@@ -3468,10 +3526,9 @@ io.on('connection', (socket) => {
         return; // Don't continue with normal processing
       }
 
-      // On Unix systems, detached processes need special handling
-      if (process.platform !== 'win32') {
-        claudeProcess.unref(); // Allow parent to exit independently
-      }
+      // REMOVED: claudeProcess.unref() - this was causing zombie processes
+      // We want child processes to be killed when the server exits
+      // The unref() call was allowing processes to survive parent death
 
       // Send input based on session state
       if (session.pendingContextRestore && session.messages && session.messages.length > 0) {
@@ -4289,10 +4346,13 @@ io.on('connection', (socket) => {
             console.log(`✅ [${sessionId}] Sending result message with model: ${model}`);
             
             // Don't include session_id in result if this was a compact command
+            // NOTE: Do NOT include streaming: false here! (see comment at line 4332)
+            // In agentic mode, result messages are intermediate - streaming state
+            // is controlled by the process exit handler with debounce.
             const resultMessage = {
               type: 'result',
               ...jsonData,
-              streaming: false,
+              // streaming: false, -- REMOVED: causes premature UI state change in agentic mode
               id: `result-${sessionId}-${Date.now()}`,
               model: model || 'unknown' // Use model from outer scope directly
             };
@@ -4492,6 +4552,11 @@ io.on('connection', (socket) => {
 
       // Handle process exit
       claudeProcess.on('close', (code) => {
+        // Remove PID from tracking set
+        if (claudeProcess.pid) {
+          allChildPids.delete(claudeProcess.pid);
+        }
+
         // Clean stdin on exit
         if (claudeProcess.stdin && !claudeProcess.stdin.destroyed) {
           try {
@@ -4501,7 +4566,7 @@ io.on('connection', (socket) => {
             // Ignore errors on cleanup
           }
         }
-        
+
         // Clean up all tracking for this session
         if (streamHealthChecks.has(sessionId)) {
           clearInterval(streamHealthChecks.get(sessionId));
@@ -4847,11 +4912,22 @@ io.on('connection', (socket) => {
         lastAssistantMessageIds.delete(sessionId);
       }
       
+      // Include wrapper tokens so frontend can update context usage even on interrupt
+      const wrapperSession = getWrapperSession(sessionId);
       socket.emit(`message:${sessionId}`, {
         type: 'system',
         subtype: 'interrupted',
         message: 'task interrupted by user',
-        timestamp: Date.now()
+        timestamp: Date.now(),
+        wrapper: {
+          tokens: {
+            input: wrapperSession.inputTokens || 0,
+            output: wrapperSession.outputTokens || 0,
+            total: wrapperSession.totalTokens || 0,
+            cache_read: wrapperSession.cacheReadTokens || 0,
+            cache_creation: wrapperSession.cacheCreationTokens || 0
+          }
+        }
       });
       
       // Send callback response so client knows interrupt completed
@@ -4913,7 +4989,7 @@ io.on('connection', (socket) => {
     lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
     
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
-    
+
     // Send clear confirmation
     socket.emit(`message:${sessionId}`, {
       type: 'system',
@@ -4921,11 +4997,8 @@ io.on('connection', (socket) => {
       message: 'session cleared',
       timestamp: Date.now()
     });
-    
-    // Emit title reset
-    const eventName = `title:${sessionId}`;
-    console.log(`🏷️ Emitting title reset for cleared session: ${eventName}`);
-    socket.emit(eventName, { title: 'new session' });
+
+    // Note: Don't emit title reset - frontend handles tab numbering in clearContext
   });
   
   socket.on('deleteSession', async (data, callback) => {

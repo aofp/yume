@@ -153,6 +153,134 @@ pub fn get_log_path() -> PathBuf {
     log_dir.join("server.log")
 }
 
+/// Returns the platform-specific path for the server PID file
+/// Used to track and kill orphaned server processes from crashed sessions
+fn get_pid_file_path() -> PathBuf {
+    let data_dir = if cfg!(target_os = "macos") {
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("/tmp"))
+            .join("Library")
+            .join("Application Support")
+            .join("yurucode")
+    } else if cfg!(target_os = "windows") {
+        dirs::data_local_dir()
+            .unwrap_or_else(|| PathBuf::from("C:\\temp"))
+            .join("yurucode")
+    } else {
+        dirs::home_dir()
+            .unwrap_or_else(|| PathBuf::from("/tmp"))
+            .join(".yurucode")
+    };
+
+    let _ = fs::create_dir_all(&data_dir);
+    data_dir.join("server.pid")
+}
+
+/// Saves the server process PID to a file for orphan detection
+fn save_server_pid(pid: u32) {
+    let pid_path = get_pid_file_path();
+    if let Ok(mut file) = OpenOptions::new()
+        .create(true)
+        .write(true)
+        .truncate(true)
+        .open(&pid_path)
+    {
+        let _ = writeln!(file, "{}", pid);
+        info!("Saved server PID {} to {:?}", pid, pid_path);
+    }
+}
+
+/// Removes the PID file on clean shutdown
+fn remove_pid_file() {
+    let pid_path = get_pid_file_path();
+    if pid_path.exists() {
+        let _ = fs::remove_file(&pid_path);
+        info!("Removed PID file {:?}", pid_path);
+    }
+}
+
+/// Kills any orphaned server processes from crashed sessions
+/// Called on startup before spawning a new server
+pub fn kill_orphaned_servers() {
+    info!("Checking for orphaned server processes...");
+
+    // First, try to kill process from PID file
+    let pid_path = get_pid_file_path();
+    if pid_path.exists() {
+        if let Ok(contents) = fs::read_to_string(&pid_path) {
+            if let Ok(old_pid) = contents.trim().parse::<u32>() {
+                info!("Found old PID file with PID: {}", old_pid);
+                kill_process_by_pid(old_pid);
+            }
+        }
+        let _ = fs::remove_file(&pid_path);
+    }
+
+    // Also kill any server processes by name (catches processes without PID file)
+    kill_server_processes_by_name();
+}
+
+/// Kill a specific process by PID
+fn kill_process_by_pid(pid: u32) {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        let _ = Command::new("taskkill")
+            .args(&["/F", "/PID", &pid.to_string()])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+        info!("Attempted to kill Windows process PID: {}", pid);
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        // Check if process exists first
+        let check = Command::new("kill")
+            .args(&["-0", &pid.to_string()])
+            .output();
+
+        if check.is_ok() && check.unwrap().status.success() {
+            let _ = Command::new("kill")
+                .args(&["-9", &pid.to_string()])
+                .output();
+            info!("Killed orphaned process PID: {}", pid);
+        }
+    }
+}
+
+/// Kill all server processes by name pattern
+fn kill_server_processes_by_name() {
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        // Kill any server-windows processes
+        let _ = Command::new("taskkill")
+            .args(&["/F", "/IM", "server-windows-x64.exe"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        // Use pkill to kill by process name pattern
+        let _ = Command::new("pkill")
+            .args(&["-9", "-f", "server-macos-arm64|server-macos-x64|server-claude-macos"])
+            .output();
+        info!("Attempted to kill orphaned macOS server processes by name");
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let _ = Command::new("pkill")
+            .args(&["-9", "-f", "server-linux-x64|server-claude-linux"])
+            .output();
+        info!("Attempted to kill orphaned Linux server processes by name");
+    }
+}
+
 /// Appends a timestamped message to the server log file
 /// Used for debugging server startup and runtime issues
 fn write_log(message: &str) {
@@ -222,10 +350,10 @@ pub fn get_server_logs() -> String {
 /// Uses normal kill first, then force kill if needed
 pub fn stop_logged_server() {
     info!("Stopping server for THIS instance only...");
-    
+
     // Set running flag to false first
     SERVER_RUNNING.store(false, Ordering::Relaxed);
-    
+
     if let Ok(mut process_guard) = SERVER_PROCESS.try_lock() {
         if let Some(process_arc) = process_guard.take() {
             info!("Stopping server process...");
@@ -242,10 +370,53 @@ pub fn stop_logged_server() {
     } else {
         info!("Could not lock SERVER_PROCESS");
     }
-    
+
     // Clear the port
     if let Ok(mut port_guard) = SERVER_PORT.lock() {
         *port_guard = None;
+    }
+
+    // Remove PID file on clean shutdown
+    remove_pid_file();
+
+    // Final cleanup: kill any orphaned claude processes
+    // This is a fallback in case the server didn't clean up properly
+    cleanup_orphaned_claude_processes();
+}
+
+/// Kills any orphaned claude processes that might be left running
+/// Uses pkill as a fallback cleanup mechanism
+fn cleanup_orphaned_claude_processes() {
+    info!("Running orphan process cleanup...");
+
+    #[cfg(target_os = "macos")]
+    {
+        // Kill any orphaned claude processes
+        let _ = Command::new("pkill")
+            .args(&["-9", "-f", "claude"])
+            .output();
+        info!("pkill cleanup executed for macOS");
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let _ = Command::new("pkill")
+            .args(&["-9", "-f", "claude"])
+            .output();
+        info!("pkill cleanup executed for Linux");
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        // Kill any orphaned claude processes on Windows
+        let _ = Command::new("taskkill")
+            .args(&["/F", "/IM", "claude.exe"])
+            .creation_flags(CREATE_NO_WINDOW)
+            .output();
+        info!("taskkill cleanup executed for Windows");
     }
 }
 
@@ -306,7 +477,9 @@ pub fn start_logged_server(port: u16) {
 
 /// Internal function that actually starts the server
 fn start_server_internal(port: u16) {
-    
+    // Kill any orphaned server processes from previous crashed sessions
+    kill_orphaned_servers();
+
     // On macOS, use the bundled server file directly
     #[cfg(target_os = "macos")]
     {
@@ -430,6 +603,9 @@ fn start_macos_server(port: u16) {
                 let pid = child.id();
                 write_log(&format!("✅ macOS server spawned with PID: {}", pid));
                 info!("✅ macOS server spawned with PID: {}", pid);
+
+                // Save PID for orphan detection on next startup
+                save_server_pid(pid);
 
                 let stdout = child.stdout.take();
                 let stderr = child.stderr.take();
@@ -618,6 +794,9 @@ fn start_windows_server(port: u16) {
                 info!("✅ Server started with PID: {}", pid);
                 write_log(&format!("✅ Server started with PID: {}", pid));
 
+                // Save PID for orphan detection on next startup
+                save_server_pid(pid);
+
                 let stdout = child.stdout.take();
                 let stderr = child.stderr.take();
 
@@ -795,6 +974,9 @@ fn start_linux_server(port: u16) {
                 let pid = child.id();
                 info!("✅ Server started with PID: {}", pid);
                 write_log(&format!("✅ Server started with PID: {}", pid));
+
+                // Save PID for orphan detection on next startup
+                save_server_pid(pid);
 
                 let stdout = child.stdout.take();
                 let stderr = child.stderr.take();

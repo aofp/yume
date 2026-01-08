@@ -1087,12 +1087,12 @@ textarea.context-full {
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.7);
   border: none;
-  color: var(--accent-color);
+  color: var(--fg-50);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, color 0.2s ease;
 }
 
 .attached-image:hover .remove-image {
@@ -1100,8 +1100,8 @@ textarea.context-full {
 }
 
 .remove-image:hover {
-  background: rgba(255, 153, 204, 0.1);
-  color: rgba(255, 153, 204, 0.8);
+  background: rgba(0, 0, 0, 0.8);
+  color: var(--negative-color);
 }
 
 /* Bash command mode indicator */
@@ -1489,7 +1489,7 @@ textarea.context-full {
 .attachment-remove {
   background: transparent;
   border: none;
-  color: rgba(var(--negative-rgb), 0.6);
+  color: var(--fg-50);
   padding: 0;
   display: flex;
   align-items: center;
@@ -1501,7 +1501,7 @@ textarea.context-full {
 }
 
 .attachment-remove:hover {
-  color: rgba(var(--negative-rgb), 1);
+  color: var(--negative-color);
 }
 
 /* Message attachment preview (in chat bubbles) */
@@ -1754,9 +1754,8 @@ textarea.context-full {
 /* Compact toggle switch for stats modal */
 .toggle-switch.compact {
   position: relative;
-  width: 60px;
+  width: 52px;
   height: 18px;
-  position: relative; top: -2px;
   background: var(--fg-05);
   border-radius: 3px;
   display: flex;

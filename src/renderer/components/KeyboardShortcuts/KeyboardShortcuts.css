@@ -1,1 +1,138 @@
-/* Moved from ClaudeChat.css - keyboard shortcuts styles */
+/* Keyboard shortcuts modal styles - moved from ClaudeChat.css */
+
+.help-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.help-modal {
+  background: var(--background-color);
+  border: 1px solid var(--fg-15);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 450px;
+  max-height: 90vh;
+  overflow-y: auto;
+  user-select: none;
+}
+
+.help-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--fg-15);
+}
+
+.help-header h3 {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+}
+
+.help-close {
+  background: transparent;
+  border: none;
+  color: var(--fg-40);
+  cursor: default;
+  padding: 2px;
+  transition: all 0.2s ease;
+}
+
+.help-close:hover {
+  color: var(--negative-color);
+}
+
+.help-content {
+  padding: 8px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  gap: 8px;
+  justify-content: center;
+}
+
+.help-section {
+  border-radius: 6px;
+  max-width: 238px;
+}
+
+.help-section h4 {
+  color: var(--accent-color);
+  font-size: 11px;
+  font-weight: 500;
+  margin: 0 0 6px 0;
+  text-transform: lowercase;
+}
+
+.shortcut-item {
+  display: flex;
+  align-items: center;
+  padding: 2px 0;
+  font-size: 7pt;
+  user-select: none;
+}
+
+.shortcut-keys {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  user-select: none;
+}
+
+.key-btn {
+  display: inline-block;
+  background: rgba(128, 128, 128, 0.2);
+  color: var(--fg-80);
+  padding: 1px 4px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+  font-size: 7pt;
+  font-weight: 500;
+  border: none;
+  user-select: none;
+}
+
+.key-plus {
+  color: var(--fg-30);
+  font-size: 7pt;
+  padding: 0 1px;
+  user-select: none;
+}
+
+.shortcut-dots {
+  flex: 1;
+  margin: 0 3px;
+  color: var(--fg-20);
+  overflow: hidden;
+  line-height: 1;
+  align-self: flex-end;
+  padding-bottom: 2px;
+  user-select: none;
+}
+
+.shortcut-dots::before {
+  content: '................................................................................................................................................................................................................................................................................................................................................................................................';
+  letter-spacing: 1px;
+  font-family: var(--font-mono);
+  font-size: 7pt;
+}
+
+.shortcut-desc {
+  color: var(--fg-60);
+  text-transform: lowercase;
+  white-space: nowrap;
+  flex-shrink: 0;
+  padding-left: 2px;
+  user-select: none;
+}

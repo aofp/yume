@@ -49,6 +49,14 @@ import { claudeCodeClient } from './services/claudeCodeClient';
 import { tauriClaudeClient } from './services/tauriClaudeClient';
 import './services/modalService';
 
+// Try to import Tauri invoke for git lock cleanup
+let tauriInvoke: ((cmd: string, args?: any) => Promise<any>) | null = null;
+import('@tauri-apps/api/core').then(m => {
+  tauriInvoke = m.invoke;
+}).catch(() => {
+  // Not in Tauri environment
+});
+
 const mainLogger = log.setContext('Main');
 
 // Variables for sleep/wake detection and session persistence
@@ -286,6 +294,18 @@ window.addEventListener('beforeunload', () => {
   if (persistenceInterval) {
     clearInterval(persistenceInterval);
   }
+
+  // Cleanup git lock files for all open sessions (fire and forget)
+  if (tauriInvoke) {
+    const store = useClaudeCodeStore.getState();
+    const sessions = store.sessions;
+    for (const session of Object.values(sessions)) {
+      if (session.workingDirectory) {
+        tauriInvoke('cleanup_git_lock', { directory: session.workingDirectory }).catch(() => {});
+      }
+    }
+  }
+
   // Clear all sessions from localStorage
   localStorage.removeItem('yurucode-sessions');
   localStorage.removeItem('yurucode-sessions-timestamp');
@@ -507,21 +527,37 @@ const keyboardHandler = (e: KeyboardEvent) => {
     }
   }
 
-  // Cmd/Ctrl + T - New tab (session)
+  // Cmd/Ctrl + T - New tab (session) with folder dialog
   if ((e.metaKey || e.ctrlKey) && e.key === 't') {
     e.preventDefault();
     const { createSession } = useClaudeCodeStore.getState();
-    // Open folder selector if in Electron, otherwise use root
-    if (window.electronAPI?.folder?.select) {
-      window.electronAPI.folder.select().then((folder: string) => {
-        if (folder) {
-          const folderName = folder.split(/[/\\]/).pop() || 'new session';
-          createSession(folderName, folder);
+
+    // Use setTimeout to ensure UI updates before blocking dialog
+    setTimeout(async () => {
+      if (window.electronAPI?.folder?.select) {
+        try {
+          const folder = await window.electronAPI.folder.select();
+          if (folder) {
+            // Save to recent projects
+            const name = folder.split(/[/\\]/).pop() || folder;
+            const newProject = { path: folder, name, lastOpened: Date.now() };
+            const stored = localStorage.getItem('yurucode-recent-projects');
+            let recentProjects = [];
+            try {
+              if (stored) recentProjects = JSON.parse(stored);
+            } catch {}
+            const updated = [newProject, ...recentProjects.filter((p: any) => p.path !== folder)].slice(0, 10);
+            localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+
+            await createSession(undefined, folder);
+          }
+          // User cancelled - do nothing
+        } catch (err) {
+          console.error('Folder selection failed:', err);
         }
-      });
-    } else {
-      createSession('new session', '/Users/yuru/yurucode');
-    }
+      }
+      // No fallback - require folder selection
+    }, 0);
   }
   
   // Cmd/Ctrl + W - Close current tab

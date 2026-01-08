@@ -75,6 +75,9 @@ pub fn run() {
             // Application setup phase - runs once at startup
             info!("Starting yurucode Tauri app");
 
+            // Clean up stale git lock files from previous crashed sessions
+            commands::cleanup_stale_git_locks_on_startup();
+
             // Initialize Claude manager for handling Claude CLI process lifecycle
             // Arc allows safe sharing across threads
             let claude_manager = Arc::new(ClaudeManager::new());
@@ -860,6 +863,7 @@ pub fn run() {
             commands::search_files,
             commands::get_recent_files,
             commands::get_git_status,
+            commands::cleanup_git_lock,
             commands::get_git_diff_numstat,
             commands::get_folder_contents,
             // Database operations
@@ -921,10 +925,13 @@ pub fn run() {
                     // The Destroyed event fires AFTER the window is removed from the list
                     // Check if this was the last window, and stop the server if so
                     let remaining_windows = app_handle.webview_windows();
-                    
+
                     // Note: The destroyed window is already removed from the list
                     if remaining_windows.is_empty() {
-                        info!("Last window destroyed, stopping server and exiting...");
+                        info!("Last window destroyed, stopping server and cleaning up...");
+                        // Kill all bash processes first
+                        commands::kill_all_bash_processes();
+                        // Then stop the server (which also runs pkill cleanup)
                         logged_server::stop_logged_server();
                         // Let Tauri handle the exit properly
                     } else {
@@ -936,10 +943,11 @@ pub fn run() {
         })
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
-    
+
     // Final cleanup when the app exits normally
-    // Ensures the Node.js server process is terminated
+    // Ensures all child processes are terminated
     info!("App exiting normally, cleaning up...");
+    commands::kill_all_bash_processes();
     logged_server::stop_logged_server();
 }
 

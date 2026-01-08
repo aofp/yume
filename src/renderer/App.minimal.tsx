@@ -131,11 +131,18 @@ export const App: React.FC = () => {
       setUpgradeReason(e.detail?.reason || 'tabLimit');
       setShowUpgradeModal(true);
     };
-    
+
     window.addEventListener('showUpgradeModal', handleShowUpgrade as EventListener);
     return () => {
       window.removeEventListener('showUpgradeModal', handleShowUpgrade as EventListener);
     };
+  }, []);
+
+  // Listen for help modal events (from ClaudeChat ? key)
+  useEffect(() => {
+    const handleShowHelp = () => setShowHelpModal(true);
+    window.addEventListener('showHelpModal', handleShowHelp);
+    return () => window.removeEventListener('showHelpModal', handleShowHelp);
   }, []);
   
   // Handle global right-click for context menu

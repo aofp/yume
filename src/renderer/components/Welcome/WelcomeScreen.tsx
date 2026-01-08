@@ -33,7 +33,7 @@ interface RecentProject {
 }
 
 export const WelcomeScreen: React.FC = () => {
-  const { createSession } = useClaudeCodeStore();
+  const { createSession, autoCompactEnabled, setAutoCompactEnabled } = useClaudeCodeStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
@@ -323,9 +323,19 @@ export const WelcomeScreen: React.FC = () => {
           <button
             className="btn-stats"
             onClick={() => setShowStatsModal(true)}
-            title="context usage"
+            onContextMenu={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
+            }}
+            title="context usage (right-click to toggle auto-compact)"
           >
-            usage
+            context
+            {autoCompactEnabled !== false ? (
+              <span className="btn-stats-auto">auto</span>
+            ) : (
+              <span className="btn-stats-auto">user</span>
+            )}
           </button>
           {/* 5h limit bar */}
           <div className="btn-stats-limit-bar five-hour">
@@ -359,9 +369,26 @@ export const WelcomeScreen: React.FC = () => {
                 <IconChartDots size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
                 context usage
               </h3>
-              <button className="stats-close" onClick={() => setShowStatsModal(false)}>
-                <IconX size={16} />
-              </button>
+              <div className="stats-header-right">
+                <div className="stats-toggle-container">
+                  <span className="stats-toggle-label">auto-compact:</span>
+                  <div
+                    className={`toggle-switch compact ${autoCompactEnabled !== false ? 'active' : ''}`}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
+                    }}
+                    title={autoCompactEnabled !== false ? 'auto-compact enabled (60% threshold)' : 'auto-compact disabled'}
+                  >
+                    <span className="toggle-switch-label off">off</span>
+                    <span className="toggle-switch-label on">on</span>
+                    <div className="toggle-switch-slider" />
+                  </div>
+                </div>
+                <button className="stats-close" onClick={() => setShowStatsModal(false)}>
+                  <IconX size={16} />
+                </button>
+              </div>
             </div>
             <div className="stats-content" style={{ opacity: 0.5, pointerEvents: 'none' }}>
               {/* Current tab section - disabled since no active tab */}

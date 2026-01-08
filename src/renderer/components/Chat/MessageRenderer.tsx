@@ -2,7 +2,7 @@ import React, { memo, useState, useCallback, useRef, useEffect, useLayoutEffect 
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { DiffViewer, DiffDisplay, DiffLine } from './DiffViewer';
+import { DiffViewer, DiffDisplay, DiffLine, DiffHunk } from './DiffViewer';
 
 // Register only commonly used languages for smaller bundle
 import javascript from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript';
@@ -2364,25 +2364,28 @@ const MessageRendererBase: React.FC<{
         }
       }
       
-      const isReadOperation = associatedToolUse?.message?.name === 'Read';
-      const isSearchOperation = associatedToolUse?.message?.name === 'Grep' || 
-         associatedToolUse?.message?.name === 'Glob' ||
-         associatedToolUse?.message?.name === 'LS' ||
-         associatedToolUse?.message?.name === 'WebSearch';
-      const isBashOperation = associatedToolUse?.message?.name === 'Bash';
-      
+      // Tool name and input can be in different locations depending on message structure
+      const resultToolName = associatedToolUse?.message?.name || associatedToolUse?.name;
+      const resultToolInput = associatedToolUse?.message?.input || associatedToolUse?.input;
+
+      const isReadOperation = resultToolName === 'Read';
+      const isSearchOperation = resultToolName === 'Grep' || resultToolName === 'Glob' || resultToolName === 'LS' || resultToolName === 'WebSearch';
+      const isBashOperation = resultToolName === 'Bash';
+
       // Never trim for Read, Search, Bash, or Edit operations to preserve formatting
-      const isEditOperation = associatedToolUse?.message?.name === 'Edit' || 
-                              associatedToolUse?.message?.name === 'MultiEdit' ||
-                              associatedToolUse?.message?.name === 'NotebookEdit';
+      const isEditOperation = resultToolName === 'Edit' || resultToolName === 'MultiEdit' || resultToolName === 'NotebookEdit';
       if (!isReadOperation && !isSearchOperation && !isBashOperation && !isEditOperation) {
         contentStr = contentStr.trim();
       }
-      
+
+      // Check if this is a Write operation (must check before Edit since Write also produces "has been updated")
+      const isWriteOperation = resultToolName === 'Write';
+
       // Check if this is an Edit result - detect by associated tool name (more reliable)
       // Note: replace_all edits say "were successfully replaced" without line numbers
-      const isEditResultByContent = contentStr.includes('has been updated') ||
-                          (contentStr.includes('Applied') && (contentStr.includes('edit to') || contentStr.includes('edits to')));
+      // Exclude Write operations from content-based detection
+      const isEditResultByContent = !isWriteOperation && (contentStr.includes('has been updated') ||
+                          (contentStr.includes('Applied') && (contentStr.includes('edit to') || contentStr.includes('edits to'))));
       // Use tool name detection as primary, content detection as fallback
       const isEditResult = isEditOperation || isEditResultByContent;
       
@@ -2409,8 +2412,8 @@ const MessageRendererBase: React.FC<{
         }
         
         // For MultiEdit, generate diff from tool input
-        if (isMultiEdit && associatedToolUse?.message?.input?.edits) {
-          const edits = associatedToolUse.message.input.edits || [];
+        if (isMultiEdit && resultToolInput?.edits) {
+          const edits = resultToolInput?.edits || [];
 
           // Extract line numbers from the output content
           // The format shows lines like "     7→content"
@@ -2478,13 +2481,13 @@ const MessageRendererBase: React.FC<{
         }
         
         // For single Edit, also generate diff from tool input
-        if (!isMultiEdit && associatedToolUse?.message?.input) {
-          const oldString = associatedToolUse.message.input.old_string || '';
-          const newString = associatedToolUse.message.input.new_string || '';
+        if (!isMultiEdit && resultToolInput) {
+          const oldString = resultToolInput?.old_string || '';
+          const newString = resultToolInput?.new_string || '';
 
-          console.log('[Edit] associatedToolUse found:', associatedToolUse.message?.name,
+          console.log('[Edit] associatedToolUse found:', resultToolName,
             'has old_string:', !!oldString, 'has new_string:', !!newString,
-            'filePath:', filePath || associatedToolUse.message?.input?.file_path);
+            'filePath:', filePath || resultToolInput?.file_path);
 
           if (oldString && newString) {
             // Try to extract the starting line number from the result output
@@ -2541,51 +2544,63 @@ const MessageRendererBase: React.FC<{
           }
         }
         
-        // Fallback: For Edit results, show the updated lines with highlighting
+        // Fallback: For Edit results, convert arrow format to diff display
         if (!isMultiEdit && lines.some(line => line.match(/^\s*\d+[→ ]/))) {
-          // Extract the lines with line numbers
-          const displayLines: Array<{ lineNumber: number; isChanged: boolean; content: string }> = [];
-          
+          // Extract the lines with line numbers and convert to diff format
+          const changedLines: Array<{ lineNumber: number; content: string }> = [];
+          const contextLines: Array<{ lineNumber: number; content: string }> = [];
+
           lines.forEach(line => {
             const lineMatch = line.match(/^\s*(\d+)([→ ])(.*)/);
             if (lineMatch) {
-              const actualLineNumber = parseInt(lineMatch[1]);
+              const lineNumber = parseInt(lineMatch[1]);
               const isChanged = lineMatch[2] === '→';
               const content = lineMatch[3];
-              
-              displayLines.push({
-                lineNumber: actualLineNumber,
-                isChanged,
-                content
-              });
+
+              if (isChanged) {
+                changedLines.push({ lineNumber, content });
+              } else {
+                contextLines.push({ lineNumber, content });
+              }
             }
           });
-          
-          // Simple display with highlighted changed lines
+
+          // Build diff display with changed lines as additions (since we don't have old content)
+          const startLine = changedLines.length > 0 ? changedLines[0].lineNumber :
+                           contextLines.length > 0 ? contextLines[0].lineNumber : 1;
+
+          const diffDisplay: DiffDisplay = {
+            file: filePath,
+            hunks: [{
+              startLine,
+              endLine: Math.max(
+                ...changedLines.map(l => l.lineNumber),
+                ...contextLines.map(l => l.lineNumber),
+                startLine
+              ),
+              lines: changedLines.map(line => ({
+                type: 'add' as const,
+                content: line.content,
+                lineNumber: line.lineNumber
+              }))
+            }]
+          };
+
           return (
             <div className="message tool-result-message">
               <div className="tool-result file-edit">
-                <div className="edit-header">{filePath}</div>
-                <pre className="edit-content">
-                  {displayLines.map((line, idx) => (
-                    <div key={idx} className={`edit-line ${line.isChanged ? 'changed' : ''}`}>
-                      <span className="line-number">{line.lineNumber.toString().padStart(4, ' ')}</span>
-                      <span className="line-marker">{line.isChanged ? '→' : ' '}</span>
-                      <span className="line-text">{line.content}</span>
-                    </div>
-                  ))}
-                </pre>
+                <DiffViewer diff={diffDisplay} />
               </div>
             </div>
           );
         }
         
-        // For MultiEdit, show each edit section
+        // For MultiEdit, convert each edit section to diff format
         if (isMultiEdit) {
           const editSections: Array<{ editNum: number; lines: string[] }> = [];
           let currentEditNum = 0;
           let currentLines: string[] = [];
-          
+
           lines.forEach(line => {
             if (line.match(/^Edit \d+ of \d+/)) {
               if (currentLines.length > 0) {
@@ -2598,47 +2613,42 @@ const MessageRendererBase: React.FC<{
               currentLines.push(line);
             }
           });
-          
+
           if (currentLines.length > 0) {
             editSections.push({ editNum: currentEditNum, lines: currentLines });
           }
-          
+
+          // Build diff hunks from edit sections
+          const diffHunks: DiffHunk[] = editSections.map(section => {
+            const changedLines: DiffLine[] = [];
+            section.lines.forEach(line => {
+              const lineMatch = line.match(/^\s*(\d+)([→ ])(.*)/);
+              if (lineMatch && lineMatch[2] === '→') {
+                changedLines.push({
+                  type: 'add' as const,
+                  content: lineMatch[3],
+                  lineNumber: parseInt(lineMatch[1])
+                });
+              }
+            });
+            const startLine = changedLines.length > 0 ? (changedLines[0].lineNumber ?? 1) : 1;
+            const endLine = changedLines.length > 0 ? (changedLines[changedLines.length - 1].lineNumber ?? startLine) : startLine;
+            return {
+              startLine,
+              endLine,
+              lines: changedLines
+            };
+          }).filter(h => h.lines.length > 0);
+
+          const diffDisplay: DiffDisplay = {
+            file: filePath,
+            hunks: diffHunks
+          };
+
           return (
             <div className="message tool-result-message">
               <div className="tool-result file-edit">
-                <div className="edit-header">{filePath}</div>
-                {editSections.map((section, idx) => {
-                  const sectionLines = section.lines.map(line => {
-                    const lineMatch = line.match(/^\s*(\d+)([→ ])(.*)/);
-                    if (lineMatch) {
-                      return {
-                        lineNumber: parseInt(lineMatch[1]),
-                        isChanged: lineMatch[2] === '→',
-                        content: lineMatch[3]
-                      };
-                    }
-                    return null;
-                  }).filter(Boolean) as any[];
-                  
-                  return (
-                    <div key={idx} style={{ marginTop: idx > 0 ? '12px' : 0 }}>
-                      {editSections.length > 1 && (
-                        <div style={{ fontSize: '10px', color: '#666', marginBottom: '4px' }}>
-                          edit {section.editNum} of {editSections.length}
-                        </div>
-                      )}
-                      <pre className="edit-content">
-                        {sectionLines.map((line, lineIdx) => (
-                          <div key={lineIdx} className={`edit-line ${line.isChanged ? 'changed' : ''}`}>
-                            <span className="line-number">{line.lineNumber.toString().padStart(4, ' ')}</span>
-                            <span className="line-marker">{line.isChanged ? '→' : ' '}</span>
-                            <span className="line-text">{line.content}</span>
-                          </div>
-                        ))}
-                      </pre>
-                    </div>
-                  );
-                })}
+                <DiffViewer diff={diffDisplay} />
               </div>
             </div>
           );
@@ -2647,8 +2657,8 @@ const MessageRendererBase: React.FC<{
         // Fallback to simple display if no line numbers found
         console.log('[Edit] FALLBACK - no associatedToolUse or missing input',
           'hasAssociatedToolUse:', !!associatedToolUse,
-          'toolName:', associatedToolUse?.message?.name,
-          'hasInput:', !!associatedToolUse?.message?.input,
+          'toolName:', resultToolName,
+          'hasInput:', !!resultToolInput,
           'contentPreview:', contentStr.substring(0, 100));
         return (
           <div className="message tool-result-message">
@@ -2671,13 +2681,10 @@ const MessageRendererBase: React.FC<{
         );
       }
 
-      // Get associated tool name for specific handling
-      const resultToolName = associatedToolUse?.message?.name;
-
       // ===== WRITE TOOL =====
       if (resultToolName === 'Write') {
-        const filePath = formatPath(associatedToolUse?.message?.input?.file_path || 'file');
-        const writtenContent = associatedToolUse?.message?.input?.content || '';
+        const filePath = formatPath(resultToolInput?.file_path || 'file');
+        const writtenContent = resultToolInput?.content || '';
         const allLines = writtenContent.split('\n');
 
         // Create diff display with all lines as additions (file creation)
@@ -2705,7 +2712,7 @@ const MessageRendererBase: React.FC<{
 
       // ===== BASH TOOL =====
       if (resultToolName === 'Bash' || resultToolName === 'BashOutput') {
-        const command = associatedToolUse?.message?.input?.command || '';
+        const command = resultToolInput?.command || '';
         const allLines = contentStr.split('\n');
         const MAX_LINES = 15;
         const visibleLines = allLines.slice(0, MAX_LINES);
@@ -2745,7 +2752,7 @@ const MessageRendererBase: React.FC<{
 
       // ===== GREP TOOL =====
       if (resultToolName === 'Grep') {
-        const pattern = associatedToolUse?.message?.input?.pattern || '';
+        const pattern = resultToolInput?.pattern || '';
         const allLines = contentStr.split('\n').map(line => {
           // Convert absolute paths to relative
           const colonIndex = line.indexOf(':');
@@ -2784,7 +2791,7 @@ const MessageRendererBase: React.FC<{
 
       // ===== GLOB TOOL =====
       if (resultToolName === 'Glob') {
-        const pattern = associatedToolUse?.message?.input?.pattern || '';
+        const pattern = resultToolInput?.pattern || '';
         const allLines = contentStr.split('\n').filter(l => l.trim()).map(line => formatPath(line));
         const MAX_LINES = 12;
         const visibleLines = allLines.slice(0, MAX_LINES);
@@ -2813,7 +2820,7 @@ const MessageRendererBase: React.FC<{
 
       // ===== LS TOOL =====
       if (resultToolName === 'LS') {
-        const path = formatPath(associatedToolUse?.message?.input?.path || '.');
+        const path = formatPath(resultToolInput?.path || '.');
         const allLines = contentStr.split('\n').filter(l => l.trim());
         const MAX_LINES = 15;
         const visibleLines = allLines.slice(0, MAX_LINES);
@@ -2842,7 +2849,7 @@ const MessageRendererBase: React.FC<{
 
       // ===== WEBSEARCH TOOL =====
       if (resultToolName === 'WebSearch') {
-        const query = associatedToolUse?.message?.input?.query || '';
+        const query = resultToolInput?.query || '';
         const allLines = contentStr.split('\n').filter(l => l.trim());
         const MAX_LINES = 10;
         const visibleLines = allLines.slice(0, MAX_LINES);
@@ -2871,7 +2878,7 @@ const MessageRendererBase: React.FC<{
 
       // ===== WEBFETCH TOOL =====
       if (resultToolName === 'WebFetch') {
-        const url = formatUrl(associatedToolUse?.message?.input?.url || '');
+        const url = formatUrl(resultToolInput?.url || '');
         const allLines = contentStr.split('\n');
         const MAX_LINES = 10;
         const visibleLines = allLines.slice(0, MAX_LINES);
@@ -2900,8 +2907,8 @@ const MessageRendererBase: React.FC<{
 
       // ===== TASK TOOL =====
       if (resultToolName === 'Task') {
-        const description = associatedToolUse?.message?.input?.description || 'task';
-        const subagentType = associatedToolUse?.message?.input?.subagent_type || 'agent';
+        const description = resultToolInput?.description || 'task';
+        const subagentType = resultToolInput?.subagent_type || 'agent';
 
         // Check if this is an async agent launch - hide the internal instructions
         if (contentStr.includes('Async agent launched successfully')) {
@@ -3033,7 +3040,7 @@ const MessageRendererBase: React.FC<{
       }
 
       if (resultToolName === 'KillBash') {
-        const shellId = associatedToolUse?.message?.input?.shell_id || 'session';
+        const shellId = resultToolInput?.shell_id || 'session';
         return (
           <div className="message tool-result-message">
             <div className="tool-result standalone simple-confirm">
@@ -3285,6 +3292,12 @@ const MessageRendererBase: React.FC<{
               </div>
             </div>
           );
+        }
+
+        // Don't render result message at all if there's no content to show and it's not a compact result
+        // This prevents metadata from showing up separately when assistant message already exists
+        if (!showResultText && !isCompactResult) {
+          return null;
         }
 
         return (

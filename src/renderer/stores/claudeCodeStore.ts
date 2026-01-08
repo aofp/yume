@@ -961,9 +961,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             // Only update title if:
             // 1. This is the right session
             // 2. User hasn't manually renamed
-            // 3. Current title is not a "tab X" pattern (cleared context keeps tab name)
             const isTabTitle = s.claudeTitle?.match(/^tab \d+$/);
-            if (s.id === sessionId && !s.userRenamed && !isTabTitle) {
+            if (s.id === sessionId && !s.userRenamed && isTabTitle) {
               return { ...s, claudeTitle: title };
             }
             return s;
@@ -2739,7 +2738,7 @@ ${content}`;
       set(state => ({
         sessions: state.sessions.map(s => {
           const isTabTitle = s.claudeTitle?.match(/^tab \d+$/);
-          if (s.id === sessionId && !s.userRenamed && !isTabTitle) {
+          if (s.id === sessionId && !s.userRenamed && isTabTitle) {
             return { ...s, claudeTitle: title };
           }
           return s;
@@ -2819,15 +2818,16 @@ ${content}`;
           };
         });
         
-        // Handle streaming state - only update if explicitly defined
-        // Don't clear streaming on undefined (could be partial message)
-        if (message.type === 'assistant' && message.streaming !== undefined) {
+        // Handle streaming state - CRITICAL: Don't clear streaming when individual messages complete!
+        // Individual messages can finish (streaming=false) while the overall response is still active.
+        // Only set streaming=true for assistant, only clear on result/stream_end/interrupted/error.
+        if (message.type === 'assistant' && message.streaming === true) {
           sessions = sessions.map(s =>
-            s.id === sessionId ? { ...s, streaming: message.streaming } : s
+            s.id === sessionId ? { ...s, streaming: true } : s
           );
-        } else if (message.type === 'result' || 
-                   (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error'))) {
-          sessions = sessions.map(s => 
+        } else if (message.type === 'result' ||
+                   (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end'))) {
+          sessions = sessions.map(s =>
             s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
           );
         }
@@ -2988,7 +2988,7 @@ ${content}`;
         set(state => ({
           sessions: state.sessions.map(s => {
             const isTabTitle = s.claudeTitle?.match(/^tab \d+$/);
-            if (s.id === sessionId && !s.userRenamed && !isTabTitle) {
+            if (s.id === sessionId && !s.userRenamed && isTabTitle) {
               return { ...s, claudeTitle: title };
             }
             return s;
@@ -3096,9 +3096,9 @@ ${content}`;
             // Extract title from first assistant message if not already set
             sessions = sessions.map(s => {
               if (s.id === sessionId) {
-                // Only update streaming if explicitly defined (don't clear on undefined)
-                let updates: any = message.streaming !== undefined ? { streaming: message.streaming } : {};
-                
+                // CRITICAL: Only set streaming=true, don't clear on false (wait for stream_end/result)
+                let updates: any = message.streaming === true ? { streaming: true } : {};
+
                 // Extract title from first assistant message
                 if (!s.claudeTitle && message.message?.content) {
                   const content = typeof message.message.content === 'string' 
@@ -3146,13 +3146,13 @@ ${content}`;
               }
               return s;
             });
-          } else if (message.type === 'result' || 
-                     (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error'))) {
-            sessions = sessions.map(s => 
+          } else if (message.type === 'result' ||
+                     (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end'))) {
+            sessions = sessions.map(s =>
               s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
             );
           }
-          
+
           return { sessions };
         });
       });
