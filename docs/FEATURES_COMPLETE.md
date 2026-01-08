@@ -1,7 +1,7 @@
 # Yurucode Complete Feature Documentation
 
-**Version:** 1.0.0  
-**Last Updated:** January 3, 2025  
+**Version:** 1.0.0
+**Last Updated:** January 8, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -43,11 +43,18 @@ pub struct ClaudeSpawner {
 ```
 
 **Supported Models**:
-- Claude Opus 4.5 (claude-opus-4-5-20251101)
-- Claude Sonnet 4 (claude-sonnet-4-20250514)
-- Claude 3.5 Sonnet (claude-3-5-sonnet-20241022)
-- Claude 3.5 Haiku (claude-3-5-haiku-20241022)
-- Claude 3 Opus (claude-3-opus-20240229)
+- Claude Opus 4.5 (claude-opus-4-5-20251101) - Best reasoning
+- Claude Sonnet 4 (claude-sonnet-4-20250514) - Balanced
+- Claude 3.5 Sonnet (claude-3-5-sonnet-20241022) - Fast coding
+- Claude 3.5 Haiku (claude-3-5-haiku-20241022) - Lightweight
+- Claude 3 Opus (claude-3-opus-20240229) - Legacy
+
+**Claude Code Integration**:
+- Skills system support (dynamic instruction loading)
+- Subagents support (/agents command)
+- CLAUDE.md imports with `@path/to/file.md` syntax
+- Ultrathink mode support ("think"/"ultrathink" prompts)
+- MCP with 8M+ server integrations
 
 **CLI Arguments**:
 ```bash

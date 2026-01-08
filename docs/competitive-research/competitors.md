@@ -36,11 +36,19 @@
 - Hijacks VS Code shortcuts, auto-updates forced
 - WSL integration memory issues
 
-**Recent Updates (2025)**:
-- v2.3 (Dec): Process separation for stability
-- v2.2 (Dec): Debug Mode, Visual Editor, Plan Mode with Mermaid diagrams
-- v1.7 (Oct): Agent Autocomplete, Hooks (beta), Team Rules
-- June: Token-based pricing (was request-based), caused user backlash
+**Recent Updates (2025-2026)**:
+- v2.3 (Dec 2025): Process separation for stability
+- v2.2 (Dec 2025): Debug Mode, Visual Editor, Plan Mode with Mermaid diagrams
+- v2.0 (Nov 2025): AI Code Reviews in sidepanel, Clarifying Questions UI
+- v1.7 (Oct 2025): Agent Autocomplete, Hooks (beta), Team Rules
+- Acquired Graphite (Dec 2025): Enhanced git workflow integration
+- June 2025: Token-based pricing (was request-based), caused user backlash
+- Priority Processing: 2x rate for guaranteed low-latency (~50 tokens/sec)
+
+**2026 Roadmap (announced)**:
+- Hooks for security/platform teams (enterprise)
+- Proprietary models optimized for coding
+- Air-gapped enterprise deployments
 
 **Relevance to Yurucode**: Cursor's scale proves demand. But performance complaints validate yurucode's native Rust approach. Their Visual Editor and Debug Mode are differentiators we lack.
 
@@ -77,12 +85,18 @@
 - Not SOC2 compliant
 - "Beta experience" feel
 
-**Recent Updates (2025)**:
-- Wave 13 (Dec 24): Multi-agent, git worktrees, SWE-1.5 default
-- New models: GPT-5.2, Claude Opus 4.5, Gemini 3 Flash
-- MCP gains GitLab support, GitHub OAuth
+**Recent Updates (2025-2026)**:
+- Wave 13 (Dec 2025): Multi-agent sessions with parallel execution via git worktrees
+- Auto-Generate Memories: Autonomous context retention across sessions
+- Tab to Jump: Predicts next edit location
+- Rules Files: Granular `.windsurf/rules` configuration
+- Latest Models: GPT-5.2, Gemini 3 Flash, Claude Opus 4.5
+- JetBrains Integration: Native agentic experience
+- MCP: GitLab support, GitHub OAuth
 
-**Corporate Drama**: OpenAI's $3B acquisition blocked; Google acqui-hired founders for DeepMind; Cognition acquired remaining tech for $250M.
+**Recognition**: Named "Leader in 2025 Gartner Magic Quadrant for AI Code Assistants"
+
+**Corporate Drama (2025)**: OpenAI's $3B acquisition blocked; Google acqui-hired founders for DeepMind; Cognition acquired remaining tech for $250M.
 
 **Relevance to Yurucode**: Windsurf sets UX bar and automatic context handling. Their multi-agent visualization is something we should match.
 
@@ -264,7 +278,7 @@
 
 ### Continue.dev
 
-**Type**: Open source IDE extension
+**Type**: Open source IDE extension + CLI
 **Price**: Free
 
 **Key Features**:
@@ -273,19 +287,27 @@
 - Instant completions
 - Chat + multi-file understanding
 - Highly customizable
+- **NEW: CLI with TUI/Headless Mode** - Can run as coding agent or background agent
+- **Custom Assistants** - Multiple assistants with different configurations
+- **Background Agents** - Battle-tested workflows for GitHub, Sentry, Linear
+- **Rules Generation** - AI can write rules for you in agent mode
+- **The Notch** - Easy-access control panel for assistant management
+- **Fast Apply** - Via Relace Instant Apply and Morph v0
+- **OAuth for MCP** - Secure authentication for MCP servers
 
 **Strengths**:
 - Best privacy option
 - Open source
 - No vendor lock-in
 - Great for air-gapped environments
+- Now has CLI mode competing with Claude Code
 
 **Weaknesses**:
 - Less polished UX
 - Requires more setup
 - Smaller community
 
-**Relevance to Yurucode**: Privacy-conscious users are a segment. Consider offline/local model support.
+**Relevance to Yurucode**: Privacy-conscious users are a segment. Their CLI mode shows demand for terminal-based AI coding. Consider offline/local model support.
 
 ---
 

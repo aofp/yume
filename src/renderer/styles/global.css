@@ -19,9 +19,9 @@
   --fg-40: rgba(var(--foreground-rgb), 0.4);     /* Disabled/hint text */
   --fg-30: rgba(var(--foreground-rgb), 0.3);     /* Strong borders */
   --fg-25: rgba(var(--foreground-rgb), 0.25);    /* Default borders */
-  --fg-20: rgba(var(--foreground-rgb), 0.1);     /* Subtle borders */
-  --fg-15: rgba(var(--foreground-rgb), 0.1);     /* Very subtle borders */
-  --fg-10: rgba(var(--foreground-rgb), 0.1);     /* Faint borders/backgrounds */
+  --fg-20: rgba(var(--foreground-rgb), 0.20);     /* Subtle borders */
+  --fg-15: rgba(var(--foreground-rgb), 0.15);     /* Very subtle borders */
+  --fg-10: rgba(var(--foreground-rgb), 0.10);     /* Faint borders/backgrounds */
   --fg-08: rgba(var(--foreground-rgb), 0.08);    /* Hover backgrounds */
   --fg-05: rgba(var(--foreground-rgb), 0.05);    /* Subtle hover */
   --fg-02: rgba(var(--foreground-rgb), 0.02);    /* Very subtle backgrounds */
@@ -368,8 +368,8 @@ button:disabled {
 }
 
 .btn-stats-auto {
-  margin-left: 2px;
-  font-size: 95%;
+  margin-right: 3px;
+  font-size: 92%;
   opacity: .9;
 }
 

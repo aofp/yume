@@ -1183,7 +1183,7 @@ textarea.context-full {
 .btn-clear-context, .btn-stats, .btn-help, .btn-dictation, .btn-context-menu, .btn-context-icon {
   background: transparent;
   border: 1px solid var(--fg-20);
-  color: var(--fg-40);
+  color: var(--fg-60);
   padding: 3px 8px;
   border-radius: 4px;
   font-size: 10px;
@@ -1199,7 +1199,6 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   padding: 3px 7px;
-  color: var(--fg-40);
 }
 
 
@@ -1357,7 +1356,7 @@ textarea.context-full {
    - high (60%+): full red (1.0 opacity)
    - critical (65%+): full red with pulse */
 .btn-stats.minimal {
-  color: var(--fg-40);
+  color: var(--fg-60);
 }
 
 .btn-stats.minimal:hover {
@@ -1768,7 +1767,7 @@ textarea.context-full {
 }
 
 .toggle-switch.compact:hover {
-  border-color: rgba(var(--accent-rgb), 0.5);
+  border-color: rgba(var(--accent-rgb), 0.9);
 }
 
 .toggle-switch.compact .toggle-switch-label {
@@ -2163,9 +2162,15 @@ textarea.context-full {
   transition: all 0.15s ease;
 }
 
-.clear-all-icon:hover {
-  background: rgba(var(--accent-rgb), 0.15);
-  color: var(--accent-color);
+.clear-all-icon:hover:not(:disabled) {
+  background: rgba(var(--negative-rgb), 0.1);
+  color: var(--negative-color);
+}
+
+.clear-all-icon:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: default;
 }
 
 .modal-content {
@@ -2816,6 +2821,8 @@ textarea.context-full {
 /* Total git line stats next to git button */
 .git-total-stats {
   font-size: 8px;
+  font-family: var(--font-mono);
+  opacity: 1;
   display: flex;
   gap: 4px;
   margin-left: 4px;

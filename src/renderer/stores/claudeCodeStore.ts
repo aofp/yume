@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import { persist, createJSONStorage, StateStorage } from 'zustand/middleware';
+import { invoke } from '@tauri-apps/api/core';
 import { claudeCodeClient } from '../services/claudeCodeClient';
 import { systemPromptService } from '../services/systemPromptService';
 import { isBashPrefix } from '../utils/helpers';
@@ -3435,6 +3436,7 @@ ${content}`;
                 pendingToolIds: new Set(), // Clear pending tools
                 streaming: false, // Stop streaming
                 wasCompacted: false, // Reset compacted flag
+                compactionState: undefined, // Reset compaction state (clears pendingAutoCompact flag)
               analytics: {
                 totalMessages: 0,
                 userMessages: 0,
@@ -3492,6 +3494,11 @@ ${content}`;
     // Notify server to clear the Claude session - use the imported singleton
     claudeClient.clearSession(sessionId).catch(error => {
       console.error('Failed to clear server session:', error);
+    });
+
+    // Reset backend compaction flags to prevent stale auto-compact triggers
+    invoke('reset_compaction_flags', { sessionId }).catch(error => {
+      console.error('Failed to reset compaction flags:', error);
     });
   },
   

@@ -71,23 +71,49 @@ npm run minify:servers         # Minify server code
 
 ### Critical Rust Files
 - `lib.rs` - Main entry, Tauri setup
+- `main.rs` - Executable entry point, panic handler
 - `logged_server.rs` - Node.js server process management
 - `stream_parser.rs` - Claude output stream parsing
 - `claude_spawner.rs` - Claude CLI process spawning
 - `claude_binary.rs` - Claude binary detection
+- `claude_session.rs` - Session management and ID extraction
 - `crash_recovery.rs` - Session recovery
 - `port_manager.rs` - Dynamic port allocation (20000-65000)
 - `agents.rs` - Agent system management
+- `config.rs` - Production configuration management
+- `claude/mod.rs` - ClaudeManager for session lifecycle
+- `websocket/mod.rs` - WebSocket server for real-time communication
+- `state/mod.rs` - Application state management
+- `process/mod.rs` - Process tracking module
+- `process/registry.rs` - ProcessRegistry for tracking Claude processes
+- `db/mod.rs` - SQLite database implementation
+- `compaction/mod.rs` - CompactionManager implementation
+- `hooks/mod.rs` - Hook system implementation
+- `mcp/mod.rs` - MCP server management
 - `commands/mod.rs` - Main IPC commands
 - `commands/hooks.rs` - Hooks system
 - `commands/mcp.rs` - MCP integration
 - `commands/compaction.rs` - Context compaction
+- `commands/claude_commands.rs` - Direct Claude CLI commands (spawn, send, etc.)
+- `commands/claude_detector.rs` - Claude installation detection and WSL support
+- `commands/claude_info.rs` - Claude binary info and usage limits
+- `commands/database.rs` - SQLite database operations
+- `commands/custom_commands.rs` - Custom slash commands management
 
 ### Critical Frontend Files
 - `stores/claudeCodeStore.ts` - Main Zustand store (195KB, central state)
-- `services/tauriClaudeClient.ts` - Bridge to Claude CLI
+- `services/tauriClaudeClient.ts` - Bridge to Claude CLI via Tauri
+- `services/claudeCodeClient.ts` - Socket.IO client for server communication
 - `services/compactionService.ts` - Context compaction logic
 - `services/hooksConfigService.ts` - Hooks configuration
+- `services/databaseService.ts` - Frontend database integration
+- `services/mcpService.ts` - MCP server management
+- `services/sessionCheckpoint.ts` - Session checkpoint management
+- `services/checkpointService.ts` - Checkpoint service
+- `services/agentExecutionService.ts` - Agent execution
+- `services/claudeDetector.ts` - Claude detection logic
+- `services/wrapperIntegration.ts` - Wrapper message processing
+- `services/platformBridge.ts` - Platform-specific utilities
 - `App.minimal.tsx` - Main app component
 
 ### Server Binaries (in resources/)
@@ -142,18 +168,24 @@ When building on Windows for Windows, ensure:
 - Window state: `~/Library/Application Support/yurucode/window-state.json`
 - Crash recovery: `~/Library/Application Support/yurucode/crash-recovery/`
 - Server logs: `~/Library/Logs/yurucode/server.log`
+- Database: `~/Library/Application Support/yurucode/yurucode.db`
 
 **Windows:**
 - App data: `%APPDATA%\yurucode\`
 - Window state: `%APPDATA%\yurucode\window-state.json`
 - Crash recovery: `%APPDATA%\yurucode\crash-recovery\`
 - Server logs: `%LOCALAPPDATA%\yurucode\logs\server.log`
+- Database: `%APPDATA%\yurucode\yurucode.db`
 
 **Linux:**
-- App data: `~/.yurucode/`
+- App data: `~/.config/yurucode/`
+- Crash recovery: `~/.config/yurucode/recovery/`
 - Server logs: `~/.yurucode/logs/server.log`
+- Database: `~/.yurucode/yurucode.db`
 
 **Claude projects:** `~/.claude/projects/` (all platforms)
+**Custom commands:** `~/.claude/commands/*.md` (global) and `.claude/commands/*.md` (project)
+**Agents:** `~/.claude/agents/` (global) and `.claude/agents/` (project)
 
 ## Common Development Tasks
 

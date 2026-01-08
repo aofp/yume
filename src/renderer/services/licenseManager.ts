@@ -1,29 +1,21 @@
 /**
- * ultra-secure license management system for yurucode
- * server-side validation with HMAC signatures
- * no local validation logic exposed
+ * license management for yurucode
+ * trial: 2 tabs, 1 window
+ * pro: unlimited tabs, unlimited windows
  */
 
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { LATEST_MODELS, getModelByFamily } from '../config/models';
 
 // license validation API endpoint
 const VALIDATION_API_URL = 'https://yuru.be/api/license/validate.php';
 
 // simple format check only - real validation is server-side
-const LICENSE_ALPHABET = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
 const LICENSE_FORMAT = /^[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{5}(-[23456789ABCDEFGHJKLMNPQRSTUVWXYZ]{5}){4}$/;
 
 export interface LicenseFeatures {
   maxTabs: number;
-  allowedModels: string[];
-  maxTokensPerSession: number;
-  watermarkEnabled: boolean;
-  customThemes: boolean;
-  exportEnabled: boolean;
-  multipleProjects: boolean;
-  prioritySupport: boolean;
+  maxWindows: number;
 }
 
 export interface LicenseState {
@@ -45,33 +37,20 @@ interface LicenseStore extends LicenseState {
   activateLicense: (key: string) => Promise<boolean>;
   deactivateLicense: () => Promise<boolean>;
   getFeatures: () => LicenseFeatures;
-  isFeatureEnabled: (feature: keyof LicenseFeatures) => boolean;
   refreshLicenseStatus: () => Promise<void>;
   clearLicense: () => void;
 }
 
-// trial features - uses centralized model config
+// trial: 2 tabs, 1 window
 const TRIAL_FEATURES: LicenseFeatures = {
-  maxTabs: 3,
-  allowedModels: [getModelByFamily('sonnet')?.id].filter(Boolean) as string[],
-  maxTokensPerSession: 100000,
-  watermarkEnabled: true,
-  customThemes: false,
-  exportEnabled: false,
-  multipleProjects: false,
-  prioritySupport: false
+  maxTabs: 2,
+  maxWindows: 1
 };
 
-// licensed features - all models available for pro
+// pro: unlimited
 const LICENSED_FEATURES: LicenseFeatures = {
   maxTabs: 99,
-  allowedModels: LATEST_MODELS.map(m => m.id),
-  maxTokensPerSession: -1, // unlimited
-  watermarkEnabled: false,
-  customThemes: true,
-  exportEnabled: true,
-  multipleProjects: true,
-  prioritySupport: true
+  maxWindows: 99
 };
 
 // basic format validation (client-side)
@@ -236,16 +215,6 @@ export const useLicenseStore = create<LicenseStore>()(
       getFeatures: (): LicenseFeatures => {
         const state = get();
         return state.isLicensed ? LICENSED_FEATURES : TRIAL_FEATURES;
-      },
-
-      // check if feature is enabled
-      isFeatureEnabled: (feature: keyof LicenseFeatures): boolean => {
-        const features = get().getFeatures();
-        const value = features[feature];
-        if (typeof value === 'boolean') return value;
-        if (typeof value === 'number') return value > 0;
-        if (Array.isArray(value)) return value.length > 0;
-        return false;
       },
 
       // refresh license status

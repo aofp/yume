@@ -228,8 +228,16 @@ export const WelcomeScreen: React.FC = () => {
         return;
       }
       
-      // Number key handling moved to RecentProjectsModal component to avoid conflicts
-      
+      // Handle '1', '2', '3' keys to open recent projects (global shortcuts)
+      if (['1', '2', '3'].includes(e.key) && !e.ctrlKey && !e.metaKey && !e.altKey && !isInputField) {
+        const index = parseInt(e.key) - 1;
+        if (recentProjects.length > index) {
+          e.preventDefault();
+          openProject(recentProjects[index].path);
+        }
+        return;
+      }
+
       // Don't process other shortcuts if in input field
       if (isInputField) return;
       
@@ -239,8 +247,8 @@ export const WelcomeScreen: React.FC = () => {
         setShowHelpModal(true);
       }
       
-      // Handle Ctrl+R for recent projects
-      if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+      // Handle Ctrl+R or Down arrow for recent projects
+      if (((e.ctrlKey || e.metaKey) && e.key === 'r') || e.key === 'ArrowDown') {
         e.preventDefault();
         if (recentProjects.length > 0) {
           const event = new CustomEvent('openRecentProjects');
@@ -315,6 +323,22 @@ export const WelcomeScreen: React.FC = () => {
             <IconChevronDown size={16} stroke={1.5} />
           </button>
         </div>
+
+        {/* Quick nav to recent projects (up to 3) */}
+        {recentProjects.length > 0 && (
+          <div className="welcome-quick-nav-container">
+            {recentProjects.slice(0, 3).map((project, index) => (
+              <span
+                key={project.path}
+                className="welcome-quick-nav"
+                onClick={() => openProject(project.path)}
+                title={`press ${index + 1} to open`}
+              >
+                <span style={{ opacity: 0.9 }}>{index + 1}</span> {project.name}
+              </span>
+            ))}
+          </div>
+        )}
       </div>
 
       {/* Usage limit bars - bottom right like chat */}
@@ -330,12 +354,12 @@ export const WelcomeScreen: React.FC = () => {
             }}
             title="context usage (right-click to toggle auto-compact)"
           >
-            context
             {autoCompactEnabled !== false ? (
               <span className="btn-stats-auto">auto</span>
             ) : (
               <span className="btn-stats-auto">user</span>
             )}
+            <span>context</span>
           </button>
           {/* 5h limit bar */}
           <div className="btn-stats-limit-bar five-hour">

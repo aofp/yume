@@ -281,9 +281,15 @@
   transition: all 0.15s ease;
 }
 
-.clear-all-icon:hover {
+.clear-all-icon:hover:not(:disabled) {
   background: rgba(var(--negative-rgb), 0.1);
   color: var(--negative-color);
+}
+
+.clear-all-icon:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: default;
 }
 
 .modal-header-actions {
@@ -613,4 +619,29 @@
 .welcome-stats-hidden {
   opacity: 0 !important;
   pointer-events: none !important;
+}
+
+/* Quick nav container for recent projects */
+.welcome-quick-nav-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  margin-top: 4px;
+}
+
+/* Quick nav link to recent projects */
+.welcome-quick-nav {
+  font-size: 9px;
+  font-family: var(--font-mono);
+  color: var(--fg-50);
+  cursor: default;
+  transition: color 0.15s ease;
+  text-transform: lowercase;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.welcome-quick-nav:hover {
+  color: var(--accent-color);
 }

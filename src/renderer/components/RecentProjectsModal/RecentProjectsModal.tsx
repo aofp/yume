@@ -104,6 +104,8 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   const handleConfirmClear = () => {
     localStorage.removeItem('yurucode-recent-projects');
     setShowClearConfirm(false);
+    // Notify listeners that recent projects were updated
+    window.dispatchEvent(new CustomEvent('recentProjectsUpdated'));
     onClose();
   };
 
@@ -342,6 +344,14 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
               className="clear-all-icon"
               onClick={clearAllProjects}
               title="clear all"
+              disabled={(() => {
+                const stored = localStorage.getItem('yurucode-recent-projects');
+                if (!stored) return true;
+                try {
+                  const projects = JSON.parse(stored);
+                  return !projects || projects.length === 0;
+                } catch { return true; }
+              })()}
             >
               <IconTrash size={14} />
             </button>

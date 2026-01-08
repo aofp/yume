@@ -36,6 +36,28 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - `/stats` command with usage graphs and streaks
 - Enterprise managed settings
 
+### Major 2025 Platform Updates (176 updates shipped)
+- **Claude Agent SDK**: Renamed from Claude Code SDK; programmatic access to Claude Code capabilities
+- **Skills System**: Dynamic loading of specialized instructions via `/skills` command
+- **Custom Subagents**: `/agents` command for specialized parallel tasks
+- **LSP Integration**: Real-time diagnostics and improved code accuracy
+- **CLAUDE.md Imports**: `@path/to/file.md` syntax for modular instructions
+- **Ultrathink Mode**: Advanced reasoning triggered by "think" or "ultrathink" in prompts
+- **Status Line**: Customizable terminal prompt for context awareness
+- **Chrome Extension**: Browser control via Claude Code for web automation
+
+### MCP (Model Context Protocol) Growth
+- Thousands of MCP servers built by community
+- SDKs available for all major languages
+- 8M+ downloads (80x growth in 5 months)
+- Now the de-facto standard for AI-tool connections
+- Security concerns raised about unauthenticated servers (July 2025)
+
+### 2026 Roadmap (Announced)
+- "Long running" agents for extended autonomous tasks
+- "Swarm" multi-agent systems for complex workflows
+- Physical AI integration (robots, sensors) exploration
+
 ### Developer Praise
 > "As a product it's a mile ahead of Codex in QoL features. The harness, prompts and the model make for a magical experience."
 

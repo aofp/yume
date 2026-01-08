@@ -60,8 +60,8 @@ export const SessionTabs: React.FC = () => {
 
   // Helper to get fallback title for a session (used when claudeTitle is empty)
   const getFallbackTitle = (session: any) => {
-    // If session has a title, use it
-    if (session.claudeTitle) return session.claudeTitle;
+    // If session has a valid title (not empty, not "new session"), use it
+    if (session.claudeTitle && session.claudeTitle !== 'new session') return session.claudeTitle;
     // If session has originalTabNumber, use that
     if (session.originalTabNumber) return `tab ${session.originalTabNumber}`;
     // Otherwise calculate next available tab number
@@ -220,59 +220,87 @@ export const SessionTabs: React.FC = () => {
     return () => container.removeEventListener('wheel', handleWheel);
   }, []);
 
-  // Scroll indicator ref
-  const scrollIndicatorRef = useRef<HTMLDivElement>(null);
+  // Custom scrollbar refs
+  const scrollbarTrackRef = useRef<HTMLDivElement>(null);
+  const scrollbarThumbRef = useRef<HTMLDivElement>(null);
+  const [hasOverflow, setHasOverflow] = useState(false);
 
-  // Check for overflow and update scroll indicator
+  // Custom scrollbar logic
   useEffect(() => {
     const container = tabsContainerRef.current;
-    const indicator = scrollIndicatorRef.current;
-    if (!container) return;
+    const track = scrollbarTrackRef.current;
+    const thumb = scrollbarThumbRef.current;
+    if (!container || !track || !thumb) return;
 
-    const updateScrollIndicator = () => {
-      const hasOverflow = container.scrollWidth > container.clientWidth;
+    const updateScrollbar = () => {
+      const overflow = container.scrollWidth > container.clientWidth;
+      setHasOverflow(overflow);
 
-      if (hasOverflow) {
+      if (overflow) {
         container.classList.add('has-overflow');
+        // Calculate thumb width and position
+        const scrollRatio = container.clientWidth / container.scrollWidth;
+        const thumbWidth = Math.max(container.clientWidth * scrollRatio, 20); // min 20px
+        const maxScroll = container.scrollWidth - container.clientWidth;
+        const scrollProgress = maxScroll > 0 ? container.scrollLeft / maxScroll : 0;
+        const thumbPosition = scrollProgress * (container.clientWidth - thumbWidth);
+
+        thumb.style.width = `${thumbWidth}px`;
+        thumb.style.left = `${thumbPosition}px`;
       } else {
         container.classList.remove('has-overflow');
-      }
-
-      if (indicator) {
-        if (hasOverflow) {
-          // Calculate thumb width and position
-          const scrollRatio = container.clientWidth / container.scrollWidth;
-          const thumbWidth = container.clientWidth * scrollRatio;
-          const maxScroll = container.scrollWidth - container.clientWidth;
-          const scrollProgress = maxScroll > 0 ? container.scrollLeft / maxScroll : 0;
-          const thumbPosition = scrollProgress * (container.clientWidth - thumbWidth);
-
-          indicator.style.width = `${thumbWidth}px`;
-          indicator.style.transform = `translateX(${thumbPosition}px)`;
-          indicator.style.display = 'block';
-        } else {
-          indicator.style.display = 'none';
-        }
       }
     };
 
     // Update on scroll
-    container.addEventListener('scroll', updateScrollIndicator);
-
-    // Check on mount and when sessions change
-    updateScrollIndicator();
+    container.addEventListener('scroll', updateScrollbar);
+    updateScrollbar();
 
     // Also check on window resize
-    window.addEventListener('resize', updateScrollIndicator);
+    window.addEventListener('resize', updateScrollbar);
 
-    // Create a ResizeObserver to watch for container size changes
-    const resizeObserver = new ResizeObserver(updateScrollIndicator);
+    // Watch for container size changes
+    const resizeObserver = new ResizeObserver(updateScrollbar);
     resizeObserver.observe(container);
 
+    // Drag scrollbar thumb
+    let isDraggingThumb = false;
+    let startX = 0;
+    let startScrollLeft = 0;
+
+    const handleThumbMouseDown = (e: MouseEvent) => {
+      isDraggingThumb = true;
+      startX = e.clientX;
+      startScrollLeft = container.scrollLeft;
+      track.classList.add('visible');
+      e.preventDefault();
+    };
+
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isDraggingThumb) return;
+      const scrollRatio = container.scrollWidth / container.clientWidth;
+      const dx = e.clientX - startX;
+      container.scrollLeft = startScrollLeft + dx * scrollRatio;
+    };
+
+    const handleMouseUp = () => {
+      if (isDraggingThumb) {
+        isDraggingThumb = false;
+        track.classList.remove('visible');
+      }
+    };
+
+    thumb.addEventListener('mousedown', handleThumbMouseDown);
+    document.addEventListener('mousemove', handleMouseMove);
+    document.addEventListener('mouseup', handleMouseUp);
+
     return () => {
-      container.removeEventListener('scroll', updateScrollIndicator);
-      window.removeEventListener('resize', updateScrollIndicator);
+      container.removeEventListener('scroll', updateScrollbar);
+      window.removeEventListener('resize', updateScrollbar);
       resizeObserver.disconnect();
+      thumb.removeEventListener('mousedown', handleThumbMouseDown);
+      document.removeEventListener('mousemove', handleMouseMove);
+      document.removeEventListener('mouseup', handleMouseUp);
     };
   }, [sessions]);
 
@@ -424,7 +452,7 @@ export const SessionTabs: React.FC = () => {
   return (
     <div className="session-tabs">
       <div className="tabs-wrapper">
-        <div className="tabs-scroll-container">
+        <div className={`tabs-scroll-container ${hasOverflow ? 'has-overflow' : ''}`}>
           <div className="tabs-scrollable" ref={tabsContainerRef}>
           {sessions.map((session) => (
           <div
@@ -875,11 +903,16 @@ export const SessionTabs: React.FC = () => {
           </div>
         ))}
           </div>
-          <div className="scroll-indicator" ref={scrollIndicatorRef} />
+          {hasOverflow && (
+            <div className="custom-scrollbar-track" ref={scrollbarTrackRef}>
+              <div className="custom-scrollbar-thumb" ref={scrollbarThumbRef} />
+            </div>
+          )}
         </div>
 
-        <div className={`tabs-actions ${sessions.length === 0 ? 'no-tabs' : ''}`}>
-          <button 
+        {/* Action buttons - always visible outside scroll container */}
+        <div className={`tabs-actions ${hasOverflow ? 'sticky' : ''} ${sessions.length === 0 ? 'no-tabs' : ''}`}>
+          <button
             className={`tab-new ${dragOverNewTab ? 'drag-over-duplicate' : ''}`}
             onClick={handleOpenFolder} 
             onMouseDown={(e) => {
@@ -1081,7 +1114,7 @@ export const SessionTabs: React.FC = () => {
           )}
         </div>
       </div>
-      
+
       {contextMenu && (
         <div 
           ref={contextMenuRef}
@@ -1214,7 +1247,7 @@ export const SessionTabs: React.FC = () => {
             }
             deleteSession(contextMenu.sessionId);
             setContextMenu(null);
-          }}>close</button>
+          }}>close ({modKey}+w)</button>
 
           <button onClick={async () => {
             const targetSession = sessions.find(s => s.id === contextMenu.sessionId);

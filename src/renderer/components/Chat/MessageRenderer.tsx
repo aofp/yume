@@ -1,91 +1,7 @@
 import React, { memo, useState, useCallback, useRef, useEffect, useLayoutEffect } from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
-import { Light as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { DiffViewer, DiffDisplay, DiffLine, DiffHunk } from './DiffViewer';
-
-// Register only commonly used languages for smaller bundle
-import javascript from 'react-syntax-highlighter/dist/esm/languages/hljs/javascript';
-import typescript from 'react-syntax-highlighter/dist/esm/languages/hljs/typescript';
-import python from 'react-syntax-highlighter/dist/esm/languages/hljs/python';
-import bash from 'react-syntax-highlighter/dist/esm/languages/hljs/bash';
-import shell from 'react-syntax-highlighter/dist/esm/languages/hljs/shell';
-import json from 'react-syntax-highlighter/dist/esm/languages/hljs/json';
-import xml from 'react-syntax-highlighter/dist/esm/languages/hljs/xml';
-import css from 'react-syntax-highlighter/dist/esm/languages/hljs/css';
-import scss from 'react-syntax-highlighter/dist/esm/languages/hljs/scss';
-import rust from 'react-syntax-highlighter/dist/esm/languages/hljs/rust';
-import go from 'react-syntax-highlighter/dist/esm/languages/hljs/go';
-import java from 'react-syntax-highlighter/dist/esm/languages/hljs/java';
-import c from 'react-syntax-highlighter/dist/esm/languages/hljs/c';
-import cpp from 'react-syntax-highlighter/dist/esm/languages/hljs/cpp';
-import csharp from 'react-syntax-highlighter/dist/esm/languages/hljs/csharp';
-import ruby from 'react-syntax-highlighter/dist/esm/languages/hljs/ruby';
-import php from 'react-syntax-highlighter/dist/esm/languages/hljs/php';
-import swift from 'react-syntax-highlighter/dist/esm/languages/hljs/swift';
-import kotlin from 'react-syntax-highlighter/dist/esm/languages/hljs/kotlin';
-import sql from 'react-syntax-highlighter/dist/esm/languages/hljs/sql';
-import yaml from 'react-syntax-highlighter/dist/esm/languages/hljs/yaml';
-import markdown from 'react-syntax-highlighter/dist/esm/languages/hljs/markdown';
-import diff from 'react-syntax-highlighter/dist/esm/languages/hljs/diff';
-import dockerfile from 'react-syntax-highlighter/dist/esm/languages/hljs/dockerfile';
-import makefile from 'react-syntax-highlighter/dist/esm/languages/hljs/makefile';
-import plaintext from 'react-syntax-highlighter/dist/esm/languages/hljs/plaintext';
-
-// Register languages
-SyntaxHighlighter.registerLanguage('javascript', javascript);
-SyntaxHighlighter.registerLanguage('js', javascript);
-SyntaxHighlighter.registerLanguage('typescript', typescript);
-SyntaxHighlighter.registerLanguage('ts', typescript);
-SyntaxHighlighter.registerLanguage('tsx', typescript);
-SyntaxHighlighter.registerLanguage('jsx', javascript);
-SyntaxHighlighter.registerLanguage('python', python);
-SyntaxHighlighter.registerLanguage('py', python);
-SyntaxHighlighter.registerLanguage('bash', bash);
-SyntaxHighlighter.registerLanguage('sh', bash);
-SyntaxHighlighter.registerLanguage('shell', shell);
-SyntaxHighlighter.registerLanguage('zsh', bash);
-SyntaxHighlighter.registerLanguage('json', json);
-SyntaxHighlighter.registerLanguage('xml', xml);
-SyntaxHighlighter.registerLanguage('html', xml);
-SyntaxHighlighter.registerLanguage('htm', xml);
-SyntaxHighlighter.registerLanguage('svg', xml);
-SyntaxHighlighter.registerLanguage('css', css);
-SyntaxHighlighter.registerLanguage('scss', scss);
-SyntaxHighlighter.registerLanguage('sass', scss);
-SyntaxHighlighter.registerLanguage('less', scss);
-SyntaxHighlighter.registerLanguage('rust', rust);
-SyntaxHighlighter.registerLanguage('rs', rust);
-SyntaxHighlighter.registerLanguage('go', go);
-SyntaxHighlighter.registerLanguage('golang', go);
-SyntaxHighlighter.registerLanguage('java', java);
-SyntaxHighlighter.registerLanguage('c', c);
-SyntaxHighlighter.registerLanguage('cpp', cpp);
-SyntaxHighlighter.registerLanguage('c++', cpp);
-SyntaxHighlighter.registerLanguage('csharp', csharp);
-SyntaxHighlighter.registerLanguage('cs', csharp);
-SyntaxHighlighter.registerLanguage('c#', csharp);
-SyntaxHighlighter.registerLanguage('ruby', ruby);
-SyntaxHighlighter.registerLanguage('rb', ruby);
-SyntaxHighlighter.registerLanguage('php', php);
-SyntaxHighlighter.registerLanguage('swift', swift);
-SyntaxHighlighter.registerLanguage('kotlin', kotlin);
-SyntaxHighlighter.registerLanguage('kt', kotlin);
-SyntaxHighlighter.registerLanguage('sql', sql);
-SyntaxHighlighter.registerLanguage('yaml', yaml);
-SyntaxHighlighter.registerLanguage('yml', yaml);
-SyntaxHighlighter.registerLanguage('toml', yaml);
-SyntaxHighlighter.registerLanguage('markdown', markdown);
-SyntaxHighlighter.registerLanguage('md', markdown);
-SyntaxHighlighter.registerLanguage('diff', diff);
-SyntaxHighlighter.registerLanguage('patch', diff);
-SyntaxHighlighter.registerLanguage('dockerfile', dockerfile);
-SyntaxHighlighter.registerLanguage('docker', dockerfile);
-SyntaxHighlighter.registerLanguage('makefile', makefile);
-SyntaxHighlighter.registerLanguage('make', makefile);
-SyntaxHighlighter.registerLanguage('plaintext', plaintext);
-SyntaxHighlighter.registerLanguage('text', plaintext);
-SyntaxHighlighter.registerLanguage('txt', plaintext);
 import {
   IconBolt,
   IconAlertTriangle,
@@ -219,8 +135,6 @@ const restoreSelection = (container: HTMLElement, state: SelectionState): boolea
 };
 
 // pre-compiled regex patterns (avoid re-creation in render)
-const CODE_BLOCK_REGEX = /```([\w]*)?[\r\n]+([\s\S]*?)```/g;
-const INLINE_CODE_REGEX = /`([^`]+)`/g;
 const THINKING_TAG_REGEX = /<thinking>([\s\S]*?)<\/thinking>/g;
 
 // PERFORMANCE: Pre-create remarkPlugins array to avoid allocation on every render
@@ -397,57 +311,6 @@ const getMCPToolDisplay = (toolName: string, input: any) => {
     };
   }
   return null;
-};
-
-// Custom syntax highlighter style (vs2015-like dark theme)
-const customVs2015: { [key: string]: React.CSSProperties } = {
-  'hljs': {
-    'display': 'block',
-    'overflowX': 'auto' as const,
-    'padding': '0.5em',
-    'background': '#0f0f0f',
-    'color': '#DCDCDC'
-  },
-  'hljs-keyword': { 'color': '#569CD6' },
-  'hljs-literal': { 'color': '#569CD6' },
-  'hljs-symbol': { 'color': '#569CD6' },
-  'hljs-name': { 'color': '#569CD6' },
-  'hljs-link': { 'color': '#569CD6', 'textDecoration': 'underline' },
-  'hljs-built_in': { 'color': '#4EC9B0' },
-  'hljs-type': { 'color': '#4EC9B0' },
-  'hljs-number': { 'color': '#B8D7A3' },
-  'hljs-class': { 'color': '#B8D7A3' },
-  'hljs-string': { 'color': '#D69D85' },
-  'hljs-meta-string': { 'color': '#D69D85' },
-  'hljs-regexp': { 'color': '#9A5334' },
-  'hljs-template-tag': { 'color': '#9A5334' },
-  'hljs-subst': { 'color': '#DCDCDC' },
-  'hljs-function': { 'color': '#DCDCDC' },
-  'hljs-title': { 'color': '#DCDCDC' },
-  'hljs-params': { 'color': '#DCDCDC' },
-  'hljs-formula': { 'color': '#DCDCDC' },
-  'hljs-comment': { 'color': '#57A64A', 'fontStyle': 'italic' },
-  'hljs-quote': { 'color': '#57A64A', 'fontStyle': 'italic' },
-  'hljs-doctag': { 'color': '#608B4E' },
-  'hljs-meta': { 'color': '#9B9B9B' },
-  'hljs-meta-keyword': { 'color': '#9B9B9B' },
-  'hljs-tag': { 'color': '#9B9B9B' },
-  'hljs-variable': { 'color': '#BD63C5' },
-  'hljs-template-variable': { 'color': '#BD63C5' },
-  'hljs-attr': { 'color': '#9CDCFE' },
-  'hljs-attribute': { 'color': '#9CDCFE' },
-  'hljs-builtin-name': { 'color': '#9CDCFE' },
-  'hljs-section': { 'color': '#gold' },
-  'hljs-emphasis': { 'fontStyle': 'italic' },
-  'hljs-strong': { 'fontWeight': 'bold' },
-  'hljs-bullet': { 'color': '#D7BA7D' },
-  'hljs-selector-tag': { 'color': '#D7BA7D' },
-  'hljs-selector-id': { 'color': '#D7BA7D' },
-  'hljs-selector-class': { 'color': '#D7BA7D' },
-  'hljs-selector-attr': { 'color': '#D7BA7D' },
-  'hljs-selector-pseudo': { 'color': '#D7BA7D' },
-  'hljs-addition': { 'backgroundColor': '#144212', 'display': 'inline-block', 'width': '100%' },
-  'hljs-deletion': { 'backgroundColor': '#600', 'display': 'inline-block', 'width': '100%' }
 };
 
 // Helper function to copy code to clipboard
@@ -646,18 +509,18 @@ const CodeBlock = ({ children, className, ...props }: any) => {
   const match = /language-(\w+)/.exec(className || '');
   const language = match ? match[1] : '';
   const codeString = String(children).replace(/\n$/, '');
-  
+
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(codeString);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }, [codeString]);
-  
+
   // If code is short (under 256 chars), render as inline code
   if (codeString.length < 256 && !codeString.includes('\n')) {
     return <code className={className} {...props}>{codeString}</code>;
   }
-  
+
   return (
     <div className="code-block-wrapper">
       <div className="code-block-header">
@@ -666,21 +529,9 @@ const CodeBlock = ({ children, className, ...props }: any) => {
           {copied ? <IconCheck size={14} /> : <IconCopy size={14} />}
         </button>
       </div>
-      <SyntaxHighlighter
-        language={language || 'text'}
-        style={customVs2015}
-        customStyle={{
-          margin: 0,
-          padding: '2px',
-          border: 'none',
-          borderRadius: '2px',
-          fontSize: language === 'bash' ? '8px' : '12px',
-          backgroundColor: '#000000'
-        }}
-        {...props}
-      >
-        {codeString}
-      </SyntaxHighlighter>
+      <pre className="code-block-pre">
+        <code className={className}>{codeString}</code>
+      </pre>
     </div>
   );
 };
@@ -753,20 +604,9 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
             <div className="code-block-header">
               <span className="code-language">json</span>
             </div>
-            <SyntaxHighlighter
-              language="json"
-              style={customVs2015}
-              customStyle={{
-                margin: 0,
-                padding: '2px',
-                border: 'none',
-                borderRadius: '2px',
-                fontSize: '12px',
-                backgroundColor: '#000000'
-              }}
-            >
-              {JSON.stringify(parsed, null, 2)}
-            </SyntaxHighlighter>
+            <pre className="code-block-pre">
+              <code className="language-json">{JSON.stringify(parsed, null, 2)}</code>
+            </pre>
           </div>
         );
       } catch (e) {
@@ -1078,44 +918,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           if (isReadOperation) {
             return null;
           }
-          
-          // OLD CODE - no longer showing Read results
-          if (false && isReadOperation && resultContent) {
-            // Strip out system-reminder tags from read operations
-            let cleanContent = resultContent;
-            const reminderRegex = /<system-reminder>[\s\S]*?<\/system-reminder>/g;
-            cleanContent = cleanContent.replace(reminderRegex, '');
-            // Trim trailing newlines
-            cleanContent = cleanContent.replace(/\n+$/, '');
-            
-            // Get the starting line number from the Read operation input if available
-            let startLineNum = 1;
-            if (prevBlock?.input?.offset) {
-              startLineNum = prevBlock.input.offset;
-            }
-            
-            const allLines = cleanContent.split('\n');
-            const visibleLines = allLines.slice(0, 10);
-            const hiddenCount = allLines.length - 10;
-            const hasMore = hiddenCount > 0;
-            
-            return (
-              <div key={idx} className="tool-result read-output">
-                <pre className="read-content">
-                  {visibleLines.map((line, i) => (
-                    <div key={i} className="read-line">
-                      <span className="line-number">{(startLineNum + i).toString().padStart(4, ' ')}</span>
-                      <span className="line-text">{line}</span>
-                    </div>
-                  ))}
-                </pre>
-                {hasMore && (
-                  <div className="read-more">+ {hiddenCount} more lines</div>
-                )}
-              </div>
-            );
-          }
-          
+
           // Limit search operation outputs to 10 lines
           if (isSearchOperation && resultContent) {
             // Process search results to convert absolute paths to relative
@@ -3323,19 +3126,9 @@ const MessageRendererBase: React.FC<{
                                 <IconCopy size={12} />
                               </button>
                             </div>
-                            <SyntaxHighlighter
-                              style={customVs2015 as any}
-                              language={match[1]}
-                              PreTag="div"
-                              customStyle={{
-                                margin: 0,
-                                borderRadius: 0,
-                                background: '#0f0f0f',
-                                fontSize: '10px',
-                              }}
-                            >
-                              {String(children).replace(/\n$/, '')}
-                            </SyntaxHighlighter>
+                            <pre className="code-block-pre">
+                              <code className={className}>{String(children).replace(/\n$/, '')}</code>
+                            </pre>
                           </div>
                         ) : (
                           <code className={className} {...props}>

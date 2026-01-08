@@ -10,8 +10,7 @@ interface UpgradeModalProps {
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, reason }) => {
-  const { getFeatures } = useLicenseStore();
-  const features = getFeatures();
+  const features = useLicenseStore.getState().getFeatures();
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -42,7 +41,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
         <div className="upgrade-content">
           {reason === 'tabLimit' && (
             <div className="upgrade-reason">
-              <p>trial: 3 tabs max</p>
+              <p>trial: {features.maxTabs} tabs max</p>
             </div>
           )}
 

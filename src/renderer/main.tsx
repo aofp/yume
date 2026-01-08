@@ -247,23 +247,6 @@ setTimeout(() => {
   }
 }, 2000); // Wait 2 seconds for socket connection to establish
 
-// Disable periodic session persistence - sessions should not persist
-// persistenceInterval = setInterval(() => {
-//   const store = useClaudeCodeStore.getState();
-//   const { sessions } = store;
-//   if (sessions.length > 0) {
-//     // Trigger persistence by updating timestamps
-//     sessions.forEach(s => {
-//       useClaudeCodeStore.setState(state => ({
-//         sessions: state.sessions.map(session => 
-//           session.id === s.id ? { ...session, updatedAt: new Date() } : session
-//         )
-//       }));
-//     });
-//     console.log('[App] Periodic session persistence triggered');
-//   }
-// }, 30000);
-
 // Wait for DOM to be ready
 function initApp() {
   const rootElement = document.getElementById('root');

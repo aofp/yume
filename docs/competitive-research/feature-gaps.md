@@ -396,6 +396,49 @@ Note: Tab completion removed - it's an IDE feature, not applicable to chat inter
 
 ---
 
+## New Competitor Features to Watch (Jan 2026)
+
+### From Cursor 2.x
+- **Parallel Agents**: Up to 8 agents running simultaneously using git worktrees
+- **Visual Editor**: Click-and-drag web design with live preview
+- **Debug Mode**: Agents with runtime logs for bug reproduction
+- **AI Code Reviews**: Automated review in sidepanel
+- **Clarifying Questions**: Interactive UI for plan refinement
+- **Priority Processing**: 2x rate for guaranteed low-latency (~50 tokens/sec)
+
+### From Windsurf Wave 13
+- **Auto-Generate Memories**: Autonomous context retention
+- **Tab to Jump**: Predicts next edit location
+- **Codemaps (Beta)**: Visual code mapping
+- **Lifeguard (Beta)**: In-IDE bug detection
+
+### From Continue.dev
+- **CLI with TUI/Headless Mode**: Can run as coding agent or background agent
+- **Custom Assistants**: Multiple assistants with different configurations
+- **Background Agents**: Battle-tested workflows for GitHub, Sentry, Linear
+- **Rules Generation**: AI can write rules for you in agent mode
+- **OAuth for MCP**: Secure authentication for MCP servers
+
+### From Claude Code (Platform Updates)
+- **Claude Agent SDK**: Programmatic access to Claude Code capabilities
+- **Skills System**: Dynamic loading of specialized instructions
+- **Ultrathink Mode**: UI toggle for thinking modes could be valuable
+- **Status Line**: Could show in Yurucode UI
+
+### Feature Recommendations for Yurucode
+
+| Feature | Priority | Rationale |
+|---------|----------|-----------|
+| Thinking mode selector | HIGH | Easy win, Claude supports "think"/"ultrathink" |
+| Auto-updater (Tauri plugin) | HIGH | All competitors have this |
+| Plan mode toggle | MEDIUM | Execute vs plan-first, popular in Cursor |
+| Deep linking (`yurucode://`) | MEDIUM | Open sessions from terminal/browser |
+| Skills system UI | MEDIUM | Expose Claude's skills in GUI |
+| Parallel sessions | LOW | Run multiple Claude instances |
+| Background agent notifications | LOW | Notify when long tasks complete |
+
+---
+
 ## Sources
 
 - [Cursor Features](https://cursor.com/features) - $29.3B valuation, 50%+ Fortune 500

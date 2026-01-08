@@ -36,7 +36,6 @@ export const App: React.FC = () => {
   const [analyticsProject, setAnalyticsProject] = useState<string | undefined>(undefined);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [upgradeReason, setUpgradeReason] = useState<'tabLimit' | 'feature' | 'trial'>('tabLimit');
-  // const [showFileChanges, setShowFileChanges] = useState(false);
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -143,6 +142,38 @@ export const App: React.FC = () => {
     const handleShowHelp = () => setShowHelpModal(true);
     window.addEventListener('showHelpModal', handleShowHelp);
     return () => window.removeEventListener('showHelpModal', handleShowHelp);
+  }, []);
+
+  // Listen for trial instance blocked event from Rust backend
+  useEffect(() => {
+    if (!window.__TAURI__) return;
+
+    let unlisten: (() => void) | undefined;
+
+    (async () => {
+      const { listen } = await import('@tauri-apps/api/event');
+      unlisten = await listen('trial-instance-blocked', () => {
+        // Show toast notification that trial mode only allows one instance
+        const toast = document.createElement('div');
+        toast.className = 'trial-blocked-toast';
+        toast.innerHTML = `
+          <div class="trial-blocked-toast-content">
+            <span>yurucode trial permits only one window</span>
+          </div>
+        `;
+        document.body.appendChild(toast);
+
+        // Auto-remove after 5 seconds
+        setTimeout(() => {
+          toast.classList.add('fade-out');
+          setTimeout(() => toast.remove(), 300);
+        }, 5000);
+      });
+    })();
+
+    return () => {
+      if (unlisten) unlisten();
+    };
   }, []);
   
   // Handle global right-click for context menu

@@ -379,46 +379,10 @@ pub fn stop_logged_server() {
     // Remove PID file on clean shutdown
     remove_pid_file();
 
-    // Final cleanup: kill any orphaned claude processes
-    // This is a fallback in case the server didn't clean up properly
-    cleanup_orphaned_claude_processes();
+    // Note: Claude processes spawned by Yurucode are cleaned up via ProcessRegistry's
+    // Drop trait, which only kills processes we spawned (not external Claude instances)
 }
 
-/// Kills any orphaned claude processes that might be left running
-/// Uses pkill as a fallback cleanup mechanism
-fn cleanup_orphaned_claude_processes() {
-    info!("Running orphan process cleanup...");
-
-    #[cfg(target_os = "macos")]
-    {
-        // Kill any orphaned claude processes
-        let _ = Command::new("pkill")
-            .args(&["-9", "-f", "claude"])
-            .output();
-        info!("pkill cleanup executed for macOS");
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        let _ = Command::new("pkill")
-            .args(&["-9", "-f", "claude"])
-            .output();
-        info!("pkill cleanup executed for Linux");
-    }
-
-    #[cfg(target_os = "windows")]
-    {
-        use std::os::windows::process::CommandExt;
-        const CREATE_NO_WINDOW: u32 = 0x08000000;
-
-        // Kill any orphaned claude processes on Windows
-        let _ = Command::new("taskkill")
-            .args(&["/F", "/IM", "claude.exe"])
-            .creation_flags(CREATE_NO_WINDOW)
-            .output();
-        info!("taskkill cleanup executed for Windows");
-    }
-}
 
 /// Starts the Node.js backend server with a held port (TOCTOU-safe)
 /// The held port is released right before spawning the server process

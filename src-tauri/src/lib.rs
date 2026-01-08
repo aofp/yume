@@ -32,13 +32,47 @@ mod crash_recovery; // Crash recovery and session restoration
 mod agents;         // Agent management for AI assistants
 
 use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
-use tauri::{Manager, Listener};
+use std::path::PathBuf;
+use std::fs;
+use tauri::{Manager, Listener, Emitter};
 use tracing::info;
 #[cfg(target_os = "windows")]
 use tracing::error;
 
 use claude::ClaudeManager;
 use state::AppState;
+
+/// Check if user is licensed by reading the persisted license store
+/// Returns true if licensed, false if trial mode
+fn is_user_licensed() -> bool {
+    // Try to find the license store file
+    let app_data_dir = dirs::data_dir()
+        .or_else(|| dirs::config_dir())
+        .unwrap_or_else(|| PathBuf::from("."));
+
+    let store_path = app_data_dir.join("be.yuru.yurucode").join("yurucode-license-v3.json");
+
+    if let Ok(content) = fs::read_to_string(&store_path) {
+        // Check if isLicensed is true in the stored data
+        if let Ok(json) = serde_json::from_str::<serde_json::Value>(&content) {
+            if let Some(state) = json.get("state") {
+                if let Some(is_licensed) = state.get("isLicensed") {
+                    return is_licensed.as_bool().unwrap_or(false);
+                }
+            }
+        }
+    }
+
+    // Also check the tauri store path format
+    let tauri_store_path = app_data_dir.join("be.yuru.yurucode").join(".yurucode-license-v3.dat");
+    if let Ok(content) = fs::read_to_string(&tauri_store_path) {
+        if content.contains("\"isLicensed\":true") {
+            return true;
+        }
+    }
+
+    false
+}
 
 /// Main entry point for the Tauri application
 /// This function sets up the entire application infrastructure:
@@ -64,13 +98,34 @@ pub fn run() {
         info!("Set WEBVIEW2_DEFAULT_BACKGROUND_COLOR=00000000 for transparent startup");
     }
 
+    // Check license status early to determine single-instance behavior
+    let is_licensed = is_user_licensed();
+    info!("License status: {}", if is_licensed { "licensed" } else { "trial" });
+
     // Build the Tauri application with required plugins
-    tauri::Builder::default()
+    let mut builder = tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())        // File system access for project navigation
         .plugin(tauri_plugin_dialog::init())    // Native file/folder selection dialogs
         .plugin(tauri_plugin_shell::init())     // Shell command execution capabilities
         .plugin(tauri_plugin_store::Builder::new().build()) // Persistent storage for settings/state
-        .plugin(tauri_plugin_clipboard_manager::init())     // Clipboard operations for copy/paste
+        .plugin(tauri_plugin_clipboard_manager::init());    // Clipboard operations for copy/paste
+
+    // Only enforce single-instance for trial users
+    if !is_licensed {
+        builder = builder.plugin(tauri_plugin_single_instance::init(move |app, _argv, _cwd| {
+            // This callback is called on the FIRST instance when a second instance tries to launch
+            // Focus the existing window and show a notification
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.set_focus();
+                let _ = window.unminimize();
+                // Emit event to frontend to show trial limit message
+                let _ = window.emit("trial-instance-blocked", ());
+                info!("Trial mode: second instance blocked, focused existing window");
+            }
+        }));
+    }
+
+    builder
         .setup(|app| {
             // Application setup phase - runs once at startup
             info!("Starting yurucode Tauri app");

@@ -51,26 +51,3 @@ export function useConfirm() {
     handleCancel
   };
 }
-
-// Example usage:
-// const { confirm, isOpen, options, handleConfirm, handleCancel } = useConfirm();
-//
-// const handleDelete = async () => {
-//   const confirmed = await confirm({
-//     title: 'Delete Item',
-//     message: 'Are you sure you want to delete this item?',
-//     isDangerous: true
-//   });
-//   
-//   if (confirmed) {
-//     // Perform delete action
-//   }
-// };
-//
-// And in the render:
-// <ConfirmModal
-//   isOpen={isOpen}
-//   {...options}
-//   onConfirm={handleConfirm}
-//   onCancel={handleCancel}
-// />

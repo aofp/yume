@@ -1289,7 +1289,7 @@ app.delete('/claude-project/:projectPath', async (req, res) => {
     }
     
     // Delete the entire project directory
-    const { rm } = await import('fs/promises');
+    const { rm } = fs.promises;
     await rm(projectDir, { recursive: true, force: true });
     
     console.log('Project deleted successfully');
@@ -1313,7 +1313,7 @@ app.delete('/claude-session/:projectPath/:sessionId', async (req, res) => {
     }
     
     // Delete the session file
-    const { unlink } = await import('fs/promises');
+    const { unlink } = fs.promises;
     await unlink(sessionPath);
     
     console.log('Session deleted successfully');
@@ -1595,7 +1595,7 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       }
       
       // Read the session file using promises for better error handling
-      const { readFile } = await import('fs/promises');
+      const { readFile } = fs.promises;
       
       try {
         const content = await readFile(sessionPath, 'utf8');
@@ -1721,8 +1721,7 @@ app.get('/claude-analytics', async (req, res) => {
     let projectsDir;
     if (isWindows) {
       // Directly access WSL filesystem through Windows mount - no wsl.exe commands
-      const { readdir, readFile, stat } = await import('fs/promises');
-      const path = await import('path');
+      const { readdir, readFile, stat } = fs.promises;
 
       let wslProjectsPath = null;
 
@@ -2081,7 +2080,7 @@ app.get('/claude-analytics', async (req, res) => {
       }
     } else {
       // Non-Windows: read directly from filesystem
-      const { readdir, readFile, stat } = await import('fs/promises');
+      const { readdir, readFile, stat } = fs.promises;
       const projectsDir = join(homedir(), '.claude', 'projects');
       
       try {
@@ -2368,9 +2367,9 @@ app.get('/claude-projects-quick', async (req, res) => {
       return res.json({ projects: [], count: 0 });
     }
     
-    const { readdir, stat } = await import('fs/promises');
+    const { readdir, stat } = fs.promises;
     const projectDirs = await readdir(claudeDir);
-    
+
     // Quick filter for directories only
     const projectPromises = projectDirs
       .filter(dir => !dir.startsWith('.'))
@@ -2995,8 +2994,8 @@ app.get('/claude-projects', async (req, res) => {
     }
     
     // Load projects asynchronously using promises
-    const { readdir, stat, readFile } = await import('fs/promises');
-    
+    const { readdir, stat, readFile } = fs.promises;
+
     const projectDirs = await readdir(claudeDir);
     console.log(`Found ${projectDirs.length} project directories`);
     
@@ -3150,19 +3149,9 @@ function forceKillAllChildren() {
   }
   allChildPids.clear();
 
-  // Windows: use taskkill as fallback
-  try {
-    const { execSync } = require('child_process');
-    execSync('taskkill /F /IM claude.exe 2>nul', {
-      encoding: 'utf8',
-      timeout: 2000,
-      stdio: 'pipe',
-      windowsHide: true
-    });
-    console.log('   taskkill cleanup executed');
-  } catch (e) {
-    // taskkill may fail if no processes found
-  }
+  // Note: We only kill processes we spawned (tracked PIDs above)
+  // We do NOT use taskkill /IM claude.exe as that would kill Claude processes
+  // not associated with Yurucode
 }
 
 // Graceful shutdown function

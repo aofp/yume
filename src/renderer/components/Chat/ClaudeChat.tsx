@@ -27,7 +27,6 @@ import {
   IconBrain,
   IconChartDots,
   IconMessage,
-  IconFlare,
   IconGitBranch,
   IconFile,
   IconChevronRight,
@@ -369,7 +368,6 @@ export const ClaudeChat: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
-  // const [showTimeline, setShowTimeline] = useState(false);  // REMOVED: Unnecessary feature
   const [showAgentExecutor, setShowAgentExecutor] = useState(false);
   const [searchIndex, setSearchIndex] = useState(0);
   const [searchMatches, setSearchMatches] = useState<number[]>([]);
@@ -616,25 +614,11 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [showStatsModal, fetchUsageLimits]);
 
-  // DEBUG: Log current session messages length and update counter
-  React.useEffect(() => {
-    console.log(`[DEBUG] Current session ${currentSessionId} has ${currentSession?.messages?.length || 0} messages, updateCounter: ${messageUpdateCounter}`);
-    // Log last message for bash debugging
-    const lastMsg = currentSession?.messages?.[currentSession.messages.length - 1];
-    if (lastMsg) {
-      console.log(`[DEBUG] Last message:`, { type: lastMsg.type, id: lastMsg.id, streaming: lastMsg.streaming });
-    }
-  }, [currentSessionId, currentSession?.messages?.length, messageUpdateCounter]);
-
   // NO AUTO-CREATION and NO AUTO-RESUME
   // Sessions are ephemeral - they don't survive app restarts
   // User must manually create sessions with the + button
 
   // NO auto-selection - user must explicitly choose or create a session
-  
-  // Removed bash warmup - it was causing the focus issue it was trying to prevent
-
-  // Bash warmup removed - it was causing focus issues
 
   // Helper to determine if virtualization should be used
   // IMPORTANT: Always use virtualization for consistent scrollbar styling
@@ -853,20 +837,6 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSessionId, scrollPositions, currentSession?.messages?.length]);
 
-  // AUTO-SCROLL - only scroll if user is at bottom
-  // Auto-scroll effect disabled - VirtualizedMessageList handles its own scrolling
-  // This was causing conflicts with user scroll tracking
-  // useEffect(() => {
-  //   if (!chatContainerRef.current || !currentSession || !currentSessionId) return;
-  //   if (isTabSwitchingRef.current) return;
-  //   const shouldScroll = isAtBottom[currentSessionId] !== false;
-  //   if (shouldScroll && !isTabSwitchingRef.current) {
-  //     requestAnimationFrame(() => {
-  //       scrollToBottomHelper('auto');
-  //     });
-  //   }
-  // }, [currentSession?.messages, currentSession?.streaming, currentSessionId, isAtBottom, scrollToBottomHelper]);
-  
   // Force scroll to bottom when user sends a message
   useEffect(() => {
     if (!currentSession || !currentSessionId) return;
@@ -892,25 +862,6 @@ export const ClaudeChat: React.FC = () => {
       }
     }
   }, [currentSession?.messages?.length, currentSessionId, forceScrollToBottomHelper]);
-
-  // MutationObserver disabled - was causing scroll issues by constantly forcing scroll to bottom
-  // The content change effects handle auto-scroll adequately
-  // useEffect(() => {
-  //   if (!chatContainerRef.current || !currentSessionId) return;
-  //   const container = chatContainerRef.current;
-  //   const observer = new MutationObserver(() => {
-  //     if (isTabSwitchingRef.current) return;
-  //     if (isAtBottom[currentSessionId] !== false) {
-  //       requestAnimationFrame(() => {
-  //         if (!isTabSwitchingRef.current && isAtBottom[currentSessionId] !== false) {
-  //           scrollToBottomHelper('auto');
-  //         }
-  //       });
-  //     }
-  //   });
-  //   observer.observe(container, { childList: true, subtree: true, characterData: true });
-  //   return () => observer.disconnect();
-  // }, [currentSessionId, isAtBottom, scrollToBottomHelper]);
 
   // Clean up streaming start time after streaming ends
   useEffect(() => {
@@ -4219,12 +4170,13 @@ export const ClaudeChat: React.FC = () => {
                         } ${Math.min(percentageNum, 100)}%, transparent ${Math.min(percentageNum, 100)}%)`
                       }}
                     >
-                      <span className="btn-stats-text">{percentage}%
+                      <span className="btn-stats-text">
                         {autoCompactEnabled !== false ? (
                           <span className="btn-stats-auto">auto</span>
                         ) : (
                           <span className="btn-stats-auto">user</span>
                         )}
+                        <span>{percentage}%</span>
                       </span>
                     </button>
                     {/* 5h limit bar */}

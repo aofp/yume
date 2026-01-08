@@ -28,7 +28,17 @@
 }
 
 .tabs-scroll-container {
-  margin-right:1px;
+  flex: 1 1 0; /* Grow to fill, shrink, start at 0 */
+  min-width: 0;
+  max-width: fit-content; /* Only take space needed for content */
+  overflow: visible; /* Clip tabs at container boundary */
+  position: relative;
+  top: 0px;
+}
+
+/* When overflow, take all available space */
+.tabs-scroll-container.has-overflow {
+  max-width: none;
 }
 
 .tabs-scrollable {
@@ -44,12 +54,9 @@
   -webkit-app-region: no-drag;
 }
 
-/* Windows-specific: Adjust positioning when scrollbar is present */
-@media screen and (-webkit-min-device-pixel-ratio: 0) {
-  .tabs-scrollable.has-overflow {
-    padding-bottom: 3px;
-    top: 0px;
-  }
+.tabs-scrollable.has-overflow {
+  padding-bottom: 0px;
+  top: -2px;
 }
 
 .tabs-actions {
@@ -59,42 +66,67 @@
   flex-shrink: 0;
   position: relative;
   top: -2px;
-  margin-left: 1px;
+  margin-left: 2px;
+  margin-right: 1px;
   /* Make tabs not draggable */
   -webkit-app-region: no-drag;
 }
 
+/* When overflow, add background to cover scrolling tabs behind */
+.tabs-actions.sticky {
+  background: var(--background-color);
+  padding-left: 4px;
+}
+
 .tabs-actions.no-tabs {
-  margin-left: 2px;
-  position: relative;
-  left: -2px;
+  margin-left: 0px;
 }
 
 .tabs-scrollable {
-  /* Firefox scrollbar properties removed for cleaner look */
+  /* Hide native scrollbar completely - we use custom JS scrollbar */
+  overflow-x: scroll;
+  overflow-y: hidden;
+  scrollbar-width: none; /* Firefox */
+  -ms-overflow-style: none; /* IE/Edge */
 }
 
 .tabs-scrollable::-webkit-scrollbar {
-  height: 1px !important;
+  display: none; /* Chrome/Safari/Opera */
+}
+
+/* Custom scrollbar track */
+.custom-scrollbar-track {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
   background: transparent;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
 }
 
-.tabs-scrollable::-webkit-scrollbar-track {
-  background: transparent;
-  height: 1px !important;
+.tabs-scroll-container:hover .custom-scrollbar-track,
+.custom-scrollbar-track.visible {
+  opacity: 1;
 }
 
-.tabs-scrollable::-webkit-scrollbar-thumb {
-  background: rgba(var(--accent-rgb), 0.3);
-  border-radius: 0;
-  height: 1px !important;
-  min-height: 1px !important;
-  max-height: 1px !important;
+/* Custom scrollbar thumb */
+.custom-scrollbar-thumb {
+  position: absolute;
+  bottom: 0;
+  height: 2px;
+  background: rgba(var(--accent-rgb), 0.35);
+  border-radius: 1px;
+  pointer-events: auto;
+  cursor: pointer;
+  transition: background 0.2s ease, height 0.1s ease;
 }
 
-.tabs-scrollable::-webkit-scrollbar-thumb:hover {
+.custom-scrollbar-thumb:hover {
   background: rgba(var(--accent-rgb), 0.5);
-  height: 1px !important;
+  height: 3px;
 }
 
 .session-tab {
