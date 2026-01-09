@@ -32,6 +32,9 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);
+  // Track if using keyboard navigation (ignore mouse hover until mouse moves)
+  const [isKeyboardMode, setIsKeyboardMode] = useState(false);
+  const lastMousePos = useRef<{ x: number; y: number } | null>(null);
   const isOpenRef = useRef(isOpen);
 
   useEffect(() => {
@@ -72,6 +75,8 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
       setSelectedIndex(0);
       setHoveredIndex(null);
       setIsSelecting(false);
+      setIsKeyboardMode(false);
+      lastMousePos.current = null;
     }
   }, [isOpen, loadConversations]);
 
@@ -133,22 +138,32 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
         return;
       }
 
+      // arrow key navigation - switch to keyboard mode
+      // If switching from mouse hover, start from hovered item
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex(prev => Math.min(prev + 1, conversations.length - 1));
+        const startIdx = !isKeyboardMode && hoveredIndex !== null ? hoveredIndex : selectedIndex;
+        setIsKeyboardMode(true);
+        setHoveredIndex(null);
+        setSelectedIndex(Math.min(startIdx + 1, conversations.length - 1));
         return;
       }
 
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex(prev => Math.max(prev - 1, 0));
+        const startIdx = !isKeyboardMode && hoveredIndex !== null ? hoveredIndex : selectedIndex;
+        setIsKeyboardMode(true);
+        setHoveredIndex(null);
+        setSelectedIndex(Math.max(startIdx - 1, 0));
         return;
       }
 
+      // enter to select current (use hovered if in mouse mode, selected if in keyboard mode)
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (selectedIndex < conversations.length) {
-          selectConversation(conversations[selectedIndex]);
+        const activeIdx = isKeyboardMode ? selectedIndex : (hoveredIndex ?? selectedIndex);
+        if (activeIdx >= 0 && activeIdx < conversations.length) {
+          selectConversation(conversations[activeIdx]);
         }
         return;
       }
@@ -168,7 +183,7 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, isSelecting, selectConversation, conversations, selectedIndex]);
+  }, [isOpen, onClose, isSelecting, selectConversation, conversations, selectedIndex, hoveredIndex, isKeyboardMode]);
 
   if (!isOpen) return null;
 
@@ -222,10 +237,31 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
             <div
               key={conv.id}
               className={`recent-item-container ${
-                hoveredIndex === idx ? 'hovered' : ''
-              } ${selectedIndex === idx ? 'selected' : ''}`}
-              onMouseEnter={() => { setHoveredIndex(idx); setSelectedIndex(-1); }}
-              onMouseLeave={() => setHoveredIndex(null)}
+                hoveredIndex === idx && !isKeyboardMode ? 'hovered' : ''
+              } ${selectedIndex === idx && isKeyboardMode ? 'selected' : ''} ${
+                (hoveredIndex === idx && !isKeyboardMode) || (selectedIndex === idx && isKeyboardMode) ? 'focused' : ''
+              }`}
+              onMouseMove={(e) => {
+                // Only respond to actual mouse movement
+                const pos = { x: e.clientX, y: e.clientY };
+                if (lastMousePos.current &&
+                    lastMousePos.current.x === pos.x &&
+                    lastMousePos.current.y === pos.y) {
+                  return;
+                }
+                lastMousePos.current = pos;
+                if (isKeyboardMode) {
+                  setIsKeyboardMode(false);
+                }
+                if (hoveredIndex !== idx) {
+                  setHoveredIndex(idx);
+                }
+              }}
+              onMouseLeave={() => {
+                if (!isKeyboardMode) {
+                  setHoveredIndex(null);
+                }
+              }}
             >
               <button
                 className="recent-item"

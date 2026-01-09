@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "macOSPrivateApi": true,
     "security": {
-      "csp": "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:* https://localhost:* ws://127.0.0.1:* wss://127.0.0.1:* http://127.0.0.1:* https://127.0.0.1:* https://releases.yurucode.app https://github.com https://www.google.com https://*.googleapis.com; media-src 'self' blob: data: https://www.google.com https://*.googleapis.com; object-src 'none'; frame-src 'none'; worker-src 'self' blob:;"
+      "csp": "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:* https://localhost:* ws://127.0.0.1:* wss://127.0.0.1:* http://127.0.0.1:* https://127.0.0.1:* https://github.com https://www.google.com https://*.googleapis.com https://yuru.be https://*.yuru.be; media-src 'self' blob: data: https://www.google.com https://*.googleapis.com; object-src 'none'; frame-src 'none'; worker-src 'self' blob:;"
     },
     "windows": [
       {

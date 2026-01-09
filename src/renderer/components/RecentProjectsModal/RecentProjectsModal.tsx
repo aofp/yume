@@ -24,6 +24,9 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
   const [selectedIndex, setSelectedIndex] = React.useState(0);
   const [showClearConfirm, setShowClearConfirm] = React.useState(false);
+  // Track if using keyboard navigation (ignore mouse hover until mouse moves)
+  const [isKeyboardMode, setIsKeyboardMode] = React.useState(false);
+  const lastMousePos = React.useRef<{ x: number; y: number } | null>(null);
   // Ref to track current open state in event handlers
   const isOpenRef = React.useRef(isOpen);
   
@@ -181,10 +184,31 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         <div
           key={project.path}
           className={`recent-item-container ${
-            hoveredIndex === idx ? 'hovered' : ''
-          } ${selectedIndex === idx ? 'selected' : ''}`}
-          onMouseEnter={() => { setHoveredIndex(idx); setSelectedIndex(-1); }}
-          onMouseLeave={() => setHoveredIndex(null)}
+            hoveredIndex === idx && !isKeyboardMode ? 'hovered' : ''
+          } ${selectedIndex === idx && isKeyboardMode ? 'selected' : ''} ${
+            (hoveredIndex === idx && !isKeyboardMode) || (selectedIndex === idx && isKeyboardMode) ? 'focused' : ''
+          }`}
+          onMouseMove={(e) => {
+            // Only respond to actual mouse movement
+            const pos = { x: e.clientX, y: e.clientY };
+            if (lastMousePos.current &&
+                lastMousePos.current.x === pos.x &&
+                lastMousePos.current.y === pos.y) {
+              return;
+            }
+            lastMousePos.current = pos;
+            if (isKeyboardMode) {
+              setIsKeyboardMode(false);
+            }
+            if (hoveredIndex !== idx) {
+              setHoveredIndex(idx);
+            }
+          }}
+          onMouseLeave={() => {
+            if (!isKeyboardMode) {
+              setHoveredIndex(null);
+            }
+          }}
         >
           <button
             className="recent-item"
@@ -227,6 +251,8 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       window.__recentModalOpen = true;
       setSelectedIndex(0); // reset selection
       setHoveredIndex(null);
+      setIsKeyboardMode(false);
+      lastMousePos.current = null;
     } else {
       // @ts-ignore - adding global flag
       window.__recentModalOpen = false;
@@ -280,24 +306,32 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         return;
       }
       
-      // arrow key navigation
+      // arrow key navigation - switch to keyboard mode
+      // If switching from mouse hover, start from hovered item
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex(prev => Math.min(prev + 1, Math.min(projects.length - 1, 9)));
+        const startIdx = !isKeyboardMode && hoveredIndex !== null ? hoveredIndex : selectedIndex;
+        setIsKeyboardMode(true);
+        setHoveredIndex(null);
+        setSelectedIndex(Math.min(startIdx + 1, Math.min(projects.length - 1, 9)));
         return;
       }
-      
+
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex(prev => Math.max(prev - 1, 0));
+        const startIdx = !isKeyboardMode && hoveredIndex !== null ? hoveredIndex : selectedIndex;
+        setIsKeyboardMode(true);
+        setHoveredIndex(null);
+        setSelectedIndex(Math.max(startIdx - 1, 0));
         return;
       }
       
-      // enter to select current
+      // enter to select current (use hovered if in mouse mode, selected if in keyboard mode)
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (selectedIndex < projects.length) {
-          selectProject(projects[selectedIndex]);
+        const activeIdx = isKeyboardMode ? selectedIndex : (hoveredIndex ?? selectedIndex);
+        if (activeIdx >= 0 && activeIdx < projects.length) {
+          selectProject(projects[activeIdx]);
         }
         return;
       }
@@ -332,7 +366,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       console.log('[RecentProjectsModal] Removing keydown listener');
       window.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isOpen, onClose, isSelecting, selectProject]);
+  }, [isOpen, onClose, isSelecting, selectProject, hoveredIndex, isKeyboardMode, selectedIndex]);
 
   // Early return when not open to prevent rendering
   if (!isOpen) return null;
