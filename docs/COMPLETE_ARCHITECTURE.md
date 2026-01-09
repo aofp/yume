@@ -1,7 +1,7 @@
 # Yurucode Complete Architecture Documentation
 
 **Version:** 1.1.0
-**Last Updated:** January 7, 2026
+**Last Updated:** January 9, 2026
 **Status:** Production Ready
 
 ## Table of Contents
@@ -92,7 +92,8 @@ claude/mod.rs           // Claude manager and process control
 claude_binary.rs        // Binary detection and validation
 claude_session.rs       // Session state management
 claude_spawner.rs       // Process spawning and IPC
-agents.rs               // Agent management
+agents.rs               // In-memory agent CRUD (5 yurucode core agents)
+                        // Sync to ~/.claude/agents/ via commands/mod.rs
 
 // Server Management
 logged_server.rs        // Server process management (spawns compiled binaries)
@@ -345,7 +346,7 @@ pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, Stri
 - Window: `toggle_devtools`, `minimize_window`, `maximize_window`, `close_window`, `new_window`
 - File System: `select_folder`, `check_is_directory`, `search_files`, `get_recent_files`, `get_folder_contents`
 - Settings: `save_settings`, `load_settings`, `get_recent_projects`, `add_recent_project`
-- Agents: `load_claude_agents`, `load_project_agents`, `save_global_agent`, `save_project_agent`, `delete_global_agent`
+- Agents: `load_claude_agents`, `load_project_agents`, `save_global_agent`, `save_project_agent`, `delete_global_agent`, `sync_yurucode_agents`, `are_yurucode_agents_synced`, `cleanup_yurucode_agents_on_exit`
 - Git: `get_git_status`, `get_git_diff_numstat`
 - Bash: `execute_bash`, `spawn_bash`, `kill_bash_process`
 - System: `get_home_directory`, `get_current_directory`, `get_system_fonts`, `open_external`

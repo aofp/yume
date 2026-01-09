@@ -193,6 +193,17 @@ When building on Windows for Windows, ensure:
 **Custom commands:** `~/.claude/commands/*.md` (global) and `.claude/commands/*.md` (project)
 **Agents:** `~/.claude/agents/` (global) and `.claude/agents/` (project)
 
+### Yurucode Core Agents
+5 built-in agents sync to `~/.claude/agents/yurucode-*.md` when enabled:
+- `yurucode-architect` (opus) - Plans, designs, decomposes tasks
+- `yurucode-explorer` (sonnet) - Finds, reads, understands codebase (read-only)
+- `yurucode-implementer` (opus) - Codes, edits, builds
+- `yurucode-guardian` (opus) - Reviews, audits, verifies
+- `yurucode-specialist` (sonnet) - Domain-specific tasks
+
+Sync commands: `sync_yurucode_agents`, `are_yurucode_agents_synced`, `cleanup_yurucode_agents_on_exit`
+PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
+
 ## Common Development Tasks
 
 ### Adding New Tauri Commands

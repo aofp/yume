@@ -1,6 +1,6 @@
 # Yurucode Architecture Overview
 
-Last Updated: 2026-01-07
+Last Updated: 2026-01-09
 
 ## Table of Contents
 1. [System Overview](#system-overview)
@@ -255,26 +255,36 @@ Claude Compresses → New Session ID → Update UI
 **Purpose:** Pre-configured AI personas with specialized system prompts
 
 **Components:**
-- Backend: `src-tauri/src/agents.rs` - Agent CRUD operations
+- Backend: `src-tauri/src/agents.rs` - In-memory agent CRUD
+- Backend: `src-tauri/src/commands/mod.rs` - Agent sync to filesystem
 - Frontend: `src/renderer/components/AgentsModal/AgentsModal.tsx`
+- Frontend: `src/renderer/services/agentExecutionService.ts` - Agent execution
 - Storage: `~/.claude/agents/` (global) and `.claude/agents/` (project)
 
-**Built-in Yurucode Agents:**
-- `yurucode-architect` - Task planning and decomposition
-- `yurucode-explorer` - Codebase exploration (read-only)
-- `yurucode-implementer` - Focused code changes
-- `yurucode-guardian` - Code review and auditing
-- `yurucode-specialist` - Domain-specific tasks
+**The 5 Yurucode Core Agents:**
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `yurucode-architect` | opus | Task planning and decomposition |
+| `yurucode-explorer` | sonnet | Codebase exploration (read-only) |
+| `yurucode-implementer` | opus | Focused code changes |
+| `yurucode-guardian` | opus | Code review and auditing |
+| `yurucode-specialist` | sonnet | Domain-specific tasks |
+
+**Sync Mechanism:**
+- Agents synced to `~/.claude/agents/yurucode-*.md` on app start
+- PID tracking in `.yurucode-pids/` prevents multi-instance conflicts
+- Agents removed on app exit (only if last instance)
+- Model can be changed dynamically via `sync_yurucode_agents(enabled, model)`
 
 **Agent File Format:**
 ```markdown
 ---
-name: agent-name
+name: yurucode-architect
 model: opus
-description: Agent description
+description: proactively use this agent before implementing complex features...
 ---
 
-System prompt content here
+architect agent. plan, design, decompose. think first. output: steps, dependencies, risks. use TodoWrite.
 ```
 
 ### 6. Hooks System

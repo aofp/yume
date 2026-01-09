@@ -1,7 +1,7 @@
 # Yurucode Complete Feature Documentation
 
 **Version:** 1.0.0
-**Last Updated:** January 8, 2026
+**Last Updated:** January 9, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -464,6 +464,44 @@ impl McpManager {
 - Bi-directional messaging
 - Event streaming
 - Error handling
+
+### 7.4 Yurucode Agents System
+
+**Description**: 5 built-in AI agents that sync to `~/.claude/agents/` for Claude CLI integration.
+
+**Location**: `src-tauri/src/commands/mod.rs` (sync), `src/renderer/services/agentExecutionService.ts` (execution)
+
+**The 5 Yurucode Core Agents**:
+
+| Agent | Model | Purpose | Key Tools |
+|-------|-------|---------|-----------|
+| **architect** | opus | Plans, designs, decomposes tasks | TodoWrite |
+| **explorer** | sonnet | Finds, reads, understands codebase | Glob, Grep, Read |
+| **implementer** | opus | Codes, edits, builds | Edit, Write |
+| **guardian** | opus | Reviews, audits, verifies | Read, Grep |
+| **specialist** | sonnet | Domain-specific: tests, docs, devops | Varies |
+
+**Sync Mechanism**:
+- Agents are written as `.md` files to `~/.claude/agents/yurucode-*.md`
+- Uses YAML frontmatter format compatible with Claude CLI
+- PID tracking prevents multiple yurucode instances from conflicting
+- Agents removed on app exit (only if last instance running)
+
+**File Format** (written to `~/.claude/agents/yurucode-architect.md`):
+```yaml
+---
+name: yurucode-architect
+model: opus
+description: proactively use this agent before implementing complex features...
+---
+
+architect agent. plan, design, decompose. think first. output: steps, dependencies, risks. use TodoWrite.
+```
+
+**Commands**:
+- `sync_yurucode_agents(enabled, model)`: Enable/disable agent sync
+- `are_yurucode_agents_synced()`: Check if agents are currently synced
+- `cleanup_yurucode_agents_on_exit()`: Remove agents on app exit
 
 ## 8. Database & Persistence
 

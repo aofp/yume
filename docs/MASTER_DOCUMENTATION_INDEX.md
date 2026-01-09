@@ -1,7 +1,7 @@
 # Yurucode Master Documentation Index
 
 **Created:** January 3, 2025
-**Updated:** January 8, 2026
+**Updated:** January 9, 2026
 **Total Documentation:** 6 comprehensive guides
 **Coverage:** Core codebase documented
 
@@ -387,6 +387,23 @@ Server binaries are stored in `src-tauri/resources/` for each platform:
 3. Session state preservation
 4. Unsaved work backup
 5. Automatic restoration
+
+#### Yurucode Agents System
+
+**5 Built-in Agents** synced to `~/.claude/agents/yurucode-*.md`:
+
+| Agent | Model | Purpose |
+|-------|-------|---------|
+| `yurucode-architect` | opus | Plans, designs, decomposes tasks |
+| `yurucode-explorer` | sonnet | Codebase exploration (read-only) |
+| `yurucode-implementer` | opus | Focused code changes |
+| `yurucode-guardian` | opus | Code review and auditing |
+| `yurucode-specialist` | sonnet | Domain-specific tasks |
+
+**Sync Mechanism**:
+- PID tracking prevents multi-instance conflicts
+- Agents removed on app exit (only if last instance)
+- Dynamic model selection via `sync_yurucode_agents(enabled, model)`
 
 ---
 
