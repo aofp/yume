@@ -322,73 +322,61 @@ fn get_credentials_macos() -> Result<(String, Option<String>, Option<String>), S
 
 #[cfg(target_os = "windows")]
 fn get_credentials_windows() -> Result<(String, Option<String>, Option<String>), String> {
-    // On Windows, Claude Code stores credentials in the Windows Credential Manager
-    // We can use the `cmdkey` command or the windows-credentials crate
-    // For now, try reading from a file-based fallback or credential manager
+    use windows::core::PCWSTR;
+    use windows::Win32::Security::Credentials::{CredReadW, CredFree, CREDENTIALW, CRED_TYPE_GENERIC};
 
-    use std::process::{Command, Stdio};
-    use std::os::windows::process::CommandExt;
+    // Target name used by Claude Code CLI
+    let target: Vec<u16> = "Claude Code-credentials\0".encode_utf16().collect();
 
-    // Try using PowerShell to read from Windows Credential Manager
-    let script = r#"
-        $cred = Get-StoredCredential -Target "Claude Code-credentials" -AsCredentialObject
-        if ($cred) {
-            $cred.Password
-        }
-    "#;
+    unsafe {
+        let mut credential: *mut CREDENTIALW = std::ptr::null_mut();
 
-    let output = Command::new("powershell")
-        .args(["-WindowStyle", "Hidden", "-Command", script])
-        .stdin(Stdio::null())
-        .stdout(Stdio::piped())
-        .stderr(Stdio::null())
-        .creation_flags(0x08000000) // CREATE_NO_WINDOW
-        .output()
-        .map_err(|e| format!("Failed to read Windows credentials: {}", e))?;
+        let result = CredReadW(
+            PCWSTR(target.as_ptr()),
+            CRED_TYPE_GENERIC,
+            None,
+            &mut credential,
+        );
 
-    if !output.status.success() || output.stdout.is_empty() {
-        // Fallback: try reading from AppData
-        let home = dirs::home_dir()
-            .ok_or_else(|| "Could not determine home directory".to_string())?;
-
-        let cred_path = home
-            .join("AppData")
-            .join("Roaming")
-            .join("Claude Code")
-            .join("credentials.json");
-
-        if cred_path.exists() {
-            let json_str = std::fs::read_to_string(&cred_path)
-                .map_err(|e| format!("Failed to read credentials file: {}", e))?;
-
-            let creds: ClaudeCredentials = serde_json::from_str(&json_str)
-                .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
-
-            let oauth = creds.claude_ai_oauth
-                .ok_or_else(|| "No OAuth credentials found".to_string())?;
-
-            return Ok((
-                oauth.access_token,
-                oauth.subscription_type,
-                oauth.rate_limit_tier,
-            ));
+        if result.is_err() || credential.is_null() {
+            return Err("No Claude credentials found in Windows Credential Manager. Please run 'claude' CLI and authenticate first.".to_string());
         }
 
-        return Err("No Claude credentials found".to_string());
+        // Extract credential blob (contains the JSON)
+        let cred = &*credential;
+
+        if cred.CredentialBlob.is_null() || cred.CredentialBlobSize == 0 {
+            CredFree(credential as *mut _);
+            return Err("Claude credentials blob is empty".to_string());
+        }
+
+        // Read the credential blob as bytes
+        let blob_slice = std::slice::from_raw_parts(
+            cred.CredentialBlob,
+            cred.CredentialBlobSize as usize,
+        );
+
+        // Convert to string (it's stored as UTF-8 JSON)
+        let json_str = String::from_utf8(blob_slice.to_vec())
+            .map_err(|e| {
+                CredFree(credential as *mut _);
+                format!("Invalid UTF-8 in credentials: {}", e)
+            })?;
+
+        // Free the credential memory
+        CredFree(credential as *mut _);
+
+        // Parse the JSON
+        let creds: ClaudeCredentials = serde_json::from_str(&json_str)
+            .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
+
+        let oauth = creds.claude_ai_oauth
+            .ok_or_else(|| "No OAuth credentials found".to_string())?;
+
+        Ok((
+            oauth.access_token,
+            oauth.subscription_type,
+            oauth.rate_limit_tier,
+        ))
     }
-
-    let json_str = String::from_utf8(output.stdout)
-        .map_err(|e| format!("Invalid UTF-8 in credentials: {}", e))?;
-
-    let creds: ClaudeCredentials = serde_json::from_str(json_str.trim())
-        .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
-
-    let oauth = creds.claude_ai_oauth
-        .ok_or_else(|| "No OAuth credentials found".to_string())?;
-
-    Ok((
-        oauth.access_token,
-        oauth.subscription_type,
-        oauth.rate_limit_tier,
-    ))
 }

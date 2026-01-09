@@ -42,12 +42,10 @@
         console.log('[Early Init] Applied saved opacity:', alpha);
 
         // CRITICAL: Apply theme colors BEFORE any CSS loads to prevent modal flash
+        // Note: --background-color is the theme color for UI elements (always the actual color)
+        // --bg-color is the body background (transparent on Windows for WebView2)
         var savedBgColor = localStorage.getItem('backgroundColor') || '#0f0f0f';
-        if (isWindows) {
-          document.documentElement.style.setProperty('--background-color', 'transparent');
-        } else {
-          document.documentElement.style.setProperty('--background-color', savedBgColor);
-        }
+        document.documentElement.style.setProperty('--background-color', savedBgColor);
         var bgHex = savedBgColor.replace('#', '');
         var bgR = parseInt(bgHex.substr(0, 2), 16) || 10;
         var bgG = parseInt(bgHex.substr(2, 2), 16) || 10;

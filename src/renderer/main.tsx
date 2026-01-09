@@ -6,14 +6,11 @@ import { DEFAULT_COLORS } from './config/themes';
 
 // Apply theme colors synchronously BEFORE any CSS loads to prevent flash
 (() => {
-  const isWindows = navigator.platform.indexOf('Win') > -1;
   const savedBackgroundColor = localStorage.getItem('backgroundColor') || DEFAULT_COLORS.background;
 
-  if (isWindows) {
-    document.documentElement.style.setProperty('--background-color', 'transparent');
-  } else {
-    document.documentElement.style.setProperty('--background-color', savedBackgroundColor);
-  }
+  // Note: --background-color is the theme color for UI elements (always the actual color)
+  // --bg-color is the body background (transparent on Windows for WebView2, set in index.html)
+  document.documentElement.style.setProperty('--background-color', savedBackgroundColor);
 
   const bgHex = savedBackgroundColor.replace('#', '');
   const bgR = parseInt(bgHex.substr(0, 2), 16) || 10;
