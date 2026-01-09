@@ -82,12 +82,16 @@ interface VirtualizedMessageListProps {
   showThinking?: boolean;
   thinkingStartTime?: number;
   onScrollStateChange?: (isAtBottom: boolean) => void;
+  searchQuery?: string;
+  searchMatches?: number[];
+  searchIndex?: number;
 }
 
 export interface VirtualizedMessageListRef {
   scrollToBottom: (behavior?: 'auto' | 'smooth') => void;
   isAtBottom: () => boolean;
   forceScrollToBottom: (behavior?: 'auto' | 'smooth') => void;
+  scrollToIndex: (index: number, behavior?: 'auto' | 'smooth') => void;
 }
 
 export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, VirtualizedMessageListProps>(({
@@ -98,7 +102,10 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   lastAssistantMessageIds = [],
   showThinking = false,
   thinkingStartTime,
-  onScrollStateChange
+  onScrollStateChange,
+  searchQuery = '',
+  searchMatches = [],
+  searchIndex = 0
 }, ref) => {
   const parentRef = useRef<HTMLDivElement>(null);
   const isAtBottomRef = useRef(true);
@@ -346,7 +353,12 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       scrollToTrueBottom(behavior);
       setTimeout(() => { isAutoScrollingRef.current = false; }, 100);
     },
-  }), [displayMessages.length, checkIfAtBottom, SCROLL_COOLDOWN_MS, scrollToTrueBottom]);
+    scrollToIndex: (index: number, behavior: 'auto' | 'smooth' = 'smooth') => {
+      if (index < 0 || index >= displayMessages.length) return;
+      // Use virtualizer's scrollToIndex for proper virtualized scrolling
+      virtualizer.scrollToIndex(index, { align: 'center', behavior });
+    },
+  }), [displayMessages.length, checkIfAtBottom, SCROLL_COOLDOWN_MS, scrollToTrueBottom, virtualizer]);
 
   // Reset user scroll flag when starting a new chat or message count increases from 0
   useEffect(() => {
@@ -604,6 +616,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
           const isLastStreaming = isStreaming &&
             lastAssistantMessageIds.includes(message.id);
 
+          // Check if this message is the current search match
+          const isCurrentSearchMatch = searchMatches.length > 0 && searchMatches[searchIndex] === virtualItem.index;
+
           return (
             <VirtualItemWrapper
               key={virtualItem.key}
@@ -617,6 +632,8 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                 isStreaming={isLastStreaming}
                 isLast={virtualItem.index === displayMessages.length - 1 && !showThinking}
                 thinkingFor={0}
+                searchQuery={searchQuery}
+                isCurrentMatch={isCurrentSearchMatch}
               />
             </VirtualItemWrapper>
           );

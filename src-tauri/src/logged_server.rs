@@ -154,7 +154,8 @@ pub fn get_log_path() -> PathBuf {
 }
 
 /// Returns the platform-specific path for the server PID file
-/// Used to track and kill orphaned server processes from crashed sessions
+/// Uses a unique filename based on executable path hash to allow multiple
+/// instances (dev + release) to coexist without killing each other
 fn get_pid_file_path() -> PathBuf {
     let data_dir = if cfg!(target_os = "macos") {
         dirs::home_dir()
@@ -173,7 +174,17 @@ fn get_pid_file_path() -> PathBuf {
     };
 
     let _ = fs::create_dir_all(&data_dir);
-    data_dir.join("server.pid")
+
+    // Use executable path to create unique PID file per instance (dev vs release)
+    let exe_path = std::env::current_exe().unwrap_or_default();
+    let exe_hash = {
+        use std::hash::{Hash, Hasher};
+        let mut hasher = std::collections::hash_map::DefaultHasher::new();
+        exe_path.hash(&mut hasher);
+        format!("{:x}", hasher.finish())
+    };
+
+    data_dir.join(format!("server-{}.pid", &exe_hash[..8]))
 }
 
 /// Saves the server process PID to a file for orphan detection
@@ -201,10 +212,12 @@ fn remove_pid_file() {
 
 /// Kills any orphaned server processes from crashed sessions
 /// Called on startup before spawning a new server
+/// NOTE: Only kills processes from OUR previous crashed session (via PID file)
+/// Does NOT kill other yurucode instances to allow dev+release coexistence
 pub fn kill_orphaned_servers() {
-    info!("Checking for orphaned server processes...");
+    info!("Checking for orphaned server processes from previous session...");
 
-    // First, try to kill process from PID file
+    // Only kill process from our own PID file - don't kill other instances
     let pid_path = get_pid_file_path();
     if pid_path.exists() {
         if let Ok(contents) = fs::read_to_string(&pid_path) {
@@ -216,8 +229,8 @@ pub fn kill_orphaned_servers() {
         let _ = fs::remove_file(&pid_path);
     }
 
-    // Also kill any server processes by name (catches processes without PID file)
-    kill_server_processes_by_name();
+    // NOTE: Removed kill_server_processes_by_name() to allow multiple yurucode
+    // instances (dev + release) to coexist. PID file is sufficient for cleanup.
 }
 
 /// Kill a specific process by PID

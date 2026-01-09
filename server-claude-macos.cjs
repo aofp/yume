@@ -112,13 +112,13 @@ function calculateAccumulatedTokensFromMessages(messages) {
     if (usage) {
       // The cache_read represents all previously cached content
       // cache_creation is new content being added
-      // input/output are current turn
+      // Context window = input tokens only (matches Claude Code formula)
       const cacheRead = usage.cache_read_input_tokens || 0;
       const cacheCreation = usage.cache_creation_input_tokens || 0;
       const input = usage.input_tokens || 0;
-      const output = usage.output_tokens || 0;
-      const total = cacheRead + cacheCreation + input + output;
-      console.log(`📊 [WRAPPER] Calculated accumulated tokens from history: ${total} (cache_read=${cacheRead}, cache_creation=${cacheCreation}, input=${input}, output=${output})`);
+      // Note: output tokens are NOT counted in context window
+      const total = cacheRead + cacheCreation + input;
+      console.log(`📊 [WRAPPER] Calculated context from history: ${total} (cache_read=${cacheRead}, cache_creation=${cacheCreation}, input=${input})`);
       return total;
     }
   }
@@ -183,11 +183,13 @@ function processWrapperLine(line, sessionId) {
       session.cacheCreationTokens = cacheCreation;
       session.cacheReadTokens = cacheRead;
 
-      // Total context = all tokens in the context window
+      // CONTEXT WINDOW = input tokens only (what model receives)
+      // Matches Claude Code official formula: input + cache_creation + cache_read
+      // Output tokens are GENERATED, not part of input context window
       // cache_read = previous conversation (cached by Anthropic)
       // cache_creation = new content being cached
-      // input + output = current turn
-      const reportedTotal = cacheRead + cacheCreation + input + output;
+      // input = new input not in cache
+      const reportedTotal = cacheRead + cacheCreation + input;
 
       // Keep the higher value - prevents counter from resetting when cache expires
       // The actual conversation history is still there even if cache_read is 0
@@ -242,7 +244,9 @@ function processWrapperLine(line, sessionId) {
       tokens: {
         total: session.totalTokens,
         input: session.inputTokens,
-        output: session.outputTokens
+        output: session.outputTokens,
+        cache_read: session.cacheReadTokens || 0,
+        cache_creation: session.cacheCreationTokens || 0
       },
       compaction: {
         count: session.compactCount,
@@ -646,6 +650,52 @@ const STREAMING_FALSE_DEBOUNCE_MS = 600;
 const messageBatches = new Map(); // sessionId -> { messages: [], timer: null, socket: null }
 const BATCH_INTERVAL_MS = 16; // One frame at 60fps
 
+// ============================================
+// SESSION TTL CLEANUP - Remove stale sessions
+// ============================================
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Run cleanup every hour
+
+// Periodic cleanup of stale sessions older than 24 hours
+function cleanupStaleSessions() {
+  const now = Date.now();
+  let cleanedCount = 0;
+
+  for (const [sessionId, session] of sessions.entries()) {
+    const lastActivity = session.lastActivity || session.createdAt || 0;
+    const age = now - lastActivity;
+
+    if (age > SESSION_TTL_MS) {
+      console.log(`🧹 Cleaning up stale session ${sessionId} (inactive for ${Math.round(age / 1000 / 60 / 60)} hours)`);
+
+      // Clean up all associated state
+      sessions.delete(sessionId);
+      wrapperState.sessions.delete(sessionId);
+      messageBatches.delete(sessionId);
+      lastAssistantMessageIds.delete(sessionId);
+      allAssistantMessageIds.delete(sessionId);
+      activeProcesses.delete(sessionId);
+      activeProcessStartTimes.delete(sessionId);
+      streamHealthChecks.delete(sessionId);
+      streamTimeouts.delete(sessionId);
+      spawningProcesses.delete(sessionId);
+      pendingInterrupts.delete(sessionId);
+      cancelPendingStreamingFalse(sessionId);
+      cleanupBatch(sessionId);
+
+      cleanedCount++;
+    }
+  }
+
+  if (cleanedCount > 0) {
+    console.log(`🧹 Session TTL cleanup completed: removed ${cleanedCount} stale sessions`);
+  }
+}
+
+// Start periodic session cleanup
+setInterval(cleanupStaleSessions, SESSION_CLEANUP_INTERVAL_MS);
+console.log(`⏰ Session TTL cleanup scheduled (every ${SESSION_CLEANUP_INTERVAL_MS / 1000 / 60} minutes, TTL: ${SESSION_TTL_MS / 1000 / 60 / 60} hours)`);
+
 // Add message to batch queue, emit after interval or immediately for priority messages
 function queueMessage(sessionId, message, socket, immediate = false) {
   if (!messageBatches.has(sessionId)) {
@@ -988,7 +1038,10 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       let validMessages = 0;
       let errorCount = 0;
       let lineNumber = 0;
-      
+
+      // Track context usage for Windows/WSL sessions too
+      let lastContextSnapshot = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, total: 0 };
+
       while (currentPos < content.length) {
         lineNumber++;
         
@@ -1092,11 +1145,53 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
               continue;
             }
           }
-          
+
+          // Skip meta messages (system/internal messages like local-command-caveat)
+          if (data.isMeta === true) {
+            currentPos = jsonEnd;
+            if (currentPos < content.length && content[currentPos] === '$') currentPos++;
+            if (currentPos < content.length && content[currentPos] === '\n') currentPos++;
+            if (currentPos < content.length && content[currentPos] === '\r') currentPos++;
+            continue;
+          }
+
+          // Skip user messages that only contain system tags (not actual user content)
+          if (data.type === 'user' || data.role === 'user') {
+            const msgContent = data.message?.content || data.content || '';
+            const contentStr = typeof msgContent === 'string' ? msgContent :
+                             (Array.isArray(msgContent) ? msgContent.map(c => c.text || '').join('') : '');
+            // Skip messages that start with XML-like tags (system/meta messages)
+            if (/^\s*<[a-z][a-z0-9-]*>/i.test(contentStr)) {
+              currentPos = jsonEnd;
+              if (currentPos < content.length && content[currentPos] === '$') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\n') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\r') currentPos++;
+              continue;
+            }
+          }
+
+          // Get context snapshot from assistant messages (overwrite with latest)
+          // Context = cache_read + cache_creation + input (current context window size)
+          if (data.type === 'assistant' && data.message?.usage) {
+            const usage = data.message.usage;
+            const input = usage.input_tokens || 0;
+            const output = usage.output_tokens || 0;
+            const cacheRead = usage.cache_read_input_tokens || 0;
+            const cacheCreation = usage.cache_creation_input_tokens || 0;
+            // Context window = cache_read + cache_creation + input (NOT output)
+            lastContextSnapshot = {
+              input,
+              output,
+              cacheRead,
+              cacheCreation,
+              total: cacheRead + cacheCreation + input
+            };
+          }
+
           // Add valid session data
           messages.push(data);
           validMessages++;
-          
+
           if (validMessages <= 5) {
             // Log first few for debugging
             if (data.type === 'summary') {
@@ -1183,12 +1278,20 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         title = 'Untitled session';
       }
       
-        res.json({ 
+        res.json({
           sessionId,
           projectPath: actualPath,
           messages,
           sessionCount: messages.length,
-          title
+          title,
+          usage: {
+            // Return CURRENT context snapshot, not accumulated totals
+            inputTokens: lastContextSnapshot.input,
+            outputTokens: lastContextSnapshot.output,
+            cacheReadTokens: lastContextSnapshot.cacheRead,
+            cacheCreationTokens: lastContextSnapshot.cacheCreation,
+            totalContextTokens: lastContextSnapshot.total // This is the actual context window usage
+          }
         });
       } catch (readError) {
         console.error('Error reading session file from WSL:', readError.message);
@@ -1213,35 +1316,80 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         // Use the same parsing logic as Windows
         const messages = [];
         const lines = content.split(/\$|\n/).filter(line => line.trim());
-        
+
+        // Track context usage - we need the LAST context snapshot, not accumulated totals
+        // The context window shows CURRENT context size from the most recent message
+        let lastContextSnapshot = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, total: 0 };
+
         for (const line of lines) {
           try {
             const data = JSON.parse(line);
-            
-            // Filter out empty user messages (these are often just placeholders after tool use)
-            if (data.role === 'user') {
+
+            // Filter out empty user messages (check data.type, not data.role)
+            // JSONL format has type: 'user' at top level, content at data.message.content
+            if (data.type === 'user') {
+              const msgContent = data.message?.content;
               // Check if content is missing, undefined, or empty
-              if (!data.content) {
+              if (!msgContent) {
                 continue; // Skip user messages without content
               }
-              
-              const contentStr = typeof data.content === 'string' ? data.content : 
-                               Array.isArray(data.content) && data.content.length > 0 ? 
-                               data.content.map(c => c.text || '').join('') : '';
+
+              const contentStr = typeof msgContent === 'string' ? msgContent :
+                               Array.isArray(msgContent) && msgContent.length > 0 ?
+                               msgContent.map(c => c.text || '').join('') : '';
               if (!contentStr.trim()) {
                 continue; // Skip empty user messages
               }
             }
-            
+
+            // Skip queue-operation and other non-message types
+            if (data.type === 'queue-operation') {
+              continue;
+            }
+
+            // Skip meta messages (system/internal messages like local-command-caveat)
+            if (data.isMeta === true) {
+              continue;
+            }
+
+            // Skip user messages that only contain system tags (not actual user content)
+            if (data.type === 'user') {
+              const msgContent = data.message?.content || '';
+              const contentStr = typeof msgContent === 'string' ? msgContent :
+                               (Array.isArray(msgContent) ? msgContent.map(c => c.text || '').join('') : '');
+              // Skip messages that start with XML-like tags (system/meta messages)
+              if (/^\s*<[a-z][a-z0-9-]*>/i.test(contentStr)) {
+                continue;
+              }
+            }
+
+            // Get context snapshot from assistant messages (overwrite with latest)
+            // Context = cache_read + cache_creation + input (current context window size)
+            if (data.type === 'assistant' && data.message?.usage) {
+              const usage = data.message.usage;
+              const input = usage.input_tokens || 0;
+              const output = usage.output_tokens || 0;
+              const cacheRead = usage.cache_read_input_tokens || 0;
+              const cacheCreation = usage.cache_creation_input_tokens || 0;
+              // Context window = cache_read + cache_creation + input (NOT output)
+              lastContextSnapshot = {
+                input,
+                output,
+                cacheRead,
+                cacheCreation,
+                total: cacheRead + cacheCreation + input
+              };
+            }
+
             messages.push(data);
           } catch (err) {
             // Skip invalid lines
           }
         }
-        
+
         // Extract title from messages
         let title = null;
-        
+
         // Check for title in last message
         if (messages.length > 0) {
           const lastMsg = messages[messages.length - 1];
@@ -1249,11 +1397,11 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
             title = lastMsg.title;
           } else if (lastMsg.type === 'metadata' && lastMsg.title) {
             title = lastMsg.title;
-          } else if (lastMsg.title && !lastMsg.role) {
+          } else if (lastMsg.title && !lastMsg.type) {
             title = lastMsg.title;
           }
         }
-        
+
         // If no title found, check for summary type messages
         if (!title) {
           const summaryMsg = messages.find(m => m.type === 'summary' && m.summary);
@@ -1261,36 +1409,45 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
             title = summaryMsg.summary;
           }
         }
-        
+
         // If still no title, use first user message
         if (!title) {
-          const firstUserMsg = messages.find(m => m.role === 'user' && m.content);
+          const firstUserMsg = messages.find(m => m.type === 'user' && m.message?.content);
           if (firstUserMsg) {
-            const content = typeof firstUserMsg.content === 'string' ? firstUserMsg.content :
-                           Array.isArray(firstUserMsg.content) ? 
-                           firstUserMsg.content.find(c => c.type === 'text')?.text || '' : '';
-            if (content) {
-              title = content.substring(0, 100);
+            const msgContent = firstUserMsg.message.content;
+            const contentText = typeof msgContent === 'string' ? msgContent :
+                           Array.isArray(msgContent) ?
+                           msgContent.find(c => c.type === 'text')?.text || '' : '';
+            if (contentText) {
+              title = contentText.substring(0, 100);
             }
           }
         }
-        
+
         // Default title if none found
         if (!title) {
           title = 'Untitled session';
         }
-        
+
         const actualPath = projectPath
           .replace(/^([A-Z])--/, '$1:/')
           .replace(/^-/, '/')
           .replace(/-/g, '/');
-        
-        res.json({ 
+
+        res.json({
           sessionId,
           projectPath: actualPath,
           messages,
           sessionCount: messages.length,
-          title
+          title,
+          usage: {
+            // Return CURRENT context snapshot, not accumulated totals
+            inputTokens: lastContextSnapshot.input,
+            outputTokens: lastContextSnapshot.output,
+            cacheReadTokens: lastContextSnapshot.cacheRead,
+            cacheCreationTokens: lastContextSnapshot.cacheCreation,
+            totalContextTokens: lastContextSnapshot.total // This is the actual context window usage
+          }
         });
       } catch (readError) {
         console.error('Error reading session file:', readError);
@@ -1434,59 +1591,70 @@ app.get('/claude-analytics', async (req, res) => {
                   let messageCount = 0;
                   let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
+                  // Track last usage from result message (cumulative session totals)
+                  let lastResultUsage = null;
+                  let lastResultCostUSD = null;
+
                   for (const line of allLines) {
                     try {
                       const data = JSON.parse(line);
 
-                      // Claude CLI uses type: "assistant" for assistant messages with usage data
-                      if (data.type === 'assistant' && data.message && data.message.usage) {
+                      // Claude CLI uses type: "assistant" for assistant messages
+                      if (data.type === 'assistant' && data.message) {
                         messageCount++;
-                        const usage = data.message.usage;
-
-                        // Count ALL tokens including cached ones - they all count towards 200k limit
-                        const inputTokens = usage.input_tokens || 0;
-                        const outputTokens = usage.output_tokens || 0;
-                        const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
-                        const cacheReadTokens = usage.cache_read_input_tokens || 0;
-                        sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
-
-                        // Track token breakdown
-                        sessionTokenBreakdown.input += inputTokens;
-                        sessionTokenBreakdown.output += outputTokens;
-                        sessionTokenBreakdown.cacheCreation += cacheCreationTokens;
-                        sessionTokenBreakdown.cacheRead += cacheReadTokens;
-
                         // Detect model from message
                         if (data.message.model) {
                           sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                         }
-
-                        // Calculate cost using ccusage methodology:
-                        // Use costUSD if available, otherwise calculate from all token types
-                        let messageCost = 0;
-                        if (data.costUSD != null) {
-                          messageCost = data.costUSD;
-                        } else {
-                          const rates = pricing[sessionModel];
-                          messageCost = (inputTokens * rates.input) +
-                                       (outputTokens * rates.output) +
-                                       (cacheCreationTokens * rates.cacheCreation) +
-                                       (cacheReadTokens * rates.cacheRead);
-                        }
-                        sessionCost += messageCost;
                       }
-                      
+
+                      // Result messages contain CUMULATIVE session totals - use the last one
+                      if (data.type === 'result' && data.usage) {
+                        lastResultUsage = data.usage;
+                        if (data.costUSD != null) {
+                          lastResultCostUSD = data.costUSD;
+                        }
+                      }
+
                       // Count user messages too
                       if (data.type === 'user') {
                         messageCount++;
                       }
-                      
+
                       // Get timestamp from any message
                       if (data.timestamp) {
                         sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
                       }
                     } catch (e) {
                       // Skip invalid JSON
+                    }
+                  }
+
+                  // Calculate from last result's cumulative totals (not summing per-turn)
+                  if (lastResultUsage) {
+                    const inputTokens = lastResultUsage.input_tokens || 0;
+                    const outputTokens = lastResultUsage.output_tokens || 0;
+                    const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
+                    const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
+
+                    // Context window = input tokens only (matches Claude Code formula)
+                    sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                    sessionTokenBreakdown = {
+                      input: inputTokens,
+                      output: outputTokens,
+                      cacheCreation: cacheCreationTokens,
+                      cacheRead: cacheReadTokens
+                    };
+
+                    // Use costUSD if available, otherwise calculate from tokens
+                    if (lastResultCostUSD != null) {
+                      sessionCost = lastResultCostUSD;
+                    } else {
+                      const rates = pricing[sessionModel];
+                      sessionCost = (inputTokens * rates.input) +
+                                   (outputTokens * rates.output) +
+                                   (cacheCreationTokens * rates.cacheCreation) +
+                                   (cacheReadTokens * rates.cacheRead);
                     }
                   }
                   
@@ -1610,45 +1778,29 @@ app.get('/claude-analytics', async (req, res) => {
                 let messageCount = 0;
                 let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
+                // Track last usage from result message (cumulative session totals)
+                let lastResultUsage = null;
+                let lastResultCostUSD = null;
+
                 for (const line of allLines) {
                   try {
                     const data = JSON.parse(line);
 
-                    // Claude CLI uses type: "assistant" for assistant messages with usage data
-                    if (data.type === 'assistant' && data.message && data.message.usage) {
+                    // Claude CLI uses type: "assistant" for assistant messages
+                    if (data.type === 'assistant' && data.message) {
                       messageCount++;
-                      const usage = data.message.usage;
-
-                      // Count ALL tokens including cached ones - they all count towards 200k limit
-                      const inputTokens = usage.input_tokens || 0;
-                      const outputTokens = usage.output_tokens || 0;
-                      const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
-                      const cacheReadTokens = usage.cache_read_input_tokens || 0;
-                      sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
-
-                      // Track token breakdown
-                      sessionTokenBreakdown.input += inputTokens;
-                      sessionTokenBreakdown.output += outputTokens;
-                      sessionTokenBreakdown.cacheCreation += cacheCreationTokens;
-                      sessionTokenBreakdown.cacheRead += cacheReadTokens;
-
                       // Detect model from message
                       if (data.message.model) {
                         sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                       }
+                    }
 
-                      // Calculate cost using ccusage methodology
-                      let messageCost = 0;
+                    // Result messages contain CUMULATIVE session totals - use the last one
+                    if (data.type === 'result' && data.usage) {
+                      lastResultUsage = data.usage;
                       if (data.costUSD != null) {
-                        messageCost = data.costUSD;
-                      } else {
-                        const rates = pricing[sessionModel];
-                        messageCost = (inputTokens * rates.input) +
-                                     (outputTokens * rates.output) +
-                                     (cacheCreationTokens * rates.cacheCreation) +
-                                     (cacheReadTokens * rates.cacheRead);
+                        lastResultCostUSD = data.costUSD;
                       }
-                      sessionCost += messageCost;
                     }
 
                     // Count user messages too
@@ -1662,6 +1814,34 @@ app.get('/claude-analytics', async (req, res) => {
                     }
                   } catch (e) {
                     // Skip invalid JSON
+                  }
+                }
+
+                // Calculate from last result's cumulative totals (not summing per-turn)
+                if (lastResultUsage) {
+                  const inputTokens = lastResultUsage.input_tokens || 0;
+                  const outputTokens = lastResultUsage.output_tokens || 0;
+                  const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
+                  const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
+
+                  // Context window = input tokens only (matches Claude Code formula)
+                  sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                  sessionTokenBreakdown = {
+                    input: inputTokens,
+                    output: outputTokens,
+                    cacheCreation: cacheCreationTokens,
+                    cacheRead: cacheReadTokens
+                  };
+
+                  // Use costUSD if available, otherwise calculate from tokens
+                  if (lastResultCostUSD != null) {
+                    sessionCost = lastResultCostUSD;
+                  } else {
+                    const rates = pricing[sessionModel];
+                    sessionCost = (inputTokens * rates.input) +
+                                 (outputTokens * rates.output) +
+                                 (cacheCreationTokens * rates.cacheCreation) +
+                                 (cacheReadTokens * rates.cacheRead);
                   }
                 }
 
@@ -1762,45 +1942,29 @@ app.get('/claude-analytics', async (req, res) => {
               let messageCount = 0;
               let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
+              // Track last usage from result message (cumulative session totals)
+              let lastResultUsage = null;
+              let lastResultCostUSD = null;
+
               for (const line of lines) {
                 try {
                   const data = JSON.parse(line);
 
-                  // Claude CLI uses type: "assistant" for assistant messages with usage data
-                  if (data.type === 'assistant' && data.message && data.message.usage) {
+                  // Claude CLI uses type: "assistant" for assistant messages
+                  if (data.type === 'assistant' && data.message) {
                     messageCount++;
-                    const usage = data.message.usage;
-
-                    // Count ALL tokens including cached ones - they all count towards 200k limit
-                    const inputTokens = usage.input_tokens || 0;
-                    const outputTokens = usage.output_tokens || 0;
-                    const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
-                    const cacheReadTokens = usage.cache_read_input_tokens || 0;
-                    sessionTokens += inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
-
-                    // Track token breakdown
-                    sessionTokenBreakdown.input += inputTokens;
-                    sessionTokenBreakdown.output += outputTokens;
-                    sessionTokenBreakdown.cacheCreation += cacheCreationTokens;
-                    sessionTokenBreakdown.cacheRead += cacheReadTokens;
-
                     // Detect model from message
                     if (data.message.model) {
                       sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                     }
+                  }
 
-                    // Calculate cost using ccusage methodology
-                    let messageCost = 0;
+                  // Result messages contain CUMULATIVE session totals - use the last one
+                  if (data.type === 'result' && data.usage) {
+                    lastResultUsage = data.usage;
                     if (data.costUSD != null) {
-                      messageCost = data.costUSD;
-                    } else {
-                      const rates = pricing[sessionModel];
-                      messageCost = (inputTokens * rates.input) +
-                                   (outputTokens * rates.output) +
-                                   (cacheCreationTokens * rates.cacheCreation) +
-                                   (cacheReadTokens * rates.cacheRead);
+                      lastResultCostUSD = data.costUSD;
                     }
-                    sessionCost += messageCost;
                   }
 
                   // Count user messages too
@@ -1814,6 +1978,34 @@ app.get('/claude-analytics', async (req, res) => {
                   }
                 } catch (e) {
                   // Skip invalid lines
+                }
+              }
+
+              // Calculate from last result's cumulative totals (not summing per-turn)
+              if (lastResultUsage) {
+                const inputTokens = lastResultUsage.input_tokens || 0;
+                const outputTokens = lastResultUsage.output_tokens || 0;
+                const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
+                const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
+
+                // Context window = input tokens only (matches Claude Code formula)
+                sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                sessionTokenBreakdown = {
+                  input: inputTokens,
+                  output: outputTokens,
+                  cacheCreation: cacheCreationTokens,
+                  cacheRead: cacheReadTokens
+                };
+
+                // Use costUSD if available, otherwise calculate from tokens
+                if (lastResultCostUSD != null) {
+                  sessionCost = lastResultCostUSD;
+                } else {
+                  const rates = pricing[sessionModel];
+                  sessionCost = (inputTokens * rates.input) +
+                               (outputTokens * rates.output) +
+                               (cacheCreationTokens * rates.cacheCreation) +
+                               (cacheReadTokens * rates.cacheRead);
                 }
               }
 
@@ -2082,6 +2274,201 @@ app.get('/claude-projects-quick', async (req, res) => {
   }
 });
 
+// Get recent conversations across all projects for resume modal
+app.get('/claude-recent-conversations', async (req, res) => {
+  try {
+    // Check for project filter (current directory)
+    const filterProject = req.query.project;
+    const limit = filterProject ? 9 : 9;
+
+    console.log(filterProject
+      ? `📂 Loading recent conversations for project: ${filterProject}`
+      : '📂 Loading recent conversations across all projects');
+
+    const projectsDir = join(homedir(), '.claude', 'projects');
+
+    if (!existsSync(projectsDir)) {
+      console.log('No projects directory found');
+      return res.json({ conversations: [] });
+    }
+
+    const conversations = [];
+    const { readdir, stat, readFile } = fs.promises;
+
+    // Get all project directories (or just the filtered one)
+    let projectDirs = await readdir(projectsDir);
+
+    // If filtering by project, only process that project
+    if (filterProject) {
+      // Convert working directory path to Claude's escaped format
+      const escapedPath = filterProject.replace(/\//g, '-');
+      projectDirs = projectDirs.filter(dir => dir === escapedPath);
+      if (projectDirs.length === 0) {
+        console.log('Project not found:', filterProject, 'escaped:', escapedPath);
+        return res.json({ conversations: [] });
+      }
+    }
+
+    for (const projectDir of projectDirs) {
+      // Skip temp/system directories
+      const lowerName = projectDir.toLowerCase();
+      if (lowerName.includes('temp') ||
+          lowerName.includes('tmp') ||
+          lowerName.includes('yurucode-server') ||
+          lowerName.includes('yurucode-title-gen')) {
+        continue;
+      }
+
+      const projectPath = join(projectsDir, projectDir);
+
+      try {
+        const projectStat = await stat(projectPath);
+        if (!projectStat.isDirectory()) continue;
+
+        // Get session files in this project (exclude agent subagent files)
+        const files = await readdir(projectPath);
+        const sessionFiles = files.filter(f => f.endsWith('.jsonl') && !f.startsWith('agent-'));
+
+        // Get file stats and sort by modification time (skip empty files)
+        const fileStats = await Promise.all(
+          sessionFiles.map(async (f) => {
+            try {
+              const filePath = join(projectPath, f);
+              const fileStat = await stat(filePath);
+              // Skip empty files
+              if (fileStat.size === 0) return null;
+              return {
+                filename: f,
+                path: filePath,
+                mtime: fileStat.mtime.getTime()
+              };
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        // Sort by most recent - take more files initially since many may be empty
+        // We'll filter down to limit later after checking content
+        const maxPerProject = filterProject ? 50 : 10;
+        const sortedFiles = fileStats
+          .filter(Boolean)
+          .sort((a, b) => b.mtime - a.mtime)
+          .slice(0, maxPerProject);
+
+        // Parse each session file
+        for (const fileInfo of sortedFiles) {
+          try {
+            const content = await readFile(fileInfo.path, 'utf8');
+            const lines = content.trim().split('\n').filter(l => l.trim());
+
+            if (lines.length === 0) continue;
+
+            const sessionId = fileInfo.filename.replace('.jsonl', '');
+            let title = 'Untitled conversation';
+            let summary = '';
+            let messageCount = 0;
+
+            // Count messages and look for title
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+
+                // Skip meta messages (system tags like local-command-caveat)
+                if (data.isMeta === true) {
+                  continue;
+                }
+
+                // Check for title in various formats
+                if (data.type === 'title' && data.title) {
+                  title = data.title;
+                } else if (data.type === 'summary' && data.summary) {
+                  title = data.summary;
+                  summary = data.summary;
+                } else if (data.title && !data.role) {
+                  title = data.title;
+                }
+
+                // Count actual messages (skip meta messages for counting too)
+                if (data.role === 'user' || data.role === 'assistant' ||
+                    data.type === 'user' || data.type === 'assistant') {
+
+                  // Get content string for filtering
+                  const msgContent = data.content || data.message?.content;
+                  let contentStr = '';
+                  if (typeof msgContent === 'string') {
+                    contentStr = msgContent;
+                  } else if (Array.isArray(msgContent)) {
+                    const textBlock = msgContent.find(c => c.type === 'text');
+                    if (textBlock?.text) {
+                      contentStr = textBlock.text;
+                    }
+                  }
+
+                  // Skip messages that start with XML-like tags (system/meta messages)
+                  if (/^\s*<[a-z][a-z0-9-]*>/i.test(contentStr)) {
+                    continue;
+                  }
+
+                  messageCount++;
+
+                  // Get first user message as summary if no title
+                  if (!summary && (data.role === 'user' || data.type === 'user')) {
+                    if (contentStr) {
+                      summary = contentStr.substring(0, 100);
+                    }
+                  }
+                }
+              } catch {
+                // Skip unparseable lines
+              }
+            }
+
+            // Use summary as title if no title found
+            if (title === 'Untitled conversation' && summary) {
+              title = summary.substring(0, 60) + (summary.length > 60 ? '...' : '');
+            }
+
+            // Skip system-generated conversations (Warmup, etc.)
+            if (title === 'Warmup' || title.toLowerCase().includes('warmup')) {
+              continue;
+            }
+
+            // Decode project path to get project name
+            const projectName = projectDir.replace(/^-/, '/').replace(/-/g, '/').split('/').pop() || projectDir;
+
+            conversations.push({
+              id: sessionId,
+              title: title,
+              summary: summary,
+              projectPath: projectDir,
+              projectName: projectName,
+              timestamp: fileInfo.mtime,
+              messageCount: messageCount,
+              filePath: fileInfo.path
+            });
+          } catch (err) {
+            console.log(`Could not parse session ${fileInfo.filename}:`, err.message);
+          }
+        }
+      } catch (err) {
+        // Skip projects we can't read
+        continue;
+      }
+    }
+
+    // Sort all conversations by timestamp (most recent first) and limit
+    conversations.sort((a, b) => b.timestamp - a.timestamp);
+    const recentConversations = conversations.slice(0, limit);
+
+    console.log(`Loaded ${recentConversations.length} recent conversations${filterProject ? ` for ${filterProject}` : ''}`);
+    res.json({ conversations: recentConversations });
+  } catch (error) {
+    console.error('Error loading recent conversations:', error);
+    res.status(500).json({ error: 'Failed to load conversations', details: error.message });
+  }
+});
+
 // Get sessions for a specific project - stream them one by one
 app.get('/claude-project-sessions/:projectName', async (req, res) => {
   try {
@@ -2319,60 +2706,77 @@ app.get('/claude-project-sessions/:projectName', async (req, res) => {
             const lines = content.trim().split('\n');
 
             const sessionId = filename.replace('.jsonl', '');
-            let summary = 'Untitled session';
-            let title = null;
+            let title = 'Untitled conversation';
+            let summary = '';
+            let messageCount = 0;
 
-            // Check last line for title/metadata
-            if (lines.length > 0) {
+            // Scan all lines for title (same logic as /claude-recent-conversations)
+            for (const line of lines) {
               try {
-                const lastData = JSON.parse(lines[lines.length - 1]);
-                if (lastData.type === 'title' && lastData.title) {
-                  title = lastData.title;
-                } else if (lastData.type === 'metadata' && lastData.title) {
-                  title = lastData.title;
-                } else if (lastData.title && !lastData.role) {
-                  title = lastData.title;
+                const data = JSON.parse(line);
+
+                // Skip meta messages (system tags like local-command-caveat)
+                if (data.isMeta === true) {
+                  continue;
                 }
-              } catch (e) {}
-            }
 
-            // Check first line if no title yet
-            if (!title && lines.length > 0) {
-              try {
-                const data = JSON.parse(lines[0]);
-                if (data.summary) {
-                  summary = data.summary;
+                // Check for title in various formats
+                if (data.type === 'title' && data.title) {
+                  title = data.title;
+                } else if (data.type === 'summary' && data.summary) {
                   title = data.summary;
-                }
-                if (data.title) {
+                  summary = data.summary;
+                } else if (data.title && !data.role) {
                   title = data.title;
                 }
-                if (!title && data.role === 'user' && data.content) {
-                  if (typeof data.content === 'string') {
-                    summary = data.content.substring(0, 100);
-                    title = summary;
-                  } else if (Array.isArray(data.content)) {
-                    const textBlock = data.content.find(c => c.type === 'text');
-                    if (textBlock && textBlock.text) {
-                      summary = textBlock.text.substring(0, 100);
-                      title = summary;
+
+                // Count actual messages (skip meta messages for counting too)
+                if (data.role === 'user' || data.role === 'assistant' ||
+                    data.type === 'user' || data.type === 'assistant') {
+
+                  // Get content string for filtering
+                  const msgContent = data.content || data.message?.content;
+                  let contentStr = '';
+                  if (typeof msgContent === 'string') {
+                    contentStr = msgContent;
+                  } else if (Array.isArray(msgContent)) {
+                    const textBlock = msgContent.find(c => c.type === 'text');
+                    if (textBlock?.text) {
+                      contentStr = textBlock.text;
+                    }
+                  }
+
+                  // Skip messages that start with XML-like tags (system/meta messages)
+                  if (/^\s*<[a-z][a-z0-9-]*>/i.test(contentStr)) {
+                    continue;
+                  }
+
+                  messageCount++;
+
+                  // Get first user message as summary if no title
+                  if (!summary && (data.role === 'user' || data.type === 'user')) {
+                    if (contentStr) {
+                      summary = contentStr.substring(0, 100);
                     }
                   }
                 }
-                if (data.type === 'summary' && data.summary) {
-                  title = data.summary;
-                  summary = data.summary;
-                }
-              } catch (e) {}
+              } catch {
+                // Skip unparseable lines
+              }
+            }
+
+            // Use summary as title if no title found
+            if (title === 'Untitled conversation' && summary) {
+              title = summary.substring(0, 60) + (summary.length > 60 ? '...' : '');
             }
 
             const session = {
               id: sessionId,
-              summary: summary,
+              summary: summary || title,
               title: title,
               timestamp: timestamp,
               path: filename,
-              messageCount: Math.min(lines.length, 50)
+              messageCount: messageCount
             };
 
             res.write(`data: ${JSON.stringify({ session, index: i, total: validFiles.length })}\n\n`);
@@ -3031,6 +3435,7 @@ io.on('connection', (socket) => {
         workingDirectory: workingDirectory,
         messages: existingMessages,  // Use loaded messages if available
         createdAt: Date.now(),
+        lastActivity: Date.now(),  // Track last activity for TTL cleanup
         claudeSessionId: existingClaudeSessionId,  // Preserve Claude session ID
         hasGeneratedTitle: existingMessages.length > 0,  // If we have messages, we likely have a title
         wasInterrupted: false,  // Track if last conversation was interrupted vs completed
@@ -3038,15 +3443,27 @@ io.on('connection', (socket) => {
       };
       
       sessions.set(sessionId, sessionData);
-      
+
       console.log(`✅ Session ready: ${sessionId}`);
       console.log(`📁 Working directory: ${workingDirectory}`);
-      
+
+      // Get accumulated token context from wrapper (calculated above from existing messages)
+      const wrapperSession = getWrapperSession(sessionId);
+      const contextTokens = wrapperSession?.totalTokens || 0;
+
       if (callback) {
         callback({
           success: true,
           sessionId: sessionId,
-          workingDirectory: workingDirectory
+          workingDirectory: workingDirectory,
+          // Return context usage for resumed sessions
+          usage: existingMessages.length > 0 ? {
+            totalContextTokens: contextTokens,
+            inputTokens: 0,
+            outputTokens: 0,
+            cacheReadTokens: contextTokens,
+            cacheCreationTokens: 0
+          } : null
         });
       }
     } catch (error) {
@@ -3071,7 +3488,10 @@ io.on('connection', (socket) => {
       if (callback) callback({ success: false, error: 'Session not found' });
       return;
     }
-    
+
+    // Update last activity timestamp for TTL tracking
+    session.lastActivity = Date.now();
+
     // Check if this is a bash command (starts with $)
     if (message && message.startsWith('$')) {
       console.log(`🐚 Executing bash command: ${message}`);
@@ -3458,11 +3878,10 @@ io.on('connection', (socket) => {
       } else {
         claudeProcess = spawn(CLAUDE_PATH, args, spawnOptions);
       }
-      
-      // Mark spawning as complete after a short delay
-      setTimeout(() => {
-        isSpawningProcess = false;
-      }, 500);
+
+      // Clear spawning flag immediately after spawn() returns (process created)
+      // This is more accurate than using setTimeout, which could cause race conditions
+      isSpawningProcess = false;
 
       // Store process reference and start time
       activeProcesses.set(sessionId, claudeProcess);
@@ -4795,11 +5214,24 @@ io.on('connection', (socket) => {
 
       } catch (error) {
         console.error('❌ Error in spawnRequest:', error);
-        socket.emit(`message:${sessionId}`, { 
+
+        // Clean up spawning state on error
+        isSpawningProcess = false;
+        spawningProcesses.delete(sessionId);
+
+        // Handle any pending interrupt callback that was waiting for spawn to complete
+        const pendingInterruptCallback = pendingInterrupts.get(sessionId);
+        if (pendingInterruptCallback) {
+          console.log(`📝 Calling pending interrupt callback for session ${sessionId} due to spawn error`);
+          pendingInterrupts.delete(sessionId);
+          pendingInterruptCallback({ success: false, error: error.message, spawnFailed: true });
+        }
+
+        socket.emit(`message:${sessionId}`, {
           type: 'error',
-          error: error.message, 
+          error: error.message,
           claudeSessionId: session.claudeSessionId,
-          streaming: false 
+          streaming: false
         });
         if (callback) callback({ success: false, error: error.message });
       } finally {
@@ -4975,8 +5407,18 @@ io.on('connection', (socket) => {
     session.hasGeneratedTitle = false;  // Reset title generation flag so next message gets a new title
     session.wasInterrupted = false;  // Reset interrupted flag
     session.wasCompacted = false;  // Reset compacted flag
+    session.lastActivity = Date.now();  // Update last activity on clear
+
+    // Clean up associated state Maps (but session stays alive)
     lastAssistantMessageIds.delete(sessionId);  // Clear any tracked assistant message IDs
-    
+    allAssistantMessageIds.delete(sessionId);  // Clear all assistant message IDs
+    wrapperState.sessions.delete(sessionId);  // Clear wrapper state (will be recreated on next message)
+    messageBatches.delete(sessionId);  // Clear message batches
+    pendingInterrupts.delete(sessionId);  // Clear pending interrupts
+    spawningProcesses.delete(sessionId);  // Clear spawning state
+    cancelPendingStreamingFalse(sessionId);  // Clear pending streaming timers
+    cleanupBatch(sessionId);  // Ensure batch cleanup
+
     console.log(`✅ Session ${sessionId} cleared - will start fresh Claude session on next message`);
 
     // Send clear confirmation
@@ -4992,10 +5434,23 @@ io.on('connection', (socket) => {
   
   socket.on('deleteSession', async (data, callback) => {
     const { sessionId } = data;
+    console.log(`🗑️ Deleting session ${sessionId} and cleaning up all associated state`);
+
+    // Clean up all Maps associated with this session
     sessions.delete(sessionId);
+    wrapperState.sessions.delete(sessionId);  // Clean up wrapper state
+    messageBatches.delete(sessionId);  // Clean up message batches
     lastAssistantMessageIds.delete(sessionId);  // Clean up tracking
+    allAssistantMessageIds.delete(sessionId);  // Clean up all assistant message IDs
+    activeProcesses.delete(sessionId);  // Clean up any orphaned process references
+    activeProcessStartTimes.delete(sessionId);  // Clean up process start times
+    streamHealthChecks.delete(sessionId);  // Clean up stream health checks
+    streamTimeouts.delete(sessionId);  // Clean up stream timeouts
     cancelPendingStreamingFalse(sessionId);  // Clean up pending streaming timers
     spawningProcesses.delete(sessionId);  // Clean up spawning state
+    pendingInterrupts.delete(sessionId);  // Clean up pending interrupts
+    cleanupBatch(sessionId);  // Ensure batch cleanup
+
     callback({ success: true });
   });
 
@@ -5030,8 +5485,13 @@ io.on('connection', (socket) => {
           activeProcessStartTimes.delete(sessionId);
         }
         lastAssistantMessageIds.delete(sessionId);
+        allAssistantMessageIds.delete(sessionId);  // Clean up all assistant message IDs
+        wrapperState.sessions.delete(sessionId);  // Clean up wrapper state
+        messageBatches.delete(sessionId);  // Clean up message batches
+        pendingInterrupts.delete(sessionId);  // Clean up pending interrupts
         cancelPendingStreamingFalse(sessionId);  // Clean up pending streaming timers
         spawningProcesses.delete(sessionId);  // Clean up spawning state
+        cleanupBatch(sessionId);  // Ensure batch cleanup
       }
     }
   });
@@ -5148,40 +5608,16 @@ httpServer.listen(PORT, () => {
   }
   
   console.log(`✅ Server configured for ${platform() === 'win32' ? 'Windows' : platform()}`);
-  
-  // Warmup bash command to prevent focus loss on first run
-  console.log('🔥 Warming up bash execution...');
-  const warmupCmd = spawn('echo', ['warmup'], {
-    shell: false,
-    stdio: 'pipe'
-  });
-  warmupCmd.on('close', () => {
-    console.log('✅ Bash warmup complete');
-  });
-  warmupCmd.on('error', (err) => {
-    console.warn('⚠️ Bash warmup failed:', err.message);
-  });
 });
 
 // Handle port already in use error
 httpServer.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use`);
-    console.log('Attempting to kill existing process and retry...');
-    
-    // Try to kill any existing Node.js servers on this port
-    const { exec } = require('child_process');
-    exec(`lsof -ti :${PORT} | xargs kill -9`, (err) => {
-      if (!err) {
-        console.log('Killed existing process, retrying in 1 second...');
-        setTimeout(() => {
-          httpServer.listen(PORT);
-        }, 1000);
-      } else {
-        console.error('Failed to kill existing process. Please restart the app.');
-        process.exit(1);
-      }
-    });
+    console.error(`❌ Port ${PORT} is already in use (likely another yurucode instance)`);
+    console.error('Exiting - Tauri will retry with a different port');
+    // Exit with code 48 (EADDRINUSE) to signal port conflict to Tauri
+    // Do NOT kill other processes - allow multiple yurucode instances to coexist
+    process.exit(48);
   } else {
     console.error('Server error:', error);
     process.exit(1);

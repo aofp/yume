@@ -3097,15 +3097,11 @@ const MessageRendererBase: React.FC<{
           );
         }
 
-        // Don't render result message at all if there's no content to show and it's not a compact result
-        // This prevents metadata from showing up separately when assistant message already exists
-        if (!showResultText && !isCompactResult) {
-          return null;
-        }
-
+        // Always render result metadata (elapsed time, tokens, cost, model)
+        // Only show text content if there's unique text not duplicated in assistant message
         return (
           <div className="message result-success">
-            {showResultText && (
+            {showResultText && !isCompactResult && (
               <div className="assistant-bubble">
                 <div className="message-content">
                   <div className="markdown-content"><ReactMarkdown

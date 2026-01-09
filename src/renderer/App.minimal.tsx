@@ -539,8 +539,17 @@ export const App: React.FC = () => {
         }
       }
       
+      // Ctrl+Shift+R for resume conversation (when no chats in current session)
+      // Must be checked BEFORE Ctrl+R to ensure shift variant is caught first
+      if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
+        e.preventDefault();
+        // Dispatch custom event for ClaudeChat to handle
+        window.dispatchEvent(new CustomEvent('yurucode-trigger-resume'));
+        return;
+      }
+
       // Ctrl+R for recent projects
-      if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !e.shiftKey) {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r' && !e.shiftKey) {
         e.preventDefault();
         const stored = localStorage.getItem('yurucode-recent-projects');
         if (stored) {

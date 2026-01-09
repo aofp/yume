@@ -32,6 +32,8 @@ import {
   IconChevronRight,
   IconCancel,
   IconArrowsMinimize,
+  IconViewportShort,
+  IconFileShredder,
 } from '@tabler/icons-react';
 import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
@@ -389,6 +391,7 @@ export const ClaudeChat: React.FC = () => {
   const [showCompactConfirm, setShowCompactConfirm] = useState(false);
   const [confirmDialogSelection, setConfirmDialogSelection] = useState(1); // 0 = cancel, 1 = confirm (default)
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const [hasResumableConversations, setHasResumableConversations] = useState<{ [sessionId: string]: boolean }>({});
   // Per-session panel states (derived values set after store destructuring)
   const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; git: boolean } }>({});
   // File browser state
@@ -517,23 +520,10 @@ export const ClaudeChat: React.FC = () => {
       });
     }
 
-    // Auto-compact with queued message
-    if (currentSession?.compactionState?.pendingAutoCompactMessage) {
-      const preview = currentSession.compactionState.pendingAutoCompactMessage.slice(0, 30);
-      items.push({
-        id: 'compact',
-        type: 'compact',
-        label: 'compacting:',
-        preview: preview + (currentSession.compactionState.pendingAutoCompactMessage.length > 30 ? '...' : ''),
-        priority: 8
-      });
-    }
-
     return items;
   }, [
     currentSession?.runningBash,
     currentSession?.userBashRunning,
-    currentSession?.compactionState?.pendingAutoCompactMessage,
     pendingFollowupMessage
   ]);
 
@@ -836,6 +826,96 @@ export const ClaudeChat: React.FC = () => {
       previousSessionIdRef.current = currentSessionId;
     }
   }, [currentSessionId, scrollPositions, currentSession?.messages?.length]);
+
+  // Check for resumable conversations when session has no messages
+  useEffect(() => {
+    if (!currentSessionId || !currentSession) return;
+    // Only check if session has no messages and we haven't checked yet
+    if (currentSession.messages.length > 0) return;
+    if (hasResumableConversations[currentSessionId] !== undefined) return;
+
+    const checkResumable = async () => {
+      try {
+        const port = claudeCodeClient.getServerPort() || 3001;
+        const workDir = currentSession.workingDirectory;
+        if (!workDir) return;
+
+        const projectParam = `?project=${encodeURIComponent(workDir)}`;
+        const response = await fetch(`http://localhost:${port}/claude-recent-conversations${projectParam}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          const hasConversations = (data.conversations?.length || 0) > 0;
+          setHasResumableConversations(prev => ({
+            ...prev,
+            [currentSessionId]: hasConversations
+          }));
+        }
+      } catch (err) {
+        // silently fail - just don't show resume button
+      }
+    };
+
+    checkResumable();
+  }, [currentSessionId, currentSession?.messages?.length, currentSession?.workingDirectory]);
+
+  // Listen for global resume trigger (from keyboard shortcut)
+  useEffect(() => {
+    const handleResumeEvent = () => {
+      if (!currentSession || !currentSessionId) return;
+      // Only trigger if session has no messages and has resumable conversations
+      if (currentSession.messages.length === 0 && hasResumableConversations[currentSessionId]) {
+        setShowResumeModal(true);
+      }
+    };
+
+    const handleCheckResumable = async () => {
+      if (!currentSessionId || !currentSession) return;
+
+      try {
+        const port = claudeCodeClient.getServerPort() || 3001;
+        const workDir = currentSession.workingDirectory;
+        if (!workDir) return;
+
+        const projectParam = `?project=${encodeURIComponent(workDir)}`;
+        const response = await fetch(`http://localhost:${port}/claude-recent-conversations${projectParam}`);
+
+        if (response.ok) {
+          const data = await response.json();
+          const hasConversations = (data.conversations?.length || 0) > 0;
+          setHasResumableConversations(prev => ({
+            ...prev,
+            [currentSessionId]: hasConversations
+          }));
+        }
+      } catch (err) {
+        // silently fail
+      }
+    };
+
+    window.addEventListener('yurucode-trigger-resume', handleResumeEvent);
+    window.addEventListener('yurucode-check-resumable', handleCheckResumable);
+    return () => {
+      window.removeEventListener('yurucode-trigger-resume', handleResumeEvent);
+      window.removeEventListener('yurucode-check-resumable', handleCheckResumable);
+    };
+  }, [currentSession, currentSessionId, hasResumableConversations]);
+
+  // Listen for restore-input event (when compaction is interrupted)
+  useEffect(() => {
+    const handleRestoreInput = (e: CustomEvent<{ sessionId: string; message: string }>) => {
+      const { sessionId, message } = e.detail;
+      if (sessionId === currentSessionId && message) {
+        console.log(`📝 [ClaudeChat] Restoring interrupted compact message to input: "${message.slice(0, 50)}..."`);
+        setInput(message);
+      }
+    };
+
+    window.addEventListener('yurucode-restore-input', handleRestoreInput as EventListener);
+    return () => {
+      window.removeEventListener('yurucode-restore-input', handleRestoreInput as EventListener);
+    };
+  }, [currentSessionId]);
 
   // Force scroll to bottom when user sends a message
   useEffect(() => {
@@ -1224,6 +1304,11 @@ export const ClaudeChat: React.FC = () => {
       // Messages are already transformed by the server
       const messagesToLoad = data.messages || [];
 
+      // Get token usage from server response
+      // Server returns totalContextTokens, not totalTokens
+      const serverUsage = data.usage || { inputTokens: 0, outputTokens: 0, totalContextTokens: 0 };
+      const totalTokens = serverUsage.totalContextTokens || serverUsage.totalTokens || 0;
+
       // Create the restored session object
       const restoredSession = {
         id: newSessionId,
@@ -1241,7 +1326,11 @@ export const ClaudeChat: React.FC = () => {
           userMessages: messagesToLoad.filter((m: any) => m.type === 'user').length,
           assistantMessages: messagesToLoad.filter((m: any) => m.type === 'assistant').length,
           toolUses: 0,
-          tokens: { input: 0, output: 0, total: 0 },
+          tokens: {
+            input: serverUsage.inputTokens || 0,
+            output: serverUsage.outputTokens || 0,
+            total: totalTokens
+          },
           cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
           duration: 0,
           lastActivity: new Date(),
@@ -1283,6 +1372,30 @@ export const ClaudeChat: React.FC = () => {
       console.error('[ClaudeChat] Failed to resume conversation:', error);
     }
   }, []);
+
+  // Resume the most recent conversation directly (for right-click on resume button)
+  const handleResumeLastConversation = useCallback(async () => {
+    if (!currentSession || !currentSessionId) return;
+
+    try {
+      const port = claudeCodeClient.getServerPort() || 3001;
+      const workDir = currentSession.workingDirectory;
+      if (!workDir) return;
+
+      const projectParam = `?project=${encodeURIComponent(workDir)}`;
+      const response = await fetch(`http://localhost:${port}/claude-recent-conversations${projectParam}`);
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.conversations?.length > 0) {
+          // Resume the first (most recent) conversation
+          handleResumeConversation(data.conversations[0]);
+        }
+      }
+    } catch (err) {
+      console.error('[ClaudeChat] Failed to resume last conversation:', err);
+    }
+  }, [currentSession, currentSessionId, handleResumeConversation]);
 
   // Handle Ctrl+F for search, Ctrl+L for clear, and ? for help
   useEffect(() => {
@@ -1335,7 +1448,13 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Trigger compact command with confirmation
         handleCompactContextRequest();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'r' && e.shiftKey) {
+        e.preventDefault();
+        // Open resume conversation modal
+        if (currentSession?.messages.length === 0 && hasResumableConversations[currentSessionId || '']) {
+          setShowResumeModal(true);
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !e.shiftKey) {
         e.preventDefault();
         // Dispatch event to open recent modal in App
         const event = new CustomEvent('openRecentProjects');
@@ -1346,7 +1465,11 @@ export const ClaudeChat: React.FC = () => {
         if (currentSession?.workingDirectory) {
           createSession(undefined, currentSession.workingDirectory);
         }
-      } else if ((e.ctrlKey || e.metaKey) && e.key === '.') {
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && (e.key === '.' || e.key === '>' || e.code === 'Period')) {
+        e.preventDefault();
+        // Toggle auto-compact setting
+        setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && (e.key === '.' || e.code === 'Period')) {
         e.preventDefault();
         // Toggle stats modal
         setShowStatsModal(prev => !prev);
@@ -1517,26 +1640,37 @@ export const ClaudeChat: React.FC = () => {
     setSearchMatches(matches);
     setSearchIndex(0);
 
-    // Scroll to first match
+    // Scroll to first match - use virtualized scrollToIndex if available
     if (matches.length > 0) {
-      const element = document.querySelector(`[data-message-index="${matches[0]}"]`);
-      element?.scrollIntoView({ behavior: 'instant', block: 'center' });
+      if (virtualizedMessageListRef.current) {
+        virtualizedMessageListRef.current.scrollToIndex(matches[0], 'auto');
+      } else {
+        // Fallback for non-virtualized list
+        const element = document.querySelector(`[data-message-index="${matches[0]}"]`);
+        element?.scrollIntoView({ behavior: 'instant', block: 'center' });
+      }
     }
   }, [debouncedSearchQuery, currentSession]);
 
   const navigateSearch = (direction: 'next' | 'prev') => {
     if (searchMatches.length === 0) return;
-    
+
     let newIndex = searchIndex;
     if (direction === 'next') {
       newIndex = (searchIndex + 1) % searchMatches.length;
     } else {
       newIndex = searchIndex === 0 ? searchMatches.length - 1 : searchIndex - 1;
     }
-    
+
     setSearchIndex(newIndex);
-    const element = document.querySelector(`[data-message-index="${searchMatches[newIndex]}"]`);
-    element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+    // Use virtualized scrollToIndex if available, fallback to DOM query
+    if (virtualizedMessageListRef.current) {
+      virtualizedMessageListRef.current.scrollToIndex(searchMatches[newIndex], 'smooth');
+    } else {
+      const element = document.querySelector(`[data-message-index="${searchMatches[newIndex]}"]`);
+      element?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
   };
 
   // Track the previous session ID to know when we're actually switching sessions
@@ -3327,36 +3461,57 @@ export const ClaudeChat: React.FC = () => {
             placeholder="search messages..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                if (e.shiftKey) {
+                  navigateSearch('prev');
+                } else {
+                  navigateSearch('next');
+                }
+              } else if (e.key === 'Escape') {
+                e.preventDefault();
+                setSearchVisible(false);
+                setSearchQuery('');
+                setSearchMatches([]);
+                setSearchIndex(0);
+              }
+            }}
             autoFocus
           />
           <div className="search-controls">
-            {searchMatches.length > 0 && (
+            {searchMatches.length > 0 ? (
               <span className="search-count">
                 {searchIndex + 1} / {searchMatches.length}
               </span>
-            )}
-            <button 
-              className="search-btn" 
+            ) : searchQuery ? (
+              <span className="search-count">0 / 0</span>
+            ) : null}
+            <button
+              className="search-btn"
               onClick={() => navigateSearch('prev')}
               disabled={searchMatches.length === 0}
+              title="Previous (Shift+Enter)"
             >
               <IconChevronUp size={14} />
             </button>
-            <button 
-              className="search-btn" 
+            <button
+              className="search-btn"
               onClick={() => navigateSearch('next')}
               disabled={searchMatches.length === 0}
+              title="Next (Enter)"
             >
               <IconChevronDown size={14} />
             </button>
-            <button 
-              className="search-btn close" 
+            <button
+              className="search-btn close"
               onClick={() => {
                 setSearchVisible(false);
                 setSearchQuery('');
                 setSearchMatches([]);
                 setSearchIndex(0);
               }}
+              title="Close (Esc)"
             >
               <IconX size={14} />
             </button>
@@ -3602,18 +3757,22 @@ export const ClaudeChat: React.FC = () => {
         className="chat-messages"
         ref={chatContainerRef}
       >
-        {/* Show resume button for empty sessions - disabled for now
-        {currentSession.messages.length === 0 && !currentSession.streaming && (
+        {/* Show resume button for empty sessions only if there are conversations to resume */}
+        {currentSession.messages.length === 0 && !currentSession.streaming && hasResumableConversations[currentSessionId || ''] && (
           <div className="empty-chat-state">
             <button
               className="resume-conversation-btn"
               onClick={() => setShowResumeModal(true)}
+              onContextMenu={(e) => {
+                e.preventDefault();
+                handleResumeLastConversation();
+              }}
+              title={`resume conversation (${modKey}+shift+r) | right-click: resume last`}
             >
-              resume?
+              resume
             </button>
           </div>
         )}
-        */}
         {(() => {
           // Process all messages once at the beginning
           const processedMessages = currentSession.messages
@@ -3765,6 +3924,9 @@ export const ClaudeChat: React.FC = () => {
                       setIsAtBottom(prev => ({ ...prev, [currentSessionId]: atBottom }));
                     }
                   }}
+                  searchQuery={debouncedSearchQuery}
+                  searchMatches={searchMatches}
+                  searchIndex={searchIndex}
                 />
                 <div ref={messagesEndRef} />
               </>
@@ -4156,8 +4318,8 @@ export const ClaudeChat: React.FC = () => {
                       onClick={() => setShowStatsModal(true)}
                       disabled={false}
                       title={hasActivity ?
-                        `${totalContextTokens.toLocaleString()} / ${contextWindowTokens.toLocaleString()} tokens (cached: ${cacheTokens.toLocaleString()}) | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'}${willAutoCompact ? ' - TRIGGERED' : approachingCompact ? ' - approaching 60%' : ''} (${modKey}+.) | right-click to toggle` :
-                        `0 / ${contextWindowTokens.toLocaleString()} tokens | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'} (${modKey}+.) | right-click to toggle`}
+                        `total tokens used: ${totalContextTokens.toLocaleString()} | ${modKey}+. shows context usage` :
+                        `total tokens used: 0 | ${modKey}+. shows context usage`}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -4249,7 +4411,7 @@ export const ClaudeChat: React.FC = () => {
                       e.stopPropagation();
                       setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
                     }}
-                    title={autoCompactEnabled !== false ? 'auto-compact enabled (60% threshold)' : 'auto-compact disabled'}
+                    title={autoCompactEnabled !== false ? `auto-compact enabled (60% threshold) | ${modKey}+shift+. to toggle` : `auto-compact disabled | ${modKey}+shift+. to toggle`}
                   >
                     <span className="toggle-switch-label off">off</span>
                     <span className="toggle-switch-label on">on</span>
@@ -4296,6 +4458,12 @@ export const ClaudeChat: React.FC = () => {
                                 ? 'var(--negative-color, #ff6b6b)'
                                 : 'var(--accent-color)'
                             }} />
+                          </div>
+                          <div className="usage-bar-ticks">
+                            {/* Ticks every 10% */}
+                            {Array.from({ length: 11 }, (_, i) => (
+                              <div key={i} className="usage-bar-tick" />
+                            ))}
                           </div>
                         </div>
                         <div className="stat-row">
@@ -4428,7 +4596,7 @@ export const ClaudeChat: React.FC = () => {
                 <span className="stats-footer-label"><span className="stats-footer-limit-name">5h limit</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '?'}</span>
                 <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) + '%' : '?'}</span>
               </div>
-              <div className="usage-bar" style={{ marginBottom: '8px' }}>
+              <div className="usage-bar">
                 <div
                   className="usage-bar-fill"
                   style={{
@@ -4438,6 +4606,12 @@ export const ClaudeChat: React.FC = () => {
                       : 'var(--accent-color)'
                   }}
                 />
+              </div>
+              <div className="usage-bar-ticks" style={{ marginBottom: '8px' }}>
+                {/* Ticks every 1h */}
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="usage-bar-tick" />
+                ))}
               </div>
 
               {/* Weekly Limit (7-day) */}
@@ -4455,6 +4629,12 @@ export const ClaudeChat: React.FC = () => {
                       : 'var(--accent-color)'
                   }}
                 />
+              </div>
+              <div className="usage-bar-ticks">
+                {/* Ticks every 1d */}
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div key={i} className="usage-bar-tick" />
+                ))}
               </div>
             </div>
           </div>
@@ -4490,6 +4670,7 @@ export const ClaudeChat: React.FC = () => {
         isOpen={showResumeModal}
         onClose={() => setShowResumeModal(false)}
         onConversationSelect={handleResumeConversation}
+        workingDirectory={currentSession?.workingDirectory}
       />
     </div>
   );

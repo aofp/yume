@@ -108,8 +108,7 @@ npm run minify:servers         # Minify server code
 - `services/hooksConfigService.ts` - Hooks configuration
 - `services/databaseService.ts` - Frontend database integration
 - `services/mcpService.ts` - MCP server management
-- `services/sessionCheckpoint.ts` - Session checkpoint management
-- `services/checkpointService.ts` - Checkpoint service
+- `services/checkpointService.ts` - Checkpoint and session state management
 - `services/agentExecutionService.ts` - Agent execution
 - `services/claudeDetector.ts` - Claude detection logic
 - `services/wrapperIntegration.ts` - Wrapper message processing
@@ -138,16 +137,23 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg):
 When editing server code:
 1. Edit source `.cjs` files at **project root**
 2. Run `npm run build:server:<platform>` to compile
-3. Test with `npm run tauri:dev` (uses source files in dev mode)
-4. Binaries in `src-tauri/resources/` are for production only
+3. Restart `npm run tauri:dev` to use the new binary
+4. **Important**: Dev mode uses binaries from `src-tauri/resources/`, NOT source files directly. You must rebuild after source changes.
 
-### Token Analytics Fix
-Analytics parsing looks for `data.type === 'assistant'` and `data.message.usage` in Claude session files, not `data.type === 'result'`.
+### Token Analytics
+Analytics uses `result` message's cumulative totals (not summing per-turn `assistant` messages which would overcount). The `result` messages in Claude session files contain accurate cumulative `usage` data. If `costUSD` is available, use it directly; otherwise calculate from token breakdowns.
 
 ### Platform-Specific Paths
 - Windows native: `C:\Users\[username]\.claude\projects`
 - WSL on Windows: `\\wsl$\Ubuntu\home\[username]\.claude\projects`
 - macOS/Linux: `~/.claude/projects`
+
+### Session File Format
+Claude stores sessions as `.jsonl` files in `~/.claude/projects/-[escaped-path]/`:
+- Main sessions: UUID format like `ebfdc520-63b3-4e07-af41-6b72deb80ecb.jsonl`
+- Subagent sessions: `agent-*.jsonl` (filtered out from resume conversation list)
+- Empty files (0 bytes) are common and should be skipped when listing conversations
+- Path escaping: `/Users/yuru/project` becomes `-Users-yuru-project`
 
 ### Port Management
 The application uses dynamic port allocation in the 20000-65000 range to avoid conflicts:

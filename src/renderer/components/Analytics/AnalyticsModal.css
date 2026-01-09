@@ -26,12 +26,24 @@
   border-bottom: 1px solid #222;
   user-select: none;
   cursor: default;
+  -webkit-app-region: drag;
 }
 
 .analytics-header-left {
   display: flex;
   align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+  -webkit-app-region: drag;
+}
+
+.analytics-modal .header-tabs {
+  display: flex;
   gap: 0;
+  margin-right: 10px;
+  -webkit-app-region: no-drag;
 }
 
 .analytics-title {
@@ -64,6 +76,7 @@
   pointer-events: auto;
   position: relative;
   z-index: 1;
+  -webkit-app-region: no-drag;
 }
 
 .analytics-back-button svg {
@@ -86,6 +99,7 @@
   transition: color 0.2s;
   position: relative;
   z-index: 1;
+  -webkit-app-region: no-drag;
 }
 
 .analytics-close:hover {

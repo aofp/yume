@@ -238,12 +238,13 @@ export class ClaudeCodeClient {
     const serverUrl = `http://localhost:${this.serverPort}`;
     debugLog(`[ClaudeCodeClient] Connecting to ${serverUrl}`);
     
-    // Connect to the Claude Code server with ultra-reliable settings
+    // Connect to the Claude Code server with reliable settings and backoff jitter
     this.socket = io(serverUrl, {
       reconnection: true,
-      reconnectionAttempts: Infinity, // Keep trying forever
-      reconnectionDelay: 1000, // Start reconnecting faster
+      reconnectionAttempts: 20, // Reasonable limit to prevent infinite loops
+      reconnectionDelay: 1000, // Start reconnecting after 1 second
       reconnectionDelayMax: 5000, // Don't wait too long between attempts
+      randomizationFactor: 0.5, // Add jitter (0.5-1.5x delay) to prevent thundering herd
       timeout: 120000, // 2 minute connection timeout for very long operations
       transports: ['websocket', 'polling'], // Try both transports
       autoConnect: true,
@@ -276,15 +277,9 @@ export class ClaudeCodeClient {
       debugLog('  Reason:', reason);
       debugLog('  Was connected:', this.connected);
       this.connected = false;
-
-      // Auto-reconnect on ANY disconnect (more aggressive)
-      debugLog('[Client] Will attempt to reconnect...');
-      setTimeout(() => {
-        if (this.socket && !this.connected) {
-          debugLog('[Client] Forcing reconnection attempt...');
-          this.socket.connect();
-        }
-      }, 500); // Faster reconnect
+      // Let Socket.IO's built-in reconnection handle reconnects
+      // Manual reconnection can interfere with the backoff/jitter strategy
+      debugLog('[Client] Socket.IO will handle reconnection automatically');
     });
 
     this.socket.on('connect_error', (error: any) => {

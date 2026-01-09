@@ -86,6 +86,27 @@ class ErrorBoundary extends Component<Props, State> {
     });
   };
 
+  handleCopyError = async () => {
+    const errorDetails = [
+      `Error: ${this.state.error?.message || 'Unknown error'}`,
+      `Boundary: ${this.props.name || 'Unknown'}`,
+      `Timestamp: ${new Date().toISOString()}`,
+      '',
+      'Stack Trace:',
+      this.state.error?.stack || 'No stack trace',
+      '',
+      'Component Stack:',
+      this.state.errorInfo?.componentStack || 'No component stack'
+    ].join('\n');
+
+    try {
+      await navigator.clipboard.writeText(errorDetails);
+      // Brief visual feedback could be added here
+    } catch (e) {
+      console.error('Failed to copy error details:', e);
+    }
+  };
+
   render() {
     if (this.state.hasError) {
       // Custom fallback UI if provided
@@ -119,33 +140,25 @@ class ErrorBoundary extends Component<Props, State> {
             
             {/* Action buttons */}
             <div className="error-actions">
-              <button 
+              <button
                 className="error-btn-primary"
                 onClick={this.handleReset}
               >
                 Try Again
               </button>
-              <button 
+              <button
                 className="error-btn-secondary"
                 onClick={() => window.location.reload()}
               >
                 Reload App
               </button>
+              <button
+                className="error-btn-copy"
+                onClick={this.handleCopyError}
+              >
+                Copy Error Details
+              </button>
             </div>
-            
-            {/* Expandable error details for debugging */}
-            <details className="error-details">
-              <summary>Error Details (for developers)</summary>
-              <pre className="error-stack">
-                {this.state.error?.stack}
-              </pre>
-              {this.state.errorInfo && (
-                <pre className="error-component-stack">
-                  Component Stack:
-                  {this.state.errorInfo.componentStack}
-                </pre>
-              )}
-            </details>
           </div>
         </div>
       );

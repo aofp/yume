@@ -119,7 +119,7 @@ export default defineConfig({
       output: {
         manualChunks: {
           vendor: ['react', 'react-dom'],
-          markdown: ['react-markdown', 'react-syntax-highlighter'],
+          markdown: ['react-markdown'],
           icons: ['@tabler/icons-react'],
           socket: ['socket.io-client'],
         },

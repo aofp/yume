@@ -3,6 +3,7 @@ import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartD
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { platformAPI as tauriApi } from '../../services/tauriApi';
+import { isMacOS } from '../../services/platformUtils';
 import { invoke } from '@tauri-apps/api/core';
 import './WelcomeScreen.css';
 import '../Chat/ClaudeChat.css'; // for stats modal styles
@@ -247,8 +248,8 @@ export const WelcomeScreen: React.FC = () => {
         setShowHelpModal(true);
       }
       
-      // Handle Ctrl+R or Down arrow for recent projects
-      if (((e.ctrlKey || e.metaKey) && e.key === 'r') || e.key === 'ArrowDown') {
+      // Handle Ctrl+R or Down arrow for recent projects (not Ctrl+Shift+R which is for resume)
+      if (((e.ctrlKey || e.metaKey) && e.key === 'r' && !e.shiftKey) || e.key === 'ArrowDown') {
         e.preventDefault();
         if (recentProjects.length > 0) {
           const event = new CustomEvent('openRecentProjects');
@@ -332,7 +333,7 @@ export const WelcomeScreen: React.FC = () => {
                 key={project.path}
                 className="welcome-quick-nav"
                 onClick={() => openProject(project.path)}
-                title={`press ${index + 1} to open`}
+                title={`(${index + 1}) ${project.path}`}
               >
                 <span style={{ opacity: 0.9 }}>{index + 1}</span> {project.name}
               </span>
@@ -352,7 +353,7 @@ export const WelcomeScreen: React.FC = () => {
               e.stopPropagation();
               setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
             }}
-            title="context usage (right-click to toggle auto-compact)"
+            title={`context usage | ${isMacOS() ? 'cmd' : 'ctrl'}+. shows stats | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'} (toggle: ${isMacOS() ? 'cmd' : 'ctrl'}+shift+.)`}
           >
             {autoCompactEnabled !== false ? (
               <span className="btn-stats-auto">auto</span>
@@ -426,6 +427,12 @@ export const WelcomeScreen: React.FC = () => {
                     <div className="usage-bar">
                       <div className="usage-bar-fill" style={{ width: '0%' }} />
                     </div>
+                    <div className="usage-bar-ticks">
+                      {/* Ticks every 10% */}
+                      {Array.from({ length: 11 }, (_, i) => (
+                        <div key={i} className="usage-bar-tick" />
+                      ))}
+                    </div>
                   </div>
                   <div className="stat-row">
                     <div className="stat-keys">
@@ -492,7 +499,7 @@ export const WelcomeScreen: React.FC = () => {
                 <span className="stats-footer-label"><span className="stats-footer-limit-name">5h limit</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '...'}</span>
                 <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) : '...'}%</span>
               </div>
-              <div className="usage-bar" style={{ marginBottom: '8px' }}>
+              <div className="usage-bar">
                 <div
                   className="usage-bar-fill"
                   style={{
@@ -502,6 +509,12 @@ export const WelcomeScreen: React.FC = () => {
                       : 'var(--accent-color)'
                   }}
                 />
+              </div>
+              <div className="usage-bar-ticks" style={{ marginBottom: '8px' }}>
+                {/* Ticks every 1h */}
+                {Array.from({ length: 6 }, (_, i) => (
+                  <div key={i} className="usage-bar-tick" />
+                ))}
               </div>
 
               {/* Weekly Limit (7-day) */}
@@ -519,6 +532,12 @@ export const WelcomeScreen: React.FC = () => {
                       : 'var(--accent-color)'
                   }}
                 />
+              </div>
+              <div className="usage-bar-ticks">
+                {/* Ticks every 1d */}
+                {Array.from({ length: 8 }, (_, i) => (
+                  <div key={i} className="usage-bar-tick" />
+                ))}
               </div>
             </div>
           </div>

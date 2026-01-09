@@ -29,7 +29,7 @@
   border-bottom: 1px solid var(--fg-05);
 }
 
-.modal-title {
+.claude-modal .modal-title {
   font-size: 13px;
   color: var(--fg-60);
   font-weight: 500;

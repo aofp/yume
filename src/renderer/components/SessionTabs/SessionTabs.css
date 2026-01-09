@@ -392,7 +392,7 @@
 
 .tab-close:hover {
   background: transparent !important;
-  color: var(--accent-color) !important; /* Accent color on hover */
+  color: var(--negative-color) !important;
   opacity: 1 !important;
 }
 

@@ -3,9 +3,9 @@
 <div align="center">
   <img src="assets/yurucode.png" alt="Yurucode Logo" width="128" height="128">
   
-  **The Only Claude GUI with Automatic Context Compaction at 97%**
+  **The Only Claude GUI with Automatic Context Compaction**
   
-  [![Version](https://img.shields.io/badge/version-1.0.0-blue)](https://github.com/yurucode/yurucode/releases)
+  [![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yurucode/yurucode/releases)
   [![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey)](https://yurucode.app)
   [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
   [![Production](https://img.shields.io/badge/status-Production%20Ready-green)](docs/PRODUCTION_DEPLOYMENT.md)
@@ -15,13 +15,13 @@
 
 ## 🌟 Why Yurucode?
 
-Yurucode is not just another Claude GUI - it's the **only** application that automatically manages your context window, preventing the frustrating "context full" errors that plague every other Claude interface. When your conversation reaches 97% capacity, Yurucode seamlessly compacts and continues, maintaining conversation flow without manual intervention.
+Yurucode is not just another Claude GUI - it's the **only** application that automatically manages your context window, preventing the frustrating "context full" errors that plague every other Claude interface. When your conversation reaches 60% capacity, Yurucode seamlessly compacts and continues, maintaining conversation flow without manual intervention.
 
 ### Unique Advantages
 
 | Feature | Yurucode | Others |
 |---------|----------|--------|
-| **Auto-compact at 97%** | ✅ Automatic | ❌ Manual or none |
+| **Auto-compact at 60%** | ✅ Automatic | ❌ Manual or none |
 | **Embedded server** | ✅ No dependencies | ❌ External servers |
 | **Crash recovery** | ✅ Full restoration | ❌ Data loss |
 | **True token costs** | ✅ Accurate to cent | ⚠️ Estimates |
@@ -54,7 +54,7 @@ Yurucode is not just another Claude GUI - it's the **only** application that aut
 
 **The Problem**: Claude has a context window limit. When it fills up, conversations stop.
 
-**Our Solution**: At exactly 97% capacity, Yurucode automatically:
+**Our Solution**: At 60% capacity (65% force), Yurucode automatically:
 1. Detects the threshold
 2. Saves conversation state
 3. Triggers intelligent compaction

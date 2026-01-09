@@ -190,22 +190,6 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
               <h4>chat</h4>
               <div className="shortcut-item">
                 <div className="shortcut-keys">
-                  <span className="key-btn">enter</span>
-                </div>
-                <span className="shortcut-dots"></span>
-                <span className="shortcut-desc">send message</span>
-              </div>
-              <div className="shortcut-item">
-                <div className="shortcut-keys">
-                  <span className="key-btn">shift</span>
-                  <span className="key-plus">+</span>
-                  <span className="key-btn">enter</span>
-                </div>
-                <span className="shortcut-dots"></span>
-                <span className="shortcut-desc">new line</span>
-              </div>
-              <div className="shortcut-item">
-                <div className="shortcut-keys">
                   <span className="key-btn">{modKey}</span>
                   <span className="key-plus">+</span>
                   <span className="key-btn">.</span>
@@ -235,6 +219,15 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
                 <div className="shortcut-keys">
                   <span className="key-btn">{modKey}</span>
                   <span className="key-plus">+</span>
+                  <span className="key-btn">o</span>
+                </div>
+                <span className="shortcut-dots"></span>
+                <span className="shortcut-desc">toggle model</span>
+              </div>
+              <div className="shortcut-item">
+                <div className="shortcut-keys">
+                  <span className="key-btn">{modKey}</span>
+                  <span className="key-plus">+</span>
                   <span className="key-btn">u</span>
                 </div>
                 <span className="shortcut-dots"></span>
@@ -253,19 +246,32 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
                 <div className="shortcut-keys">
                   <span className="key-btn">{modKey}</span>
                   <span className="key-plus">+</span>
-                  <span className="key-btn">o</span>
+                  <span className="key-btn">k</span>
                 </div>
                 <span className="shortcut-dots"></span>
-                <span className="shortcut-desc">toggle model</span>
+                <span className="shortcut-desc">insert ultrathink</span>
               </div>
               <div className="shortcut-item">
                 <div className="shortcut-keys">
                   <span className="key-btn">{modKey}</span>
                   <span className="key-plus">+</span>
-                  <span className="key-btn">k</span>
+                  <span className="key-btn">shift</span>
+                  <span className="key-plus">+</span>
+                  <span className="key-btn">r</span>
                 </div>
                 <span className="shortcut-dots"></span>
-                <span className="shortcut-desc">insert ultrathink</span>
+                <span className="shortcut-desc">resume</span>
+              </div>
+              <div className="shortcut-item">
+                <div className="shortcut-keys">
+                  <span className="key-btn">{modKey}</span>
+                  <span className="key-plus">+</span>
+                  <span className="key-btn">shift</span>
+                  <span className="key-plus">+</span>
+                  <span className="key-btn">.</span>
+                </div>
+                <span className="shortcut-dots"></span>
+                <span className="shortcut-desc">toggle auto compact</span>
               </div>
               <div className="shortcut-item">
                 <div className="shortcut-keys">

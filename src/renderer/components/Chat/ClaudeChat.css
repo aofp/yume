@@ -41,7 +41,7 @@
   gap: 8px;
   z-index: 9999;
   animation: slideIn 0.15s ease;
-  min-width: 320px; /* Fixed minimum width to prevent jumping */
+  width: 320px; /* Fixed width to prevent jumping */
 }
 
 @keyframes slideIn {
@@ -62,7 +62,8 @@
   font-size: 11px;
   font-family: var(--font-mono);
   outline: none;
-  width: 180px;
+  width: 160px; /* Fixed width */
+  flex-shrink: 0;
   text-transform: lowercase;
 }
 
@@ -75,18 +76,20 @@
 .search-controls {
   display: flex;
   align-items: center;
-  gap: 6px;
-  min-width: 120px; /* Fixed minimum width for stable layout */
+  gap: 4px;
+  width: 130px; /* Fixed width for stable layout */
+  flex-shrink: 0;
   justify-content: flex-end;
 }
 
 .search-count {
-  font-size: 8px;
+  font-size: 9px;
   color: var(--fg-40);
   font-family: var(--font-mono);
-  margin-right: 6px;
-  width: 80px; /* Fixed width to prevent jumping */
-  text-align: center;
+  margin-right: 4px;
+  width: 50px; /* Fixed width to prevent jumping */
+  text-align: right;
+  flex-shrink: 0;
 }
 
 .search-btn {
@@ -622,6 +625,10 @@
   to { transform: rotate(360deg); }
 }
 
+.spinning {
+  animation: spin 1s linear infinite;
+}
+
 @keyframes dots {
   0%, 32% {
     content: '.';
@@ -694,7 +701,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 4px;
   z-index: 10;
   pointer-events: auto;
 }
@@ -738,7 +745,6 @@
 
 textarea.context-full {
   opacity: 0.3;
-  cursor: not-allowed;
 }
 
 .stop-streaming-btn {
@@ -1964,7 +1970,10 @@ textarea.context-full {
 .usage-bar-container {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+}
+
+.usage-bar-container .usage-bar-label {
+  margin-bottom: 4px;
 }
 
 .usage-bar-label {
@@ -2000,6 +2009,26 @@ textarea.context-full {
 .usage-bar-fill {
   height: 100%;
   border-radius: 1px;
+}
+
+/* Usage bar tick marks */
+.usage-bar-ticks {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  height: 4px;
+  margin-top: 2px;
+}
+
+.usage-bar-tick {
+  width: 1px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+}
+
+.usage-bar-tick:first-child,
+.usage-bar-tick:last-child {
+  opacity: 0; /* Hide first and last ticks as they align with bar edges */
 }
 
 @keyframes fadeIn {
@@ -2073,10 +2102,11 @@ textarea.context-full {
 /* Recent Projects Modal */
 .recent-modal-overlay {
   position: fixed;
-  top: 0;
+  /* 28px titlebar + 32px session tabs = 60px */
+  top: 60px;
   left: 0;
   width: 100%;
-  height: 100%;
+  height: calc(100% - 60px);
   background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
@@ -2092,7 +2122,7 @@ textarea.context-full {
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
-  max-height: 70vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -2100,8 +2130,6 @@ textarea.context-full {
   animation: modalFadeIn 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
-  cursor: default;
-  position: relative;
 }
 
 @keyframes modalFadeIn {
@@ -2147,6 +2175,53 @@ textarea.context-full {
   text-transform: lowercase;
   display: flex;
   align-items: center;
+}
+
+.modal-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.modal-close-btn {
+  background: none;
+  border: none;
+  color: var(--fg-30);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.modal-close-btn:hover {
+  background: var(--fg-10);
+  color: var(--fg-60);
+}
+
+.modal-refresh-btn {
+  background: none;
+  border: none;
+  color: var(--fg-30);
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  cursor: default;
+  transition: all 0.15s ease;
+}
+
+.modal-refresh-btn:hover:not(:disabled) {
+  background: rgba(var(--accent-rgb), 0.15);
+  color: var(--accent-color);
+}
+
+.modal-refresh-btn:disabled {
+  opacity: 0.5;
+  cursor: default;
 }
 
 .clear-all-icon {
@@ -2218,8 +2293,13 @@ textarea.context-full {
   color: var(--accent-color);
 }
 
-.recent-item-container.selected .recent-item .recent-item-name {
+.recent-item-container.selected .recent-item .recent-item-name,
+.recent-item-container.hovered .recent-item .recent-item-name {
   color: var(--accent-color);
+}
+
+.recent-item-container.hovered .recent-item {
+  background: rgba(var(--accent-rgb), 0.15);
 }
 
 .recent-item-info {
@@ -2231,24 +2311,6 @@ textarea.context-full {
   gap: 2px;
 }
 
-.recent-item-meta {
-  display: flex;
-  gap: 8px;
-  align-items: center;
-  font-size: 10px;
-  color: var(--fg-25);
-  margin-top: 1px;
-}
-
-.recent-item-time {
-  font-size: 7pt;
-  color: var(--fg-30);
-  white-space: nowrap;
-  margin-left: 8px;
-  font-family: var(--font-sans);
-  transition: color 0.15s ease;
-}
-
 .recent-item-count {
   background: rgba(var(--accent-rgb), 0.15);
   padding: 0 4px;
@@ -2258,40 +2320,28 @@ textarea.context-full {
 }
 
 .recent-item-name {
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--fg-60);
   display: flex;
   flex-direction: column;
   gap: 2px;
   overflow: hidden;
-  font-family: var(--font-mono);
 }
 
-.recent-item-name-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.recent-item-path {
-  font-size: 7pt;
-  color: var(--fg-30);
+.recent-item-title {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--fg-60);
   white-space: nowrap;
-  overflow-x: auto;
-  overflow-y: hidden;
-  display: block;
-  /* Firefox scrollbar - thin style */
-  scrollbar-width: thin;
-  -ms-overflow-style: none; /* IE/Edge */
-  font-family: var(--font-sans);
-  width: 100%;
-  max-width: 350px;
+  overflow: hidden;
+  text-overflow: ellipsis;
   transition: color 0.15s ease;
 }
 
-.recent-item-path::-webkit-scrollbar {
-  display: none; /* Chrome/Safari/Opera */
+.recent-item-time {
+  font-size: 7pt;
+  color: var(--fg-30);
+  white-space: nowrap;
+  transition: color 0.15s ease;
+  margin-left: 4px;
 }
 
 .recent-item-remove {
@@ -2314,9 +2364,13 @@ textarea.context-full {
   opacity: 1;
 }
 
-.recent-item-container:hover .recent-item-time,
-.recent-item-container:hover .recent-item-path {
+.recent-item-container:hover .recent-item-time {
   color: var(--fg-50);
+}
+
+.recent-item-container:hover .recent-item-title,
+.recent-item-container.hovered .recent-item-title {
+  color: var(--accent-color);
 }
 
 .recent-item-remove:hover {
@@ -2325,7 +2379,6 @@ textarea.context-full {
 }
 
 .recent-item-number {
-  font-family: var(--font-mono);
   font-size: 10px;
   color: var(--fg-30);
   width: 18px;
@@ -2346,7 +2399,7 @@ textarea.context-full {
   flex: 1;
   min-height: 0; /* Important for proper flex behavior */
   width: 100%;
-  padding-right: 0;
+  padding-right: 2px;
 }
 
 .messages-virtualized {
@@ -2455,7 +2508,7 @@ textarea.context-full {
   font-family: var(--font-mono);
   padding: 10px 20px;
   border-radius: 6px;
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   text-transform: lowercase;
 }

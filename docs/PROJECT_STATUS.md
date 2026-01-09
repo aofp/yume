@@ -6,12 +6,12 @@
 
 ## Executive Summary
 
-Yurucode is a sophisticated GUI for Claude CLI with intelligent context management that automatically compacts at 97% usage. While the core functionality is solid and surpasses competitors like Opcode, significant production hardening is required before commercial release.
+Yurucode is a sophisticated GUI for Claude CLI with intelligent context management that automatically compacts at 60% usage (65% force). While the core functionality is solid and surpasses competitors like Opcode, significant production hardening is required before commercial release.
 
 ## Current State
 
 ### ✅ What's Working
-- **Auto-compact at 97%** - Unique feature working correctly
+- **Auto-compact at 60%** - Unique feature working correctly
 - **Token tracking** - Accurate cost calculation (fixed)
 - **Session management** - Lazy reconnection, tab persistence
 - **Multi-platform** - Runs on Windows, macOS, Linux
@@ -45,7 +45,7 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for 
 ### Unique Features vs Competition
 | Feature | Yurucode | Opcode | Claudia |
 |---------|----------|--------|---------|
-| Auto-compact | ✅ 97% | ❌ | ❌ Manual |
+| Auto-compact | ✅ 60% | ❌ | ❌ Manual |
 | Compiled server | ✅ | ❌ | ❌ |
 | Token accuracy | ✅ Fixed | ✅ | ❓ |
 | Performance | ✅ Optimized | ⭕ Standard | ⭕ Standard |
@@ -149,7 +149,7 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for 
 
 ## Conclusion
 
-Yurucode has strong technical foundations and a unique value proposition with auto-compact at 97%. However, it requires 4-6 weeks of production hardening before commercial release. The primary risks are technical (memory, security) rather than market-related.
+Yurucode has strong technical foundations and a unique value proposition with auto-compact at 60%. However, it requires 4-6 weeks of production hardening before commercial release. The primary risks are technical (memory, security) rather than market-related.
 
 **Recommendation:** Proceed with production hardening sprint, targeting Q1 2026 release with "Beta" designation for first 3 months.
 

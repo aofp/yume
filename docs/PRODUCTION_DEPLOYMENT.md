@@ -60,7 +60,7 @@ npm run build
 #### Manual Testing Checklist
 - [ ] Fresh installation on clean system
 - [ ] Session creation and management
-- [ ] Auto-compaction at 97%
+- [ ] Auto-compaction at 60%
 - [ ] Token tracking accuracy
 - [ ] Cost calculation correctness
 - [ ] Crash recovery functionality
@@ -631,7 +631,7 @@ MAJOR.MINOR.PATCH
 Released: January 3, 2025
 
 ## ✨ New Features
-- Auto-compaction at 97% context usage
+- Auto-compaction at 60% context usage
 - Crash recovery system
 - Performance monitoring
 

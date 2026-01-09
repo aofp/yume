@@ -25,7 +25,7 @@ mod logged_server;  // Node.js server process management with logging
 mod port_manager;   // Dynamic port allocation for server instances
 mod db;             // SQLite database for persistent storage
 mod hooks;          // Hook system for intercepting and modifying Claude behavior
-mod compaction;     // Context compaction management for auto-trigger at 96%
+mod compaction;     // Context compaction management (55% warning, 60% auto, 65% force)
 mod mcp;            // Model Context Protocol (MCP) server management
 mod config;         // Production configuration management
 mod crash_recovery; // Crash recovery and session restoration
@@ -666,14 +666,40 @@ pub fn run() {
                     match event {
                         tauri::WindowEvent::CloseRequested { .. } => {
                             info!("Window close requested, saving state...");
-                            
+
+                            // macOS: Resign first responder to prevent NSBeep during window destruction
+                            // When a window closes with keyboard focus, unhandled events cause system beeps
+                            #[cfg(target_os = "macos")]
+                            {
+                                use cocoa::base::{id, nil};
+
+                                if let Ok(ns_window) = window_clone.ns_window() {
+                                    let ns_window = ns_window as id;
+                                    unsafe {
+                                        // End any active editing session (text fields, etc.)
+                                        // This ensures no text input is expecting keyboard events
+                                        let _: () = msg_send![ns_window, endEditingFor: nil];
+
+                                        // Make the window resign first responder
+                                        // This detaches keyboard focus so no events trigger NSBeep
+                                        let _: bool = msg_send![ns_window, makeFirstResponder: nil];
+
+                                        // Disable keyboard events on the window during close
+                                        // This is a belt-and-suspenders approach
+                                        let _: () = msg_send![ns_window, setIgnoresMouseEvents: true];
+
+                                        info!("macOS: Resigned first responder to prevent close beep");
+                                    }
+                                }
+                            }
+
                             // Persist window dimensions and position for next launch
                             let window_for_save = window_clone.clone();
                             let app_for_save = app_handle.clone();
                             tauri::async_runtime::block_on(async move {
                                 save_window_state(&window_for_save, &app_for_save).await;
                             });
-                            
+
                             // Multi-window support: Server stays alive for other windows
                             // Tauri handles the actual window close and app exit logic
                             info!("Window closing, server remains running for other windows");

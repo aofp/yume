@@ -60,6 +60,26 @@ console.debug = function(...args) {
 };
 
 // ============================================
+// DEBUG MODE - Set to false in production
+// ============================================
+const DEBUG = process.env.YURUCODE_DEBUG === 'true';
+
+// In production, disable ALL console.log output to reduce log spam
+// Only errors and warnings are kept for critical issues
+if (!DEBUG) {
+  const noop = () => {};
+  console.log = noop;
+  console.info = noop;
+  console.debug = noop;
+  // Keep console.error and console.warn for critical issues
+}
+
+// Debug logging helper - only logs when DEBUG is true
+function debugLog(...args) {
+  if (DEBUG) console.log(...args);
+}
+
+// ============================================
 // WRAPPER_INJECTED - Universal Claude Wrapper
 // ============================================
 
@@ -183,26 +203,30 @@ function processWrapperLine(line, sessionId) {
       session.outputTokens = output;
       session.cacheCreationTokens = cacheCreation;
       session.cacheReadTokens = cacheRead;
-      session.totalTokens = input + output;
+
+      // CONTEXT WINDOW = input tokens only (what model receives)
+      // Matches Claude Code official formula: input + cache_creation + cache_read
+      // Output tokens are GENERATED, not part of input context window
+      session.totalTokens = cacheRead + cacheCreation + input;
 
       // ACCUMULATE tokens across all API calls in this session
-      // This gives accurate tracking of total context usage over time
       session.accumulatedInputTokens += input;
       session.accumulatedOutputTokens += output;
       session.accumulatedCacheRead += cacheRead;
       session.accumulatedCacheCreation += cacheCreation;
 
       const prevAccumulated = session.accumulatedTotalTokens;
-      session.accumulatedTotalTokens += input + output;
+      // Context window accumulation = cache + input (NO output)
+      session.accumulatedTotalTokens = session.accumulatedCacheRead + session.accumulatedCacheCreation + session.accumulatedInputTokens;
 
-      const delta = input + output;
+      const delta = session.accumulatedTotalTokens - prevAccumulated;
       wrapperState.stats.totalTokens += delta;
 
-      // Show accumulated context usage
+      // Show context usage (input context only, per Claude Code)
       const percentage = Math.round(session.accumulatedTotalTokens / 2000);
-      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.accumulatedTotalTokens}/200000 (${percentage}%)`);
+      console.log(`📊 [WRAPPER] CONTEXT +${delta} → ${session.accumulatedTotalTokens}/200000 (${percentage}%)`);
       if (cacheCreation > 0 || cacheRead > 0) {
-        console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead} (cache_read doesn't count toward 200k limit)`);
+        console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead}`);
       }
     } else if (data.usage && isCompactOperation) {
       // During compact, just log but don't accumulate
@@ -1053,6 +1077,124 @@ const pendingStreamingFalseTimers = new Map(); // sessionId -> { timer, timestam
 // In agentic mode, processes cycle rapidly. This delay prevents UI flicker.
 const STREAMING_FALSE_DEBOUNCE_MS = 600;
 
+// ============================================
+// MESSAGE BATCHING - Reduce socket.emit overhead
+// ============================================
+const messageBatches = new Map(); // sessionId -> { messages: [], timer: null, socket: null }
+const BATCH_INTERVAL_MS = 16; // One frame at 60fps
+
+// ============================================
+// SESSION TTL CLEANUP - Remove stale sessions
+// ============================================
+const SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
+const SESSION_CLEANUP_INTERVAL_MS = 60 * 60 * 1000; // Run cleanup every hour
+
+// Periodic cleanup of stale sessions older than 24 hours
+function cleanupStaleSessions() {
+  const now = Date.now();
+  let cleanedCount = 0;
+
+  for (const [sessionId, session] of sessions.entries()) {
+    const lastActivity = session.lastActivity || session.createdAt || 0;
+    const age = now - lastActivity;
+
+    if (age > SESSION_TTL_MS) {
+      console.log(`🧹 Cleaning up stale session ${sessionId} (inactive for ${Math.round(age / 1000 / 60 / 60)} hours)`);
+
+      // Clean up all associated state
+      sessions.delete(sessionId);
+      wrapperState.sessions.delete(sessionId);
+      messageBatches.delete(sessionId);
+      lastAssistantMessageIds.delete(sessionId);
+      allAssistantMessageIds.delete(sessionId);
+      activeProcesses.delete(sessionId);
+      activeProcessStartTimes.delete(sessionId);
+      streamHealthChecks.delete(sessionId);
+      streamTimeouts.delete(sessionId);
+      spawningProcesses.delete(sessionId);
+      pendingInterrupts.delete(sessionId);
+      cancelPendingStreamingFalse(sessionId);
+      cleanupBatch(sessionId);
+
+      cleanedCount++;
+    }
+  }
+
+  if (cleanedCount > 0) {
+    console.log(`🧹 Session TTL cleanup completed: removed ${cleanedCount} stale sessions`);
+  }
+}
+
+// Start periodic session cleanup
+setInterval(cleanupStaleSessions, SESSION_CLEANUP_INTERVAL_MS);
+console.log(`⏰ Session TTL cleanup scheduled (every ${SESSION_CLEANUP_INTERVAL_MS / 1000 / 60} minutes, TTL: ${SESSION_TTL_MS / 1000 / 60 / 60} hours)`);
+
+// Add message to batch queue, emit after interval or immediately for priority messages
+function queueMessage(sessionId, message, socket, immediate = false) {
+  if (!messageBatches.has(sessionId)) {
+    messageBatches.set(sessionId, { messages: [], timer: null, socket });
+  }
+
+  const batch = messageBatches.get(sessionId);
+  batch.socket = socket;
+
+  // Priority messages emit immediately: result, error, system, streaming_end
+  const isPriority = immediate ||
+    message.type === 'result' ||
+    message.type === 'error' ||
+    message.type === 'system' ||
+    message.streaming_end === true ||
+    message.streaming === false;
+
+  if (isPriority) {
+    // Flush any pending batch first
+    flushBatch(sessionId);
+    // Emit priority message immediately
+    socket.emit(`message:${sessionId}`, message);
+    return;
+  }
+
+  // Add to batch
+  batch.messages.push(message);
+
+  // Set timer if not already set
+  if (!batch.timer) {
+    batch.timer = setTimeout(() => flushBatch(sessionId), BATCH_INTERVAL_MS);
+  }
+}
+
+// Flush all messages in the batch
+function flushBatch(sessionId) {
+  const batch = messageBatches.get(sessionId);
+  if (!batch || batch.messages.length === 0) {
+    if (batch) {
+      clearTimeout(batch.timer);
+      batch.timer = null;
+    }
+    return;
+  }
+
+  // Emit all messages
+  const socket = batch.socket;
+  for (const msg of batch.messages) {
+    socket.emit(`message:${sessionId}`, msg);
+  }
+
+  // Clear the batch
+  batch.messages = [];
+  clearTimeout(batch.timer);
+  batch.timer = null;
+}
+
+// Cleanup batch for a session
+function cleanupBatch(sessionId) {
+  const batch = messageBatches.get(sessionId);
+  if (batch) {
+    clearTimeout(batch.timer);
+    messageBatches.delete(sessionId);
+  }
+}
+
 // Helper to cancel pending streaming=false for a session
 function cancelPendingStreamingFalse(sessionId) {
   const pending = pendingStreamingFalseTimers.get(sessionId);
@@ -1378,7 +1520,10 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
       let validMessages = 0;
       let errorCount = 0;
       let lineNumber = 0;
-      
+
+      // Track context usage for Windows/WSL sessions too
+      let lastContextSnapshot = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, total: 0 };
+
       while (currentPos < content.length) {
         lineNumber++;
         
@@ -1482,11 +1627,53 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
               continue;
             }
           }
-          
+
+          // Skip meta messages (system/internal messages like local-command-caveat)
+          if (data.isMeta === true) {
+            currentPos = jsonEnd;
+            if (currentPos < content.length && content[currentPos] === '$') currentPos++;
+            if (currentPos < content.length && content[currentPos] === '\n') currentPos++;
+            if (currentPos < content.length && content[currentPos] === '\r') currentPos++;
+            continue;
+          }
+
+          // Skip user messages that only contain system tags (not actual user content)
+          if (data.type === 'user' || data.role === 'user') {
+            const msgContent = data.message?.content || data.content || '';
+            const contentStr = typeof msgContent === 'string' ? msgContent :
+                             (Array.isArray(msgContent) ? msgContent.map(c => c.text || '').join('') : '');
+            // Skip messages that start with XML-like tags (system/meta messages)
+            if (/^\s*<[a-z][a-z0-9-]*>/i.test(contentStr)) {
+              currentPos = jsonEnd;
+              if (currentPos < content.length && content[currentPos] === '$') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\n') currentPos++;
+              if (currentPos < content.length && content[currentPos] === '\r') currentPos++;
+              continue;
+            }
+          }
+
+          // Get context snapshot from assistant messages (overwrite with latest)
+          // Context = cache_read + cache_creation + input (current context window size)
+          if (data.type === 'assistant' && data.message?.usage) {
+            const usage = data.message.usage;
+            const input = usage.input_tokens || 0;
+            const output = usage.output_tokens || 0;
+            const cacheRead = usage.cache_read_input_tokens || 0;
+            const cacheCreation = usage.cache_creation_input_tokens || 0;
+            // Context window = cache_read + cache_creation + input (NOT output)
+            lastContextSnapshot = {
+              input,
+              output,
+              cacheRead,
+              cacheCreation,
+              total: cacheRead + cacheCreation + input
+            };
+          }
+
           // Add valid session data
           messages.push(data);
           validMessages++;
-          
+
           if (validMessages <= 5) {
             // Log first few for debugging
             if (data.type === 'summary') {
@@ -1573,12 +1760,20 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         title = 'Untitled session';
       }
       
-        res.json({ 
+        res.json({
           sessionId,
           projectPath: actualPath,
           messages,
           sessionCount: messages.length,
-          title
+          title,
+          usage: {
+            // Return CURRENT context snapshot, not accumulated totals
+            inputTokens: lastContextSnapshot.input,
+            outputTokens: lastContextSnapshot.output,
+            cacheReadTokens: lastContextSnapshot.cacheRead,
+            cacheCreationTokens: lastContextSnapshot.cacheCreation,
+            totalContextTokens: lastContextSnapshot.total // This is the actual context window usage
+          }
         });
       } catch (readError) {
         console.error('Error reading session file from WSL:', readError.message);
@@ -1603,35 +1798,80 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         // Use the same parsing logic as Windows
         const messages = [];
         const lines = content.split(/\$|\n/).filter(line => line.trim());
-        
+
+        // Track context usage - we need the LAST context snapshot, not accumulated totals
+        // The context window shows CURRENT context size from the most recent message
+        let lastContextSnapshot = { input: 0, output: 0, cacheRead: 0, cacheCreation: 0, total: 0 };
+
         for (const line of lines) {
           try {
             const data = JSON.parse(line);
-            
-            // Filter out empty user messages (these are often just placeholders after tool use)
-            if (data.role === 'user') {
+
+            // Filter out empty user messages (check data.type, not data.role)
+            // JSONL format has type: 'user' at top level, content at data.message.content
+            if (data.type === 'user') {
+              const msgContent = data.message?.content;
               // Check if content is missing, undefined, or empty
-              if (!data.content) {
+              if (!msgContent) {
                 continue; // Skip user messages without content
               }
-              
-              const contentStr = typeof data.content === 'string' ? data.content : 
-                               Array.isArray(data.content) && data.content.length > 0 ? 
-                               data.content.map(c => c.text || '').join('') : '';
+
+              const contentStr = typeof msgContent === 'string' ? msgContent :
+                               Array.isArray(msgContent) && msgContent.length > 0 ?
+                               msgContent.map(c => c.text || '').join('') : '';
               if (!contentStr.trim()) {
                 continue; // Skip empty user messages
               }
             }
-            
+
+            // Skip queue-operation and other non-message types
+            if (data.type === 'queue-operation') {
+              continue;
+            }
+
+            // Skip meta messages (system/internal messages like local-command-caveat)
+            if (data.isMeta === true) {
+              continue;
+            }
+
+            // Skip user messages that only contain system tags (not actual user content)
+            if (data.type === 'user') {
+              const msgContent = data.message?.content || '';
+              const contentStr = typeof msgContent === 'string' ? msgContent :
+                               (Array.isArray(msgContent) ? msgContent.map(c => c.text || '').join('') : '');
+              // Skip messages that start with XML-like tags (system/meta messages)
+              if (/^\s*<[a-z][a-z0-9-]*>/i.test(contentStr)) {
+                continue;
+              }
+            }
+
+            // Get context snapshot from assistant messages (overwrite with latest)
+            // Context = cache_read + cache_creation + input (current context window size)
+            if (data.type === 'assistant' && data.message?.usage) {
+              const usage = data.message.usage;
+              const input = usage.input_tokens || 0;
+              const output = usage.output_tokens || 0;
+              const cacheRead = usage.cache_read_input_tokens || 0;
+              const cacheCreation = usage.cache_creation_input_tokens || 0;
+              // Context window = cache_read + cache_creation + input (NOT output)
+              lastContextSnapshot = {
+                input,
+                output,
+                cacheRead,
+                cacheCreation,
+                total: cacheRead + cacheCreation + input
+              };
+            }
+
             messages.push(data);
           } catch (err) {
             // Skip invalid lines
           }
         }
-        
+
         // Extract title from messages
         let title = null;
-        
+
         // Check for title in last message
         if (messages.length > 0) {
           const lastMsg = messages[messages.length - 1];
@@ -1639,11 +1879,11 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
             title = lastMsg.title;
           } else if (lastMsg.type === 'metadata' && lastMsg.title) {
             title = lastMsg.title;
-          } else if (lastMsg.title && !lastMsg.role) {
+          } else if (lastMsg.title && !lastMsg.type) {
             title = lastMsg.title;
           }
         }
-        
+
         // If no title found, check for summary type messages
         if (!title) {
           const summaryMsg = messages.find(m => m.type === 'summary' && m.summary);
@@ -1651,36 +1891,45 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
             title = summaryMsg.summary;
           }
         }
-        
+
         // If still no title, use first user message
         if (!title) {
-          const firstUserMsg = messages.find(m => m.role === 'user' && m.content);
+          const firstUserMsg = messages.find(m => m.type === 'user' && m.message?.content);
           if (firstUserMsg) {
-            const content = typeof firstUserMsg.content === 'string' ? firstUserMsg.content :
-                           Array.isArray(firstUserMsg.content) ? 
-                           firstUserMsg.content.find(c => c.type === 'text')?.text || '' : '';
-            if (content) {
-              title = content.substring(0, 100);
+            const msgContent = firstUserMsg.message.content;
+            const contentText = typeof msgContent === 'string' ? msgContent :
+                           Array.isArray(msgContent) ?
+                           msgContent.find(c => c.type === 'text')?.text || '' : '';
+            if (contentText) {
+              title = contentText.substring(0, 100);
             }
           }
         }
-        
+
         // Default title if none found
         if (!title) {
           title = 'Untitled session';
         }
-        
+
         const actualPath = projectPath
           .replace(/^([A-Z])--/, '$1:/')
           .replace(/^-/, '/')
           .replace(/-/g, '/');
-        
-        res.json({ 
+
+        res.json({
           sessionId,
           projectPath: actualPath,
           messages,
           sessionCount: messages.length,
-          title
+          title,
+          usage: {
+            // Return CURRENT context snapshot, not accumulated totals
+            inputTokens: lastContextSnapshot.input,
+            outputTokens: lastContextSnapshot.output,
+            cacheReadTokens: lastContextSnapshot.cacheRead,
+            cacheCreationTokens: lastContextSnapshot.cacheCreation,
+            totalContextTokens: lastContextSnapshot.total // This is the actual context window usage
+          }
         });
       } catch (readError) {
         console.error('Error reading session file:', readError);
@@ -1804,61 +2053,44 @@ app.get('/claude-analytics', async (req, res) => {
                   // Parse lines to extract analytics from Claude CLI format
                   const allLines = content.split('\n').filter(line => line.trim());
                   console.log(`    Total lines in file: ${allLines.length}`);
-                  
+
                   let sessionTokens = 0;
                   let sessionCost = 0;
                   let sessionModel = 'sonnet';
                   let sessionDate = new Date().toISOString().split('T')[0];
                   let messageCount = 0;
-                  
+                  let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
+
+                  // Track last usage from result message (cumulative session totals)
+                  let lastResultUsage = null;
+                  let lastResultCostUSD = null;
+
                   for (const line of allLines) {
                     try {
                       const data = JSON.parse(line);
-                      
-                      // Claude CLI outputs token usage in assistant messages
-                      if (data.type === 'assistant' && data.message && data.message.usage) {
-                        const usage = data.message.usage;
 
-                        // FIX: Count only NEW tokens - cache reads don't count towards limit
-                        const inputTokens = usage.input_tokens || 0;
-                        const outputTokens = usage.output_tokens || 0;
-                        const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
-                        const cacheReadTokens = usage.cache_read_input_tokens || 0; // tracked but not counted
-                        sessionTokens += inputTokens + outputTokens + cacheCreationTokens; // Removed cacheReadTokens
-                        
+                      // Claude CLI uses type: "assistant" for assistant messages
+                      if (data.type === 'assistant' && data.message) {
+                        messageCount++;
                         // Detect model from message
-                        if (data.message && data.message.model) {
+                        if (data.message.model) {
                           sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                         }
-                        
-                        // Calculate cost based on model
-                        // Claude 4 Opus: $15/million input, $75/million output
-                        // Claude 4 Sonnet: $3/million input, $15/million output
-                        // Cache write: Opus $18.75/million, Sonnet $3.75/million
-                        // Cache read: Opus $1.50/million, Sonnet $0.30/million
-                        const isOpus = sessionModel === 'opus';
-                        const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
-                        const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
-                        const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
-                        const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
-                        
-                        sessionCost += inputTokens * inputRate + 
-                                     outputTokens * outputRate + 
-                                     cacheCreationTokens * cacheWriteRate + 
-                                     cacheReadTokens * cacheReadRate;
-                        
-                        // Track individual token types for breakdown
-                        analytics.tokenBreakdown.input += inputTokens;
-                        analytics.tokenBreakdown.output += outputTokens;
-                        analytics.tokenBreakdown.cacheCreation += cacheCreationTokens;
-                        analytics.tokenBreakdown.cacheRead += cacheReadTokens;
                       }
-                      
-                      // Count all message types
-                      if (data.type === 'user' || data.type === 'assistant') {
+
+                      // Result messages contain CUMULATIVE session totals - use the last one
+                      if (data.type === 'result' && data.usage) {
+                        lastResultUsage = data.usage;
+                        if (data.costUSD != null) {
+                          lastResultCostUSD = data.costUSD;
+                        }
+                      }
+
+                      // Count user messages too
+                      if (data.type === 'user') {
                         messageCount++;
                       }
-                      
+
                       // Get timestamp from any message
                       if (data.timestamp) {
                         sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
@@ -1867,7 +2099,46 @@ app.get('/claude-analytics', async (req, res) => {
                       // Skip invalid JSON
                     }
                   }
-                  
+
+                  // Calculate from last result's cumulative totals (not summing per-turn)
+                  if (lastResultUsage) {
+                    const inputTokens = lastResultUsage.input_tokens || 0;
+                    const outputTokens = lastResultUsage.output_tokens || 0;
+                    const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
+                    const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
+
+                    // Context window = input tokens only (matches Claude Code formula)
+                    sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                    sessionTokenBreakdown = {
+                      input: inputTokens,
+                      output: outputTokens,
+                      cacheCreation: cacheCreationTokens,
+                      cacheRead: cacheReadTokens
+                    };
+
+                    // Use costUSD if available, otherwise calculate from tokens
+                    if (lastResultCostUSD != null) {
+                      sessionCost = lastResultCostUSD;
+                    } else {
+                      const isOpus = sessionModel === 'opus';
+                      const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
+                      const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
+                      const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
+                      const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
+
+                      sessionCost = inputTokens * inputRate +
+                                   outputTokens * outputRate +
+                                   cacheCreationTokens * cacheWriteRate +
+                                   cacheReadTokens * cacheReadRate;
+                    }
+
+                    // Track individual token types for breakdown
+                    analytics.tokenBreakdown.input += sessionTokenBreakdown.input;
+                    analytics.tokenBreakdown.output += sessionTokenBreakdown.output;
+                    analytics.tokenBreakdown.cacheCreation += sessionTokenBreakdown.cacheCreation;
+                    analytics.tokenBreakdown.cacheRead += sessionTokenBreakdown.cacheRead;
+                  }
+
                   console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
                   
                   // Update analytics if session has data
@@ -1966,58 +2237,44 @@ app.get('/claude-analytics', async (req, res) => {
                 // Parse lines to extract analytics from Claude CLI format
                 const allLines = content.split('\n').filter(line => line.trim());
                 console.log(`    Total lines in file: ${allLines.length}`);
-                
+
                 let sessionTokens = 0;
                 let sessionCost = 0;
                 let sessionModel = 'sonnet';
                 let sessionDate = new Date().toISOString().split('T')[0];
                 let messageCount = 0;
-                
+                let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
+
+                // Track last usage from result message (cumulative session totals)
+                let lastResultUsage = null;
+                let lastResultCostUSD = null;
+
                 for (const line of allLines) {
                   try {
                     const data = JSON.parse(line);
-                    
-                    // Claude CLI outputs token usage in 'result' messages
-                    if (data.type === 'assistant' && data.message && data.message.usage) {
-                      const usage = data.message.usage;
 
-                      // FIX: Count only NEW tokens - cache reads don't count towards limit
-                      const inputTokens = usage.input_tokens || 0;
-                      const outputTokens = usage.output_tokens || 0;
-                      const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
-                      const cacheReadTokens = usage.cache_read_input_tokens || 0; // tracked but not counted
-                      sessionTokens += inputTokens + outputTokens + cacheCreationTokens; // Removed cacheReadTokens
-                      
+                    // Claude CLI uses type: "assistant" for assistant messages
+                    if (data.type === 'assistant' && data.message) {
+                      messageCount++;
                       // Detect model from message
-                      if (data.message && data.message.model) {
+                      if (data.message.model) {
                         sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                       }
-                      
-                      // Calculate cost based on model
-                      // Claude 4 pricing per million tokens
-                      const isOpus = sessionModel === 'opus';
-                      const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
-                      const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
-                      const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
-                      const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
-                      
-                      sessionCost += inputTokens * inputRate + 
-                                   outputTokens * outputRate + 
-                                   cacheCreationTokens * cacheWriteRate + 
-                                   cacheReadTokens * cacheReadRate;
-                      
-                      // Track individual token types for breakdown
-                      analytics.tokenBreakdown.input += inputTokens;
-                      analytics.tokenBreakdown.output += outputTokens;
-                      analytics.tokenBreakdown.cacheCreation += cacheCreationTokens;
-                      analytics.tokenBreakdown.cacheRead += cacheReadTokens;
                     }
-                    
-                    // Count all message types
-                    if (data.type === 'user' || data.type === 'assistant') {
+
+                    // Result messages contain CUMULATIVE session totals - use the last one
+                    if (data.type === 'result' && data.usage) {
+                      lastResultUsage = data.usage;
+                      if (data.costUSD != null) {
+                        lastResultCostUSD = data.costUSD;
+                      }
+                    }
+
+                    // Count user messages too
+                    if (data.type === 'user') {
                       messageCount++;
                     }
-                    
+
                     // Get timestamp from any message
                     if (data.timestamp) {
                       sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
@@ -2026,7 +2283,46 @@ app.get('/claude-analytics', async (req, res) => {
                     // Skip invalid JSON
                   }
                 }
-                
+
+                // Calculate from last result's cumulative totals (not summing per-turn)
+                if (lastResultUsage) {
+                  const inputTokens = lastResultUsage.input_tokens || 0;
+                  const outputTokens = lastResultUsage.output_tokens || 0;
+                  const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
+                  const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
+
+                  // Context window = input tokens only (matches Claude Code formula)
+                    sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                  sessionTokenBreakdown = {
+                    input: inputTokens,
+                    output: outputTokens,
+                    cacheCreation: cacheCreationTokens,
+                    cacheRead: cacheReadTokens
+                  };
+
+                  // Use costUSD if available, otherwise calculate from tokens
+                  if (lastResultCostUSD != null) {
+                    sessionCost = lastResultCostUSD;
+                  } else {
+                    const isOpus = sessionModel === 'opus';
+                    const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
+                    const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
+                    const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
+                    const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
+
+                    sessionCost = inputTokens * inputRate +
+                                 outputTokens * outputRate +
+                                 cacheCreationTokens * cacheWriteRate +
+                                 cacheReadTokens * cacheReadRate;
+                  }
+
+                  // Track individual token types for breakdown
+                  analytics.tokenBreakdown.input += sessionTokenBreakdown.input;
+                  analytics.tokenBreakdown.output += sessionTokenBreakdown.output;
+                  analytics.tokenBreakdown.cacheCreation += sessionTokenBreakdown.cacheCreation;
+                  analytics.tokenBreakdown.cacheRead += sessionTokenBreakdown.cacheRead;
+                }
+
                 console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
                 
                 // Update analytics
@@ -2108,52 +2404,38 @@ app.get('/claude-analytics', async (req, res) => {
               let sessionModel = 'sonnet';
               let sessionDate = new Date().toISOString().split('T')[0];
               let messageCount = 0;
-              
+              let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
+
+              // Track last usage from result message (cumulative session totals)
+              let lastResultUsage = null;
+              let lastResultCostUSD = null;
+
               for (const line of lines) {
                 try {
                   const data = JSON.parse(line);
-                  
-                  // Claude CLI outputs token usage in 'result' messages
-                  if (data.type === 'assistant' && data.message && data.message.usage) {
-                    const usage = data.message.usage;
 
-                    // FIX: Count only NEW tokens - cache reads don't count towards limit
-                    const inputTokens = usage.input_tokens || 0;
-                    const outputTokens = usage.output_tokens || 0;
-                    const cacheCreationTokens = usage.cache_creation_input_tokens || 0;
-                    const cacheReadTokens = usage.cache_read_input_tokens || 0; // tracked but not counted
-                    sessionTokens += inputTokens + outputTokens + cacheCreationTokens; // Removed cacheReadTokens
-                    
+                  // Claude CLI uses type: "assistant" for assistant messages
+                  if (data.type === 'assistant' && data.message) {
+                    messageCount++;
                     // Detect model from message
-                    if (data.message && data.message.model) {
+                    if (data.message.model) {
                       sessionModel = data.message.model.toLowerCase().includes('opus') ? 'opus' : 'sonnet';
                     }
-                    
-                    // Calculate cost based on model
-                    // Claude 4 pricing per million tokens
-                    const isOpus = sessionModel === 'opus';
-                    const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
-                    const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
-                    const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
-                    const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
-                    
-                    sessionCost += inputTokens * inputRate + 
-                                 outputTokens * outputRate + 
-                                 cacheCreationTokens * cacheWriteRate + 
-                                 cacheReadTokens * cacheReadRate;
-                    
-                    // Track individual token types for breakdown
-                    analytics.tokenBreakdown.input += inputTokens;
-                    analytics.tokenBreakdown.output += outputTokens;
-                    analytics.tokenBreakdown.cacheCreation += cacheCreationTokens;
-                    analytics.tokenBreakdown.cacheRead += cacheReadTokens;
                   }
-                  
-                  // Count all message types
-                  if (data.type === 'user' || data.type === 'assistant') {
+
+                  // Result messages contain CUMULATIVE session totals - use the last one
+                  if (data.type === 'result' && data.usage) {
+                    lastResultUsage = data.usage;
+                    if (data.costUSD != null) {
+                      lastResultCostUSD = data.costUSD;
+                    }
+                  }
+
+                  // Count user messages too
+                  if (data.type === 'user') {
                     messageCount++;
                   }
-                  
+
                   // Get timestamp from any message
                   if (data.timestamp) {
                     sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
@@ -2162,7 +2444,46 @@ app.get('/claude-analytics', async (req, res) => {
                   // Skip invalid lines
                 }
               }
-              
+
+              // Calculate from last result's cumulative totals (not summing per-turn)
+              if (lastResultUsage) {
+                const inputTokens = lastResultUsage.input_tokens || 0;
+                const outputTokens = lastResultUsage.output_tokens || 0;
+                const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
+                const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
+
+                // Context window = input tokens only (matches Claude Code formula)
+                    sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                sessionTokenBreakdown = {
+                  input: inputTokens,
+                  output: outputTokens,
+                  cacheCreation: cacheCreationTokens,
+                  cacheRead: cacheReadTokens
+                };
+
+                // Use costUSD if available, otherwise calculate from tokens
+                if (lastResultCostUSD != null) {
+                  sessionCost = lastResultCostUSD;
+                } else {
+                  const isOpus = sessionModel === 'opus';
+                  const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
+                  const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
+                  const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
+                  const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
+
+                  sessionCost = inputTokens * inputRate +
+                               outputTokens * outputRate +
+                               cacheCreationTokens * cacheWriteRate +
+                               cacheReadTokens * cacheReadRate;
+                }
+
+                // Track individual token types for breakdown
+                analytics.tokenBreakdown.input += sessionTokenBreakdown.input;
+                analytics.tokenBreakdown.output += sessionTokenBreakdown.output;
+                analytics.tokenBreakdown.cacheCreation += sessionTokenBreakdown.cacheCreation;
+                analytics.tokenBreakdown.cacheRead += sessionTokenBreakdown.cacheRead;
+              }
+
               // Update analytics
               if (sessionTokens > 0 || messageCount > 0) {
                 analytics.totalSessions++;
@@ -2412,6 +2733,179 @@ app.get('/claude-projects-quick', async (req, res) => {
   } catch (error) {
     console.error('Error quick loading projects:', error);
     res.status(500).json({ error: 'Failed to load projects', details: error.message });
+  }
+});
+
+// Get recent conversations across all projects for resume modal
+app.get('/claude-recent-conversations', async (req, res) => {
+  try {
+    console.log('📂 Loading recent conversations across all projects');
+    const projectsDir = join(homedir(), '.claude', 'projects');
+
+    if (!existsSync(projectsDir)) {
+      console.log('No projects directory found');
+      return res.json({ conversations: [] });
+    }
+
+    const conversations = [];
+    const { readdir, stat, readFile } = fs.promises;
+
+    // Get all project directories
+    const projectDirs = await readdir(projectsDir);
+
+    for (const projectDir of projectDirs) {
+      // Skip temp/system directories
+      const lowerName = projectDir.toLowerCase();
+      if (lowerName.includes('temp') ||
+          lowerName.includes('tmp') ||
+          lowerName.includes('yurucode-server') ||
+          lowerName.includes('yurucode-title-gen')) {
+        continue;
+      }
+
+      const projectPath = join(projectsDir, projectDir);
+
+      try {
+        const projectStat = await stat(projectPath);
+        if (!projectStat.isDirectory()) continue;
+
+        // Get session files in this project
+        const files = await readdir(projectPath);
+        const sessionFiles = files.filter(f => f.endsWith('.jsonl'));
+
+        // Get file stats and sort by modification time
+        const fileStats = await Promise.all(
+          sessionFiles.map(async (f) => {
+            try {
+              const filePath = join(projectPath, f);
+              const fileStat = await stat(filePath);
+              return {
+                filename: f,
+                path: filePath,
+                mtime: fileStat.mtime.getTime()
+              };
+            } catch {
+              return null;
+            }
+          })
+        );
+
+        // Sort by most recent and take top 3 from each project
+        const sortedFiles = fileStats
+          .filter(Boolean)
+          .sort((a, b) => b.mtime - a.mtime)
+          .slice(0, 3);
+
+        // Parse each session file
+        for (const fileInfo of sortedFiles) {
+          try {
+            const content = await readFile(fileInfo.path, 'utf8');
+            const lines = content.trim().split('\n').filter(l => l.trim());
+
+            if (lines.length === 0) continue;
+
+            const sessionId = fileInfo.filename.replace('.jsonl', '');
+            let title = 'Untitled conversation';
+            let summary = '';
+            let messageCount = 0;
+
+            // Count messages and look for title
+            for (const line of lines) {
+              try {
+                const data = JSON.parse(line);
+
+                // Skip meta messages (system tags like local-command-caveat)
+                if (data.isMeta === true) {
+                  continue;
+                }
+
+                // Check for title in various formats
+                if (data.type === 'title' && data.title) {
+                  title = data.title;
+                } else if (data.type === 'summary' && data.summary) {
+                  title = data.summary;
+                  summary = data.summary;
+                } else if (data.title && !data.role) {
+                  title = data.title;
+                }
+
+                // Count actual messages (skip meta messages for counting too)
+                if (data.role === 'user' || data.role === 'assistant' ||
+                    data.type === 'user' || data.type === 'assistant') {
+
+                  // Get content string for filtering
+                  const msgContent = data.content || data.message?.content;
+                  let contentStr = '';
+                  if (typeof msgContent === 'string') {
+                    contentStr = msgContent;
+                  } else if (Array.isArray(msgContent)) {
+                    const textBlock = msgContent.find(c => c.type === 'text');
+                    if (textBlock?.text) {
+                      contentStr = textBlock.text;
+                    }
+                  }
+
+                  // Skip messages that start with XML-like tags (system/meta messages)
+                  if (/^\s*<[a-z][a-z0-9-]*>/i.test(contentStr)) {
+                    continue;
+                  }
+
+                  messageCount++;
+
+                  // Get first user message as summary if no title
+                  if (!summary && (data.role === 'user' || data.type === 'user')) {
+                    if (contentStr) {
+                      summary = contentStr.substring(0, 100);
+                    }
+                  }
+                }
+              } catch {
+                // Skip unparseable lines
+              }
+            }
+
+            // Use summary as title if no title found
+            if (title === 'Untitled conversation' && summary) {
+              title = summary.substring(0, 60) + (summary.length > 60 ? '...' : '');
+            }
+
+            // Skip system-generated conversations (Warmup, etc.)
+            if (title === 'Warmup' || title.toLowerCase().includes('warmup')) {
+              continue;
+            }
+
+            // Decode project path to get project name
+            const projectName = projectDir.replace(/^-/, '/').replace(/-/g, '/').split('/').pop() || projectDir;
+
+            conversations.push({
+              id: sessionId,
+              title: title,
+              summary: summary,
+              projectPath: projectDir,
+              projectName: projectName,
+              timestamp: fileInfo.mtime,
+              messageCount: messageCount,
+              filePath: fileInfo.path
+            });
+          } catch (err) {
+            console.log(`Could not parse session ${fileInfo.filename}:`, err.message);
+          }
+        }
+      } catch (err) {
+        // Skip projects we can't read
+        continue;
+      }
+    }
+
+    // Sort all conversations by timestamp (most recent first) and limit to 20
+    conversations.sort((a, b) => b.timestamp - a.timestamp);
+    const recentConversations = conversations.slice(0, 20);
+
+    console.log(`Loaded ${recentConversations.length} recent conversations`);
+    res.json({ conversations: recentConversations });
+  } catch (error) {
+    console.error('Error loading recent conversations:', error);
+    res.status(500).json({ error: 'Failed to load conversations', details: error.message });
   }
 });
 

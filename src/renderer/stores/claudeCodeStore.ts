@@ -1095,21 +1095,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               messageType: message.type
             });
             
-            // CRITICAL: Clear streaming state when result is received
-            set(state => ({
-              sessions: state.sessions.map(s => {
-                if (s.id === sessionId) {
-                  console.log('[Store] 🎯 Clearing streaming state on result message');
-                  return { 
-                    ...s, 
-                    streaming: false, 
-                    thinkingStartTime: undefined,
-                    pendingToolIds: new Set()
-                  };
-                }
-                return s;
-              })
-            }));
+            // NOTE: Don't clear streaming here - wait for streaming_end message
+            // Result messages come BEFORE streaming_end, so clearing here causes UI to show idle prematurely
+            console.log('[Store] 📊 Result received on temp channel - NOT clearing streaming (wait for streaming_end)');
             
             // Process as normal message through the main handler
             // Ensure all fields are preserved for display
@@ -2671,12 +2659,14 @@ ${content}`;
       console.error('[Store] Error sending message:', error);
       console.error('[Store] Error stack:', err?.stack);
 
-      // Add error message to chat
+      // Add error message to chat and reset streaming state
       set(state => ({
         sessions: state.sessions.map(s =>
           s.id === sessionToUse
             ? {
                 ...s,
+                streaming: false,
+                thinkingStartTime: undefined,
                 messages: (() => {
                   const newMessage = {
                     type: 'system',
@@ -2821,13 +2811,13 @@ ${content}`;
         
         // Handle streaming state - CRITICAL: Don't clear streaming when individual messages complete!
         // Individual messages can finish (streaming=false) while the overall response is still active.
-        // Only set streaming=true for assistant, only clear on result/stream_end/interrupted/error.
+        // Only set streaming=true for assistant, only clear on stream_end/interrupted/error (NOT result).
+        // Result messages don't clear streaming - wait for streaming_end which comes after result.
         if (message.type === 'assistant' && message.streaming === true) {
           sessions = sessions.map(s =>
             s.id === sessionId ? { ...s, streaming: true } : s
           );
-        } else if (message.type === 'result' ||
-                   (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end'))) {
+        } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
           sessions = sessions.map(s =>
             s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
           );
@@ -2936,7 +2926,25 @@ ${content}`;
       
       const messages = result.messages || [];
       workingDirectory = result.workingDirectory || workingDirectory;
-      
+
+      // Extract usage data from server response (context snapshot, not accumulated)
+      const serverUsage = result.usage || {};
+      const contextTokens = serverUsage.totalContextTokens || 0;
+      const inputTokens = serverUsage.inputTokens || 0;
+      const outputTokens = serverUsage.outputTokens || 0;
+      const cacheReadTokens = serverUsage.cacheReadTokens || 0;
+      const cacheCreationTokens = serverUsage.cacheCreationTokens || 0;
+      const contextPercentage = (contextTokens / 200000) * 100;
+
+      console.log('[Store] Resume session usage from server:', {
+        contextTokens,
+        inputTokens,
+        outputTokens,
+        cacheReadTokens,
+        cacheCreationTokens,
+        contextPercentage: contextPercentage.toFixed(2) + '%'
+      });
+
       const session: Session = {
         id: sessionId,
         name: `resumed session`,
@@ -2945,28 +2953,28 @@ ${content}`;
         workingDirectory,
         createdAt: new Date(),
         updatedAt: new Date(),
-        // Initialize fresh analytics for resumed session
+        // Initialize analytics with context data from server
         analytics: {
-          totalMessages: 0,
-          userMessages: 0,
-          assistantMessages: 0,
-          toolUses: 0,
-          systemMessages: 0,
-          tokens: { 
-            input: 0, 
-            output: 0, 
-            total: 0,
-            cacheSize: 0,
-            cacheCreation: 0,
-            cacheRead: 0,
-            conversationTokens: 0,
+          totalMessages: messages.length,
+          userMessages: messages.filter((m: { type?: string }) => m.type === 'user').length,
+          assistantMessages: messages.filter((m: { type?: string }) => m.type === 'assistant').length,
+          toolUses: messages.filter((m: { type?: string }) => m.type === 'tool_use').length,
+          systemMessages: messages.filter((m: { type?: string }) => m.type === 'system').length,
+          tokens: {
+            input: inputTokens,
+            output: outputTokens,
+            total: contextTokens,
+            cacheSize: cacheReadTokens,
+            cacheCreation: cacheCreationTokens,
+            cacheRead: cacheReadTokens,
+            conversationTokens: contextTokens - cacheReadTokens,
             systemTokens: 0,
-            average: 0,
+            average: messages.length > 0 ? Math.ceil(contextTokens / messages.length) : 0,
             byModel: {
               opus: { input: 0, output: 0, total: 0 },
               sonnet: { input: 0, output: 0, total: 0 }
             },
-            breakdown: { user: 0, assistant: 0 }
+            breakdown: { user: 0, assistant: outputTokens }
           },
           cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
           duration: 0,
@@ -2974,10 +2982,10 @@ ${content}`;
           thinkingTime: 0,
           responseTime: 0,
           contextWindow: {
-            used: 0,
+            used: contextTokens,
             limit: 200000,
-            percentage: 0,
-            remaining: 200000
+            percentage: contextPercentage,
+            remaining: Math.max(0, 200000 - contextTokens)
           },
           model: get().selectedModel || DEFAULT_MODEL_ID
         }
@@ -3147,8 +3155,8 @@ ${content}`;
               }
               return s;
             });
-          } else if (message.type === 'result' ||
-                     (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end'))) {
+          } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
+            // Don't clear streaming on result - wait for streaming_end
             sessions = sessions.map(s =>
               s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
             );
@@ -3157,7 +3165,7 @@ ${content}`;
           return { sessions };
         });
       });
-      
+
       // Combined cleanup function
       const cleanup = () => {
         messageCleanup();
@@ -3315,6 +3323,16 @@ ${content}`;
 
     console.log(`⛔ [Store] interruptSession called for ${sessionIdToInterrupt} (explicit: ${!!targetSessionId})`);
 
+    // Capture pending compact message before clearing state (to restore to input)
+    const pendingCompactMessage = sessionToInterrupt?.compactionState?.pendingAutoCompactMessage;
+    if (pendingCompactMessage) {
+      console.log(`⛔ [Store] Compaction interrupted - will restore message to input: "${pendingCompactMessage.slice(0, 50)}..."`);
+      // Emit event so UI can restore message to input
+      window.dispatchEvent(new CustomEvent('yurucode-restore-input', {
+        detail: { sessionId: sessionIdToInterrupt, message: pendingCompactMessage }
+      }));
+    }
+
     // Only interrupt if session exists and is actually streaming
     if (sessionIdToInterrupt && sessionToInterrupt?.streaming) {
       // Immediately set streaming and runningBash to false to prevent double calls
@@ -3339,7 +3357,14 @@ ${content}`;
               userBashRunning: false,
               thinkingStartTime: undefined,
               pendingToolIds: new Set(), // Clear pending tools on interrupt
-              analytics: updatedAnalytics
+              analytics: updatedAnalytics,
+              // Clear compaction state on interrupt (message already captured above)
+              compactionState: pendingCompactMessage ? {
+                ...s.compactionState,
+                isCompacting: false,
+                pendingAutoCompact: false,
+                pendingAutoCompactMessage: undefined
+              } : s.compactionState
               // Keep claudeSessionId to maintain conversation context
             };
           }
@@ -3495,6 +3520,9 @@ ${content}`;
     claudeClient.clearSession(sessionId).catch(error => {
       console.error('Failed to clear server session:', error);
     });
+
+    // Trigger resume button check by dispatching event
+    window.dispatchEvent(new CustomEvent('yurucode-check-resumable'));
 
     // Reset backend compaction flags to prevent stale auto-compact triggers
     invoke('reset_compaction_flags', { sessionId }).catch(error => {

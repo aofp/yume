@@ -552,12 +552,19 @@ export const SessionTabs: React.FC = () => {
                 const startY = e.clientY;
                 let moved = false;
                 let currentDragOver: string | null = null;
-                
+
+                // Calculate offset from click to tab's top-left corner for natural dragging
+                const tabElement = document.querySelector(`[data-session-id="${session.id}"]`) as HTMLElement;
+                const tabRect = tabElement?.getBoundingClientRect();
+                const zoomLevel = parseFloat(document.body.style.zoom || '1');
+                const clickOffsetX = tabRect ? (e.clientX - tabRect.left) / zoomLevel : 0;
+                const clickOffsetY = tabRect ? (e.clientY - tabRect.top) / zoomLevel : 0;
+
                 // Create drag preview - clone the actual tab
                 const createDragPreview = () => {
                   const tabElement = document.querySelector(`[data-session-id="${session.id}"]`) as HTMLElement;
                   if (!tabElement) return null;
-                  
+
                   const preview = tabElement.cloneNode(true) as HTMLElement;
                   preview.style.cssText = `
                     position: fixed;
@@ -612,14 +619,12 @@ export const SessionTabs: React.FC = () => {
                   }
                   
                   if (moved) {
-                    // Update drag preview position - offset more to avoid cursor interference
+                    // Update drag preview position - use click offset for natural dragging
                     if (dragPreview) {
                       // Get zoom level from body style or default to 1
-                      const zoomLevel = parseFloat(document.body.style.zoom || '1');
-                      const offsetX = 15;
-                      const offsetY = 15;
-                      dragPreview.style.left = `${moveEvent.clientX / zoomLevel + offsetX}px`;
-                      dragPreview.style.top = `${moveEvent.clientY / zoomLevel + offsetY}px`;
+                      const currentZoom = parseFloat(document.body.style.zoom || '1');
+                      dragPreview.style.left = `${moveEvent.clientX / currentZoom - clickOffsetX}px`;
+                      dragPreview.style.top = `${moveEvent.clientY / currentZoom - clickOffsetY}px`;
                     }
                     
                     // Ensure cursor stays as grabbing

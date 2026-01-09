@@ -136,17 +136,33 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
            parentPath.substring(parentPath.length - endLength);
   }, []);
   
-  const formatTimeAgo = React.useCallback((timestamp: number): string => {
-    // handle undefined/invalid timestamps
-    if (!timestamp || isNaN(timestamp)) return 'never';
-    
-    const seconds = Math.floor((Date.now() - timestamp) / 1000);
-    
-    if (seconds < 60) return 'just now';
-    if (seconds < 3600) return `${Math.floor(seconds / 60)}m ago`;
-    if (seconds < 86400) return `${Math.floor(seconds / 3600)}h ago`;
-    if (seconds < 604800) return `${Math.floor(seconds / 86400)}d ago`;
-    return `${Math.floor(seconds / 604800)}w ago`;
+  const formatTimestamp = React.useCallback((timestamp: number): string => {
+    if (!timestamp || isNaN(timestamp)) return 'unknown';
+
+    const date = new Date(timestamp);
+    const now = new Date();
+    const isToday = date.toDateString() === now.toDateString();
+    const yesterday = new Date(now);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const isYesterday = date.toDateString() === yesterday.toDateString();
+
+    const timeStr = date.toLocaleTimeString('en-US', {
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true
+    }).toLowerCase();
+
+    if (isToday) {
+      return `today ${timeStr}`;
+    } else if (isYesterday) {
+      return `yesterday ${timeStr}`;
+    } else {
+      const dateStr = date.toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric'
+      }).toLowerCase();
+      return `${dateStr} ${timeStr}`;
+    }
   }, []);
 
   const renderProjects = () => {
@@ -180,7 +196,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
                 <div className="recent-item-name-row">
                   <span>{project.name}</span>
                   {project.lastOpened && (
-                    <span className="recent-item-time">{formatTimeAgo(project.lastOpened)}</span>
+                    <span className="recent-item-time">{formatTimestamp(project.lastOpened)}</span>
                   )}
                 </div>
                 <span className="recent-item-path">
@@ -335,10 +351,13 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         onMouseDown={(e) => e.stopPropagation()}
       >
         <div className="modal-header">
-          <span className="modal-title">
-            <IconFolderOpen size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-            recent projects
-          </span>
+          <div className="modal-title-group">
+            <span className="modal-title">
+              <IconFolderOpen size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+              recent projects
+            </span>
+            <span className="modal-hint">1-9 to open</span>
+          </div>
           <div className="modal-header-actions">
             <button
               className="clear-all-icon"
@@ -364,7 +383,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
             </button>
           </div>
         </div>
-        
+
         <div className="modal-content">
           {renderProjects()}
         </div>

@@ -213,7 +213,7 @@
   border-radius: 8px;
   width: 90%;
   max-width: 500px;
-  max-height: 70vh;
+  max-height: 85vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -335,12 +335,23 @@
   color: var(--negative-color);
 }
 
+.modal-title-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.modal-hint {
+  font-size: 10px;
+  color: var(--fg-30);
+}
+
 .modal-content {
   flex: 1;
   overflow-y: auto;
   overflow-x: hidden;
   padding: 2px;
-  max-height: calc(70vh - 45px); /* Account for header height */
+  max-height: calc(80vh - 45px); /* Account for header height */
   background: var(--background-color);
 }
 
@@ -409,7 +420,7 @@
 }
 
 .recent-item-name {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--fg-80);
   text-transform: lowercase;
   font-weight: 500;
