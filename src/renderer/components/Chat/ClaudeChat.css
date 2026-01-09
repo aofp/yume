@@ -1147,6 +1147,8 @@ textarea.context-full {
   flex-shrink: 0; /* Prevent shrinking */
   position: relative; /* For absolute positioning of dictation button */
   overflow: visible; /* Allow model dropdown to escape */
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* Windows release build specific adjustment - buttons need to go down 1px */
