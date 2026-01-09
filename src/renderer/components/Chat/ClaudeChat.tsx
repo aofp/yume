@@ -404,6 +404,7 @@ export const ClaudeChat: React.FC = () => {
   const [fileTruncated, setFileTruncated] = useState(false);
   // Git panel state
   const [gitBranch, setGitBranch] = useState<string>('');
+  const [gitAhead, setGitAhead] = useState<number>(0);
   const [gitStatus, setGitStatus] = useState<{ modified: string[]; added: string[]; deleted: string[]; untracked: string[] } | null>(null);
   const [gitLineStats, setGitLineStats] = useState<{ [file: string]: { added: number; deleted: number } }>({});
   const [gitDiff, setGitDiff] = useState<DiffDisplay | null>(null);
@@ -1248,6 +1249,13 @@ export const ClaudeChat: React.FC = () => {
   const handleResumeConversation = useCallback(async (conversation: any) => {
     console.log('[ClaudeChat] Resuming conversation:', conversation);
 
+    // Get the current session ID to reuse (resume in the same tab)
+    const existingSessionId = useClaudeCodeStore.getState().currentSessionId;
+    if (!existingSessionId) {
+      console.error('[ClaudeChat] No current session to resume into');
+      return;
+    }
+
     // Decode the project path to get the working directory
     let workingDirectory = '/';
     try {
@@ -1290,11 +1298,6 @@ export const ClaudeChat: React.FC = () => {
         console.warn('[ClaudeChat] No messages in session data');
       }
 
-      // Generate unique session ID for the restored session
-      const timestamp = Date.now().toString(36);
-      const random1 = Math.random().toString(36).substring(2, 8);
-      const newSessionId = `restored-${timestamp}-${random1}`;
-
       // Get tab title from conversation or first message
       let tabTitle = conversation.title || data.title || projectName;
       if (tabTitle.length > 25) {
@@ -1309,9 +1312,9 @@ export const ClaudeChat: React.FC = () => {
       const serverUsage = data.usage || { inputTokens: 0, outputTokens: 0, totalContextTokens: 0 };
       const totalTokens = serverUsage.totalContextTokens || serverUsage.totalTokens || 0;
 
-      // Create the restored session object
+      // Create the restored session object, reusing the existing session ID
       const restoredSession = {
-        id: newSessionId,
+        id: existingSessionId,
         name: tabTitle,
         claudeTitle: tabTitle,
         status: 'active' as const,
@@ -1340,10 +1343,11 @@ export const ClaudeChat: React.FC = () => {
         modifiedFiles: new Set<string>()
       };
 
-      // Add session to store first
+      // Update the existing session in the store (don't create a new one)
       useClaudeCodeStore.setState((state: any) => ({
-        sessions: [...state.sessions, restoredSession],
-        currentSessionId: newSessionId
+        sessions: state.sessions.map((s: any) =>
+          s.id === existingSessionId ? restoredSession : s
+        )
       }));
 
       // Register session with server so it knows about the claudeSessionId for --resume
@@ -1351,15 +1355,15 @@ export const ClaudeChat: React.FC = () => {
       try {
         console.log('[ClaudeChat] Registering resumed session with server...');
         await claudeCodeClient.createSession(tabTitle, workingDirectory, {
-          sessionId: newSessionId, // Use our generated ID
-          existingSessionId: newSessionId,
+          sessionId: existingSessionId, // Use the existing session ID
+          existingSessionId: existingSessionId,
           claudeSessionId: conversation.id, // The real Claude session ID for --resume
           messages: messagesToLoad
         });
         console.log('[ClaudeChat] Session registered with server successfully');
 
         // Set up message listeners for the resumed session
-        useClaudeCodeStore.getState().reconnectSession(newSessionId, conversation.id);
+        useClaudeCodeStore.getState().reconnectSession(existingSessionId, conversation.id);
         console.log('[ClaudeChat] Message listeners set up for resumed session');
       } catch (err) {
         console.error('[ClaudeChat] Failed to register session with server:', err);
@@ -1601,7 +1605,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled]);
 
 
 
@@ -1762,6 +1766,20 @@ export const ClaudeChat: React.FC = () => {
     const normalizePaths = (paths: string[]): string[] =>
       paths.map(p => p.replace(/\\/g, '/'));
 
+    // Helper to get commits ahead of upstream (main/origin)
+    const fetchAheadCount = async (workingDir: string): Promise<number> => {
+      try {
+        // Try to get commits ahead of upstream
+        const result = await invoke('execute_bash', {
+          command: 'git rev-list --count @{upstream}..HEAD 2>/dev/null || echo 0',
+          workingDir
+        }) as string;
+        return parseInt(result.trim(), 10) || 0;
+      } catch {
+        return 0;
+      }
+    };
+
     // Silent refresh - doesn't show loading or clear current state
     const refreshGitStatus = async () => {
       if (!showGitPanel || !currentSession?.workingDirectory) return;
@@ -1774,15 +1792,17 @@ export const ClaudeChat: React.FC = () => {
           untracked: []
         });
 
-        const [branchResult, lineStats] = await Promise.all([
+        const [branchResult, lineStats, aheadCount] = await Promise.all([
           invoke('execute_bash', {
             command: 'git rev-parse --abbrev-ref HEAD',
             workingDir: currentSession.workingDirectory
           }) as Promise<string>,
-          fetchLineStats(currentSession.workingDirectory)
+          fetchLineStats(currentSession.workingDirectory),
+          fetchAheadCount(currentSession.workingDirectory)
         ]);
         setGitBranch(branchResult.trim());
         setGitLineStats(lineStats);
+        setGitAhead(aheadCount);
       } catch (error) {
         console.error('Failed to refresh git status:', error);
         // Don't clear state on silent refresh failure
@@ -1802,20 +1822,23 @@ export const ClaudeChat: React.FC = () => {
           untracked: []
         });
 
-        const [branchResult, lineStats] = await Promise.all([
+        const [branchResult, lineStats, aheadCount] = await Promise.all([
           invoke('execute_bash', {
             command: 'git rev-parse --abbrev-ref HEAD',
             workingDir: currentSession.workingDirectory
           }) as Promise<string>,
-          fetchLineStats(currentSession.workingDirectory)
+          fetchLineStats(currentSession.workingDirectory),
+          fetchAheadCount(currentSession.workingDirectory)
         ]);
         setGitBranch(branchResult.trim());
         setGitLineStats(lineStats);
+        setGitAhead(aheadCount);
       } catch (error) {
         console.error('Failed to load git status:', error);
         setGitStatus(null);
         setGitBranch('');
         setGitLineStats({});
+        setGitAhead(0);
       } finally {
         setGitLoading(false);
       }
@@ -3523,7 +3546,7 @@ export const ClaudeChat: React.FC = () => {
         <div className="tool-panel">
           <div className="tool-panel-header">
             <span className="tool-panel-title">
-              {showFilesPanel ? <><IconFolder size={12} stroke={1.5} /> files</> : <><IconGitBranch size={12} stroke={1.5} /> {gitBranch || 'git'}</>}
+              {showFilesPanel ? <><IconFolder size={12} stroke={1.5} /> files</> : <><IconGitBranch size={12} stroke={1.5} /> {gitBranch || 'git'}{gitAhead > 0 && <span className="git-ahead-count">+{gitAhead}</span>}</>}
               <span className="tool-panel-hint">right-click to @ref</span>
             </span>
             <button
@@ -3765,6 +3788,7 @@ export const ClaudeChat: React.FC = () => {
               onClick={() => setShowResumeModal(true)}
               onContextMenu={(e) => {
                 e.preventDefault();
+                e.stopPropagation();
                 handleResumeLastConversation();
               }}
               title={`resume conversation (${modKey}+shift+r) | right-click: resume last`}

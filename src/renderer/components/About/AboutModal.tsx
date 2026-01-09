@@ -87,7 +87,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
               onContextMenu={(e) => {
                 e.preventDefault();
                 if (isLicensed) {
-                  clearLicense();
+                  confirm('forget license?') && clearLicense();
                 }
               }}
               title={isLicensed ? 'right-click to forget license' : 'click to upgrade'}

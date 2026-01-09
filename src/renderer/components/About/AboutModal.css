@@ -61,6 +61,8 @@
 .about-content {
   padding: 24px;
   text-align: center;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .about-logo {

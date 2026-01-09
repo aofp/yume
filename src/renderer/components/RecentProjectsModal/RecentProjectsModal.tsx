@@ -178,12 +178,12 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       }
       
       return projects.slice(0, 10).map((project: RecentProject, idx: number) => (
-        <div 
-          key={project.path} 
+        <div
+          key={project.path}
           className={`recent-item-container ${
             hoveredIndex === idx ? 'hovered' : ''
-          }`}
-          onMouseEnter={() => setHoveredIndex(idx)}
+          } ${selectedIndex === idx ? 'selected' : ''}`}
+          onMouseEnter={() => { setHoveredIndex(idx); setSelectedIndex(-1); }}
           onMouseLeave={() => setHoveredIndex(null)}
         >
           <button

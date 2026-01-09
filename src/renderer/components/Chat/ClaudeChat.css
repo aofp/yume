@@ -2298,7 +2298,8 @@ textarea.context-full {
   color: var(--accent-color);
 }
 
-.recent-item-container.hovered .recent-item {
+.recent-item-container.hovered .recent-item,
+.recent-item-container.selected .recent-item {
   background: rgba(var(--accent-rgb), 0.15);
 }
 
@@ -2369,7 +2370,8 @@ textarea.context-full {
 }
 
 .recent-item-container:hover .recent-item-title,
-.recent-item-container.hovered .recent-item-title {
+.recent-item-container.hovered .recent-item-title,
+.recent-item-container.selected .recent-item-title {
   color: var(--accent-color);
 }
 
@@ -2511,6 +2513,12 @@ textarea.context-full {
   cursor: default;
   transition: all 0.2s ease;
   text-transform: lowercase;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .resume-conversation-btn:hover {
@@ -2555,6 +2563,12 @@ textarea.context-full {
   font-size: 9px;
   color: var(--fg-30);
   margin-left: 8px;
+}
+
+.git-ahead-count {
+  font-size: 10px;
+  color: var(--positive-color, #99ffcc);
+  margin-left: 4px;
 }
 
 .tool-panel-close {

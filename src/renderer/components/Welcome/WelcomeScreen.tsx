@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartDots, IconMessage, IconArtboardFilled, IconSend, IconTool, IconBrain, IconCoin } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { useLicenseStore } from '../../services/licenseManager';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { platformAPI as tauriApi } from '../../services/tauriApi';
 import { isMacOS } from '../../services/platformUtils';
@@ -35,6 +36,7 @@ interface RecentProject {
 
 export const WelcomeScreen: React.FC = () => {
   const { createSession, autoCompactEnabled, setAutoCompactEnabled } = useClaudeCodeStore();
+  const { isLicensed } = useLicenseStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
@@ -341,6 +343,22 @@ export const WelcomeScreen: React.FC = () => {
           </div>
         )}
       </div>
+
+      {/* Trial indicator - bottom left */}
+      {!isLicensed && (
+        <div className="welcome-trial-container">
+          <span
+            className="welcome-trial-badge"
+            onClick={() => {
+              window.dispatchEvent(new CustomEvent('showUpgradeModal', {
+                detail: { reason: 'trial' }
+              }));
+            }}
+          >
+            trial
+          </span>
+        </div>
+      )}
 
       {/* Usage limit bars - bottom right like chat */}
       <div className="welcome-usage-container">

@@ -223,8 +223,8 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
               key={conv.id}
               className={`recent-item-container ${
                 hoveredIndex === idx ? 'hovered' : ''
-              }`}
-              onMouseEnter={() => setHoveredIndex(idx)}
+              } ${selectedIndex === idx ? 'selected' : ''}`}
+              onMouseEnter={() => { setHoveredIndex(idx); setSelectedIndex(-1); }}
               onMouseLeave={() => setHoveredIndex(null)}
             >
               <button

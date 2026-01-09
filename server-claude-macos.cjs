@@ -1600,15 +1600,20 @@ app.get('/claude-analytics', async (req, res) => {
                       const data = JSON.parse(line);
 
                       // Claude CLI uses type: "assistant" for assistant messages
+                      // Usage data is stored in message.usage, not in separate result messages
                       if (data.type === 'assistant' && data.message) {
                         messageCount++;
                         // Detect model from message
                         if (data.message.model) {
                           sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                         }
+                        // Extract usage from assistant message (cumulative totals)
+                        if (data.message.usage) {
+                          lastResultUsage = data.message.usage;
+                        }
                       }
 
-                      // Result messages contain CUMULATIVE session totals - use the last one
+                      // Also check for standalone result messages (legacy format)
                       if (data.type === 'result' && data.usage) {
                         lastResultUsage = data.usage;
                         if (data.costUSD != null) {
@@ -1787,15 +1792,20 @@ app.get('/claude-analytics', async (req, res) => {
                     const data = JSON.parse(line);
 
                     // Claude CLI uses type: "assistant" for assistant messages
+                    // Usage data is stored in message.usage, not in separate result messages
                     if (data.type === 'assistant' && data.message) {
                       messageCount++;
                       // Detect model from message
                       if (data.message.model) {
                         sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                       }
+                      // Extract usage from assistant message (cumulative totals)
+                      if (data.message.usage) {
+                        lastResultUsage = data.message.usage;
+                      }
                     }
 
-                    // Result messages contain CUMULATIVE session totals - use the last one
+                    // Also check for standalone result messages (legacy format)
                     if (data.type === 'result' && data.usage) {
                       lastResultUsage = data.usage;
                       if (data.costUSD != null) {
@@ -1951,15 +1961,20 @@ app.get('/claude-analytics', async (req, res) => {
                   const data = JSON.parse(line);
 
                   // Claude CLI uses type: "assistant" for assistant messages
+                  // Usage data is stored in message.usage, not in separate result messages
                   if (data.type === 'assistant' && data.message) {
                     messageCount++;
                     // Detect model from message
                     if (data.message.model) {
                       sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                     }
+                    // Extract usage from assistant message (cumulative totals)
+                    if (data.message.usage) {
+                      lastResultUsage = data.message.usage;
+                    }
                   }
 
-                  // Result messages contain CUMULATIVE session totals - use the last one
+                  // Also check for standalone result messages (legacy format)
                   if (data.type === 'result' && data.usage) {
                     lastResultUsage = data.usage;
                     if (data.costUSD != null) {

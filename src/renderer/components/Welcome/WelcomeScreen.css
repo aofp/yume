@@ -656,3 +656,26 @@
 .welcome-quick-nav:hover {
   color: var(--accent-color);
 }
+
+/* Trial indicator - bottom left */
+.welcome-trial-container {
+  position: fixed;
+  bottom: 0px;
+  left: 4px;
+  z-index: 100;
+}
+
+.welcome-trial-badge {
+  font-size: 8px;
+  font-family: var(--font-mono);
+  color: var(--accent-color);
+  cursor: default;
+  opacity: 0.5;
+  transition: opacity 0.15s ease;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.welcome-trial-badge:hover {
+  opacity: 1;
+}
