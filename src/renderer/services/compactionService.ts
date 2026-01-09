@@ -1,6 +1,6 @@
 /**
  * Compaction Service
- * Handles context compaction and auto-trigger at 85%
+ * Handles context compaction with 55% warning, 60% auto, 65% force thresholds
  */
 
 import { invoke } from '@tauri-apps/api/core';
@@ -9,8 +9,8 @@ import { hooksService } from './hooksService';
 import { setAutoCompactMessage } from './wrapperIntegration';
 
 export interface CompactionConfig {
-  autoThreshold: number;  // 0.85 (85%)
-  forceThreshold: number; // 0.90 (90%)
+  autoThreshold: number;  // 0.60 (60%) - auto-compact threshold
+  forceThreshold: number; // 0.65 (65%) - force-compact threshold
   preserveContext: boolean;
   generateManifest: boolean;
 }

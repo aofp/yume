@@ -3,9 +3,6 @@ import { IconAlertTriangle, IconDownload, IconCommand } from '@tabler/icons-reac
 import './ClaudeNotDetected.css';
 
 export const ClaudeNotDetected: React.FC = () => {
-  const isWindows = navigator.platform.toLowerCase().includes('win');
-  const isMac = navigator.platform.toLowerCase().includes('mac');
-
   return (
     <div className="claude-not-detected-overlay">
       <div className="claude-not-detected-modal">

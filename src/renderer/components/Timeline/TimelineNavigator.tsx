@@ -1,12 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  IconGitBranch, 
+import {
+  IconGitBranch,
   IconGitCommit,
-  IconPlayerPlay,
   IconRestore,
   IconGitFork,
   IconChevronLeft,
-  IconChevronRight,
   IconX
 } from '@tabler/icons-react';
 import { checkpointService, TimelineCheckpoint, Timeline } from '../../services/checkpointService';

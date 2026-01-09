@@ -136,7 +136,7 @@ Must match Claude Code CLI:
 5. **Feature parity**: Subagents, checkpoints, MCP ✅
 6. **Enhanced visuals**: Diff views, file trees, syntax highlighting ✅
 7. **Checkpoints + Timeline**: Visual UI (UNIQUE) ✅
-8. **31 themes**: Best in class ✅
+8. **30 themes**: Best in class ✅
 9. **5 built-in agents**: architect, explorer, implementer, guardian, specialist ✅
 10. **Custom commands**: Slash commands with templates ✅
 11. **9 hook events**: Most comprehensive ✅

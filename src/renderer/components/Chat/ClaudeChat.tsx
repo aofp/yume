@@ -3896,7 +3896,9 @@ export const ClaudeChat: React.FC = () => {
           const isStreaming = currentSession?.streaming === true;
           const hasPendingTools = (currentSession?.pendingToolIds?.size || 0) > 0;
           const isRunningBash = currentSession?.runningBash === true;
-          const shouldShowThinking = isStreaming || hasPendingTools || isRunningBash;
+          const isUserBash = currentSession?.userBashRunning === true;
+          // Show thinking only when not running bash (bash indicator takes priority)
+          const shouldShowThinking = (isStreaming || hasPendingTools) && !isRunningBash && !isUserBash;
 
           if (useVirtualization) {
             return (
@@ -3910,6 +3912,9 @@ export const ClaudeChat: React.FC = () => {
                   className="virtualized-messages-container"
                   showThinking={shouldShowThinking}
                   thinkingStartTime={(currentSession as any)?.thinkingStartTime}
+                  showBash={isRunningBash}
+                  showUserBash={isUserBash}
+                  pendingFollowup={pendingFollowupRef.current && pendingFollowupMessage ? { content: pendingFollowupRef.current.content } : null}
                   onScrollStateChange={(atBottom) => {
                     if (currentSessionId) {
                       setIsAtBottom(prev => ({ ...prev, [currentSessionId]: atBottom }));

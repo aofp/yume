@@ -7,7 +7,7 @@
 Yurucode is **definitively the best Claude Code UI**. P0, P1, and most P2 features are complete. Key recent wins:
 
 1. ✅ **Checkpoints ENABLED** - unique advantage, no competitor has this
-2. ✅ **31 themes** - way more than competitors
+2. ✅ **30 themes** - way more than competitors
 3. ✅ **5 built-in agents** - architect, explorer, implementer, guardian, specialist - unique
 4. ✅ **Custom commands** - slash commands with templates - unique
 5. ✅ **9 hook events** - most comprehensive
@@ -24,11 +24,11 @@ Remaining gaps: light mode, command palette (Cmd+K)
 |---------|--------|---------------------|
 | No terminal flicker | ✅ | **Best in class** - solves GitHub #1913 |
 | Native performance | ✅ | Better than Cursor (memory issues) |
-| Auto-compact 85% | ✅ | **Unique** - no competitor has this |
+| Auto-compact 60%/65% | ✅ | **Unique** - no competitor has this |
 | Full analytics | ✅ | Better than Cursor/Windsurf |
 | MCP visual manager | ✅ | Parity with Windsurf |
 | **Checkpoints + Timeline** | ✅ | **UNIQUE** - no competitor has visual UI |
-| **31 themes** | ✅ | **Best** - Cursor ~5, Windsurf ~3 |
+| **30 themes** | ✅ | **Best** - Cursor ~5, Windsurf ~3 |
 | **5 built-in agents** | ✅ | **UNIQUE** - architect/explorer/implementer/guardian/specialist |
 | **Custom commands** | ✅ | **UNIQUE** - slash commands with templates |
 | **Hooks system (9 events)** | ✅ | **Best** - most comprehensive |
@@ -65,7 +65,7 @@ Remaining gaps: light mode, command palette (Cmd+K)
 - **Action**: Implement fuzzy search over actions/files
 
 #### 3. Light Mode Theme
-- **Effort**: LOW (31 themes exist, infrastructure solid)
+- **Effort**: LOW (30 themes exist, infrastructure solid)
 - **Impact**: MEDIUM
 - **Why**: Many users prefer light. Accessibility concern.
 - **Action**: Add light color scheme to themes.ts
@@ -159,7 +159,7 @@ Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode
 
 - [x] Checkpoint UI enabled and working ✅ **DONE**
 - [x] Timeline navigator working ✅ **DONE**
-- [x] 31 themes available ✅ **DONE**
+- [x] 30 themes available ✅ **DONE**
 - [x] 5 built-in agents working ✅ **DONE**
 - [x] Custom commands system ✅ **DONE**
 - [x] 9 hook events ✅ **DONE**
@@ -172,11 +172,11 @@ Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode
 | Unique Feature | Status |
 |----------------|--------|
 | Visual checkpoint/timeline UI | ✅ Only yurucode |
-| 31 themes | ✅ Best in class |
+| 30 themes | ✅ Best in class |
 | 5 built-in yurucode agents | ✅ Only yurucode |
 | Custom slash commands with templates | ✅ Only yurucode |
 | 9 hook event types | ✅ Most comprehensive |
-| Auto-compaction at 85% | ✅ Only yurucode |
+| Auto-compaction at 60%/65% | ✅ Only yurucode |
 | $9 one-time price | ✅ Only yurucode |
 
 ---
@@ -198,11 +198,11 @@ Yurucode is **definitively the best Claude Code UI** as of January 2026.
 
 ### Completed (Unique Advantages)
 - ✅ Visual checkpoint/timeline UI - **only yurucode has this**
-- ✅ 31 themes - way more than competitors
+- ✅ 30 themes - way more than competitors
 - ✅ 5 built-in agents - architect, explorer, implementer, guardian, specialist
 - ✅ Custom commands with templates - **unique**
 - ✅ 9 hook events - most comprehensive
-- ✅ Auto-compaction at 85% - **unique**
+- ✅ Auto-compaction at 60%/65% - **unique**
 - ✅ $9 one-time - vs $20-200/mo subscriptions
 
 ### Remaining Items

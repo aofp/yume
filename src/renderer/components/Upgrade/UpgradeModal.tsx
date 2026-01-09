@@ -1,5 +1,5 @@
 import React, { useEffect } from 'react';
-import { IconX, IconSparkles, IconCheck } from '@tabler/icons-react';
+import { IconX, IconSparkles } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
 import './UpgradeModal.css';
 

@@ -3,8 +3,6 @@ import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartD
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
-import { platformAPI as tauriApi } from '../../services/tauriApi';
-import { isMacOS } from '../../services/platformUtils';
 import { invoke } from '@tauri-apps/api/core';
 import './WelcomeScreen.css';
 import '../Chat/ClaudeChat.css'; // for stats modal styles
@@ -371,7 +369,7 @@ export const WelcomeScreen: React.FC = () => {
               e.stopPropagation();
               setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
             }}
-            title={`context usage | ${isMacOS() ? 'cmd' : 'ctrl'}+. shows stats | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'} (toggle: ${isMacOS() ? 'cmd' : 'ctrl'}+shift+.)`}
+            title={`context usage | ${modKey}+. shows stats | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'} (toggle: ${modKey}+shift+.)`}
           >
             {autoCompactEnabled !== false ? (
               <span className="btn-stats-auto">auto</span>

@@ -71,7 +71,7 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 
 > "Claude Code performs a full terminal redraw on every chunk of streaming output rather than doing incremental updates." - Technical analysis documented **4,000 to 6,700 scroll events per second**.
 
-**The Flickering Problem (1000+ upvotes, 9+ months unfixed)**:
+**The Flickering Problem (700+ upvotes and growing, 9+ months unfixed)**:
 - VS Code/Cursor: Terminal crashes after 10-20 minutes, **loses all unsaved work**
 - Standalone terminals: Strobe-light effects, erratic scrollbar
 - Can spawn **up to 7 parallel processes** eating CPU

@@ -81,6 +81,9 @@ interface VirtualizedMessageListProps {
   lastAssistantMessageIds?: string[];
   showThinking?: boolean;
   thinkingStartTime?: number;
+  showBash?: boolean;
+  showUserBash?: boolean;
+  pendingFollowup?: { content: string } | null;
   onScrollStateChange?: (isAtBottom: boolean) => void;
   searchQuery?: string;
   searchMatches?: number[];
@@ -102,6 +105,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   lastAssistantMessageIds = [],
   showThinking = false,
   thinkingStartTime,
+  showBash = false,
+  showUserBash = false,
+  pendingFollowup = null,
   onScrollStateChange,
   searchQuery = '',
   searchMatches = [],
@@ -143,13 +149,21 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     }
   }, []);
 
-  // Add thinking message if streaming
+  // Add thinking/bash/followup indicator message if streaming
   const displayMessages = useMemo(() => {
-    if (showThinking) {
-      return [...messages, { type: 'thinking', id: 'thinking-indicator' }];
+    const result = [...messages];
+    // Show bash indicator if running bash (takes priority over thinking)
+    if (showBash || showUserBash) {
+      result.push({ type: 'bash-indicator', id: 'bash-indicator' });
+    } else if (showThinking) {
+      result.push({ type: 'thinking', id: 'thinking-indicator' });
     }
-    return messages;
-  }, [messages, showThinking]);
+    // Add followup indicator if there's a pending followup
+    if (pendingFollowup) {
+      result.push({ type: 'followup-indicator', id: 'followup-indicator', content: pendingFollowup.content });
+    }
+    return result;
+  }, [messages, showThinking, showBash, showUserBash, pendingFollowup]);
 
   // Create a simple hash of message content to detect changes
   // Uses count + last message ID + streaming state instead of JSON.stringify for performance
@@ -159,19 +173,29 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     const lastLen = lastMsg?.content?.length || lastMsg?.text?.length || 0;
     const isStreaming = lastMsg?.streaming ? 1 : 0;
     const thinkingState = showThinking ? 1 : 0;
-    return `${displayMessages.length}:${lastId}:${lastLen}:${isStreaming}:${thinkingState}`;
-  }, [displayMessages, showThinking]);
+    const bashState = (showBash || showUserBash) ? 1 : 0;
+    const followupState = pendingFollowup ? 1 : 0;
+    return `${displayMessages.length}:${lastId}:${lastLen}:${isStreaming}:${thinkingState}:${bashState}:${followupState}`;
+  }, [displayMessages, showThinking, showBash, showUserBash, pendingFollowup]);
 
   // CRITICAL: Stable estimateSize using ref - prevents virtualizer recreation during streaming
   // Using ref instead of displayMessages in dependency array avoids callback recreation
   const estimateSize = useCallback((index: number) => {
     // Access via ref for stable reference
-    const msgs = showThinking ? [...messagesRef.current, { type: 'thinking', id: 'thinking-indicator' }] : messagesRef.current;
-    const msg = msgs[index];
+    const result = [...messagesRef.current];
+    if (showBash || showUserBash) {
+      result.push({ type: 'bash-indicator', id: 'bash-indicator' });
+    } else if (showThinking) {
+      result.push({ type: 'thinking', id: 'thinking-indicator' });
+    }
+    if (pendingFollowup) {
+      result.push({ type: 'followup-indicator', id: 'followup-indicator' });
+    }
+    const msg = result[index];
     if (!msg) return 100;
 
-    // Thinking indicator has fixed height
-    if (msg.type === 'thinking') {
+    // Thinking/bash/followup indicator has fixed height
+    if (msg.type === 'thinking' || msg.type === 'bash-indicator' || msg.type === 'followup-indicator') {
       return 60;
     }
 
@@ -192,7 +216,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     if (contentLength > 1000) return 300;
     if (contentLength > 500) return 200;
     return 150;
-  }, [showThinking]); // Only depends on showThinking, not displayMessages
+  }, [showThinking, showBash, showUserBash, pendingFollowup]); // Depends on indicator states
 
   const virtualizer = useVirtualizer({
     count: displayMessages.length,
@@ -201,10 +225,18 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     overscan: 12, // Render 12 items outside viewport - balanced buffering
     // Stable getItemKey using ref - prevents recreation during streaming
     getItemKey: useCallback((index: number) => {
-      const msgs = showThinking ? [...messagesRef.current, { type: 'thinking', id: 'thinking-indicator' }] : messagesRef.current;
-      const msg = msgs[index];
+      const result = [...messagesRef.current];
+      if (showBash || showUserBash) {
+        result.push({ type: 'bash-indicator', id: 'bash-indicator' });
+      } else if (showThinking) {
+        result.push({ type: 'thinking', id: 'thinking-indicator' });
+      }
+      if (pendingFollowup) {
+        result.push({ type: 'followup-indicator', id: 'followup-indicator' });
+      }
+      const msg = result[index];
       return msg?.id || `msg-${index}`;
-    }, [showThinking]),
+    }, [showThinking, showBash, showUserBash, pendingFollowup]),
   });
 
   // Check if we're at bottom - uses different thresholds for different purposes
@@ -577,6 +609,28 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
           const message = displayMessages[virtualItem.index];
           if (!message) return null;
 
+          // Render bash indicator
+          if (message.type === 'bash-indicator') {
+            return (
+              <VirtualItemWrapper
+                key={virtualItem.key}
+                virtualItem={virtualItem}
+                measureElement={virtualizer.measureElement}
+              >
+                <div className="message assistant">
+                  <div className="message-content">
+                    <div className="status-indicators">
+                      <div className="inline-activity-indicator bash">
+                        <LoadingIndicator size="small" color="green" />
+                        <span className="activity-text">bash running</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </VirtualItemWrapper>
+            );
+          }
+
           // Render thinking indicator
           if (message.type === 'thinking') {
             return (
@@ -613,6 +667,31 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
             );
           }
 
+          // Render followup indicator
+          if (message.type === 'followup-indicator') {
+            return (
+              <VirtualItemWrapper
+                key={virtualItem.key}
+                virtualItem={virtualItem}
+                measureElement={virtualizer.measureElement}
+              >
+                <div className="message assistant">
+                  <div className="message-content">
+                    <div className="status-indicators">
+                      <div className="inline-activity-indicator followup">
+                        <span className="activity-label">queued:</span>
+                        <span className="activity-preview">
+                          {message.content?.slice(0, 40)}
+                          {message.content?.length > 40 ? '...' : ''}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </VirtualItemWrapper>
+            );
+          }
+
           const isLastStreaming = isStreaming &&
             lastAssistantMessageIds.includes(message.id);
 
@@ -630,7 +709,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                 index={virtualItem.index}
                 sessionId={sessionId}
                 isStreaming={isLastStreaming}
-                isLast={virtualItem.index === displayMessages.length - 1 && !showThinking}
+                isLast={virtualItem.index === displayMessages.length - 1 && !showThinking && !showBash && !showUserBash && !pendingFollowup}
                 thinkingFor={0}
                 searchQuery={searchQuery}
                 isCurrentMatch={isCurrentSearchMatch}

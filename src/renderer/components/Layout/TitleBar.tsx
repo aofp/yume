@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { IconSettings } from '@tabler/icons-react';
 import { AboutModal } from '../About/AboutModal';
 import './TitleBar.css';
 

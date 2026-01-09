@@ -199,12 +199,12 @@ This is NOT competing with Cursor/Windsurf (full IDEs). It's solving a specific 
 | Advantage | Why It Matters | Competitor Status |
 |-----------|----------------|-------------------|
 | **$9 one-time** | No subscription fatigue | Cursor: $20-200/mo, Windsurf: $15-60/mo |
-| **Auto-compact 85%** | No one else does this | **UNIQUE** |
+| **Auto-compact 60%/65%** | No one else does this | **UNIQUE** |
 | **Native Rust** | Performance validated | Cursor has memory issues |
 | **80.9% SWE-bench** | Claude leads benchmarks | We're Claude-native |
 | **Full Claude ecosystem** | MCP, hooks, skills | Native support |
 | **Checkpoints + Timeline** | ✅ NOW ENABLED | **UNIQUE** - no competitor has visual UI |
-| **31 themes** | Best theming options | Cursor ~5, Windsurf ~3 |
+| **30 themes** | Best theming options | Cursor ~5, Windsurf ~3 |
 | **5 built-in agents** | architect/explorer/implementer/guardian/specialist | **UNIQUE** |
 | **Custom commands** | Slash commands with templates | **UNIQUE** |
 | **9 hook events** | Most comprehensive | **BEST** |
@@ -213,7 +213,7 @@ This is NOT competing with Cursor/Windsurf (full IDEs). It's solving a specific 
 
 1. ✅ **Checkpoints enabled** - DONE, visual UI unique to yurucode
 2. ✅ **Timeline navigator** - DONE, unique feature
-3. ✅ **31 themes** - DONE, best in class
+3. ✅ **30 themes** - DONE, best in class
 4. ✅ **5 built-in agents** - DONE, unique
 5. ✅ **Custom commands** - DONE, unique
 6. ✅ **9 hook events** - DONE, most comprehensive

@@ -85,12 +85,12 @@
   background-color: var(--accent-color, #ff9999);
 }
 
-.loading-indicator--magenta .loading-indicator__circle {
-  background-color: var(--accent-color-alt, #ff99cc);
-}
-
 .loading-indicator--grey .loading-indicator__circle {
   background-color: #808080;
+}
+
+.loading-indicator--green .loading-indicator__circle {
+  background-color: #99ff99;
 }
 
 /* Default to accent color */
@@ -349,17 +349,3 @@
   100% { transform: translate(-50%, -50%) rotate(600deg) translateX(18px); }
 }
 
-/* Inline variant for text */
-.loading-indicator--inline {
-  display: inline-flex;
-  vertical-align: middle;
-  margin: 0 4px;
-}
-
-/* Thinking indicator specific styles */
-.loading-indicator--thinking .loading-indicator__circle {
-  animation: 
-    spin 4s linear infinite,
-    pulse 3s ease-in-out infinite,
-    orbit 5s ease-in-out infinite;
-}

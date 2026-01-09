@@ -29,7 +29,7 @@ But terminal rendering issues create real friction for users. We wanted to solve
 ## The Problem We Solve
 
 ### Terminal Flickering (Issue #1913)
-- **221+ upvotes**, 138+ comments, 9+ months open
+- **700+ upvotes** (and growing), 9+ months open
 - Technical analysis documented **4,000-6,700 scroll events/second**
 - VS Code/Cursor crashes after 10-20 minutes, **losing unsaved work**
 - Still open as of January 5, 2026
