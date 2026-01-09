@@ -262,25 +262,27 @@ Claude Compresses → New Session ID → Update UI
 - Storage: `~/.claude/agents/` (global) and `.claude/agents/` (project)
 
 **The 5 Yurucode Core Agents:**
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `yurucode-architect` | opus | Task planning and decomposition |
-| `yurucode-explorer` | sonnet | Codebase exploration (read-only) |
-| `yurucode-implementer` | opus | Focused code changes |
-| `yurucode-guardian` | opus | Code review and auditing |
-| `yurucode-specialist` | sonnet | Domain-specific tasks |
+All agents automatically use the **currently selected model** (opus or sonnet). When user switches models, agents are re-synced.
+
+| Agent | Purpose |
+|-------|---------|
+| `yurucode-architect` | Task planning and decomposition |
+| `yurucode-explorer` | Codebase exploration (read-only) |
+| `yurucode-implementer` | Focused code changes |
+| `yurucode-guardian` | Code review and auditing |
+| `yurucode-specialist` | Domain-specific tasks |
 
 **Sync Mechanism:**
-- Agents synced to `~/.claude/agents/yurucode-*.md` on app start
+- Agents synced to `~/.claude/agents/yurucode-*.md` on app start and model change
 - PID tracking in `.yurucode-pids/` prevents multi-instance conflicts
 - Agents removed on app exit (only if last instance)
-- Model can be changed dynamically via `sync_yurucode_agents(enabled, model)`
+- Model passed dynamically via `sync_yurucode_agents(enabled, model)`
 
 **Agent File Format:**
 ```markdown
 ---
 name: yurucode-architect
-model: opus
+model: <selectedModel>
 description: proactively use this agent before implementing complex features...
 ---
 

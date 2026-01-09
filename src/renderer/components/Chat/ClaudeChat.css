@@ -656,6 +656,50 @@
   }
 }
 
+/* Inline status indicators (bash, queued, etc.) */
+.status-indicators {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.inline-activity-indicator {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.inline-activity-indicator.bash {
+  color: var(--accent-color);
+}
+
+.inline-activity-indicator.bash .activity-text {
+  color: var(--accent-color);
+  font-weight: bold;
+}
+
+.inline-activity-indicator.followup {
+  color: var(--fg-60);
+}
+
+.inline-activity-indicator.followup .activity-label {
+  color: var(--fg-50);
+  font-weight: 500;
+}
+
+.inline-activity-indicator.followup .activity-preview {
+  color: var(--fg-40);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 300px;
+}
+
 /* Input Area */
 .chat-input-container {
   flex: 0 0 auto;

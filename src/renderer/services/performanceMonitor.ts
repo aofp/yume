@@ -27,6 +27,7 @@ class PerformanceMonitor {
   private measures: Map<string, number[]> = new Map();
   private observer: PerformanceObserver | null = null;
   private rafHandle: number | null = null;
+  private memoryMonitorInterval: ReturnType<typeof setInterval> | null = null;
   private lastFrameTime: number = 0;
   private frameCount: number = 0;
   private enabled: boolean = !import.meta.env.PROD || localStorage.getItem('yurucode_perf_monitor') === 'true';
@@ -119,7 +120,7 @@ class PerformanceMonitor {
     }
 
     // Monitor memory every 30 seconds
-    setInterval(() => {
+    this.memoryMonitorInterval = setInterval(() => {
       const memory = (performance as any).memory;
       this.recordMetric('memory.heap', memory.usedJSHeapSize, 'bytes');
       this.recordMetric('memory.heap_limit', memory.jsHeapSizeLimit, 'bytes');
@@ -367,6 +368,10 @@ class PerformanceMonitor {
         cancelAnimationFrame(this.rafHandle);
         this.rafHandle = null;
       }
+      if (this.memoryMonitorInterval) {
+        clearInterval(this.memoryMonitorInterval);
+        this.memoryMonitorInterval = null;
+      }
     }
   }
 
@@ -378,12 +383,17 @@ class PerformanceMonitor {
       this.observer.disconnect();
       this.observer = null;
     }
-    
+
     if (this.rafHandle) {
       cancelAnimationFrame(this.rafHandle);
       this.rafHandle = null;
     }
-    
+
+    if (this.memoryMonitorInterval) {
+      clearInterval(this.memoryMonitorInterval);
+      this.memoryMonitorInterval = null;
+    }
+
     this.clear();
   }
 }

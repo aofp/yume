@@ -97,6 +97,7 @@ function getWrapperSession(sessionId) {
       totalTokens: 0,
       messageCount: 0,
       apiResponses: [],
+      history: [], // Track message history for compaction summary
       compactCount: 0,
       wasCompacted: false,
       tokensSaved: 0
@@ -821,9 +822,10 @@ if (isWindows) {
   // macOS/Linux paths
   const possibleClaudePaths = [
     join(homedir(), '.npm-global/bin/claude'), // npm global install path
-    '/opt/homebrew/bin/claude',
+    join(homedir(), '.local/bin/claude'), // Linux user local bin
     '/usr/local/bin/claude',
     '/usr/bin/claude',
+    '/snap/bin/claude', // snap package
     process.env.CLAUDE_PATH, // Allow env override
   ].filter(Boolean);
 
@@ -1106,9 +1108,9 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
     
     // Ensure Node.js is in PATH for Claude CLI
     const enhancedEnv = { ...process.env };
-    const nodeBinDir = '/opt/homebrew/bin';
-    if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-      enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+    const localBinDir = join(homedir(), '.local/bin');
+    if (!enhancedEnv.PATH?.includes(localBinDir)) {
+      enhancedEnv.PATH = `${localBinDir}:/usr/local/bin:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
     }
     
     // Use a dedicated yurucode-title-gen directory for title generation
@@ -4418,10 +4420,10 @@ Format as a clear, structured summary that preserves all important context.`;
       
       // Ensure Node.js is in PATH for Claude CLI (which uses #!/usr/bin/env node)
       const enhancedEnv = { ...process.env };
-      const nodeBinDir = '/opt/homebrew/bin';
-      if (!enhancedEnv.PATH?.includes(nodeBinDir)) {
-        enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
-        console.log(`🔧 Added ${nodeBinDir} to PATH for Claude CLI`);
+      const localBinDir = join(homedir(), '.local/bin');
+      if (!enhancedEnv.PATH?.includes(localBinDir)) {
+        enhancedEnv.PATH = `${localBinDir}:/usr/local/bin:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
+        console.log(`🔧 Added ${localBinDir} to PATH for Claude CLI`);
       }
       
       // Add unique session identifier to environment to ensure isolation

@@ -104,6 +104,7 @@ function getWrapperSession(sessionId) {
       accumulatedCacheCreation: 0,
       messageCount: 0,
       apiResponses: [],
+      history: [], // Track message history for compaction summary
       compactCount: 0,
       wasCompacted: false,
       tokensSaved: 0

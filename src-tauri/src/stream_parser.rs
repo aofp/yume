@@ -560,7 +560,7 @@ impl StreamProcessor {
                 }
                 ClaudeStreamMessage::Usage { .. } => {
                     // Already accumulated above if it came from usage field
-                    self.accumulator.accumulate(msg);
+                    // Do NOT accumulate again here - that causes double-counting!
                 }
                 ClaudeStreamMessage::MessageStop => {
                     self.is_streaming = false;

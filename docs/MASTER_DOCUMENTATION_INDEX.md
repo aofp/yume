@@ -390,20 +390,20 @@ Server binaries are stored in `src-tauri/resources/` for each platform:
 
 #### Yurucode Agents System
 
-**5 Built-in Agents** synced to `~/.claude/agents/yurucode-*.md`:
+**5 Built-in Agents** synced to `~/.claude/agents/yurucode-*.md`. All agents automatically use the **currently selected model** (opus or sonnet):
 
-| Agent | Model | Purpose |
-|-------|-------|---------|
-| `yurucode-architect` | opus | Plans, designs, decomposes tasks |
-| `yurucode-explorer` | sonnet | Codebase exploration (read-only) |
-| `yurucode-implementer` | opus | Focused code changes |
-| `yurucode-guardian` | opus | Code review and auditing |
-| `yurucode-specialist` | sonnet | Domain-specific tasks |
+| Agent | Purpose |
+|-------|---------|
+| `yurucode-architect` | Plans, designs, decomposes tasks |
+| `yurucode-explorer` | Codebase exploration (read-only) |
+| `yurucode-implementer` | Focused code changes |
+| `yurucode-guardian` | Code review and auditing |
+| `yurucode-specialist` | Domain-specific tasks |
 
 **Sync Mechanism**:
 - PID tracking prevents multi-instance conflicts
 - Agents removed on app exit (only if last instance)
-- Dynamic model selection via `sync_yurucode_agents(enabled, model)`
+- Agents re-synced on model change via `sync_yurucode_agents(enabled, model)`
 
 ---
 

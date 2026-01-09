@@ -3867,16 +3867,20 @@ ${content}`;
           // AUTO-COMPACTION CHECK: Use analytics.tokens.total (tracked correctly)
           // NOT the raw API values (cache_read_input_tokens is cumulative, not context size)
           // analytics.tokens.total comes from wrapper.tokens.total which tracks correctly
-          const trackedContextTokens = analytics?.tokens?.total || 0;
-          const contextPercentage = (trackedContextTokens / 200000) * 100;
+          // Skip compaction check for bash mode commands - only real chats should trigger it
+          const isBashMessage = message.id && String(message.id).startsWith('bash-');
+          if (!isBashMessage) {
+            const trackedContextTokens = analytics?.tokens?.total || 0;
+            const contextPercentage = (trackedContextTokens / 200000) * 100;
 
-          // Only trigger compaction check at 55%+ (thresholds: 55% warning, 60% auto, 65% force)
-          // Use the tracked tokens, not the cumulative API values
-          if (contextPercentage >= 55 && trackedContextTokens > 0) {
-            console.log(`🗜️ [COMPACTION] Checking auto-compact in addMessageToSession: ${contextPercentage.toFixed(2)}% (${trackedContextTokens} tracked tokens)`);
-            import('../services/compactionService').then(({ compactionService }) => {
-              compactionService.updateContextUsage(sessionId, contextPercentage);
-            }).catch(err => console.error('[Compaction] Failed to import compactionService:', err));
+            // Only trigger compaction check at 55%+ (thresholds: 55% warning, 60% auto, 65% force)
+            // Use the tracked tokens, not the cumulative API values
+            if (contextPercentage >= 55 && trackedContextTokens > 0) {
+              console.log(`🗜️ [COMPACTION] Checking auto-compact in addMessageToSession: ${contextPercentage.toFixed(2)}% (${trackedContextTokens} tracked tokens)`);
+              import('../services/compactionService').then(({ compactionService }) => {
+                compactionService.updateContextUsage(sessionId, contextPercentage);
+              }).catch(err => console.error('[Compaction] Failed to import compactionService:', err));
+            }
           }
         }
 

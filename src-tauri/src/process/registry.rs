@@ -59,6 +59,15 @@ impl Drop for ProcessHandle {
 }
 
 /// Registry for tracking active Claude processes
+///
+/// # Lock Ordering
+/// To prevent deadlocks, always acquire locks in this order:
+/// 1. `processes` (outer HashMap)
+/// 2. `child` (per-handle)
+/// 3. `live_output` (per-handle)
+///
+/// NEVER acquire `processes` while holding `child` or `live_output`.
+/// NEVER hold sync locks across `.await` points - clone the Arc first.
 pub struct ProcessRegistry {
     processes: Arc<Mutex<HashMap<i64, ProcessHandle>>>, // run_id -> ProcessHandle
     next_id: Arc<Mutex<i64>>, // Auto-incrementing ID for processes
@@ -294,37 +303,40 @@ impl ProcessRegistry {
         }
 
         // Wait for the process to exit (with timeout)
+        // IMPORTANT: We minimize time holding the sync mutex by checking status
+        // then releasing the lock before async sleep
         let wait_result = tokio::time::timeout(tokio::time::Duration::from_secs(5), async {
             loop {
-                // Check if process has exited
-                let status = {
-                    let mut child_guard = child_arc.lock().map_err(|e| e.to_string())?;
+                // Check if process has exited - acquire lock, check, release immediately
+                let check_result = {
+                    let mut child_guard = match child_arc.lock() {
+                        Ok(guard) => guard,
+                        Err(e) => return Err(e.to_string()),
+                    };
                     if let Some(child) = child_guard.as_mut() {
                         match child.try_wait() {
                             Ok(Some(status)) => {
                                 info!("Process {} exited with status: {:?}", run_id, status);
                                 *child_guard = None; // Clear the child handle
-                                Some(Ok::<(), String>(()))
+                                Some(Ok::<bool, String>(true)) // Exited
                             }
-                            Ok(None) => {
-                                // Still running
-                                None
-                            }
+                            Ok(None) => None, // Still running
                             Err(e) => {
                                 error!("Error checking process status: {}", e);
                                 Some(Err(e.to_string()))
                             }
                         }
                     } else {
-                        // Process already gone
-                        Some(Ok(()))
+                        Some(Ok(true)) // Process already gone
                     }
+                    // Lock released here at end of block
                 };
 
-                match status {
-                    Some(result) => return result,
-                    None => {
-                        // Still running, wait a bit
+                match check_result {
+                    Some(Ok(true)) => return Ok(()), // Process exited
+                    Some(Err(e)) => return Err(e),
+                    Some(Ok(false)) | None => {
+                        // Still running - lock is NOT held during this sleep
                         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
                     }
                 }

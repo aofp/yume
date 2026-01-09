@@ -45,7 +45,7 @@ import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete'
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { Watermark } from '../Watermark/Watermark';
-import { ActivityIndicator, Activity } from '../ActivityIndicator/ActivityIndicator';
+// ActivityIndicator removed - now showing inline with thinking indicator
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 // PERFORMANCE: Lazy load modals and heavy components - only loaded when user opens them
 const RecentConversationsModal = React.lazy(() => import('../RecentConversationsModal').then(m => ({ default: m.RecentConversationsModal })));
@@ -494,39 +494,6 @@ export const ClaudeChat: React.FC = () => {
     const session = state.sessions.find(s => s.id === currentSessionId);
     return session?.messages?.length || 0;
   });
-
-  // Build activities array for ActivityIndicator
-  const activities = useMemo<Activity[]>(() => {
-    const items: Activity[] = [];
-
-    // Bash running
-    if (currentSession?.runningBash || currentSession?.userBashRunning) {
-      items.push({
-        id: 'bash',
-        type: 'bash',
-        label: 'bash',
-        priority: 10
-      });
-    }
-
-    // Pending followup message
-    if (pendingFollowupMessage && pendingFollowupRef.current) {
-      const preview = pendingFollowupRef.current.content.slice(0, 30);
-      items.push({
-        id: 'followup',
-        type: 'followup',
-        label: 'queued:',
-        preview: preview + (pendingFollowupRef.current.content.length > 30 ? '...' : ''),
-        priority: 5
-      });
-    }
-
-    return items;
-  }, [
-    currentSession?.runningBash,
-    currentSession?.userBashRunning,
-    pendingFollowupMessage
-  ]);
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
@@ -3980,54 +3947,80 @@ export const ClaudeChat: React.FC = () => {
             );
           });
         })()}
-        {/* Show thinking indicator only when actually streaming - but not when using virtualization */}
+        {/* Show status indicators (thinking, bash, queued) as last message */}
         {(() => {
-          // Need to recalculate filteredMessages here since it's out of scope from the previous IIFE
+          // Calculate visibility and state
           const processedMessages = currentSession.messages
             .reduce((acc, message) => {
-              // Simple deduplication for the indicator check
-              if (message.type === 'user' || message.type === 'assistant' || 
-                  message.type === 'tool_use' || message.type === 'tool_result' || 
+              if (message.type === 'user' || message.type === 'assistant' ||
+                  message.type === 'tool_use' || message.type === 'tool_result' ||
                   message.type === 'system' || message.type === 'result') {
                 acc.push(message);
               }
               return acc;
             }, [] as typeof currentSession.messages);
-          const filteredMessages = processedMessages;
-          const useVirtualization = shouldUseVirtualization(filteredMessages.length);
+          const useVirtualization = shouldUseVirtualization(processedMessages.length);
           const isStreaming = currentSession?.streaming === true;
           const hasPendingTools = (currentSession?.pendingToolIds?.size || 0) > 0;
           const isRunningBash = currentSession?.runningBash === true;
-          const shouldShowThinking = isStreaming || hasPendingTools || isRunningBash;
-          return shouldShowThinking && !useVirtualization;
-        })() && (
-          <div className="message assistant">
-            <div className="message-content">
-              <div className="thinking-indicator-bottom">
-                <LoadingIndicator size="small" color="red" />
-                <span className="thinking-text-wrapper">
-                  <span className="thinking-text">
-                    {'thinking'.split('').map((char, i) => (
-                      <span 
-                        key={i} 
-                        className="thinking-char" 
-                        style={{ 
-                          animationDelay: `${i * 0.05}s`
-                        }}
-                      >
-                        {char}
+          const isUserBash = currentSession?.userBashRunning === true;
+          const hasPendingFollowup = !!pendingFollowupMessage && !!pendingFollowupRef.current;
+
+          // Show indicator if any activity is happening
+          const shouldShowIndicator = isStreaming || hasPendingTools || isRunningBash || isUserBash || hasPendingFollowup;
+          if (!shouldShowIndicator || useVirtualization) return null;
+
+          return (
+            <div className="message assistant">
+              <div className="message-content">
+                <div className="status-indicators">
+                  {/* Thinking indicator - show when streaming but not running bash */}
+                  {(isStreaming || hasPendingTools) && !isRunningBash && !isUserBash && (
+                    <div className="thinking-indicator-bottom">
+                      <LoadingIndicator size="small" color="red" />
+                      <span className="thinking-text-wrapper">
+                        <span className="thinking-text">
+                          {'thinking'.split('').map((char, i) => (
+                            <span
+                              key={i}
+                              className="thinking-char"
+                              style={{ animationDelay: `${i * 0.05}s` }}
+                            >
+                              {char}
+                            </span>
+                          ))}
+                          <span className="thinking-dots"></span>
+                        </span>
+                        {(currentSession as any)?.thinkingStartTime && (
+                          <ThinkingTimer startTime={(currentSession as any).thinkingStartTime} />
+                        )}
                       </span>
-                    ))}
-                    <span className="thinking-dots"></span>
-                  </span>
-                  {(currentSession as any)?.thinkingStartTime && (
-                    <ThinkingTimer startTime={(currentSession as any).thinkingStartTime} />
+                    </div>
                   )}
-                </span>
+
+                  {/* Bash indicator - show when running bash */}
+                  {(isRunningBash || isUserBash) && (
+                    <div className="inline-activity-indicator bash">
+                      <LoadingIndicator size="small" color="green" />
+                      <span className="activity-text">bash running</span>
+                    </div>
+                  )}
+
+                  {/* Queued followup indicator */}
+                  {hasPendingFollowup && pendingFollowupRef.current && (
+                    <div className="inline-activity-indicator followup">
+                      <span className="activity-label">queued:</span>
+                      <span className="activity-preview">
+                        {pendingFollowupRef.current.content.slice(0, 40)}
+                        {pendingFollowupRef.current.content.length > 40 ? '...' : ''}
+                      </span>
+                    </div>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-        )}
+          );
+        })()}
         <div ref={messagesEndRef} />
       </div>
       )}
@@ -4058,8 +4051,7 @@ export const ClaudeChat: React.FC = () => {
         </React.Suspense>
       )}
       
-      {/* Unified activity indicator - bottom-right */}
-      <ActivityIndicator activities={activities} />
+      {/* Activity indicator moved inline with thinking indicator at end of messages */}
 
       {/* Attachment preview area - outside input container to avoid overflow clipping */}
       {attachments.length > 0 && !currentSession?.readOnly && (
