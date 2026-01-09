@@ -38,6 +38,10 @@ static BASH_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Child>>>> = Lazy::new(|| {
     Arc::new(Mutex::new(HashMap::new()))
 });
 
+// Global mutex to serialize git operations and prevent lock conflicts
+// Uses tokio::sync::Mutex because guards need to be held across await points
+static GIT_OPERATION_MUTEX: Lazy<tokio::sync::Mutex<()>> = Lazy::new(|| tokio::sync::Mutex::new(()));
+
 /// Represents a folder selection from the native file dialog
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FolderSelection {
@@ -90,11 +94,149 @@ pub fn get_home_directory() -> Result<String, String> {
 }
 
 /// Get the current working directory
-#[tauri::command] 
+#[tauri::command]
 pub fn get_current_directory() -> Result<String, String> {
     std::env::current_dir()
         .map(|path| path.to_string_lossy().to_string())
         .map_err(|e| format!("Failed to get current directory: {}", e))
+}
+
+/// Write content to a file (used by rollback to restore files)
+#[tauri::command]
+pub fn write_file_content(path: String, content: String) -> Result<(), String> {
+    use std::fs;
+    use std::path::Path;
+
+    let file_path = Path::new(&path);
+
+    // Create parent directories if they don't exist
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create parent directories: {}", e))?;
+    }
+
+    fs::write(file_path, content)
+        .map_err(|e| format!("Failed to write file: {}", e))
+}
+
+/// Delete a file (used by rollback to remove files created by Claude)
+#[tauri::command]
+pub fn delete_file(path: String) -> Result<(), String> {
+    use std::fs;
+    use std::path::Path;
+
+    let file_path = Path::new(&path);
+
+    if file_path.exists() {
+        fs::remove_file(file_path)
+            .map_err(|e| format!("Failed to delete file: {}", e))
+    } else {
+        // File doesn't exist, nothing to delete
+        Ok(())
+    }
+}
+
+/// Read file content (used for backup before rollback)
+#[tauri::command]
+pub fn read_file_content(path: String) -> Result<Option<String>, String> {
+    use std::fs;
+    use std::path::Path;
+
+    let file_path = Path::new(&path);
+
+    if !file_path.exists() {
+        return Ok(None);
+    }
+
+    // Check if file is too large (>10MB) - skip backup for huge files
+    let metadata = fs::metadata(file_path)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+
+    if metadata.len() > 10 * 1024 * 1024 {
+        return Err("File too large to backup (>10MB)".to_string());
+    }
+
+    // Try to read as UTF-8, if it fails it might be binary
+    match fs::read_to_string(file_path) {
+        Ok(content) => Ok(Some(content)),
+        Err(e) => {
+            // Check if it's a UTF-8 error (binary file)
+            if e.kind() == std::io::ErrorKind::InvalidData {
+                Err("Binary file - cannot backup text content".to_string())
+            } else {
+                Err(format!("Failed to read file: {}", e))
+            }
+        }
+    }
+}
+
+/// Atomic file restore with backup - restores a file and returns the previous content
+/// This allows undo if something goes wrong
+#[tauri::command]
+pub fn atomic_file_restore(
+    path: String,
+    new_content: String
+) -> Result<Option<String>, String> {
+    use std::fs;
+    use std::path::Path;
+
+    let file_path = Path::new(&path);
+
+    // Read current content for backup
+    let previous_content = if file_path.exists() {
+        let metadata = fs::metadata(file_path)
+            .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+
+        // Skip backup for huge files
+        if metadata.len() > 10 * 1024 * 1024 {
+            None
+        } else {
+            fs::read_to_string(file_path).ok()
+        }
+    } else {
+        None
+    };
+
+    // Create parent directories if they don't exist
+    if let Some(parent) = file_path.parent() {
+        fs::create_dir_all(parent)
+            .map_err(|e| format!("Failed to create parent directories: {}", e))?;
+    }
+
+    // Write new content
+    fs::write(file_path, new_content)
+        .map_err(|e| format!("Failed to write file: {}", e))?;
+
+    Ok(previous_content)
+}
+
+/// Atomic file delete with backup - deletes a file and returns the previous content
+#[tauri::command]
+pub fn atomic_file_delete(path: String) -> Result<Option<String>, String> {
+    use std::fs;
+    use std::path::Path;
+
+    let file_path = Path::new(&path);
+
+    if !file_path.exists() {
+        return Ok(None);
+    }
+
+    // Read current content for backup
+    let metadata = fs::metadata(file_path)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+
+    let previous_content = if metadata.len() > 10 * 1024 * 1024 {
+        None // Skip backup for huge files
+    } else {
+        fs::read_to_string(file_path).ok()
+    };
+
+    // Delete the file
+    fs::remove_file(file_path)
+        .map_err(|e| format!("Failed to delete file: {}", e))?;
+
+    Ok(previous_content)
 }
 
 /// Toggles the Chrome DevTools window
@@ -552,7 +694,25 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| String::from("/"))
     });
-    
+
+    // Check if this is a git command - if so, serialize with other git operations
+    let is_git_command = command.trim().starts_with("git ") || command.contains(" git ");
+
+    // Acquire git mutex if needed (held for duration of command to prevent races)
+    let _git_guard = if is_git_command {
+        Some(GIT_OPERATION_MUTEX.lock().await)
+    } else {
+        None
+    };
+
+    // Wait for git lock file if this is a git command
+    if is_git_command {
+        let dir_path = std::path::PathBuf::from(&cwd);
+        if !wait_for_git_lock(&dir_path) {
+            return Err("Git is busy (index.lock exists)".to_string());
+        }
+    }
+
     // Spawn task to handle bash execution
     let handle = tokio::spawn(async move {
         #[cfg(target_os = "windows")]
@@ -1632,45 +1792,40 @@ pub async fn get_folder_contents(
     }
 }
 
+/// Find the git root directory by traversing up from the given path
+fn find_git_root(dir_path: &PathBuf) -> Option<PathBuf> {
+    let mut current = dir_path.clone();
+    loop {
+        if current.join(".git").exists() {
+            return Some(current);
+        }
+        if !current.pop() {
+            return None;
+        }
+    }
+}
+
 /// Check if git index is locked and wait briefly if so
 /// Removes stale lock files that were left behind by crashed processes
 fn wait_for_git_lock(dir_path: &PathBuf) -> bool {
-    let lock_path = dir_path.join(".git/index.lock");
+    // Find actual git root (lock file is always at repo root, not subdirectory)
+    let git_root = match find_git_root(dir_path) {
+        Some(root) => root,
+        None => return true, // Not a git repo, no lock possible
+    };
+
+    let lock_path = git_root.join(".git/index.lock");
 
     if !lock_path.exists() {
         return true;
     }
 
-    // Lock exists - check if there's actually a git process running
-    if !is_git_process_running() {
-        // No git process running, this is a stale lock from a crash
-        if std::fs::remove_file(&lock_path).is_ok() {
-            eprintln!("Removed stale git lock file (no git process running): {:?}", lock_path);
-            return true;
-        }
-    }
-
-    // Git process might be running, wait briefly
-    for _ in 0..5 {
-        if !lock_path.exists() {
-            return true;
-        }
-        std::thread::sleep(std::time::Duration::from_millis(100));
-    }
-
-    // Lock still exists after 500ms - check again for stale lock
-    if !is_git_process_running() {
-        if std::fs::remove_file(&lock_path).is_ok() {
-            eprintln!("Removed stale git lock file after wait: {:?}", lock_path);
-            return true;
-        }
-    }
-
-    // Last resort: check file age (older than 2 seconds = stale)
+    // First check: if lock is older than 2 seconds, it's likely stale (most git ops are fast)
     if let Ok(metadata) = std::fs::metadata(&lock_path) {
         if let Ok(modified) = metadata.modified() {
             if let Ok(elapsed) = modified.elapsed() {
-                if elapsed.as_secs() > 2 {
+                if elapsed.as_secs() >= 2 {
+                    // Lock is old - remove it immediately
                     if std::fs::remove_file(&lock_path).is_ok() {
                         eprintln!("Removed stale git lock file (older than 2s): {:?}", lock_path);
                         return true;
@@ -1680,10 +1835,34 @@ fn wait_for_git_lock(dir_path: &PathBuf) -> bool {
         }
     }
 
+    // Lock exists and is fresh - check if there's actually a git process running
+    if !is_git_process_running() {
+        // No git process running, this is a stale lock from a crash
+        if std::fs::remove_file(&lock_path).is_ok() {
+            eprintln!("Removed stale git lock file (no git process running): {:?}", lock_path);
+            return true;
+        }
+    }
+
+    // Git process might be running, wait up to 1 second (10 x 100ms)
+    for _ in 0..10 {
+        if !lock_path.exists() {
+            return true;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    // Lock still exists after 1s - force remove since zombie is likely the cause
+    if std::fs::remove_file(&lock_path).is_ok() {
+        eprintln!("Force removed git lock file after 1s wait: {:?}", lock_path);
+        return true;
+    }
+
     false
 }
 
 /// Check if any git process is currently running
+/// Uses broader pattern matching to catch git subprocesses (git-remote-https, etc.)
 fn is_git_process_running() -> bool {
     use std::process::Command;
 
@@ -1692,28 +1871,40 @@ fn is_git_process_running() -> bool {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
 
+        // Check for git.exe and git-*.exe subprocesses
         if let Ok(output) = Command::new("tasklist")
-            .args(&["/FI", "IMAGENAME eq git.exe"])
             .creation_flags(CREATE_NO_WINDOW)
             .output()
         {
-            let stdout = String::from_utf8_lossy(&output.stdout);
-            return stdout.contains("git.exe");
+            let stdout = String::from_utf8_lossy(&output.stdout).to_lowercase();
+            return stdout.contains("git.exe") || stdout.contains("git-");
         }
     }
 
     #[cfg(not(target_os = "windows"))]
     {
+        // Use pgrep to find actual git processes (not our own grep/pgrep)
+        // Look for /usr/bin/git or similar git binaries, excluding claude/yurucode processes
         if let Ok(output) = Command::new("pgrep")
-            .args(&["-x", "git"])
+            .args(&["-x", "git"])  // -x for exact match on process name
             .output()
         {
-            return output.status.success();
+            if output.status.success() {
+                return true;
+            }
         }
+        // Also check for git subprocesses like git-remote-https
+        if let Ok(output) = Command::new("pgrep")
+            .args(&["-f", "^/.*git-"])  // Match git-* subprocesses with full path
+            .output()
+        {
+            if output.status.success() {
+                return true;
+            }
+        }
+        // No git process found
+        false
     }
-
-    // If we can't check, assume git might be running
-    true
 }
 
 /// Returns the Git status for a repository
@@ -1727,6 +1918,9 @@ pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
     if !dir_path.exists() {
         return Err(format!("Directory does not exist: {}", directory));
     }
+
+    // Acquire git mutex to serialize with other git operations
+    let _git_guard = GIT_OPERATION_MUTEX.lock().await;
 
     // Wait for any existing git lock to clear
     if !wait_for_git_lock(&dir_path) {
@@ -1901,6 +2095,9 @@ pub async fn get_git_diff_numstat(directory: String) -> Result<String, String> {
     if !dir_path.exists() {
         return Err(format!("Directory does not exist: {}", directory));
     }
+
+    // Acquire git mutex to serialize with other git operations
+    let _git_guard = GIT_OPERATION_MUTEX.lock().await;
 
     // Wait for any existing git lock to clear
     if !wait_for_git_lock(&dir_path) {
@@ -2081,7 +2278,7 @@ pub async fn get_claude_path() -> Result<String, String> {
             .arg("claude")
             .output()
             .map_err(|e| format!("Failed to run where claude: {}", e))?;
-        
+
         if output.status.success() {
             let path = String::from_utf8_lossy(&output.stdout)
                 .lines()
@@ -2094,4 +2291,389 @@ pub async fn get_claude_path() -> Result<String, String> {
             Ok("claude".to_string())
         }
     }
+}
+
+// ============================================================================
+// FILE CONFLICT DETECTION FOR ROLLBACK
+// ============================================================================
+
+/// Get the current modification time of a file in milliseconds
+#[tauri::command]
+pub fn get_file_mtime(path: String) -> Result<Option<f64>, String> {
+    use std::fs;
+    use std::path::Path;
+    use std::time::UNIX_EPOCH;
+
+    let file_path = Path::new(&path);
+
+    if !file_path.exists() {
+        return Ok(None);
+    }
+
+    let metadata = fs::metadata(file_path)
+        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+
+    let mtime = metadata
+        .modified()
+        .map_err(|e| format!("Failed to get modification time: {}", e))?;
+
+    let duration = mtime
+        .duration_since(UNIX_EPOCH)
+        .map_err(|e| format!("System time error: {}", e))?;
+
+    // Return milliseconds like JavaScript's Date.now()
+    Ok(Some(duration.as_secs_f64() * 1000.0))
+}
+
+/// File conflict info returned from conflict check
+#[derive(serde::Serialize)]
+pub struct FileConflict {
+    pub path: String,
+    pub snapshot_mtime: Option<f64>,
+    pub current_mtime: Option<f64>,
+    pub exists: bool,
+    pub conflict_type: String, // "modified", "deleted", "created", "none"
+}
+
+/// Check multiple files for conflicts before rollback
+/// Takes a list of (path, expected_mtime, is_new_file) tuples
+#[tauri::command]
+pub fn check_file_conflicts(
+    files: Vec<(String, Option<f64>, bool)>
+) -> Result<Vec<FileConflict>, String> {
+    use std::fs;
+    use std::path::Path;
+    use std::time::UNIX_EPOCH;
+
+    let mut conflicts = Vec::new();
+
+    for (path, snapshot_mtime, is_new_file) in files {
+        let file_path = Path::new(&path);
+        let exists = file_path.exists();
+
+        let current_mtime = if exists {
+            fs::metadata(file_path)
+                .ok()
+                .and_then(|m| m.modified().ok())
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_secs_f64() * 1000.0)
+        } else {
+            None
+        };
+
+        // Determine conflict type
+        let conflict_type = if is_new_file {
+            // File was new when snapshot taken (didn't exist)
+            // On rollback, we want to DELETE this file
+            if !exists {
+                // File was already deleted by something else - that's fine, no conflict
+                "none".to_string()
+            } else {
+                // File exists - we created it. Now check if it was modified since.
+                // For new files, snapshot_mtime is None (file didn't exist),
+                // but we have the snapshot timestamp which represents when we captured it.
+                // We can't compare mtimes for new files, so we rely on the global
+                // registry check (get_conflicting_edits) to detect cross-session modifications.
+                // Don't flag as conflict here - mtime check doesn't work for new files.
+                "none".to_string()
+            }
+        } else {
+            // File existed when snapshot taken - we have originalContent to restore
+            if !exists {
+                "deleted".to_string() // File was deleted externally
+            } else if let (Some(snap_mt), Some(curr_mt)) = (snapshot_mtime, current_mtime) {
+                // Allow 1 second tolerance for filesystem time precision
+                if (curr_mt - snap_mt).abs() > 1000.0 {
+                    "modified".to_string()
+                } else {
+                    "none".to_string()
+                }
+            } else {
+                // Can't compare mtimes (shouldn't happen for existing files)
+                // Don't assume conflict - rely on global registry check
+                "none".to_string()
+            }
+        };
+
+        if conflict_type != "none" {
+            conflicts.push(FileConflict {
+                path,
+                snapshot_mtime,
+                current_mtime,
+                exists,
+                conflict_type,
+            });
+        }
+    }
+
+    Ok(conflicts)
+}
+
+/// File edit record for global registry
+#[derive(serde::Serialize, serde::Deserialize, Clone, Debug)]
+pub struct FileEditRecord {
+    pub path: String,
+    pub session_id: String,
+    pub timestamp: f64,
+    pub operation: String, // "edit", "write", "create", "delete"
+}
+
+/// Get the global file edit registry path
+fn get_file_edit_registry_path() -> std::path::PathBuf {
+    #[cfg(target_os = "macos")]
+    {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        std::path::PathBuf::from(home)
+            .join("Library")
+            .join("Application Support")
+            .join("yurucode")
+            .join("file_edit_registry.json")
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
+        std::path::PathBuf::from(appdata)
+            .join("yurucode")
+            .join("file_edit_registry.json")
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
+        std::path::PathBuf::from(home)
+            .join(".config")
+            .join("yurucode")
+            .join("file_edit_registry.json")
+    }
+}
+
+/// Get lock file path for registry
+fn get_registry_lock_path() -> std::path::PathBuf {
+    let mut path = get_file_edit_registry_path();
+    path.set_extension("lock");
+    path
+}
+
+/// Acquire a simple file lock with timeout
+/// Returns Ok(()) if lock acquired, Err if timeout
+fn acquire_registry_lock() -> Result<(), String> {
+    use std::fs;
+    use std::thread;
+    use std::time::{Duration, Instant};
+
+    let lock_path = get_registry_lock_path();
+    let timeout = Duration::from_secs(5);
+    let start = Instant::now();
+
+    // Ensure parent directory exists
+    if let Some(parent) = lock_path.parent() {
+        let _ = fs::create_dir_all(parent);
+    }
+
+    loop {
+        // Try to create lock file exclusively
+        match fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&lock_path)
+        {
+            Ok(file) => {
+                // Write PID for debugging
+                use std::io::Write;
+                let mut f = file;
+                let _ = writeln!(f, "{}", std::process::id());
+                return Ok(());
+            }
+            Err(_) => {
+                // Lock file exists, check if stale (>30 seconds old)
+                if let Ok(metadata) = fs::metadata(&lock_path) {
+                    if let Ok(modified) = metadata.modified() {
+                        if let Ok(age) = modified.elapsed() {
+                            if age > Duration::from_secs(30) {
+                                // Stale lock, remove it
+                                let _ = fs::remove_file(&lock_path);
+                                continue;
+                            }
+                        }
+                    }
+                }
+
+                // Check timeout
+                if start.elapsed() > timeout {
+                    return Err("Timeout waiting for registry lock".to_string());
+                }
+
+                // Wait and retry
+                thread::sleep(Duration::from_millis(50));
+            }
+        }
+    }
+}
+
+/// Release the registry lock
+fn release_registry_lock() {
+    let lock_path = get_registry_lock_path();
+    let _ = std::fs::remove_file(lock_path);
+}
+
+/// Register a file edit in the global registry
+/// This allows cross-session conflict detection
+#[tauri::command]
+pub fn register_file_edit(
+    path: String,
+    session_id: String,
+    timestamp: f64,
+    operation: String
+) -> Result<(), String> {
+    use std::fs;
+
+    // Acquire lock for thread-safe access
+    acquire_registry_lock()?;
+
+    let result = (|| {
+        let registry_path = get_file_edit_registry_path();
+
+        // Ensure parent directory exists
+        if let Some(parent) = registry_path.parent() {
+            fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create registry directory: {}", e))?;
+        }
+
+        // Read existing registry
+        let mut records: Vec<FileEditRecord> = if registry_path.exists() {
+            let content = fs::read_to_string(&registry_path)
+                .map_err(|e| format!("Failed to read registry: {}", e))?;
+            serde_json::from_str(&content).unwrap_or_default()
+        } else {
+            Vec::new()
+        };
+
+        // Add new record
+        records.push(FileEditRecord {
+            path,
+            session_id,
+            timestamp,
+            operation,
+        });
+
+        // Keep only records from last 24 hours to prevent unbounded growth
+        let cutoff = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_secs_f64() * 1000.0 - 24.0 * 60.0 * 60.0 * 1000.0)
+            .unwrap_or(0.0);
+
+        records.retain(|r| r.timestamp > cutoff);
+
+        // Write back
+        let content = serde_json::to_string_pretty(&records)
+            .map_err(|e| format!("Failed to serialize registry: {}", e))?;
+
+        fs::write(&registry_path, content)
+            .map_err(|e| format!("Failed to write registry: {}", e))?;
+
+        Ok(())
+    })();
+
+    // Always release lock
+    release_registry_lock();
+
+    result
+}
+
+/// Normalize path for comparison (handle Windows backslashes and case)
+fn normalize_path_for_comparison(path: &str) -> String {
+    let normalized = path.replace('\\', "/");
+    // On Windows and macOS, paths are case-insensitive
+    #[cfg(any(target_os = "windows", target_os = "macos"))]
+    {
+        normalized.to_lowercase()
+    }
+    #[cfg(target_os = "linux")]
+    {
+        normalized
+    }
+}
+
+/// Get edits from OTHER sessions that conflict with a rollback
+/// Returns edits to the specified files by sessions other than current_session_id
+/// that occurred after the specified timestamp
+#[tauri::command]
+pub fn get_conflicting_edits(
+    paths: Vec<String>,
+    current_session_id: String,
+    after_timestamp: f64
+) -> Result<Vec<FileEditRecord>, String> {
+    use std::fs;
+
+    let registry_path = get_file_edit_registry_path();
+
+    if !registry_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    let content = fs::read_to_string(&registry_path)
+        .map_err(|e| format!("Failed to read registry: {}", e))?;
+
+    let records: Vec<FileEditRecord> = serde_json::from_str(&content)
+        .unwrap_or_default();
+
+    // Normalize paths for comparison
+    let normalized_paths: Vec<String> = paths.iter()
+        .map(|p| normalize_path_for_comparison(p))
+        .collect();
+
+    // Filter for conflicting edits
+    let conflicts: Vec<FileEditRecord> = records
+        .into_iter()
+        .filter(|r| {
+            // Must be from a different session
+            r.session_id != current_session_id &&
+            // Must be after the rollback target
+            r.timestamp > after_timestamp &&
+            // Must be for one of the files we're rolling back (normalized comparison)
+            normalized_paths.contains(&normalize_path_for_comparison(&r.path))
+        })
+        .collect();
+
+    Ok(conflicts)
+}
+
+/// Clear all file edit records for a session (call when session is cleared)
+#[tauri::command]
+pub fn clear_session_edits(session_id: String) -> Result<(), String> {
+    use std::fs;
+
+    let registry_path = get_file_edit_registry_path();
+
+    if !registry_path.exists() {
+        return Ok(());
+    }
+
+    // Acquire lock for thread-safe access
+    acquire_registry_lock()?;
+
+    let result = (|| {
+        let content = fs::read_to_string(&registry_path)
+            .map_err(|e| format!("Failed to read registry: {}", e))?;
+
+        let mut records: Vec<FileEditRecord> = serde_json::from_str(&content)
+            .unwrap_or_default();
+
+        // Remove all records for this session
+        records.retain(|r| r.session_id != session_id);
+
+        let content = serde_json::to_string_pretty(&records)
+            .map_err(|e| format!("Failed to serialize registry: {}", e))?;
+
+        fs::write(&registry_path, content)
+            .map_err(|e| format!("Failed to write registry: {}", e))?;
+
+        Ok(())
+    })();
+
+    // Always release lock
+    release_registry_lock();
+
+    result
 }

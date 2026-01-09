@@ -25,7 +25,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#bb99ff',
     positiveColor: '#99ff99',
     negativeColor: '#ff9999',
-    opacity: 0.99,
+    opacity: 1,
     isBuiltIn: true
   },
   // === MINIMAL / PROFESSIONAL ===

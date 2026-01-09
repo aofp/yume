@@ -33,6 +33,33 @@ export interface TauriAPI {
   contextMenu: {
     show: (x: number, y: number, hasSelection: boolean) => Promise<void>;
   };
+  files: {
+    writeContent: (path: string, content: string) => Promise<void>;
+    deleteFile: (path: string) => Promise<void>;
+  };
+  rollback: {
+    getFileMtime: (path: string) => Promise<number | null>;
+    checkFileConflicts: (files: Array<[string, number | null, boolean]>) => Promise<FileConflict[]>;
+    registerFileEdit: (path: string, sessionId: string, timestamp: number, operation: string) => Promise<void>;
+    getConflictingEdits: (paths: string[], currentSessionId: string, afterTimestamp: number) => Promise<FileEditRecord[]>;
+    clearSessionEdits: (sessionId: string) => Promise<void>;
+  };
+}
+
+// Types for rollback conflict detection
+export interface FileConflict {
+  path: string;
+  snapshot_mtime: number | null;
+  current_mtime: number | null;
+  exists: boolean;
+  conflict_type: 'modified' | 'deleted' | 'created' | 'unknown' | 'none';
+}
+
+export interface FileEditRecord {
+  path: string;
+  session_id: string;
+  timestamp: number;
+  operation: string;
 }
 
 class TauriAPIBridge implements TauriAPI {
@@ -112,6 +139,33 @@ class TauriAPIBridge implements TauriAPI {
   contextMenu = {
     show: async (x: number, y: number, hasSelection: boolean): Promise<void> => {
       await invoke('show_context_menu', { x, y, hasSelection });
+    }
+  };
+
+  files = {
+    writeContent: async (path: string, content: string): Promise<void> => {
+      await invoke('write_file_content', { path, content });
+    },
+    deleteFile: async (path: string): Promise<void> => {
+      await invoke('delete_file', { path });
+    }
+  };
+
+  rollback = {
+    getFileMtime: async (path: string): Promise<number | null> => {
+      return await invoke('get_file_mtime', { path });
+    },
+    checkFileConflicts: async (files: Array<[string, number | null, boolean]>): Promise<FileConflict[]> => {
+      return await invoke('check_file_conflicts', { files });
+    },
+    registerFileEdit: async (path: string, sessionId: string, timestamp: number, operation: string): Promise<void> => {
+      await invoke('register_file_edit', { path, sessionId, timestamp, operation });
+    },
+    getConflictingEdits: async (paths: string[], currentSessionId: string, afterTimestamp: number): Promise<FileEditRecord[]> => {
+      return await invoke('get_conflicting_edits', { paths, currentSessionId, afterTimestamp });
+    },
+    clearSessionEdits: async (sessionId: string): Promise<void> => {
+      await invoke('clear_session_edits', { sessionId });
     }
   };
 }

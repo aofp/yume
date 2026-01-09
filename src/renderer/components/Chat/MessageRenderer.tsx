@@ -421,7 +421,9 @@ const formatPath = (path?: string) => {
 
 const formatCommand = (cmd?: string) => {
   if (!cmd) return '';
-  return truncateText(cmd, 256);
+  // Replace newlines with spaces for inline display
+  const singleLine = cmd.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+  return truncateText(singleLine, 512);
 };
 
 const formatUrl = (url?: string) => {
@@ -472,9 +474,15 @@ const getChangePreview = (oldStr?: string, newStr?: string) => {
 
 const formatToolInput = (input: any): string => {
   if (!input) return '';
-  
+
+  // Helper to sanitize output - strip newlines and limit length
+  const sanitize = (s: string, maxLen = 512) => {
+    const singleLine = s.replace(/\n+/g, ' ').replace(/\s+/g, ' ').trim();
+    return singleLine.length > maxLen ? singleLine.substring(0, maxLen) + '...' : singleLine;
+  };
+
   // For simple values
-  if (typeof input === 'string') return input.length > 50 ? input.substring(0, 50) + '...' : input;
+  if (typeof input === 'string') return sanitize(input);
   if (typeof input === 'number' || typeof input === 'boolean') return String(input);
   
   // For objects/arrays, extract meaningful info
@@ -984,13 +992,13 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                                 (resultContent.includes('successfully'));
             
             if (isEditResult && (prevBlock?.name === 'Edit' || prevBlock?.name === 'MultiEdit' || prevBlock?.name === 'NotebookEdit')) {
-              // Extract file path from Edit output
-              let filePathMatch = resultContent.match(/The file (.+?) has been updated/) || 
-                                 resultContent.match(/Applied \d+ edits? to (.+?)(?::|$)/);
-              let filePath = filePathMatch ? filePathMatch[1] : 'file';
-              
-              // Convert to relative path
-              filePath = formatPath(filePath);
+              // Extract file path from Edit output or tool input
+              const filePathMatch = resultContent.match(/The file (.+?) has been updated/) ||
+                                   resultContent.match(/Applied \d+ edits? to (.+?)(?::|$)/);
+              // Fallback to tool input file_path or notebook_path
+              const filePath = filePathMatch
+                ? formatPath(filePathMatch[1])
+                : formatPath(prevBlock?.input?.file_path || prevBlock?.input?.notebook_path || '');
               
               // Parse the Edit/MultiEdit result to create a diff
               const lines = resultContent.split('\n');
@@ -1817,9 +1825,6 @@ const MessageRendererBase: React.FC<{
         });
       }
 
-      // Show empty assistant message with (no content) if it's not streaming and has no text
-      const showEmptyMessage = !message.streaming && !hasTextContent && message.type === 'assistant';
-      
       return (
         <div ref={containerRef}>
           {/* Render thinking blocks first, outside any message bubble */}
@@ -1831,15 +1836,12 @@ const MessageRendererBase: React.FC<{
             </div>
           )}
 
-          {/* Render text content in message bubble if there is any, or show (no content) */}
-          {(hasTextContent || showEmptyMessage) && (
+          {/* Render text content in message bubble if there is any */}
+          {hasTextContent && (
             <div className="message assistant">
               <div className="message-content">
                 <div className="message-bubble">
-                  {hasTextContent ?
-                    renderContent(textContent, message, searchQuery, isCurrentMatch) :
-                    <span style={{ color: '#666', fontStyle: 'italic' }}>(no content)</span>
-                  }
+                  {renderContent(textContent, message, searchQuery, isCurrentMatch)}
                 </div>
               </div>
               {showButtons && (
@@ -2205,14 +2207,14 @@ const MessageRendererBase: React.FC<{
         // Parse the edit result to extract the diff information
         const lines = contentStr.split('\n');
         
-        // Extract file path from the result message
-        let filePath = '';
+        // Extract file path from the result message or tool input
         const isMultiEdit = contentStr.includes('Applied') && (contentStr.includes('edit to') || contentStr.includes('edits to'));
-        const filePathMatch = contentStr.match(/The file (.+?) has been updated/) || 
+        const filePathMatch = contentStr.match(/The file (.+?) has been updated/) ||
                               contentStr.match(/Applied \d+ edits? to (.+?)(?::|$)/);
-        if (filePathMatch) {
-          filePath = formatPath(filePathMatch[1]);
-        }
+        // Fallback to tool input file_path or notebook_path
+        const filePath = filePathMatch
+          ? formatPath(filePathMatch[1])
+          : formatPath(resultToolInput?.file_path || resultToolInput?.notebook_path || '');
         
         // For MultiEdit, generate diff from tool input
         if (isMultiEdit && resultToolInput?.edits) {
@@ -2963,10 +2965,11 @@ const MessageRendererBase: React.FC<{
         
         // Count tool uses in the current conversation turn only
         // Look back through messages to count tool_use messages since the last user message
-        const currentIndex = sessionMessages.findIndex(m => m === message);
-        let toolCount = 0;
+        // Or use tool_count from message if provided (for synthetic result messages from resumed sessions)
+        const currentIndex = sessionMessages.findIndex(m => m.id === message.id);
+        let toolCount = (message as any).tool_count || 0;
         let hasAssistantMessage = false;
-        if (currentIndex > 0) {
+        if (currentIndex > 0 && !toolCount) {
           // Go backwards from result to find tool uses in this turn
           for (let i = currentIndex - 1; i >= 0; i--) {
             const msg = sessionMessages[i];
@@ -2989,6 +2992,25 @@ const MessageRendererBase: React.FC<{
             }
             if (msg.type === 'tool_use') {
               toolCount++;
+            }
+          }
+        } else if (currentIndex > 0) {
+          // Still need to check for hasAssistantMessage even if tool_count is provided
+          for (let i = currentIndex - 1; i >= 0; i--) {
+            const msg = sessionMessages[i];
+            if (msg.type === 'user') break;
+            if (msg.type === 'assistant' && msg.message?.content) {
+              const content = msg.message.content;
+              if (typeof content === 'string' && content.trim()) {
+                hasAssistantMessage = true;
+                break;
+              } else if (Array.isArray(content)) {
+                const hasText = content.some(block => block.type === 'text' && block.text?.trim());
+                if (hasText) {
+                  hasAssistantMessage = true;
+                  break;
+                }
+              }
             }
           }
         }

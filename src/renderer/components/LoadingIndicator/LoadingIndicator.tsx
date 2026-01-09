@@ -3,7 +3,7 @@ import './LoadingIndicator.css';
 
 interface LoadingIndicatorProps {
   size?: 'small' | 'medium' | 'large';
-  color?: 'red' | 'grey' | 'green';
+  color?: 'red' | 'grey' | 'green' | 'negative' | 'positive';
 }
 
 export const LoadingIndicator: React.FC<LoadingIndicatorProps> = ({

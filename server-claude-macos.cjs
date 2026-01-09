@@ -275,7 +275,7 @@ console.log('══════════════════════�
 // Claude CLI path - try multiple locations
 const { execSync, spawn } = require("child_process");
 const fs = require("fs");
-const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } = fs;
+const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync, statSync } = fs;
 const { dirname, join, isAbsolute } = require("path");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
@@ -1388,7 +1388,98 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
           }
         }
 
-        // Extract title from messages
+        // Generate synthetic result messages for each turn (user -> assistant sequence)
+        // This allows the frontend to display metadata like tokens, model, etc.
+        const processedMessages = [];
+        let turnStartTimestamp = null;
+        let currentTurnToolCount = 0;
+        let currentTurnUsage = null;
+        let currentTurnModel = null;
+
+        for (let i = 0; i < messages.length; i++) {
+          const msg = messages[i];
+          processedMessages.push(msg);
+
+          // Track turn start when we see a user message
+          if (msg.type === 'user') {
+            // Check if this is a tool_result (continuation) or new user message
+            const content = msg.message?.content;
+            const isToolResult = Array.isArray(content) && content.some(c => c.type === 'tool_result');
+            if (!isToolResult) {
+              turnStartTimestamp = msg.timestamp;
+              currentTurnToolCount = 0;
+              currentTurnUsage = null;
+              currentTurnModel = null;
+            } else {
+              // Tool results don't start new turns
+              currentTurnToolCount++;
+            }
+          }
+
+          // Track assistant message data
+          if (msg.type === 'assistant') {
+            if (msg.message?.usage) {
+              currentTurnUsage = msg.message.usage;
+            }
+            if (msg.message?.model) {
+              currentTurnModel = msg.message.model;
+            }
+            // Count tool_use blocks
+            const content = msg.message?.content;
+            if (Array.isArray(content)) {
+              currentTurnToolCount += content.filter(c => c.type === 'tool_use').length;
+            }
+
+            // Check if this is the last assistant message before next user message (or end)
+            const nextMsg = messages[i + 1];
+            const isEndOfTurn = !nextMsg ||
+              (nextMsg.type === 'user' &&
+               !(Array.isArray(nextMsg.message?.content) &&
+                 nextMsg.message.content.some(c => c.type === 'tool_result')));
+
+            if (isEndOfTurn && currentTurnUsage) {
+              // Calculate duration from turn start to this message
+              let durationMs = 0;
+              if (turnStartTimestamp && msg.timestamp) {
+                const startTime = new Date(turnStartTimestamp).getTime();
+                const endTime = new Date(msg.timestamp).getTime();
+                durationMs = endTime - startTime;
+              }
+
+              // Calculate cost based on model and tokens
+              const input = currentTurnUsage.input_tokens || 0;
+              const output = currentTurnUsage.output_tokens || 0;
+              const cacheRead = currentTurnUsage.cache_read_input_tokens || 0;
+              const cacheCreation = currentTurnUsage.cache_creation_input_tokens || 0;
+
+              let costUsd = 0;
+              if (currentTurnModel?.includes('opus')) {
+                // Opus pricing: $15/M input, $75/M output, cache read $1.5/M, cache create $18.75/M
+                costUsd = (input * 15 + output * 75 + cacheRead * 1.5 + cacheCreation * 18.75) / 1000000;
+              } else {
+                // Sonnet pricing: $3/M input, $15/M output, cache read $0.3/M, cache create $3.75/M
+                costUsd = (input * 3 + output * 15 + cacheRead * 0.3 + cacheCreation * 3.75) / 1000000;
+              }
+
+              // Create synthetic result message
+              processedMessages.push({
+                type: 'result',
+                subtype: 'success',
+                is_error: false,
+                duration_ms: durationMs,
+                usage: currentTurnUsage,
+                total_cost_usd: costUsd,
+                model: currentTurnModel,
+                tool_count: currentTurnToolCount,
+                num_turns: Math.floor((i + 1) / 2), // Approximate turn count
+                id: `result-${msg.uuid || i}`,
+                timestamp: msg.timestamp
+              });
+            }
+          }
+        }
+
+        // Extract title from original messages (before processing added result messages)
         let title = null;
 
         // Check for title in last message
@@ -1438,8 +1529,8 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
         res.json({
           sessionId,
           projectPath: actualPath,
-          messages,
-          sessionCount: messages.length,
+          messages: processedMessages, // Use processed messages with synthetic result messages
+          sessionCount: processedMessages.length,
           title,
           usage: {
             // Return CURRENT context snapshot, not accumulated totals
@@ -1643,8 +1734,9 @@ app.get('/claude-analytics', async (req, res) => {
                     const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
                     const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
 
-                    // Context window = input tokens only (matches Claude Code formula)
-                    sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                    // Total tokens = all tokens used (input + output + cache)
+                    // For analytics display, we want total usage, not just context window
+                    sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                     sessionTokenBreakdown = {
                       input: inputTokens,
                       output: outputTokens,
@@ -1835,8 +1927,9 @@ app.get('/claude-analytics', async (req, res) => {
                   const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
                   const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
 
-                  // Context window = input tokens only (matches Claude Code formula)
-                  sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                  // Total tokens = all tokens used (input + output + cache)
+                  // For analytics display, we want total usage, not just context window
+                  sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                   sessionTokenBreakdown = {
                     input: inputTokens,
                     output: outputTokens,
@@ -2004,8 +2097,9 @@ app.get('/claude-analytics', async (req, res) => {
                 const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
                 const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
 
-                // Context window = input tokens only (matches Claude Code formula)
-                sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                // Total tokens = all tokens used (input + output + cache)
+                // For analytics display, we want total usage, not just context window
+                sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                 sessionTokenBreakdown = {
                   input: inputTokens,
                   output: outputTokens,
@@ -4279,7 +4373,10 @@ io.on('connection', (socket) => {
                   }
                 } else if (block.type === 'tool_use') {
                   hasToolUse = true;
-                  
+
+                  // Capture file snapshot for rollback (before the edit is applied)
+                  let fileSnapshot = null;
+
                   // Calculate line numbers for Edit/MultiEdit tools
                   let enhancedInput = block.input;
                   if ((block.name === 'Edit' || block.name === 'MultiEdit') && block.input?.file_path) {
@@ -4294,7 +4391,18 @@ io.on('connection', (socket) => {
                         const fileContent = readFileSync(fullPath, 'utf8');
                         const fileLines = fileContent.split('\n');
                         console.log(`📍 [${sessionId}] File has ${fileLines.length} lines`);
-                        
+
+                        // Capture snapshot for rollback (file content BEFORE edit)
+                        const fileStat = statSync(fullPath);
+                        fileSnapshot = {
+                          path: fullPath,
+                          originalContent: fileContent,
+                          timestamp: Date.now(),
+                          mtime: fileStat.mtimeMs, // For conflict detection
+                          sessionId: sessionId // For cross-session conflict detection
+                        };
+                        console.log(`📸 [${sessionId}] Captured file snapshot for rollback: ${fullPath} (${fileContent.length} bytes, mtime=${fileStat.mtimeMs})`);
+
                         if (block.name === 'Edit' && block.input.old_string) {
                           // Find line number for single edit
                           const oldString = block.input.old_string;
@@ -4360,12 +4468,56 @@ io.on('connection', (socket) => {
                         }
                       } else {
                         console.log(`📍 [${sessionId}] File not found: ${fullPath}`);
+                        // New file - snapshot indicates it didn't exist
+                        fileSnapshot = {
+                          path: fullPath,
+                          originalContent: null, // null means file didn't exist
+                          isNewFile: true,
+                          timestamp: Date.now(),
+                          mtime: null, // No mtime for new files
+                          sessionId: sessionId
+                        };
+                        console.log(`📸 [${sessionId}] Captured snapshot for NEW file: ${fullPath}`);
                       }
                     } catch (err) {
                       console.log(`📍 [${sessionId}] Error calculating line numbers for ${block.name}: ${err.message}`);
                     }
                   }
-                  
+
+                  // Handle Write tool - capture existing file content before overwrite
+                  if (block.name === 'Write' && block.input?.file_path && !fileSnapshot) {
+                    try {
+                      const filePath = block.input.file_path;
+                      const fullPath = isAbsolute(filePath) ? filePath : join(session.workingDirectory || process.cwd(), filePath);
+
+                      if (existsSync(fullPath)) {
+                        const fileContent = readFileSync(fullPath, 'utf8');
+                        const fileStat = statSync(fullPath);
+                        fileSnapshot = {
+                          path: fullPath,
+                          originalContent: fileContent,
+                          timestamp: Date.now(),
+                          mtime: fileStat.mtimeMs,
+                          sessionId: sessionId
+                        };
+                        console.log(`📸 [${sessionId}] Captured Write snapshot: ${fullPath} (${fileContent.length} bytes, mtime=${fileStat.mtimeMs})`);
+                      } else {
+                        // New file being created
+                        fileSnapshot = {
+                          path: fullPath,
+                          originalContent: null,
+                          isNewFile: true,
+                          timestamp: Date.now(),
+                          mtime: null,
+                          sessionId: sessionId
+                        };
+                        console.log(`📸 [${sessionId}] Captured Write snapshot for NEW file: ${fullPath}`);
+                      }
+                    } catch (err) {
+                      console.log(`📸 [${sessionId}] Error capturing Write snapshot: ${err.message}`);
+                    }
+                  }
+
                   // Send tool use as separate message immediately
                   const toolUseMessage = {
                     type: 'tool_use',
@@ -4377,6 +4529,10 @@ io.on('connection', (socket) => {
                     timestamp: Date.now(),
                     id: `tool-${sessionId}-${Date.now()}`
                   };
+                  // Include file snapshot for rollback if captured
+                  if (fileSnapshot) {
+                    toolUseMessage.fileSnapshot = fileSnapshot;
+                  }
                   // Include parent_tool_use_id if this is a subagent message
                   if (jsonData.parent_tool_use_id) {
                     toolUseMessage.parent_tool_use_id = jsonData.parent_tool_use_id;

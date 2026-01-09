@@ -217,6 +217,14 @@ class CompactionService {
   async executeAutoCompaction(sessionId: string, pendingUserMessage: string): Promise<void> {
     console.log('[Compaction] 🔄 executeAutoCompaction called for session:', sessionId);
 
+    // Check if auto-compact is enabled
+    const store = useClaudeCodeStore.getState();
+    if (store.autoCompactEnabled === false) {
+      console.log('[Compaction] ⚠️ Auto-compact disabled, clearing pending flag and skipping');
+      store.updateCompactionState(sessionId, { pendingAutoCompact: false });
+      return;
+    }
+
     // Prevent multiple compactions
     if (this.compactingSessionIds.has(sessionId)) {
       console.log('[Compaction] ⚠️ Already compacting, skipping');
@@ -230,8 +238,6 @@ class CompactionService {
       console.log(`[Compaction] ⏱️ Rate limited (${timeSinceLastCompact}ms since last), skipping compact`);
       return;
     }
-
-    const store = useClaudeCodeStore.getState();
 
     console.log('[Compaction] ✅ Proceeding with auto-compact');
     this.compactingSessionIds.add(sessionId);
@@ -274,10 +280,13 @@ class CompactionService {
         clearAutoCompactMessage(sessionId);
       });
       store.updateCompactionState(sessionId, { pendingAutoCompactMessage: undefined });
+      // Only clear isCompacting on error - success case is handled by compact result handler
+      store.setCompacting(sessionId, false);
     } finally {
       this.compactingSessionIds.delete(sessionId);
-      store.setCompacting(sessionId, false);
-      console.log('[Compaction] 🏁 Auto-compact process completed');
+      // NOTE: Don't set isCompacting=false here - the compact result handler does that
+      // after sending the followup message. Setting it here would kill the indicator prematurely.
+      console.log('[Compaction] 🏁 Auto-compact command sent, waiting for result');
     }
   }
 

@@ -310,7 +310,7 @@ console.log('══════════════════════�
 // Claude CLI path - try multiple locations
 const { execSync, spawn } = require("child_process");
 const fs = require("fs");
-const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync } = fs;
+const { existsSync, mkdirSync, readFileSync, writeFileSync, unlinkSync, readdirSync, statSync } = fs;
 const { dirname, join, isAbsolute } = require("path");
 const { createServer } = require("http");
 const { Server } = require("socket.io");
@@ -1958,8 +1958,9 @@ app.get('/claude-analytics', async (req, res) => {
                     const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
                     const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
 
-                    // Context window = input tokens only (matches Claude Code formula)
-                    sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                    // Total tokens = all tokens used (input + output + cache)
+                    // For analytics display, we want total usage, not just context window
+                    sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                     sessionTokenBreakdown = {
                       input: inputTokens,
                       output: outputTokens,
@@ -2142,8 +2143,9 @@ app.get('/claude-analytics', async (req, res) => {
                   const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
                   const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
 
-                  // Context window = input tokens only (matches Claude Code formula)
-                    sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                  // Total tokens = all tokens used (input + output + cache)
+                    // For analytics display, we want total usage, not just context window
+                    sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                   sessionTokenBreakdown = {
                     input: inputTokens,
                     output: outputTokens,
@@ -2303,8 +2305,9 @@ app.get('/claude-analytics', async (req, res) => {
                 const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
                 const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
 
-                // Context window = input tokens only (matches Claude Code formula)
-                    sessionTokens = inputTokens + cacheCreationTokens + cacheReadTokens;
+                // Total tokens = all tokens used (input + output + cache)
+                    // For analytics display, we want total usage, not just context window
+                    sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
                 sessionTokenBreakdown = {
                   input: inputTokens,
                   output: outputTokens,
@@ -5026,17 +5029,50 @@ Format as a clear, structured summary that preserves all important context.`;
                   }
                 } else if (block.type === 'tool_use') {
                   hasToolUse = true;
-                  
-                  // Don't calculate line numbers for Edit/MultiEdit tools anymore
-                  // The diff will be shown in the tool_result message instead
-                  // Just use the original input without enhancements
-                  
-                  // Track Bash tool uses for focus restoration on Windows
+
+                  // Capture file snapshot for rollback (before the edit is applied)
+                  let fileSnapshot = null;
+
+                  // Capture snapshots for Edit/MultiEdit/Write tools
+                  if ((block.name === 'Edit' || block.name === 'MultiEdit' || block.name === 'Write') && block.input?.file_path) {
+                    try {
+                      const filePath = block.input.file_path;
+                      const fullPath = isAbsolute(filePath) ? filePath : join(session.workingDirectory || process.cwd(), filePath);
+
+                      if (existsSync(fullPath)) {
+                        const fileContent = readFileSync(fullPath, 'utf8');
+                        const fileStat = statSync(fullPath);
+                        fileSnapshot = {
+                          path: fullPath,
+                          originalContent: fileContent,
+                          timestamp: Date.now(),
+                          mtime: fileStat.mtimeMs, // For conflict detection
+                          sessionId: sessionId // For cross-session conflict detection
+                        };
+                        console.log(`📸 [${sessionId}] Captured snapshot for rollback: ${fullPath} (${fileContent.length} bytes, mtime=${fileStat.mtimeMs})`);
+                      } else {
+                        // New file - snapshot indicates it didn't exist
+                        fileSnapshot = {
+                          path: fullPath,
+                          originalContent: null,
+                          isNewFile: true,
+                          timestamp: Date.now(),
+                          mtime: null,
+                          sessionId: sessionId
+                        };
+                        console.log(`📸 [${sessionId}] Captured snapshot for NEW file: ${fullPath}`);
+                      }
+                    } catch (err) {
+                      console.log(`📸 [${sessionId}] Error capturing snapshot: ${err.message}`);
+                    }
+                  }
+
+                  // Track Bash tool uses for focus restoration
                   if (block.name === 'Bash' && isFirstBashCommand) {
                     console.log(`🔧 [${sessionId}] Tracking first Bash tool use: ${block.id}`);
                     bashToolUseIds.set(block.id, { sessionId, timestamp: Date.now() });
                   }
-                  
+
                   // Send tool use as separate message immediately (without line number enhancements)
                   const toolUseMessage = {
                     type: 'tool_use',
@@ -5048,6 +5084,10 @@ Format as a clear, structured summary that preserves all important context.`;
                     timestamp: Date.now(),
                     id: `tool-${sessionId}-${Date.now()}`
                   };
+                  // Include file snapshot for rollback if captured
+                  if (fileSnapshot) {
+                    toolUseMessage.fileSnapshot = fileSnapshot;
+                  }
                   // Include parent_tool_use_id if this is a subagent message
                   if (jsonData.parent_tool_use_id) {
                     toolUseMessage.parent_tool_use_id = jsonData.parent_tool_use_id;

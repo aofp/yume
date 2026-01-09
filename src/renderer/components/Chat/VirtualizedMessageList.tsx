@@ -28,8 +28,75 @@ export const ThinkingTimer = ({ startTime }: { startTime: number }) => {
   );
 };
 
+// Self-updating bash timer component
+export const BashTimer = ({ startTime }: { startTime: number }) => {
+  const [elapsed, setElapsed] = React.useState(() =>
+    Math.floor((Date.now() - startTime) / 1000)
+  );
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  if (elapsed <= 0) return null;
+
+  return (
+    <span className="bash-timer">
+      {elapsed >= 60
+        ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
+        : `${elapsed}s`}
+    </span>
+  );
+};
+
+// Self-updating compacting timer component
+export const CompactingTimer = ({ startTime }: { startTime: number }) => {
+  const [elapsed, setElapsed] = React.useState(() =>
+    Math.floor((Date.now() - startTime) / 1000)
+  );
+
+  React.useEffect(() => {
+    const interval = setInterval(() => {
+      setElapsed(Math.floor((Date.now() - startTime) / 1000));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [startTime]);
+
+  if (elapsed <= 0) return null;
+
+  return (
+    <span className="compacting-timer">
+      {elapsed >= 60
+        ? `${Math.floor(elapsed / 60)}m ${elapsed % 60}s`
+        : `${elapsed}s`}
+    </span>
+  );
+};
+
+// Tool action labels for the thinking indicator
+const TOOL_ACTION_LABELS: Record<string, string> = {
+  'Read': 'reading',
+  'Write': 'writing',
+  'Edit': 'editing',
+  'MultiEdit': 'editing',
+  'Bash': 'running',
+  'Grep': 'searching',
+  'Glob': 'finding',
+  'LS': 'listing',
+  'WebSearch': 'searching',
+  'WebFetch': 'fetching',
+  'Task': 'delegating',
+  'TodoWrite': 'planning',
+  'NotebookEdit': 'editing',
+};
+
 // Pre-computed thinking characters to avoid splitting on every render
 const THINKING_CHARS = 'thinking'.split('');
+const COMPACTING_CHARS = 'compacting'.split('');
+const BASH_RUNNING_CHARS = 'bash running'.split('');
 
 // Memoized virtual item wrapper to prevent DOM recreation during streaming
 // This is CRITICAL for maintaining text selection during updates
@@ -81,8 +148,13 @@ interface VirtualizedMessageListProps {
   lastAssistantMessageIds?: string[];
   showThinking?: boolean;
   thinkingStartTime?: number;
+  activityLabel?: string; // Dynamic label for thinking indicator (e.g., "thinking", "reading", "editing")
   showBash?: boolean;
   showUserBash?: boolean;
+  bashStartTime?: number;
+  showCompacting?: boolean;
+  compactingStartTime?: number;
+  compactingFollowupMessage?: string;
   pendingFollowup?: { content: string } | null;
   onScrollStateChange?: (isAtBottom: boolean) => void;
   searchQuery?: string;
@@ -105,8 +177,13 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   lastAssistantMessageIds = [],
   showThinking = false,
   thinkingStartTime,
+  activityLabel = 'thinking',
   showBash = false,
   showUserBash = false,
+  bashStartTime,
+  showCompacting = false,
+  compactingStartTime,
+  compactingFollowupMessage,
   pendingFollowup = null,
   onScrollStateChange,
   searchQuery = '',
@@ -149,11 +226,14 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     }
   }, []);
 
-  // Add thinking/bash/followup indicator message if streaming
+  // Add thinking/bash/compacting/followup indicator message if streaming
   const displayMessages = useMemo(() => {
     const result = [...messages];
-    // Show bash indicator if running bash (takes priority over thinking)
-    if (showBash || showUserBash) {
+    // Show compacting indicator (takes priority)
+    if (showCompacting) {
+      result.push({ type: 'compacting-indicator', id: 'compacting-indicator', followupMessage: compactingFollowupMessage });
+    } else if (showBash || showUserBash) {
+      // Show bash indicator if running bash (takes priority over thinking)
       result.push({ type: 'bash-indicator', id: 'bash-indicator' });
     } else if (showThinking) {
       result.push({ type: 'thinking', id: 'thinking-indicator' });
@@ -163,7 +243,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       result.push({ type: 'followup-indicator', id: 'followup-indicator', content: pendingFollowup.content });
     }
     return result;
-  }, [messages, showThinking, showBash, showUserBash, pendingFollowup]);
+  }, [messages, showThinking, showBash, showUserBash, showCompacting, compactingFollowupMessage, pendingFollowup]);
 
   // Create a simple hash of message content to detect changes
   // Uses count + last message ID + streaming state instead of JSON.stringify for performance
@@ -174,16 +254,19 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     const isStreaming = lastMsg?.streaming ? 1 : 0;
     const thinkingState = showThinking ? 1 : 0;
     const bashState = (showBash || showUserBash) ? 1 : 0;
+    const compactingState = showCompacting ? 1 : 0;
     const followupState = pendingFollowup ? 1 : 0;
-    return `${displayMessages.length}:${lastId}:${lastLen}:${isStreaming}:${thinkingState}:${bashState}:${followupState}`;
-  }, [displayMessages, showThinking, showBash, showUserBash, pendingFollowup]);
+    return `${displayMessages.length}:${lastId}:${lastLen}:${isStreaming}:${thinkingState}:${bashState}:${compactingState}:${followupState}`;
+  }, [displayMessages, showThinking, showBash, showUserBash, showCompacting, pendingFollowup]);
 
   // CRITICAL: Stable estimateSize using ref - prevents virtualizer recreation during streaming
   // Using ref instead of displayMessages in dependency array avoids callback recreation
   const estimateSize = useCallback((index: number) => {
     // Access via ref for stable reference
     const result = [...messagesRef.current];
-    if (showBash || showUserBash) {
+    if (showCompacting) {
+      result.push({ type: 'compacting-indicator', id: 'compacting-indicator' });
+    } else if (showBash || showUserBash) {
       result.push({ type: 'bash-indicator', id: 'bash-indicator' });
     } else if (showThinking) {
       result.push({ type: 'thinking', id: 'thinking-indicator' });
@@ -194,8 +277,8 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
     const msg = result[index];
     if (!msg) return 100;
 
-    // Thinking/bash/followup indicator has fixed height
-    if (msg.type === 'thinking' || msg.type === 'bash-indicator' || msg.type === 'followup-indicator') {
+    // Thinking/bash/compacting/followup indicator has fixed height
+    if (msg.type === 'thinking' || msg.type === 'bash-indicator' || msg.type === 'compacting-indicator' || msg.type === 'followup-indicator') {
       return 60;
     }
 
@@ -609,6 +692,51 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
           const message = displayMessages[virtualItem.index];
           if (!message) return null;
 
+          // Render compacting indicator
+          if (message.type === 'compacting-indicator') {
+            return (
+              <VirtualItemWrapper
+                key={virtualItem.key}
+                virtualItem={virtualItem}
+                measureElement={virtualizer.measureElement}
+              >
+                <div className="message assistant">
+                  <div className="message-content">
+                    <div className="compacting-indicator-bottom">
+                      <LoadingIndicator size="small" color="positive" />
+                      <span className="compacting-text-wrapper">
+                        <span className="compacting-text">
+                          {COMPACTING_CHARS.map((char, i) => (
+                            <span
+                              key={i}
+                              className="compacting-char"
+                              style={{
+                                animationDelay: `${i * 0.05}s`
+                              }}
+                            >
+                              {char}
+                            </span>
+                          ))}
+                          <span className="compacting-dots"></span>
+                        </span>
+                        {compactingStartTime && <CompactingTimer startTime={compactingStartTime} />}
+                      </span>
+                      {message.followupMessage && (
+                        <span className="compacting-followup">
+                          <span className="compacting-followup-label">then:</span>
+                          <span className="compacting-followup-message">
+                            {message.followupMessage.slice(0, 50)}
+                            {message.followupMessage.length > 50 ? '...' : ''}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </VirtualItemWrapper>
+            );
+          }
+
           // Render bash indicator
           if (message.type === 'bash-indicator') {
             return (
@@ -619,11 +747,25 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
               >
                 <div className="message assistant">
                   <div className="message-content">
-                    <div className="status-indicators">
-                      <div className="inline-activity-indicator bash">
-                        <LoadingIndicator size="small" color="green" />
-                        <span className="activity-text">bash running</span>
-                      </div>
+                    <div className="bash-indicator-bottom">
+                      <LoadingIndicator size="small" color="negative" />
+                      <span className="bash-text-wrapper">
+                        <span className="bash-text">
+                          {BASH_RUNNING_CHARS.map((char, i) => (
+                            <span
+                              key={i}
+                              className="bash-char"
+                              style={{
+                                animationDelay: `${i * 0.05}s`
+                              }}
+                            >
+                              {char}
+                            </span>
+                          ))}
+                          <span className="bash-dots"></span>
+                        </span>
+                        {bashStartTime && <BashTimer startTime={bashStartTime} />}
+                      </span>
                     </div>
                   </div>
                 </div>
@@ -645,7 +787,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                       <LoadingIndicator size="small" color="red" />
                       <span className="thinking-text-wrapper">
                         <span className="thinking-text">
-                          {THINKING_CHARS.map((char, i) => (
+                          {activityLabel.split('').map((char, i) => (
                             <span
                               key={i}
                               className="thinking-char"

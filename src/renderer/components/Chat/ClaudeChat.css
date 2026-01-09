@@ -306,12 +306,12 @@
 
 .message-text {
   margin-bottom: 8px;
-  line-height: 1.6;
+  line-height: 1.4;
 }
 
 /* Markdown styles */
 .message-text p {
-  margin: 0 0 8px 0;
+  margin: 0 0 4px 0;
 }
 
 .message-text p:last-child {
@@ -329,7 +329,6 @@
 
 .message-text pre {
   background: var(--background-color, #000000);
-  border: 1px solid rgba(255, 153, 153, 0.1);
   border-radius: 0 !important;
   padding: 12px;
   margin: 8px 0;
@@ -418,7 +417,7 @@
 
 .message-text hr {
   border: none;
-  border-top: 1px solid rgba(var(--accent-rgb), 0.1);
+  border-top: 1px solid rgba(var(--accent-rgb), 0.4);
   margin: 16px 0;
 }
 
@@ -618,6 +617,137 @@
   text-align: left;
 }
 
+/* Compacting indicator at bottom - positive color variant */
+.compacting-indicator-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: var(--fg-80);
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.compacting-indicator-bottom .compacting-text-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.compacting-indicator-bottom .compacting-text {
+  opacity: 1;
+  color: var(--positive-color);
+  font-weight: bold;
+  display: inline;
+}
+
+/* Character by character animation with continuous wave - positive color */
+.compacting-char {
+  display: inline-block;
+  animation: charWave 1.6s ease-in-out infinite;
+  color: var(--positive-color);
+}
+
+.compacting-indicator-bottom .compacting-timer {
+  color: var(--positive-color);
+  font-weight: bold;
+  font-size: 8px;
+  opacity: 0.9;
+  font-family: var(--font-mono);
+}
+
+.compacting-indicator-bottom .compacting-dots {
+  display: inline;
+  color: var(--positive-color);
+  font-weight: bold;
+}
+
+.compacting-indicator-bottom .compacting-dots::after {
+  content: '';
+  display: inline-block;
+  animation: thinkingDots 1.6s infinite linear;
+  width: 28px;
+  text-align: left;
+}
+
+.compacting-indicator-bottom .compacting-followup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--fg-20);
+}
+
+.compacting-indicator-bottom .compacting-followup-label {
+  color: var(--fg-50);
+  font-size: 11px;
+}
+
+.compacting-indicator-bottom .compacting-followup-message {
+  color: var(--fg-40);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
+}
+
+/* Bash indicator at bottom - negative color variant */
+.bash-indicator-bottom {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  color: var(--fg-80);
+  font-size: 12px;
+  font-family: var(--font-sans);
+}
+
+.bash-indicator-bottom .bash-text-wrapper {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.bash-indicator-bottom .bash-text {
+  opacity: 1;
+  color: var(--negative-color);
+  font-weight: bold;
+  display: inline;
+}
+
+/* Character by character animation with continuous wave - negative color */
+.bash-char {
+  display: inline-block;
+  white-space: pre;
+  animation: charWave 1.6s ease-in-out infinite;
+  color: var(--negative-color);
+}
+
+.bash-indicator-bottom .bash-timer {
+  color: var(--negative-color);
+  font-weight: bold;
+  font-size: 8px;
+  opacity: 0.9;
+  font-family: var(--font-mono);
+}
+
+.bash-indicator-bottom .bash-dots {
+  display: inline;
+  color: var(--negative-color);
+  font-weight: bold;
+}
+
+.bash-indicator-bottom .bash-dots::after {
+  content: '';
+  display: inline-block;
+  animation: thinkingDots 1.6s infinite linear;
+  width: 28px;
+  text-align: left;
+}
+
 /* Removed - using LoadingIndicator component now */
 
 @keyframes spin {
@@ -673,12 +803,61 @@
 }
 
 .inline-activity-indicator.bash {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .inline-activity-indicator.bash .activity-text {
-  color: var(--accent-color);
+  color: var(--negative-color);
   font-weight: bold;
+}
+
+.inline-activity-indicator.bash .bash-timer {
+  color: var(--negative-color);
+  font-weight: bold;
+  font-size: 8px;
+  opacity: 0.9;
+  font-family: var(--font-mono);
+}
+
+.inline-activity-indicator.compacting {
+  color: var(--positive-color);
+}
+
+.inline-activity-indicator.compacting .activity-text {
+  color: var(--positive-color);
+  font-weight: bold;
+}
+
+.inline-activity-indicator.compacting .compacting-timer {
+  color: var(--positive-color);
+  font-weight: bold;
+  font-size: 8px;
+  opacity: 0.9;
+  font-family: var(--font-mono);
+}
+
+.inline-activity-indicator.compacting .compacting-followup {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: 8px;
+  padding-left: 8px;
+  border-left: 1px solid var(--fg-20);
+}
+
+.inline-activity-indicator.compacting .compacting-followup-label {
+  color: var(--fg-50);
+  font-size: 11px;
+}
+
+.inline-activity-indicator.compacting .compacting-followup-message {
+  color: var(--fg-40);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 200px;
 }
 
 .inline-activity-indicator.followup {
@@ -3036,6 +3215,113 @@ textarea.context-full {
 
 .autocompact-pending-indicator .autocompact-message {
   color: var(--fg-60);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Rollback Button (centered in context bar) - matches btn-context-icon style */
+.btn-rollback {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 3px 7px;
+  background: transparent;
+  border: 1px solid var(--fg-20);
+  border-radius: 4px;
+  color: var(--fg-40);
+  cursor: default;
+  transition: all 0.2s ease;
+  line-height: 9pt;
+}
+
+.btn-rollback:hover:not(:disabled):not(.active) {
+  background: var(--fg-05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 1);
+}
+
+.btn-rollback:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.btn-rollback.active {
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.6);
+}
+
+.btn-rollback-count {
+  margin-left: 4px;
+  font-size: 10px;
+  font-family: var(--font-mono);
+  opacity: 0.8;
+}
+
+/* Rollback Panel */
+.rollback-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.rollback-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  outline: none;
+}
+
+.rollback-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 11px;
+  background: transparent;
+  transition: background 0.15s ease;
+}
+
+.rollback-item:hover:not(.disabled),
+.rollback-item.selected:not(.disabled) {
+  background: rgba(var(--accent-rgb), 0.1);
+  outline: 1px solid rgba(var(--accent-rgb), 0.4);
+}
+
+.rollback-item.disabled {
+  cursor: not-allowed;
+  opacity: 0.3;
+  pointer-events: none;
+}
+
+.rollback-item-number {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--fg-40);
+  font-family: var(--font-mono);
+  min-width: 24px;
+}
+
+.rollback-item:hover:not(.disabled) .rollback-item-number,
+.rollback-item.selected:not(.disabled) .rollback-item-number {
+  color: var(--accent-color);
+}
+
+.rollback-item-text {
+  flex: 1;
+  color: var(--fg-60);
+  font-size: 10px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

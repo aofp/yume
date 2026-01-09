@@ -123,14 +123,67 @@ function killPort(port) {
   }
 }
 
+// Kill zombie server processes by name pattern (for this project only)
+function killZombieServers() {
+  try {
+    if (os.platform() === 'win32') {
+      // Windows
+      execSync('taskkill /F /IM server-windows-x64.exe 2>nul', { stdio: 'ignore' });
+    } else if (os.platform() === 'darwin') {
+      // macOS - only kill servers from THIS project's directory
+      const projectDir = path.join(__dirname, '..');
+      const resourcesDir = path.join(projectDir, 'src-tauri', 'resources');
+
+      // Kill servers running from our resources directory
+      try {
+        execSync(`pkill -9 -f "${resourcesDir}/server-macos"`, { stdio: 'ignore' });
+        console.log('🔪 Killed zombie server processes from dev resources');
+      } catch (e) {
+        // No matching processes
+      }
+
+      // Also kill any node processes running our server source
+      try {
+        execSync(`pkill -9 -f "node.*server-claude-macos.cjs"`, { stdio: 'ignore' });
+      } catch (e) {
+        // No matching processes
+      }
+    } else {
+      // Linux
+      try {
+        execSync('pkill -9 -f "server-linux-x64"', { stdio: 'ignore' });
+      } catch (e) {
+        // No matching processes
+      }
+    }
+  } catch (error) {
+    // Ignore errors - processes might not exist
+  }
+}
+
+// Remove stale git lock files
+function removeGitLock() {
+  const gitLockPath = path.join(__dirname, '..', '.git', 'index.lock');
+  try {
+    if (fs.existsSync(gitLockPath)) {
+      fs.unlinkSync(gitLockPath);
+      console.log('🔓 Removed stale git lock file');
+    }
+  } catch (error) {
+    console.log(`⚠️ Could not remove git lock: ${error.message}`);
+  }
+}
+
 // Kill ports used by the app
-console.log('🧹 Cleaning up ports...');
-killServerByPidFile(); // Kill server by PID file first
+console.log('🧹 Cleaning up ports and zombies...');
+killZombieServers(); // Kill zombie servers first
+removeGitLock(); // Remove stale git locks
+killServerByPidFile(); // Kill server by PID file
 killPort(3001); // Server port
 killPort(5173); // Vite port
 
 // Give a moment for ports to be released
 setTimeout(() => {
-  console.log('✨ Ports cleaned up, ready to start!');
+  console.log('✨ Cleanup complete, ready to start!');
   process.exit(0);
 }, 100);

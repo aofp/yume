@@ -212,12 +212,12 @@ fn remove_pid_file() {
 
 /// Kills any orphaned server processes from crashed sessions
 /// Called on startup before spawning a new server
-/// NOTE: Only kills processes from OUR previous crashed session (via PID file)
-/// Does NOT kill other yurucode instances to allow dev+release coexistence
+/// Kills servers from the SAME installation path (dev or production) to prevent zombies
+/// while still allowing dev+release instances to coexist
 pub fn kill_orphaned_servers() {
     info!("Checking for orphaned server processes from previous session...");
 
-    // Only kill process from our own PID file - don't kill other instances
+    // First, try to kill from PID file (specific process)
     let pid_path = get_pid_file_path();
     if pid_path.exists() {
         if let Ok(contents) = fs::read_to_string(&pid_path) {
@@ -229,8 +229,9 @@ pub fn kill_orphaned_servers() {
         let _ = fs::remove_file(&pid_path);
     }
 
-    // NOTE: Removed kill_server_processes_by_name() to allow multiple yurucode
-    // instances (dev + release) to coexist. PID file is sufficient for cleanup.
+    // Also kill any zombie servers from the SAME installation path
+    // This prevents zombie accumulation from crashed instances
+    kill_servers_from_same_install();
 }
 
 /// Kill a specific process by PID
@@ -258,6 +259,136 @@ fn kill_process_by_pid(pid: u32) {
                 .args(&["-9", &pid.to_string()])
                 .output();
             info!("Killed orphaned process PID: {}", pid);
+        }
+    }
+}
+
+/// Kill server processes from the SAME installation path as current executable
+/// Dev instances only kill dev servers, production only kills production servers
+fn kill_servers_from_same_install() {
+    // Get our server path to determine if we're dev or production
+    let our_server_path = get_our_server_path();
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        if let Some(path) = our_server_path {
+            // Use WMIC to find processes by path
+            let path_escaped = path.replace("\\", "\\\\");
+            if let Ok(output) = Command::new("wmic")
+                .args(&["process", "where", &format!("ExecutablePath like '%{}%'", path_escaped), "get", "ProcessId"])
+                .creation_flags(CREATE_NO_WINDOW)
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines().skip(1) {
+                    if let Ok(pid) = line.trim().parse::<u32>() {
+                        let _ = Command::new("taskkill")
+                            .args(&["/F", "/PID", &pid.to_string()])
+                            .creation_flags(CREATE_NO_WINDOW)
+                            .output();
+                        info!("Killed zombie server process PID: {} from same install", pid);
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "macos")]
+    {
+        if let Some(path) = our_server_path {
+            // Use pkill with exact path pattern to only kill servers from our install
+            // This allows dev and production to coexist
+            let escaped_path = path.replace("/", "\\/");
+            if let Ok(output) = Command::new("pgrep")
+                .args(&["-f", &escaped_path])
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    if let Ok(pid) = line.trim().parse::<u32>() {
+                        let _ = Command::new("kill")
+                            .args(&["-9", &pid.to_string()])
+                            .output();
+                        info!("Killed zombie server PID: {} from path: {}", pid, path);
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        if let Some(path) = our_server_path {
+            let escaped_path = path.replace("/", "\\/");
+            if let Ok(output) = Command::new("pgrep")
+                .args(&["-f", &escaped_path])
+                .output()
+            {
+                let stdout = String::from_utf8_lossy(&output.stdout);
+                for line in stdout.lines() {
+                    if let Ok(pid) = line.trim().parse::<u32>() {
+                        let _ = Command::new("kill")
+                            .args(&["-9", &pid.to_string()])
+                            .output();
+                        info!("Killed zombie server PID: {} from path: {}", pid, path);
+                    }
+                }
+            }
+        }
+    }
+}
+
+/// Get the server path for our installation (dev or production)
+fn get_our_server_path() -> Option<String> {
+    let exe_path = std::env::current_exe().ok()?;
+
+    #[cfg(target_os = "macos")]
+    {
+        let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
+        let binary_name = format!("server-macos-{}", arch);
+
+        if cfg!(debug_assertions) {
+            // Dev mode - server is in project's src-tauri/resources/
+            exe_path.parent()?.parent()?.parent()?.parent()
+                .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
+                .map(|p| p.to_string_lossy().to_string())
+        } else {
+            // Production - server is in .app bundle
+            let macos_dir = exe_path.parent()?;
+            let contents_dir = macos_dir.parent()?;
+            Some(contents_dir.join("Resources").join("resources").join(&binary_name)
+                .to_string_lossy().to_string())
+        }
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        let binary_name = "server-windows-x64.exe";
+        if cfg!(debug_assertions) {
+            exe_path.parent()?.parent()?.parent()?.parent()
+                .map(|p| p.join("src-tauri").join("resources").join(binary_name))
+                .map(|p| p.to_string_lossy().to_string())
+        } else {
+            exe_path.parent()
+                .map(|p| p.join("resources").join(binary_name))
+                .map(|p| p.to_string_lossy().to_string())
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        let binary_name = "server-linux-x64";
+        if cfg!(debug_assertions) {
+            exe_path.parent()?.parent()?.parent()?.parent()
+                .map(|p| p.join("src-tauri").join("resources").join(binary_name))
+                .map(|p| p.to_string_lossy().to_string())
+        } else {
+            exe_path.parent()
+                .map(|p| p.join("resources").join(binary_name))
+                .map(|p| p.to_string_lossy().to_string())
         }
     }
 }

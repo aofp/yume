@@ -875,6 +875,11 @@ pub fn run() {
             commands::read_port_file,
             commands::get_home_directory,
             commands::get_current_directory,
+            commands::write_file_content,
+            commands::delete_file,
+            commands::read_file_content,
+            commands::atomic_file_restore,
+            commands::atomic_file_delete,
             commands::new_window,
             // Claude detection
             commands::claude_detector::check_file_exists,
@@ -996,6 +1001,12 @@ pub fn run() {
             commands::delete_project_command,
             commands::load_all_commands,
             commands::migrate_commands_to_filesystem,
+            // Rollback conflict detection
+            commands::get_file_mtime,
+            commands::check_file_conflicts,
+            commands::register_file_edit,
+            commands::get_conflicting_edits,
+            commands::clear_session_edits,
         ])
         .on_window_event(|app_handle, event| {
             // Global window event handler for app-level lifecycle

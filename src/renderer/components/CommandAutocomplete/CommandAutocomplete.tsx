@@ -42,7 +42,7 @@ const builtInCommands: Command[] = [
   { name: 'model', description: 'switch model (opus/sonnet)', icon: <IconBolt size={14} />, handleLocally: true },
   { name: 'title', description: 'set tab title manually', icon: <IconPencil size={14} />, handleLocally: true },
   { name: 'init', description: 'create/update claude.md file', icon: <IconSettings size={14} />, handleLocally: false },
-  { name: 'compact', description: 'compress context to reduce token usage (uses sonnet)', icon: <IconArrowsDiagonalMinimize2 size={14} />, handleLocally: false },
+  { name: 'compact', description: 'compress context to reduce token usage', icon: <IconArrowsDiagonalMinimize2 size={14} />, handleLocally: false },
 ];
 
 // Load custom commands from localStorage

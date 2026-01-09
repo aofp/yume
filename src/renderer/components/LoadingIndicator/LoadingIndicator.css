@@ -93,6 +93,14 @@
   background-color: #99ff99;
 }
 
+.loading-indicator--negative .loading-indicator__circle {
+  background-color: var(--negative-color, #ff6b6b);
+}
+
+.loading-indicator--positive .loading-indicator__circle {
+  background-color: var(--positive-color, #6bff6b);
+}
+
 /* Default to accent color */
 .loading-indicator__circle {
   background-color: var(--accent-color, #ff9999);

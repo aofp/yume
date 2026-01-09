@@ -192,7 +192,11 @@ export interface FileSnapshot {
   operation: 'edit' | 'write' | 'create' | 'delete' | 'multiedit';
   timestamp: number;
   messageIndex: number;
-  oldContent?: string; // For diffs
+  oldContent?: string; // For diffs (snippet only)
+  originalContent?: string | null; // Full file content before edit (null = new file)
+  isNewFile?: boolean; // True if file didn't exist before this operation
+  mtime?: number; // File modification time when snapshot was taken (for conflict detection)
+  sessionId?: string; // Session that made this edit (for cross-session conflict detection)
 }
 
 export interface RestorePoint {
@@ -1142,8 +1146,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 if (pendingMessage) {
                   console.log('[Store] 🔄 AUTO-COMPACT COMPLETE - Resending user message with summary');
                   clearAutoCompactMessage(sessionId);
-                  // Clear the pending message from store (UI indicator)
-                  get().updateCompactionState(sessionId, { pendingAutoCompactMessage: undefined });
+                  // NOTE: Don't clear pendingAutoCompactMessage yet - keep showing indicator until message is sent
 
                   // Wait a bit for state to settle, then send the message with summary
                   setTimeout(() => {
@@ -1157,16 +1160,51 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // The sendMessage function will automatically prepend the summary
                     // since wasCompacted is true
                     get().sendMessage(pendingMessage);
+                    // NOW clear the pending message indicator after message is sent
+                    get().updateCompactionState(sessionId, {
+                      pendingAutoCompactMessage: undefined,
+                      isCompacting: false
+                    });
                   }, 500);
+                } else {
+                  // No pending message - just clear compacting state
+                  get().updateCompactionState(sessionId, { isCompacting: false });
                 }
-              }).catch(err => console.error('[Store] Failed to import wrapperIntegration:', err));
-              
+              }).catch(err => {
+                console.error('[Store] Failed to import wrapperIntegration:', err);
+                // Clear compacting state on error
+                get().updateCompactionState(sessionId, { isCompacting: false });
+              });
+
+              // Reset token analytics after compact - fresh context window
+              const resetAnalytics = {
+                ...s.analytics,
+                tokens: {
+                  input: 0,
+                  output: 0,
+                  total: 0,
+                  cacheRead: 0,
+                  cacheCreation: 0,
+                  byModel: s.analytics?.tokens?.byModel || {
+                    opus: { input: 0, output: 0, total: 0 },
+                    sonnet: { input: 0, output: 0, total: 0 }
+                  }
+                },
+                contextWindow: {
+                  used: 0,
+                  limit: 200000,
+                  percentage: 0,
+                  remaining: 200000
+                }
+              };
+
               return {
                 ...s,
                 messages: existingMessages,
                 streaming: false,
                 claudeSessionId: null, // Clear the session ID - it's no longer valid
-                wasCompacted: true // Mark that this session was compacted
+                wasCompacted: true, // Mark that this session was compacted
+                analytics: resetAnalytics
               };
             });
             return { sessions: sessions as Session[] };
@@ -1283,11 +1321,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                 const oldSessionId = s.claudeSessionId;
                 const newSessionId = message.session_id || null;
                 console.log(`🗜️ [Store] Compact result - updating session ID: ${oldSessionId} -> ${newSessionId}`);
-                s = { ...s, 
-                  claudeSessionId: newSessionId, 
+                s = { ...s,
+                  claudeSessionId: newSessionId,
                   wasCompacted: true,
                   streaming: false,  // Clear streaming state after compact
-                  lastAssistantMessageIds: [] // Clear assistant message tracking
+                  lastAssistantMessageIds: [], // Clear assistant message tracking
+                  compactionState: { ...s.compactionState, isCompacting: false } // Clear compacting indicator
                 };
               } else if (message.session_id && (!s.claudeSessionId || isResultWithNewSession)) {
                 const oldSessionId = s.claudeSessionId;
@@ -2259,8 +2298,51 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       // Only clear on interrupted/error since user explicitly stopped
                       const shouldClearPendingTools = message.subtype === 'interrupted' || message.subtype === 'error';
 
+                      // Process wrapper tokens on interrupt to update context usage
+                      if (message.subtype === 'interrupted' && (message as any).wrapper?.tokens) {
+                        const wrapperTokens = (message as any).wrapper.tokens;
+                        console.log('📊 [INTERRUPT] Processing wrapper tokens:', wrapperTokens);
+
+                        // Initialize analytics if not present (early interrupt on new conversation)
+                        if (!updatedAnalytics) {
+                          updatedAnalytics = {
+                            tokens: { input: 0, output: 0, total: 0, cacheSize: 0, cacheCreation: 0, byModel: { opus: { input: 0, output: 0, total: 0 }, sonnet: { input: 0, output: 0, total: 0 } } },
+                            cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+                            timing: { avgResponseTime: 0, totalTime: 0 },
+                            contextWindow: { used: 0, limit: 200000, percentage: 0, remaining: 200000 },
+                            requestCount: 0,
+                            thinkingTime: 0
+                          };
+                        }
+
+                        updatedAnalytics = {
+                          ...updatedAnalytics,
+                          tokens: {
+                            ...updatedAnalytics.tokens,
+                            total: wrapperTokens.total ?? updatedAnalytics.tokens.total,
+                            input: wrapperTokens.input ?? updatedAnalytics.tokens.input,
+                            output: wrapperTokens.output ?? updatedAnalytics.tokens.output,
+                            cacheSize: wrapperTokens.cache_read ?? updatedAnalytics.tokens.cacheSize ?? 0,
+                            cacheCreation: wrapperTokens.cache_creation ?? updatedAnalytics.tokens.cacheCreation ?? 0
+                          }
+                        };
+
+                        // Update context window percentage
+                        const limit = updatedAnalytics.contextWindow?.limit || 200000;
+                        const used = wrapperTokens.total || 0;
+                        updatedAnalytics.contextWindow = {
+                          ...updatedAnalytics.contextWindow,
+                          used,
+                          limit,
+                          percentage: limit > 0 ? Math.round((used / limit) * 100) : 0,
+                          remaining: limit - used
+                        };
+                        console.log('📊 [INTERRUPT] Updated context:', updatedAnalytics.contextWindow);
+                      }
+
                       // Trigger async fetch of session tokens from file (single source of truth)
-                      if (message.subtype === 'stream_end') {
+                      // Also fetch on interrupt to get accurate context % from session file
+                      if (message.subtype === 'stream_end' || message.subtype === 'interrupted') {
                         const claudeSessId = s.claudeSessionId;
                         const workDir = s.workingDirectory;
                         // Fire and forget - will update analytics when complete
@@ -2291,13 +2373,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // When we get a tool_use message, ensure streaming is active
               // This handles cases where tools are running (especially Task/agent tools)
               console.log('Tool use message received, ensuring streaming state is active');
-              
+
               // Track if this is a Bash command
               const isBash = message.message?.name === 'Bash';
               if (isBash) {
                 console.log('[Bash] Command started');
               }
-              
+
               // Add tool ID to pending set
               const toolId = message.message?.id;
               sessions = sessions.map(s => {
@@ -2307,11 +2389,63 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     pendingTools.add(toolId);
                     console.log(`[Store] Added tool ${toolId} to pending. Total pending: ${pendingTools.size}`);
                   }
+
+                  // Capture file snapshot for rollback if present
+                  let restorePoints = [...(s.restorePoints || [])];
+                  let modifiedFiles = new Set(s.modifiedFiles || []);
+
+                  if (message.fileSnapshot) {
+                    const snapshot = message.fileSnapshot;
+                    const toolName = message.message?.name || 'unknown';
+                    const operation = toolName === 'Write' ? 'write' : toolName === 'MultiEdit' ? 'multiedit' : 'edit';
+                    const editTimestamp = snapshot.timestamp || Date.now();
+                    const editSessionId = snapshot.sessionId || s.id;
+
+                    const fileSnapshot: FileSnapshot = {
+                      path: snapshot.path,
+                      content: message.message?.input?.content || message.message?.input?.new_string || '',
+                      operation,
+                      timestamp: editTimestamp,
+                      messageIndex: s.messages.length, // Current position
+                      originalContent: snapshot.originalContent,
+                      isNewFile: snapshot.isNewFile || false,
+                      mtime: snapshot.mtime, // For conflict detection
+                      sessionId: editSessionId // Session that made this edit
+                    };
+
+                    // Create restore point for this file change
+                    restorePoints.push({
+                      messageIndex: s.messages.length,
+                      timestamp: Date.now(),
+                      fileSnapshots: [fileSnapshot],
+                      description: `${operation} ${snapshot.path.split(/[/\\]/).pop()}`
+                    });
+                    modifiedFiles.add(snapshot.path);
+                    console.log(`📸 [Store] Captured file snapshot for rollback: ${snapshot.path} (mtime=${snapshot.mtime})`);
+
+                    // Register file edit in global registry for cross-session conflict detection
+                    // Do this async and don't block state update
+                    if (window.__TAURI__) {
+                      import('@tauri-apps/api/core').then(({ invoke }) => {
+                        invoke('register_file_edit', {
+                          path: snapshot.path,
+                          sessionId: editSessionId,
+                          timestamp: editTimestamp,
+                          operation
+                        }).catch(err => {
+                          console.warn('[Store] Failed to register file edit:', err);
+                        });
+                      });
+                    }
+                  }
+
                   return {
                     ...s,
                     streaming: true,
                     runningBash: isBash ? true : s.runningBash,
                     pendingToolIds: pendingTools,
+                    restorePoints,
+                    modifiedFiles,
                     // Ensure thinkingStartTime is set if not already (safeguard for timer display)
                     thinkingStartTime: s.thinkingStartTime || Date.now(),
                   };
@@ -2439,15 +2573,27 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       return;
     }
 
+    // Detect manual /compact command and set compacting state for UI indicator
+    if (content.trim() === '/compact') {
+      console.log('[Store] 🗜️ Manual /compact command detected - setting compacting state');
+      get().setCompacting(currentSessionId, true);
+    }
+
     // Check if this session has pending auto-compact (compact on next user message)
     const sessionForCompact = get().sessions.find(s => s.id === currentSessionId);
     if (sessionForCompact?.compactionState?.pendingAutoCompact && !content.startsWith('/compact')) {
-      console.log('[Store] 🗜️ Pending auto-compact detected - compacting before sending user message');
-      // Import and execute auto compaction with the user's message
-      const { compactionService } = await import('../services/compactionService');
-      await compactionService.executeAutoCompaction(currentSessionId, content);
-      // The compact result handler will send the user's message after completion
-      return;
+      // Double-check auto-compact is still enabled before executing
+      if (get().autoCompactEnabled === false) {
+        console.log('[Store] 🗜️ Pending auto-compact detected but auto-compact disabled - clearing flag');
+        get().updateCompactionState(currentSessionId, { pendingAutoCompact: false });
+      } else {
+        console.log('[Store] 🗜️ Pending auto-compact detected - compacting before sending user message');
+        // Import and execute auto compaction with the user's message
+        const { compactionService } = await import('../services/compactionService');
+        await compactionService.executeAutoCompaction(currentSessionId, content);
+        // The compact result handler will send the user's message after completion
+        return;
+      }
     }
 
     // Check if this session was compacted and needs the summary prepended
@@ -2765,54 +2911,33 @@ ${content}`;
     // Listen for messages
     const messageCleanup = claudeClient.onMessage(sessionId, (message) => {
       console.log('[Store] Message received on resumed session:', sessionId, 'type:', message.type, 'result:', message.result?.substring?.(0, 50));
-      // Use the same message handler logic as createSession
-      set(state => {
-        let sessions = state.sessions.map(s => {
-          if (s.id !== sessionId) return s;
-          
-          // Update status to active once we receive a message
-          if (s.status === 'paused') {
-            s = { ...s, status: 'active' as const };
-          }
-          
-          const existingMessages = [...s.messages];
-          
-          // Skip user messages from server
-          if (message.type === 'user') {
-            console.warn('[Store] Ignoring user message from server');
-            return s;
-          }
-          
-          // Handle message updates
-          if (message.id) {
-            const existingIndex = existingMessages.findIndex(m => m.id === message.id);
-            if (existingIndex >= 0) {
-              existingMessages[existingIndex] = message;
-            } else {
-              existingMessages.push(message);
-            }
-          } else {
-            // Fast hash-based duplicate check
-            const newHash = getCachedHash(message);
-            const isDuplicate = existingMessages.some(m =>
-              m.type === message.type && getCachedHash(m) === newHash
-            );
-            if (!isDuplicate) {
-              existingMessages.push(message);
-            }
-          }
 
-          return {
-            ...s,
-            messages: existingMessages, 
-            updatedAt: new Date()
-          };
-        });
-        
-        // Handle streaming state - CRITICAL: Don't clear streaming when individual messages complete!
-        // Individual messages can finish (streaming=false) while the overall response is still active.
-        // Only set streaming=true for assistant, only clear on stream_end/interrupted/error (NOT result).
-        // Result messages don't clear streaming - wait for streaming_end which comes after result.
+      // Skip user messages from server - they should only be created locally
+      if (message.type === 'user') {
+        console.warn('[Store] Ignoring user message from server (resumed session)');
+        return;
+      }
+
+      // Update status to active if paused
+      const currentSession = get().sessions.find(s => s.id === sessionId);
+      if (currentSession?.status === 'paused') {
+        set(state => ({
+          sessions: state.sessions.map(s =>
+            s.id === sessionId ? { ...s, status: 'active' as const } : s
+          )
+        }));
+      }
+
+      // CRITICAL FIX: Route through addMessageToSession to handle analytics, tokens, cost, duration_ms
+      // Previously bypassed, causing metadata (duration, tokens, cost, model) not to display for new messages
+      get().addMessageToSession(sessionId, message);
+
+      // Handle streaming state separately
+      // CRITICAL: Don't clear streaming when individual messages complete!
+      // Only set streaming=true for assistant, only clear on stream_end/interrupted/error (NOT result).
+      set(state => {
+        let sessions = state.sessions;
+
         if (message.type === 'assistant' && message.streaming === true) {
           sessions = sessions.map(s =>
             s.id === sessionId ? { ...s, streaming: true } : s
@@ -2822,8 +2947,8 @@ ${content}`;
             s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
           );
         }
-        
-        persistSessions(sessions); // Persist any changes
+
+        persistSessions(sessions);
         return { sessions };
       });
     });
@@ -3331,6 +3456,10 @@ ${content}`;
       window.dispatchEvent(new CustomEvent('yurucode-restore-input', {
         detail: { sessionId: sessionIdToInterrupt, message: pendingCompactMessage }
       }));
+      // Also clear from wrapperIntegration to prevent followup being sent
+      import('../services/wrapperIntegration').then(({ clearAutoCompactMessage }) => {
+        clearAutoCompactMessage(sessionIdToInterrupt!);
+      });
     }
 
     // Only interrupt if session exists and is actually streaming
@@ -3359,12 +3488,13 @@ ${content}`;
               pendingToolIds: new Set(), // Clear pending tools on interrupt
               analytics: updatedAnalytics,
               // Clear compaction state on interrupt (message already captured above)
-              compactionState: pendingCompactMessage ? {
+              // Always clear isCompacting on interrupt - handles both auto and manual /compact
+              compactionState: {
                 ...s.compactionState,
                 isCompacting: false,
                 pendingAutoCompact: false,
                 pendingAutoCompactMessage: undefined
-              } : s.compactionState
+              }
               // Keep claudeSessionId to maintain conversation context
             };
           }

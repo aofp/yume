@@ -34,10 +34,11 @@ import {
   IconArrowsMinimize,
   IconViewportShort,
   IconFileShredder,
+  IconHistory,
 } from '@tabler/icons-react';
 import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
-import { VirtualizedMessageList, VirtualizedMessageListRef, ThinkingTimer } from './VirtualizedMessageList';
+import { VirtualizedMessageList, VirtualizedMessageListRef, ThinkingTimer, BashTimer, CompactingTimer } from './VirtualizedMessageList';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
@@ -389,11 +390,23 @@ export const ClaudeChat: React.FC = () => {
   const [pendingFollowupMessage, setPendingFollowupMessage] = useState<string | null>(null);
   const [showClearConfirm, setShowClearConfirm] = useState(false);
   const [showCompactConfirm, setShowCompactConfirm] = useState(false);
+  const [showRollbackConfirm, setShowRollbackConfirm] = useState(false);
+  const [pendingRollbackData, setPendingRollbackData] = useState<{
+    messageIndex: number;
+    messagesToRemove: number;
+    messageContent: string; // content to restore to input field
+    filesToRestore: Array<[string, { originalContent: string | null; isNewFile: boolean; mtime?: number }]>;
+    conflicts?: Array<{ path: string; conflictType: string; source?: string }>;
+    targetTimestamp?: number;
+  } | null>(null);
+  const [rollbackSelectedIndex, setRollbackSelectedIndex] = useState(0);
+  const rollbackListRef = useRef<HTMLDivElement>(null);
+  const rollbackInitializedRef = useRef(false);
   const [confirmDialogSelection, setConfirmDialogSelection] = useState(1); // 0 = cancel, 1 = confirm (default)
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [hasResumableConversations, setHasResumableConversations] = useState<{ [sessionId: string]: boolean }>({});
   // Per-session panel states (derived values set after store destructuring)
-  const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; git: boolean } }>({});
+  const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; git: boolean; rollback: boolean } }>({});
   // File browser state
   const [fileTree, setFileTree] = useState<any[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -417,6 +430,7 @@ export const ClaudeChat: React.FC = () => {
   const [bashStartTimes, setBashStartTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashElapsedTimes, setBashElapsedTimes] = useState<{ [sessionId: string]: number }>({});
   const [bashDotCounts, setBashDotCounts] = useState<{ [sessionId: string]: number }>({});
+  const [compactingStartTimes, setCompactingStartTimes] = useState<{ [sessionId: string]: number }>({});
   // Per-session textarea heights for persistence when switching tabs
   const [textareaHeights, setTextareaHeights] = useState<{ [sessionId: string]: number }>({});
   // Overlay height synced with textarea for ultrathink label positioning
@@ -454,7 +468,8 @@ export const ClaudeChat: React.FC = () => {
     addMessageToSession,
     renameSession,
     autoCompactEnabled,
-    setAutoCompactEnabled
+    setAutoCompactEnabled,
+    restoreToMessage
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -473,7 +488,8 @@ export const ClaudeChat: React.FC = () => {
     addMessageToSession: state.addMessageToSession,
     renameSession: state.renameSession,
     autoCompactEnabled: state.autoCompactEnabled,
-    setAutoCompactEnabled: state.setAutoCompactEnabled
+    setAutoCompactEnabled: state.setAutoCompactEnabled,
+    restoreToMessage: state.restoreToMessage
   })));
 
   // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
@@ -498,20 +514,29 @@ export const ClaudeChat: React.FC = () => {
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
   const showGitPanel = currentSessionId ? panelStates[currentSessionId]?.git ?? false : false;
+  const showRollbackPanel = currentSessionId ? panelStates[currentSessionId]?.rollback ?? false : false;
   const setShowFilesPanel = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
     if (!currentSessionId) return;
     setPanelStates(prev => {
-      const current = prev[currentSessionId] ?? { files: false, git: false };
+      const current = prev[currentSessionId] ?? { files: false, git: false, rollback: false };
       const newFiles = typeof value === 'function' ? value(current.files) : value;
-      return { ...prev, [currentSessionId]: { ...current, files: newFiles, git: newFiles ? false : current.git } };
+      return { ...prev, [currentSessionId]: { ...current, files: newFiles, git: newFiles ? false : current.git, rollback: newFiles ? false : current.rollback } };
     });
   }, [currentSessionId]);
   const setShowGitPanel = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
     if (!currentSessionId) return;
     setPanelStates(prev => {
-      const current = prev[currentSessionId] ?? { files: false, git: false };
+      const current = prev[currentSessionId] ?? { files: false, git: false, rollback: false };
       const newGit = typeof value === 'function' ? value(current.git) : value;
-      return { ...prev, [currentSessionId]: { ...current, git: newGit, files: newGit ? false : current.files } };
+      return { ...prev, [currentSessionId]: { ...current, git: newGit, files: newGit ? false : current.files, rollback: newGit ? false : current.rollback } };
+    });
+  }, [currentSessionId]);
+  const setShowRollbackPanel = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+    if (!currentSessionId) return;
+    setPanelStates(prev => {
+      const current = prev[currentSessionId] ?? { files: false, git: false, rollback: false };
+      const newRollback = typeof value === 'function' ? value(current.rollback) : value;
+      return { ...prev, [currentSessionId]: { ...current, rollback: newRollback, files: newRollback ? false : current.files, git: newRollback ? false : current.git } };
     });
   }, [currentSessionId]);
 
@@ -547,7 +572,18 @@ export const ClaudeChat: React.FC = () => {
     }>('get_claude_usage_limits')
       .then(data => {
         console.log('[UsageLimits] API response:', JSON.stringify(data));
-        setUsageLimits(data);
+        // Filter out null values to match state type
+        const filteredData: typeof usageLimits = {
+          subscription_type: data.subscription_type,
+          rate_limit_tier: data.rate_limit_tier,
+        };
+        if (data.five_hour?.utilization != null && data.five_hour?.resets_at != null) {
+          filteredData.five_hour = { utilization: data.five_hour.utilization, resets_at: data.five_hour.resets_at };
+        }
+        if (data.seven_day?.utilization != null && data.seven_day?.resets_at != null) {
+          filteredData.seven_day = { utilization: data.seven_day.utilization, resets_at: data.seven_day.resets_at };
+        }
+        setUsageLimits(filteredData);
         // Cache the result
         try {
           localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
@@ -927,16 +963,24 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
 
-  // macOS focus fix: Restore textarea focus when streaming ends
-  // On macOS, window.set_focus() can disrupt webview's internal focus state
-  // causing the textarea to lose focus even though the window appears focused
-  const prevStreamingRef = useRef<boolean | undefined>(undefined);
+  // macOS focus fix: Periodically check and restore textarea focus during streaming
+  // WKWebView can randomly drop focus during rapid DOM updates from streaming
   useEffect(() => {
-    const wasStreaming = prevStreamingRef.current;
-    const isStreaming = currentSession?.streaming;
-    prevStreamingRef.current = isStreaming;
+    if (!isMac || !currentSession?.streaming) return;
 
-    // Removed aggressive auto-focus - let user control focus naturally
+    // Check focus every 500ms during streaming
+    const focusCheckInterval = setInterval(() => {
+      // Only restore if window is focused and textarea exists
+      if (document.hasFocus() && inputRef.current) {
+        const activeEl = document.activeElement;
+        // If focus is on body or null (lost focus), restore to textarea
+        if (!activeEl || activeEl === document.body) {
+          inputRef.current.focus();
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(focusCheckInterval);
   }, [currentSession?.streaming, isMac]);
 
   // Handle bash running timer and dots animation per session
@@ -992,6 +1036,27 @@ export const ClaudeChat: React.FC = () => {
       });
     }
   }, [currentSession?.runningBash, currentSession?.userBashRunning, currentSessionId, currentSessionId ? bashStartTimes[currentSessionId] : undefined]);
+
+  // Handle compacting timer per session
+  useEffect(() => {
+    if (!currentSessionId) return;
+
+    const isCompacting = currentSession?.compactionState?.isCompacting;
+
+    if (isCompacting) {
+      // Start timer for this session
+      if (!compactingStartTimes[currentSessionId]) {
+        setCompactingStartTimes(prev => ({ ...prev, [currentSessionId]: Date.now() }));
+      }
+    } else {
+      // Clean up when compacting stops for this session
+      setCompactingStartTimes(prev => {
+        const newTimes = { ...prev };
+        delete newTimes[currentSessionId];
+        return newTimes;
+      });
+    }
+  }, [currentSession?.compactionState?.isCompacting, currentSessionId, currentSessionId ? compactingStartTimes[currentSessionId] : undefined]);
 
   // Speech recognition for dictation
   const startDictation = useCallback(async () => {
@@ -1169,9 +1234,112 @@ export const ClaudeChat: React.FC = () => {
     setShowCompactConfirm(false);
   }, [currentSessionId, sendMessage]);
 
+  const confirmRollback = useCallback(async () => {
+    if (!currentSessionId || !pendingRollbackData) {
+      setShowRollbackConfirm(false);
+      setPendingRollbackData(null);
+      return;
+    }
+
+    // Check if session is currently streaming - don't allow rollback during active editing
+    if (currentSession?.streaming) {
+      console.warn('[Rollback] Cannot rollback while session is streaming');
+      setShowRollbackConfirm(false);
+      setPendingRollbackData(null);
+      return;
+    }
+
+    const { messageIndex, messageContent, filesToRestore } = pendingRollbackData;
+
+    // Restore files using atomic Tauri commands with backup for rollback on failure
+    const backups: Array<{ path: string; content: string | null; wasDeleted: boolean }> = [];
+    let rollbackError: Error | null = null;
+
+    try {
+      const { invoke } = await import('@tauri-apps/api/core');
+
+      for (const [path, data] of filesToRestore) {
+        try {
+          if (data.isNewFile) {
+            // File was created by Claude - delete it, keeping backup of current content
+            console.log(`[Rollback] Deleting new file: ${path}`);
+            const previousContent = await invoke<string | null>('atomic_file_delete', { path });
+            backups.push({ path, content: previousContent, wasDeleted: true });
+          } else if (data.originalContent !== null) {
+            // File existed - restore original content, keeping backup of current
+            console.log(`[Rollback] Restoring file: ${path}`);
+            const previousContent = await invoke<string | null>('atomic_file_restore', {
+              path,
+              newContent: data.originalContent
+            });
+            backups.push({ path, content: previousContent, wasDeleted: false });
+          }
+        } catch (fileErr) {
+          console.error(`[Rollback] Failed to process ${path}:`, fileErr);
+          rollbackError = fileErr as Error;
+          break; // Stop on first error to preserve consistency
+        }
+      }
+
+      if (rollbackError) {
+        // Rollback failed partway - restore all backups to original state
+        console.log(`[Rollback] Error occurred, reverting ${backups.length} change(s)...`);
+        for (const backup of backups.reverse()) {
+          try {
+            if (backup.wasDeleted && backup.content !== null) {
+              // File was deleted, restore it
+              await invoke('write_file_content', { path: backup.path, content: backup.content });
+              console.log(`[Rollback] Reverted: restored deleted ${backup.path}`);
+            } else if (!backup.wasDeleted && backup.content !== null) {
+              // File was overwritten, restore previous content
+              await invoke('write_file_content', { path: backup.path, content: backup.content });
+              console.log(`[Rollback] Reverted: restored ${backup.path}`);
+            } else if (!backup.wasDeleted && backup.content === null) {
+              // File didn't exist before our restore created it, delete it
+              await invoke('delete_file', { path: backup.path });
+              console.log(`[Rollback] Reverted: removed ${backup.path}`);
+            }
+          } catch (restoreErr) {
+            console.error(`[Rollback] CRITICAL: Failed to revert ${backup.path}:`, restoreErr);
+          }
+        }
+        console.error('[Rollback] Rollback failed and changes were reverted');
+        setShowRollbackConfirm(false);
+        setPendingRollbackData(null);
+        return;
+      }
+
+      console.log(`[Rollback] Successfully restored ${filesToRestore.length} file(s)`);
+    } catch (err) {
+      console.error('[Rollback] Error during rollback:', err);
+      setShowRollbackConfirm(false);
+      setPendingRollbackData(null);
+      return;
+    }
+
+    // Restore conversation state to BEFORE the selected message
+    // This removes the selected message and everything after it
+    restoreToMessage(currentSessionId, messageIndex - 1);
+
+    // Put the message content back into the input field
+    setInput(messageContent);
+    // Auto-resize the input to fit the content
+    if (inputRef.current) {
+      inputRef.current.style.height = 'auto';
+      inputRef.current.style.height = `${Math.min(inputRef.current.scrollHeight, 300)}px`;
+      // Focus the input
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+
+    setShowRollbackPanel(false);
+    setShowRollbackConfirm(false);
+    setPendingRollbackData(null);
+    console.log(`[Rollback] Restored conversation, placed message in input`);
+  }, [currentSessionId, currentSession?.streaming, pendingRollbackData, restoreToMessage, setShowRollbackPanel, setInput]);
+
   // Keyboard handler for confirmation dialogs
   useEffect(() => {
-    if (!showClearConfirm && !showCompactConfirm) return;
+    if (!showClearConfirm && !showCompactConfirm && !showRollbackConfirm) return;
 
     // Reset selection to confirm button when dialog opens
     setConfirmDialogSelection(1);
@@ -1181,6 +1349,8 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         setShowClearConfirm(false);
         setShowCompactConfirm(false);
+        setShowRollbackConfirm(false);
+        setPendingRollbackData(null);
         return;
       }
 
@@ -1198,11 +1368,15 @@ export const ClaudeChat: React.FC = () => {
             confirmClearContext();
           } else if (showCompactConfirm) {
             confirmCompactContext();
+          } else if (showRollbackConfirm) {
+            confirmRollback();
           }
         } else {
           // Cancel
           setShowClearConfirm(false);
           setShowCompactConfirm(false);
+          setShowRollbackConfirm(false);
+          setPendingRollbackData(null);
         }
         return;
       }
@@ -1210,7 +1384,67 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showClearConfirm, showCompactConfirm, confirmDialogSelection, confirmClearContext, confirmCompactContext]);
+  }, [showClearConfirm, showCompactConfirm, showRollbackConfirm, confirmDialogSelection, confirmClearContext, confirmCompactContext, confirmRollback]);
+
+  // Rollback panel initialization - only select last item once when panel opens
+  useEffect(() => {
+    if (showRollbackPanel && !rollbackInitializedRef.current) {
+      const userMessages = currentSession?.messages
+        .filter(msg => msg.type === 'user') || [];
+      const maxIndex = userMessages.length - 1;
+      setRollbackSelectedIndex(maxIndex);
+      rollbackListRef.current?.focus();
+      rollbackInitializedRef.current = true;
+    } else if (!showRollbackPanel) {
+      rollbackInitializedRef.current = false;
+    }
+  }, [showRollbackPanel, currentSession?.messages]);
+
+  // Rollback panel keyboard navigation
+  useEffect(() => {
+    if (!showRollbackPanel || showRollbackConfirm) return;
+
+    const userMessages = currentSession?.messages
+      .filter(msg => msg.type === 'user') || [];
+    const maxIndex = userMessages.length - 1;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Don't handle if confirm modal is open or streaming
+      if (showRollbackConfirm || currentSession?.streaming) return;
+
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        e.stopPropagation();
+        setShowRollbackPanel(false);
+        return;
+      }
+
+      if (e.key === 'ArrowDown' || e.key === 'j') {
+        e.preventDefault();
+        setRollbackSelectedIndex(prev => Math.min(prev + 1, maxIndex));
+        return;
+      }
+
+      if (e.key === 'ArrowUp' || e.key === 'k') {
+        e.preventDefault();
+        setRollbackSelectedIndex(prev => Math.max(prev - 1, 0));
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        // Trigger click on selected item
+        const items = rollbackListRef.current?.querySelectorAll('.rollback-item');
+        if (items && items[rollbackSelectedIndex]) {
+          (items[rollbackSelectedIndex] as HTMLElement).click();
+        }
+        return;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [showRollbackPanel, showRollbackConfirm, currentSession?.messages, currentSession?.streaming, rollbackSelectedIndex, setShowRollbackPanel]);
 
   // Handle resume conversation selection from modal
   const handleResumeConversation = useCallback(async (conversation: any) => {
@@ -1468,17 +1702,45 @@ export const ClaudeChat: React.FC = () => {
           setFocusedFileIndex(-1);
           setFocusedGitIndex(-1);
         }
+      } else if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
+        e.preventDefault();
+        // Toggle rollback/history panel
+        const hasUserMessages = currentSession?.messages.filter(m => m.type === 'user').length ?? 0;
+        if (hasUserMessages > 0) {
+          setShowRollbackPanel(prev => !prev);
+          setShowFilesPanel(false);
+          setShowGitPanel(false);
+          setSelectedFile(null);
+          setFileContent('');
+          setSelectedGitFile(null);
+          setGitDiff(null);
+        }
       } else if (e.key === 'Escape') {
-        // First check if we're streaming or bash is running
-        if (currentSession?.streaming || currentSession?.userBashRunning) {
+        // Priority: close panels/search first, only interrupt if nothing to close
+        if (showFilesPanel || showGitPanel || showRollbackPanel) {
+          // Close side panels on Escape first (before interrupt)
+          e.preventDefault();
+          setShowFilesPanel(false);
+          setShowGitPanel(false);
+          setShowRollbackPanel(false);
+          setFocusedFileIndex(-1);
+          setFocusedGitIndex(-1);
+        } else if (searchVisible) {
+          e.preventDefault();
+          setSearchVisible(false);
+          setSearchQuery('');
+          setSearchMatches([]);
+          setSearchIndex(0);
+        } else if (currentSession?.streaming || currentSession?.userBashRunning) {
+          // Only interrupt if no panels/search are open
           e.preventDefault();
           console.log('[ClaudeChat] ESC pressed - interrupting');
-          
+
           // Kill bash process if running
           if (currentSession?.bashProcessId) {
             import('@tauri-apps/api/core').then(({ invoke }) => {
-              invoke('kill_bash_process', { 
-                processId: currentSession.bashProcessId 
+              invoke('kill_bash_process', {
+                processId: currentSession.bashProcessId
               }).then(() => {
                 // Add cancelled message with elapsed time
                 const elapsedTime = bashElapsedTimes[currentSessionId || ''] || 0;
@@ -1489,16 +1751,16 @@ export const ClaudeChat: React.FC = () => {
                   message: `bash command cancelled (${elapsedTime}s)`,
                   timestamp: Date.now()
                 };
-                
+
                 if (currentSessionId) {
                   addMessageToSession(currentSessionId, cancelMessage);
                 }
-                
+
                 // Clear flags immediately
                 useClaudeCodeStore.setState(state => ({
-                  sessions: state.sessions.map(s => 
-                    s.id === currentSessionId 
-                      ? { ...s, userBashRunning: false, bashProcessId: undefined } 
+                  sessions: state.sessions.map(s =>
+                    s.id === currentSessionId
+                      ? { ...s, userBashRunning: false, bashProcessId: undefined }
                       : s
                   )
                 }));
@@ -1509,17 +1771,6 @@ export const ClaudeChat: React.FC = () => {
           } else {
             interruptSession();
           }
-        } else if (searchVisible) {
-          setSearchVisible(false);
-          setSearchQuery('');
-          setSearchMatches([]);
-          setSearchIndex(0);
-        } else if (showFilesPanel || showGitPanel) {
-          // Close side panels on Escape and clear focus
-          setShowFilesPanel(false);
-          setShowGitPanel(false);
-          setFocusedFileIndex(-1);
-          setFocusedGitIndex(-1);
         }
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
         // Panel keyboard navigation
@@ -1572,7 +1823,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled]);
 
 
 
@@ -1759,16 +2010,17 @@ export const ClaudeChat: React.FC = () => {
           untracked: []
         });
 
-        const [branchResult, lineStats, aheadCount] = await Promise.all([
-          invoke('execute_bash', {
-            command: 'git rev-parse --abbrev-ref HEAD',
-            workingDir: currentSession.workingDirectory
-          }) as Promise<string>,
-          fetchLineStats(currentSession.workingDirectory),
-          fetchAheadCount(currentSession.workingDirectory)
-        ]);
+        // Run git operations sequentially to avoid lock conflicts
+        const branchResult = await invoke('execute_bash', {
+          command: 'git rev-parse --abbrev-ref HEAD',
+          workingDir: currentSession.workingDirectory
+        }) as string;
         setGitBranch(branchResult.trim());
+
+        const lineStats = await fetchLineStats(currentSession.workingDirectory);
         setGitLineStats(lineStats);
+
+        const aheadCount = await fetchAheadCount(currentSession.workingDirectory);
         setGitAhead(aheadCount);
       } catch (error) {
         console.error('Failed to refresh git status:', error);
@@ -1789,16 +2041,17 @@ export const ClaudeChat: React.FC = () => {
           untracked: []
         });
 
-        const [branchResult, lineStats, aheadCount] = await Promise.all([
-          invoke('execute_bash', {
-            command: 'git rev-parse --abbrev-ref HEAD',
-            workingDir: currentSession.workingDirectory
-          }) as Promise<string>,
-          fetchLineStats(currentSession.workingDirectory),
-          fetchAheadCount(currentSession.workingDirectory)
-        ]);
+        // Run git operations sequentially to avoid lock conflicts
+        const branchResult = await invoke('execute_bash', {
+          command: 'git rev-parse --abbrev-ref HEAD',
+          workingDir: currentSession.workingDirectory
+        }) as string;
         setGitBranch(branchResult.trim());
+
+        const lineStats = await fetchLineStats(currentSession.workingDirectory);
         setGitLineStats(lineStats);
+
+        const aheadCount = await fetchAheadCount(currentSession.workingDirectory);
         setGitAhead(aheadCount);
       } catch (error) {
         console.error('Failed to load git status:', error);
@@ -2111,7 +2364,58 @@ export const ClaudeChat: React.FC = () => {
     document.addEventListener('keydown', handleGlobalKeyDown, true);
     return () => document.removeEventListener('keydown', handleGlobalKeyDown, true);
   }, []);
-  
+
+  // Auto-focus input when typing anywhere with no input focused
+  useEffect(() => {
+    const handleGlobalTyping = (e: KeyboardEvent) => {
+      // Skip if modifier keys (except shift for capitals)
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+      // Skip special keys
+      if (e.key.length !== 1 && !['Backspace', 'Delete'].includes(e.key)) return;
+
+      // Skip if any modal is open
+      if (showStatsModal || showResumeModal || showAgentExecutor) return;
+
+      // Skip if already focused on an input/textarea/contenteditable
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement ||
+          activeEl instanceof HTMLTextAreaElement ||
+          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) {
+        return;
+      }
+
+      // Skip if inside a modal or dialog (DOM check as fallback)
+      if (activeEl?.closest('[role="dialog"]') || activeEl?.closest('.modal') ||
+          activeEl?.closest('.stats-modal-overlay') || activeEl?.closest('.resume-modal')) return;
+
+      // Focus the input and insert the character
+      if (inputRef.current) {
+        e.preventDefault();
+        inputRef.current.focus();
+
+        // Insert the typed character (skip for backspace/delete on empty)
+        if (e.key.length === 1) {
+          const currentValue = inputRef.current.value;
+          const start = inputRef.current.selectionStart || 0;
+          const end = inputRef.current.selectionEnd || 0;
+          const newValue = currentValue.slice(0, start) + e.key + currentValue.slice(end);
+
+          // Update state and position cursor after the inserted char
+          setInput(newValue);
+          requestAnimationFrame(() => {
+            if (inputRef.current) {
+              inputRef.current.selectionStart = inputRef.current.selectionEnd = start + 1;
+            }
+          });
+        }
+      }
+    };
+
+    document.addEventListener('keydown', handleGlobalTyping);
+    return () => document.removeEventListener('keydown', handleGlobalTyping);
+  }, [showStatsModal, showResumeModal, showAgentExecutor]);
+
   // Stop dictation when component unmounts or session changes
   useEffect(() => {
     return () => {
@@ -3351,6 +3655,16 @@ export const ClaudeChat: React.FC = () => {
         scrollToBottomHelper('auto');
       });
     }
+
+    // macOS focus preservation: restore focus if it was lost during height manipulation
+    // WKWebView can sometimes drop focus during rapid DOM/style changes
+    if (isMac && document.activeElement !== textarea && inputRef.current) {
+      requestAnimationFrame(() => {
+        if (document.activeElement !== inputRef.current) {
+          inputRef.current?.focus();
+        }
+      });
+    }
   };
 
   // Get caret coordinates relative to textarea
@@ -3509,18 +3823,22 @@ export const ClaudeChat: React.FC = () => {
         </div>
       )}
       {/* Tool Panel (replaces chat when active) */}
-      {(showFilesPanel || showGitPanel) ? (
+      {(showFilesPanel || showGitPanel || showRollbackPanel) ? (
         <div className="tool-panel">
           <div className="tool-panel-header">
             <span className="tool-panel-title">
-              {showFilesPanel ? <><IconFolder size={12} stroke={1.5} /> files</> : <><IconGitBranch size={12} stroke={1.5} /> {gitBranch || 'git'}{gitAhead > 0 && <span className="git-ahead-count">+{gitAhead}</span>}</>}
-              <span className="tool-panel-hint">right-click to @ref</span>
+              {showFilesPanel ? <><IconFolder size={12} stroke={1.5} /> files</> :
+               showGitPanel ? <><IconGitBranch size={12} stroke={1.5} /> {gitBranch || 'git'}{gitAhead > 0 && <span className="git-ahead-count">+{gitAhead}</span>}</> :
+               <><IconHistory size={12} stroke={1.5} /> history</>}
+              {!showRollbackPanel && <span className="tool-panel-hint">right-click to @ref</span>}
+              {showRollbackPanel && <span className="tool-panel-hint">click to rollback</span>}
             </span>
             <button
               className="tool-panel-close"
               onClick={() => {
                 setShowFilesPanel(false);
                 setShowGitPanel(false);
+                setShowRollbackPanel(false);
                 setSelectedFile(null);
                 setFileContent('');
                 setSelectedGitFile(null);
@@ -3740,6 +4058,160 @@ export const ClaudeChat: React.FC = () => {
                 )}
               </>
             )}
+            {/* Rollback Panel */}
+            {showRollbackPanel && (
+              <div className="rollback-panel">
+                <div className="rollback-list" ref={rollbackListRef} tabIndex={-1}>
+                  {(() => {
+                    // Get user messages with their indices for rollback
+                    const userMessages = currentSession.messages
+                      .map((msg, idx) => ({ msg, idx }))
+                      .filter(({ msg }) => msg.type === 'user');
+
+                    if (userMessages.length === 0) {
+                      return <div className="tool-panel-empty">no messages to rollback</div>;
+                    }
+
+                    return userMessages.map(({ msg, idx }, userIdx) => {
+                      // Extract user text from message
+                      const content = msg.message?.content;
+                      let userText = '';
+                      if (typeof content === 'string') {
+                        userText = content;
+                      } else if (Array.isArray(content)) {
+                        userText = content
+                          .filter((c: any) => c.type === 'text')
+                          .map((c: any) => c.text)
+                          .join(' ');
+                      }
+
+                      // Truncate long text
+                      const displayText = userText.length > 100
+                        ? userText.substring(0, 100) + '...'
+                        : userText;
+
+                      // Format timestamp
+                      const timestamp = msg.timestamp
+                        ? new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                        : '';
+
+                      // Check if streaming - disable rollback during streaming
+                      const isStreaming = currentSession?.streaming;
+
+                      return (
+                        <div
+                          key={msg.id || idx}
+                          className={`rollback-item ${isStreaming ? 'disabled' : ''} ${rollbackSelectedIndex === userIdx ? 'selected' : ''}`}
+                          onClick={async () => {
+                            if (isStreaming) return;
+
+                            // Get files changed after this message
+                            const restorePoints = currentSession.restorePoints || [];
+                            const fileRestoreMap = new Map<string, { originalContent: string | null; isNewFile: boolean; mtime?: number }>();
+                            let earliestTimestamp = Date.now();
+
+                            restorePoints
+                              .filter(rp => rp.messageIndex > idx)
+                              .sort((a, b) => a.messageIndex - b.messageIndex)
+                              .forEach(rp => {
+                                // Track earliest timestamp for cross-session conflict check
+                                if (rp.timestamp < earliestTimestamp) {
+                                  earliestTimestamp = rp.timestamp;
+                                }
+                                rp.fileSnapshots.forEach(snap => {
+                                  if (!fileRestoreMap.has(snap.path) && snap.originalContent !== undefined) {
+                                    fileRestoreMap.set(snap.path, {
+                                      originalContent: snap.originalContent,
+                                      isNewFile: snap.isNewFile || false,
+                                      mtime: snap.mtime
+                                    });
+                                  }
+                                });
+                              });
+
+                            const filesToRestore = Array.from(fileRestoreMap.entries());
+
+                            // Check for conflicts before showing confirmation
+                            const conflicts: Array<{ path: string; conflictType: string; source?: string }> = [];
+
+                            if (filesToRestore.length > 0) {
+                              try {
+                                // Check mtime conflicts (file modified externally or by other sessions)
+                                const filesToCheck: Array<[string, number | null, boolean]> = filesToRestore.map(([path, data]) => [
+                                  path,
+                                  data.mtime || null,
+                                  data.isNewFile
+                                ]);
+
+                                const mtimeConflicts = await invoke<Array<{
+                                  path: string;
+                                  snapshot_mtime: number | null;
+                                  current_mtime: number | null;
+                                  exists: boolean;
+                                  conflict_type: string;
+                                }>>('check_file_conflicts', { files: filesToCheck });
+
+                                for (const conflict of mtimeConflicts) {
+                                  if (conflict.conflict_type !== 'none') {
+                                    conflicts.push({
+                                      path: conflict.path,
+                                      conflictType: conflict.conflict_type,
+                                      source: 'external or other session'
+                                    });
+                                  }
+                                }
+
+                                // Check cross-session edits from global registry
+                                const paths = filesToRestore.map(([path]) => path);
+                                const crossSessionEdits = await invoke<Array<{
+                                  path: string;
+                                  session_id: string;
+                                  timestamp: number;
+                                  operation: string;
+                                }>>('get_conflicting_edits', {
+                                  paths,
+                                  currentSessionId: currentSessionId || '',
+                                  afterTimestamp: earliestTimestamp
+                                });
+
+                                for (const edit of crossSessionEdits) {
+                                  // Only add if not already in conflicts
+                                  if (!conflicts.some(c => c.path === edit.path)) {
+                                    conflicts.push({
+                                      path: edit.path,
+                                      conflictType: 'cross-session',
+                                      source: `another tab (${edit.operation})`
+                                    });
+                                  }
+                                }
+                              } catch (err) {
+                                console.warn('[Rollback] Error checking conflicts:', err);
+                                // Continue with rollback even if conflict check fails
+                              }
+                            }
+
+                            // Set pending data and show confirm modal
+                            setPendingRollbackData({
+                              messageIndex: idx,
+                              messagesToRemove: userMessages.length - userIdx, // +1 because we also remove the selected message
+                              messageContent: userText, // store full content for input field
+                              filesToRestore,
+                              conflicts: conflicts.length > 0 ? conflicts : undefined,
+                              targetTimestamp: earliestTimestamp
+                            });
+                            setShowRollbackConfirm(true);
+                          }}
+                          title={isStreaming ? 'cannot rollback while streaming' : `edit #${userIdx + 1}`}
+                        >
+                          <span className="rollback-item-number">#{userIdx + 1}</span>
+                          <span className="rollback-item-text">{displayText || '(empty)'}</span>
+                        </div>
+                      );
+                    });
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       ) : (
@@ -3876,11 +4348,21 @@ export const ClaudeChat: React.FC = () => {
               acc.push(message);
               return acc;
             }
-            
+
             return acc;
             }, [] as typeof currentSession.messages);
-          
-          const filteredMessages = processedMessages;
+
+          // Ensure result messages appear after any assistant messages in the same turn
+          // This fixes race condition where result arrives before final assistant message update
+          const sortedMessages = [...processedMessages];
+          for (let i = sortedMessages.length - 1; i > 0; i--) {
+            // If we find a result message followed by an assistant message, swap them
+            if (sortedMessages[i].type === 'assistant' && sortedMessages[i - 1].type === 'result') {
+              [sortedMessages[i - 1], sortedMessages[i]] = [sortedMessages[i], sortedMessages[i - 1]];
+            }
+          }
+
+          const filteredMessages = sortedMessages;
 
           // Find the index of the last user or assistant message for restore button logic
           let lastRestorableIndex = -1;
@@ -3900,6 +4382,77 @@ export const ClaudeChat: React.FC = () => {
           // Show thinking only when not running bash (bash indicator takes priority)
           const shouldShowThinking = (isStreaming || hasPendingTools) && !isRunningBash && !isUserBash;
 
+          // Compute activity label based on last tool_use without a matching tool_result
+          const getActivityLabel = (): string => {
+            const TOOL_ACTION_LABELS: Record<string, string> = {
+              'Read': 'reading',
+              'Write': 'writing',
+              'Edit': 'editing',
+              'MultiEdit': 'editing',
+              'Bash': 'running',
+              'Grep': 'searching',
+              'Glob': 'finding',
+              'LS': 'listing',
+              'WebSearch': 'searching',
+              'WebFetch': 'fetching',
+              'Task': 'delegating',
+              'TodoWrite': 'planning',
+              'NotebookEdit': 'editing',
+            };
+
+            // Walk backwards through messages to find last incomplete tool_use
+            for (let i = filteredMessages.length - 1; i >= 0; i--) {
+              const msg = filteredMessages[i];
+
+              // Check for tool_use in message content blocks (assistant messages)
+              if (msg.type === 'assistant' && Array.isArray(msg.content)) {
+                // Find tool_uses that don't have matching tool_results yet
+                for (let j = msg.content.length - 1; j >= 0; j--) {
+                  const block = msg.content[j];
+                  if (block?.type === 'tool_use' && block.name) {
+                    // Check if there's a matching tool_result after this
+                    const toolUseId = block.id;
+                    let hasResult = false;
+                    for (let k = i + 1; k < filteredMessages.length; k++) {
+                      const laterMsg = filteredMessages[k];
+                      if (laterMsg.type === 'tool_result' && laterMsg.message?.tool_use_id === toolUseId) {
+                        hasResult = true;
+                        break;
+                      }
+                    }
+                    if (!hasResult) {
+                      return TOOL_ACTION_LABELS[block.name] || 'thinking';
+                    }
+                  }
+                }
+              }
+
+              // Check standalone tool_use messages
+              if (msg.type === 'tool_use' && msg.message?.name) {
+                // Check if there's a matching tool_result after this
+                const toolUseId = msg.message?.id || msg.id;
+                let hasResult = false;
+                for (let k = i + 1; k < filteredMessages.length; k++) {
+                  const laterMsg = filteredMessages[k];
+                  if (laterMsg.type === 'tool_result' && (laterMsg.message?.tool_use_id === toolUseId || laterMsg.tool_use_id === toolUseId)) {
+                    hasResult = true;
+                    break;
+                  }
+                }
+                if (!hasResult) {
+                  return TOOL_ACTION_LABELS[msg.message.name] || 'thinking';
+                }
+              }
+
+              // If we hit a user message or result, we're past the current turn
+              if (msg.type === 'user' || msg.type === 'result') {
+                break;
+              }
+            }
+            return 'thinking';
+          };
+          const activityLabel = getActivityLabel();
+
           if (useVirtualization) {
             return (
               <>
@@ -3912,8 +4465,13 @@ export const ClaudeChat: React.FC = () => {
                   className="virtualized-messages-container"
                   showThinking={shouldShowThinking}
                   thinkingStartTime={(currentSession as any)?.thinkingStartTime}
+                  activityLabel={activityLabel}
                   showBash={isRunningBash}
                   showUserBash={isUserBash}
+                  bashStartTime={currentSessionId ? bashStartTimes[currentSessionId] : undefined}
+                  showCompacting={currentSession?.compactionState?.isCompacting}
+                  compactingStartTime={currentSessionId ? compactingStartTimes[currentSessionId] : undefined}
+                  compactingFollowupMessage={currentSession?.compactionState?.pendingAutoCompactMessage}
                   pendingFollowup={pendingFollowupRef.current && pendingFollowupMessage ? { content: pendingFollowupRef.current.content } : null}
                   onScrollStateChange={(atBottom) => {
                     if (currentSessionId) {
@@ -3975,6 +4533,48 @@ export const ClaudeChat: React.FC = () => {
           const shouldShowIndicator = isStreaming || hasPendingTools || isRunningBash || isUserBash || hasPendingFollowup;
           if (!shouldShowIndicator || useVirtualization) return null;
 
+          // Compute activity label for fallback indicator
+          const getFallbackActivityLabel = (): string => {
+            const TOOL_ACTION_LABELS: Record<string, string> = {
+              'Read': 'reading', 'Write': 'writing', 'Edit': 'editing', 'MultiEdit': 'editing',
+              'Bash': 'running', 'Grep': 'searching', 'Glob': 'finding', 'LS': 'listing',
+              'WebSearch': 'searching', 'WebFetch': 'fetching', 'Task': 'delegating',
+              'TodoWrite': 'planning', 'NotebookEdit': 'editing',
+            };
+            for (let i = processedMessages.length - 1; i >= 0; i--) {
+              const msg = processedMessages[i];
+              if (msg.type === 'assistant' && Array.isArray(msg.content)) {
+                for (let j = msg.content.length - 1; j >= 0; j--) {
+                  const block = msg.content[j];
+                  if (block?.type === 'tool_use' && block.name) {
+                    const toolUseId = block.id;
+                    let hasResult = false;
+                    for (let k = i + 1; k < processedMessages.length; k++) {
+                      if (processedMessages[k].type === 'tool_result' && processedMessages[k].message?.tool_use_id === toolUseId) {
+                        hasResult = true; break;
+                      }
+                    }
+                    if (!hasResult) return TOOL_ACTION_LABELS[block.name] || 'thinking';
+                  }
+                }
+              }
+              if (msg.type === 'tool_use' && msg.message?.name) {
+                const toolUseId = msg.message?.id || msg.id;
+                let hasResult = false;
+                for (let k = i + 1; k < processedMessages.length; k++) {
+                  const laterMsg = processedMessages[k];
+                  if (laterMsg.type === 'tool_result' && (laterMsg.message?.tool_use_id === toolUseId || laterMsg.tool_use_id === toolUseId)) {
+                    hasResult = true; break;
+                  }
+                }
+                if (!hasResult) return TOOL_ACTION_LABELS[msg.message.name] || 'thinking';
+              }
+              if (msg.type === 'user' || msg.type === 'result') break;
+            }
+            return 'thinking';
+          };
+          const fallbackActivityLabel = getFallbackActivityLabel();
+
           return (
             <div className="message assistant">
               <div className="message-content">
@@ -3985,7 +4585,7 @@ export const ClaudeChat: React.FC = () => {
                       <LoadingIndicator size="small" color="red" />
                       <span className="thinking-text-wrapper">
                         <span className="thinking-text">
-                          {'thinking'.split('').map((char, i) => (
+                          {fallbackActivityLabel.split('').map((char, i) => (
                             <span
                               key={i}
                               className="thinking-char"
@@ -4003,11 +4603,34 @@ export const ClaudeChat: React.FC = () => {
                     </div>
                   )}
 
+                  {/* Compacting indicator - show when compacting context */}
+                  {currentSession?.compactionState?.isCompacting && (
+                    <div className="inline-activity-indicator compacting">
+                      <LoadingIndicator size="small" color="positive" />
+                      <span className="activity-text">compacting</span>
+                      {currentSessionId && compactingStartTimes[currentSessionId] && (
+                        <CompactingTimer startTime={compactingStartTimes[currentSessionId]} />
+                      )}
+                      {currentSession?.compactionState?.pendingAutoCompactMessage && (
+                        <span className="compacting-followup">
+                          <span className="compacting-followup-label">then:</span>
+                          <span className="compacting-followup-message">
+                            {currentSession.compactionState.pendingAutoCompactMessage.slice(0, 50)}
+                            {currentSession.compactionState.pendingAutoCompactMessage.length > 50 ? '...' : ''}
+                          </span>
+                        </span>
+                      )}
+                    </div>
+                  )}
+
                   {/* Bash indicator - show when running bash */}
-                  {(isRunningBash || isUserBash) && (
+                  {(isRunningBash || isUserBash) && !currentSession?.compactionState?.isCompacting && (
                     <div className="inline-activity-indicator bash">
-                      <LoadingIndicator size="small" color="green" />
+                      <LoadingIndicator size="small" color="negative" />
                       <span className="activity-text">bash running</span>
+                      {currentSessionId && bashStartTimes[currentSessionId] && (
+                        <BashTimer startTime={bashStartTimes[currentSessionId]} />
+                      )}
                     </div>
                   )}
 
@@ -4261,7 +4884,32 @@ export const ClaudeChat: React.FC = () => {
                 </span>
               );
             })()}
+
           </div>
+
+          {/* Center - rollback button */}
+          {(() => {
+            const historyCount = currentSession?.messages.filter(m => m.type === 'user').length || 0;
+            return (
+              <button
+                className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
+                onClick={() => {
+                  setShowRollbackPanel(!showRollbackPanel);
+                  setShowFilesPanel(false);
+                  setShowGitPanel(false);
+                  setSelectedFile(null);
+                  setFileContent('');
+                  setSelectedGitFile(null);
+                  setGitDiff(null);
+                }}
+                disabled={!currentSession || historyCount === 0}
+                title={`history (${modKey}+h)`}
+              >
+                <IconHistory size={12} stroke={1.5} />
+                {historyCount > 0 && <span className="btn-rollback-count">{historyCount}</span>}
+              </button>
+            );
+          })()}
 
           {/* Right - stats and clear */}
           <div className="context-info">
@@ -4339,8 +4987,8 @@ export const ClaudeChat: React.FC = () => {
                       onClick={() => setShowStatsModal(true)}
                       disabled={false}
                       title={hasActivity ?
-                        `total tokens used: ${totalContextTokens.toLocaleString()} | ${modKey}+. shows context usage` :
-                        `total tokens used: 0 | ${modKey}+. shows context usage`}
+                        `total tokens used: ${totalContextTokens.toLocaleString()} | ${modKey}+. shows context usage | rmb toggles auto-compact` :
+                        `total tokens used: 0 | ${modKey}+. shows context usage | rmb toggles auto-compact`}
                       onContextMenu={(e) => {
                         e.preventDefault();
                         e.stopPropagation();
@@ -4684,6 +5332,25 @@ export const ClaudeChat: React.FC = () => {
         isDangerous={true}
         onConfirm={confirmCompactContext}
         onCancel={() => setShowCompactConfirm(false)}
+      />
+
+      {/* Rollback confirmation dialog */}
+      <ConfirmModal
+        isOpen={showRollbackConfirm}
+        title="rollback"
+        message={pendingRollbackData ? (
+          pendingRollbackData.conflicts && pendingRollbackData.conflicts.length > 0
+            ? `⚠️ CONFLICT WARNING\n\n${pendingRollbackData.conflicts.length} file(s) modified since snapshot:\n${pendingRollbackData.conflicts.slice(0, 3).map(c => `• ${c.path.split(/[/\\]/).pop()} (${c.source || c.conflictType})`).join('\n')}${pendingRollbackData.conflicts.length > 3 ? `\n• ...and ${pendingRollbackData.conflicts.length - 3} more` : ''}\n\nrollback will OVERWRITE these changes.\nremove ${pendingRollbackData.messagesToRemove} message(s)${pendingRollbackData.filesToRestore.length > 0 ? ` and restore ${pendingRollbackData.filesToRestore.length} file(s)` : ''}?`
+            : `remove ${pendingRollbackData.messagesToRemove} message(s)${pendingRollbackData.filesToRestore.length > 0 ? ` and restore ${pendingRollbackData.filesToRestore.length} file(s)` : ''}?`
+        ) : 'rollback to this point?'}
+        confirmText={pendingRollbackData?.conflicts?.length ? "force rollback" : "rollback"}
+        cancelText="no"
+        isDangerous={true}
+        onConfirm={confirmRollback}
+        onCancel={() => {
+          setShowRollbackConfirm(false);
+          setPendingRollbackData(null);
+        }}
       />
 
       {/* Resume conversations modal */}
