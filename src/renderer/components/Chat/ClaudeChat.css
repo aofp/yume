@@ -1463,6 +1463,12 @@ textarea.context-full {
   animation: pulse 1.5s infinite;
 }
 
+.btn-context-icon.dictating:hover:not(:disabled) {
+  color: var(--negative-color);
+  border-color: rgba(var(--negative-rgb), 1);
+  background: rgba(var(--negative-rgb), 0.2);
+}
+
 .btn-clear-context:hover:not(:disabled), .btn-stats:hover, .btn-help:hover, .btn-dictation:hover:not(:disabled):not(.active), .btn-context-menu:hover:not(:disabled) {
   background: var(--fg-05);
   color: var(--accent-color);
@@ -2729,6 +2735,11 @@ textarea.context-full {
   min-height: 200px;
 }
 
+/* Hide virtualized messages when empty chat state is shown */
+.empty-chat-state ~ .messages-virtualized {
+  display: none;
+}
+
 .resume-conversation-btn {
   background: transparent;
   border: 1px solid var(--fg-10, var(--fg-10));
@@ -3271,6 +3282,7 @@ textarea.context-full {
   cursor: default;
   transition: all 0.2s ease;
   line-height: 9pt;
+  width: 40px;
 }
 
 .btn-rollback:hover:not(:disabled):not(.active) {

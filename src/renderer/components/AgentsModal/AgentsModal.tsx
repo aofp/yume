@@ -15,7 +15,9 @@ import {
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { TabButton } from '../common/TabButton';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
+import { PluginBadge } from '../common/PluginBadge';
 import { systemPromptService } from '../../services/systemPromptService';
+import { pluginService } from '../../services/pluginService';
 import './AgentsModal.css';
 
 // Agent structure - simplified
@@ -560,7 +562,12 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                           onMouseEnter={() => setFocusedIndex(index)}
                         >
                           <div className="agent-info">
-                            <div className="agent-name">{agent.name}</div>
+                            <div className="agent-name-row">
+                              <div className="agent-name">{agent.name.includes('--') ? agent.name.split('--')[1] : agent.name}</div>
+                              {agent.name.includes('--') && (
+                                <PluginBadge pluginName={agent.name.split('--')[0]} size="small" />
+                              )}
+                            </div>
                             <div className="agent-model">{agent.model}</div>
                           </div>
                           <div className="agent-actions">

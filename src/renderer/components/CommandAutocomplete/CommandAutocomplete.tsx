@@ -15,9 +15,12 @@ import {
   IconArrowsDiagonalMinimize2,
   IconWashDrycleanOff,
   IconWand,
-  IconPencil
+  IconPencil,
+  IconPuzzle
 } from '@tabler/icons-react';
 import './CommandAutocomplete.css';
+import { PluginBadge } from '../common/PluginBadge';
+import { pluginService } from '../../services/pluginService';
 
 interface CommandAutocompleteProps {
   trigger: string;
@@ -34,6 +37,8 @@ interface Command {
   handleLocally?: boolean; // If true, handle on our side instead of sending to Claude
   isCustom?: boolean; // If true, this is a custom command from settings
   script?: string; // Script for custom commands
+  pluginId?: string; // Plugin ID if from a plugin
+  pluginName?: string; // Plugin name for badge display
 }
 
 // Built-in commands
@@ -79,10 +84,27 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Load commands (built-in + custom)
+  // Load commands (built-in + custom + plugin)
   useEffect(() => {
-    const customCommands = loadCustomCommands();
-    setAllCommands([...builtInCommands, ...customCommands]);
+    const loadAllCommands = async () => {
+      const customCommands = loadCustomCommands();
+
+      // Load plugin commands
+      await pluginService.initialize();
+      const pluginCommands = pluginService.getEnabledPluginCommands().map(cmd => ({
+        name: cmd.name.includes('--') ? cmd.name.split('--')[1] : cmd.name,
+        description: cmd.description || 'plugin command',
+        icon: <IconPuzzle size={14} />,
+        handleLocally: false,
+        isCustom: false,
+        pluginId: cmd.pluginId,
+        pluginName: cmd.pluginName
+      }));
+
+      setAllCommands([...builtInCommands, ...customCommands, ...pluginCommands]);
+    };
+
+    loadAllCommands();
   }, []);
 
   // Parse the search query from the trigger
@@ -221,7 +243,12 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
           >
             <span className="command-icon">{cmd.icon}</span>
             <div className="command-content">
-              <span className="command-name">/{cmd.name}</span>
+              <div className="command-name-row">
+                <span className="command-name">/{cmd.name}</span>
+                {cmd.pluginName && (
+                  <PluginBadge pluginName={cmd.pluginName} size="small" />
+                )}
+              </div>
               <span className="command-description">{cmd.description}</span>
             </div>
           </div>

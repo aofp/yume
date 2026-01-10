@@ -196,7 +196,7 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
           <div className="modal-title-group">
             <span className="modal-title">
               <IconMessages size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-              resume conversation
+              resume {workingDirectory?.split(/[/\\]/).pop() || 'conversation'}
             </span>
             <span className="modal-hint">1-9 to open</span>
           </div>

@@ -1043,6 +1043,16 @@ pub fn run() {
             commands::delete_project_command,
             commands::load_all_commands,
             commands::migrate_commands_to_filesystem,
+            // Plugin operations
+            commands::plugins::plugin_list,
+            commands::plugins::plugin_install,
+            commands::plugins::plugin_uninstall,
+            commands::plugins::plugin_enable,
+            commands::plugins::plugin_disable,
+            commands::plugins::plugin_get_details,
+            commands::plugins::plugin_get_directory,
+            commands::plugins::plugin_validate,
+            commands::plugins::plugin_rescan,
             // Rollback conflict detection
             commands::get_file_mtime,
             commands::check_file_conflicts,

@@ -1,0 +1,39 @@
+/* Plugin Badge - shows plugin source */
+/* Matches .agent-model pattern from AgentsModal.css */
+
+.plugin-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  color: rgba(255, 255, 255, 0.4);
+  text-transform: lowercase;
+  font-weight: 500;
+  letter-spacing: 0.3px;
+  padding: 2px 5px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  background: rgba(255, 255, 255, 0.02);
+  white-space: nowrap;
+  font-family: var(--font-mono, monospace);
+}
+
+.plugin-badge.small {
+  font-size: 8px;
+  padding: 1px 4px;
+}
+
+.plugin-badge.medium {
+  font-size: 10px;
+  padding: 2px 6px;
+}
+
+.plugin-badge svg {
+  opacity: 0.7;
+  flex-shrink: 0;
+}
+
+/* Hover state to highlight plugin origin */
+.plugin-badge:hover {
+  border-color: rgba(var(--accent-rgb, 138, 180, 248), 0.3);
+  color: rgba(var(--accent-rgb, 138, 180, 248), 0.7);
+}

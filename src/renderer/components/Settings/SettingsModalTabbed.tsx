@@ -14,6 +14,7 @@ import { FontPickerModal } from '../FontPicker/FontPickerModal';
 import { AboutModal } from '../About/AboutModal';
 import { HooksTab } from './HooksTab';
 import { MCPTab } from './MCPTab';
+import { PluginsTab } from './PluginsTab';
 import { ClaudeSelector } from './ClaudeSelector';
 import { SystemPromptSelector } from './SystemPromptSelector';
 import { invoke } from '@tauri-apps/api/core';
@@ -27,7 +28,7 @@ interface SettingsModalProps {
 }
 
 // Tab type definition
-type SettingsTab = 'general' | 'theme' | 'hooks' | 'commands' | 'mcp';
+type SettingsTab = 'general' | 'theme' | 'hooks' | 'commands' | 'mcp' | 'plugins';
 
 // Color type with name for tooltips
 type NamedColor = { hex: string; name: string };
@@ -381,6 +382,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     showCommandsSettings, setShowCommandsSettings,
     showMcpSettings, setShowMcpSettings,
     showHooksSettings, setShowHooksSettings,
+    showPluginsSettings, setShowPluginsSettings,
     backgroundOpacity, setBackgroundOpacity
   } = useClaudeCodeStore();
 
@@ -1129,6 +1131,24 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 />
                 <div className="toggle-switch-container">
                   <label htmlFor="showHooksSettings" className={`toggle-switch ${showHooksSettings ? 'active' : ''}`}>
+                    <span className="toggle-switch-slider" />
+                    <span className="toggle-switch-label off">OFF</span>
+                    <span className="toggle-switch-label on">ON</span>
+                  </label>
+                </div>
+              </div>
+
+              <div className="checkbox-setting">
+                <span className="checkbox-label">plugins</span>
+                <input
+                  type="checkbox"
+                  className="checkbox-input"
+                  id="showPluginsSettings"
+                  checked={showPluginsSettings}
+                  onChange={(e) => setShowPluginsSettings(e.target.checked)}
+                />
+                <div className="toggle-switch-container">
+                  <label htmlFor="showPluginsSettings" className={`toggle-switch ${showPluginsSettings ? 'active' : ''}`}>
                     <span className="toggle-switch-slider" />
                     <span className="toggle-switch-label off">OFF</span>
                     <span className="toggle-switch-label on">ON</span>
@@ -2087,6 +2107,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       case 'mcp':
         return <MCPTab />;
 
+      case 'plugins':
+        return <PluginsTab />;
+
       default:
         return null;
     }
@@ -2130,6 +2153,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     label="mcp"
                     active={activeTab === 'mcp'}
                     onClick={() => setActiveTab('mcp')}
+                  />
+                )}
+                {showPluginsSettings && (
+                  <TabButton
+                    label="plugins"
+                    active={activeTab === 'plugins'}
+                    onClick={() => setActiveTab('plugins')}
                   />
                 )}
               </div>

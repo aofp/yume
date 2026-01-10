@@ -82,6 +82,12 @@
   min-width: 0;
 }
 
+.command-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
 .command-name {
   color: #fff;
   font-weight: 500;

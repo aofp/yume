@@ -4308,9 +4308,9 @@ export const ClaudeChat: React.FC = () => {
                 e.stopPropagation();
                 handleResumeLastConversation();
               }}
-              title={`resume conversation (${modKey}+shift+r) | rmb: resume last`}
+              title={`resume (${modKey}+shift+r) • rmb: last session`}
             >
-              resume
+              resume {currentSession.workingDirectory?.split(/[/\\]/).pop() || ''}
             </button>
           </div>
         )}
@@ -4833,7 +4833,7 @@ export const ClaudeChat: React.FC = () => {
                       e.stopPropagation();
                       setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
                     }}
-                    title={autoCompactEnabled !== false ? `auto-compact enabled (60% threshold) | ${modKey}+shift+. to toggle` : `auto-compact disabled | ${modKey}+shift+. to toggle`}
+                    title={autoCompactEnabled !== false ? `auto-compact on (60%) • ${modKey}+shift+. to toggle` : `auto-compact off • ${modKey}+shift+. to toggle`}
                   >
                     <span className="toggle-switch-label off">off</span>
                     <span className="toggle-switch-label on">on</span>

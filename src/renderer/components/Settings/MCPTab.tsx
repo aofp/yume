@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
+import { PluginBadge } from '../common/PluginBadge';
 import {
   IconPlus, IconTrash, IconRefresh,
   IconAlertCircle, IconCheck, IconLoader2,
   IconTerminal, IconWorld, IconFolder, IconUser
 } from '@tabler/icons-react';
 import { mcpService, MCPServer } from '../../services/mcpService';
+import { pluginService } from '../../services/pluginService';
 import './MCPTab.css';
 
 interface MCPTabProps {
@@ -417,12 +419,19 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
                   {getScopeIcon(scope)}
                   {scope}
                 </h5>
-                {scopeServers.map(server => (
+                {scopeServers.map(server => {
+                  const isPluginServer = server.name.includes('--');
+                  const pluginName = isPluginServer ? server.name.split('--')[0] : null;
+                  const displayName = isPluginServer ? server.name.split('--')[1] : server.name;
+                  return (
                   <div key={server.name} className="server-item">
                     <div className="server-info">
                       <div className="server-name">
                         {getTransportIcon(server.transport)}
-                        {server.name}
+                        {displayName}
+                        {pluginName && (
+                          <PluginBadge pluginName={pluginName} size="small" />
+                        )}
                       </div>
                       <div className="server-details">
                         {server.transport === 'stdio' 
@@ -457,7 +466,8 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
                       </button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
               </div>
             ))
           )}

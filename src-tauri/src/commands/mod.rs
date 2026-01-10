@@ -16,6 +16,7 @@ pub mod hooks;
 pub mod compaction;
 pub mod mcp;
 pub mod custom_commands;
+pub mod plugins;
 
 // Re-export custom commands directly so they're available at commands:: level
 pub use custom_commands::*;

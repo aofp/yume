@@ -369,7 +369,7 @@ export const WelcomeScreen: React.FC = () => {
               e.stopPropagation();
               setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
             }}
-            title={`context usage | ${modKey}+. shows stats | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'} (toggle: ${modKey}+shift+.)`}
+            title={`context usage • ${modKey}+. stats • auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'} (${modKey}+shift+.)`}
           >
             <span className="btn-stats-text">
               {autoCompactEnabled !== false ? (

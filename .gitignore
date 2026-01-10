@@ -18,6 +18,9 @@ out/
 # Tauri
 src-tauri/target/
 
+# Server binaries (built per-platform, not tracked)
+src-tauri/resources/server-*
+
 # Logs
 *.log
 logs/

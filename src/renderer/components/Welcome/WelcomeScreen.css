@@ -612,7 +612,11 @@
   position: fixed;
   bottom: 3px;
   right: 3px;
-  z-index: 100;
+  z-index: 100
+}
+
+.platform-win32 .welcome-usage-container {
+  bottom: 2px !important;
 }
 
 .welcome-usage-container .btn-stats-container {

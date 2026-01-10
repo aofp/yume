@@ -6,6 +6,7 @@ import {
   IconCancel,
   IconArrowsMinimize,
   IconMicrophone,
+  IconMicrophoneOff,
 } from '@tabler/icons-react';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
@@ -217,14 +218,20 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           {historyCount > 0 && <span className="btn-rollback-count">{historyCount}</span>}
         </button>
 
-        <button
-          className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
-          onClick={onToggleDictation}
-          disabled={isReadOnly}
-          title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
-        >
-          <IconMicrophone size={12} stroke={1.5} />
-        </button>
+        {messages.length > 0 && (
+          <button
+            className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
+            onClick={onToggleDictation}
+            disabled={isReadOnly}
+            title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
+          >
+            {isDictating ? (
+              <IconMicrophone size={12} stroke={1.5} />
+            ) : (
+              <IconMicrophoneOff size={12} stroke={1.5} />
+            )}
+          </button>
+        )}
       </div>
 
       {/* Right - stats and clear */}
@@ -253,8 +260,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             onClick={onOpenStatsModal}
             disabled={false}
             title={hasActivity ?
-              `total tokens used: ${totalContextTokens.toLocaleString()} | ${modKey}+. shows context usage | ${modKey}+shift+. or rmb toggles auto-compact` :
-              `total tokens used: 0 | ${modKey}+. shows context usage | ${modKey}+shift+. or rmb toggles auto-compact`}
+              `${totalContextTokens.toLocaleString()} tokens • ${modKey}+. stats • ${modKey}+shift+./rmb: toggle auto-compact` :
+              `0 tokens • ${modKey}+. stats • ${modKey}+shift+./rmb: toggle auto-compact`}
             onContextMenu={(e) => {
               e.preventDefault();
               e.stopPropagation();

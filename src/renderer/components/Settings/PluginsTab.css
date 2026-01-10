@@ -1,0 +1,367 @@
+/* Plugins Tab - Minimal OLED UI */
+/* Follows MCPTab.css and HooksTab patterns */
+
+.plugins-tab {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  position: relative;
+}
+
+/* Notification toast - top center, small, opaque */
+.plugins-notification {
+  position: fixed;
+  top: 48px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  z-index: 10000;
+  animation: toastIn 0.15s ease-out;
+}
+
+.plugins-notification.success {
+  border-color: rgba(153, 255, 153, 0.4);
+  color: #99ff99;
+}
+
+.plugins-notification.error {
+  border-color: rgba(255, 153, 153, 0.4);
+  color: #ff9999;
+}
+
+.plugins-notification.info {
+  border-color: rgba(153, 187, 255, 0.4);
+  color: #99bbff;
+}
+
+@keyframes toastIn {
+  from {
+    opacity: 0;
+    transform: translateX(-50%) translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(-50%) translateY(0);
+  }
+}
+
+/* Header */
+.plugins-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.plugins-header h4 {
+  color: var(--accent-color);
+  font-size: 11px;
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+}
+
+.plugins-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.plugins-action-btn {
+  background: transparent;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.4);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 10px;
+  cursor: default;
+  transition: all 0.2s ease;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.plugins-action-btn:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Loading state */
+.plugins-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 20px;
+  color: #666;
+  font-size: 11px;
+}
+
+.plugins-loading .spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Empty state */
+.no-plugins {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 24px;
+  color: #666;
+  font-size: 11px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  text-align: center;
+}
+
+.no-plugins-hint {
+  color: #555;
+  font-size: 10px;
+  margin: 4px 0 0 0;
+}
+
+/* Plugin List */
+.plugins-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Plugin Item */
+.plugin-item {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 4px;
+  transition: all 0.2s;
+}
+
+.plugin-item:hover {
+  border-color: rgba(255, 255, 255, 0.12);
+}
+
+.plugin-item.enabled {
+  border-color: rgba(var(--accent-rgb), 0.2);
+}
+
+/* Plugin Header Row */
+.plugin-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px;
+}
+
+.plugin-expand {
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: default;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  transition: color 0.2s;
+  flex-shrink: 0;
+}
+
+.plugin-expand:hover {
+  color: var(--accent-color);
+}
+
+.plugin-info {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.plugin-name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.plugin-name {
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.plugin-version {
+  color: #666;
+  font-size: 9px;
+  font-family: var(--font-mono, monospace);
+}
+
+.plugin-description {
+  color: #666;
+  font-size: 9px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Component count badges */
+.plugin-components {
+  display: flex;
+  gap: 4px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+
+.component-count {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  color: #666;
+  font-size: 9px;
+  padding: 2px 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 2px;
+}
+
+.component-count svg {
+  opacity: 0.7;
+}
+
+/* Plugin Actions */
+.plugin-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* Hide checkbox input */
+.plugin-actions .checkbox-input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+  width: 0;
+  height: 0;
+}
+
+/* Mini toggle switch for plugins */
+.plugin-actions .toggle-switch.mini {
+  position: relative;
+  width: 32px;
+  height: 16px;
+  border: 1px solid var(--fg-15, rgba(255, 255, 255, 0.15));
+  border-radius: 8px;
+  cursor: default;
+  transition: all 0.2s ease;
+  background: var(--background-color, #000);
+  display: flex;
+  align-items: center;
+}
+
+.plugin-actions .toggle-switch.mini:hover {
+  border-color: rgba(var(--accent-rgb), 0.5);
+}
+
+.plugin-actions .toggle-switch.mini .toggle-switch-slider {
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 10px;
+  height: 10px;
+  background: var(--fg-30, rgba(255, 255, 255, 0.3));
+  border-radius: 50%;
+  transition: all 0.2s ease;
+}
+
+.plugin-actions .toggle-switch.mini.active {
+  border-color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.plugin-actions .toggle-switch.mini.active .toggle-switch-slider {
+  transform: translateX(16px);
+  background: var(--accent-color);
+}
+
+.plugin-actions .toggle-switch.mini.loading .toggle-switch-slider {
+  opacity: 0.5;
+}
+
+.plugin-remove {
+  background: transparent;
+  border: none;
+  color: #666;
+  cursor: default;
+  padding: 4px;
+  transition: color 0.2s;
+  display: flex;
+  align-items: center;
+}
+
+.plugin-remove:hover {
+  color: #ff9999;
+}
+
+/* Expanded Details */
+.plugin-details {
+  padding: 8px 12px 12px 28px;
+  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.plugin-detail-section {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.detail-label {
+  color: #666;
+  font-size: 9px;
+  text-transform: lowercase;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.detail-label svg {
+  color: var(--accent-color);
+  opacity: 0.6;
+}
+
+.detail-items {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  padding-left: 14px;
+}
+
+.detail-item {
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 10px;
+  font-family: var(--font-mono, monospace);
+  padding: 2px 6px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+
+.plugin-author {
+  color: #555;
+  font-size: 9px;
+  font-style: italic;
+  margin-top: 4px;
+}
