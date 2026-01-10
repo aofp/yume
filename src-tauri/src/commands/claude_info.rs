@@ -388,58 +388,91 @@ fn get_credentials_windows() -> Result<(String, Option<String>, Option<String>),
     use windows::core::PCWSTR;
     use windows::Win32::Security::Credentials::{CredReadW, CredFree, CREDENTIALW, CRED_TYPE_GENERIC};
 
-    // Target name used by Claude Code CLI
-    let target: Vec<u16> = "Claude Code-credentials\0".encode_utf16().collect();
+    // Try multiple target name formats that Claude CLI might use
+    // keytar (used by Electron apps) uses format: {service}/{account}
+    // Some apps use format: {service}-{account}
+    let target_names = [
+        "Claude Code/credentials",      // keytar format (most likely)
+        "Claude Code-credentials",      // alternative format
+        "claude-code/credentials",      // lowercase variant
+    ];
 
-    unsafe {
-        let mut credential: *mut CREDENTIALW = std::ptr::null_mut();
+    let mut last_error = String::new();
 
-        let result = CredReadW(
-            PCWSTR(target.as_ptr()),
-            CRED_TYPE_GENERIC,
-            None,
-            &mut credential,
-        );
+    for target_name in &target_names {
+        info!("Trying Windows credential target: {}", target_name);
+        let target: Vec<u16> = format!("{}\0", target_name).encode_utf16().collect();
 
-        if result.is_err() || credential.is_null() {
-            return Err("No Claude credentials found in Windows Credential Manager. Please run 'claude' CLI and authenticate first.".to_string());
-        }
+        unsafe {
+            let mut credential: *mut CREDENTIALW = std::ptr::null_mut();
 
-        // Extract credential blob (contains the JSON)
-        let cred = &*credential;
+            let result = CredReadW(
+                PCWSTR(target.as_ptr()),
+                CRED_TYPE_GENERIC,
+                Some(0),  // flags
+                &mut credential,
+            );
 
-        if cred.CredentialBlob.is_null() || cred.CredentialBlobSize == 0 {
-            CredFree(credential as *mut _);
-            return Err("Claude credentials blob is empty".to_string());
-        }
+            if result.is_err() || credential.is_null() {
+                last_error = format!("Target '{}' not found", target_name);
+                continue;
+            }
 
-        // Read the credential blob as bytes
-        let blob_slice = std::slice::from_raw_parts(
-            cred.CredentialBlob,
-            cred.CredentialBlobSize as usize,
-        );
+            // Extract credential blob (contains the JSON)
+            let cred = &*credential;
 
-        // Convert to string (it's stored as UTF-8 JSON)
-        let json_str = String::from_utf8(blob_slice.to_vec())
-            .map_err(|e| {
+            if cred.CredentialBlob.is_null() || cred.CredentialBlobSize == 0 {
                 CredFree(credential as *mut _);
-                format!("Invalid UTF-8 in credentials: {}", e)
-            })?;
+                last_error = format!("Target '{}' has empty blob", target_name);
+                continue;
+            }
 
-        // Free the credential memory
-        CredFree(credential as *mut _);
+            // Read the credential blob as bytes
+            let blob_slice = std::slice::from_raw_parts(
+                cred.CredentialBlob,
+                cred.CredentialBlobSize as usize,
+            );
 
-        // Parse the JSON
-        let creds: ClaudeCredentials = serde_json::from_str(&json_str)
-            .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
+            // Convert to string (it's stored as UTF-8 JSON)
+            let json_str = match String::from_utf8(blob_slice.to_vec()) {
+                Ok(s) => s,
+                Err(e) => {
+                    CredFree(credential as *mut _);
+                    last_error = format!("Invalid UTF-8 in credentials for '{}': {}", target_name, e);
+                    continue;
+                }
+            };
 
-        let oauth = creds.claude_ai_oauth
-            .ok_or_else(|| "No OAuth credentials found".to_string())?;
+            // Free the credential memory
+            CredFree(credential as *mut _);
 
-        Ok((
-            oauth.access_token,
-            oauth.subscription_type,
-            oauth.rate_limit_tier,
-        ))
+            info!("Found credentials at target '{}', parsing JSON...", target_name);
+
+            // Parse the JSON
+            let creds: ClaudeCredentials = match serde_json::from_str(&json_str) {
+                Ok(c) => c,
+                Err(e) => {
+                    last_error = format!("Failed to parse credentials JSON from '{}': {}", target_name, e);
+                    continue;
+                }
+            };
+
+            let oauth = match creds.claude_ai_oauth {
+                Some(o) => o,
+                None => {
+                    last_error = format!("No OAuth credentials in '{}'", target_name);
+                    continue;
+                }
+            };
+
+            info!("Successfully retrieved credentials from '{}'", target_name);
+            return Ok((
+                oauth.access_token,
+                oauth.subscription_type,
+                oauth.rate_limit_tier,
+            ));
+        }
     }
+
+    Err(format!("No Claude credentials found in Windows Credential Manager. Tried targets: {:?}. Last error: {}. Please run 'claude' CLI and authenticate first.", target_names, last_error))
 }

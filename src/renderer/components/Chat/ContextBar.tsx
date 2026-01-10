@@ -221,7 +221,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
           onClick={onToggleDictation}
           disabled={isReadOnly}
-          title={isDictating ? 'stop dictation' : 'start dictation'}
+          title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
         >
           <IconMicrophone size={12} stroke={1.5} />
         </button>

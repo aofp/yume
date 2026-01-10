@@ -1687,6 +1687,40 @@ export const ClaudeChat: React.FC = () => {
         // Open model & tools modal via keyboard
         setModelToolsOpenedViaKeyboard(true);
         setShowModelToolsModal(prev => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'e') {
+        e.preventDefault();
+        // Open CLAUDE.md editor
+        if (currentSession?.workingDirectory) {
+          setShowClaudeMdEditor(true);
+        }
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        // Fork session - duplicate current session with all messages
+        if (currentSession?.workingDirectory) {
+          const newSession = createSession(undefined, currentSession.workingDirectory);
+          if (newSession && currentSession.messages.length > 0) {
+            // Copy messages to the new session
+            setTimeout(() => {
+              const store = useClaudeCodeStore.getState();
+              store.sessions.forEach(s => {
+                if (s.workingDirectory === currentSession.workingDirectory && s.id !== currentSession.id && s.messages.length === 0) {
+                  // This is the new session - copy messages
+                  useClaudeCodeStore.setState(state => ({
+                    sessions: state.sessions.map(sess =>
+                      sess.id === s.id
+                        ? { ...sess, messages: [...currentSession.messages] }
+                        : sess
+                    )
+                  }));
+                }
+              });
+            }, 100);
+          }
+        }
+      } else if (e.key === 'F5') {
+        e.preventDefault();
+        // Toggle dictation
+        toggleDictation();
       } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'o') {
         e.preventDefault();
         // Toggle model between opus/sonnet
@@ -1841,7 +1875,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation]);
 
 
 

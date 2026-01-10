@@ -56,22 +56,17 @@
 .help-content {
   padding: 8px;
   display: grid;
-  grid-template-columns: repeat(2, minmax(150px, 1fr));
-  gap: 8px;
-  justify-content: center;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
 }
 
-.help-section {
-  border-radius: 6px;
-  max-width: 238px;
+.help-column {
+  display: flex;
+  flex-direction: column;
 }
 
-.help-section h4 {
-  color: var(--accent-color);
-  font-size: 11px;
-  font-weight: 500;
-  margin: 0 0 6px 0;
-  text-transform: lowercase;
+.shortcut-spacer {
+  height: 8px;
 }
 
 .shortcut-item {

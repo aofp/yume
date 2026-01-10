@@ -342,21 +342,21 @@ export const WelcomeScreen: React.FC = () => {
         )}
       </div>
 
-      {/* Trial indicator - bottom left */}
-      {!isLicensed && (
-        <div className="welcome-trial-container">
-          <span
-            className="welcome-trial-badge"
-            onClick={() => {
+      {/* Version indicator - bottom left */}
+      <div className="welcome-version-container">
+        <span
+          className="welcome-version-badge"
+          onClick={() => {
+            if (!isLicensed) {
               window.dispatchEvent(new CustomEvent('showUpgradeModal', {
                 detail: { reason: 'trial' }
               }));
-            }}
-          >
-            yurucode trial
-          </span>
-        </div>
-      )}
+            }
+          }}
+        >
+          yurucode 0.1.0{!isLicensed && <> <strong>trial</strong></>}
+        </span>
+      </div>
 
       {/* Usage limit bars - bottom right like chat */}
       <div className="welcome-usage-container">

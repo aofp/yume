@@ -1880,6 +1880,7 @@ fn is_git_process_running() -> bool {
             let stdout = String::from_utf8_lossy(&output.stdout).to_lowercase();
             return stdout.contains("git.exe") || stdout.contains("git-");
         }
+        return false;
     }
 
     #[cfg(not(target_os = "windows"))]

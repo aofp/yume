@@ -1570,7 +1570,8 @@ textarea.context-full {
 }
 
 .btn-stats.minimal:hover {
-  border-color: var(--fg-40);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 1);
 }
 
 .btn-stats.low:hover,

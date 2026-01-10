@@ -49,11 +49,16 @@
   border-color: rgba(var(--accent-rgb), 1);
 }
 
-/* remove all focus styles */
+/* remove all focus styles, but preserve hover state */
 .model-selector-trigger:focus,
 .model-selector-trigger:focus-visible,
 .model-selector-trigger:focus-within {
   outline: none;
+}
+
+.model-selector-trigger:focus:not(.hovered),
+.model-selector-trigger:focus-visible:not(.hovered),
+.model-selector-trigger:focus-within:not(.hovered) {
   background: transparent;
   border-color: var(--fg-20);
 }

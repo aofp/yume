@@ -147,10 +147,10 @@ try {
   }
 } catch {}
 
-// 9. Also kill any orphaned Claude processes that might have git operations in progress
-// This helps prevent git locks from being created by zombie Claude processes
-killPattern('claude.*--print', 'orphaned claude CLI processes with streaming');
-killPattern('claude.*-p.*--output-format', 'orphaned claude CLI processes');
+// 9. DO NOT kill Claude processes - they might be running outside of yurucode
+// Previously this killed all claude processes matching certain patterns, but this
+// incorrectly killed other Claude CLI instances not associated with yurucode.
+// Yurucode's ProcessRegistry handles cleanup of its own spawned Claude processes.
 
 // Brief wait for ports to be released
 setTimeout(() => {
