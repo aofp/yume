@@ -234,7 +234,7 @@ export const TimelineNavigator: React.FC<TimelineNavigatorProps> = ({
             <button
               className="timeline-control-btn"
               onClick={onClose}
-              title="close timeline"
+              title="close timeline (esc)"
             >
               <IconX size={14} />
             </button>

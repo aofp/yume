@@ -882,13 +882,12 @@ input[type="checkbox"].checkbox-input {
   top: 2px;
   border: none;  /* No borders */
   border-radius: 4px;
-  cursor: pointer;
+  cursor: default;
   transition: background 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
   padding: 0;
-  cursor: default !important;
 }
 
 /* Toggle labels */

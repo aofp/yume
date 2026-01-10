@@ -46,7 +46,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
       <div className="about-modal" onClick={(e) => e.stopPropagation()}>
         <div className="about-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>about</h3>
-          <button className="about-close" onClick={onClose}>
+          <button className="about-close" onClick={onClose} title="close (esc)">
             <IconX size={16} />
           </button>
         </div>
@@ -90,7 +90,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
                   confirm('forget license?') && clearLicense();
                 }
               }}
-              title={isLicensed ? 'right-click to forget license' : 'click to upgrade'}
+              title={isLicensed ? 'rmb to forget license' : 'click to upgrade'}
             >[{isLicensed ? 'pro' : 'trial'}]</span>
           </div>
           

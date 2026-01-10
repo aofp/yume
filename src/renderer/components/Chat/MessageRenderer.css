@@ -1438,6 +1438,77 @@ body.platform-win32 .tool-detail {
   cursor: default;
 }
 
+/* ===== COLLAPSIBLE TOOL RESULTS ===== */
+.tool-result.collapsible {
+  display: block;
+}
+
+.tool-result.collapsible .collapsible-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  padding: 4px 0;
+  user-select: none;
+  transition: opacity 0.15s ease;
+}
+
+.tool-result.collapsible .collapsible-header:hover {
+  opacity: 0.8;
+}
+
+.tool-result.collapsible .collapse-chevron {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(var(--foreground-rgb), 0.4);
+  flex-shrink: 0;
+}
+
+.tool-result.collapsible .collapsible-summary {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(var(--foreground-rgb), 0.7);
+}
+
+.tool-result.collapsible .collapsible-detail {
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(var(--foreground-rgb), 0.4);
+  margin-left: auto;
+  text-overflow: ellipsis;
+  overflow: hidden;
+  white-space: nowrap;
+  max-width: 60%;
+}
+
+.tool-result.collapsible.collapsed .collapsible-content {
+  display: none;
+}
+
+.tool-result.collapsible.expanded .collapsible-content {
+  margin-top: 4px;
+  padding-top: 4px;
+  border-top: 1px solid rgba(var(--foreground-rgb), 0.05);
+}
+
+/* Read output styling */
+.tool-result.read-output .read-content {
+  margin: 0;
+  font-family: var(--font-mono);
+  font-size: 8pt;
+  color: rgba(var(--foreground-rgb), 0.6);
+  white-space: pre;
+  overflow-x: auto;
+  scrollbar-width: thin;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.tool-result.read-output .read-line {
+  line-height: 1.4;
+}
+
 .result-icon {
   font-size: 12px;
 }
@@ -1901,7 +1972,6 @@ body.platform-win32 .tool-detail {
   font-size: 11px;
   border-top: 1px solid rgba(var(--accent-rgb), 0.1);
   margin-top: 12px;
-  animation: resultSlide 0.4s ease;
 }
 
 .result-text-content {

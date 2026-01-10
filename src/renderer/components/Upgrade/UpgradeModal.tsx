@@ -33,7 +33,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
             <IconSparkles size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
             upgrade to pro
           </h3>
-          <button className="upgrade-close" onClick={onClose}>
+          <button className="upgrade-close" onClick={onClose} title="close (esc)">
             <IconX size={16} />
           </button>
         </div>

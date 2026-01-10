@@ -59,10 +59,11 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
             {isDangerous && <IconAlertTriangle size={18} className="confirm-modal-warning-icon" />}
             <span>{title}</span>
           </div>
-          <button 
-            className="confirm-modal-close" 
+          <button
+            className="confirm-modal-close"
             onClick={onCancel}
             aria-label="Close"
+            title="close (esc)"
           >
             <IconX size={16} />
           </button>

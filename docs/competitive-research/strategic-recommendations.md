@@ -4,89 +4,71 @@
 
 ## Executive Summary
 
-Yurucode is **definitively the best Claude Code UI**. P0, P1, and most P2 features are complete. Key recent wins:
+Yurucode is **definitively the best Claude Code UI**. We have 12+ unique features no competitor offers. Only 2 minor gaps remain:
 
-1. ✅ **Checkpoints ENABLED** - unique advantage, no competitor has this
-2. ✅ **30 themes** - way more than competitors
-3. ✅ **5 built-in agents** - architect, explorer, implementer, guardian, specialist - unique
-4. ✅ **Custom commands** - slash commands with templates - unique
-5. ✅ **9 hook events** - most comprehensive
-
-Remaining gaps: light mode, command palette (Cmd+K)
+1. ⬜ **Command palette** (Cmd+P or Cmd+Shift+K)
+2. ⬜ **Light mode**
 
 ---
 
 ## Current State Assessment
 
-### What Yurucode Does Well (Strengths) - UPDATED
+### Yurucode Unique Features (No Competitor Has)
 
-| Feature | Status | Competitive Position |
-|---------|--------|---------------------|
-| No terminal flicker | ✅ | **Best in class** - solves GitHub #1913 |
-| Native performance | ✅ | Better than Cursor (memory issues) |
-| Auto-compact 60%/65% | ✅ | **Unique** - no competitor has this |
-| Full analytics | ✅ | Better than Cursor/Windsurf |
-| MCP visual manager | ✅ | Parity with Windsurf |
-| **Checkpoints + Timeline** | ✅ | **UNIQUE** - no competitor has visual UI |
-| **30 themes** | ✅ | **Best** - Cursor ~5, Windsurf ~3 |
-| **5 built-in agents** | ✅ | **UNIQUE** - architect/explorer/implementer/guardian/specialist |
-| **Custom commands** | ✅ | **UNIQUE** - slash commands with templates |
-| **Hooks system (9 events)** | ✅ | **Best** - most comprehensive |
-| Font customization | ✅ | Comic Mono/Neue support |
-| System prompts | ✅ | Custom prompt selector |
-| Smart file mentions | ✅ | @r recent, @m modified |
-| Crash recovery | ✅ | 24hr window |
-| $9 one-time price | ✅ | **Major advantage** vs subscriptions |
+| Feature | Status | Details |
+|---------|--------|---------|
+| 5h + 7-day limit tracking | ✅ | Visual quota bars in context bar |
+| Yurucode Guard | ✅ | Built-in security hook (blocks dangerous commands) |
+| 5 built-in agents | ✅ | architect, explorer, implementer, guardian, specialist |
+| @ mention system | ✅ | @r (recent), @m (modified), folder navigation |
+| Stream timers | ✅ | Live thinking/bash/compacting duration |
+| History/rollback panel | ✅ | Visual message history |
+| Ultrathink support | ✅ | Cmd+K insert + rainbow highlighting |
+| 30 themes | ✅ | Way more than Cursor (~5), Windsurf (~3), Opcode (0) |
+| 9 hook events | ✅ | Most comprehensive hook system |
+| Crash recovery | ✅ | Auto-save with 24hr restoration |
+| $9 one-time | ✅ | vs $240-2400/year subscriptions |
+| Bash mode | ✅ | !/$ prefix for direct commands |
 
-### What's Missing (Gaps) - REDUCED
+### What's Missing (Gaps)
 
-| Gap | Severity | Competitor Status |
-|-----|----------|-------------------|
-| Tab completion | N/A | IDE feature, not applicable to chat UI |
-| Command palette | HIGH | Expected UX, Cmd+K |
-| Light mode | MEDIUM | Many users need it |
-| Notifications | LOW | Nice to have |
-| Memories/preferences | MEDIUM | Cursor + Windsurf have it |
+| Gap | Severity | Effort |
+|-----|----------|--------|
+| Command palette | MEDIUM | 2-3 days |
+| Light mode | LOW | 1 day |
 
 ---
 
-## Prioritized Action Plan - UPDATED
+## Prioritized Action Plan
 
-### Tier 1: "100% Best" Guarantee ✅ MOSTLY DONE
+### ✅ DONE: Everything Critical
 
-#### ✅ DONE: Enable Checkpoint/Timeline UI
-- **Status**: COMPLETE - feature flags enabled
-- **Impact**: HIGH - **UNIQUE** advantage, no competitor has this
+1. ✅ Native rendering (no flicker/lag)
+2. ✅ 32+ keyboard shortcuts
+3. ✅ Checkpoints + Timeline UI
+4. ✅ 30 themes
+5. ✅ 5 built-in agents
+6. ✅ 9 hook events + Yurucode Guard
+7. ✅ Full analytics
+8. ✅ MCP visual manager
+9. ✅ @ mentions + / commands
+10. ✅ Ultrathink (Cmd+K + highlighting)
+11. ✅ Stream timers
+12. ✅ Git panel + Files panel + History panel
+13. ✅ Crash recovery
+14. ✅ 5h + 7d limit tracking
 
-#### 2. Command Palette (Cmd+K)
-- **Effort**: MEDIUM
-- **Impact**: HIGH
-- **Why**: Every modern tool has this. Users expect it.
-- **Action**: Implement fuzzy search over actions/files
+### ⬜ Remaining (4 days of work)
 
-#### 3. Light Mode Theme
-- **Effort**: LOW (30 themes exist, infrastructure solid)
-- **Impact**: MEDIUM
-- **Why**: Many users prefer light. Accessibility concern.
-- **Action**: Add light color scheme to themes.ts
+#### 1. Light Mode
+- **Effort**: LOW (1 day)
+- **Impact**: MEDIUM (accessibility)
+- **Why**: Theme infrastructure exists (30 themes). Just add light variants.
 
-#### 4. System Notifications
-- **Effort**: LOW (Tauri has native support)
-- **Impact**: LOW
-- **Why**: Nice to have for long tasks.
-- **Action**: Use Tauri notification API
-
-### Tier 2: Competitive Parity
-
-#### 5. Memories/Preferences System
-- **Effort**: MEDIUM
-- **Impact**: MEDIUM
-- **Why**: Both Cursor and Windsurf have "Memories"
-- **Action**: Store coding preferences, persist across sessions
-
-### Tier 3: Differentiation (Consider Carefully)
-
-Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode is a chat interface, not a code editor. Users wanting tab completion use Cursor/Copilot in their editor alongside yurucode for complex tasks. Different product categories.
+#### 2. Command Palette
+- **Effort**: MEDIUM (2-3 days)
+- **Impact**: MEDIUM (discoverability)
+- **Note**: Cmd+K is used for ultrathink. Use Cmd+P or Cmd+Shift+K.
 
 ---
 
@@ -100,6 +82,7 @@ Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode
 - Full Claude ecosystem support
 - One-time purchase ($9)
 - Privacy-focused (no telemetry)
+- 12+ unique features
 
 ### What Yurucode is NOT
 
@@ -118,7 +101,7 @@ Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode
 1. Solves the #1 Claude Code complaint (flicker)
 2. $9 one-time vs $20-200/mo subscriptions
 3. Native Rust performance
-4. Full Claude ecosystem (MCP, hooks, agents)
+4. 12+ unique features (5h/7d limits, agents, guard, etc.)
 
 ---
 
@@ -126,23 +109,32 @@ Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode
 
 ### Cursor ($29.3B)
 - **Threat level**: Low (different market segment)
-- **Weaknesses to exploit**: Performance issues, expensive, subscription fatigue
-- **Watch for**: If they improve memory management
+- **Weaknesses**: Performance issues, expensive, subscription fatigue
+- **We win on**: Native performance, $9 one-time, no telemetry
 
 ### Windsurf
 - **Threat level**: Low (corporate chaos, different segment)
-- **Weaknesses to exploit**: Beta feel, files >300 lines struggle
-- **Watch for**: Post-acquisition direction
+- **Weaknesses**: Beta feel, files >300 lines struggle
+- **We win on**: Stability, features, pricing
+
+### Opcode (YC-backed, Free)
+- **Threat level**: MEDIUM (direct competitor)
+- **Their advantages**: Free, CLAUDE.md editor
+- **We win on**:
+  - 5h/7d limit tracking (they don't have)
+  - Yurucode Guard (they don't have)
+  - 5 built-in agents (they don't have)
+  - 30 themes (they have 0)
+  - 9 hook events (they have 0)
+  - Crash recovery (they don't have)
+  - @ mention system (they don't have)
+  - Stream timers (they don't have)
+  - 32+ keyboard shortcuts (they don't have)
 
 ### Claude Desktop (Anthropic)
 - **Threat level**: MEDIUM
 - **Risk**: Anthropic releases official Claude Code GUI
-- **Mitigation**: Stay complementary, not competitive
-
-### Claude Code CLI Updates
-- **Opportunity**: They improve → we improve automatically
-- **Risk**: Terminal rendering gets fixed → less need for GUI
-- **Reality**: React Ink architecture makes fix unlikely
+- **Mitigation**: Stay complementary, offer unique features
 
 ---
 
@@ -150,34 +142,28 @@ Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode
 
 ### "100% Best" Criteria
 
-1. **Performance**: <50ms input latency (vs CLI's 100ms-10s) ✅
+1. **Performance**: <50ms input latency ✅
 2. **Stability**: Zero crashes, zero flicker ✅
 3. **Feature parity**: Everything CLI can do + visual enhancements ✅
-4. **Unique value**: Auto-compact, checkpoints, analytics ✅
-
-### Verification - UPDATED
-
-- [x] Checkpoint UI enabled and working ✅ **DONE**
-- [x] Timeline navigator working ✅ **DONE**
-- [x] 30 themes available ✅ **DONE**
-- [x] 5 built-in agents working ✅ **DONE**
-- [x] Custom commands system ✅ **DONE**
-- [x] 9 hook events ✅ **DONE**
-- [ ] Command palette implemented (Cmd+K)
-- [ ] Light mode available
-- [ ] System notifications working
+4. **Unique value**: 12+ features no competitor has ✅
+5. **Accessibility**: Light mode ⬜
+6. **Discoverability**: Command palette ⬜
 
 ### Unique Features (No Competitor Has All)
 
-| Unique Feature | Status |
-|----------------|--------|
-| Visual checkpoint/timeline UI | ✅ Only yurucode |
+| Feature | Status |
+|---------|--------|
+| 5h + 7-day limit tracking | ✅ UNIQUE |
+| Yurucode Guard | ✅ UNIQUE |
+| 5 built-in agents | ✅ UNIQUE |
+| @ mention system | ✅ UNIQUE |
+| Stream timers | ✅ UNIQUE |
+| History/rollback panel | ✅ UNIQUE |
+| Ultrathink (Cmd+K + highlighting) | ✅ UNIQUE |
 | 30 themes | ✅ Best in class |
-| 5 built-in yurucode agents | ✅ Only yurucode |
-| Custom slash commands with templates | ✅ Only yurucode |
-| 9 hook event types | ✅ Most comprehensive |
-| Auto-compaction at 60%/65% | ✅ Only yurucode |
-| $9 one-time price | ✅ Only yurucode |
+| 9 hook events | ✅ Best in class |
+| Crash recovery | ✅ UNIQUE |
+| $9 one-time | ✅ UNIQUE |
 
 ---
 
@@ -185,10 +171,10 @@ Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode
 
 | Risk | Probability | Impact | Mitigation |
 |------|-------------|--------|------------|
-| Anthropic releases official GUI | MEDIUM | HIGH | Stay complementary, offer acquisition |
-| Claude Code CLI fixes flicker | LOW | HIGH | Expand value beyond just "no flicker" |
+| Anthropic releases official GUI | MEDIUM | HIGH | 12+ unique features they won't have |
+| Claude Code CLI fixes flicker | LOW | MEDIUM | We have way more than "no flicker" now |
+| Opcode adds our features | MEDIUM | MEDIUM | Keep innovating, they're behind |
 | Cursor dominance continues | HIGH | LOW | Different market segment |
-| Tab completion becomes mandatory | MEDIUM | MEDIUM | Consider basic implementation |
 
 ---
 
@@ -197,20 +183,18 @@ Note: Tab completion removed from roadmap - it's an IDE/editor feature. Yurucode
 Yurucode is **definitively the best Claude Code UI** as of January 2026.
 
 ### Completed (Unique Advantages)
-- ✅ Visual checkpoint/timeline UI - **only yurucode has this**
-- ✅ 30 themes - way more than competitors
-- ✅ 5 built-in agents - architect, explorer, implementer, guardian, specialist
-- ✅ Custom commands with templates - **unique**
-- ✅ 9 hook events - most comprehensive
-- ✅ Auto-compaction at 60%/65% - **unique**
-- ✅ $9 one-time - vs $20-200/mo subscriptions
+- ✅ 12+ unique features no competitor has
+- ✅ Native performance (no flicker)
+- ✅ $9 one-time pricing
 
-### Remaining Items
-1. **Command palette** (Cmd+K) - expected UX pattern
-2. **Light mode** - accessibility
+### Remaining Items (4 days)
+1. **Light mode** - 1 day
+2. **Command palette** - 2-3 days
 
 ### Final Assessment
 
-**Bottom line**: Yurucode has MORE unique features than any competitor. No significant gaps remain - tab completion is an IDE feature (different product category). Focus on:
+**Bottom line**: Yurucode has MORE unique features than any competitor. Even Opcode (our direct competitor) is missing: 5h/7d tracking, Yurucode Guard, built-in agents, themes, hooks, crash recovery, @ mentions, stream timers, and keyboard shortcuts.
+
+Focus on:
 1. Marketing the unique advantages
-2. Command palette and light mode as polish
+2. Light mode and command palette as polish

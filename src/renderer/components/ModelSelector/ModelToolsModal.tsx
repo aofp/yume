@@ -1,5 +1,5 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo } from 'react';
-import { IconX } from '@tabler/icons-react';
+import { IconX, IconTool } from '@tabler/icons-react';
 import { getModelsForSelector } from '../../config/models';
 import {
   ALL_TOOLS,
@@ -40,18 +40,34 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   const [isKeyboardNav, setIsKeyboardNav] = useState(true); // start true since we auto-focus
 
   // Build flat tool list matching visual layout order
+  // Layout: 3 rows, 2 columns each
+  // Row 1: file-read (left) | file-write (right)
+  // Row 2: web (left) | terminal (right)
+  // Row 3: other (left) | agents (right)
   const flatToolList = useMemo(() => {
     const list: ToolDefinition[] = [];
-    // Row 1: file-read + file-write
     list.push(...toolsByCategory['file-read']);
     list.push(...toolsByCategory['file-write']);
-    // Row 2: web + terminal
     list.push(...toolsByCategory.web);
     list.push(...toolsByCategory.terminal);
-    // Row 3: other + agents
     list.push(...toolsByCategory.other);
     list.push(...toolsByCategory.agents);
     return list;
+  }, [toolsByCategory]);
+
+  // Row boundaries for navigation
+  const rowInfo = useMemo(() => {
+    const fr = toolsByCategory['file-read'].length;
+    const fw = toolsByCategory['file-write'].length;
+    const wb = toolsByCategory.web.length;
+    const tm = toolsByCategory.terminal.length;
+    const ot = toolsByCategory.other.length;
+    const ag = toolsByCategory.agents.length;
+    return [
+      { start: 0, leftEnd: fr, rightStart: fr, end: fr + fw },           // row 0
+      { start: fr + fw, leftEnd: fr + fw + wb, rightStart: fr + fw + wb, end: fr + fw + wb + tm }, // row 1
+      { start: fr + fw + wb + tm, leftEnd: fr + fw + wb + tm + ot, rightStart: fr + fw + wb + tm + ot, end: fr + fw + wb + tm + ot + ag }, // row 2
+    ];
   }, [toolsByCategory]);
 
   // Focus the selected model on open (only if opened via keyboard)
@@ -99,11 +115,32 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
         e.preventDefault();
         e.stopPropagation();
         onClose();
+        return;
+      }
+      // Handle arrow keys to start keyboard nav when modal is open but nothing focused
+      if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        // Check if something inside the modal already has focus
+        const modalEl = document.querySelector('.mt-modal');
+        const activeEl = document.activeElement;
+        if (modalEl && activeEl && modalEl.contains(activeEl) && activeEl !== modalEl) {
+          // Let the element-level handlers deal with it
+          return;
+        }
+        // Nothing focused in modal - start keyboard nav
+        e.preventDefault();
+        e.stopPropagation();
+        setIsKeyboardNav(true);
+        const selectedIndex = models.findIndex(m => m.id === selectedModel);
+        const targetIndex = selectedIndex >= 0 ? selectedIndex : 0;
+        setFocusedModelIndex(targetIndex);
+        setFocusedToggleAll(false);
+        setFocusedToolId(null);
+        modelRefs.current[targetIndex]?.focus();
       }
     };
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, onClose]);
+  }, [isOpen, onClose, selectedModel]);
 
   // Handle keyboard navigation for models
   const handleModelKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
@@ -193,24 +230,66 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
       }
     } else if (e.key === 'ArrowUp') {
       e.preventDefault();
-      if (currentIndex === 0) {
+      // Find current row and position within row
+      let currentRow = 0;
+      for (let r = 0; r < rowInfo.length; r++) {
+        if (currentIndex >= rowInfo[r].start && currentIndex < rowInfo[r].end) {
+          currentRow = r;
+          break;
+        }
+      }
+      const row = rowInfo[currentRow];
+      const isInLeftColumn = currentIndex < row.leftEnd;
+      const posInColumn = isInLeftColumn ? currentIndex - row.start : currentIndex - row.rightStart;
+
+      if (currentRow === 0) {
         // Go back to toggle-all
         setFocusedToolId(null);
         setFocusedToggleAll(true);
         toggleAllRef.current?.focus();
       } else {
-        // Move up by roughly a row (~6 items per row: 3 read + 3 write, etc)
-        const step = 6;
-        const newIndex = Math.max(0, currentIndex - step);
+        // Go to same column in prev row
+        const prevRow = rowInfo[currentRow - 1];
+        let newIndex: number;
+        if (isInLeftColumn) {
+          const leftSize = prevRow.leftEnd - prevRow.start;
+          newIndex = prevRow.start + Math.min(posInColumn, leftSize - 1);
+        } else {
+          const rightSize = prevRow.end - prevRow.rightStart;
+          newIndex = prevRow.rightStart + Math.min(posInColumn, rightSize - 1);
+        }
         const prevTool = flatToolList[newIndex];
         setFocusedToolId(prevTool.id);
         toolRefs.current.get(prevTool.id)?.focus();
       }
     } else if (e.key === 'ArrowDown') {
       e.preventDefault();
-      // Move down by roughly a row
-      const step = 6;
-      const newIndex = Math.min(flatToolList.length - 1, currentIndex + step);
+      // Find current row and position within row
+      let currentRow = 0;
+      for (let r = 0; r < rowInfo.length; r++) {
+        if (currentIndex >= rowInfo[r].start && currentIndex < rowInfo[r].end) {
+          currentRow = r;
+          break;
+        }
+      }
+      const row = rowInfo[currentRow];
+      const isInLeftColumn = currentIndex < row.leftEnd;
+      const posInColumn = isInLeftColumn ? currentIndex - row.start : currentIndex - row.rightStart;
+
+      if (currentRow >= rowInfo.length - 1) {
+        // Already on last row, stay put
+        return;
+      }
+      // Go to same column in next row
+      const nextRow = rowInfo[currentRow + 1];
+      let newIndex: number;
+      if (isInLeftColumn) {
+        const leftSize = nextRow.leftEnd - nextRow.start;
+        newIndex = nextRow.start + Math.min(posInColumn, leftSize - 1);
+      } else {
+        const rightSize = nextRow.end - nextRow.rightStart;
+        newIndex = nextRow.rightStart + Math.min(posInColumn, rightSize - 1);
+      }
       const nextTool = flatToolList[newIndex];
       setFocusedToolId(nextTool.id);
       toolRefs.current.get(nextTool.id)?.focus();
@@ -223,7 +302,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
       onToolsChange(newTools);
       saveEnabledTools(newTools);
     }
-  }, [flatToolList, selectedModel, enabledTools, onToolsChange]);
+  }, [flatToolList, rowInfo, selectedModel, enabledTools, onToolsChange]);
 
   const toggleTool = useCallback((toolId: string) => {
     const newTools = enabledTools.includes(toolId)
@@ -232,6 +311,23 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     onToolsChange(newTools);
     saveEnabledTools(newTools);
   }, [enabledTools, onToolsChange]);
+
+  const toggleCategory = useCallback((categoryKey: string) => {
+    const categoryTools = toolsByCategory[categoryKey as keyof typeof toolsByCategory] || [];
+    const categoryIds = categoryTools.map(t => t.id);
+    const allEnabled = categoryIds.every(id => enabledTools.includes(id));
+
+    let newTools: string[];
+    if (allEnabled) {
+      // Disable all in category
+      newTools = enabledTools.filter(id => !categoryIds.includes(id));
+    } else {
+      // Enable all in category
+      newTools = [...new Set([...enabledTools, ...categoryIds])];
+    }
+    onToolsChange(newTools);
+    saveEnabledTools(newTools);
+  }, [enabledTools, onToolsChange, toolsByCategory]);
 
   if (!isOpen) return null;
 
@@ -244,8 +340,11 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
         onKeyDown={handleKeyDownGlobal}
       >
         <div className="mt-header">
-          <h3>model & tools</h3>
-          <button className="mt-close" onClick={onClose}>
+          <h3>
+            <IconTool size={14} stroke={1.5} style={{ marginRight: '6px' }} />
+            model & tools
+          </h3>
+          <button className="mt-close" onClick={onClose} title="close (esc)">
             <IconX size={14} />
           </button>
         </div>
@@ -288,7 +387,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
             <div className="mt-category-row">
               {toolsByCategory['file-read'].length > 0 && (
                 <div className="mt-category mt-category-half">
-                  <div className="mt-category-name">read</div>
+                  <div className="mt-category-name" onClick={() => toggleCategory('file-read')}>read</div>
                   <div className="mt-tools-grid">
                     {toolsByCategory['file-read'].map(tool => (
                       <button
@@ -308,7 +407,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
               )}
               {toolsByCategory['file-write'].length > 0 && (
                 <div className="mt-category mt-category-half">
-                  <div className="mt-category-name">write</div>
+                  <div className="mt-category-name" onClick={() => toggleCategory('file-write')}>write</div>
                   <div className="mt-tools-grid">
                     {toolsByCategory['file-write'].map(tool => (
                       <button
@@ -332,7 +431,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
             <div className="mt-category-row">
               {toolsByCategory.web.length > 0 && (
                 <div className="mt-category mt-category-half">
-                  <div className="mt-category-name">web</div>
+                  <div className="mt-category-name" onClick={() => toggleCategory('web')}>web</div>
                   <div className="mt-tools-grid">
                     {toolsByCategory.web.map(tool => (
                       <button
@@ -352,7 +451,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
               )}
               {toolsByCategory.terminal.length > 0 && (
                 <div className="mt-category mt-category-half">
-                  <div className="mt-category-name">terminal</div>
+                  <div className="mt-category-name" onClick={() => toggleCategory('terminal')}>terminal</div>
                   <div className="mt-tools-grid">
                     {toolsByCategory.terminal.map(tool => (
                       <button
@@ -376,7 +475,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
             <div className="mt-category-row">
               {toolsByCategory.other.length > 0 && (
                 <div className="mt-category mt-category-half">
-                  <div className="mt-category-name">other</div>
+                  <div className="mt-category-name" onClick={() => toggleCategory('other')}>other</div>
                   <div className="mt-tools-grid">
                     {toolsByCategory.other.map(tool => (
                       <button
@@ -396,7 +495,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
               )}
               {toolsByCategory.agents.length > 0 && (
                 <div className="mt-category mt-category-half">
-                  <div className="mt-category-name">agents</div>
+                  <div className="mt-category-name" onClick={() => toggleCategory('agents')}>agents</div>
                   <div className="mt-tools-grid">
                     {toolsByCategory.agents.map(tool => (
                       <button

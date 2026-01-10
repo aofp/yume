@@ -149,7 +149,7 @@
   border-radius: 4px;
   font-size: 12px;
   font-family: var(--font-mono);
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
 }
 

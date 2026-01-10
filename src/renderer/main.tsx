@@ -224,6 +224,11 @@ tauriClaudeClient.onSessionCreated(sessionCreatedHandler);
 
 // Auto-reconnect restored sessions after app starts
 setTimeout(() => {
+  // Only reconnect if socket is connected
+  if (claudeCodeClient.connectionStatus !== 'connected' && !claudeCodeClient.isConnected()) {
+    return; // Skip reconnection if not connected yet
+  }
+
   const { sessions, currentSessionId } = store;
 
   sessions.forEach(async (session) => {
@@ -242,7 +247,7 @@ setTimeout(() => {
   if (currentSessionId && sessions.find(s => s.id === currentSessionId)) {
     store.setCurrentSession(currentSessionId);
   }
-}, 2000); // Wait 2 seconds for socket connection to establish
+}, 500); // Reduced from 2000ms - adaptive connection makes this faster
 
 // Wait for DOM to be ready
 function initApp() {

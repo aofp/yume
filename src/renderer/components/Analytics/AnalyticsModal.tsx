@@ -310,7 +310,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
               </div>
             )}
           </div>
-          <button className="analytics-close" onClick={onClose}>
+          <button className="analytics-close" onClick={onClose} title="close (esc)">
             <IconX size={16} stroke={1.5} />
           </button>
         </div>

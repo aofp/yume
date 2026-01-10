@@ -312,8 +312,7 @@
 }
 
 .modal-close-btn:hover {
-  background: var(--fg-10);
-  color: var(--fg-60);
+  color: var(--negative-color);
 }
 
 .modal-close {

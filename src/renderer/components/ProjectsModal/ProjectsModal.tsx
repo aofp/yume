@@ -427,8 +427,8 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
         }
       }
       
-      // Ctrl+P to close modal
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      // Ctrl+J to close modal
+      if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
         e.preventDefault();
         onClose();
       }
@@ -789,7 +789,7 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
               e.stopPropagation();
               setContextMenu(null);
               onClose();
-            }}>
+            }} title="close (esc)">
               <IconX size={16} />
             </button>
           </div>

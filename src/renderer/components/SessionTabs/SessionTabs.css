@@ -120,7 +120,7 @@
   background: rgba(var(--accent-rgb), 0.35);
   border-radius: 1px;
   pointer-events: auto;
-  cursor: pointer;
+  cursor: default;
   transition: background 0.2s ease, height 0.1s ease;
 }
 

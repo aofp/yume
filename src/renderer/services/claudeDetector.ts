@@ -4,6 +4,7 @@
  */
 
 import { invoke } from '@tauri-apps/api/core';
+import { isDev } from '../utils/helpers';
 
 export type ClaudeExecutionMode = 'native-windows' | 'wsl' | 'native' | 'auto';
 
@@ -61,7 +62,7 @@ class ClaudeDetectorService {
         // Only use cache if it's less than cacheTimeout old
         if (parsed.lastDetection && (Date.now() - parsed.lastDetection) < this.cacheTimeout) {
           this.detectionCache = parsed;
-          console.log('🔄 Hydrated Claude detection cache from localStorage');
+          if (isDev) console.log('Hydrated Claude detection cache from localStorage');
         }
       }
 
@@ -71,11 +72,11 @@ class ClaudeDetectorService {
         // Cache version for 30 minutes
         if (parsed.timestamp && (Date.now() - parsed.timestamp) < 30 * 60 * 1000) {
           this.claudeVersionCache = parsed.version;
-          console.log('🔄 Hydrated Claude version cache:', parsed.version);
+          if (isDev) console.log('Hydrated Claude version cache:', parsed.version);
         }
       }
     } catch (error) {
-      console.warn('Failed to hydrate cache from localStorage:', error);
+      if (isDev) console.warn('Failed to hydrate cache from localStorage:', error);
     }
   }
 
@@ -102,13 +103,13 @@ class ClaudeDetectorService {
    */
   async detectInstallations(force = false): Promise<ClaudeDetectionResult> {
     // Return cached result if available and not forced
-    if (!force && this.detectionCache && 
+    if (!force && this.detectionCache &&
         (Date.now() - this.detectionCache.lastDetection) < this.cacheTimeout) {
       return this.detectionCache;
     }
 
-    console.log('🔍 Starting Claude installation detection...');
-    
+    if (isDev) console.log('Starting Claude installation detection...');
+
     const result: ClaudeDetectionResult = {
       lastDetection: Date.now(),
       recommended: null
@@ -118,14 +119,14 @@ class ClaudeDetectorService {
     const nativeWindows = await this.detectNativeWindows();
     if (nativeWindows) {
       result.nativeWindows = nativeWindows;
-      console.log('✅ Found native Windows Claude:', nativeWindows.path);
+      if (isDev) console.log('Found native Windows Claude:', nativeWindows.path);
     }
 
     // Detect WSL installation
     const wsl = await this.detectWSL();
     if (wsl) {
       result.wsl = wsl;
-      console.log('✅ Found WSL Claude:', wsl.path);
+      if (isDev) console.log('Found WSL Claude:', wsl.path);
     }
 
     // Determine recommended mode
@@ -140,10 +141,10 @@ class ClaudeDetectorService {
 
     // Cache the result
     this.detectionCache = result;
-    
+
     // Store in localStorage for persistence
     localStorage.setItem('claudeDetectionResult', JSON.stringify(result));
-    
+
     return result;
   }
 
@@ -160,7 +161,7 @@ class ClaudeDetectorService {
       this.windowsPathsCache = paths;
       return paths;
     } catch (error) {
-      console.warn('Failed to get Windows paths from backend:', error);
+      if (isDev) console.warn('Failed to get Windows paths from backend:', error);
       return {};
     }
   }
@@ -216,15 +217,15 @@ class ClaudeDetectorService {
     // Remove duplicates and undefined values
     const uniquePaths = [...new Set(possiblePaths.filter(p => p))];
 
-    console.log('🔍 Checking native Windows paths:', uniquePaths.length, 'locations');
+    if (isDev) console.log('Checking native Windows paths:', uniquePaths.length, 'locations');
 
     for (const path of uniquePaths) {
       try {
         // Use Tauri command to check if file exists
         const exists = await invoke<boolean>('check_file_exists', { path });
-        
+
         if (exists) {
-          console.log('📍 Found potential Claude at:', path);
+          if (isDev) console.log('Found potential Claude at:', path);
           
           // Try to get version
           const version = await this.getClaudeVersion(path, 'native-windows');
@@ -265,7 +266,7 @@ class ClaudeDetectorService {
         }
       }
     } catch (error) {
-      console.log('⚠️ "where claude" command failed:', error);
+      if (isDev) console.log('"where claude" command failed:', error);
     }
 
     return null;
@@ -279,18 +280,18 @@ class ClaudeDetectorService {
       // Check if WSL is available
       const wslAvailable = await invoke<boolean>('check_wsl_available');
       if (!wslAvailable) {
-        console.log('⚠️ WSL not available on this system');
+        if (isDev) console.log('WSL not available on this system');
         return null;
       }
 
       // Get WSL username
       const wslUser = await invoke<string>('get_wsl_username');
       if (!wslUser) {
-        console.log('⚠️ Could not determine WSL username');
+        if (isDev) console.log('Could not determine WSL username');
         return null;
       }
 
-      console.log('🔍 WSL user detected:', wslUser);
+      if (isDev) console.log('WSL user detected:', wslUser);
 
       // Common WSL Claude paths
       const wslPaths = [
@@ -306,9 +307,9 @@ class ClaudeDetectorService {
       for (const path of wslPaths) {
         try {
           const exists = await invoke<boolean>('check_wsl_file_exists', { path });
-          
+
           if (exists) {
-            console.log('📍 Found WSL Claude at:', path);
+            if (isDev) console.log('Found WSL Claude at:', path);
             
             // Get version
             const version = await this.getClaudeVersion(path, 'wsl');
@@ -331,11 +332,11 @@ class ClaudeDetectorService {
         const whichResult = await invoke<string>('execute_wsl_command', {
           command: 'which claude'
         });
-        
+
         if (whichResult && whichResult.trim()) {
           const path = whichResult.trim();
           const version = await this.getClaudeVersion(path, 'wsl');
-          
+
           return {
             type: 'wsl',
             path,
@@ -345,11 +346,11 @@ class ClaudeDetectorService {
           };
         }
       } catch (error) {
-        console.log('⚠️ "which claude" in WSL failed:', error);
+        if (isDev) console.log('"which claude" in WSL failed:', error);
       }
 
     } catch (error) {
-      console.error('❌ WSL detection failed:', error);
+      if (isDev) console.error('WSL detection failed:', error);
     }
 
     return null;
@@ -375,7 +376,7 @@ class ClaudeDetectorService {
         return match ? match[1] : undefined;
       }
     } catch (error) {
-      console.log('⚠️ Could not get version for:', path);
+      if (isDev) console.log('Could not get version for:', path);
     }
     return undefined;
   }
@@ -425,13 +426,13 @@ class ClaudeDetectorService {
       const socket = (window as any).claudeSocket;
       if (socket && socket.connected) {
         socket.emit('claude-settings-update', payload);
-        console.log('📡 Sent Claude settings to server via Socket.IO');
+        if (isDev) console.log('Sent Claude settings to server via Socket.IO');
       }
-      
+
       // Also store in Tauri app data for persistence
       await invoke('save_claude_settings', { settings: payload });
     } catch (error) {
-      console.error('Failed to notify server of settings:', error);
+      if (isDev) console.error('Failed to notify server of settings:', error);
     }
   }
 
@@ -440,8 +441,8 @@ class ClaudeDetectorService {
    */
   async testInstallation(installation: ClaudeInstallation): Promise<boolean> {
     try {
-      console.log('🧪 Testing Claude installation:', installation.path);
-      
+      if (isDev) console.log('Testing Claude installation:', installation.path);
+
       const testCommand = installation.type === 'wsl'
         ? await invoke<string>('execute_wsl_command', {
             command: `echo "test" | ${installation.path} --version`
@@ -450,13 +451,13 @@ class ClaudeDetectorService {
             command: installation.path,
             args: ['--version']
           });
-      
+
       const success = !!testCommand && testCommand.includes('claude');
-      console.log(success ? '✅ Test passed' : '❌ Test failed');
-      
+      if (isDev) console.log(success ? 'Test passed' : 'Test failed');
+
       return success;
     } catch (error) {
-      console.error('❌ Installation test failed:', error);
+      if (isDev) console.error('Installation test failed:', error);
       return false;
     }
   }

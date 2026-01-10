@@ -1,98 +1,117 @@
 # Yurucode Competitive Advantages
 
+*Last Updated: January 9, 2026*
+
 ## Core Value Proposition
 
-**Yurucode = Claude Code CLI power + Native desktop performance**
+**Yurucode = Claude Code CLI power + Native desktop performance + 12+ unique features**
 
-We solve Claude Code CLI's biggest problem: the laggy, flickering, frustrating TUI.
+We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide features no competitor has.
 
-## Immediate Advantages Over Claude Code CLI
+## Unique Features (No Competitor Has)
 
-### 1. No TUI Rendering Issues
+| Feature | Description |
+|---------|-------------|
+| **5h + 7-day limit tracking** | Visual quota bars in context bar showing Anthropic subscription limits |
+| **Yurucode Guard** | Built-in security hook (blocks rm -rf, sudo, dangerous git, etc.) |
+| **5 built-in agents** | architect, explorer, implementer, guardian, specialist |
+| **@ mention system** | @r (recent files), @m (modified files), folder navigation |
+| **Stream timers** | Live thinking/bash/compacting duration timers |
+| **History/rollback panel** | Visual message history with rollback |
+| **Ultrathink support** | Cmd+K insert + rainbow gradient highlighting |
+| **30 themes** | Way more than Cursor (~5), Windsurf (~3), Opcode (0) |
+| **9 hook events** | user_prompt_submit, pre_tool_use, post_tool_use, assistant_response, session_start, session_end, context_warning, compaction_trigger, error |
+| **Crash recovery** | Auto-save with 24hr restoration window |
+| **$9 one-time** | vs $240-2400/year subscriptions |
+| **Bash mode** | !/$ prefix for direct terminal commands |
+
+## Advantages Over Claude Code CLI
 
 | Problem | Claude Code CLI | Yurucode |
 |---------|-----------------|----------|
-| Flickering | React Ink redraws cause flicker | Native rendering, no flicker |
-| Input lag | 10+ seconds in long sessions | Consistent <100ms response |
-| Rendering corruption | Display scrolls with keystrokes | Stable, predictable UI |
-| IME support | Broken for Japanese/Chinese | Native OS IME handling |
-| Terminal state corruption | Persists after exit | Self-contained app |
+| Flickering | React Ink redraws cause flicker | ✅ Native rendering, no flicker |
+| Input lag | 10+ seconds in long sessions | ✅ Consistent <100ms response |
+| Rendering corruption | Display scrolls with keystrokes | ✅ Stable, predictable UI |
+| IME support | Broken for Japanese/Chinese | ✅ Native OS IME handling |
+| Terminal state corruption | Persists after exit | ✅ Self-contained app |
+| No thinking timer | Can't see how long it's thinking | ✅ Live stream timers |
+| No quota tracking | No 5h/7d limit visibility | ✅ Visual quota bars |
+| JSON config | MCP/hooks require file editing | ✅ Visual UI forms |
+| No file mentions | Must type full paths | ✅ @ mentions with autocomplete |
 
-### 2. Visual File Management
+## Complete Feature List
 
-- **File tree**: See project structure at a glance
-- **Visual diffs**: Preview changes before accepting
-- **Drag-drop**: Add files to context easily
-- **Search**: Quick file finder
+### Core
+- ✅ Native rendering (no flickering, no lag)
+- ✅ Multi-tab sessions
+- ✅ Crash recovery (24hr window)
+- ✅ Virtualized messages (handles long sessions)
 
-### 3. Session Management
+### Panels
+- ✅ Files panel (with git status indicators)
+- ✅ Git panel (with +/- line stats)
+- ✅ History/rollback panel
 
-- **Persistent sessions**: Pick up where you left off
-- **Project switching**: Easy multi-project workflow
-- **Crash recovery**: Auto-save prevents data loss
-- **History**: Visual conversation history
+### Context Management
+- ✅ Token meter (always visible percentage)
+- ✅ 5h + 7-day limit bars (UNIQUE)
+- ✅ Auto-compact (60%/65% thresholds)
+- ✅ Context full overlay with actions
 
-### 4. Desktop Integration
+### Tools
+- ✅ MCP manager (toggle switches, status)
+- ✅ Hooks UI (9 events + Yurucode Guard)
+- ✅ Model selector (with tool count)
 
-- **System notifications**: Know when long tasks complete
-- **Window management**: Resize, minimize, multi-monitor
-- **Keyboard shortcuts**: Native OS shortcuts work
-- **Clipboard**: Proper copy/paste with images
+### Input
+- ✅ Ultrathink (Cmd+K insert + highlighting)
+- ✅ @ mentions (@r, @m, folders)
+- ✅ / commands (/clear, /model, /title, /init, /compact + custom)
+- ✅ Bash mode (!/$ prefix)
+- ✅ Drag & drop files
 
-## Technical Advantages
+### Output
+- ✅ Stream indicators (thinking/bash/compacting timers)
+- ✅ Syntax highlighting
+- ✅ Markdown rendering
+- ✅ Diff viewer
 
-### Architecture
+### Agents
+- ✅ 5 built-in agents (UNIQUE)
+- ✅ Custom agents with system prompts
+- ✅ Agent sync to ~/.claude/agents/
 
-```
-Tauri (Rust) + React Frontend
-vs
-Node.js + React Ink (Terminal)
-```
+### Themes
+- ✅ 30 dark themes
+- ✅ Font customization (mono + sans)
+- ✅ Background opacity
 
-**Why this matters**:
-- Rust backend = native performance
-- React in browser = proper rendering engine
-- No terminal abstraction layer = no TUI bugs
-- Tauri = small binary, low memory
+### Session
+- ✅ Checkpoints (manual save points)
+- ✅ Timeline navigator
+- ✅ Session stats modal
 
-### Performance Comparison
+### Analytics
+- ✅ Full analytics (by model, date, project)
+- ✅ Cost tracking (per-session and cumulative)
 
-| Metric | Claude Code CLI | Yurucode Target |
-|--------|-----------------|-----------------|
-| Startup | 1-3s | <500ms |
-| Input latency | 100ms-10s | <50ms |
-| Memory | 200-500MB | <150MB |
-| Binary size | N/A (npm) | <50MB |
+### Shortcuts
+- ✅ 32+ keyboard shortcuts
 
-## Feature Parity Checklist
-
-Must match Claude Code CLI:
-- [x] Natural language commands
-- [x] File editing
-- [x] Command execution
-- [x] Git operations
-- [x] Multi-file context
-- [x] Subagents (via Claude's Task tool + 5 built-in yurucode agents)
-- [x] Background agents (supported via Claude's Task tool)
-- [x] **Checkpoints/rewind (ENABLED with visual UI)**
-- [x] **Timeline navigator (UNIQUE)**
-- [x] Skills system (supported via Claude)
-- [x] Hooks (9 event types - most comprehensive)
-- [x] MCP integration (full UI for server management)
-- [x] Custom commands (12 defaults with $ARGUMENTS templates - UNIQUE)
-- [x] 30 themes (best in class)
-- [x] **5h + 7-day Anthropic limit tracking (UNIQUE)**
-- [x] **Keyboard-first design (30+ shortcuts)**
-- [x] **Drag & drop (tabs, files)**
-- [x] **Git diff viewer**
+### Remaining
+- ⬜ Light mode (1 day)
+- ⬜ Command palette (2-3 days)
 
 ## Competitive Positioning
 
 ### vs Claude Code CLI
-"All the power, none of the lag"
+"All the power, none of the lag, plus 12 unique features"
 
 ### vs Cursor
-"Claude-native, no IDE bloat"
+"Claude-native, no IDE bloat, $9 vs $240+/year"
+
+### vs Opcode
+"More features: 5h/7d tracking, guard, agents, 30 themes, hooks, crash recovery"
 
 ### vs Aider
 "Visual interface for the Claude experience"
@@ -103,10 +122,10 @@ Must match Claude Code CLI:
 ## Target User Segments
 
 ### 1. Frustrated Claude Code CLI Users
-- Experienced input lag
-- Hate terminal flickering
+- Experienced input lag and flickering
 - Want visual file management
 - Need IME support
+- Value stream timers
 
 ### 2. Terminal-Averse Developers
 - Prefer GUI tools
@@ -120,78 +139,50 @@ Must match Claude Code CLI:
 - Want crash recovery
 - Value organization
 
-### 4. Power Users Wanting More
+### 4. Power Users
 - Like Claude's capabilities
 - Want better UX layer
 - Appreciate native performance
-- Value desktop integration
-
-## Differentiation Strategy
-
-### ✅ COMPLETED (January 2026)
-1. **Nail the basics**: Smooth input, no lag, stable UI ✅
-2. **Visual polish**: Clean, modern interface ✅
-3. **Session management**: Better than CLI ✅
-4. **Crash recovery**: Never lose work ✅
-5. **Feature parity**: Subagents, checkpoints, MCP ✅
-6. **Enhanced visuals**: Diff views, file trees, syntax highlighting ✅
-7. **Checkpoints + Timeline**: Visual UI (UNIQUE) ✅
-8. **30 themes**: Best in class ✅
-9. **5 built-in agents**: architect, explorer, implementer, guardian, specialist ✅
-10. **Custom commands**: Slash commands with templates ✅
-11. **9 hook events**: Most comprehensive ✅
-12. **Platform coverage**: macOS, Windows, Linux ✅
-
-### Remaining (Short-term)
-1. **Light mode**: Accessibility
-2. **Command palette**: Cmd+K expected UX
-
-### Future Consideration
-1. **Collaboration**: Team features
-2. **Enterprise**: SSO, audit logs, compliance
-
-Note: Tab completion not applicable - yurucode is a chat interface, not a code editor. Users use Cursor/Copilot for inline completion alongside yurucode for complex tasks.
+- Value keyboard shortcuts
 
 ## Messaging
 
 ### Tagline Options
 - "Claude Code, Unchained"
 - "The Claude Code Desktop"
-- "Claude's Power, Desktop Performance"
-- "No More Terminal Lag"
+- "All the Power, None of the Lag"
 
-### Key Messages - UPDATED
+### Key Messages
 1. **Performance**: "Input that keeps up with your thoughts"
 2. **Reliability**: "An interface that just works"
 3. **Visual**: "See your code, not escape sequences"
 4. **Desktop**: "Native app, native experience"
-5. **Checkpoints**: "Time-travel through your changes - only on yurucode"
+5. **Limits**: "Track your actual Anthropic 5h + 7-day limits"
 6. **Agents**: "5 specialized AI agents built-in"
 7. **Value**: "$9 one-time vs $20-200/mo subscriptions"
 8. **Themes**: "30 themes - make it yours"
-9. **Limits**: "Track your actual Anthropic 5h + 7-day limits"
-10. **Keyboard-first**: "30+ shortcuts - never leave the keyboard"
+9. **Keyboard**: "32+ shortcuts - never leave the keyboard"
+10. **Security**: "Yurucode Guard protects you from dangerous commands"
 
-### Unique Selling Points (vs ALL Competitors)
-| USP | Details |
-|-----|---------|
-| **5h + 7-day limit tracking** | Only yurucode tracks actual Anthropic subscription limits |
-| Visual checkpoint/timeline | Only yurucode - Cursor/Windsurf don't have this |
-| 5 built-in agents | architect, explorer, implementer, guardian, specialist |
-| Custom commands | 12 defaults + slash commands with $ARGUMENTS templates |
-| 30 themes | Cursor has ~5, Windsurf has ~3, Opcode has ~0 |
-| 9 hook events | Most comprehensive hook system (Opcode has 0) |
-| Auto-compact 60%/65% | No competitor does this |
-| Keyboard-first | 30+ shortcuts, bash mode (!/$) |
-| Drag & drop | Tab reordering, file drops |
-| Git diff viewer | Visual diff preview |
-| Crash recovery | Auto-save every 5 min |
-| $9 one-time | vs $240-2400/year subscriptions (Opcode is free but less features) |
+## Unique Selling Points Table
+
+| USP | vs CLI | vs Cursor | vs Opcode |
+|-----|--------|-----------|-----------|
+| 5h/7d limit tracking | ✅ No | ✅ No | ✅ No |
+| Yurucode Guard | ✅ No | ✅ No | ✅ No |
+| 5 built-in agents | ✅ No | ✅ No | ✅ No |
+| @ mention system | ✅ No | ✅ No | ✅ No |
+| Stream timers | ✅ No | ✅ No | ✅ No |
+| 30 themes | ✅ No | ✅ ~5 | ✅ 0 |
+| 9 hook events | ✅ Partial | ✅ Partial | ✅ 0 |
+| Crash recovery | ✅ No | ✅ No | ✅ No |
+| $9 one-time | ✅ Usage | ✅ $240+/yr | ✅ Free (less features) |
+| Native performance | ✅ React Ink | ✅ Electron issues | ✅ Unknown |
 
 ## Success Metrics
 
-1. **Performance**: <50ms input latency (vs 100ms-10s CLI) ✅
+1. **Performance**: <50ms input latency ✅
 2. **Stability**: Zero rendering corruption ✅
-3. **Unique features**: More than any competitor ✅
+3. **Unique features**: 12+ no competitor has ✅
 4. **Adoption**: Users switching from CLI
 5. **Satisfaction**: "Would recommend" score

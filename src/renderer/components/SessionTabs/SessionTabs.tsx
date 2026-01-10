@@ -560,6 +560,15 @@ export const SessionTabs: React.FC = () => {
                 const clickOffsetX = tabRect ? (e.clientX - tabRect.left) / zoomLevel : 0;
                 const clickOffsetY = tabRect ? (e.clientY - tabRect.top) / zoomLevel : 0;
 
+                // Track velocity for physics-based rotation
+                let lastX = startX;
+                let lastY = startY;
+                let velocityX = 0;
+                let velocityY = 0;
+                let currentRotation = 0;
+                let targetRotation = 0;
+                let animationFrame: number | null = null;
+
                 // Create drag preview - clone the actual tab
                 const createDragPreview = () => {
                   const tabElement = document.querySelector(`[data-session-id="${session.id}"]`) as HTMLElement;
@@ -571,7 +580,7 @@ export const SessionTabs: React.FC = () => {
                     pointer-events: none !important;
                     z-index: 10001;
                     opacity: 1;
-                    transform: rotate(2deg);
+                    transform: rotate(0deg);
                     transition: none;
                     cursor: grabbing !important;
                     user-select: none;
@@ -623,8 +632,46 @@ export const SessionTabs: React.FC = () => {
                     if (dragPreview) {
                       // Get zoom level from body style or default to 1
                       const currentZoom = parseFloat(document.body.style.zoom || '1');
-                      dragPreview.style.left = `${moveEvent.clientX / currentZoom - clickOffsetX}px`;
-                      dragPreview.style.top = `${moveEvent.clientY / currentZoom - clickOffsetY}px`;
+                      const newX = moveEvent.clientX / currentZoom - clickOffsetX;
+                      const newY = moveEvent.clientY / currentZoom - clickOffsetY;
+
+                      // Calculate velocity (smoothed)
+                      const rawVelocityX = moveEvent.clientX - lastX;
+                      const rawVelocityY = moveEvent.clientY - lastY;
+                      velocityX = velocityX * 0.7 + rawVelocityX * 0.3;
+                      velocityY = velocityY * 0.7 + rawVelocityY * 0.3;
+                      lastX = moveEvent.clientX;
+                      lastY = moveEvent.clientY;
+
+                      // Calculate target rotation based on horizontal velocity
+                      // Max rotation of ~8 degrees, scaled by velocity
+                      targetRotation = Math.max(-8, Math.min(8, velocityX * 0.5));
+
+                      // Smoothly interpolate current rotation toward target
+                      if (animationFrame === null) {
+                        const animate = () => {
+                          // Ease toward target rotation
+                          currentRotation += (targetRotation - currentRotation) * 0.15;
+
+                          // Apply damping when velocity is low (spring back to 0)
+                          if (Math.abs(velocityX) < 0.5) {
+                            targetRotation *= 0.9;
+                          }
+
+                          if (dragPreview) {
+                            dragPreview.style.transform = `rotate(${currentRotation}deg)`;
+                          }
+
+                          // Continue animation while dragging
+                          if (dragPreview) {
+                            animationFrame = requestAnimationFrame(animate);
+                          }
+                        };
+                        animationFrame = requestAnimationFrame(animate);
+                      }
+
+                      dragPreview.style.left = `${newX}px`;
+                      dragPreview.style.top = `${newY}px`;
                     }
                     
                     // Ensure cursor stays as grabbing
@@ -670,10 +717,16 @@ export const SessionTabs: React.FC = () => {
                 };
                 
                 const cleanupDrag = () => {
+                  // Cancel rotation animation
+                  if (animationFrame !== null) {
+                    cancelAnimationFrame(animationFrame);
+                    animationFrame = null;
+                  }
+
                   // Remove drag class and cursor from body
                   document.body.classList.remove('tab-dragging');
                   document.body.style.cursor = '';
-                  
+
                   // Also remove cursor from all elements to fix stuck cursor bug
                   const allElements = document.querySelectorAll('*');
                   allElements.forEach(el => {
@@ -681,7 +734,7 @@ export const SessionTabs: React.FC = () => {
                       el.style.cursor = '';
                     }
                   });
-                  
+
                   // Remove drag preview
                   if (dragPreview && document.body.contains(dragPreview)) {
                     document.body.removeChild(dragPreview);

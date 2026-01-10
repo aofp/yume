@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { useClaudeCodeStore } from '../stores/claudeCodeStore';
 import { hooksService } from './hooksService';
 import { setAutoCompactMessage } from './wrapperIntegration';
+import { isDev } from '../utils/helpers';
 
 export interface CompactionConfig {
   autoThreshold: number;  // 0.60 (60%) - auto-compact threshold
@@ -78,38 +79,38 @@ class CompactionService {
    * Update context usage and check for auto-compaction
    */
   async updateContextUsage(sessionId: string, usagePercentage: number): Promise<void> {
-    console.log(`[Compaction] 📊 updateContextUsage called: ${usagePercentage.toFixed(2)}% for session ${sessionId}`);
+    if (isDev) console.log(`[Compaction] updateContextUsage called: ${usagePercentage.toFixed(2)}% for session ${sessionId}`);
 
     // Check if auto-compact is enabled (defaults to true if undefined)
     const store = useClaudeCodeStore.getState();
     if (store.autoCompactEnabled === false) {
-      console.log('[Compaction] ⚠️ Auto-compact disabled, skipping');
+      if (isDev) console.log('[Compaction] Auto-compact disabled, skipping');
       return;
     }
 
     // Don't process if already compacting
     if (this.compactingSessionIds.has(sessionId)) {
-      console.log('[Compaction] ⚠️ Already compacting, skipping update');
+      if (isDev) console.log('[Compaction] Already compacting, skipping update');
       return;
     }
 
     // Guard: Sanity check - if percentage is impossibly high (>200%), it's likely wrong calculation
     if (usagePercentage > 200) {
-      console.warn(`[Compaction] ⚠️ Ignoring impossibly high usage: ${usagePercentage.toFixed(2)}% - likely cumulative API values, not actual context`);
+      if (isDev) console.warn(`[Compaction] Ignoring impossibly high usage: ${usagePercentage.toFixed(2)}% - likely cumulative API values, not actual context`);
       return;
     }
 
     // Guard: Don't trigger on negative or zero values
     if (usagePercentage <= 0) {
-      console.log('[Compaction] ⚠️ Ignoring zero/negative usage');
+      if (isDev) console.log('[Compaction] Ignoring zero/negative usage');
       return;
     }
 
     try {
       // Update backend with context usage
       const usageDecimal = usagePercentage / 100; // Convert percentage to decimal
-      console.log(`[Compaction] 📡 Calling backend with usage: ${usageDecimal} (${usagePercentage}%)`);
-      
+      if (isDev) console.log(`[Compaction] Calling backend with usage: ${usageDecimal} (${usagePercentage}%)`);
+
       const actionStr = await invoke<string>('update_context_usage', {
         sessionId,
         usage: usageDecimal
@@ -117,15 +118,15 @@ class CompactionService {
 
       // Backend returns just the enum variant as a string (e.g., "AutoTrigger")
       const actionType = JSON.parse(actionStr) as CompactionActionType;
-      console.log(`[Compaction] 🎬 Backend returned action type: "${actionType}"`);
-      
+      if (isDev) console.log(`[Compaction] Backend returned action type: "${actionType}"`);
+
       // Convert to our CompactionAction interface
       const action: CompactionAction = {
         type: actionType,
         message: this.getActionMessage(actionType),
         shouldTriggerCompact: actionType === 'AutoTrigger' || actionType === 'Force'
       };
-      console.log(`[Compaction] 📦 Parsed action:`, action);
+      if (isDev) console.log('[Compaction] Parsed action:', action);
 
       // Handle different action types
       switch (action.type) {
@@ -134,28 +135,28 @@ class CompactionService {
           break;
 
         case 'Warning':
-          console.warn(`[Compaction] ⚠️ Warning: ${action.message}`);
+          if (isDev) console.warn(`[Compaction] Warning: ${action.message}`);
           // Show warning in UI
           this.showCompactionWarning(sessionId, action.message || '');
           break;
 
         case 'AutoTrigger':
-          console.log(`[Compaction] 🔄 AUTO-TRIGGER ACTION at ${usagePercentage}%!`);
+          if (isDev) console.log(`[Compaction] AUTO-TRIGGER ACTION at ${usagePercentage}%!`);
           await this.triggerAutoCompaction(sessionId);
           break;
 
         case 'Force':
-          console.warn(`[Compaction] 🚨 FORCE-TRIGGER ACTION at ${usagePercentage}%!`);
+          if (isDev) console.warn(`[Compaction] FORCE-TRIGGER ACTION at ${usagePercentage}%!`);
           await this.triggerForceCompaction(sessionId);
           break;
-          
+
         default:
-          console.log(`[Compaction] No action needed at ${usagePercentage}%`);
+          if (isDev) console.log(`[Compaction] No action needed at ${usagePercentage}%`);
       }
 
       // Execute compaction_trigger hook if needed
       if (action.shouldTriggerCompact) {
-        console.log(`[Compaction] 🪝 Executing compaction_trigger hook`);
+        if (isDev) console.log('[Compaction] Executing compaction_trigger hook');
         await hooksService.executeHook('compaction_trigger', {
           sessionId,
           usage_percentage: usagePercentage,
@@ -163,7 +164,7 @@ class CompactionService {
         }, sessionId);
       }
     } catch (error) {
-      console.error('[Compaction] ❌ Failed to update context usage:', error);
+      console.error('[Compaction] Failed to update context usage:', error);
     }
   }
 
@@ -172,13 +173,13 @@ class CompactionService {
    * (Instead of immediately compacting, we wait for user to send a followup)
    */
   async triggerAutoCompaction(sessionId: string): Promise<void> {
-    console.log('[Compaction] 🎯 triggerAutoCompaction called for session:', sessionId);
+    if (isDev) console.log('[Compaction] triggerAutoCompaction called for session:', sessionId);
 
     const store = useClaudeCodeStore.getState();
 
     // Guard: Don't trigger if auto-compact is disabled
     if (store.autoCompactEnabled === false) {
-      console.log('[Compaction] ⚠️ Auto-compact disabled, not setting pending flag');
+      if (isDev) console.log('[Compaction] Auto-compact disabled, not setting pending flag');
       await invoke('reset_compaction_flags', { sessionId });
       return;
     }
@@ -187,18 +188,18 @@ class CompactionService {
 
     // Guard: Don't flag if already pending or compacting
     if (session?.compactionState?.pendingAutoCompact) {
-      console.log('[Compaction] ⚠️ Already pending auto-compact, skipping');
+      if (isDev) console.log('[Compaction] Already pending auto-compact, skipping');
       return;
     }
     if (this.compactingSessionIds.has(sessionId)) {
-      console.log('[Compaction] ⚠️ Already compacting, skipping');
+      if (isDev) console.log('[Compaction] Already compacting, skipping');
       return;
     }
 
     // Guard: Don't compact sessions with no messages or very few messages
     const messageCount = session?.messages?.length || 0;
     if (messageCount < 3) {
-      console.log(`[Compaction] ⚠️ Skipping auto-compact flag - session has too few messages (${messageCount})`);
+      if (isDev) console.log(`[Compaction] Skipping auto-compact flag - session has too few messages (${messageCount})`);
       await invoke('reset_compaction_flags', { sessionId });
       return;
     }
@@ -206,13 +207,13 @@ class CompactionService {
     // Guard: Don't compact if token tracking shows low usage (prevents spurious triggers)
     const tokenTotal = session?.analytics?.tokens?.total || 0;
     if (tokenTotal < 50000) { // Less than 25% of 200k
-      console.log(`[Compaction] ⚠️ Skipping auto-compact flag - token count too low (${tokenTotal})`);
+      if (isDev) console.log(`[Compaction] Skipping auto-compact flag - token count too low (${tokenTotal})`);
       await invoke('reset_compaction_flags', { sessionId });
       return;
     }
 
     // Set the pending flag - compaction will happen when user sends next message
-    console.log('[Compaction] 🚩 Setting pendingAutoCompact flag - will compact on next user message');
+    if (isDev) console.log('[Compaction] Setting pendingAutoCompact flag - will compact on next user message');
     store.updateCompactionState(sessionId, { pendingAutoCompact: true });
 
     // Reset backend flags
@@ -223,19 +224,19 @@ class CompactionService {
    * Execute the actual compaction (called from sendMessage when pending)
    */
   async executeAutoCompaction(sessionId: string, pendingUserMessage: string): Promise<void> {
-    console.log('[Compaction] 🔄 executeAutoCompaction called for session:', sessionId);
+    if (isDev) console.log('[Compaction] executeAutoCompaction called for session:', sessionId);
 
     // Check if auto-compact is enabled
     const store = useClaudeCodeStore.getState();
     if (store.autoCompactEnabled === false) {
-      console.log('[Compaction] ⚠️ Auto-compact disabled, clearing pending flag and skipping');
+      if (isDev) console.log('[Compaction] Auto-compact disabled, clearing pending flag and skipping');
       store.updateCompactionState(sessionId, { pendingAutoCompact: false });
       return;
     }
 
     // Prevent multiple compactions
     if (this.compactingSessionIds.has(sessionId)) {
-      console.log('[Compaction] ⚠️ Already compacting, skipping');
+      if (isDev) console.log('[Compaction] Already compacting, skipping');
       return;
     }
 
@@ -243,20 +244,20 @@ class CompactionService {
     const lastTime = this.lastCompactionTime[sessionId] || 0;
     const timeSinceLastCompact = Date.now() - lastTime;
     if (timeSinceLastCompact < 60000) {
-      console.log(`[Compaction] ⏱️ Rate limited (${timeSinceLastCompact}ms since last), skipping compact`);
+      if (isDev) console.log(`[Compaction] Rate limited (${timeSinceLastCompact}ms since last), skipping compact`);
       return;
     }
 
-    console.log('[Compaction] ✅ Proceeding with auto-compact');
+    if (isDev) console.log('[Compaction] Proceeding with auto-compact');
     this.compactingSessionIds.add(sessionId);
     this.lastCompactionTime[sessionId] = Date.now();
 
     // Save the user's pending message for send after compact completes
     setAutoCompactMessage(sessionId, pendingUserMessage);
-    console.log('[Compaction] 💾 Saved pending user message for send after compact');
+    if (isDev) console.log('[Compaction] Saved pending user message for send after compact');
 
     // Update compaction state - include the pending message for UI visibility
-    console.log('[Compaction] 📝 Setting compacting state');
+    if (isDev) console.log('[Compaction] Setting compacting state');
     store.setCompacting(sessionId, true);
     store.updateCompactionState(sessionId, {
       pendingAutoCompact: false,
@@ -266,23 +267,23 @@ class CompactionService {
     try {
       // Generate and save context manifest before compaction
       if (this.config.generateManifest) {
-        console.log('[Compaction] 📋 Generating context manifest');
+        if (isDev) console.log('[Compaction] Generating context manifest');
         await this.generateAndSaveManifest(sessionId);
         store.updateCompactionState(sessionId, { manifestSaved: true });
       }
 
       // Send /compact command
-      console.log('[Compaction] 🚀 Sending /compact command to Claude');
+      if (isDev) console.log('[Compaction] Sending /compact command to Claude');
       await store.sendMessage('/compact', false);
 
       // Reset backend flags so compaction can trigger again later
-      console.log('[Compaction] 🔄 Resetting backend compaction flags');
+      if (isDev) console.log('[Compaction] Resetting backend compaction flags');
       await invoke('reset_compaction_flags', { sessionId });
 
-      console.log('[Compaction] ✅ Auto-compact triggered successfully');
+      if (isDev) console.log('[Compaction] Auto-compact triggered successfully');
       // The compact result handler will send the pending user message
     } catch (error) {
-      console.error('[Compaction] ❌ Auto-compact failed:', error);
+      console.error('[Compaction] Auto-compact failed:', error);
       // Clear the pending message on failure from both stores
       import('./wrapperIntegration').then(({ clearAutoCompactMessage }) => {
         clearAutoCompactMessage(sessionId);
@@ -294,7 +295,7 @@ class CompactionService {
       this.compactingSessionIds.delete(sessionId);
       // NOTE: Don't set isCompacting=false here - the compact result handler does that
       // after sending the followup message. Setting it here would kill the indicator prematurely.
-      console.log('[Compaction] 🏁 Auto-compact command sent, waiting for result');
+      if (isDev) console.log('[Compaction] Auto-compact command sent, waiting for result');
     }
   }
 
@@ -303,7 +304,7 @@ class CompactionService {
    * (Same as auto, but triggered at higher threshold)
    */
   async triggerForceCompaction(sessionId: string): Promise<void> {
-    console.log('[Compaction] 🎯 triggerForceCompaction called for session:', sessionId);
+    if (isDev) console.log('[Compaction] triggerForceCompaction called for session:', sessionId);
 
     // Force uses same flag mechanism as auto - only compact when user submits a message
     // This prevents /compact from being sent when user isn't actively chatting
@@ -350,7 +351,7 @@ class CompactionService {
         decisions: []
       });
 
-      console.log('[Compaction] Context manifest saved:', manifest);
+      if (isDev) console.log('[Compaction] Context manifest saved:', manifest);
     } catch (error) {
       console.error('[Compaction] Failed to generate manifest:', error);
     }
@@ -361,7 +362,7 @@ class CompactionService {
    */
   private showCompactionWarning(sessionId: string, message: string): void {
     // This could trigger a toast notification or update UI state
-    console.warn(`[Compaction Warning] ${message}`);
+    if (isDev) console.warn(`[Compaction Warning] ${message}`);
   }
 
   /**
@@ -371,7 +372,7 @@ class CompactionService {
     try {
       return await invoke<ContextManifest>('load_context_manifest', { sessionId });
     } catch (error) {
-      console.error('[Compaction] Failed to load manifest:', error);
+      if (isDev) console.error('[Compaction] Failed to load manifest:', error);
       return null;
     }
   }
@@ -385,7 +386,7 @@ class CompactionService {
     try {
       await invoke('update_compaction_config', { config: this.config });
     } catch (error) {
-      console.error('[Compaction] Failed to update config:', error);
+      if (isDev) console.error('[Compaction] Failed to update config:', error);
     }
   }
 
@@ -398,7 +399,7 @@ class CompactionService {
       this.config = config;
       return config;
     } catch (error) {
-      console.error('[Compaction] Failed to get config:', error);
+      if (isDev) console.error('[Compaction] Failed to get config:', error);
       return this.config;
     }
   }

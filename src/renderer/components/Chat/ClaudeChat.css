@@ -986,7 +986,7 @@ textarea.context-full {
   color: var(--negative-color);
   padding: 13px;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1553,16 +1553,13 @@ textarea.context-full {
 
 .btn-stats-auto {
   font-size: 9px;
-  color: var(--fg-40);
+  opacity: 0.7;
   transition: color 0.2s ease;
-}
-
-.btn-stats:hover .btn-stats-auto {
-  color: rgba(var(--accent-rgb), 0.7);
 }
 
 .btn-stats:hover {
   font-weight: bolder;
+  opacity: 1 !important;
 }
 
 .btn-stats-container {
@@ -1960,6 +1957,7 @@ textarea.context-full {
   padding: 8px 12px;
   border-bottom: 1px solid var(--fg-15);
   margin-bottom: 0;
+  cursor: default;
 }
 
 .stats-header h3 {
@@ -1968,6 +1966,8 @@ textarea.context-full {
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
+  display: flex;
+  align-items: center;
 }
 
 .stats-close {
@@ -2078,8 +2078,8 @@ textarea.context-full {
   padding: 12px;
   display: grid;
   grid-template-columns: repeat(2, minmax(150px, 1fr));
-  column-gap: 8px;
   row-gap: 0px;
+  column-gap: 4px;
   justify-content: center;
 }
 
@@ -2539,18 +2539,13 @@ textarea.context-full {
   color: var(--accent-color);
 }
 
-/* keyboard focus - solid accent background */
-.recent-item-container.selected .recent-item .recent-item-name {
+/* unified focus state - single source of truth for keyboard/mouse */
+.recent-item-container.focused .recent-item .recent-item-name {
   color: var(--accent-color);
 }
 
-.recent-item-container.selected .recent-item {
+.recent-item-container.focused .recent-item {
   background: rgba(var(--accent-rgb), 0.2);
-}
-
-/* mouse hover - subtle background, no accent color on text */
-.recent-item-container.hovered .recent-item {
-  background: rgba(255, 255, 255, 0.05);
 }
 
 .recent-item-info {
@@ -2619,14 +2614,9 @@ textarea.context-full {
   color: var(--fg-50);
 }
 
-/* keyboard focus gets accent title */
-.recent-item-container.selected .recent-item-title {
+/* focused state gets accent title */
+.recent-item-container.focused .recent-item-title {
   color: var(--accent-color);
-}
-
-/* mouse hover - slightly brighter but not accent */
-.recent-item-container.hovered .recent-item-title {
-  color: var(--fg-80);
 }
 
 .recent-item-remove:hover {
@@ -2642,15 +2632,10 @@ textarea.context-full {
   transition: color 0.15s ease;
 }
 
-/* keyboard focus - accent number */
-.recent-item-container.selected .recent-item-number {
+/* focused state - accent number */
+.recent-item-container.focused .recent-item-number {
   color: var(--accent-color);
   opacity: 0.7;
-}
-
-/* mouse hover - just slightly brighter number */
-.recent-item-container.hovered .recent-item-number {
-  color: var(--fg-50);
 }
 
 /* Old bash/followup indicators removed - now using .status-indicator-minimal */
@@ -2715,7 +2700,7 @@ textarea.context-full {
   color: rgba(255, 0, 255, 0.5);
   padding: 6px;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -2737,7 +2722,7 @@ textarea.context-full {
   color: rgba(0, 255, 255, 0.5);
   padding: 6px;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -2796,6 +2781,9 @@ textarea.context-full {
   overflow: hidden;
   min-height: 0; /* Critical for flex scroll */
   margin-top: 60px; /* Same as chat-messages - below title bar and tabs */
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .tool-panel-header {
@@ -2857,7 +2845,7 @@ textarea.context-full {
   color: var(--fg-40);
   width: 24px;
   height: 24px;
-  cursor: pointer;
+  cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2951,7 +2939,7 @@ textarea.context-full {
   background: transparent;
   border: none;
   color: var(--fg-40);
-  cursor: pointer;
+  cursor: default;
   padding: 2px;
   display: flex;
   align-items: center;

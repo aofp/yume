@@ -29,6 +29,7 @@
   align-items: center;
   padding: 6px 10px;
   border-bottom: 1px solid var(--fg-15);
+  cursor: default;
 }
 
 .mt-header h3 {
@@ -37,6 +38,8 @@
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
+  display: flex;
+  align-items: center;
 }
 
 .mt-close {
@@ -136,6 +139,7 @@
   font-size: 10px;
   font-weight: 500;
   text-transform: lowercase;
+  cursor: default;
 }
 
 .mt-toggle-all {
@@ -171,11 +175,18 @@
 }
 
 .mt-category-name {
+  display: inline;
   color: var(--fg-40);
   font-size: 9px;
   text-transform: lowercase;
   margin-bottom: 3px;
-  padding-left: 2px;
+  padding-left: 0;
+  cursor: default;
+  transition: color 0.15s ease;
+}
+
+.mt-category-name:hover {
+  color: var(--accent-color);
 }
 
 .mt-tools-grid {

@@ -182,6 +182,24 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
                 <span className="shortcut-dots"></span>
                 <span className="shortcut-desc">agents</span>
               </div>
+              <div className="shortcut-item">
+                <div className="shortcut-keys">
+                  <span className="key-btn">{modKey}</span>
+                  <span className="key-plus">+</span>
+                  <span className="key-btn">j</span>
+                </div>
+                <span className="shortcut-dots"></span>
+                <span className="shortcut-desc">sessions browser</span>
+              </div>
+              <div className="shortcut-item">
+                <div className="shortcut-keys">
+                  <span className="key-btn">{modKey}</span>
+                  <span className="key-plus">+</span>
+                  <span className="key-btn">p</span>
+                </div>
+                <span className="shortcut-dots"></span>
+                <span className="shortcut-desc">command palette</span>
+              </div>
             </div>
           </div>
 
@@ -223,6 +241,17 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
                 </div>
                 <span className="shortcut-dots"></span>
                 <span className="shortcut-desc">toggle model</span>
+              </div>
+              <div className="shortcut-item">
+                <div className="shortcut-keys">
+                  <span className="key-btn">{modKey}</span>
+                  <span className="key-plus">+</span>
+                  <span className="key-btn">shift</span>
+                  <span className="key-plus">+</span>
+                  <span className="key-btn">o</span>
+                </div>
+                <span className="shortcut-dots"></span>
+                <span className="shortcut-desc">model & tools</span>
               </div>
               <div className="shortcut-item">
                 <div className="shortcut-keys">

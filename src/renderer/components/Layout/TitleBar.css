@@ -274,21 +274,13 @@
   left: 0;
   right: 0;
   bottom: 0;
+  margin-top: 59.5px;
   background: rgba(0, 0, 0, 0.8);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 10001;
   animation: fadeIn 0.2s ease;
-}
-
-.stats-modal {
-  background: var(--background-color, #0f0f0f);
-  border: 1px solid var(--fg-20);
-  border-radius: 8px;
-  width: 400px;
-  padding: 16px;
-  animation: scaleIn 0.2s ease;
 }
 
 @keyframes scaleIn {
@@ -306,8 +298,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 8px;
   border-bottom: 1px solid var(--fg-15);
 }
 
@@ -336,9 +326,12 @@
 }
 
 .stats-content {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(150px, 1fr));
+  row-gap: 0px;
+  column-gap: 4px;
+  justify-content: center;
 }
 
 .stat-item {

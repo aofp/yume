@@ -355,7 +355,7 @@ button {
   color: inherit;
   background: none;
   border: none;
-  cursor: pointer;
+  cursor: default;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -364,7 +364,7 @@ button {
 
 button:disabled {
   opacity: 0.5;
-  cursor: not-allowed;
+  cursor: default;
 }
 
 /* Input Base Styles */

@@ -74,7 +74,7 @@ export const ClaudeSelectorModal: React.FC<ClaudeSelectorModalProps> = ({
       <div className="claude-modal" onClick={(e) => e.stopPropagation()}>
         <div className="claude-modal-header">
           <span className="modal-title">claude cli configuration</span>
-          <button className="claude-modal-close" onClick={onClose}>
+          <button className="claude-modal-close" onClick={onClose} title="close (esc)">
             <IconX size={14} />
           </button>
         </div>

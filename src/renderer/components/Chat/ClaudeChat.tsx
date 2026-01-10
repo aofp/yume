@@ -4,20 +4,6 @@ import { invoke } from '@tauri-apps/api/core';
 import {
   IconSend,
   IconPlayerStop,
-  IconBook,
-  IconPencil,
-  IconScissors,
-  IconTerminal,
-  IconChecklist,
-  IconSearch,
-  IconWorld,
-  IconFileSearch,
-  IconFolder,
-  IconFolderOpen as IconFolderOpen2,
-  IconRobot,
-  IconCheck,
-  IconNotebook,
-  IconTool,
   IconX,
   IconChartBubbleFilled,
   IconArtboardFilled,
@@ -29,16 +15,17 @@ import {
   IconMessage,
   IconGitBranch,
   IconFile,
+  IconFolder,
+  IconTool,
   IconChevronRight,
-  IconCancel,
-  IconArrowsMinimize,
-  IconViewportShort,
-  IconFileShredder,
   IconHistory,
 } from '@tabler/icons-react';
 import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
 import { VirtualizedMessageList, VirtualizedMessageListRef, ThinkingTimer, BashTimer, CompactingTimer } from './VirtualizedMessageList';
+import { StreamIndicator } from './StreamIndicator';
+import { InputArea } from './InputArea';
+import { ContextBar } from './ContextBar';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { ModelToolsModal } from '../ModelSelector/ModelToolsModal';
@@ -55,54 +42,13 @@ const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor')
 import { FEATURE_FLAGS } from '../../config/features';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { isBashPrefix } from '../../utils/helpers';
+import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
+import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions } from '../../constants/chat';
 import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
 import './ClaudeChat.css';
 
-// Cached custom commands to avoid parsing localStorage on every command execution
-let cachedCustomCommands: any[] | null = null;
-let cachedCommandsTimestamp = 0;
-
-const getCachedCustomCommands = () => {
-  // Refresh cache every 5 seconds or on first access
-  const now = Date.now();
-  if (!cachedCustomCommands || now - cachedCommandsTimestamp > 5000) {
-    try {
-      cachedCustomCommands = JSON.parse(localStorage.getItem('yurucode_commands') || '[]');
-      cachedCommandsTimestamp = now;
-    } catch {
-      cachedCustomCommands = [];
-    }
-  }
-  return cachedCustomCommands;
-};
-
-// Call this when commands are updated to invalidate cache
-export const invalidateCommandsCache = () => {
-  cachedCustomCommands = null;
-  cachedCommandsTimestamp = 0;
-};
-
-// PRE-CREATED ICONS - avoid JSX creation on every render (performance optimization)
-const TOOL_ICONS = {
-  Read: <IconBook size={14} stroke={1.5} />,
-  Write: <IconPencil size={14} stroke={1.5} />,
-  Edit: <IconScissors size={14} stroke={1.5} />,
-  MultiEdit: <IconScissors size={14} stroke={1.5} />,
-  Bash: <IconTerminal size={14} stroke={1.5} />,
-  TodoWrite: <IconChecklist size={14} stroke={1.5} />,
-  WebSearch: <IconSearch size={14} stroke={1.5} />,
-  WebFetch: <IconWorld size={14} stroke={1.5} />,
-  Grep: <IconFileSearch size={14} stroke={1.5} />,
-  Glob: <IconFolder size={14} stroke={1.5} />,
-  LS: <IconFolderOpen2 size={14} stroke={1.5} />,
-  Task: <IconRobot size={14} stroke={1.5} />,
-  ExitPlanMode: <IconCheck size={14} stroke={1.5} />,
-  NotebookEdit: <IconNotebook size={14} stroke={1.5} />,
-  default: <IconTool size={14} stroke={1.5} />,
-} as const;
-
-// Pre-compiled regex for path stripping (avoid regex compilation in hot path)
-const PATH_STRIP_REGEX = /^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//;
+// Re-export invalidateCommandsCache for external use
+export { invalidateCommandsCache };
 
 // Helper function to format tool displays - optimized to reuse pre-created icons
 const getToolDisplay = (name: string, input: any) => {
@@ -331,24 +277,6 @@ interface Attachment {
   content: string; // dataUrl for images, text content for text, file path for files
   preview?: string; // short preview for display
 }
-
-// format reset time as relative time string
-const formatResetTime = (resetAt: string | undefined): string => {
-  if (!resetAt) return '';
-  const resetDate = new Date(resetAt);
-  const now = new Date();
-  const diffMs = resetDate.getTime() - now.getTime();
-  if (diffMs <= 0) return 'now';
-  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
-  const diffMins = Math.floor((diffMs % (1000 * 60 * 60)) / (1000 * 60));
-  if (diffHours > 24) {
-    const days = Math.floor(diffHours / 24);
-    const hrs = diffHours % 24;
-    return hrs > 0 ? `${days}d ${hrs}h` : `${days}d`;
-  }
-  if (diffHours > 0) return `${diffHours}h ${diffMins}m`;
-  return `${diffMins}m`;
-};
 
 export const ClaudeChat: React.FC = () => {
   // Platform detection for keyboard shortcuts
@@ -988,8 +916,9 @@ export const ClaudeChat: React.FC = () => {
 
       // Skip if any modal is open
       if (document.querySelector('.modal-overlay') ||
+          document.querySelector('.mt-modal-overlay') ||
           document.querySelector('[role="dialog"]') ||
-          showStatsModal || showResumeModal || showAgentExecutor) return;
+          showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return;
 
       // Skip if session is read-only or context is almost full (>95%)
       const totalTokens = currentSession?.analytics?.tokens?.total || 0;
@@ -1004,7 +933,7 @@ export const ClaudeChat: React.FC = () => {
     }, interval);
 
     return () => clearInterval(focusCheckInterval);
-  }, [currentSession?.streaming, currentSession?.readOnly, currentSession?.analytics?.tokens?.total, isMac, showStatsModal, showResumeModal, showAgentExecutor]);
+  }, [currentSession?.streaming, currentSession?.readOnly, currentSession?.analytics?.tokens?.total, isMac, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
 
   // macOS aggressive focus fix: Force blur/focus cycle to reset stuck WKWebView focus state
   // This handles the case where textarea is focused but not receiving keyboard input
@@ -1014,7 +943,7 @@ export const ClaudeChat: React.FC = () => {
     // Only run every 5 seconds when idle (not during streaming where it could interfere)
     const forceRefocusInterval = setInterval(() => {
       if (!document.hasFocus() || !inputRef.current) return;
-      if (document.querySelector('.modal-overlay') || document.querySelector('[role="dialog"]')) return;
+      if (document.querySelector('.modal-overlay') || document.querySelector('.mt-modal-overlay') || document.querySelector('[role="dialog"]')) return;
       if (currentSession?.readOnly) return;
 
       // Skip if user is selecting text
@@ -1776,11 +1705,15 @@ export const ClaudeChat: React.FC = () => {
         e.preventDefault();
         // Toggle stats modal
         setShowStatsModal(prev => !prev);
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
+      } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'o') {
         e.preventDefault();
         // Open model & tools modal via keyboard
         setModelToolsOpenedViaKeyboard(true);
         setShowModelToolsModal(prev => !prev);
+      } else if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'o') {
+        e.preventDefault();
+        // Toggle model between opus/sonnet
+        toggleModel();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
         // Toggle files panel
@@ -1821,6 +1754,9 @@ export const ClaudeChat: React.FC = () => {
           setGitDiff(null);
         }
       } else if (e.key === 'Escape') {
+        // Skip if any modal is open - let modal handle its own escape
+        if (showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return;
+
         // Priority: close panels/search first, only interrupt if nothing to close
         if (showFilesPanel || showGitPanel || showRollbackPanel) {
           // Close side panels on Escape first (before interrupt)
@@ -2220,26 +2156,6 @@ export const ClaudeChat: React.FC = () => {
   }, [gitStatus]);
 
   // Load file content when a file is selected in file browser
-  // Binary/non-text file extensions that shouldn't be previewed
-  const binaryExtensions = new Set([
-    // Images
-    'png', 'jpg', 'jpeg', 'gif', 'bmp', 'ico', 'webp', 'svg', 'tiff', 'tif', 'psd', 'raw', 'heic', 'heif',
-    // Videos
-    'mp4', 'mov', 'avi', 'mkv', 'wmv', 'flv', 'webm', 'm4v', 'mpeg', 'mpg', '3gp',
-    // Audio
-    'mp3', 'wav', 'flac', 'aac', 'ogg', 'm4a', 'wma', 'aiff',
-    // Archives
-    'zip', 'tar', 'gz', 'rar', '7z', 'bz2', 'xz', 'dmg', 'iso',
-    // Binaries
-    'exe', 'dll', 'so', 'dylib', 'bin', 'app', 'msi', 'deb', 'rpm',
-    // Documents (binary formats)
-    'pdf', 'doc', 'docx', 'xls', 'xlsx', 'ppt', 'pptx', 'odt', 'ods', 'odp',
-    // Fonts
-    'ttf', 'otf', 'woff', 'woff2', 'eot',
-    // Other binary
-    'pyc', 'pyo', 'class', 'o', 'obj', 'lib', 'a', 'node', 'wasm'
-  ]);
-
   const loadFileContent = useCallback(async (filePath: string, fullFile: boolean = false) => {
     setSelectedFile(filePath);
 
@@ -2480,7 +2396,7 @@ export const ClaudeChat: React.FC = () => {
       if (e.key.length !== 1 && !['Backspace', 'Delete'].includes(e.key)) return;
 
       // Skip if any modal is open
-      if (showStatsModal || showResumeModal || showAgentExecutor) return;
+      if (showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return;
 
       // Skip if already focused on an input/textarea/contenteditable
       const activeEl = document.activeElement;
@@ -2492,7 +2408,8 @@ export const ClaudeChat: React.FC = () => {
 
       // Skip if inside a modal or dialog (DOM check as fallback)
       if (activeEl?.closest('[role="dialog"]') || activeEl?.closest('.modal') ||
-          activeEl?.closest('.stats-modal-overlay') || activeEl?.closest('.resume-modal')) return;
+          activeEl?.closest('.stats-modal-overlay') || activeEl?.closest('.resume-modal') ||
+          activeEl?.closest('.mt-modal-overlay')) return;
 
       // Focus the input and insert the character
       if (inputRef.current) {
@@ -2519,7 +2436,7 @@ export const ClaudeChat: React.FC = () => {
 
     document.addEventListener('keydown', handleGlobalTyping);
     return () => document.removeEventListener('keydown', handleGlobalTyping);
-  }, [showStatsModal, showResumeModal, showAgentExecutor]);
+  }, [showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
 
   // Stop dictation when component unmounts or session changes
   useEffect(() => {
@@ -3257,13 +3174,6 @@ export const ClaudeChat: React.FC = () => {
     }
   };
 
-  // Format bytes helper
-  const formatBytes = (b: number) => {
-    if (b < 1024) return `${b} bytes`;
-    if (b < 1024 * 1024) return `${(b / 1024).toFixed(1)}kb`;
-    return `${(b / (1024 * 1024)).toFixed(1)}mb`;
-  };
-
   // Handle paste event for images
   const handlePaste = async (e: React.ClipboardEvent) => {
     const items = e.clipboardData.items;
@@ -3953,7 +3863,7 @@ export const ClaudeChat: React.FC = () => {
               {showFilesPanel ? <><IconFolder size={12} stroke={1.5} /> files</> :
                showGitPanel ? <><IconGitBranch size={12} stroke={1.5} /> {gitBranch || 'git'}{gitAhead > 0 && <span className="git-ahead-count">+{gitAhead}</span>}</> :
                <><IconHistory size={12} stroke={1.5} /> history</>}
-              {!showRollbackPanel && <span className="tool-panel-hint">right-click to @ref</span>}
+              {!showRollbackPanel && <span className="tool-panel-hint">rmb to @ref</span>}
               {showRollbackPanel && <span className="tool-panel-hint">click to rollback</span>}
             </span>
             <button
@@ -4368,7 +4278,7 @@ export const ClaudeChat: React.FC = () => {
                 e.stopPropagation();
                 handleResumeLastConversation();
               }}
-              title={`resume conversation (${modKey}+shift+r) | right-click: resume last`}
+              title={`resume conversation (${modKey}+shift+r) | rmb: resume last`}
             >
               resume
             </button>
@@ -4711,106 +4621,21 @@ export const ClaudeChat: React.FC = () => {
             }
             return 'thinking';
           };
-          const fallbackActivityLabel = getFallbackActivityLabel();
 
           return (
-            <div className="message assistant">
-              <div className="message-content">
-                <div className="status-indicators">
-                  {/* Thinking indicator - show when streaming but not running bash */}
-                  {(isStreaming || hasPendingTools) && !isRunningBash && !isUserBash && (
-                    <div className="thinking-indicator-bottom">
-                      <LoadingIndicator size="small" color="red" />
-                      <span className="thinking-text-wrapper">
-                        <span className="thinking-text">
-                          {fallbackActivityLabel.split('').map((char, i) => (
-                            <span
-                              key={i}
-                              className="thinking-char"
-                              style={{ animationDelay: `${i * 0.05}s` }}
-                            >
-                              {char}
-                            </span>
-                          ))}
-                          <span className="thinking-dots"></span>
-                        </span>
-                        {(currentSession as any)?.thinkingStartTime && (
-                          <ThinkingTimer startTime={(currentSession as any).thinkingStartTime} />
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Compacting indicator - show when compacting context */}
-                  {currentSession?.compactionState?.isCompacting && (
-                    <div className="compacting-indicator-bottom">
-                      <LoadingIndicator size="small" color="positive" />
-                      <span className="compacting-text-wrapper">
-                        <span className="compacting-text">
-                          {'compacting'.split('').map((char, i) => (
-                            <span
-                              key={i}
-                              className="compacting-char"
-                              style={{ animationDelay: `${i * 0.05}s` }}
-                            >
-                              {char}
-                            </span>
-                          ))}
-                          <span className="compacting-dots"></span>
-                        </span>
-                        {currentSessionId && compactingStartTimes[currentSessionId] && (
-                          <CompactingTimer startTime={compactingStartTimes[currentSessionId]} />
-                        )}
-                      </span>
-                      {currentSession?.compactionState?.pendingAutoCompactMessage && (
-                        <span className="compacting-followup">
-                          <span className="compacting-followup-label">then:</span>
-                          <span className="compacting-followup-message">
-                            {currentSession.compactionState.pendingAutoCompactMessage.slice(0, 50)}
-                            {currentSession.compactionState.pendingAutoCompactMessage.length > 50 ? '...' : ''}
-                          </span>
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Bash indicator - show when running bash */}
-                  {(isRunningBash || isUserBash) && !currentSession?.compactionState?.isCompacting && (
-                    <div className="bash-indicator-bottom">
-                      <LoadingIndicator size="small" color="negative" />
-                      <span className="bash-text-wrapper">
-                        <span className="bash-text">
-                          {'bash running'.split('').map((char, i) => (
-                            <span
-                              key={i}
-                              className="bash-char"
-                              style={{ animationDelay: `${i * 0.05}s` }}
-                            >
-                              {char}
-                            </span>
-                          ))}
-                          <span className="bash-dots"></span>
-                        </span>
-                        {currentSessionId && bashStartTimes[currentSessionId] && (
-                          <BashTimer startTime={bashStartTimes[currentSessionId]} />
-                        )}
-                      </span>
-                    </div>
-                  )}
-
-                  {/* Queued followup indicator */}
-                  {hasPendingFollowup && pendingFollowupRef.current && (
-                    <div className="inline-activity-indicator followup">
-                      <span className="activity-label">queued:</span>
-                      <span className="activity-preview">
-                        {pendingFollowupRef.current.content.slice(0, 40)}
-                        {pendingFollowupRef.current.content.length > 40 ? '...' : ''}
-                      </span>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
+            <StreamIndicator
+              isStreaming={isStreaming}
+              hasPendingTools={hasPendingTools}
+              isRunningBash={isRunningBash}
+              isUserBash={isUserBash}
+              hasPendingFollowup={hasPendingFollowup}
+              pendingFollowup={pendingFollowupRef.current}
+              activityLabel={getFallbackActivityLabel()}
+              thinkingStartTime={(currentSession as any)?.thinkingStartTime}
+              bashStartTime={currentSessionId ? bashStartTimes[currentSessionId] : undefined}
+              compactionState={currentSession?.compactionState}
+              compactingStartTime={currentSessionId ? compactingStartTimes[currentSessionId] : undefined}
+            />
           );
         })()}
         <div ref={messagesEndRef} />
@@ -4845,386 +4670,86 @@ export const ClaudeChat: React.FC = () => {
       
       {/* Activity indicator moved inline with thinking indicator at end of messages */}
 
-      {/* Attachment preview area - outside input container to avoid overflow clipping */}
-      {attachments.length > 0 && !currentSession?.readOnly && (
-        <div className="attachments-container">
-          {attachments.map((att) => (
-            <div key={att.id} className="attachment-item">
-              <span className="attachment-text">
-                {att.type === 'image' ? `image: ${formatBytes(att.size || 0)}` : `text: ${att.preview}`}
-              </span>
-              <button
-                className="attachment-remove"
-                onClick={() => removeAttachment(att.id)}
-                title="remove"
-              >
-                <IconX size={10} stroke={2} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
+      {/* Input Area - textarea with attachments, drag-drop, and streaming controls */}
+      {(() => {
+        // Calculate context percentage for isContextFull
+        const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
+        const contextWindowTokens = 200000;
+        const contextPercentage = (totalContextTokens / contextWindowTokens * 100);
+        const isContextFull = contextPercentage > 95;
 
-      <div
-        className={`chat-input-container ${isDragging ? 'dragging' : ''}`}
-        ref={inputContainerRef}
-        onDragOver={handleDragOver}
-        onDragLeave={handleDragLeave}
-        onDrop={handleDrop}
-        style={{ display: currentSession?.readOnly ? 'none' : 'block' }}
-      >
-        <div className="input-row">
-          {/* Calculate if context is almost full */}
-          {(() => {
-            // Use tokens.total for consistency with status bar - ALL tokens count towards context limit
-            const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
-            const contextWindowTokens = 200000;
-            const percentageNum = (totalContextTokens / contextWindowTokens * 100);
-            const isContextFull = percentageNum > 95;
-            
-            // Check if input contains ultrathink (case insensitive)
-            const hasUltrathink = /ultrathink/i.test(input);
-
-            // Render text with ultrathink highlighted
-            const renderStyledText = (text: string) => {
-              if (!hasUltrathink) return text;
-              const parts = text.split(/(ultrathink)/gi);
-              return parts.map((part, i) =>
-                /ultrathink/i.test(part)
-                  ? <span key={i} className="ultrathink-wrapper"><span className="ultrathink-text">{part}</span></span>
-                  : part
-              );
-            };
-
-            return (
-              <>
-                <div className="input-text-wrapper">
-                  {hasUltrathink && (
-                    <div
-                      ref={inputOverlayRef}
-                      className="input-text-overlay"
-                      style={{
-                        height: `${overlayHeight}px`,
-                        minHeight: '44px',
-                        maxHeight: '106px'
-                      }}
-                    >
-                      {renderStyledText(input)}
-                    </div>
-                  )}
-                  <textarea
-                    ref={inputRef}
-                    className={`chat-input ${bashCommandMode ? 'bash-mode' : ''} ${isContextFull ? 'context-full' : ''} ${hasUltrathink ? 'has-ultrathink' : ''}`}
-                    placeholder={(() => {
-                      const projectName = currentSession?.workingDirectory?.split(/[/\\]/).pop() || 'project';
-                      if (isContextFull) return "context full - compact or clear required";
-                      if (currentSession?.readOnly) return "read-only session";
-                      if (bashCommandMode) return "bash command...";
-                      if (currentSession?.streaming) return `append message for ${projectName}...`;
-                      return `code prompt for ${projectName}...`;
-                    })()}
-                    value={currentSession?.readOnly || isContextFull ? '' : input}
-                    onChange={handleTextareaChange}
-                    onKeyDown={handleKeyDown}
-                    onPaste={handlePaste}
-                    onScroll={() => {
-                      // Sync overlay scroll with textarea scroll
-                      if (inputOverlayRef.current && inputRef.current) {
-                        inputOverlayRef.current.scrollTop = inputRef.current.scrollTop;
-                      }
-                    }}
-                    style={{
-                      height: '44px',
-                      paddingRight: currentSession?.streaming ? '48px' : undefined
-                    }}
-                    disabled={currentSession?.readOnly || isContextFull}
-                    spellCheck={false}
-                    onFocus={() => setIsTextareaFocused(true)}
-                    onBlur={() => {
-                      // Close autocomplete when textarea loses focus
-                      setMentionTrigger(null);
-                      setCommandTrigger(null);
-                      setIsTextareaFocused(false);
-                    }}
-                    onContextMenu={(e) => {
-                      // Allow default context menu for right-click paste
-                      e.stopPropagation();
-                    }}
-                  />
-                  {/* particle container moved outside input-text-wrapper */}
-                </div>
-                {isContextFull && (
-                  <div className="context-full-overlay">
-                    <div className="context-full-message">
-                      context {percentageNum.toFixed(0)}% full
-                    </div>
-                    <div className="context-full-actions">
-                      <button
-                        className="btn-compact"
-                        onClick={() => {
-                          handleCompactContextRequest();
-                        }}
-                        title="compress context to continue"
-                      >
-                        <IconViewportShort size={14} stroke={1.5} />
-                        compact
-                      </button>
-                      <button
-                        className="btn-clear"
-                        onClick={() => {
-                          setInput('');
-                          handleClearContextRequest();
-                        }}
-                        title="clear all messages"
-                      >
-                        <IconFileShredder size={14} stroke={1.5} />
-                        clear
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </>
-            );
-          })()}
-          <Watermark inputLength={input.length} isFocused={isTextareaFocused} isStreaming={currentSession?.streaming} />
-          {currentSession?.streaming && (
-            <button 
-              className="stop-streaming-btn"
-              onClick={() => interruptSession()}
-              title="stop streaming (esc)"
-            >
-              <IconPlayerStop size={16} stroke={1.5} />
-            </button>
-          )}
-        </div>
-        
-        {/* Context info bar */}
-        <div className="context-bar">
-          <ModelSelector
-            value={selectedModel}
-            onChange={setSelectedModel}
-            toolCount={enabledTools.length}
-            onOpenModal={() => {
-              setModelToolsOpenedViaKeyboard(false);
-              setShowModelToolsModal(true);
-            }}
-          />
-
-          {/* Center - tools group */}
-          <div className="context-center">
-            {/* Files button */}
-            <button
-              className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
-              onClick={() => {
-                setShowFilesPanel(!showFilesPanel);
-                setShowGitPanel(false);
-                setSelectedFile(null);
-                setFileContent('');
-                setFocusedFileIndex(-1);
-                setFocusedGitIndex(-1);
+        return (
+          <InputArea
+            input={input}
+            setInput={setInput}
+            attachments={attachments}
+            removeAttachment={removeAttachment}
+            isDragging={isDragging}
+            isReadOnly={currentSession?.readOnly || false}
+            isStreaming={currentSession?.streaming || false}
+            isContextFull={isContextFull}
+            contextPercentage={contextPercentage}
+            bashCommandMode={bashCommandMode}
+            workingDirectory={currentSession?.workingDirectory}
+            inputRef={inputRef}
+            inputOverlayRef={inputOverlayRef}
+            inputContainerRef={inputContainerRef}
+            overlayHeight={overlayHeight}
+            isTextareaFocused={isTextareaFocused}
+            setIsTextareaFocused={setIsTextareaFocused}
+            setMentionTrigger={setMentionTrigger}
+            setCommandTrigger={setCommandTrigger}
+            onTextareaChange={handleTextareaChange}
+            onKeyDown={handleKeyDown}
+            onPaste={handlePaste}
+            onDragOver={handleDragOver}
+            onDragLeave={handleDragLeave}
+            onDrop={handleDrop}
+            onInterrupt={() => interruptSession()}
+            onCompactRequest={handleCompactContextRequest}
+            onClearRequest={handleClearContextRequest}
+          >
+            <ContextBar
+              selectedModel={selectedModel}
+              onModelChange={setSelectedModel}
+              enabledToolsCount={enabledTools.length}
+              onOpenModelModal={() => {
+                setModelToolsOpenedViaKeyboard(false);
+                setShowModelToolsModal(true);
               }}
-              disabled={!currentSession?.workingDirectory}
-              title={`files (${modKey}+e)`}
-            >
-              <IconFolder size={12} stroke={1.5} />
-            </button>
-
-            {/* Git button */}
-            <button
-              className={`btn-context-icon ${showGitPanel ? 'active' : ''}`}
-              onClick={() => {
-                setShowGitPanel(!showGitPanel);
-                setShowFilesPanel(false);
-                setSelectedGitFile(null);
-                setGitDiff(null);
-                setFocusedFileIndex(-1);
-                setFocusedGitIndex(-1);
-              }}
-              disabled={!currentSession?.workingDirectory || !isGitRepo}
-              title={isGitRepo ? `git (${modKey}+g)` : "not a git repo"}
-            >
-              <IconGitBranch size={12} stroke={1.5} />
-            </button>
-            {/* Git total line stats */}
-            {showGitPanel && Object.keys(gitLineStats).length > 0 && (() => {
-              const totalAdded = Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0);
-              const totalDeleted = Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0);
-              return (
-                <span className="git-total-stats">
-                  <span className="git-total-added">+{totalAdded}</span>
-                  <span className="git-total-deleted">-{totalDeleted}</span>
-                </span>
-              );
-            })()}
-
-          </div>
-
-          {/* Center - rollback button */}
-          {(() => {
-            // Count user messages excluding bash commands ($ or ! prefix)
-            const historyCount = currentSession?.messages.filter(m => {
-              if (m.type !== 'user') return false;
-              const content = m.message?.content;
-              let text = '';
-              if (typeof content === 'string') {
-                text = content;
-              } else if (Array.isArray(content)) {
-                text = content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
-              }
-              return !isBashPrefix(text.trim());
-            }).length || 0;
-            return (
-              <button
-                className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
-                onClick={() => {
-                  setShowRollbackPanel(!showRollbackPanel);
-                  setShowFilesPanel(false);
-                  setShowGitPanel(false);
-                  setSelectedFile(null);
-                  setFileContent('');
-                  setSelectedGitFile(null);
-                  setGitDiff(null);
-                }}
-                disabled={!currentSession || historyCount === 0}
-                title={`history (${modKey}+h)`}
-              >
-                <IconHistory size={12} stroke={1.5} />
-                {historyCount > 0 && <span className="btn-rollback-count">{historyCount}</span>}
-              </button>
-            );
-          })()}
-
-          {/* Right - stats and clear */}
-          <div className="context-info">
-            {(() => {
-              // tokens.total already includes all tokens (input + output + cache)
-              const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
-              const cacheTokens = currentSession?.analytics?.tokens?.cacheSize || 0;
-
-              // Check if tokens are pending after compact
-              // compactPending is set after /compact and cleared on next message
-              const isTokensPending = currentSession?.analytics?.compactPending === true ||
-                (currentSession?.wasCompacted === true && totalContextTokens === 0);
-
-              // Disabled spammy token indicator log
-
-              // Opus 4.1 has 200k context window
-              // Sonnet 4.0 has 200k context window
-              // Both models have the same 200k context window
-              const contextWindowTokens = 200000;
-
-              // Calculate percentage using total context tokens
-              // Don't cap at 100% - show real value for context awareness
-              const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
-              const percentageNum = rawPercentage; // Use raw percentage, don't cap
-              // Format: always show 2 decimal places, or '?' if waiting for tokens after compact
-              const percentage = isTokensPending ? '?' : percentageNum.toFixed(2);
-
-              // Log warning if tokens exceed context window
-              if (rawPercentage > 100) {
-                console.warn(`[TOKEN WARNING] Tokens (${totalContextTokens}) exceed context window (${contextWindowTokens}) - ${rawPercentage}%`);
-              }
-
-              // Determine usage class and auto-compact status (use raw percentage)
-              // Color gradient matching tab area:
-              // - 40%+: faint red (0.3 opacity)
-              // - 50%+: medium red (0.8 opacity)
-              // - 60%+: full red (1.0 opacity) - pendingAutoCompact
-              // - 65%+: critical pulsing (force)
-              const isPendingCompact = currentSession?.compactionState?.pendingAutoCompact;
-              const usageClass = rawPercentage >= 65 ? 'critical' :
-                                 isPendingCompact || rawPercentage >= 60 ? 'high' :
-                                 rawPercentage >= 50 ? 'medium' :
-                                 rawPercentage >= 40 ? 'low' : 'minimal';
-              const willAutoCompact = rawPercentage >= 60;
-              const approachingCompact = rawPercentage >= 55 && rawPercentage < 60;
-
-              const hasActivity = currentSession.messages.some(m =>
-                m.type === 'assistant' || m.type === 'tool_use' || m.type === 'tool_result'
-              );
-
-              const isStreaming = currentSession?.streaming;
-
-              return (
-                <>
-                  <button
-                    className="btn-context-icon"
-                    onClick={handleClearContextRequest}
-                    disabled={currentSession?.readOnly || !hasActivity || isStreaming}
-                    title={`clear context (${modKey}+l)`}
-                    style={{ opacity: (currentSession?.readOnly || !hasActivity || isStreaming) ? 0.5 : 1, pointerEvents: (currentSession?.readOnly || !hasActivity || isStreaming) ? 'none' : 'auto' }}
-                  >
-                    <IconCancel size={12} stroke={1.5} />
-                  </button>
-                  <button
-                    className="btn-context-icon"
-                    onClick={() => {
-                      if (currentSessionId && !currentSession?.readOnly && hasActivity && !isStreaming) {
-                        handleCompactContextRequest();
-                      }
-                    }}
-                    disabled={currentSession?.readOnly || !hasActivity || isStreaming}
-                    title={`compact context (${modKey}+m)`}
-                    style={{ opacity: (currentSession?.readOnly || !hasActivity || isStreaming) ? 0.5 : 1, pointerEvents: (currentSession?.readOnly || !hasActivity || isStreaming) ? 'none' : 'auto' }}
-                  >
-                    <IconArrowsMinimize size={12} stroke={1.5} />
-                  </button>
-                  <div className="btn-stats-container">
-                    <button
-                      className={`btn-stats ${usageClass}`}
-                      onClick={() => setShowStatsModal(true)}
-                      disabled={false}
-                      title={hasActivity ?
-                        `total tokens used: ${totalContextTokens.toLocaleString()} | ${modKey}+. shows context usage | rmb toggles auto-compact` :
-                        `total tokens used: 0 | ${modKey}+. shows context usage | rmb toggles auto-compact`}
-                      onContextMenu={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        setAutoCompactEnabled(autoCompactEnabled === false ? true : false);
-                      }}
-                      style={{
-                        background: `linear-gradient(to right, ${
-                          usageClass === 'minimal' ? `rgba(var(--foreground-rgb), ${(0.05 + (Math.min(percentageNum, 80) / 80) * 0.05).toFixed(3)})` :
-                          `rgba(var(--negative-rgb), ${(0.1 + (Math.min(percentageNum, 80) / 80) * 0.1).toFixed(3)})`
-                        } ${Math.min(percentageNum, 100)}%, transparent ${Math.min(percentageNum, 100)}%)`
-                      }}
-                    >
-                      <span className="btn-stats-text">
-                        {autoCompactEnabled !== false ? (
-                          <span className="btn-stats-auto">auto</span>
-                        ) : (
-                          <span className="btn-stats-auto">user</span>
-                        )}
-                        <span>{percentage}%</span>
-                      </span>
-                    </button>
-                    {/* 5h limit bar */}
-                    <div className="btn-stats-limit-bar five-hour">
-                      <div
-                        className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
-                        style={{
-                          width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
-                          opacity: 0.1 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 90) / 90) * 0.9
-                        }}
-                      />
-                    </div>
-                    {/* 7d limit bar */}
-                    <div className="btn-stats-limit-bar seven-day">
-                      <div
-                        className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
-                        style={{
-                          width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
-                          opacity: 0.1 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 90) / 90) * 0.9
-                        }}
-                      />
-                    </div>
-                  </div>
-                </>
-              );
-            })()}
-          </div>
-        </div>
-      </div>
+              showFilesPanel={showFilesPanel}
+              showGitPanel={showGitPanel}
+              showRollbackPanel={showRollbackPanel}
+              setShowFilesPanel={setShowFilesPanel}
+              setShowGitPanel={setShowGitPanel}
+              setShowRollbackPanel={setShowRollbackPanel}
+              setSelectedFile={setSelectedFile}
+              setFileContent={setFileContent}
+              setSelectedGitFile={setSelectedGitFile}
+              setGitDiff={setGitDiff}
+              setFocusedFileIndex={setFocusedFileIndex}
+              setFocusedGitIndex={setFocusedGitIndex}
+              isGitRepo={isGitRepo}
+              gitLineStats={gitLineStats}
+              workingDirectory={currentSession?.workingDirectory}
+              isReadOnly={currentSession?.readOnly || false}
+              isStreaming={currentSession?.streaming || false}
+              messages={currentSession?.messages || []}
+              totalContextTokens={totalContextTokens}
+              isTokensPending={currentSession?.analytics?.compactPending === true ||
+                (currentSession?.wasCompacted === true && totalContextTokens === 0)}
+              autoCompactEnabled={autoCompactEnabled !== false}
+              setAutoCompactEnabled={(enabled) => setAutoCompactEnabled(enabled ? true : false)}
+              isPendingCompact={currentSession?.compactionState?.pendingAutoCompact || false}
+              usageLimits={usageLimits}
+              onClearRequest={handleClearContextRequest}
+              onCompactRequest={handleCompactContextRequest}
+              onOpenStatsModal={() => setShowStatsModal(true)}
+              modKey={modKey}
+            />
+          </InputArea>
+        );
+      })()}
 
       {/* Mention Autocomplete */}
       {mentionTrigger !== null && (
@@ -5265,7 +4790,7 @@ export const ClaudeChat: React.FC = () => {
           <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
             <div className="stats-header">
               <h3>
-                <IconChartDots size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
+                <IconChartDots size={14} stroke={1.5} style={{ marginRight: '6px' }} />
                 context usage
               </h3>
               <div className="stats-header-right">
@@ -5284,7 +4809,7 @@ export const ClaudeChat: React.FC = () => {
                     <div className="toggle-switch-slider" />
                   </div>
                 </div>
-                <button className="stats-close" onClick={() => setShowStatsModal(false)}>
+                <button className="stats-close" title="close (esc)" onClick={() => setShowStatsModal(false)}>
                   <IconX size={16} />
                 </button>
               </div>

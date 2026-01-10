@@ -1,11 +1,13 @@
 import React, { useEffect, useState, useRef, Suspense } from 'react';
-import { TitleBar } from './components/Layout/TitleBar';
-import { SessionTabs } from './components/SessionTabs/SessionTabs';
 import { ClaudeChat } from './components/Chat/ClaudeChat';
-import { WindowControls } from './components/WindowControls/WindowControls';
-import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 import { ClaudeNotDetected } from './components/ClaudeNotDetected/ClaudeNotDetected';
 import { DEFAULT_COLORS } from './config/themes';
+
+// Critical path components - loaded immediately (no lazy loading to prevent flash)
+import { TitleBar } from './components/Layout/TitleBar';
+import { SessionTabs } from './components/SessionTabs/SessionTabs';
+import { WindowControls } from './components/WindowControls/WindowControls';
+import { ConnectionStatus } from './components/ConnectionStatus/ConnectionStatus';
 
 // PERFORMANCE: Lazy load modals - only loaded when user opens them
 const SettingsModalTabbed = React.lazy(() => import('./components/Settings/SettingsModalTabbed').then(m => ({ default: m.SettingsModalTabbed })));
@@ -41,7 +43,8 @@ export const App: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [claudeNotDetected, setClaudeNotDetected] = useState(false);
   const [connectionCheckDone, setConnectionCheckDone] = useState(false);
-  
+  const [appReady, setAppReady] = useState(false);
+
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
   
   // Load session mappings and initialize fonts on startup
@@ -51,14 +54,46 @@ export const App: React.FC = () => {
     // Sync yurucode agents to ~/.claude/agents/ based on settings
     systemPromptService.syncAgentsToFilesystem();
 
-    // Check Claude CLI connection after a short delay
-    const checkConnection = setTimeout(() => {
-      if (!claudeCodeClient.isConnected()) {
+    // Check Claude CLI connection with adaptive polling
+    // Minimum 300ms delay ensures CSS is loaded and prevents flash
+    const startTime = Date.now();
+    const minLoadTime = 300;
+    let connectionAttempts = 0;
+    const maxAttempts = 30;
+
+    const showApp = () => {
+      const elapsed = Date.now() - startTime;
+      const remaining = Math.max(0, minLoadTime - elapsed);
+
+      // Ensure minimum load time to prevent flash
+      setTimeout(() => {
+        setConnectionCheckDone(true);
+        setAppReady(true);
+      }, remaining);
+    };
+
+    const checkConnection = () => {
+      connectionAttempts++;
+      if (claudeCodeClient.isConnected()) {
+        console.log('[App] Server connected after', connectionAttempts, 'attempts');
+        showApp();
+        return;
+      }
+
+      if (connectionAttempts >= maxAttempts) {
         console.error('Claude CLI not detected - unable to connect to server');
         setClaudeNotDetected(true);
+        showApp(); // Still show app, just with error
+        return;
       }
-      setConnectionCheckDone(true);
-    }, 3000); // Give 3 seconds for initial connection
+
+      // Adaptive delay: start fast, slow down if not connecting
+      const delay = connectionAttempts < 10 ? 100 : connectionAttempts < 20 ? 200 : 300;
+      setTimeout(checkConnection, delay);
+    };
+
+    // Start connection checking after a brief initial delay
+    const initialCheck = setTimeout(checkConnection, 50);
     
     // Apply saved fonts from store (store loads from localStorage)
     if (monoFont) {
@@ -91,7 +126,7 @@ export const App: React.FC = () => {
     document.documentElement.style.opacity = String(targetOpacity);
     console.log('[App] Loaded - applied target opacity:', targetOpacity);
     
-    return () => clearTimeout(checkConnection);
+    return () => clearTimeout(initialCheck);
   }, [loadSessionMappings, monoFont, sansFont, setBackgroundOpacity]);
 
   // Cleanup yurucode agents from ~/.claude/agents/ on app exit
@@ -564,10 +599,17 @@ export const App: React.FC = () => {
         }
       }
       
-      // Ctrl+P for claude sessions browser
-      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+      // Ctrl+J for claude sessions browser
+      if ((e.ctrlKey || e.metaKey) && e.key === 'j') {
         e.preventDefault();
         setShowProjectsModal(true);
+      }
+
+      // Ctrl+P for command palette (TODO: implement)
+      if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
+        e.preventDefault();
+        // TODO: setShowCommandPalette(true);
+        console.log('Command palette - coming soon');
       }
       
       // Ctrl+N for agents modal
@@ -749,8 +791,21 @@ export const App: React.FC = () => {
     }
   }, []);
 
+  // Show loading until server is connected
+  if (!appReady) {
+    return (
+      <div className="app-loading">
+        <div className="app-loading-spinner">
+          <div className="app-loading-dot" />
+          <div className="app-loading-dot" />
+          <div className="app-loading-dot" />
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div 
+    <div
       className={`app-minimal ${isDragging ? 'dragging' : ''}`}
       onDrop={handleGlobalDrop}
       onDragOver={handleGlobalDragOver}

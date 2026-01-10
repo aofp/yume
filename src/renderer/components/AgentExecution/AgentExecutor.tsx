@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  IconRobot, 
-  IconPlayerPlay, 
+import {
+  IconRobot,
+  IconPlayerPlay,
   IconPlayerStop,
   IconSettings,
   IconChevronDown,
@@ -187,7 +187,7 @@ export const AgentExecutor: React.FC<AgentExecutorProps> = ({
             <IconRobot size={20} />
             <span>Agent Executor</span>
           </div>
-          <button className="agent-close-btn" onClick={onClose}>
+          <button className="agent-close-btn" onClick={onClose} title="close (esc)">
             <IconX size={16} />
           </button>
         </div>

@@ -4,6 +4,7 @@
  */
 
 import platformAPI, { isTauri } from './tauriApi';
+import { isDev } from '../utils/helpers';
 
 // Create a unified interface that matches the existing Electron API structure
 class PlatformBridge {
@@ -31,14 +32,16 @@ class PlatformBridge {
   // Folder operations
   folder = {
     select: async (): Promise<string | null> => {
-      console.log('PlatformBridge folder.select() called');
-      console.log('isTauri:', isTauri());
-      console.log('window.__TAURI__:', (window as any).__TAURI__);
+      if (isDev) {
+        console.log('PlatformBridge folder.select() called');
+        console.log('isTauri:', isTauri());
+        console.log('window.__TAURI__:', (window as any).__TAURI__);
+      }
       if (isTauri()) {
-        console.log('Using Tauri API for folder selection');
+        if (isDev) console.log('Using Tauri API for folder selection');
         return await platformAPI.folder.select();
       }
-      console.log('No folder selection API available');
+      if (isDev) console.log('No folder selection API available');
       return null;
     },
     getCurrent: async (): Promise<string> => {
@@ -49,7 +52,7 @@ class PlatformBridge {
   // Zoom controls using CSS transform
   zoom = {
     in: async (): Promise<number> => {
-      console.log('[PlatformBridge] zoom.in() called');
+      if (isDev) console.log('[PlatformBridge] zoom.in() called');
       
       // Check if user is scrolled to bottom before zoom
       const chatMessages = document.querySelector('.chat-messages') as HTMLElement;
@@ -71,7 +74,7 @@ class PlatformBridge {
       }
       
       const newZoom = Math.min(currentZoom + 5, 200);
-      console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
+      if (isDev) console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
       
       // Apply CSS zoom (1.0 = 100%, 1.1 = 110%, etc)
       document.body.style.zoom = `${newZoom / 100}`;
@@ -96,11 +99,11 @@ class PlatformBridge {
       // Calculate zoom level for display (-10 to +20, where 0 = 100%)
       const zoomLevel = (newZoom - 100) / 5;
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
-      console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
+      if (isDev) console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
       return zoomLevel;
     },
     out: async (): Promise<number> => {
-      console.log('[PlatformBridge] zoom.out() called');
+      if (isDev) console.log('[PlatformBridge] zoom.out() called');
       
       // Check if user is scrolled to bottom before zoom
       const chatMessages = document.querySelector('.chat-messages') as HTMLElement;
@@ -122,7 +125,7 @@ class PlatformBridge {
       }
       
       const newZoom = Math.max(currentZoom - 5, 50);
-      console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
+      if (isDev) console.log(`[PlatformBridge] Applying zoom: ${newZoom}% (${newZoom / 100})`);
       
       // Apply CSS zoom
       document.body.style.zoom = `${newZoom / 100}`;
@@ -147,11 +150,11 @@ class PlatformBridge {
       // Calculate zoom level for display
       const zoomLevel = (newZoom - 100) / 5;
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: zoomLevel }));
-      console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
+      if (isDev) console.log(`[PlatformBridge] Zoom applied successfully: ${newZoom}%`);
       return zoomLevel;
     },
     reset: async (): Promise<number> => {
-      console.log('[PlatformBridge] zoom.reset() called');
+      if (isDev) console.log('[PlatformBridge] zoom.reset() called');
       
       // Check if user is scrolled to bottom before zoom
       const chatMessages = document.querySelector('.chat-messages') as HTMLElement;
@@ -178,7 +181,7 @@ class PlatformBridge {
       }
       
       window.dispatchEvent(new CustomEvent('zoom-changed', { detail: 0 }));
-      console.log('[PlatformBridge] Zoom reset to 100%');
+      if (isDev) console.log('[PlatformBridge] Zoom reset to 100%');
       return 0;
     },
     getLevel: async (): Promise<number> => {
@@ -252,12 +255,14 @@ const bridge = new PlatformBridge();
 // Function to setup the bridge
 function setupBridge() {
   if (isTauri() && !window.electronAPI) {
-    console.log('Platform Bridge: Setting up window.electronAPI for Tauri');
+    if (isDev) console.log('Platform Bridge: Setting up window.electronAPI for Tauri');
     (window as any).electronAPI = bridge;
-    console.log('Platform Bridge: window.electronAPI is now:', window.electronAPI);
-    console.log('Platform Bridge: folder.select available:', !!window.electronAPI?.folder?.select);
+    if (isDev) {
+      console.log('Platform Bridge: window.electronAPI is now:', window.electronAPI);
+      console.log('Platform Bridge: folder.select available:', !!window.electronAPI?.folder?.select);
+    }
   } else {
-    console.log('Platform Bridge: Not setting up - isTauri:', isTauri(), 'window.electronAPI exists:', !!window.electronAPI);
+    if (isDev) console.log('Platform Bridge: Not setting up - isTauri:', isTauri(), 'window.electronAPI exists:', !!window.electronAPI);
   }
 }
 

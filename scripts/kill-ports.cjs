@@ -117,29 +117,40 @@ killPattern(`node.*vite.*${devPort}`, 'vite on dev port');
 // 4. Kill esbuild service from this project
 killPattern(`esbuild.*${PROJECT_DIR.replace(/\//g, '\\/')}`, 'esbuild service(s)');
 
-// 5. Kill dev server binaries from resources
-killPattern(`${RESOURCES_DIR}/server-macos`, 'dev server(s)');
-killPattern('server-macos-arm64', 'arm64 server(s)');
-killPattern('server-macos-x64', 'x64 server(s)');
+// 5. Kill dev server binaries from resources (scoped to this project only)
+// IMPORTANT: Only kill servers from THIS project's resources dir, not production app servers
+const platform = os.platform();
+if (platform === 'darwin') {
+  killPattern(`${RESOURCES_DIR}/server-macos`, 'dev server(s)');
+} else if (platform === 'linux') {
+  killPattern(`${RESOURCES_DIR}/server-linux`, 'dev server(s)');
+}
+// Windows: killPattern skips win32, so no action needed
 
-// 6. Kill node processes running server source files
-killPattern('node.*server-claude-macos\\.cjs', 'server source process(es)');
+// 6. Kill node processes running server source files (platform-specific)
+if (platform === 'darwin') {
+  killPattern('node.*server-claude-macos\\.cjs', 'server source process(es)');
+} else if (platform === 'linux') {
+  killPattern('node.*server-claude-linux\\.cjs', 'server source process(es)');
+}
 
 // 7. Kill any zombie tauri dev processes from this project
 killPattern(`cargo.*${PROJECT_DIR.replace(/\//g, '\\/')}`, 'cargo process(es)');
 
-// 8. Clean up git lock if no git process running
+// 8. Clean up git lock - always remove since we're doing cleanup before restart
+// This is safe because we're killing all related processes anyway
 const gitLockPath = path.join(PROJECT_DIR, '.git', 'index.lock');
 try {
   if (fs.existsSync(gitLockPath)) {
-    // Check if git is actually running
-    const gitRunning = spawnSync('pgrep', ['-f', 'git'], { encoding: 'utf8' }).stdout.trim();
-    if (!gitRunning) {
-      fs.unlinkSync(gitLockPath);
-      console.log('🔓 Removed stale git lock');
-    }
+    fs.unlinkSync(gitLockPath);
+    console.log('🔓 Removed git lock file');
   }
 } catch {}
+
+// 9. Also kill any orphaned Claude processes that might have git operations in progress
+// This helps prevent git locks from being created by zombie Claude processes
+killPattern('claude.*--print', 'orphaned claude CLI processes with streaming');
+killPattern('claude.*-p.*--output-format', 'orphaned claude CLI processes');
 
 // Brief wait for ports to be released
 setTimeout(() => {

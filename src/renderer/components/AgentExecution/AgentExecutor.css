@@ -63,7 +63,7 @@
   color: rgba(255, 255, 255, 0.5);
   padding: 6px;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -112,7 +112,7 @@
   font-family: var(--font-mono);
   outline: none;
   transition: all 0.2s ease;
-  cursor: pointer;
+  cursor: default;
 }
 
 .agent-template-selector select:focus {
@@ -160,7 +160,7 @@
   border-radius: 4px;
   font-size: 12px;
   font-family: var(--font-mono);
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;
@@ -269,7 +269,7 @@
   border-radius: 6px;
   font-size: 13px;
   font-family: var(--font-mono);
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   display: flex;
   align-items: center;

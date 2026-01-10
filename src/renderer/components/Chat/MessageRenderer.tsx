@@ -29,6 +29,8 @@ import {
   IconPlayerStop,
   IconPlayerPlay,
   IconDots,
+  IconChevronRight,
+  IconChevronDown,
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { isBashPrefix } from '../../utils/helpers';
@@ -508,6 +510,124 @@ const formatToolInput = (input: any): string => {
   }
   
   return '';
+};
+
+// ===== COLLAPSIBLE TOOL RESULT COMPONENT =====
+// Provides collapsed view by default for read-related tools with contextual summaries
+
+interface CollapsibleToolResultProps {
+  icon: React.ReactNode;
+  summary: string;
+  detail?: string;
+  className?: string;
+  children: React.ReactNode;
+  defaultCollapsed?: boolean;
+}
+
+const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
+  icon,
+  summary,
+  detail,
+  className = '',
+  children,
+  defaultCollapsed = true
+}) => {
+  const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+
+  const handleToggle = useCallback(() => {
+    setIsCollapsed(prev => !prev);
+  }, []);
+
+  return (
+    <div className="message tool-result-message">
+      <div className={`tool-result standalone collapsible ${className} ${isCollapsed ? 'collapsed' : 'expanded'}`}>
+        <div className="collapsible-header" onClick={handleToggle}>
+          <span className="collapse-chevron">
+            {isCollapsed ? <IconChevronRight size={10} stroke={2} /> : <IconChevronDown size={10} stroke={2} />}
+          </span>
+          {icon}
+          <span className="collapsible-summary">{summary}</span>
+          {detail && <span className="collapsible-detail">{detail}</span>}
+        </div>
+        {!isCollapsed && (
+          <div className="collapsible-content">
+            {children}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+// Summary generators for each tool type - contextual single-line descriptions
+const generateReadSummary = (contentStr: string, filePath: string): { summary: string; detail: string } => {
+  const lineCount = contentStr.split('\n').length;
+  return {
+    summary: `${lineCount} lines`,
+    detail: formatPath(filePath)
+  };
+};
+
+const generateGrepSummary = (contentStr: string, pattern: string, path?: string): { summary: string; detail: string } => {
+  const lines = contentStr.split('\n').filter(l => l.trim());
+  const fileMatches = new Set(lines.map(l => l.split(':')[0]).filter(Boolean));
+  const pathStr = path && path !== '.' ? ` in ${formatPath(path)}` : '';
+  return {
+    summary: `${lines.length} matches in ${fileMatches.size} files`,
+    detail: `"${pattern}"${pathStr}`
+  };
+};
+
+const generateGlobSummary = (contentStr: string, pattern: string, path?: string): { summary: string; detail: string } => {
+  const files = contentStr.split('\n').filter(l => l.trim());
+  const pathStr = path && path !== '.' ? ` in ${formatPath(path)}` : '';
+  return {
+    summary: `${files.length} files`,
+    detail: `${pattern}${pathStr}`
+  };
+};
+
+const generateLSSummary = (contentStr: string, path: string): { summary: string; detail: string } => {
+  const items = contentStr.split('\n').filter(l => l.trim());
+  return {
+    summary: `${items.length} items`,
+    detail: formatPath(path)
+  };
+};
+
+const generateWebSearchSummary = (contentStr: string, query: string): { summary: string; detail: string } => {
+  const results = contentStr.split('\n').filter(l => l.trim());
+  return {
+    summary: `${results.length} results`,
+    detail: `"${query.length > 40 ? query.slice(0, 40) + '...' : query}"`
+  };
+};
+
+const generateWebFetchSummary = (contentStr: string, url: string): { summary: string; detail: string } => {
+  const charCount = contentStr.length;
+  const formatted = charCount > 1000 ? `${(charCount / 1000).toFixed(1)}k chars` : `${charCount} chars`;
+  return {
+    summary: formatted,
+    detail: formatUrl(url)
+  };
+};
+
+const generateTaskSummary = (contentStr: string, description: string, subagentType: string): { summary: string; detail: string } => {
+  const lineCount = contentStr.split('\n').length;
+  return {
+    summary: description.length > 50 ? description.slice(0, 50) + '...' : description,
+    detail: `${subagentType} • ${lineCount} lines`
+  };
+};
+
+const generateGenericSummary = (contentStr: string, toolName?: string): { summary: string; detail: string } => {
+  const lineCount = contentStr.split('\n').length;
+  const charCount = contentStr.length;
+  const formatted = charCount > 1000 ? `${(charCount / 1000).toFixed(1)}k chars` : `${charCount} chars`;
+  return {
+    summary: `${lineCount} lines`,
+    detail: toolName ? `${toolName} • ${formatted}` : formatted
+  };
 };
 
 // Render content blocks
@@ -1242,7 +1362,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
                 key={idx}
                 className="tool-result error"
                 onContextMenu={handleErrorContextMenu}
-                title="right-click to copy error"
+                title="rmb to copy error"
               >
                 <span className="result-text">{resultContent}</span>
               </div>
@@ -1490,7 +1610,7 @@ const MessageRendererBase: React.FC<{
           <div 
             className="message system-error" 
             onContextMenu={handleContextMenu}
-            title="right-click to copy error"
+            title="rmb to copy error"
           >
             <div className="message-content">
               <div className="error-message">
@@ -2197,9 +2317,24 @@ const MessageRendererBase: React.FC<{
       // Check if this is a Read operation result (already have associatedToolUse from above)
       const isReadResult = isReadOperation;
       
-      // Hide Read tool results completely
+      // Show Read results with collapsed summary (click to expand)
       if (isReadResult) {
-        return null;
+        const { summary, detail } = generateReadSummary(contentStr, resultToolInput?.file_path || '');
+        const allLines = contentStr.split('\n');
+        return (
+          <CollapsibleToolResult
+            icon={<IconFileText size={12} stroke={1.5} />}
+            summary={summary}
+            detail={detail}
+            className="read-output"
+          >
+            <pre className="read-content">
+              {allLines.map((line, i) => (
+                <div key={i} className="read-line">{line}</div>
+              ))}
+            </pre>
+          </CollapsibleToolResult>
+        );
       }
       
       // Enhanced display for Edit/MultiEdit results
@@ -2569,28 +2704,21 @@ const MessageRendererBase: React.FC<{
           }
           return line;
         });
-        const MAX_LINES = 12;
-        const visibleLines = allLines.slice(0, MAX_LINES);
-        const hiddenCount = allLines.length - MAX_LINES;
-        const hasMore = hiddenCount > 0;
+        const { summary, detail } = generateGrepSummary(contentStr, pattern, resultToolInput?.path);
 
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone search-output">
-              <div className="search-header">
-                <IconSearch size={12} stroke={1.5} />
-                <span className="search-pattern">"{pattern}"</span>
-              </div>
-              <pre className="search-content">
-                {visibleLines.map((line, i) => (
-                  <div key={i} className="search-line">{line}</div>
-                ))}
-              </pre>
-              {hasMore && (
-                <div className="result-more">+ {hiddenCount} more matches</div>
-              )}
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconSearch size={12} stroke={1.5} />}
+            summary={summary}
+            detail={detail}
+            className="search-output"
+          >
+            <pre className="search-content">
+              {allLines.map((line, i) => (
+                <div key={i} className="search-line">{line}</div>
+              ))}
+            </pre>
+          </CollapsibleToolResult>
         );
       }
 
@@ -2598,57 +2726,42 @@ const MessageRendererBase: React.FC<{
       if (resultToolName === 'Glob') {
         const pattern = resultToolInput?.pattern || '';
         const allLines = contentStr.split('\n').filter(l => l.trim()).map(line => formatPath(line));
-        const MAX_LINES = 12;
-        const visibleLines = allLines.slice(0, MAX_LINES);
-        const hiddenCount = allLines.length - MAX_LINES;
-        const hasMore = hiddenCount > 0;
+        const { summary, detail } = generateGlobSummary(contentStr, pattern, resultToolInput?.path);
 
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone file-list">
-              <div className="file-list-header">
-                <IconFileSearch size={12} stroke={1.5} />
-                <span className="file-pattern">{pattern}</span>
-              </div>
-              <pre className="file-list-content">
-                {visibleLines.map((line, i) => (
-                  <div key={i} className="file-item">{line}</div>
-                ))}
-              </pre>
-              {hasMore && (
-                <div className="result-more">+ {hiddenCount} more files</div>
-              )}
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconFileSearch size={12} stroke={1.5} />}
+            summary={summary}
+            detail={detail}
+            className="file-list"
+          >
+            <pre className="file-list-content">
+              {allLines.map((line, i) => (
+                <div key={i} className="file-item">{line}</div>
+              ))}
+            </pre>
+          </CollapsibleToolResult>
         );
       }
 
       // ===== LS TOOL =====
       if (resultToolName === 'LS') {
-        const path = formatPath(resultToolInput?.path || '.');
         const allLines = contentStr.split('\n').filter(l => l.trim());
-        const MAX_LINES = 15;
-        const visibleLines = allLines.slice(0, MAX_LINES);
-        const hiddenCount = allLines.length - MAX_LINES;
-        const hasMore = hiddenCount > 0;
+        const { summary, detail } = generateLSSummary(contentStr, resultToolInput?.path || '.');
 
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone dir-listing">
-              <div className="dir-header">
-                <IconFolderOpen size={12} stroke={1.5} />
-                <span className="dir-path">{path}</span>
-              </div>
-              <pre className="dir-content">
-                {visibleLines.map((line, i) => (
-                  <div key={i} className="dir-item">{line}</div>
-                ))}
-              </pre>
-              {hasMore && (
-                <div className="result-more">+ {hiddenCount} more items</div>
-              )}
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconFolderOpen size={12} stroke={1.5} />}
+            summary={summary}
+            detail={detail}
+            className="dir-listing"
+          >
+            <pre className="dir-content">
+              {allLines.map((line, i) => (
+                <div key={i} className="dir-item">{line}</div>
+              ))}
+            </pre>
+          </CollapsibleToolResult>
         );
       }
 
@@ -2656,57 +2769,42 @@ const MessageRendererBase: React.FC<{
       if (resultToolName === 'WebSearch') {
         const query = resultToolInput?.query || '';
         const allLines = contentStr.split('\n').filter(l => l.trim());
-        const MAX_LINES = 10;
-        const visibleLines = allLines.slice(0, MAX_LINES);
-        const hiddenCount = allLines.length - MAX_LINES;
-        const hasMore = hiddenCount > 0;
+        const { summary, detail } = generateWebSearchSummary(contentStr, query);
 
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone web-search">
-              <div className="web-search-header">
-                <IconWorld size={12} stroke={1.5} />
-                <span className="web-query">"{query}"</span>
-              </div>
-              <pre className="web-search-content">
-                {visibleLines.map((line, i) => (
-                  <div key={i} className="web-result-line">{line}</div>
-                ))}
-              </pre>
-              {hasMore && (
-                <div className="result-more">+ {hiddenCount} more results</div>
-              )}
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconWorld size={12} stroke={1.5} />}
+            summary={summary}
+            detail={detail}
+            className="web-search"
+          >
+            <pre className="web-search-content">
+              {allLines.map((line, i) => (
+                <div key={i} className="web-result-line">{line}</div>
+              ))}
+            </pre>
+          </CollapsibleToolResult>
         );
       }
 
       // ===== WEBFETCH TOOL =====
       if (resultToolName === 'WebFetch') {
-        const url = formatUrl(resultToolInput?.url || '');
         const allLines = contentStr.split('\n');
-        const MAX_LINES = 10;
-        const visibleLines = allLines.slice(0, MAX_LINES);
-        const hiddenCount = allLines.length - MAX_LINES;
-        const hasMore = hiddenCount > 0;
+        const { summary, detail } = generateWebFetchSummary(contentStr, resultToolInput?.url || '');
 
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone web-fetch">
-              <div className="web-fetch-header">
-                <IconDownload size={12} stroke={1.5} />
-                <span className="web-url">{url}</span>
-              </div>
-              <pre className="web-fetch-content">
-                {visibleLines.map((line, i) => (
-                  <div key={i} className="web-line">{line}</div>
-                ))}
-              </pre>
-              {hasMore && (
-                <div className="result-more">+ {hiddenCount} more lines</div>
-              )}
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconDownload size={12} stroke={1.5} />}
+            summary={summary}
+            detail={detail}
+            className="web-fetch"
+          >
+            <pre className="web-fetch-content">
+              {allLines.map((line, i) => (
+                <div key={i} className="web-line">{line}</div>
+              ))}
+            </pre>
+          </CollapsibleToolResult>
         );
       }
 
@@ -2735,29 +2833,21 @@ const MessageRendererBase: React.FC<{
         }
 
         const allLines = contentStr.split('\n');
-        const MAX_LINES = 15;
-        const visibleLines = allLines.slice(0, MAX_LINES);
-        const hiddenCount = allLines.length - MAX_LINES;
-        const hasMore = hiddenCount > 0;
+        const { summary, detail } = generateTaskSummary(contentStr, description, subagentType);
 
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone task-result">
-              <div className="task-header">
-                <IconRobot size={12} stroke={1.5} />
-                <span className="task-desc">{description}</span>
-                <span className="task-type">{subagentType}</span>
-              </div>
-              <pre className="task-content">
-                {visibleLines.map((line, i) => (
-                  <div key={i} className="task-line">{line}</div>
-                ))}
-              </pre>
-              {hasMore && (
-                <div className="result-more">+ {hiddenCount} more lines</div>
-              )}
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconRobot size={12} stroke={1.5} />}
+            summary={summary}
+            detail={detail}
+            className="task-result"
+          >
+            <pre className="task-content">
+              {allLines.map((line, i) => (
+                <div key={i} className="task-line">{line}</div>
+              ))}
+            </pre>
+          </CollapsibleToolResult>
         );
       }
 
@@ -2858,31 +2948,33 @@ const MessageRendererBase: React.FC<{
 
       // ===== GENERIC FALLBACK - Clean display without line numbers =====
       if (contentStr) {
-        const allLines = contentStr.split('\n');
-        const MAX_LINES = 10;
-        const visibleLines = allLines.slice(0, MAX_LINES);
-        const hiddenCount = allLines.length - MAX_LINES;
-        const hasMore = hiddenCount > 0;
-
         // Hide TodoWrite success messages in generic fallback too
         if (contentStr.includes('Todos have been modified successfully') ||
             contentStr.includes('Ensure that you continue to use the todo list')) {
           return null;
         }
 
+        const allLines = contentStr.split('\n');
+        // Detect if this is an MCP tool or other read-like operation
+        const isMCPTool = resultToolName?.startsWith('mcp__');
+        const toolDisplayName = isMCPTool
+          ? resultToolName.split('__').slice(1).join(':')
+          : resultToolName;
+        const { summary, detail } = generateGenericSummary(contentStr, toolDisplayName);
+
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone generic-output">
-              <pre className="result-content">
-                {visibleLines.map((line, i) => (
-                  <div key={i} className="result-line">{line}</div>
-                ))}
-              </pre>
-              {hasMore && (
-                <div className="result-more">+ {hiddenCount} more lines</div>
-              )}
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconServer size={12} stroke={1.5} />}
+            summary={summary}
+            detail={detail}
+            className="generic-output"
+          >
+            <pre className="result-content">
+              {allLines.map((line, i) => (
+                <div key={i} className="result-line">{line}</div>
+              ))}
+            </pre>
+          </CollapsibleToolResult>
         );
       }
 

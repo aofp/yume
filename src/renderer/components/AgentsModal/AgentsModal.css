@@ -494,7 +494,7 @@
   height: 23px;
   border: 1px solid var(--fg-15);
   border-radius: 4px;
-  cursor: pointer;
+  cursor: default;
   transition: all 0.2s ease;
   display: inline-flex;
   align-items: center;

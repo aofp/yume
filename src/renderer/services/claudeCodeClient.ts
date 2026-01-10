@@ -25,19 +25,30 @@ export class ClaudeCodeClient {
     debugLog('[ClaudeCodeClient] Is Tauri:', isTauri());
     debugLog('[ClaudeCodeClient] Window location:', window.location.href);
 
-    // In production, wait a bit for the server to fully start
-    // This prevents race conditions where the client tries to connect too early
+    // In production, use adaptive polling instead of fixed delay
+    // This allows faster connection when server is ready
     if (isTauri()) {
-      debugLog('[ClaudeCodeClient] Production mode - waiting for server to start...');
-      setTimeout(() => {
-        this.discoverAndConnect();
-      }, 2000); // Wait 2 seconds for server to be ready
+      debugLog('[ClaudeCodeClient] Production mode - using adaptive connection...');
+      this.adaptiveConnect();
     } else {
       // Dev mode - connect immediately
       this.discoverAndConnect();
     }
   }
   
+  private async adaptiveConnect(attempt = 1) {
+    const delays = [100, 200, 400, 800, 1500]; // adaptive delays
+    const delay = delays[Math.min(attempt - 1, delays.length - 1)];
+
+    try {
+      await this.discoverAndConnect();
+    } catch (err) {
+      if (attempt < 10) {
+        setTimeout(() => this.adaptiveConnect(attempt + 1), delay);
+      }
+    }
+  }
+
   private async checkServerAndConnect() {
     // Get dynamic port from Tauri backend
     debugLog('[ClaudeCodeClient] Getting server port from Tauri...');

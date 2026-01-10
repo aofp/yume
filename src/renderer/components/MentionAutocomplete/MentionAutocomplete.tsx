@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { 
-  IconFile, 
-  IconFolder, 
-  IconClock, 
+import {
+  IconFile,
+  IconFolder,
+  IconClock,
   IconGitBranch,
   IconCode,
   IconFileText,

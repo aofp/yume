@@ -148,7 +148,7 @@ export default defineConfig({
         tryCatchDeoptimization: false,
       },
     },
-    cssCodeSplit: false, // Single CSS file
+    cssCodeSplit: true, // Split CSS for lazy-loaded components
     cssTarget: 'chrome89', // Modern CSS features
     cssMinify: false, // Disabled for dev/prod consistency
     assetsInlineLimit: 4096, // Reduced from 10KB to 4KB

@@ -7,6 +7,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn, type Event } from '@tauri-apps/api/event';
 import { processWrapperMessage, mapSessionIds } from './wrapperIntegration';
 import { resolveModelId, DEFAULT_MODEL_ID } from '../config/models';
+import { isDev } from '../utils/helpers';
 
 // Keep track of active listeners for cleanup
 const activeListeners = new Map<string, UnlistenFn>();
@@ -169,7 +170,7 @@ export class TauriClaudeClient {
 
         // Check if this is a resume of a past conversation (has claudeSessionId)
         const isResuming = !!sessionData.claudeSessionId;
-        console.log('[TauriClient] Spawning session:', {
+        if (isDev) console.log('[TauriClient] Spawning session:', {
           sessionId,
           isResuming,
           claudeSessionId: sessionData.claudeSessionId

@@ -55,19 +55,46 @@ impl ServerProcessGuard {
     fn kill(&self) -> std::io::Result<()> {
         self.shutdown_flag.store(true, Ordering::Relaxed);
         if let Ok(mut child) = self.child.lock() {
-            info!("Attempting to kill process PID: {}", self.pid);
-            
-            // Try normal kill first
+            info!("Attempting graceful shutdown of process PID: {}", self.pid);
+
+            // Step 1: Send SIGTERM for graceful shutdown (lets server clean up)
+            Self::send_sigterm(self.pid);
+
+            // Step 2: Wait up to 800ms for graceful shutdown
+            // This gives the server time to clean up git locks and kill child processes
+            let start = std::time::Instant::now();
+            let timeout = std::time::Duration::from_millis(800);
+
+            loop {
+                match child.try_wait() {
+                    Ok(Some(_status)) => {
+                        info!("Process {} exited gracefully", self.pid);
+                        return Ok(());
+                    }
+                    Ok(None) => {
+                        // Still running
+                        if start.elapsed() > timeout {
+                            break; // Timeout, proceed to force kill
+                        }
+                        std::thread::sleep(std::time::Duration::from_millis(50));
+                    }
+                    Err(e) => {
+                        info!("Error checking process status: {}", e);
+                        break;
+                    }
+                }
+            }
+
+            // Step 3: Process didn't exit gracefully, force kill
+            info!("Process {} didn't exit gracefully, sending SIGKILL", self.pid);
             match child.kill() {
                 Ok(()) => {
-                    info!("Process killed successfully");
-                    // Wait for process to exit
+                    info!("Process killed with SIGKILL");
                     let _ = child.wait();
                     Ok(())
                 }
                 Err(e) => {
                     info!("Failed to kill process: {}", e);
-                    // Try platform-specific force kill
                     Self::force_kill(self.pid);
                     Err(e)
                 }
@@ -75,6 +102,20 @@ impl ServerProcessGuard {
         } else {
             Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to lock child process"))
         }
+    }
+
+    #[cfg(target_os = "windows")]
+    fn send_sigterm(_pid: u32) {
+        // Windows doesn't have SIGTERM, we'll rely on the graceful shutdown via other means
+        // or just proceed to kill
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    fn send_sigterm(pid: u32) {
+        info!("Sending SIGTERM to process PID: {}", pid);
+        let _ = Command::new("kill")
+            .args(&["-15", &pid.to_string()]) // -15 = SIGTERM
+            .output();
     }
     
     #[cfg(target_os = "windows")]
@@ -217,7 +258,11 @@ fn remove_pid_file() {
 pub fn kill_orphaned_servers() {
     info!("Checking for orphaned server processes from previous session...");
 
-    // First, try to kill from PID file (specific process)
+    // STEP 1: Kill orphaned zombies first (PPID=1 servers)
+    // These are definitely zombies - no legitimate server has PPID=1
+    kill_orphaned_server_zombies();
+
+    // STEP 2: Try to kill from PID file (specific process)
     let pid_path = get_pid_file_path();
     if pid_path.exists() {
         if let Ok(contents) = fs::read_to_string(&pid_path) {
@@ -229,7 +274,7 @@ pub fn kill_orphaned_servers() {
         let _ = fs::remove_file(&pid_path);
     }
 
-    // Also kill any zombie servers from the SAME installation path
+    // STEP 3: Kill any zombie servers from the SAME installation path
     // This prevents zombie accumulation from crashed instances
     kill_servers_from_same_install();
 }
@@ -390,6 +435,67 @@ fn get_our_server_path() -> Option<String> {
                 .map(|p| p.join("resources").join(binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         }
+    }
+}
+
+/// Kill ORPHANED server processes (those with PPID=1)
+/// These are definitely zombies from crashed Tauri instances
+/// Safe to kill since legitimate servers have Tauri as parent
+fn kill_orphaned_server_zombies() {
+    #[cfg(target_os = "macos")]
+    {
+        // Find all server-macos processes with PPID=1 (orphaned)
+        // ps -ax -o ppid,pid,comm outputs: PPID PID COMMAND
+        if let Ok(output) = Command::new("ps")
+            .args(&["-ax", "-o", "ppid,pid,comm"])
+            .output()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 3 {
+                    // Check if PPID is 1 (orphaned) and command contains server-macos
+                    if parts[0] == "1" && parts[2].contains("server-macos") {
+                        if let Ok(pid) = parts[1].parse::<u32>() {
+                            let _ = Command::new("kill")
+                                .args(&["-9", &pid.to_string()])
+                                .output();
+                            info!("Killed ORPHANED zombie server PID: {} (PPID=1)", pid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    #[cfg(target_os = "linux")]
+    {
+        // Same logic for Linux
+        if let Ok(output) = Command::new("ps")
+            .args(&["-ax", "-o", "ppid,pid,comm"])
+            .output()
+        {
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            for line in stdout.lines() {
+                let parts: Vec<&str> = line.split_whitespace().collect();
+                if parts.len() >= 3 {
+                    if parts[0] == "1" && parts[2].contains("server-linux") {
+                        if let Ok(pid) = parts[1].parse::<u32>() {
+                            let _ = Command::new("kill")
+                                .args(&["-9", &pid.to_string()])
+                                .output();
+                            info!("Killed ORPHANED zombie server PID: {} (PPID=1)", pid);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Windows doesn't have the same orphan concept, but we can check for old servers
+    #[cfg(target_os = "windows")]
+    {
+        // Windows servers are handled differently - the watchdog approach handles this
     }
 }
 

@@ -1,6 +1,8 @@
 # User Sentiment Analysis
 
-*Aggregated from Reddit, Hacker News, forums, and reviews*
+*Last Updated: January 9, 2026*
+
+*Aggregated from Reddit, Hacker News, GitHub issues, forums, and reviews*
 
 ## Claude Code CLI Complaints
 
@@ -33,6 +35,48 @@
 
 ### Anthropic's Response
 > "We never intentionally degrade model quality. The issues were attributed to unrelated bugs."
+
+### January 2026 Critical Issues (from GitHub)
+
+**4,711 open issues** as of January 9, 2026:
+
+1. **Catastrophic Data Loss (#11237)**
+   - Git checkout ran without user approval
+   - Destroyed 4 days of uncommitted work
+   - User confirmed this was **not prompted**
+
+2. **Sensitive Info Exposure (#13797)**
+   - Claude creates GitHub issues in **wrong repo** (public anthropic/claude-code)
+   - Exposes: production details, database schemas, security configs
+   - Systematic bug affecting dozens of users
+
+3. **The "Groundhog Day" Effect**
+   - After compaction, Claude forgets what files it was looking at
+   - Makes the same mistakes you already corrected
+   - Users "racing against compaction" to preserve context
+
+4. **UTF-8 Crashes (#17250)**
+   - Crashes on Chinese text processing
+   - Character boundary panics
+
+5. **Memory Leaks (#17249)**
+   - Prompt hooks cause exponential payload growth
+   - 800MB+ debug logs
+   - Infinite retry loops
+
+6. **Resume Hangs (#17235)**
+   - 30-60 second blank terminal freeze on resume
+   - Session management pain point
+
+### Top User Quotes (January 2026)
+
+> "Claude had become significantly dumber… ignored its own plan and messed up the code." - Reddit
+
+> "After context compaction, Claude Code is definitely dumber—it doesn't know what files it was looking at and needs to re-read them." - DoltHub Blog
+
+> "We're not stupid. We document our prompts, we version our code, we know when outputs change. Telling us it's in our heads is insulting." - Medium
+
+> "Users can only rely on Claude's code about 30% of the time on the first try—not because the code is fundamentally wrong, but due to poor architectural choices." - GitHub Gist
 
 ---
 

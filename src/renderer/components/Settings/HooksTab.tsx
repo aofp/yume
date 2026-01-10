@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
-import { 
+import {
   IconPlayerPlay,
   IconPlus,
   IconTrash,

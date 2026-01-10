@@ -33,12 +33,12 @@
 }
 
 .model-selector-tools {
-  font-size: 9px;
-  color: var(--fg-40);
+  font-size: 8px;
+  opacity: 0.7;
   margin-left: -2px;
   transition: color 0.2s ease;
   position: relative;
-  top: 1px;
+  top: 2px;
 }
 
 .model-selector-trigger.hovered .model-selector-tools {

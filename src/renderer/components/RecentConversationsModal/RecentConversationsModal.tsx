@@ -29,11 +29,10 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
   const [conversations, setConversations] = useState<RecentConversation[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
-  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  const [focusedIndex, setFocusedIndex] = useState(0);
   const [isSelecting, setIsSelecting] = useState(false);
-  // Track if using keyboard navigation (ignore mouse hover until mouse moves)
-  const [isKeyboardMode, setIsKeyboardMode] = useState(false);
+  // Track which input type last set the focus (keyboard wins over stale mouse hover)
+  const [inputMode, setInputMode] = useState<'keyboard' | 'mouse'>('keyboard');
   const lastMousePos = useRef<{ x: number; y: number } | null>(null);
   const isOpenRef = useRef(isOpen);
 
@@ -72,10 +71,9 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
   useEffect(() => {
     if (isOpen) {
       loadConversations();
-      setSelectedIndex(0);
-      setHoveredIndex(null);
+      setFocusedIndex(0);
       setIsSelecting(false);
-      setIsKeyboardMode(false);
+      setInputMode('keyboard');
       lastMousePos.current = null;
     }
   }, [isOpen, loadConversations]);
@@ -138,32 +136,26 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
         return;
       }
 
-      // arrow key navigation - switch to keyboard mode
-      // If switching from mouse hover, start from hovered item
+      // arrow key navigation - keyboard takes over focus
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        const startIdx = !isKeyboardMode && hoveredIndex !== null ? hoveredIndex : selectedIndex;
-        setIsKeyboardMode(true);
-        setHoveredIndex(null);
-        setSelectedIndex(Math.min(startIdx + 1, conversations.length - 1));
+        setInputMode('keyboard');
+        setFocusedIndex(prev => Math.min(prev + 1, conversations.length - 1));
         return;
       }
 
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        const startIdx = !isKeyboardMode && hoveredIndex !== null ? hoveredIndex : selectedIndex;
-        setIsKeyboardMode(true);
-        setHoveredIndex(null);
-        setSelectedIndex(Math.max(startIdx - 1, 0));
+        setInputMode('keyboard');
+        setFocusedIndex(prev => Math.max(prev - 1, 0));
         return;
       }
 
-      // enter to select current (use hovered if in mouse mode, selected if in keyboard mode)
+      // enter to select currently focused item
       if (e.key === 'Enter') {
         e.preventDefault();
-        const activeIdx = isKeyboardMode ? selectedIndex : (hoveredIndex ?? selectedIndex);
-        if (activeIdx >= 0 && activeIdx < conversations.length) {
-          selectConversation(conversations[activeIdx]);
+        if (focusedIndex >= 0 && focusedIndex < conversations.length) {
+          selectConversation(conversations[focusedIndex]);
         }
         return;
       }
@@ -183,7 +175,7 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose, isSelecting, selectConversation, conversations, selectedIndex, hoveredIndex, isKeyboardMode]);
+  }, [isOpen, onClose, isSelecting, selectConversation, conversations, focusedIndex]);
 
   if (!isOpen) return null;
 
@@ -220,7 +212,7 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
             <button
               className="modal-close-btn"
               onClick={onClose}
-              title="close"
+              title="close (esc)"
             >
               <IconX size={14} />
             </button>
@@ -236,13 +228,9 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
           {!loading && !error && conversations.slice(0, 9).map((conv, idx) => (
             <div
               key={conv.id}
-              className={`recent-item-container ${
-                hoveredIndex === idx && !isKeyboardMode ? 'hovered' : ''
-              } ${selectedIndex === idx && isKeyboardMode ? 'selected' : ''} ${
-                (hoveredIndex === idx && !isKeyboardMode) || (selectedIndex === idx && isKeyboardMode) ? 'focused' : ''
-              }`}
+              className={`recent-item-container ${focusedIndex === idx ? 'focused' : ''}`}
               onMouseMove={(e) => {
-                // Only respond to actual mouse movement
+                // Only respond to actual mouse movement (ignore synthetic events from scroll)
                 const pos = { x: e.clientX, y: e.clientY };
                 if (lastMousePos.current &&
                     lastMousePos.current.x === pos.x &&
@@ -250,16 +238,14 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
                   return;
                 }
                 lastMousePos.current = pos;
-                if (isKeyboardMode) {
-                  setIsKeyboardMode(false);
-                }
-                if (hoveredIndex !== idx) {
-                  setHoveredIndex(idx);
-                }
+                // Mouse takes over focus
+                setInputMode('mouse');
+                setFocusedIndex(idx);
               }}
               onMouseLeave={() => {
-                if (!isKeyboardMode) {
-                  setHoveredIndex(null);
+                // Only clear focus if mouse is still the active input
+                if (inputMode === 'mouse') {
+                  setFocusedIndex(-1);
                 }
               }}
             >

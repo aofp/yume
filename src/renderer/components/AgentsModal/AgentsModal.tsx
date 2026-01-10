@@ -471,7 +471,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
             )}
           </div>
           <div className="agents-header-actions">
-            <button className="agents-close" onClick={onClose}>
+            <button className="agents-close" onClick={onClose} title="close (esc)">
               <IconX size={16} />
             </button>
           </div>

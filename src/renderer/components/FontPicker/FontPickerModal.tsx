@@ -109,7 +109,7 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
       <div className="font-picker-modal" onClick={(e) => e.stopPropagation()}>
         <div className="font-picker-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>{fontType === 'monospace' ? 'monospace' : 'sans-serif'} fonts</h3>
-          <button className="font-picker-close" onClick={onClose}>
+          <button className="font-picker-close" onClick={onClose} title="close (esc)">
             <IconX size={16} />
           </button>
         </div>

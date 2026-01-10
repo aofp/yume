@@ -276,7 +276,6 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     const handleKeyDown = (e: KeyboardEvent) => {
       // CRITICAL: Only handle events when modal is actually open
       if (!isOpenRef.current) {
-        console.log('[RecentProjectsModal] Modal is closed, ignoring key press');
         return;
       }
       
@@ -307,22 +306,32 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       }
       
       // arrow key navigation - switch to keyboard mode
-      // If switching from mouse hover, start from hovered item
+      // If first entering keyboard mode with no hover, start at first item
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        const startIdx = !isKeyboardMode && hoveredIndex !== null ? hoveredIndex : selectedIndex;
         setIsKeyboardMode(true);
         setHoveredIndex(null);
-        setSelectedIndex(Math.min(startIdx + 1, Math.min(projects.length - 1, 9)));
+        if (!isKeyboardMode && hoveredIndex === null) {
+          // First arrow press with nothing selected - start at first item
+          setSelectedIndex(0);
+        } else {
+          const startIdx = hoveredIndex !== null ? hoveredIndex : selectedIndex;
+          setSelectedIndex(Math.min(startIdx + 1, Math.min(projects.length - 1, 9)));
+        }
         return;
       }
 
       if (e.key === 'ArrowUp') {
         e.preventDefault();
-        const startIdx = !isKeyboardMode && hoveredIndex !== null ? hoveredIndex : selectedIndex;
         setIsKeyboardMode(true);
         setHoveredIndex(null);
-        setSelectedIndex(Math.max(startIdx - 1, 0));
+        if (!isKeyboardMode && hoveredIndex === null) {
+          // First arrow press with nothing selected - start at first item
+          setSelectedIndex(0);
+        } else {
+          const startIdx = hoveredIndex !== null ? hoveredIndex : selectedIndex;
+          setSelectedIndex(Math.max(startIdx - 1, 0));
+        }
         return;
       }
       
@@ -340,13 +349,11 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       if (e.key >= '1' && e.key <= '9' && !e.ctrlKey && !e.metaKey && !e.altKey && !e.shiftKey) {
         // Double-check modal is still open
         if (!isOpenRef.current) {
-          console.log('[RecentProjectsModal] Modal closed during key handling, aborting');
           return;
         }
-        
+
         // Prevent duplicate selections
         if (isSelecting) {
-          console.log('[RecentProjectsModal] Already selecting a project, ignoring key press');
           return;
         }
         
@@ -359,12 +366,10 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       }
     };
     
-    // Add listener without capture phase to avoid conflicts
-    console.log('[RecentProjectsModal] Adding keydown listener');
-    window.addEventListener('keydown', handleKeyDown);
+    // Use capture phase to handle events before other handlers
+    window.addEventListener('keydown', handleKeyDown, true);
     return () => {
-      console.log('[RecentProjectsModal] Removing keydown listener');
-      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [isOpen, onClose, isSelecting, selectProject, hoveredIndex, isKeyboardMode, selectedIndex]);
 
@@ -411,7 +416,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
             <button
               className="modal-close-btn"
               onClick={onClose}
-              title="close"
+              title="close (esc)"
             >
               <IconX size={14} />
             </button>

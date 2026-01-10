@@ -1,6 +1,6 @@
 # Claude Code CLI - Deep Analysis
 
-*Last Updated: January 2026*
+*Last Updated: January 9, 2026*
 
 *Our primary competitor and the tool yurucode wraps*
 
@@ -77,18 +77,25 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - Can spawn **up to 7 parallel processes** eating CPU
 - **Accessibility hazard**: WCAG warns against >3 flashes/second; Claude does thousands
 
-**Open Issues (Jan 2026)**:
+**Open Issues (Jan 2026 - Total: 4,711 open)**:
 
 | Issue | Description | Status |
 |-------|-------------|--------|
 | #1913 | Terminal flickering (original, 700+ upvotes) | **Still Open** |
+| #17250 | UTF-8 Character Boundary Panic - crashes on Chinese text | **Critical** |
+| #17249 | Prompt Hooks Memory Leak - 800MB+ logs, infinite retries | **Critical** |
+| #17248 | Stream JSON Output Stops - stdout halts mid-session | Open |
+| #17241 | Claude Violates claude.md Rules - ignores constraints | Open |
+| #17237 | Feature: PreCompact/PostCompact hooks | Feature Request |
+| #17235 | Resume Command Hangs - 30-60s blank terminal freeze | Open |
+| #17236 | Feedback Window Auto-closes while user types | Open |
+| #17232 | Numpad Enter Key Bug - inserts `[57414u` | Open |
+| #17227 | Auto-scroll After Response - 3-5 second delay | Open |
+| #13797 | Creates issues in wrong repo - exposes sensitive info | **Critical** |
+| #11237 | **CATASTROPHIC**: git checkout without approval, lost 4 days work | **Critical** |
 | #10794 | Critical: Flickering causes complete VS Code crashes | Open |
-| #15875 | Android Studio: flickering, overlapping output (5 days ago) | Open |
-| #14617 | Display corruption on narrow windows | Open |
-| #16335 | Terminal freezes on paste input (Jan 2026) | Open |
-| #16327 | Panic on Korean characters (Jan 2026) | Open |
 | #14552 | CLI input lag in extended sessions | Open |
-| #12459 | Severe input latency in VS Code terminal | Open |
+| #6788 | Claude is straight up broken again | Patterns |
 
 **Partial Fixes in v2.0.72-74**:
 - "Reduced terminal flickering" (but not eliminated)
@@ -119,6 +126,45 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - No visual session history
 - Can't easily switch between projects
 - No crash recovery UI
+- Resume command hangs 30-60 seconds
+
+### 6. Context Compaction Issues (Critical)
+
+**The "Groundhog Day" Effect**:
+> "After context compaction, Claude Code is definitely dumber—it doesn't know what files it was looking at and needs to re-read them. It will make mistakes you specifically corrected again earlier in the session."
+
+**Key Problems**:
+- Auto-compact at 95% is often too late - developers recommend 85-90%
+- No way to "protect" critical context from being compacted
+- No PreCompact/PostCompact hooks (feature request #17237)
+- Bug #13929: Auto-compact fails when conversation exceeds limit, blocking manual /compact
+- Users report "racing against compaction to document what Claude just did"
+
+**Yurucode Advantage**: Auto-compact at 55%/60%/65% thresholds - far ahead of CLI's 95%
+
+### 7. Usage Limits & Visibility
+
+**Major Complaints**:
+- No clear visibility into remaining quota
+- "Unexpectedly restrictive usage limits with no advance warning"
+- Users hitting limits within 10-15 minutes on Max subscriptions
+- One analysis claims ~60% reduction in effective token limits over time
+- 5-hour reset windows confuse users
+
+**Yurucode Advantage**: Real-time token tracking + analytics dashboard
+
+### 8. Trust & Safety Issues
+
+**Catastrophic Data Loss Risk (Issue #11237)**:
+> "Claude Code ran `git checkout src/source_code.c` without user approval, which replaced the working file with an old version and destroyed 4 days of uncommitted work."
+
+**Sensitive Information Exposure (Issue #13797)**:
+> "Claude Code has a systematic bug that causes it to create GitHub issues in the public anthropics/claude-code repository instead of the user's private repository, resulting in dozens of users accidentally exposing sensitive technical information, production details, database schemas, and security configurations."
+
+**Compliance Violations**:
+- Claude repeatedly ignores constraints in claude.md (Issues #17241, #17228, #17240)
+- Breaks explicit user instructions within sessions
+- Quality degradation reports: 30% first-try success rate on complex tasks
 
 ## Performance Benchmarks
 

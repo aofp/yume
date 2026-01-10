@@ -1,6 +1,6 @@
 # Competitor Deep Dives
 
-*Last Updated: January 2026*
+*Last Updated: January 9, 2026*
 
 ## IDE-Based Competitors
 
@@ -157,26 +157,37 @@
 **Weaknesses**:
 - ❌ No 5h/7-day Anthropic limit tracking (only cost)
 - ❌ No hook system (0 events vs yurucode's 9)
+- ❌ No Yurucode Guard (built-in security hook)
 - ❌ No themes (yurucode has 30)
 - ❌ No built-in agents (yurucode has 5)
 - ❌ No auto-compaction
 - ❌ No crash recovery
-- ❌ No keyboard-first design
+- ❌ No keyboard-first design (yurucode has 32+)
+- ❌ No @ mention system (@r, @m, folders)
+- ❌ No stream timers (thinking, bash, compacting)
+- ❌ No ultrathink support (Cmd+K + highlighting)
 - ❌ No drag & drop tabs
 - ❌ No custom commands with templates
 - ❌ No virtualized message list
+- ❌ No history/rollback panel
 
 **Yurucode vs Opcode Summary**:
 | Feature | Yurucode | Opcode |
 |---------|----------|--------|
 | 5h + 7d limit tracking | ✅ | ❌ |
+| Yurucode Guard | ✅ Built-in security | ❌ |
 | Hook system | ✅ 9 events | ❌ |
+| @ mention system | ✅ @r, @m, folders | ❌ |
+| Stream timers | ✅ Live durations | ❌ |
+| Ultrathink support | ✅ Cmd+K + highlighting | ❌ |
+| History/rollback panel | ✅ | ❌ |
 | Themes | ✅ 30 | ❌ |
 | Built-in agents | ✅ 5 | ❌ |
 | Auto-compaction | ✅ 60%/65% | ❌ |
 | Crash recovery | ✅ | ❌ |
-| Keyboard shortcuts | ✅ 30+ | ❌ |
+| Keyboard shortcuts | ✅ 32+ | ❌ |
 | Custom commands | ✅ 12 defaults | ❌ |
+| Bash mode (!/$) | ✅ | ❌ |
 | Drag & drop | ✅ | ❌ |
 | Git diff viewer | ✅ | ✅ |
 | MCP support | ✅ | ✅ |
@@ -185,6 +196,82 @@
 | Price | $9 one-time | Free |
 
 **Relevance to Yurucode**: Direct competitor. Opcode is Y Combinator backed but technically inferior in almost every way. Yurucode's paid model funds development of superior features.
+
+---
+
+## Multi-Agent Orchestration Tools (New Category)
+
+### Claude Squad
+
+**Type**: Terminal app for managing multiple Claude Code instances
+**Price**: Free / Open Source
+**GitHub**: github.com/smtg-ai/claude-squad
+
+**Key Features**:
+- Manages multiple Claude Code, Codex, Gemini, Aider instances
+- Uses **tmux** for isolated terminal sessions
+- Uses **git worktrees** for code isolation per agent
+- Each session works on its own branch
+- Session state preservation
+
+**Use Case**:
+> "12 Claude agents rebuilt their entire frontend overnight—one agent refactored components, another wrote tests, a third updated documentation, and a fourth optimized performance."
+
+**Strengths**:
+- True parallel execution
+- Git isolation prevents conflicts
+- Works with multiple AI CLI tools
+- Power user focused
+
+**Weaknesses**:
+- Terminal-only (no GUI)
+- Requires tmux knowledge
+- Complex setup
+
+**Relevance to Yurucode**: Shows demand for multi-agent orchestration. Yurucode's multi-tab already provides basic parallelism; could evolve into coordinated agent swarms.
+
+---
+
+### OpenCode
+
+**Type**: Open-source Claude Code alternative
+**Price**: Free
+**GitHub**: Open source
+
+**Key Features**:
+- Terminal AI coding agent (fresh rewrite 2025)
+- Provider-agnostic (75+ LLM providers)
+- Works with Claude, GPT, local models
+- Mature and battle-tested
+
+**Strengths**:
+- Not locked to Anthropic
+- Works with local/offline models
+- Open source, customizable
+
+**Weaknesses**:
+- Less polished than Claude Code
+- Smaller community
+
+**Relevance to Yurucode**: Proof that terminal AI tools can be provider-agnostic. Consider multi-provider support as future differentiator.
+
+---
+
+### Usage Monitoring Tools
+
+**ccusage** (github.com/ryoppippi/ccusage):
+- Analyzes Claude Code usage from local JSONL files
+- Daily, monthly, session reports
+- 5-hour block tracking for Pro/Max billing
+- Useful for flat-rate subscription users
+
+**Claude Code Usage Monitor** (github.com/Maciek-roboblog/Claude-Code-Usage-Monitor):
+- Real-time terminal monitoring
+- ML-based usage predictions
+- Burn rate and cost analysis
+- Session limit predictions
+
+**Relevance to Yurucode**: Both tools address usage visibility pain point. Yurucode already has analytics; could add burn rate predictions and quota alerts.
 
 ---
 
@@ -368,8 +455,14 @@
 | Built-in agents | ❌ | ❌ | ❌ | ✅ **5 agents** | **Unique** |
 | Custom commands | ❌ | ❌ | ❌ | ✅ 12 defaults | **Unique** |
 | Hooks system | Partial | ❌ | ❌ | ✅ 9 events | **Advantage** |
+| Yurucode Guard | ❌ | ❌ | ❌ | ✅ Security hook | **Unique** |
+| @ mention system | ❌ | ❌ | ❌ | ✅ @r, @m, folders | **Unique** |
+| Stream timers | ❌ | ❌ | ❌ | ✅ Live durations | **Unique** |
+| Ultrathink support | ❌ | ❌ | ❌ | ✅ Cmd+K + highlighting | **Unique** |
+| History/rollback panel | ❌ | ❌ | ? | ✅ | **Unique** |
+| Bash mode (!/$) | ❌ | ❌ | ❌ | ✅ | **Unique** |
 | Crash recovery | ❌ | ❌ | ❌ | ✅ | **Unique** |
-| Keyboard shortcuts | ✅ | ✅ | ❌ | ✅ 30+ | No |
+| Keyboard shortcuts | ✅ | ✅ | ❌ | ✅ 32+ | No |
 | Drag & drop | ✅ | ✅ | ❌ | ✅ | No |
 | Light mode | ✅ | ✅ | ? | ❌ | Gap |
 | Memories | ✅ | ✅ | ❌ | ❌ | Gap |
@@ -401,12 +494,20 @@
 
 11. **5h + 7-day limit tracking**: **UNIQUE** - Only yurucode tracks actual Anthropic subscription limits. Opcode only does cost tracking.
 
-12. **Keyboard-first design**: 30+ shortcuts, bash mode (!/$). Opcode lacks keyboard focus.
+12. **Keyboard-first design**: 32+ shortcuts, bash mode (!/$). Opcode lacks keyboard focus.
 
-13. **Crash recovery**: Auto-save every 5 min. Opcode doesn't have this.
+13. **@ mention system**: @r (recent files), @m (modified files), folder navigation. No competitor has this.
 
-14. **Market consolidation**: OpenAI tried to buy Windsurf, Google grabbed the founders. Cursor at $29B. Small players getting squeezed.
+14. **Stream timers**: Live thinking/bash/compacting duration timers. No competitor shows this.
 
-15. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.
+15. **Ultrathink support**: Cmd+K inserts ultrathink prefix + rainbow gradient highlighting. Unique to yurucode.
 
-16. **Opcode is YC-backed but feature-poor**: They have funding but yurucode is technically superior in almost every category except CLAUDE.md editor.
+16. **History/rollback panel**: Visual message history with rollback capability. Unique.
+
+17. **Crash recovery**: Auto-save every 5 min. Opcode doesn't have this.
+
+18. **Market consolidation**: OpenAI tried to buy Windsurf, Google grabbed the founders. Cursor at $29B. Small players getting squeezed.
+
+19. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.
+
+20. **Opcode is YC-backed but feature-poor**: They have funding but yurucode is technically superior in almost every category except CLAUDE.md editor.

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
-import { 
+import {
   IconPlus, IconTrash, IconRefresh,
   IconAlertCircle, IconCheck, IconLoader2,
   IconTerminal, IconWorld, IconFolder, IconUser

@@ -1683,8 +1683,11 @@ app.get('/claude-analytics', async (req, res) => {
                   let messageCount = 0;
                   let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
-                  // Track last usage from result message (cumulative session totals)
-                  let lastResultUsage = null;
+                  // Track cumulative usage by summing all assistant messages
+                  let totalInputTokens = 0;
+                  let totalOutputTokens = 0;
+                  let totalCacheCreationTokens = 0;
+                  let totalCacheReadTokens = 0;
                   let lastResultCostUSD = null;
 
                   for (const line of allLines) {
@@ -1692,24 +1695,31 @@ app.get('/claude-analytics', async (req, res) => {
                       const data = JSON.parse(line);
 
                       // Claude CLI uses type: "assistant" for assistant messages
-                      // Usage data is stored in message.usage, not in separate result messages
+                      // Usage data is per-turn, so we SUM all turns
                       if (data.type === 'assistant' && data.message) {
                         messageCount++;
                         // Detect model from message
                         if (data.message.model) {
                           sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                         }
-                        // Extract usage from assistant message (cumulative totals)
+                        // Sum usage from all assistant messages
                         if (data.message.usage) {
-                          lastResultUsage = data.message.usage;
+                          totalInputTokens += data.message.usage.input_tokens || 0;
+                          totalOutputTokens += data.message.usage.output_tokens || 0;
+                          totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
+                          totalCacheReadTokens += data.message.usage.cache_read_input_tokens || 0;
                         }
                       }
 
-                      // Also check for standalone result messages (legacy format)
+                      // Also check for standalone result messages (legacy format) - these have costUSD
                       if (data.type === 'result' && data.usage) {
-                        lastResultUsage = data.usage;
+                        // For result messages, sum usage too (shouldn't double count if both exist)
+                        totalInputTokens += data.usage.input_tokens || 0;
+                        totalOutputTokens += data.usage.output_tokens || 0;
+                        totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
+                        totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
                         if (data.costUSD != null) {
-                          lastResultCostUSD = data.costUSD;
+                          lastResultCostUSD = (lastResultCostUSD || 0) + data.costUSD;
                         }
                       }
 
@@ -1727,21 +1737,15 @@ app.get('/claude-analytics', async (req, res) => {
                     }
                   }
 
-                  // Calculate from last result's cumulative totals (not summing per-turn)
-                  if (lastResultUsage) {
-                    const inputTokens = lastResultUsage.input_tokens || 0;
-                    const outputTokens = lastResultUsage.output_tokens || 0;
-                    const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
-                    const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
-
+                  // Calculate from summed totals
+                  if (totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0) {
                     // Total tokens = all tokens used (input + output + cache)
-                    // For analytics display, we want total usage, not just context window
-                    sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
+                    sessionTokens = totalInputTokens + totalOutputTokens + totalCacheCreationTokens + totalCacheReadTokens;
                     sessionTokenBreakdown = {
-                      input: inputTokens,
-                      output: outputTokens,
-                      cacheCreation: cacheCreationTokens,
-                      cacheRead: cacheReadTokens
+                      input: totalInputTokens,
+                      output: totalOutputTokens,
+                      cacheCreation: totalCacheCreationTokens,
+                      cacheRead: totalCacheReadTokens
                     };
 
                     // Use costUSD if available, otherwise calculate from tokens
@@ -1876,8 +1880,11 @@ app.get('/claude-analytics', async (req, res) => {
                 let messageCount = 0;
                 let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
-                // Track last usage from result message (cumulative session totals)
-                let lastResultUsage = null;
+                // Track cumulative usage by summing all assistant messages
+                let totalInputTokens = 0;
+                let totalOutputTokens = 0;
+                let totalCacheCreationTokens = 0;
+                let totalCacheReadTokens = 0;
                 let lastResultCostUSD = null;
 
                 for (const line of allLines) {
@@ -1885,24 +1892,30 @@ app.get('/claude-analytics', async (req, res) => {
                     const data = JSON.parse(line);
 
                     // Claude CLI uses type: "assistant" for assistant messages
-                    // Usage data is stored in message.usage, not in separate result messages
+                    // Usage data is per-turn, so we SUM all turns
                     if (data.type === 'assistant' && data.message) {
                       messageCount++;
                       // Detect model from message
                       if (data.message.model) {
                         sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                       }
-                      // Extract usage from assistant message (cumulative totals)
+                      // Sum usage from all assistant messages
                       if (data.message.usage) {
-                        lastResultUsage = data.message.usage;
+                        totalInputTokens += data.message.usage.input_tokens || 0;
+                        totalOutputTokens += data.message.usage.output_tokens || 0;
+                        totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
+                        totalCacheReadTokens += data.message.usage.cache_read_input_tokens || 0;
                       }
                     }
 
-                    // Also check for standalone result messages (legacy format)
+                    // Also check for standalone result messages (legacy format) - these have costUSD
                     if (data.type === 'result' && data.usage) {
-                      lastResultUsage = data.usage;
+                      totalInputTokens += data.usage.input_tokens || 0;
+                      totalOutputTokens += data.usage.output_tokens || 0;
+                      totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
+                      totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
                       if (data.costUSD != null) {
-                        lastResultCostUSD = data.costUSD;
+                        lastResultCostUSD = (lastResultCostUSD || 0) + data.costUSD;
                       }
                     }
 
@@ -1920,21 +1933,14 @@ app.get('/claude-analytics', async (req, res) => {
                   }
                 }
 
-                // Calculate from last result's cumulative totals (not summing per-turn)
-                if (lastResultUsage) {
-                  const inputTokens = lastResultUsage.input_tokens || 0;
-                  const outputTokens = lastResultUsage.output_tokens || 0;
-                  const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
-                  const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
-
-                  // Total tokens = all tokens used (input + output + cache)
-                  // For analytics display, we want total usage, not just context window
-                  sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
+                // Calculate from summed totals
+                if (totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0) {
+                  sessionTokens = totalInputTokens + totalOutputTokens + totalCacheCreationTokens + totalCacheReadTokens;
                   sessionTokenBreakdown = {
-                    input: inputTokens,
-                    output: outputTokens,
-                    cacheCreation: cacheCreationTokens,
-                    cacheRead: cacheReadTokens
+                    input: totalInputTokens,
+                    output: totalOutputTokens,
+                    cacheCreation: totalCacheCreationTokens,
+                    cacheRead: totalCacheReadTokens
                   };
 
                   // Use costUSD if available, otherwise calculate from tokens
@@ -2046,8 +2052,11 @@ app.get('/claude-analytics', async (req, res) => {
               let messageCount = 0;
               let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
-              // Track last usage from result message (cumulative session totals)
-              let lastResultUsage = null;
+              // Track cumulative usage by summing all assistant messages
+              let totalInputTokens = 0;
+              let totalOutputTokens = 0;
+              let totalCacheCreationTokens = 0;
+              let totalCacheReadTokens = 0;
               let lastResultCostUSD = null;
 
               for (const line of lines) {
@@ -2055,24 +2064,30 @@ app.get('/claude-analytics', async (req, res) => {
                   const data = JSON.parse(line);
 
                   // Claude CLI uses type: "assistant" for assistant messages
-                  // Usage data is stored in message.usage, not in separate result messages
+                  // Usage data is per-turn, so we SUM all turns
                   if (data.type === 'assistant' && data.message) {
                     messageCount++;
                     // Detect model from message
                     if (data.message.model) {
                       sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                     }
-                    // Extract usage from assistant message (cumulative totals)
+                    // Sum usage from all assistant messages
                     if (data.message.usage) {
-                      lastResultUsage = data.message.usage;
+                      totalInputTokens += data.message.usage.input_tokens || 0;
+                      totalOutputTokens += data.message.usage.output_tokens || 0;
+                      totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
+                      totalCacheReadTokens += data.message.usage.cache_read_input_tokens || 0;
                     }
                   }
 
-                  // Also check for standalone result messages (legacy format)
+                  // Also check for standalone result messages (legacy format) - these have costUSD
                   if (data.type === 'result' && data.usage) {
-                    lastResultUsage = data.usage;
+                    totalInputTokens += data.usage.input_tokens || 0;
+                    totalOutputTokens += data.usage.output_tokens || 0;
+                    totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
+                    totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
                     if (data.costUSD != null) {
-                      lastResultCostUSD = data.costUSD;
+                      lastResultCostUSD = (lastResultCostUSD || 0) + data.costUSD;
                     }
                   }
 
@@ -2090,21 +2105,14 @@ app.get('/claude-analytics', async (req, res) => {
                 }
               }
 
-              // Calculate from last result's cumulative totals (not summing per-turn)
-              if (lastResultUsage) {
-                const inputTokens = lastResultUsage.input_tokens || 0;
-                const outputTokens = lastResultUsage.output_tokens || 0;
-                const cacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
-                const cacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
-
-                // Total tokens = all tokens used (input + output + cache)
-                // For analytics display, we want total usage, not just context window
-                sessionTokens = inputTokens + outputTokens + cacheCreationTokens + cacheReadTokens;
+              // Calculate from summed totals
+              if (totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0) {
+                sessionTokens = totalInputTokens + totalOutputTokens + totalCacheCreationTokens + totalCacheReadTokens;
                 sessionTokenBreakdown = {
-                  input: inputTokens,
-                  output: outputTokens,
-                  cacheCreation: cacheCreationTokens,
-                  cacheRead: cacheReadTokens
+                  input: totalInputTokens,
+                  output: totalOutputTokens,
+                  cacheCreation: totalCacheCreationTokens,
+                  cacheRead: totalCacheReadTokens
                 };
 
                 // Use costUSD if available, otherwise calculate from tokens
@@ -2112,10 +2120,10 @@ app.get('/claude-analytics', async (req, res) => {
                   sessionCost = lastResultCostUSD;
                 } else {
                   const rates = pricing[sessionModel];
-                  sessionCost = (inputTokens * rates.input) +
-                               (outputTokens * rates.output) +
-                               (cacheCreationTokens * rates.cacheCreation) +
-                               (cacheReadTokens * rates.cacheRead);
+                  sessionCost = (totalInputTokens * rates.input) +
+                               (totalOutputTokens * rates.output) +
+                               (totalCacheCreationTokens * rates.cacheCreation) +
+                               (totalCacheReadTokens * rates.cacheRead);
                 }
               }
 
@@ -3345,6 +3353,9 @@ function removePidFile() {
 // Track all spawned child process PIDs for cleanup
 const allChildPids = new Set();
 
+// Track active working directories for git lock cleanup on shutdown
+const activeWorkingDirectories = new Set();
+
 // Helper function to forcefully kill all child processes
 function forceKillAllChildren() {
   console.log('🔪 Force killing all child processes...');
@@ -3365,6 +3376,27 @@ function forceKillAllChildren() {
   // not associated with Yurucode
 }
 
+// Helper function to clean up git lock files in tracked working directories
+function cleanupGitLocks() {
+  if (activeWorkingDirectories.size === 0) return;
+
+  console.log(`🔓 Cleaning up git locks in ${activeWorkingDirectories.size} tracked directories...`);
+
+  for (const dir of activeWorkingDirectories) {
+    try {
+      const lockPath = join(dir, '.git', 'index.lock');
+      if (existsSync(lockPath)) {
+        unlinkSync(lockPath);
+        console.log(`   Removed git lock: ${lockPath}`);
+      }
+    } catch (e) {
+      // Ignore errors - lock may not exist or we may not have permissions
+    }
+  }
+
+  activeWorkingDirectories.clear();
+}
+
 // Graceful shutdown function
 let isShuttingDown = false;
 function gracefulShutdown(signal) {
@@ -3373,17 +3405,33 @@ function gracefulShutdown(signal) {
 
   console.log(`\n🛑 ${signal} received - graceful shutdown starting...`);
 
-  // 1. First, send SIGTERM to all active Claude processes
+  // 0. Clean up git lock files first (before killing processes that might be using git)
+  cleanupGitLocks();
+
+  // 1. First, send SIGTERM/SIGINT to all active Claude processes (and their process groups on Unix)
   const activeCount = activeProcesses.size;
   const pidsToKill = [];
+  const isUnix = process.platform === 'darwin' || process.platform === 'linux';
   if (activeCount > 0) {
     console.log(`🔪 Sending SIGTERM to ${activeCount} active Claude process(es)...`);
     for (const [sessionId, proc] of activeProcesses.entries()) {
       try {
         if (proc.pid) {
           pidsToKill.push(proc.pid);
-          proc.kill('SIGTERM');
-          console.log(`   SIGTERM sent to process for session ${sessionId} (PID: ${proc.pid})`);
+          // On Unix with detached processes, kill the process group
+          if (isUnix) {
+            try {
+              process.kill(-proc.pid, 'SIGTERM'); // Negative PID kills process group
+              console.log(`   SIGTERM sent to process group for session ${sessionId} (PGID: ${proc.pid})`);
+            } catch (e) {
+              // Fallback to direct kill if process group kill fails
+              proc.kill('SIGTERM');
+              console.log(`   SIGTERM sent to process for session ${sessionId} (PID: ${proc.pid})`);
+            }
+          } else {
+            proc.kill('SIGTERM');
+            console.log(`   SIGTERM sent to process for session ${sessionId} (PID: ${proc.pid})`);
+          }
         }
       } catch (e) {
         // Process may already be dead
@@ -3437,8 +3485,20 @@ function gracefulShutdown(signal) {
     console.log('🔪 Sending SIGKILL to any surviving processes...');
     for (const pid of pidsToKill) {
       try {
-        process.kill(pid, 'SIGKILL');
-        console.log(`   SIGKILL sent to PID ${pid}`);
+        // On Unix, kill the process group with SIGKILL
+        if (isUnix) {
+          try {
+            process.kill(-pid, 'SIGKILL'); // Negative PID kills process group
+            console.log(`   SIGKILL sent to process group (PGID: ${pid})`);
+          } catch (e) {
+            // Fallback to direct kill
+            process.kill(pid, 'SIGKILL');
+            console.log(`   SIGKILL sent to PID ${pid}`);
+          }
+        } else {
+          process.kill(pid, 'SIGKILL');
+          console.log(`   SIGKILL sent to PID ${pid}`);
+        }
       } catch (e) {
         // Process already dead, good
       }
@@ -3446,6 +3506,9 @@ function gracefulShutdown(signal) {
 
     // Force kill any remaining child processes
     forceKillAllChildren();
+
+    // Final git lock cleanup in case any were created during shutdown
+    cleanupGitLocks();
 
     console.log('✅ Graceful shutdown complete');
 
@@ -3909,13 +3972,18 @@ io.on('connection', (socket) => {
         processWorkingDir = homedir();
       }
       
+      // Use detached: true on Unix (macOS/Linux) to enable process group killing
+      // This allows kill(-pid, signal) to kill the entire process tree
+      // On Windows, keep detached: false to avoid console windows
+      const isUnix = process.platform === 'darwin' || process.platform === 'linux';
+
       const spawnOptions = {
         cwd: processWorkingDir,
         env: enhancedEnv,
         shell: false,
         windowsHide: true,  // Always hide windows - prevents black console
         // IMPORTANT: Do NOT use windowsVerbatimArguments with WSL - it breaks argument passing!
-        detached: false,  // Don't detach on Windows to avoid console window
+        detached: isUnix,  // Enable process group on Unix for proper cleanup
         stdio: ['pipe', 'pipe', 'pipe']  // Explicit stdio configuration
       };
       
@@ -4000,6 +4068,11 @@ io.on('connection', (socket) => {
       // Track PID for cleanup on shutdown
       if (claudeProcess.pid) {
         allChildPids.add(claudeProcess.pid);
+      }
+
+      // Track working directory for git lock cleanup on shutdown
+      if (processWorkingDir) {
+        activeWorkingDirectories.add(processWorkingDir);
       }
 
       // Cancel any pending streaming=false from previous process exit
@@ -5745,9 +5818,86 @@ function cleanupOldPidFiles() {
 // Clean up old PID files before starting
 cleanupOldPidFiles();
 
+// ============================================
+// PARENT PID WATCHDOG - BULLETPROOF ZOMBIE PREVENTION
+// ============================================
+// The server will self-terminate when its parent (Tauri) dies.
+// This is the ONLY reliable way to prevent zombie processes when:
+// - User presses Cmd+Q on macOS
+// - Tauri crashes
+// - System kills the app
+// - Force quit
+// Without this, the server becomes orphaned (PPID=1) and runs forever.
+
+const PARENT_PID_AT_STARTUP = process.ppid;
+console.log(`👁️ Parent PID watchdog initialized: parent=${PARENT_PID_AT_STARTUP}, self=${process.pid}`);
+
+function isParentAlive() {
+  try {
+    // Check if parent process still exists
+    // On macOS/Linux, process.ppid returns current parent
+    // If parent dies, ppid becomes 1 (launchd/init)
+    const currentPpid = process.ppid;
+
+    // If PPID changed to 1, parent died
+    if (currentPpid === 1 && PARENT_PID_AT_STARTUP !== 1) {
+      console.log(`💀 Parent died! PPID changed from ${PARENT_PID_AT_STARTUP} to 1 (launchd/init)`);
+      return false;
+    }
+
+    // Double-check: try to signal the original parent
+    // kill(pid, 0) checks if process exists without sending a signal
+    process.kill(PARENT_PID_AT_STARTUP, 0);
+    return true;
+  } catch (err) {
+    // ESRCH = No such process (parent died)
+    // EPERM = Permission denied (parent exists but we can't signal it - still alive)
+    if (err.code === 'ESRCH') {
+      console.log(`💀 Parent process ${PARENT_PID_AT_STARTUP} no longer exists (ESRCH)`);
+      return false;
+    }
+    // EPERM means process exists but we don't have permission - parent is alive
+    return true;
+  }
+}
+
+let watchdogInterval = null;
+
+function startParentWatchdog() {
+  // Check parent every 500ms - fast enough to catch quick exits
+  watchdogInterval = setInterval(() => {
+    if (!isParentAlive()) {
+      console.log('🛑 Parent process died - server self-terminating to prevent zombie...');
+
+      // Clean shutdown
+      cleanupGitLocks();
+      forceKillAllChildren();
+      removePidFile();
+
+      // Stop the watchdog
+      if (watchdogInterval) {
+        clearInterval(watchdogInterval);
+      }
+
+      // Exit immediately
+      console.log('✅ Self-termination complete - goodbye!');
+      process.exit(0);
+    }
+  }, 500);
+
+  // Ensure watchdog doesn't prevent process exit
+  watchdogInterval.unref();
+
+  console.log('👁️ Parent watchdog started - server will self-terminate if parent dies');
+}
+
 // Start server with error handling
 httpServer.listen(PORT, () => {
   writePidFile();
+
+  // Start the parent watchdog AFTER server is running
+  startParentWatchdog();
+
   console.log(`🚀 yurucode server running on port ${PORT}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🖥️ Platform: ${platform()}`);
