@@ -98,7 +98,7 @@ Everything else is either:
 | Collapsible tool outputs | CSS exists, can enhance later but not critical |
 | Session templates | Most users don't need this complexity |
 | Snippet library | Users have their own tools for this |
-| CLAUDE.md editor | Just edit the file in your IDE |
+| Session forking | Checkpoints already exist, can add branching later |
 | Session export | Edge case, low demand |
 | Session branching | Over-engineered for the use case |
 | Split views | Tabs already solve this |

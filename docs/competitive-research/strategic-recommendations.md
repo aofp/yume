@@ -117,9 +117,9 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 - **Weaknesses**: Beta feel, files >300 lines struggle
 - **We win on**: Stability, features, pricing
 
-### Opcode (YC-backed, Free)
+### Opcode (YC-backed, Free) - 15K+ Stars
 - **Threat level**: MEDIUM (direct competitor)
-- **Their advantages**: Free, CLAUDE.md editor
+- **Their advantages**: Free, session forking, 15K+ GitHub community
 - **We win on**:
   - 5h/7d limit tracking (they don't have)
   - Yurucode Guard (they don't have)

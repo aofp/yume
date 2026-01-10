@@ -2892,7 +2892,6 @@ textarea.context-full {
   overflow-x: hidden;
   padding: 0;
   background: var(--bg-overlay);
-  border-bottom: 1px solid var(--fg-10);
   font-size: 11px;
   font-family: var(--font-mono);
   flex-shrink: 0;
@@ -2925,6 +2924,7 @@ textarea.context-full {
   color: var(--fg-40);
   background: rgba(0, 0, 0, 0.2);
   border-bottom: 1px solid var(--fg-10);
+  border-top: 1px solid var(--fg-10);
   flex-shrink: 0;
 }
 
@@ -2977,7 +2977,11 @@ textarea.context-full {
   white-space: pre-wrap;
   word-break: break-word;
   line-height: 1.4;
+  background: var(--bg-overlay);
   min-height: 0; /* Critical for flex scroll */
+  user-select: text;
+  -webkit-user-select: text;
+  cursor: text;
 }
 
 .tool-panel-preview-diff {
@@ -3033,7 +3037,6 @@ textarea.context-full {
   align-items: center;
   gap: 6px;
   padding: 2px 4px;
-  border-radius: 3px;
   cursor: default;
   color: var(--fg-50);
   font-size: 11px;
@@ -3079,7 +3082,6 @@ textarea.context-full {
   gap: 6px;
   padding: 2px 4px;
   padding-right: 8px;
-  border-radius: 3px;
   cursor: default;
   font-size: 11px;
 }

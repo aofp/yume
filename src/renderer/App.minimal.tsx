@@ -47,21 +47,16 @@ export const App: React.FC = () => {
 
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
 
-  // Helper function to restore focus and hover states after modal closes
+  // Helper function to reset hover states after modal closes
+  // Focus restoration is minimal - typing auto-focuses via handleGlobalTyping
   const restoreFocusToChat = React.useCallback(() => {
-    // Use RAF to ensure modal is fully unmounted before restoring focus
+    // Use RAF to ensure modal is fully unmounted
     requestAnimationFrame(() => {
       // WORKAROUND: Reset hover states by toggling pointer-events
       // Tauri webview (especially on macOS) can get stuck hover states after modal interactions
       document.body.style.pointerEvents = 'none';
       requestAnimationFrame(() => {
         document.body.style.pointerEvents = '';
-
-        // Now restore keyboard focus
-        const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-        if (textarea && document.hasFocus()) {
-          textarea.focus();
-        }
       });
     });
   }, []);

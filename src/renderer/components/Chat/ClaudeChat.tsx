@@ -19,6 +19,7 @@ import {
   IconTool,
   IconChevronRight,
   IconHistory,
+  IconPencil,
 } from '@tabler/icons-react';
 import { DiffViewer, DiffDisplay, DiffHunk, DiffLine } from './DiffViewer';
 import { MessageRenderer } from './MessageRenderer';
@@ -937,110 +938,12 @@ export const ClaudeChat: React.FC = () => {
       return true;
     };
 
-    const restoreFocus = () => {
-      if (!canRestoreFocus()) return;
-      const activeEl = document.activeElement;
-      // If focus is on body, html, or null (lost focus), restore to textarea
-      if (!activeEl || activeEl === document.body || activeEl === document.documentElement) {
-        inputRef.current?.focus();
-      }
-    };
-
-    // Strategy 1: Window focus event - immediately restore focus when window regains focus
-    const handleWindowFocus = () => {
-      // Use queueMicrotask for more immediate execution than setTimeout
-      queueMicrotask(() => {
-        // Double-check after microtask to let WKWebView settle
-        requestAnimationFrame(() => {
-          restoreFocus();
-        });
-      });
-    };
-    window.addEventListener('focus', handleWindowFocus);
-
-    // Strategy 2: Periodic check with adaptive interval
-    // Faster during streaming (300ms), slower when idle (2000ms)
-    const interval = currentSession?.streaming ? 300 : 2000;
-    const focusCheckInterval = setInterval(restoreFocus, interval);
-
-    // Strategy 3: RAF-based check during streaming - catches focus loss from rapid DOM updates
-    let rafId: number | null = null;
-    let rafCounter = 0;
-    const rafCheck = () => {
-      if (!currentSession?.streaming) {
-        rafId = null;
-        return;
-      }
-      // Only check every 10 frames (~166ms at 60fps) to reduce overhead
-      rafCounter++;
-      if (rafCounter >= 10) {
-        rafCounter = 0;
-        restoreFocus();
-      }
-      rafId = requestAnimationFrame(rafCheck);
-    };
-    if (currentSession?.streaming) {
-      rafId = requestAnimationFrame(rafCheck);
-    }
-
-    return () => {
-      window.removeEventListener('focus', handleWindowFocus);
-      clearInterval(focusCheckInterval);
-      if (rafId !== null) cancelAnimationFrame(rafId);
-    };
+    // Focus restoration removed - typing auto-focuses via handleGlobalTyping
+    // which is less aggressive and doesn't interfere with text selection
   }, [currentSession?.streaming, currentSession?.readOnly, currentSession?.analytics?.tokens?.total, isMac, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
 
-  // macOS focus recovery: Detect "stuck" focus state where textarea is focused but not receiving input
-  // Uses a heartbeat mechanism - if no keydown events reach the textarea for too long while it
-  // appears focused, force a focus reset
-  useEffect(() => {
-    if (!isMac) return;
-
-    let lastKeystrokeTime = Date.now();
-    let lastFocusResetTime = 0;
-
-    const handleKeyDown = () => {
-      lastKeystrokeTime = Date.now();
-    };
-
-    // Track keystrokes on the textarea
-    const textarea = inputRef.current;
-    textarea?.addEventListener('keydown', handleKeyDown);
-
-    // Check for stuck state every 3 seconds
-    const stuckCheckInterval = setInterval(() => {
-      if (!inputRef.current || !document.hasFocus()) return;
-      if (currentSession?.readOnly || currentSession?.streaming) return;
-      if (document.querySelector('.modal-overlay') || document.querySelector('[role="dialog"]')) return;
-
-      const activeEl = document.activeElement;
-      const now = Date.now();
-
-      // If textarea is focused but no keystroke in 10 seconds, might be stuck
-      // Also ensure we don't reset more than once per 15 seconds
-      if (activeEl === inputRef.current &&
-          now - lastKeystrokeTime > 10000 &&
-          now - lastFocusResetTime > 15000) {
-        // Force a focus reset cycle
-        const start = inputRef.current.selectionStart;
-        const end = inputRef.current.selectionEnd;
-        inputRef.current.blur();
-        requestAnimationFrame(() => {
-          inputRef.current?.focus();
-          if (inputRef.current) {
-            inputRef.current.selectionStart = start;
-            inputRef.current.selectionEnd = end;
-          }
-        });
-        lastFocusResetTime = now;
-      }
-    }, 3000);
-
-    return () => {
-      textarea?.removeEventListener('keydown', handleKeyDown);
-      clearInterval(stuckCheckInterval);
-    };
-  }, [isMac, currentSession?.streaming, currentSession?.readOnly]);
+  // macOS focus recovery removed - was too aggressive and interfered with text selection
+  // Typing auto-focuses via handleGlobalTyping which is sufficient
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {
@@ -2472,6 +2375,10 @@ export const ClaudeChat: React.FC = () => {
       // Skip if any modal is open
       if (showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return;
 
+      // Skip if user has text selected (they might be copying)
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) return;
+
       // Skip if already focused on an input/textarea/contenteditable
       const activeEl = document.activeElement;
       if (activeEl instanceof HTMLInputElement ||
@@ -2484,6 +2391,9 @@ export const ClaudeChat: React.FC = () => {
       if (activeEl?.closest('[role="dialog"]') || activeEl?.closest('.modal') ||
           activeEl?.closest('.stats-modal-overlay') || activeEl?.closest('.resume-modal') ||
           activeEl?.closest('.mt-modal-overlay')) return;
+
+      // Skip if in a tool panel (file preview, git panel, etc.) - allow text selection there
+      if (activeEl?.closest('.tool-panel') || activeEl?.closest('.tool-panel-preview-content')) return;
 
       // Focus the input and insert the character
       if (inputRef.current) {
@@ -3947,7 +3857,7 @@ export const ClaudeChat: React.FC = () => {
                   onClick={() => setShowClaudeMdEditor(true)}
                   title="edit CLAUDE.md"
                 >
-                  <IconFile size={12} stroke={1.5} />
+                  <IconPencil size={12} stroke={1.5} />
                   <span>CLAUDE.md</span>
                 </button>
               )}

@@ -1,12 +1,18 @@
 # Yurucode Grade Report
 
-*Subjective Analysis - January 2026*
+*Updated Analysis - January 10, 2026*
 
 ## Executive Summary
 
-**Overall Grade: B+ (82%)**
+**Overall Grade: B+ (81%)**
 
 Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and unique capabilities. Native Rust/Tauri architecture outperforms Electron competitors. Code quality is functional but has accumulated technical debt. Zero tests is the biggest risk.
+
+**Recent Market Changes:**
+- Claude Code 2.1.0 (Jan 7, 2026) adds session teleportation, skill hot reload, enhanced hooks
+- Windsurf now has context window usage meter (reduces one unique advantage)
+- Opcode at 15K+ GitHub stars, claims CLI feature parity
+- Cursor at $1B+ ARR with improved hooks and instant grep
 
 ---
 
@@ -36,20 +42,23 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ## Competitive Grades
 
-### vs Claude Code CLI
+### vs Claude Code CLI 2.1.0
 
-| Aspect | CLI | Yurucode | Winner |
-|--------|-----|----------|--------|
+| Aspect | CLI 2.1.0 | Yurucode | Winner |
+|--------|-----------|----------|--------|
 | Flickering/Lag | React Ink issues | Native, smooth | **Yurucode** |
 | IME Support | Broken | Native OS handling | **Yurucode** |
 | Quota Tracking | None | 5h + 7-day bars | **Yurucode** |
 | Stream Timers | None | Live durations | **Yurucode** |
 | File Mentions | Type paths | @ autocomplete | **Yurucode** |
 | Config UX | JSON editing | Visual forms | **Yurucode** |
+| Session Teleportation | Yes (/teleport) | No | CLI |
+| Skill Hot Reload | Yes | No | CLI |
+| Agent/Skill Hooks | Enhanced | Via wrapper | CLI |
 | Power Features | Native | Wrapped | CLI |
 | Bleeding Edge | First | Delayed | CLI |
 
-**Grade vs CLI: A-** (solves pain points, minor feature lag)
+**Grade vs CLI: A-** (core UX wins intact, but CLI 2.1.0 adds power features yurucode doesn't expose)
 
 ---
 
@@ -72,7 +81,7 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ---
 
-### vs Windsurf ($15/mo)
+### vs Windsurf ($15/mo) - Wave 13
 
 | Aspect | Windsurf | Yurucode | Winner |
 |--------|----------|----------|--------|
@@ -81,20 +90,24 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 | Performance | Electron | Native Rust | **Yurucode** |
 | Price | $180/yr | $21 one-time | **Yurucode** |
 | Themes | ~3 | 30 | **Yurucode** |
-| Multi-Agent | Wave 13 parallel | 5 built-in agents | Tie |
+| Multi-Agent | Wave 13 git worktrees | 5 built-in agents | Tie |
+| Context Meter | Yes (Wave 13) | Yes | Tie |
 | Quota Tracking | None | 5h + 7-day | **Yurucode** |
+| Previews | Website preview in IDE | N/A | Windsurf |
 | Memories | Yes | No | Windsurf |
 | Enterprise | SOC2 coming | None | Windsurf |
 
-**Grade vs Windsurf: B+** (different category, performance win, price win)
+**Grade vs Windsurf: B** (downgraded from B+ - Windsurf added context meter, wave 13 improvements)
 
 ---
 
-### vs Opcode (Free, Direct Competitor)
+### vs Opcode (Free, Direct Competitor) - 15K+ Stars
 
 | Aspect | Opcode | Yurucode | Winner |
 |--------|--------|----------|--------|
-| Price | Free | $9 | Opcode |
+| Price | Free | $21 | Opcode |
+| GitHub Stars | 15K+ | Private | Opcode |
+| CLI Feature Parity | Claims yes | Via wrapper | Opcode |
 | 5h/7d Limits | No | Yes | **Yurucode** |
 | Built-in Agents | 0 | 5 | **Yurucode** |
 | Themes | 0 | 30 | **Yurucode** |
@@ -107,26 +120,30 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 | Keyboard Shortcuts | Few | 32+ | **Yurucode** |
 | Custom Commands | No | 12 defaults | **Yurucode** |
 | Bash Mode | No | Yes | **Yurucode** |
-| CLAUDE.md Editor | Yes | No | Opcode |
+| CLAUDE.md Editor | Yes | Yes | Tie |
+| Session Forking | Yes | No | Opcode |
 | MCP Support | Yes | Yes | Tie |
 | Checkpoints | Yes | Yes | Tie |
 
-**Grade vs Opcode: A** (technically superior in 13+ categories)
+**Grade vs Opcode: A-** (Opcode improved with 15K+ community, but still lacks 12+ core unique features)
 
 ---
 
-### vs Aider (CLI, Free)
+### vs Aider (CLI + Browser + VS Code)
 
 | Aspect | Aider | Yurucode | Winner |
 |--------|-------|----------|--------|
-| Context Fetching | Best (treesitter) | Via Claude | Aider |
+| Context Fetching | Best (treesitter+AST) | Via Claude | Aider |
 | Git Integration | Native auto-commit | Via Claude | Aider |
-| Multi-Model | Any LLM | Claude only | Aider |
+| Multi-Model | Any LLM (DeepSeek, GPT-5, etc.) | Claude only | Aider |
+| Interface Options | CLI, Browser, VS Code | Desktop app | Aider |
+| Architect/Editor | Yes (SOTA approach) | Via Claude agents | Aider |
 | Learning Curve | Steeper | Easier | **Yurucode** |
-| Visual Interface | None | Full GUI | **Yurucode** |
-| Accessibility | CLI only | Mouse + keyboard | **Yurucode** |
+| Visual Polish | Basic | Full GUI with themes | **Yurucode** |
+| Quota Tracking | None | 5h + 7-day | **Yurucode** |
+| Native Desktop | No | Yes (Tauri) | **Yurucode** |
 
-**Grade vs Aider: B** (different philosophies, GUI vs CLI power)
+**Grade vs Aider: B** (Aider added browser/VS Code modes, but still different philosophies)
 
 ---
 
@@ -168,13 +185,13 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
                     Free               $200/mo
 ```
 
-### Positioning Summary
+### Positioning Summary (Revised)
 
 | Segment | Grade | Notes |
 |---------|-------|-------|
 | vs IDE Tools | B | Different category, can't compete on tab completion |
-| vs Direct Competitors | A | Opcode is only direct competitor, yurucode wins |
-| vs CLI Tools | A- | Best GUI wrapper for Claude Code |
+| vs Direct Competitors | A- | Opcode improved but yurucode still leads on features |
+| vs CLI Tools | A- | Best GUI wrapper, but CLI 2.1.0 has power features we don't expose |
 | vs Extensions | B | Standalone vs integrated tradeoffs |
 
 ---
@@ -203,7 +220,7 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 | Light mode | Low | All |
 | Command palette | Medium | Cursor, Windsurf |
 | Memories (cross-session) | Medium | Cursor, Windsurf |
-| CLAUDE.md editor | Low | Opcode |
+| Session forking | Low | Opcode |
 | Multi-model support | Low | Cursor, Windsurf, Aider |
 | Tab completion | N/A | IDE feature, different product |
 
@@ -221,23 +238,28 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 | UX | A- |
 | **Internal Average** | **B-** |
 
-### Competitive Position
-| vs Competitor | Grade |
-|---------------|-------|
-| vs Claude Code CLI | A- |
-| vs Cursor | B |
-| vs Windsurf | B+ |
-| vs Opcode | A |
-| vs Aider | B |
-| vs Cline | B |
-| **Competitive Average** | **B+** |
+### Competitive Position (Revised January 10, 2026)
+| vs Competitor | Grade | Change |
+|---------------|-------|--------|
+| vs Claude Code CLI 2.1.0 | A- | — |
+| vs Cursor | B | — |
+| vs Windsurf (Wave 13) | B | ↓ from B+ |
+| vs Opcode (15K+ stars) | A- | ↓ from A |
+| vs Aider (browser mode) | B | — |
+| vs Cline | B | — |
+| **Competitive Average** | **B** | ↓ from B+ |
 
 ### Overall
 | Metric | Grade |
 |--------|-------|
 | Internal Quality | B- (78%) |
-| Competitive Position | B+ (85%) |
-| **Combined** | **B+ (82%)** |
+| Competitive Position | B (83%) |
+| **Combined** | **B+ (81%)** |
+
+### Grade Change Summary
+- **Windsurf B+ → B**: Added context window meter, Wave 13 multi-agent improvements
+- **Opcode A → A-**: 15K+ GitHub stars, improved CLI feature parity, stronger community
+- **Overall**: Market is catching up, but core unique features remain (5h/7d, guard, agents, themes)
 
 ---
 
@@ -247,15 +269,21 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 1. **Add tests** - At minimum, store logic and rust commands
 2. **Split god store** - sessionStore, analyticsStore, uiStore, agentStore
 
-### Important
-3. Extract shared constants (context window, timeouts, etc.)
-4. Consolidate token tracking to single source of truth
-5. Add TypeScript strict types (eliminate `any`)
+### Important (Market Parity)
+3. **Add command palette** - Standard UX, Cursor/Windsurf have it
+4. **Add light mode** - Accessibility requirement
+5. Extract shared constants (context window, timeouts, etc.)
+6. Consolidate token tracking to single source of truth
+7. Add TypeScript strict types (eliminate `any`)
+
+### Consider (CLI 2.1.0 Feature Parity)
+8. **Session teleportation UI** - /teleport support for claude.ai/code
+9. **Skill hot reload** - Visual indicator when skills change
+10. **Enhanced hooks UI** - Support for agent/skill-scoped hooks
 
 ### Nice to Have
-6. Add command palette
-7. Add memories feature
-8. Light mode for accessibility
+11. Add memories feature (cross-session preferences)
+12. Session forking from checkpoints (match Opcode)
 
 ---
 

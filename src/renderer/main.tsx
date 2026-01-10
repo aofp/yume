@@ -357,69 +357,14 @@ const preserveFocus = async (asyncOperation: () => Promise<void>) => {
 window.addEventListener('focus', () => {
   // WORKAROUND: Force hover state re-evaluation on window focus
   // Tauri webview doesn't always update :hover correctly without this
-  // This affects BOTH macOS and Windows/Linux
-  const isMac = platform.includes('mac');
-
   // Apply pointer-events hack to force browser to re-evaluate hover states
-  // This is now enabled for ALL platforms as macOS also has this issue
   document.body.style.pointerEvents = 'none';
   requestAnimationFrame(() => {
     document.body.style.pointerEvents = '';
-
-    if (!isMac) {
-      // Windows/Linux: Direct focus restoration works reliably
-      const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-      const hasOpenModal = document.querySelector('.modal-overlay') ||
-                           document.querySelector('.recent-modal-overlay') ||
-                           document.querySelector('.projects-modal-overlay') ||
-                           document.querySelector('.settings-modal-overlay') ||
-                           document.querySelector('.mt-modal-overlay') ||
-                           document.querySelector('[role="dialog"]');
-      if (textarea && !hasOpenModal) {
-        textarea.focus();
-      }
-    }
   });
 
-  if (isMac) {
-    // macOS: WKWebView can lose internal focus when window regains focus
-    // Use multi-stage focus restoration for reliability:
-    // 1. Immediate check via queueMicrotask (catches quick focus loss)
-    // 2. RAF check (catches post-render focus loss)
-    // 3. Delayed check (catches WKWebView settling issues)
-    const restoreFocusIfLost = () => {
-      const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-      const activeEl = document.activeElement;
-      // Only restore if focus was lost (on body, html, or null) and no modal is open
-      // Check all modal overlay classes used in the app
-      const hasOpenModal = document.querySelector('.modal-overlay') ||
-                           document.querySelector('.recent-modal-overlay') ||
-                           document.querySelector('.projects-modal-overlay') ||
-                           document.querySelector('.settings-modal-overlay') ||
-                           document.querySelector('.mt-modal-overlay') ||
-                           document.querySelector('[role="dialog"]');
-      if (textarea && (!activeEl || activeEl === document.body || activeEl === document.documentElement) && !hasOpenModal) {
-        textarea.focus();
-        return true;
-      }
-      return false;
-    };
-
-    // Stage 1: Immediate via microtask
-    queueMicrotask(() => {
-      if (restoreFocusIfLost()) return;
-
-      // Stage 2: After render via RAF
-      requestAnimationFrame(() => {
-        if (restoreFocusIfLost()) return;
-
-        // Stage 3: After WKWebView settles (50ms delay)
-        setTimeout(() => {
-          restoreFocusIfLost();
-        }, 50);
-      });
-    });
-  }
+  // NOTE: Aggressive focus restoration removed - typing auto-focuses via handleGlobalTyping
+  // in ClaudeChat.tsx, which is less intrusive and allows text selection in other areas
 
   const store = useClaudeCodeStore.getState();
   const { sessions, currentSessionId } = store;
@@ -464,7 +409,7 @@ document.addEventListener('visibilitychange', () => {
 
     if (timeDiff > 60000) { // 1 minute - just refresh connections
       lastReconnectAttempt = now;
-      // Just ensure sessions are still connected - use sequential processing to avoid focus issues
+      // Just ensure sessions are still connected - use sequential processing
       const refreshSessions = async () => {
         for (const session of store.sessions) {
           if (session.claudeSessionId && session.status === 'paused') {
@@ -475,31 +420,7 @@ document.addEventListener('visibilitychange', () => {
             }
           }
         }
-        // Restore focus after all reconnections
-        const isMac = platform.includes('mac');
-        if (!isMac) {
-          requestAnimationFrame(() => {
-            const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-            if (textarea && document.hasFocus() && !document.querySelector('.modal-overlay')) {
-              textarea.focus();
-            }
-          });
-        } else {
-          // macOS: Use gentler multi-stage focus restoration after visibility change
-          queueMicrotask(() => {
-            requestAnimationFrame(() => {
-              setTimeout(() => {
-                const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-                const activeEl = document.activeElement;
-                if (textarea && document.hasFocus() &&
-                    (!activeEl || activeEl === document.body || activeEl === document.documentElement) &&
-                    !document.querySelector('.modal-overlay')) {
-                  textarea.focus();
-                }
-              }, 100);
-            });
-          });
-        }
+        // Focus restoration removed - typing auto-focuses via handleGlobalTyping
       };
       refreshSessions();
     }

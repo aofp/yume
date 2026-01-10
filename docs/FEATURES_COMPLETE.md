@@ -926,7 +926,7 @@ use windows::Win32::*;
 | 30+ keyboard shortcuts | ✅ | ❌ | ❌ | ✅ |
 | Drag & drop tabs | ✅ | ❌ | ❌ | ❌ |
 | Checkpoints + timeline | ✅ | ✅ | ❌ | ❌ |
-| CLAUDE.md editor | ❌ | ✅ | ❌ | ❌ |
+| CLAUDE.md editor | ✅ | ✅ | ❌ | ❌ |
 | No telemetry | ✅ | ✅ | ❌ | ❌ |
 | Compiled server | ✅ | ❌ | ❌ | ❌ |
 | Platform support | 3 | 3 | 2 | 3 |

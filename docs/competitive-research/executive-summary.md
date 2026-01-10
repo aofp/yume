@@ -125,6 +125,7 @@ Everything that makes Claude Code great:
 - ✅ Virtualized message list (handles long sessions)
 - ✅ Bash mode (!/$) for direct commands
 - ✅ Conversation search
+- ✅ **CLAUDE.md editor** (visual editor with save/discard)
 
 ### Future Enhancements
 - Light mode theme

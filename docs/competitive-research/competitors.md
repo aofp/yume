@@ -1,6 +1,6 @@
 # Competitor Deep Dives
 
-*Last Updated: January 10, 2026*
+*Last Updated: January 10, 2026 (Revised with latest market data)*
 
 ## IDE-Based Competitors
 
@@ -95,6 +95,10 @@
 - "Beta experience" feel
 
 **Recent Updates (Jan 2026)**:
+- **Acquisition by Cognition AI**: Definitive agreement reached; OpenAI and Google were also interested
+- **Context Window Usage Meter**: Real-time meter in footer (REDUCES YURUCODE ADVANTAGE)
+- **Windsurf Previews**: Preview locally run websites in IDE or browser
+- **Voice Input**: Speak into chat instead of typing
 - **Company Rebrand**: Codeium → Windsurf (extension now "Windsurf Plugin")
 - **GPT-5.2**: Available with 0x credits for paid users (limited time)
 - **Gemini 3 Pro**: Low/High available for Trial/Pro/Teams (preview)
@@ -109,7 +113,7 @@
 
 **Corporate History**: OpenAI's $3B acquisition failed; Google acqui-hired founders for DeepMind; Cognition acquired remaining tech for $250M.
 
-**Relevance to Yurucode**: Windsurf's Flow feature shows future direction. Their multi-agent visualization and auto-memories are gaps we could address.
+**Relevance to Yurucode**: Windsurf now has context meter (reduces our advantage). Their Wave 13 multi-agent with git worktrees shows market direction. Acquisition uncertainty may affect product direction.
 
 ---
 
@@ -217,14 +221,14 @@
 | Custom commands | ✅ 12 defaults | ❌ |
 | Bash mode (!/$) | ✅ | ❌ |
 | Drag & drop | ✅ | ❌ |
+| CLAUDE.md editor | ✅ | ✅ |
 | Git diff viewer | ✅ | ✅ |
 | MCP support | ✅ | ✅ |
 | Checkpoints | ✅ | ✅ |
 | Session forking | ❌ | ✅ |
-| CLAUDE.md editor | ❌ | ✅ |
 | Price | $21 one-time | Free |
 
-**Relevance to Yurucode**: Direct competitor, also Tauri-based. Opcode is free but feature-limited. Yurucode's paid model funds 15+ unique features they lack. Their session forking and CLAUDE.md editor are differentiators.
+**Relevance to Yurucode**: Direct competitor, also Tauri-based. Opcode is free but feature-limited. Yurucode's paid model funds 15+ unique features they lack. Their session forking is only remaining differentiator (CLAUDE.md editor now in both).
 
 ---
 
@@ -521,7 +525,7 @@
 | Light mode | ✅ | ✅ | ? | ❌ | Gap |
 | Memories | ✅ | ✅ | ❌ | ❌ | Gap |
 | Command palette | ✅ | ✅ | ❌ | ❌ | Gap |
-| CLAUDE.md editor | ❌ | ❌ | ✅ | ❌ | Gap |
+| CLAUDE.md editor | ❌ | ❌ | ✅ | ✅ | No |
 | Background agents | ✅ | ✅ | ✅ | ✅ Via Claude | No |
 
 ---
@@ -632,7 +636,6 @@
 |----------|---------------------|
 | No light mode | Cursor, Windsurf, Zed have it |
 | No command palette | Standard UX pattern missing |
-| No CLAUDE.md editor | Opcode has live preview |
 | No session forking | Opcode can fork from checkpoints |
 | No memories | Cursor/Windsurf persist preferences |
 | No tab completion | IDE feature (different product category) |
@@ -691,4 +694,4 @@
 
 19. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.
 
-20. **Opcode is YC-backed but feature-poor**: They have funding but yurucode is technically superior in almost every category except CLAUDE.md editor.
+20. **Opcode has 15K+ stars but lacks key features**: They have community momentum but yurucode is technically superior in 12+ categories. Opcode's only advantage is session forking.
