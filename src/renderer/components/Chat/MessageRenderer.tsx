@@ -546,8 +546,8 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
             {isCollapsed ? <IconChevronRight size={10} stroke={2} /> : <IconChevronDown size={10} stroke={2} />}
           </span>
           <span className="collapsible-icon">{icon}</span>
-          <span className="collapsible-summary">{summary}</span>
           {detail && <span className="collapsible-detail">{detail}</span>}
+          <span className="collapsible-summary">{summary}</span>
         </div>
         {!isCollapsed && (
           <div className="collapsible-content">

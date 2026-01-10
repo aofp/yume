@@ -1310,13 +1310,14 @@ body.platform-win32 .tool-detail {
   padding: 0;
 }
 
-/* Read output styling */
+/* Read output styling - reduced opacity since reads are less important */
 .tool-result.read-output {
   display: block !important;
   background: transparent;
   border: none;
   padding: 0;
   margin: 0;
+  opacity: 0.7;
 }
 
 .read-content {
@@ -1479,11 +1480,8 @@ body.platform-win32 .tool-detail {
   font-family: var(--font-mono);
   font-size: 9px;
   color: rgba(var(--foreground-rgb), 0.7);
-  margin-left: auto;
-  text-overflow: ellipsis;
   overflow: visible;
   white-space: nowrap;
-  max-width: 60%;
 }
 
 .tool-result.collapsible.collapsed .collapsible-content {
