@@ -1419,9 +1419,10 @@ fn write_yurucode_agent_files(model: &str) -> Result<(), String> {
     }
 
     // Write each agent file with the current model
+    // Quote values to handle YAML special characters like colons
     for (name, description, system_prompt) in YURUCODE_AGENTS {
         let content = format!(
-            "---\nname: {}\nmodel: {}\ndescription: {}\n---\n\n{}",
+            "---\nname: \"{}\"\nmodel: \"{}\"\ndescription: \"{}\"\n---\n\n{}",
             name, model, description, system_prompt
         );
 
