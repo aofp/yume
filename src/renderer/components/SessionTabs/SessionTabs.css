@@ -353,6 +353,10 @@
   left: -1px;
 }
 
+.tab-streaming-timer .timer-seconds {
+  font-size: 7px;
+}
+
 .tab-progress {
   display: flex;
   align-items: center;

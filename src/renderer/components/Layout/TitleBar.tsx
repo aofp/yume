@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { AboutModal } from '../About/AboutModal';
+import { isDev } from '../../utils/helpers';
 import './TitleBar.css';
 
 interface TitleBarProps {
@@ -116,8 +117,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
               }
             }}
           >
-            <span className="titlebar-text">
-              y<span style={{ color: isWindowActive ? 'var(--accent-color)' : undefined }}>&gt;</span>
+            <span className="titlebar-text" style={{ opacity: isWindowActive ? 1 : 0.8 }}>
+              y<span style={{ color: isDev ? 'var(--negative-color)' : (isWindowActive ? 'var(--accent-color)' : undefined), opacity: isDev && !isWindowActive ? 0.5 : 1 }}>&gt;</span>
             </span>
           </div>
         </div>

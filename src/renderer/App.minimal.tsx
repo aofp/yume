@@ -180,7 +180,7 @@ export const App: React.FC = () => {
   const handleGlobalContextMenu = (e: React.MouseEvent) => {
     // Don't show if right-clicking on certain elements that have their own context menus
     const target = e.target as HTMLElement;
-    if (target.closest('.session-tab') || target.closest('.tab-context-menu')) {
+    if (target.closest('.session-tab') || target.closest('.tab-context-menu') || target.closest('.model-selector')) {
       return;
     }
     

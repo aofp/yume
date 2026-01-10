@@ -1,0 +1,214 @@
+/* Model & Tools Modal - compact style */
+
+.mt-modal-overlay {
+  position: fixed;
+  top: 60px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.mt-modal {
+  background: var(--background-color, #0f0f0f);
+  border: 1px solid var(--fg-15);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 320px;
+  max-height: 80vh;
+  overflow-y: auto;
+}
+
+.mt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--fg-15);
+}
+
+.mt-header h3 {
+  color: var(--accent-color);
+  font-size: 11px;
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+}
+
+.mt-close {
+  background: transparent;
+  border: none;
+  color: var(--fg-40);
+  cursor: default;
+  padding: 2px;
+}
+
+.mt-close:hover {
+  color: var(--negative-color);
+}
+
+.mt-content {
+  padding: 10px;
+}
+
+/* Model selection - 2 column buttons */
+.mt-models-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
+  margin-bottom: 0;
+}
+
+.mt-model-btn {
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
+  color: var(--fg-50);
+  font-size: 10px;
+  padding: 6px 10px;
+  border-radius: 4px;
+  cursor: default;
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+  transition: all 0.15s ease;
+}
+
+.mt-model-btn:hover {
+  border-color: var(--fg-30);
+  color: var(--fg-70);
+}
+
+.mt-model-btn.selected {
+  background: rgba(var(--accent-rgb), 0.15);
+  border-color: rgba(var(--accent-rgb), 0.4);
+  color: var(--accent-color);
+}
+
+.mt-model-btn:focus,
+.mt-tool:focus {
+  outline: none;
+}
+
+/* Only show focus ring during keyboard navigation */
+.mt-modal.keyboard-nav .mt-model-btn:focus,
+.mt-modal.keyboard-nav .mt-model-btn.focused {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+.mt-modal.keyboard-nav .mt-tool:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+.mt-toggle-all:focus {
+  outline: none;
+}
+
+.mt-modal.keyboard-nav .mt-toggle-all:focus {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 1px var(--accent-color);
+}
+
+.mt-section {
+  margin-bottom: 0;
+}
+
+.mt-divider {
+  border: none;
+  border-top: 1px solid var(--fg-10);
+  margin: 10px 0;
+}
+
+/* Tools header - no dots */
+.mt-tools-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.mt-label {
+  color: var(--accent-color);
+  font-size: 10px;
+  font-weight: 500;
+  text-transform: lowercase;
+}
+
+.mt-toggle-all {
+  background: transparent;
+  border: 1px solid var(--fg-20);
+  color: var(--fg-50);
+  font-size: 9px;
+  padding: 2px 6px;
+  border-radius: 3px;
+  cursor: default;
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+}
+
+.mt-toggle-all:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+.mt-category {
+  margin-top: 6px;
+}
+
+.mt-category-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+.mt-category-half {
+  margin-top: 0;
+}
+
+.mt-category-name {
+  color: var(--fg-40);
+  font-size: 9px;
+  text-transform: lowercase;
+  margin-bottom: 3px;
+  padding-left: 2px;
+}
+
+.mt-tools-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+}
+
+.mt-tool {
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
+  color: var(--fg-40);
+  font-size: 9px;
+  padding: 2px 5px;
+  border-radius: 3px;
+  cursor: default;
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+  transition: all 0.15s ease;
+}
+
+.mt-tool:hover {
+  border-color: var(--fg-30);
+  color: var(--fg-60);
+}
+
+.mt-tool.enabled {
+  background: rgba(var(--accent-rgb), 0.08);
+  border-color: rgba(var(--accent-rgb), 0.35);
+  color: var(--accent-color);
+}
+
+.mt-tool.enabled:hover {
+  background: rgba(var(--accent-rgb), 0.12);
+  border-color: rgba(var(--accent-rgb), 0.5);
+}

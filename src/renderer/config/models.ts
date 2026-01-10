@@ -26,15 +26,6 @@ export interface ModelDefinition {
  */
 export const LATEST_MODELS: ModelDefinition[] = [
   {
-    id: 'claude-opus-4-5-20251101',
-    shortName: 'opus',
-    displayName: 'opus 4.5',
-    description: 'most capable',
-    family: 'opus',
-    version: '4.5',
-    releaseDate: '20251101'
-  },
-  {
     id: 'claude-sonnet-4-5-20250929',
     shortName: 'sonnet',
     displayName: 'sonnet 4.5',
@@ -42,6 +33,15 @@ export const LATEST_MODELS: ModelDefinition[] = [
     family: 'sonnet',
     version: '4.5',
     releaseDate: '20250929'
+  },
+  {
+    id: 'claude-opus-4-5-20251101',
+    shortName: 'opus',
+    displayName: 'opus 4.5',
+    description: 'most capable',
+    family: 'opus',
+    version: '4.5',
+    releaseDate: '20251101'
   }
 ];
 

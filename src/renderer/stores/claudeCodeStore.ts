@@ -9,6 +9,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { claudeCodeClient } from '../services/claudeCodeClient';
 import { systemPromptService } from '../services/systemPromptService';
 import { isBashPrefix } from '../utils/helpers';
+import { loadEnabledTools, DEFAULT_ENABLED_TOOLS } from '../config/tools';
 
 // Fast message hash for deduplication - much faster than JSON.stringify comparison
 // Uses message id + type + content signature
@@ -329,6 +330,7 @@ interface ClaudeCodeStore {
   
   // Model
   selectedModel: string;
+  enabledTools: string[]; // Tools enabled for CLI sessions
   
   // Context tracking
   claudeMdTokens: number; // Token count for CLAUDE.md file
@@ -374,6 +376,7 @@ interface ClaudeCodeStore {
   
   // Actions
   setSelectedModel: (modelId: string) => void;
+  setEnabledTools: (tools: string[]) => void;
   createSession: (name?: string, directory?: string, existingSessionId?: string) => Promise<string>;
   setCurrentSession: (sessionId: string) => void;
   sendMessage: (content: string, bashMode?: boolean) => Promise<void>;
@@ -655,6 +658,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   persistedSessionId: null,
   sessionMappings: {},
   selectedModel: DEFAULT_MODEL_ID, // Default to Sonnet 4.5 (see config/models.ts)
+  enabledTools: loadEnabledTools(), // Load from localStorage or use defaults
   claudeMdTokens: 0, // Will be calculated on first use
   globalWatermarkImage: null,
   monoFont: 'Comic Mono', // Default monospace font
@@ -683,6 +687,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
     const modelName = modelId.includes('opus') ? 'opus' : 'sonnet';
     systemPromptService.syncAgentsToFilesystem(modelName);
     console.log('Model changed to:', modelId);
+  },
+
+  setEnabledTools: (tools: string[]) => {
+    set({ enabledTools: tools });
   },
   
   createSession: async (name?: string, directory?: string, existingSessionId?: string) => {
@@ -861,14 +869,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           console.log(`📂 [Store] Direct resume from Claude session: ${directResumeClaudeId}`);
         }
 
+        // Use enabled tools from store (user-configurable via Cmd+O modal)
+        const enabledToolsList = get().enabledTools;
+
         const result = await claudeClient.createSession(sessionName, workingDirectory, {
-          allowedTools: [
-            'Read', 'Write', 'Edit', 'MultiEdit',
-            'LS', 'Glob', 'Grep',
-            'Bash',
-            'WebFetch', 'WebSearch',
-            'TodoWrite'
-          ],
+          allowedTools: enabledToolsList.length > 0 ? enabledToolsList : undefined,
           permissionMode: 'default',
           maxTurns: 30,
           model: resolveModelId(selectedModel),

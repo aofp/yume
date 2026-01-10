@@ -352,20 +352,31 @@ const preserveFocus = async (asyncOperation: () => Promise<void>) => {
 window.addEventListener('focus', () => {
   // WORKAROUND: Force hover state re-evaluation on window focus
   // Tauri webview doesn't always update :hover correctly without this
-  // Skip on macOS - it handles focus well and this workaround can cause focus loss
   const isMac = platform.includes('mac');
   if (!isMac) {
+    // Windows/Linux: use pointer-events hack to fix hover state
     document.body.style.pointerEvents = 'none';
     requestAnimationFrame(() => {
       document.body.style.pointerEvents = '';
 
       // Restore textarea focus after pointer events are re-enabled
-      // This fixes focus loss caused by the pointer events workaround (Windows only)
       const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
       if (textarea && !document.querySelector('.modal-overlay')) {
         textarea.focus();
       }
     });
+  } else {
+    // macOS: WKWebView can lose internal focus when window regains focus
+    // Use delayed focus restoration to let webview settle
+    setTimeout(() => {
+      const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+      const activeEl = document.activeElement;
+      // Only restore if focus was lost (on body or null) and no modal is open
+      if (textarea && (!activeEl || activeEl === document.body) &&
+          !document.querySelector('.modal-overlay') && !document.querySelector('[role="dialog"]')) {
+        textarea.focus();
+      }
+    }, 100);
   }
 
   const store = useClaudeCodeStore.getState();

@@ -814,7 +814,8 @@ export class ClaudeCodeClient {
   
   async checkHealth(): Promise<boolean> {
     try {
-      const response = await fetch('http://localhost:3001/health');
+      if (!this.serverPort) return false;
+      const response = await fetch(`http://localhost:${this.serverPort}/health`);
       const data = await response.json();
       return data.status === 'ok' && data.claudeCodeLoaded;
     } catch (error) {

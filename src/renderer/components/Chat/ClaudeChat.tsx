@@ -41,6 +41,7 @@ import { MessageRenderer } from './MessageRenderer';
 import { VirtualizedMessageList, VirtualizedMessageListRef, ThinkingTimer, BashTimer, CompactingTimer } from './VirtualizedMessageList';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
+import { ModelToolsModal } from '../ModelSelector/ModelToolsModal';
 import { WelcomeScreen } from '../Welcome/WelcomeScreen';
 import { MentionAutocomplete } from '../MentionAutocomplete/MentionAutocomplete';
 import { CommandAutocomplete } from '../CommandAutocomplete/CommandAutocomplete';
@@ -359,6 +360,8 @@ export const ClaudeChat: React.FC = () => {
   const [isDragging, setIsDragging] = useState(false);
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showModelToolsModal, setShowModelToolsModal] = useState(false);
+  const [modelToolsOpenedViaKeyboard, setModelToolsOpenedViaKeyboard] = useState(false);
   const [usageLimits, setUsageLimits] = useState<{
     five_hour?: { utilization: number; resets_at: string };
     seven_day?: { utilization: number; resets_at: string };
@@ -463,6 +466,8 @@ export const ClaudeChat: React.FC = () => {
     selectedModel,
     setSelectedModel,
     toggleModel,
+    enabledTools,
+    setEnabledTools,
     loadPersistedSession,
     updateSessionDraft,
     addMessageToSession,
@@ -483,6 +488,8 @@ export const ClaudeChat: React.FC = () => {
     selectedModel: state.selectedModel,
     setSelectedModel: state.setSelectedModel,
     toggleModel: state.toggleModel,
+    enabledTools: state.enabledTools,
+    setEnabledTools: state.setEnabledTools,
     loadPersistedSession: state.loadPersistedSession,
     updateSessionDraft: state.updateSessionDraft,
     addMessageToSession: state.addMessageToSession,
@@ -963,25 +970,74 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
 
-  // macOS focus fix: Periodically check and restore textarea focus during streaming
-  // WKWebView can randomly drop focus during rapid DOM updates from streaming
+  // macOS focus fix: Periodically check and restore textarea focus
+  // WKWebView can randomly drop focus during DOM updates or system events
   useEffect(() => {
-    if (!isMac || !currentSession?.streaming) return;
+    if (!isMac) return;
 
-    // Check focus every 500ms during streaming
+    // Faster check during streaming (500ms), slower when idle (1500ms)
+    const interval = currentSession?.streaming ? 500 : 1500;
+
     const focusCheckInterval = setInterval(() => {
       // Only restore if window is focused and textarea exists
-      if (document.hasFocus() && inputRef.current) {
-        const activeEl = document.activeElement;
-        // If focus is on body or null (lost focus), restore to textarea
-        if (!activeEl || activeEl === document.body) {
-          inputRef.current.focus();
-        }
+      if (!document.hasFocus() || !inputRef.current) return;
+
+      // Skip if user is selecting text
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) return;
+
+      // Skip if any modal is open
+      if (document.querySelector('.modal-overlay') ||
+          document.querySelector('[role="dialog"]') ||
+          showStatsModal || showResumeModal || showAgentExecutor) return;
+
+      // Skip if session is read-only or context is almost full (>95%)
+      const totalTokens = currentSession?.analytics?.tokens?.total || 0;
+      const isContextFull = (totalTokens / 200000 * 100) > 95;
+      if (currentSession?.readOnly || isContextFull) return;
+
+      const activeEl = document.activeElement;
+      // If focus is on body or null (lost focus), restore to textarea
+      if (!activeEl || activeEl === document.body) {
+        inputRef.current.focus();
       }
-    }, 500);
+    }, interval);
 
     return () => clearInterval(focusCheckInterval);
-  }, [currentSession?.streaming, isMac]);
+  }, [currentSession?.streaming, currentSession?.readOnly, currentSession?.analytics?.tokens?.total, isMac, showStatsModal, showResumeModal, showAgentExecutor]);
+
+  // macOS aggressive focus fix: Force blur/focus cycle to reset stuck WKWebView focus state
+  // This handles the case where textarea is focused but not receiving keyboard input
+  useEffect(() => {
+    if (!isMac || currentSession?.streaming) return;
+
+    // Only run every 5 seconds when idle (not during streaming where it could interfere)
+    const forceRefocusInterval = setInterval(() => {
+      if (!document.hasFocus() || !inputRef.current) return;
+      if (document.querySelector('.modal-overlay') || document.querySelector('[role="dialog"]')) return;
+      if (currentSession?.readOnly) return;
+
+      // Skip if user is selecting text
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) return;
+
+      const activeEl = document.activeElement;
+      // Only force refocus if textarea is already focused (but might be stuck)
+      if (activeEl === inputRef.current) {
+        // Save cursor position
+        const start = inputRef.current.selectionStart;
+        const end = inputRef.current.selectionEnd;
+        // Force reset focus state
+        inputRef.current.blur();
+        inputRef.current.focus();
+        // Restore cursor position
+        inputRef.current.selectionStart = start;
+        inputRef.current.selectionEnd = end;
+      }
+    }, 5000);
+
+    return () => clearInterval(forceRefocusInterval);
+  }, [isMac, currentSession?.streaming, currentSession?.readOnly]);
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {
@@ -1722,8 +1778,9 @@ export const ClaudeChat: React.FC = () => {
         setShowStatsModal(prev => !prev);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'o') {
         e.preventDefault();
-        // Toggle model between opus and sonnet
-        toggleModel();
+        // Open model & tools modal via keyboard
+        setModelToolsOpenedViaKeyboard(true);
+        setShowModelToolsModal(prev => !prev);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
         // Toggle files panel
@@ -2970,15 +3027,15 @@ export const ClaudeChat: React.FC = () => {
       if (currentSession?.streaming) return; // Ignore during streaming
       // Falls through to send /compact to Claude CLI
     } else if (trimmedInput === '/model' || trimmedInput.startsWith('/model ')) {
-      console.log('[ClaudeChat] Detected /model command - toggling model');
-      toggleModel();
+      console.log('[ClaudeChat] Detected /model command - opening modal');
+      setModelToolsOpenedViaKeyboard(false);
+      setShowModelToolsModal(true);
       setInput('');
       // Reset textarea height
       if (inputRef.current) {
         inputRef.current.style.height = '44px';
         inputRef.current.style.overflow = 'hidden';
       }
-      console.log('[ClaudeChat] /model command handled - returning early');
       return;
     } else if (trimmedInput.startsWith('/title ')) {
       // Handle /title command - set tab title manually
@@ -3496,10 +3553,11 @@ export const ClaudeChat: React.FC = () => {
       setCommandTrigger(null);
       handleClearContextRequest();
     } else if (command === '/model') {
-      // Handle model command locally - toggle between opus and sonnet
+      // Handle model command locally - open model & tools modal
       setInput('');
       setCommandTrigger(null);
-      toggleModel();
+      setModelToolsOpenedViaKeyboard(false);
+      setShowModelToolsModal(true);
     } else if (command.startsWith('/title ') || command === '/title') {
       // Handle title command locally - set tab title manually
       setInput('');
@@ -3801,8 +3859,25 @@ export const ClaudeChat: React.FC = () => {
   }
 
   return (
-    <div 
+    <div
       className="chat-container"
+      onClick={(e) => {
+        // macOS focus fix: restore focus when clicking in chat area
+        // Only if click target is not an interactive element
+        if (!isMac) return;
+        const target = e.target as HTMLElement;
+        if (target.closest('button, a, input, textarea, [role="button"], [tabindex]')) return;
+        if (!inputRef.current || currentSession?.readOnly) return;
+        // Skip if user is selecting text
+        const selection = window.getSelection();
+        if (selection && selection.toString().length > 0) return;
+        // Check if context is almost full (>95%)
+        const totalTokens = currentSession?.analytics?.tokens?.total || 0;
+        if ((totalTokens / 200000 * 100) > 95) return;
+        if (document.activeElement === inputRef.current) return;
+        // Small delay to not interfere with other click handlers
+        setTimeout(() => inputRef.current?.focus(), 10);
+      }}
     >
       {/* Search bar */}
       {searchVisible && (
@@ -4925,7 +5000,15 @@ export const ClaudeChat: React.FC = () => {
         
         {/* Context info bar */}
         <div className="context-bar">
-          <ModelSelector value={selectedModel} onChange={setSelectedModel} />
+          <ModelSelector
+            value={selectedModel}
+            onChange={setSelectedModel}
+            toolCount={enabledTools.length}
+            onOpenModal={() => {
+              setModelToolsOpenedViaKeyboard(false);
+              setShowModelToolsModal(true);
+            }}
+          />
 
           {/* Center - tools group */}
           <div className="context-center">
@@ -5165,9 +5248,18 @@ export const ClaudeChat: React.FC = () => {
           onClose={() => setCommandTrigger(null)}
         />
       )}
-      
 
-      
+      {/* Model & Tools Modal */}
+      <ModelToolsModal
+        isOpen={showModelToolsModal}
+        onClose={() => setShowModelToolsModal(false)}
+        selectedModel={selectedModel}
+        onModelChange={setSelectedModel}
+        enabledTools={enabledTools}
+        onToolsChange={setEnabledTools}
+        openedViaKeyboard={modelToolsOpenedViaKeyboard}
+      />
+
       {showStatsModal && (
         <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
           <div className="stats-modal" onClick={(e) => e.stopPropagation()}>

@@ -569,7 +569,7 @@ export const SessionTabs: React.FC = () => {
                   preview.style.cssText = `
                     position: fixed;
                     pointer-events: none !important;
-                    z-index: 9999;
+                    z-index: 10001;
                     opacity: 1;
                     transform: rotate(2deg);
                     transition: none;
@@ -846,7 +846,7 @@ export const SessionTabs: React.FC = () => {
                 return (
                   <>
                     <span>{time.line1}</span>
-                    {time.line2 && <span>{time.line2}</span>}
+                    {time.line2 && <span className="timer-seconds">{time.line2}</span>}
                   </>
                 );
               })()}

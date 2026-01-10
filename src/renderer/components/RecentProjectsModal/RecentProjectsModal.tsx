@@ -390,7 +390,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
               <IconFolderOpen size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
               recent projects
             </span>
-            <span className="modal-hint">1-9 to open</span>
+            <span className="modal-hint">↑↓ navigate · enter to open · 1-9 quick select</span>
           </div>
           <div className="modal-header-actions">
             <button

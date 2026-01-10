@@ -353,7 +353,7 @@ export const WelcomeScreen: React.FC = () => {
               }));
             }}
           >
-            trial
+            yurucode trial
           </span>
         </div>
       )}
@@ -371,12 +371,14 @@ export const WelcomeScreen: React.FC = () => {
             }}
             title={`context usage | ${modKey}+. shows stats | auto-compact: ${autoCompactEnabled !== false ? 'on' : 'off'} (toggle: ${modKey}+shift+.)`}
           >
-            {autoCompactEnabled !== false ? (
-              <span className="btn-stats-auto">auto</span>
-            ) : (
-              <span className="btn-stats-auto">user</span>
-            )}
-            <span>context</span>
+            <span className="btn-stats-text">
+              {autoCompactEnabled !== false ? (
+                <span className="btn-stats-auto">auto</span>
+              ) : (
+                <span className="btn-stats-auto">user</span>
+              )}
+              <span>context</span>
+            </span>
           </button>
           {/* 5h limit bar */}
           <div className="btn-stats-limit-bar five-hour">

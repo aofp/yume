@@ -28,8 +28,14 @@ static ALLOCATED_PORTS: Mutex<Vec<u16>> = Mutex::new(Vec::new());
 static CACHED_PORT: Mutex<Option<u16>> = Mutex::new(None);
 
 /// Gets the path to the port cache file
+/// Dev and prod use separate cache files to allow running both simultaneously
 fn get_port_cache_path() -> Option<PathBuf> {
-    dirs::config_dir().map(|p| p.join("yurucode").join("last_port.txt"))
+    let filename = if cfg!(debug_assertions) {
+        "last_port_dev.txt"
+    } else {
+        "last_port.txt"
+    };
+    dirs::config_dir().map(|p| p.join("yurucode").join(filename))
 }
 
 /// Loads the cached port from disk

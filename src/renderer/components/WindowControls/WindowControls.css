@@ -71,17 +71,12 @@
   justify-content: center;
   cursor: default;
   margin-right: 1px;
+  pointer-events: none;
 }
 
 /* Remove margin-right on macOS */
 .mac-right-controls .window-control-toggle {
   margin-right: 0;
-}
-
-.window-control-toggle:hover {
-  background: var(--fg-05);
-  color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 1);
 }
 
 .mac-control {

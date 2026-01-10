@@ -2,9 +2,25 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import net from 'net';
 import crypto from 'crypto';
+
+// Write PID file for cleanup
+const __filename_temp = fileURLToPath(import.meta.url);
+const __dirname_temp = dirname(__filename_temp);
+const VITE_PID_FILE = resolve(__dirname_temp, '.vite.pid');
+
+// Write our PID so kill-ports.js can find us
+writeFileSync(VITE_PID_FILE, String(process.pid));
+
+// Cleanup on exit
+function cleanup() {
+  try { unlinkSync(VITE_PID_FILE); } catch {}
+}
+process.on('exit', cleanup);
+process.on('SIGINT', () => { cleanup(); process.exit(0); });
+process.on('SIGTERM', () => { cleanup(); process.exit(0); });
 
 // Polyfill for crypto.hash if it doesn't exist
 if (!crypto.hash) {

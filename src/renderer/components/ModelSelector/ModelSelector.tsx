@@ -8,11 +8,15 @@ const models = getModelsForSelector();
 interface ModelSelectorProps {
   value?: string;
   onChange?: (modelId: string) => void;
+  toolCount?: number; // Number of enabled tools
+  onOpenModal?: () => void; // Opens the model/tools modal
 }
 
 export const ModelSelector: React.FC<ModelSelectorProps> = ({
   value,
-  onChange
+  onChange,
+  toolCount,
+  onOpenModal
 }) => {
   // Platform detection for keyboard shortcuts
   const isMac = navigator.platform.toLowerCase().includes('mac');
@@ -32,28 +36,41 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
     }
   }, [value, onChange]);
 
-  // Toggle between sonnet and opus
-  const toggleModel = () => {
-    // Find current model index
-    const currentIndex = models.findIndex(m => m.id === currentValue);
-    // Cycle to next model (wrap around to start)
-    const nextIndex = (currentIndex + 1) % models.length;
-    const nextModel = models[nextIndex];
-    onChange?.(nextModel.id);
+  // Click opens modal instead of toggling
+  const handleClick = () => {
+    if (onOpenModal) {
+      onOpenModal();
+    } else {
+      // Fallback: toggle between sonnet and opus
+      const currentIndex = models.findIndex(m => m.id === currentValue);
+      const nextIndex = (currentIndex + 1) % models.length;
+      onChange?.(models[nextIndex].id);
+    }
   };
 
+  // Right-click toggles model directly
+  const handleContextMenu = (e: React.MouseEvent) => {
+    e.preventDefault();
+    const currentIndex = models.findIndex(m => m.id === currentValue);
+    const nextIndex = (currentIndex + 1) % models.length;
+    onChange?.(models[nextIndex].id);
+  };
 
   return (
     <div className="model-selector">
       <button
         ref={buttonRef}
         className={`model-selector-trigger ${isHovered ? 'hovered' : ''}`}
-        onClick={toggleModel}
+        onClick={handleClick}
+        onContextMenu={handleContextMenu}
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
-        title={`toggle model (${modKey}+o)`}
+        title={`model & tools (${modKey}+o) • right-click to toggle`}
       >
         <span className="model-selector-text">{selectedModel.name}</span>
+        {toolCount !== undefined && (
+          <span className="model-selector-tools">[{toolCount}]</span>
+        )}
       </button>
     </div>
   );
