@@ -3349,6 +3349,10 @@ ${content}`;
     if ((session as any)?.cleanup) {
       (session as any).cleanup();
     }
+    // Clean up deferred spawn cleanup if it exists
+    if ((session as any)?._deferredCleanup) {
+      (session as any)._deferredCleanup();
+    }
 
     // Clear session edits from global registry to prevent orphan entries
     invoke('clear_session_edits', { sessionId }).catch(error => {
@@ -3358,7 +3362,11 @@ ${content}`;
     set(state => {
       const newSessions = state.sessions.filter(s => s.id !== sessionId);
       let newCurrentId = state.currentSessionId;
-      
+
+      // Clean up session mappings to prevent memory leak
+      const newSessionMappings = { ...state.sessionMappings };
+      delete newSessionMappings[sessionId];
+
       // If we're deleting the current session, switch to another one
       if (state.currentSessionId === sessionId) {
         if (newSessions.length > 0) {
@@ -3371,15 +3379,15 @@ ${content}`;
           newCurrentId = null;
         }
       }
-      
+
       persistSessions(newSessions); // Persist after deletion
-      
+
       // Save tabs if remember tabs is enabled
       const storeState = get();
       if (storeState.rememberTabs) {
         storeState.saveTabs();
       }
-      
+
       if (newCurrentId) {
         localStorage.setItem('yurucode-current-session', newCurrentId);
       } else {
@@ -3387,7 +3395,8 @@ ${content}`;
       }
       return {
         sessions: newSessions,
-        currentSessionId: newCurrentId
+        currentSessionId: newCurrentId,
+        sessionMappings: newSessionMappings
       };
     });
   },

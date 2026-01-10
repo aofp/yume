@@ -28,12 +28,18 @@
 }
 
 .diff-header {
-  color: #888;
+  color: rgba(var(--foreground-rgb), 0.7);
   font-size: 9px;
-  margin-bottom: 2px;
-  padding: 4px 4px 2px 4px;
-  font-family: inherit;
-  opacity: 0.9;
+  padding: 4px;
+  font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.diff-header-icon {
+  color: var(--positive-color);
+  flex-shrink: 0;
 }
 
 .diff-separator {
@@ -120,4 +126,55 @@
 
 .diff-remove {
   background: rgba(var(--negative-rgb), 0.18);
+}
+
+/* Replace All Display */
+.replace-all-edit {
+  font-family: var(--font-mono);
+  font-size: 9px;
+}
+
+.replace-all-summary {
+  padding: 6px 8px;
+  background: #000;
+  border-radius: 4px;
+}
+
+.replace-all-info {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.replace-label {
+  color: rgba(var(--foreground-rgb), 0.5);
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
+.replace-old {
+  background: rgba(var(--negative-rgb), 0.25);
+  color: var(--negative-color);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+}
+
+.replace-arrow {
+  color: rgba(var(--foreground-rgb), 0.4);
+}
+
+.replace-new {
+  background: rgba(var(--positive-rgb), 0.25);
+  color: var(--positive-color);
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: var(--font-mono);
+}
+
+.replace-count {
+  color: rgba(var(--foreground-rgb), 0.5);
+  font-size: 8px;
+  margin-left: 4px;
 }

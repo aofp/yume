@@ -5085,23 +5085,9 @@ io.on('connection', (socket) => {
       console.log(`🔍 [${sessionId}] Process spawned with PID: ${claudeProcess.pid}`);
       console.log(`🔍 [${sessionId}] Process connected: ${claudeProcess.connected}`);
       
-      // Capture stderr for debugging
+      // Capture stderr for debugging (buffer accumulates for WSL error detection)
       let stderrBuffer = '';
-      claudeProcess.stderr.on('data', (chunk) => {
-        const str = chunk.toString();
-        stderrBuffer += str;
-        console.error(`❌ [${sessionId}] STDERR output: ${str}`);
-        
-        // Check for common WSL errors
-        if (str.includes('command not found') || str.includes('No such file')) {
-          console.error(`❌ [${sessionId}] WSL PATH ERROR - Claude CLI not found!`);
-          console.error(`❌ [${sessionId}] Full stderr: ${stderrBuffer}`);
-        }
-        if (str.includes('bash:') || str.includes('sh:')) {
-          console.error(`❌ [${sessionId}] WSL BASH ERROR detected`);
-        }
-      });
-      
+
       // Handle stdout
       // Set up periodic buffer flush to prevent stalls
       const bufferFlushInterval = setInterval(() => {
@@ -5165,12 +5151,22 @@ io.on('connection', (socket) => {
         clearInterval(bufferFlushInterval);
       });
 
-      // Handle stderr
+      // Handle stderr (single handler - avoid duplicates which cause memory leaks)
       claudeProcess.stderr.on('data', (data) => {
         const error = data.toString();
+        stderrBuffer += error; // Accumulate for WSL error detection
         console.error(`⚠️ [${sessionId}] Claude stderr (${data.length} bytes):`, error);
         lastDataTime = Date.now();
-        
+
+        // Check for common WSL errors
+        if (error.includes('command not found') || error.includes('No such file')) {
+          console.error(`❌ [${sessionId}] WSL PATH ERROR - Claude CLI not found!`);
+          console.error(`❌ [${sessionId}] Full stderr: ${stderrBuffer}`);
+        }
+        if (error.includes('bash:') || error.includes('sh:')) {
+          console.error(`❌ [${sessionId}] WSL BASH ERROR detected`);
+        }
+
         // Check if this is a "No conversation found" error
         if (error.includes('No conversation found with session ID')) {
           console.log(`🔄 Resume failed - session not found in Claude storage`);

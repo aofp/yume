@@ -882,20 +882,24 @@ export class ClaudeCodeClient {
       });
 
       // Debug: listen to all events (only in dev)
+      // Store handler reference so we can remove only this listener, not all onAny listeners
+      let titleDebugHandler: ((eventName: string, ...args: any[]) => void) | null = null;
       if (isDev) {
-        this.socket.onAny((eventName: string, ...args: any[]) => {
+        titleDebugHandler = (eventName: string, ...args: any[]) => {
           if (eventName.startsWith('title:')) {
             debugLog('[Client] ANY title event received:', eventName, args);
           }
-        });
+        };
+        this.socket.onAny(titleDebugHandler);
       }
 
       // Return cleanup function
       return () => {
         if (this.socket) {
           this.socket.off(eventName);
-          if (isDev) {
-            this.socket.offAny();
+          // Only remove our specific onAny handler, not all of them
+          if (isDev && titleDebugHandler) {
+            this.socket.offAny(titleDebugHandler);
           }
         }
       };

@@ -44,6 +44,7 @@ import './App.minimal.css';
 import './services/platformBridge';
 import { claudeCodeClient } from './services/claudeCodeClient';
 import { tauriClaudeClient } from './services/tauriClaudeClient';
+import { agentExecutionService } from './services/agentExecutionService';
 import './services/modalService';
 
 // Try to import Tauri invoke for git lock cleanup
@@ -279,6 +280,9 @@ window.addEventListener('beforeunload', () => {
   if (persistenceInterval) {
     clearInterval(persistenceInterval);
   }
+
+  // Clean up agent execution service (stops its interval)
+  agentExecutionService.destroy();
 
   // Cleanup git lock files for all open sessions (fire and forget)
   if (tauriInvoke) {

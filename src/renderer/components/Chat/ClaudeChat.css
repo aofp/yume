@@ -1456,6 +1456,13 @@ textarea.context-full {
   background: rgba(var(--accent-rgb), 0.1);
 }
 
+.btn-context-icon.dictating {
+  color: var(--negative-color);
+  border-color: var(--negative-color);
+  background: rgba(var(--negative-rgb), 0.1);
+  animation: pulse 1.5s infinite;
+}
+
 .btn-clear-context:hover:not(:disabled), .btn-stats:hover, .btn-help:hover, .btn-dictation:hover:not(:disabled):not(.active), .btn-context-menu:hover:not(:disabled) {
   background: var(--fg-05);
   color: var(--accent-color);
@@ -1562,6 +1569,18 @@ textarea.context-full {
   opacity: 1 !important;
 }
 
+.btn-stats.minimal:hover {
+  border-color: var(--fg-40);
+}
+
+.btn-stats.low:hover,
+.btn-stats.medium:hover,
+.btn-stats.high:hover,
+.btn-stats.critical:hover {
+  color: var(--negative-color);
+  border-color: var(--negative-color);
+}
+
 .btn-stats-container {
   position: relative;
   display: inline-block;
@@ -1603,14 +1622,9 @@ textarea.context-full {
    - medium (50%+): medium red (0.8 opacity)
    - high (60%+): full red (1.0 opacity)
    - critical (65%+): full red with pulse */
+/* Token usage level colors - hover handled by general .btn-stats:hover */
 .btn-stats.minimal {
   color: var(--fg-60);
-}
-
-.btn-stats.minimal:hover {
-  background: var(--fg-05);
-  color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 1);
 }
 
 /* 40%+ - faint red */
@@ -1619,32 +1633,14 @@ textarea.context-full {
   border-color: rgba(var(--negative-rgb), 0.7);
 }
 
-.btn-stats.low:hover {
-  background: rgba(var(--negative-rgb), 0.03);
-  color: rgba(var(--negative-rgb), 0.8);
-  border-color: rgba(var(--negative-rgb), 0.8);
-}
-
 /* 50%+ - medium red */
 .btn-stats.medium {
   color: rgba(var(--negative-rgb), 0.8);
   border-color: rgba(var(--negative-rgb), 0.8);
 }
 
-.btn-stats.medium:hover {
-  background: rgba(var(--negative-rgb), 0.05);
-  color: rgba(var(--negative-rgb), 0.9);
-  border-color: rgba(var(--negative-rgb), 0.9);
-}
-
 /* 60%+ - full red (auto-compact triggered) */
 .btn-stats.high {
-  color: var(--negative-color);
-  border-color: var(--negative-color);
-}
-
-.btn-stats.high:hover {
-  background: rgba(var(--negative-rgb), 0.05);
   color: var(--negative-color);
   border-color: var(--negative-color);
 }
@@ -1654,12 +1650,6 @@ textarea.context-full {
   color: var(--negative-color);
   border-color: var(--negative-color);
   animation: pulse-critical 1.5s ease-in-out infinite;
-}
-
-.btn-stats.critical:hover {
-  background: rgba(var(--negative-rgb), 0.1);
-  color: var(--negative-color);
-  border-color: var(--negative-color);
 }
 
 @keyframes pulse-critical {
@@ -3257,11 +3247,18 @@ textarea.context-full {
   white-space: nowrap;
 }
 
-/* Rollback Button (centered in context bar) - matches btn-context-icon style */
-.btn-rollback {
+/* Center absolute container for history + dictation */
+.context-center-absolute {
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+/* Rollback Button - matches btn-context-icon style */
+.btn-rollback {
   display: flex;
   align-items: center;
   justify-content: center;

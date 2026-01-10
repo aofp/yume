@@ -238,15 +238,9 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
                   return;
                 }
                 lastMousePos.current = pos;
-                // Mouse takes over focus
+                // Mouse takes over focus - set index to hovered item
                 setInputMode('mouse');
                 setFocusedIndex(idx);
-              }}
-              onMouseLeave={() => {
-                // Only clear focus if mouse is still the active input
-                if (inputMode === 'mouse') {
-                  setFocusedIndex(-1);
-                }
               }}
             >
               <button

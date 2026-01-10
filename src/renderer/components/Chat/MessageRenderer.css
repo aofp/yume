@@ -885,7 +885,6 @@ ol {
   display: flex;
   align-items: center;
   gap: 6px;
-  margin-bottom: 4px;
 }
 
 .diff-icon {
@@ -1311,15 +1310,16 @@ body.platform-win32 .tool-detail {
   border: none;
   padding: 0;
   margin: 0;
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 /* Read-only tool outputs - same reduced opacity as read */
 .tool-result.search-output,
 .tool-result.file-list,
+.tool-result.read-ouput,
 .tool-result.dir-listing,
 .tool-result.web-search {
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 .read-content {
@@ -1454,6 +1454,7 @@ body.platform-win32 .tool-detail {
 }
 
 .tool-result.collapsible .collapsible-header {
+  color: rgba(var(--positive-rgb), .8);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1467,32 +1468,32 @@ body.platform-win32 .tool-detail {
 .tool-result.collapsible .collapsible-header:hover .collapsible-summary,
 .tool-result.collapsible .collapsible-header:hover .collapsible-detail,
 .tool-result.collapsible .collapsible-header:hover .collapse-chevron {
-  color: var(--accent-color);
+  color: var(--positive-color);
 }
 
 .tool-result.collapsible .collapse-chevron {
   display: flex;
   align-items: center;
   justify-content: center;
-  color: rgba(var(--foreground-rgb), 0.4);
+  color: rgba(var(--positive-rgb), 0.5);
   flex-shrink: 0;
 }
 
 .collapsible-icon {
   opacity: 1;
-  color: rgba(var(--foreground-rgb), 0.9);
+  color: rgba(var(--positive-rgb), 0.9);
 }
 
 .tool-result.collapsible .collapsible-summary {
   font-family: var(--font-mono);
-  font-size: 9px;
-  color: rgba(var(--foreground-rgb), 0.7);
+  font-size: 7.5px;
+  color: rgba(var(--positive-rgb), 0.8);
 }
 
 .tool-result.collapsible .collapsible-detail {
   font-family: var(--font-mono);
-  font-size: 9px;
-  color: rgba(var(--foreground-rgb), 0.7);
+  font-size: 8.5px;
+  color: rgba(var(--positive-rgb), 0.9);
   overflow: visible;
   white-space: nowrap;
 }
@@ -2479,7 +2480,7 @@ pre::-webkit-scrollbar-thumb:hover {
 pre code,
 .thinking-code-block,
 .thinking-code-block code {
-  font-size: 9px !important;
+  font-size: 9px;
 }
 
 /* Line numbers - 8px */

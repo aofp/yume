@@ -534,8 +534,17 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
   defaultCollapsed = true
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
+  const [hasUserToggled, setHasUserToggled] = useState(false);
+
+  // Sync with defaultCollapsed prop only if user hasn't manually toggled
+  useEffect(() => {
+    if (!hasUserToggled) {
+      setIsCollapsed(defaultCollapsed);
+    }
+  }, [defaultCollapsed, hasUserToggled]);
 
   const handleToggle = useCallback(() => {
+    setHasUserToggled(true);
     setIsCollapsed(prev => !prev);
   }, []);
 
@@ -2446,15 +2455,20 @@ const MessageRendererBase: React.FC<{
 
             diffDisplay.hunks.push(hunk);
           });
-          
-          // Use DiffViewer component
+
+          // Use CollapsibleToolResult with DiffViewer for MultiEdit
           if (diffDisplay.hunks.length > 0) {
+            const editCount = resultToolInput?.edits?.length || diffDisplay.hunks.length;
             return (
-              <div className="message tool-result-message">
-                <div className="tool-result file-edit">
-                  <DiffViewer diff={diffDisplay} />
-                </div>
-              </div>
+              <CollapsibleToolResult
+                icon={<IconEditCircle size={12} stroke={1.5} />}
+                summary={filePath}
+                detail={`${editCount} edit${editCount !== 1 ? 's' : ''}`}
+                className="edit-output"
+                defaultCollapsed={false}
+              >
+                <DiffViewer diff={{...diffDisplay, file: ''}} />
+              </CollapsibleToolResult>
             );
           }
         }
@@ -2463,10 +2477,33 @@ const MessageRendererBase: React.FC<{
         if (!isMultiEdit && resultToolInput) {
           const oldString = resultToolInput?.old_string || '';
           const newString = resultToolInput?.new_string || '';
+          const isReplaceAll = resultToolInput?.replace_all === true;
 
           console.log('[Edit] associatedToolUse found:', resultToolName,
             'has old_string:', !!oldString, 'has new_string:', !!newString,
+            'replace_all:', isReplaceAll,
             'filePath:', filePath || resultToolInput?.file_path);
+
+          // Special handling for replace_all - show summary instead of trying to show line-by-line diff
+          if (isReplaceAll && oldString && newString) {
+            return (
+              <CollapsibleToolResult
+                icon={<IconEdit size={12} stroke={1.5} />}
+                summary={filePath}
+                detail="replace all"
+                className="edit-output"
+                defaultCollapsed={false}
+              >
+                <div className="replace-all-summary">
+                  <div className="replace-all-info">
+                    <code className="replace-old">{oldString}</code>
+                    <span className="replace-arrow">→</span>
+                    <code className="replace-new">{newString}</code>
+                  </div>
+                </div>
+              </CollapsibleToolResult>
+            );
+          }
 
           if (oldString && newString) {
             // Try to extract the starting line number from the result output
@@ -2512,13 +2549,17 @@ const MessageRendererBase: React.FC<{
 
             diffDisplay.hunks.push(hunk);
 
-            // Use DiffViewer component
+            // Use CollapsibleToolResult with DiffViewer
             return (
-              <div className="message tool-result-message">
-                <div className="tool-result file-edit">
-                  <DiffViewer diff={diffDisplay} />
-                </div>
-              </div>
+              <CollapsibleToolResult
+                icon={<IconEdit size={12} stroke={1.5} />}
+                summary={filePath}
+                detail={`line ${startLineNum}`}
+                className="edit-output"
+                defaultCollapsed={false}
+              >
+                <DiffViewer diff={{...diffDisplay, file: ''}} />
+              </CollapsibleToolResult>
             );
           }
         }
@@ -2549,7 +2590,7 @@ const MessageRendererBase: React.FC<{
                            contextLines.length > 0 ? contextLines[0].lineNumber : 1;
 
           const diffDisplay: DiffDisplay = {
-            file: filePath,
+            file: '',
             hunks: [{
               startLine,
               endLine: Math.max(
@@ -2566,11 +2607,15 @@ const MessageRendererBase: React.FC<{
           };
 
           return (
-            <div className="message tool-result-message">
-              <div className="tool-result file-edit">
-                <DiffViewer diff={diffDisplay} />
-              </div>
-            </div>
+            <CollapsibleToolResult
+              icon={<IconEdit size={12} stroke={1.5} />}
+              summary={filePath}
+              detail={`line ${startLine}`}
+              className="edit-output"
+              defaultCollapsed={false}
+            >
+              <DiffViewer diff={diffDisplay} />
+            </CollapsibleToolResult>
           );
         }
         
@@ -2624,15 +2669,57 @@ const MessageRendererBase: React.FC<{
             hunks: diffHunks
           };
 
+          const editCount = editSections.length || diffHunks.length;
           return (
-            <div className="message tool-result-message">
-              <div className="tool-result file-edit">
-                <DiffViewer diff={diffDisplay} />
-              </div>
-            </div>
+            <CollapsibleToolResult
+              icon={<IconEditCircle size={12} stroke={1.5} />}
+              summary={filePath}
+              detail={`${editCount} edit${editCount !== 1 ? 's' : ''}`}
+              className="edit-output"
+              defaultCollapsed={false}
+            >
+              <DiffViewer diff={{...diffDisplay, file: ''}} />
+            </CollapsibleToolResult>
           );
         }
-        
+
+        // ===== NOTEBOOKEDIT TOOL =====
+        if (resultToolName === 'NotebookEdit') {
+          const notebookPath = formatPath(resultToolInput?.notebook_path || 'notebook');
+          const cellType = resultToolInput?.cell_type || 'code';
+          const editMode = resultToolInput?.edit_mode || 'replace';
+          const newSource = resultToolInput?.new_source || '';
+          const sourceLines = newSource.split('\n');
+
+          // Create diff display showing the new cell content
+          const diffDisplay: DiffDisplay = {
+            file: '',
+            hunks: [{
+              startLine: 1,
+              endLine: sourceLines.length,
+              lines: sourceLines.map((line: string, i: number) => ({
+                type: 'add' as const,
+                content: line,
+                lineNumber: i + 1
+              }))
+            }]
+          };
+
+          const modeLabel = editMode === 'insert' ? 'insert' : editMode === 'delete' ? 'delete' : 'replace';
+
+          return (
+            <CollapsibleToolResult
+              icon={<IconNotebook size={12} stroke={1.5} />}
+              summary={notebookPath}
+              detail={`${modeLabel} ${cellType} cell`}
+              className="edit-output"
+              defaultCollapsed={false}
+            >
+              <DiffViewer diff={diffDisplay} />
+            </CollapsibleToolResult>
+          );
+        }
+
         // Fallback to simple display if no line numbers found
         console.log('[Edit] FALLBACK - no associatedToolUse or missing input',
           'hasAssociatedToolUse:', !!associatedToolUse,
@@ -2640,23 +2727,31 @@ const MessageRendererBase: React.FC<{
           'hasInput:', !!resultToolInput,
           'contentPreview:', contentStr.substring(0, 100));
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result standalone edit-output">
-              <pre className="result-content">{contentStr}</pre>
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconEdit size={12} stroke={1.5} />}
+            summary={filePath || 'file'}
+            detail="edit"
+            className="edit-output"
+            defaultCollapsed={false}
+          >
+            <pre className="result-content">{contentStr}</pre>
+          </CollapsibleToolResult>
         );
       }
-      
+
       // Also check for fallback edit results without tool association
       if (isEditResult && !isEditOperation) {
         // Try to show as simple text if we couldn't parse it
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result file-edit">
-              <pre className="edit-content">{contentStr}</pre>
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconEdit size={12} stroke={1.5} />}
+            summary="file"
+            detail="edit"
+            className="edit-output"
+            defaultCollapsed={false}
+          >
+            <pre className="edit-content">{contentStr}</pre>
+          </CollapsibleToolResult>
         );
       }
 
@@ -2668,7 +2763,7 @@ const MessageRendererBase: React.FC<{
 
         // Create diff display with all lines as additions (file creation)
         const diffDisplay: DiffDisplay = {
-          file: filePath,
+          file: '',
           hunks: [{
             startLine: 1,
             endLine: allLines.length,
@@ -2681,11 +2776,15 @@ const MessageRendererBase: React.FC<{
         };
 
         return (
-          <div className="message tool-result-message">
-            <div className="tool-result file-edit">
-              <DiffViewer diff={diffDisplay} />
-            </div>
-          </div>
+          <CollapsibleToolResult
+            icon={<IconFile size={12} stroke={1.5} />}
+            summary={filePath}
+            detail={`${allLines.length} line${allLines.length !== 1 ? 's' : ''}`}
+            className="write-output"
+            defaultCollapsed={false}
+          >
+            <DiffViewer diff={diffDisplay} />
+          </CollapsibleToolResult>
         );
       }
 
@@ -3102,6 +3201,18 @@ const MessageRendererBase: React.FC<{
         const currentIndex = sessionMessages.findIndex(m => m.id === message.id);
         let toolCount = (message as any).tool_count || 0;
         let hasAssistantMessage = false;
+
+        // Helper to check if a message has text content
+        const hasTextContent = (msg: any): boolean => {
+          if (msg.type !== 'assistant' || !msg.message?.content) return false;
+          const content = msg.message.content;
+          if (typeof content === 'string' && content.trim()) return true;
+          if (Array.isArray(content)) {
+            return content.some(block => block.type === 'text' && block.text?.trim());
+          }
+          return false;
+        };
+
         if (currentIndex > 0 && !toolCount) {
           // Go backwards from result to find tool uses in this turn
           for (let i = currentIndex - 1; i >= 0; i--) {
@@ -3111,15 +3222,12 @@ const MessageRendererBase: React.FC<{
               break;
             }
             // Check if there's an assistant message with text content
+            if (hasTextContent(msg)) {
+              hasAssistantMessage = true;
+            }
             if (msg.type === 'assistant' && msg.message?.content) {
               const content = msg.message.content;
-              if (typeof content === 'string' && content.trim()) {
-                hasAssistantMessage = true;
-              } else if (Array.isArray(content)) {
-                const hasText = content.some(block => block.type === 'text' && block.text?.trim());
-                if (hasText) {
-                  hasAssistantMessage = true;
-                }
+              if (Array.isArray(content)) {
                 toolCount += content.filter(block => block.type === 'tool_use').length;
               }
             }
@@ -3132,18 +3240,21 @@ const MessageRendererBase: React.FC<{
           for (let i = currentIndex - 1; i >= 0; i--) {
             const msg = sessionMessages[i];
             if (msg.type === 'user') break;
-            if (msg.type === 'assistant' && msg.message?.content) {
-              const content = msg.message.content;
-              if (typeof content === 'string' && content.trim()) {
-                hasAssistantMessage = true;
-                break;
-              } else if (Array.isArray(content)) {
-                const hasText = content.some(block => block.type === 'text' && block.text?.trim());
-                if (hasText) {
-                  hasAssistantMessage = true;
-                  break;
-                }
-              }
+            if (hasTextContent(msg)) {
+              hasAssistantMessage = true;
+              break;
+            }
+          }
+        }
+
+        // Also check FORWARD from result - handles race condition where assistant arrives after result
+        if (!hasAssistantMessage && currentIndex >= 0) {
+          for (let i = currentIndex + 1; i < sessionMessages.length; i++) {
+            const msg = sessionMessages[i];
+            if (msg.type === 'user') break; // Stop at next user message (new turn)
+            if (hasTextContent(msg)) {
+              hasAssistantMessage = true;
+              break;
             }
           }
         }
@@ -3190,9 +3301,14 @@ const MessageRendererBase: React.FC<{
           return false;
         });
 
+        // Check if result text is an Edit replace_all result - these are already shown by tool_result handler
+        // Format: "The file X has been updated. All occurrences of 'Y' were successfully replaced with 'Z'."
+        const isReplaceAllEditResult = resultTextNormalized.includes('were successfully replaced with') ||
+                                        resultTextNormalized.includes('All occurrences of');
+
         // Always show compact results, otherwise only show if no assistant message
         const isCompactResult = message.wrapper_compact || resultText.includes('Conversation compacted');
-        const showResultText = resultText && (isCompactResult || (!hasAssistantMessage && !hasDuplicateAssistantContent));
+        const showResultText = resultText && (isCompactResult || (!hasAssistantMessage && !hasDuplicateAssistantContent && !isReplaceAllEditResult));
 
         // Render beautiful compact summary card for compaction results
         if (isCompactResult && message.wrapper_compact) {

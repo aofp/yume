@@ -3616,10 +3616,10 @@ export const ClaudeChat: React.FC = () => {
     const minHeight = 44; // Match CSS min-height exactly
     const maxHeight = 106; // 5 lines * 18px + 16px padding (match CSS max-height)
     
-    // Check if we're at bottom before resizing
+    // Check if we're at bottom before resizing - only scroll if explicitly at bottom
     const container = chatContainerRef.current;
     const wasAtBottom = container && currentSessionId &&
-      (isAtBottom[currentSessionId] !== false ||
+      (isAtBottom[currentSessionId] === true ||
        (container.scrollHeight - container.scrollTop - container.clientHeight < 5));
     
     // Store the current height before resetting
@@ -4732,8 +4732,7 @@ export const ClaudeChat: React.FC = () => {
               isStreaming={currentSession?.streaming || false}
               messages={currentSession?.messages || []}
               totalContextTokens={totalContextTokens}
-              isTokensPending={currentSession?.analytics?.compactPending === true ||
-                (currentSession?.wasCompacted === true && totalContextTokens === 0)}
+              isTokensPending={currentSession?.analytics?.compactPending === true}
               autoCompactEnabled={autoCompactEnabled !== false}
               setAutoCompactEnabled={(enabled) => setAutoCompactEnabled(enabled ? true : false)}
               isPendingCompact={currentSession?.compactionState?.pendingAutoCompact || false}
@@ -4741,6 +4740,8 @@ export const ClaudeChat: React.FC = () => {
               onClearRequest={handleClearContextRequest}
               onCompactRequest={handleCompactContextRequest}
               onOpenStatsModal={() => setShowStatsModal(true)}
+              isDictating={isDictating}
+              onToggleDictation={toggleDictation}
               modKey={modKey}
             />
           </InputArea>
@@ -4828,8 +4829,7 @@ export const ClaudeChat: React.FC = () => {
                 // Don't cap at 100% - show real percentage for context usage awareness
                 const percentageNum = rawPercentage;
                 // Check if tokens are pending after compact
-                const isTokensPending = currentSession?.analytics?.compactPending === true ||
-                  (currentSession?.wasCompacted === true && totalContextTokens === 0);
+                const isTokensPending = currentSession?.analytics?.compactPending === true;
                 const percentage = isTokensPending ? '?' : percentageNum.toFixed(2);
 
                 return (

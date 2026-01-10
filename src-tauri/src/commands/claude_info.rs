@@ -283,8 +283,71 @@ fn get_claude_credentials() -> Result<(String, Option<String>, Option<String>), 
 
     #[cfg(target_os = "linux")]
     {
-        Err("Linux credential storage not yet implemented".to_string())
+        get_credentials_linux()
     }
+}
+
+#[cfg(target_os = "linux")]
+fn get_credentials_linux() -> Result<(String, Option<String>, Option<String>), String> {
+    use std::process::{Command, Stdio};
+
+    // Try secret-tool first (libsecret - most common on modern Linux)
+    let output = Command::new("secret-tool")
+        .args(["lookup", "service", "Claude Code-credentials"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let json_str = String::from_utf8(out.stdout)
+                .map_err(|e| format!("Invalid UTF-8 in credentials: {}", e))?;
+
+            let creds: ClaudeCredentials = serde_json::from_str(&json_str)
+                .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
+
+            let oauth = creds.claude_ai_oauth
+                .ok_or_else(|| "No OAuth credentials found".to_string())?;
+
+            return Ok((
+                oauth.access_token,
+                oauth.subscription_type,
+                oauth.rate_limit_tier,
+            ));
+        }
+        _ => {}
+    }
+
+    // Try alternative attribute format that Claude CLI might use
+    let output = Command::new("secret-tool")
+        .args(["lookup", "application", "claude-code"])
+        .stdin(Stdio::null())
+        .stdout(Stdio::piped())
+        .stderr(Stdio::null())
+        .output();
+
+    match output {
+        Ok(out) if out.status.success() => {
+            let json_str = String::from_utf8(out.stdout)
+                .map_err(|e| format!("Invalid UTF-8 in credentials: {}", e))?;
+
+            let creds: ClaudeCredentials = serde_json::from_str(&json_str)
+                .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
+
+            let oauth = creds.claude_ai_oauth
+                .ok_or_else(|| "No OAuth credentials found".to_string())?;
+
+            return Ok((
+                oauth.access_token,
+                oauth.subscription_type,
+                oauth.rate_limit_tier,
+            ));
+        }
+        _ => {}
+    }
+
+    Err("No Claude credentials found. Please run 'claude' CLI and authenticate first. (Requires libsecret-tools package for secret-tool command)".to_string())
 }
 
 #[cfg(target_os = "macos")]

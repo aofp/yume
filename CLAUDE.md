@@ -174,7 +174,7 @@ When building on Windows for Windows, ensure:
 - Window state: `~/Library/Application Support/yurucode/window-state.json`
 - Crash recovery: `~/Library/Application Support/yurucode/recovery/`
 - Server logs: `~/Library/Logs/yurucode/server.log`
-- Database: `~/Library/Application Support/yurucode/yurucode.db`
+- Database: `~/.yurucode/yurucode.db` (note: stored in home dir, not Application Support)
 
 **Windows:**
 - App data: `%APPDATA%\yurucode\`

@@ -5,6 +5,7 @@ import {
   IconHistory,
   IconCancel,
   IconArrowsMinimize,
+  IconMicrophone,
 } from '@tabler/icons-react';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
@@ -65,6 +66,10 @@ interface ContextBarProps {
   onCompactRequest: () => void;
   onOpenStatsModal: () => void;
 
+  // Dictation
+  isDictating: boolean;
+  onToggleDictation: () => void;
+
   // Platform
   modKey: string;
 }
@@ -101,6 +106,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   onClearRequest,
   onCompactRequest,
   onOpenStatsModal,
+  isDictating,
+  onToggleDictation,
   modKey,
 }) => {
   const contextWindowTokens = 200000;
@@ -187,26 +194,38 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             <span className="git-total-deleted">-{totalDeleted}</span>
           </span>
         )}
+
       </div>
 
-      {/* Rollback button */}
-      <button
-        className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
-        onClick={() => {
-          setShowRollbackPanel(!showRollbackPanel);
-          setShowFilesPanel(false);
-          setShowGitPanel(false);
-          setSelectedFile(null);
-          setFileContent('');
-          setSelectedGitFile(null);
-          setGitDiff(null);
-        }}
-        disabled={historyCount === 0}
-        title={`history (${modKey}+h)`}
-      >
-        <IconHistory size={12} stroke={1.5} />
-        {historyCount > 0 && <span className="btn-rollback-count">{historyCount}</span>}
-      </button>
+      {/* Center absolute - history + dictation */}
+      <div className="context-center-absolute">
+        <button
+          className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
+          onClick={() => {
+            setShowRollbackPanel(!showRollbackPanel);
+            setShowFilesPanel(false);
+            setShowGitPanel(false);
+            setSelectedFile(null);
+            setFileContent('');
+            setSelectedGitFile(null);
+            setGitDiff(null);
+          }}
+          disabled={historyCount === 0}
+          title={`history (${modKey}+h)`}
+        >
+          <IconHistory size={12} stroke={1.5} />
+          {historyCount > 0 && <span className="btn-rollback-count">{historyCount}</span>}
+        </button>
+
+        <button
+          className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
+          onClick={onToggleDictation}
+          disabled={isReadOnly}
+          title={isDictating ? 'stop dictation' : 'start dictation'}
+        >
+          <IconMicrophone size={12} stroke={1.5} />
+        </button>
+      </div>
 
       {/* Right - stats and clear */}
       <div className="context-info">
