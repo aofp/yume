@@ -191,6 +191,7 @@
 
 .message.user .message-bubble.bash-mode {
   background: rgba(var(--negative-rgb), 0.15);
+  color: rgba(var(--foreground-rgb), 0.9);
 }
 
 .message.assistant .message-bubble {
@@ -231,6 +232,12 @@
 .message.assistant .message-bubble code,
 .message.assistant .message-bubble pre {
   color: var(--code-color);
+}
+
+/* Bash/ANSI output in assistant messages uses negative color */
+.message.assistant .message-bubble code.language-ansi,
+.message.assistant .message-bubble pre:has(code.language-ansi) {
+  color: rgba(var(--negative-rgb), 0.9);
 }
 
 .message.user .message-content {

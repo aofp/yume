@@ -24,4 +24,9 @@ add dark mode toggle to settings
 update token tracking for opus model
 ```
 
+rules:
+- no co-authored-by line
+- no emojis
+- no extended description unless necessary
+
 only use tool calls, no text output.
