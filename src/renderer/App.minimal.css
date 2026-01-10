@@ -40,8 +40,8 @@ body {
 }
 
 @keyframes app-fade-in {
-  from { opacity: 0; }
-  to { opacity: 1; }
+  from { transform: translateY(2px); }
+  to { transform: translateY(0); }
 }
 
 .app-content {

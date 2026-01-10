@@ -545,7 +545,7 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
           <span className="collapse-chevron">
             {isCollapsed ? <IconChevronRight size={10} stroke={2} /> : <IconChevronDown size={10} stroke={2} />}
           </span>
-          {icon}
+          <span className="collapsible-icon">{icon}</span>
           <span className="collapsible-summary">{summary}</span>
           {detail && <span className="collapsible-detail">{detail}</span>}
         </div>
@@ -2663,16 +2663,18 @@ const MessageRendererBase: React.FC<{
           <div className="message tool-result-message">
             <div className="tool-result standalone bash-output">
               {command && (
+                <>
                 <div className="bash-command">
-                  <span className="bash-prompt">$</span>
+                  <span className="bash-prompt">$&nbsp;</span>
                   <span className="bash-cmd">{formatCommand(command)}</span>
                 </div>
+                <pre className="bash-content">
+                  {visibleLines.map((line, i) => (
+                    <div key={i} className="bash-line">{line}</div>
+                  ))}
+                </pre>
+                </>
               )}
-              <pre className="bash-content">
-                {visibleLines.map((line, i) => (
-                  <div key={i} className="bash-line">{line}</div>
-                ))}
-              </pre>
               {hasMore && (
                 <div className="result-more">+ {hiddenCount} more lines</div>
               )}

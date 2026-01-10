@@ -1380,6 +1380,8 @@ body.platform-win32 .tool-detail {
   white-space: pre;
   max-height: 400px;
   overflow-x: auto;
+  padding: 4px 8px;
+  background: rgba(var(--foreground-rgb), 0.03);
   overflow-y: auto;
   margin: 0;
   display: block;
@@ -1418,7 +1420,8 @@ body.platform-win32 .tool-detail {
 
 /* Bash command output styling */
 .bash-output {
-  margin: 4px 0;
+  background: rgba(var(--foreground-rgb), 0.03);
+  margin-bottom: 4px;
 }
 
 .bash-more {
@@ -1441,20 +1444,22 @@ body.platform-win32 .tool-detail {
 /* ===== COLLAPSIBLE TOOL RESULTS ===== */
 .tool-result.collapsible {
   display: block;
+  user-select: none;
+  cursor: default;
 }
 
 .tool-result.collapsible .collapsible-header {
   display: flex;
   align-items: center;
   gap: 6px;
-  cursor: pointer;
-  padding: 4px 0;
+  cursor: default;
   user-select: none;
+  opacity: .9;
   transition: opacity 0.15s ease;
 }
 
 .tool-result.collapsible .collapsible-header:hover {
-  opacity: 0.8;
+  opacity: 1;
 }
 
 .tool-result.collapsible .collapse-chevron {
@@ -1465,19 +1470,24 @@ body.platform-win32 .tool-detail {
   flex-shrink: 0;
 }
 
+.collapsible-icon {
+  opacity: 1;
+  color: rgba(var(--foreground-rgb), 0.9);
+}
+
 .tool-result.collapsible .collapsible-summary {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: 9px;
   color: rgba(var(--foreground-rgb), 0.7);
 }
 
 .tool-result.collapsible .collapsible-detail {
   font-family: var(--font-mono);
-  font-size: 8pt;
-  color: rgba(var(--foreground-rgb), 0.4);
+  font-size: 9px;
+  color: rgba(var(--foreground-rgb), 0.7);
   margin-left: auto;
   text-overflow: ellipsis;
-  overflow: hidden;
+  overflow: visible;
   white-space: nowrap;
   max-width: 60%;
 }
@@ -1488,8 +1498,6 @@ body.platform-win32 .tool-detail {
 
 .tool-result.collapsible.expanded .collapsible-content {
   margin-top: 4px;
-  padding-top: 4px;
-  border-top: 1px solid rgba(var(--foreground-rgb), 0.05);
 }
 
 /* Read output styling */
@@ -1578,17 +1586,14 @@ body.platform-win32 .tool-detail {
 .tool-result.bash-output .bash-command {
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-bottom: 4px;
   padding: 4px 8px;
   background: rgba(var(--foreground-rgb), 0.03);
-  border-radius: 4px;
 }
 
 .bash-prompt {
-  color: var(--accent-color);
+  color: var(--negative-color);
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: 9px;
   font-weight: 600;
 }
 
