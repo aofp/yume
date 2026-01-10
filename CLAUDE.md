@@ -101,7 +101,7 @@ npm run minify:servers         # Minify server code
 - `commands/custom_commands.rs` - Custom slash commands management
 
 ### Critical Frontend Files
-- `stores/claudeCodeStore.ts` - Main Zustand store (195KB, central state)
+- `stores/claudeCodeStore.ts` - Main Zustand store (204KB, central state)
 - `services/tauriClaudeClient.ts` - Bridge to Claude CLI via Tauri
 - `services/claudeCodeClient.ts` - Socket.IO client for server communication
 - `services/compactionService.ts` - Context compaction logic
@@ -172,14 +172,14 @@ When building on Windows for Windows, ensure:
 **macOS:**
 - App data: `~/Library/Application Support/yurucode/`
 - Window state: `~/Library/Application Support/yurucode/window-state.json`
-- Crash recovery: `~/Library/Application Support/yurucode/crash-recovery/`
+- Crash recovery: `~/Library/Application Support/yurucode/recovery/`
 - Server logs: `~/Library/Logs/yurucode/server.log`
 - Database: `~/Library/Application Support/yurucode/yurucode.db`
 
 **Windows:**
 - App data: `%APPDATA%\yurucode\`
 - Window state: `%APPDATA%\yurucode\window-state.json`
-- Crash recovery: `%APPDATA%\yurucode\crash-recovery\`
+- Crash recovery: `%APPDATA%\yurucode\recovery\`
 - Server logs: `%LOCALAPPDATA%\yurucode\logs\server.log`
 - Database: `%APPDATA%\yurucode\yurucode.db`
 

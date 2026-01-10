@@ -7,7 +7,7 @@
   
   [![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yurucode/yurucode/releases)
   [![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey)](https://yurucode.app)
-  [![License](https://img.shields.io/badge/license-Proprietary-red)](LICENSE)
+  [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
   [![Production](https://img.shields.io/badge/status-Production%20Ready-green)](docs/PRODUCTION_DEPLOYMENT.md)
 </div>
 
@@ -438,11 +438,7 @@ We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guid
 
 ## 📝 License
 
-Yurucode is proprietary software. See [LICENSE](LICENSE) for details.
-
-**Commercial Use**: Requires paid license  
-**Personal Use**: Free trial available  
-**Open Source**: Core components may be open-sourced
+MIT License - See [LICENSE](LICENSE) for details.
 
 ---
 
@@ -470,13 +466,11 @@ yurucode --version --verbose
 
 ## 🎯 Roadmap
 
-### Version 1.1 (Q2 2025)
+### Planned Features
 - [ ] Multi-language support
 - [ ] Cloud sync (optional)
 - [ ] Plugin system
 - [ ] Voice input
-
-### Version 2.0 (Q3 2025)
 - [ ] Team collaboration
 - [ ] Custom models
 - [ ] Mobile companion app

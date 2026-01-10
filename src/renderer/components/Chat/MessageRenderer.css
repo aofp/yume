@@ -831,12 +831,6 @@ ol {
   color: var(--color-accent);
   font-size: 10px;
   margin-right: 2px;
-  opacity: 0.8;
-}
-
-/* Animate subagent tools appearing */
-.tool-message.subagent .tool-use {
-  animation: subagentSlide 0.2s ease-out;
 }
 
 @keyframes subagentSlide {
@@ -1454,12 +1448,12 @@ body.platform-win32 .tool-detail {
   gap: 6px;
   cursor: default;
   user-select: none;
-  opacity: .9;
+  opacity: 1;
   transition: opacity 0.15s ease;
 }
 
 .tool-result.collapsible .collapsible-header:hover {
-  opacity: 1;
+  color: rgba(var(--accent-rgb), 0.1)
 }
 
 .tool-result.collapsible .collapse-chevron {
@@ -1500,6 +1494,10 @@ body.platform-win32 .tool-detail {
   margin-top: 4px;
 }
 
+hr {
+  opacity: .4;
+}
+
 /* Read output styling */
 .tool-result.read-output .read-content {
   margin: 0;
@@ -1509,7 +1507,7 @@ body.platform-win32 .tool-detail {
   white-space: pre;
   overflow-x: auto;
   scrollbar-width: thin;
-  max-height: 400px;
+  max-height: 80%;
   overflow-y: auto;
 }
 

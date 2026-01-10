@@ -1,6 +1,6 @@
 # Yurucode API Reference
 
-**Version:** 2.1.1
+**Version:** 0.1.0
 **Last Updated:** January 9, 2026
 
 ## Table of Contents

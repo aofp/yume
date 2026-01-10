@@ -2950,7 +2950,7 @@ textarea.context-full {
 }
 
 .tool-panel-preview-close:hover {
-  color: var(--accent-color);
+  color: var(--negative-color);
 }
 
 .tool-panel-preview-content {
