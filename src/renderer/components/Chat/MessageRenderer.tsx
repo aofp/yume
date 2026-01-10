@@ -31,6 +31,7 @@ import {
   IconDots,
   IconChevronRight,
   IconChevronDown,
+  IconArrowForward,
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { isBashPrefix } from '../../utils/helpers';
@@ -559,6 +560,42 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
   );
 };
 
+// Expandable output component for bash and other long outputs
+interface ExpandableOutputProps {
+  lines: string[];
+  initialLimit?: number;
+  expandIncrement?: number;
+  className?: string;
+}
+
+const ExpandableOutput: React.FC<ExpandableOutputProps> = ({
+  lines,
+  initialLimit = 50,
+  expandIncrement = 100,
+  className = 'bash-output'
+}) => {
+  const [visibleCount, setVisibleCount] = useState(initialLimit);
+
+  const visibleLines = lines.slice(0, visibleCount);
+  const hiddenCount = lines.length - visibleCount;
+  const hasMore = hiddenCount > 0;
+
+  const handleShowMore = useCallback(() => {
+    setVisibleCount(prev => Math.min(prev + expandIncrement, lines.length));
+  }, [lines.length, expandIncrement]);
+
+  return (
+    <div className={`tool-result ${className}`}>
+      <pre className="bash-content">{visibleLines.join('\n')}</pre>
+      {hasMore && (
+        <div className="bash-more clickable" onClick={handleShowMore}>
+          + {hiddenCount} more lines (click to show {Math.min(expandIncrement, hiddenCount)} more)
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Summary generators for each tool type - contextual single-line descriptions
 const generateReadSummary = (contentStr: string, filePath: string): { summary: string; detail: string } => {
   const lineCount = contentStr.split('\n').length;
@@ -569,9 +606,16 @@ const generateReadSummary = (contentStr: string, filePath: string): { summary: s
 };
 
 const generateGrepSummary = (contentStr: string, pattern: string, path?: string): { summary: string; detail: string } => {
+  const pathStr = path && path !== '.' ? ` in ${formatPath(path)}` : '';
+  // Check for no matches
+  if (contentStr.toLowerCase().includes('no matches') || contentStr.trim() === '') {
+    return {
+      summary: 'no matches',
+      detail: `"${pattern}"${pathStr}`
+    };
+  }
   const lines = contentStr.split('\n').filter(l => l.trim());
   const fileMatches = new Set(lines.map(l => l.split(':')[0]).filter(Boolean));
-  const pathStr = path && path !== '.' ? ` in ${formatPath(path)}` : '';
   return {
     summary: `${lines.length} matches in ${fileMatches.size} files`,
     detail: `"${pattern}"${pathStr}`
@@ -579,8 +623,15 @@ const generateGrepSummary = (contentStr: string, pattern: string, path?: string)
 };
 
 const generateGlobSummary = (contentStr: string, pattern: string, path?: string): { summary: string; detail: string } => {
-  const files = contentStr.split('\n').filter(l => l.trim());
   const pathStr = path && path !== '.' ? ` in ${formatPath(path)}` : '';
+  // Check for no matches
+  if (contentStr.toLowerCase().includes('no matches') || contentStr.trim() === '') {
+    return {
+      summary: 'no files',
+      detail: `${pattern}${pathStr}`
+    };
+  }
+  const files = contentStr.split('\n').filter(l => l.trim());
   return {
     summary: `${files.length} files`,
     detail: `${pattern}${pathStr}`
@@ -992,20 +1043,8 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
 
           // Handle Bash command output
           if (isBashOperation && resultContent) {
-            // For Bash commands, show the full output (or first 50 lines)
             const lines = resultContent.split('\n');
-            const visibleLines = lines.slice(0, 50);
-            const hiddenCount = lines.length - 50;
-            const hasMore = hiddenCount > 0;
-            
-            return (
-              <div key={idx} className="tool-result bash-output">
-                <pre className="bash-content">{visibleLines.join('\n')}</pre>
-                {hasMore && (
-                  <div className="bash-more">+ {hiddenCount} more lines</div>
-                )}
-              </div>
-            );
+            return <ExpandableOutput key={idx} lines={lines} initialLimit={50} expandIncrement={100} className="bash-output" />;
           }
           
           // Hide system reminder messages
@@ -2099,7 +2138,7 @@ const MessageRendererBase: React.FC<{
         return (
           <div className={`message tool-message${isSubagentMessage ? ' subagent' : ''}`}>
             <div className={`tool-use standalone${isSubagentMessage ? ' subagent-tool' : ''}`}>
-              {isSubagentMessage && <span className="subagent-indicator">↳</span>}
+              {isSubagentMessage && <span className="subagent-indicator"><IconArrowForward size={10} stroke={1.5} /></span>}
               <IconEdit size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing</span>
               <span className="tool-detail">{filePath}</span>
@@ -2115,7 +2154,7 @@ const MessageRendererBase: React.FC<{
         return (
           <div className={`message tool-message${isSubagentMessage ? ' subagent' : ''}`}>
             <div className={`tool-use standalone${isSubagentMessage ? ' subagent-tool' : ''}`}>
-              {isSubagentMessage && <span className="subagent-indicator">↳</span>}
+              {isSubagentMessage && <span className="subagent-indicator"><IconArrowForward size={10} stroke={1.5} /></span>}
               <IconEditCircle size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing</span>
               <span className="tool-detail">{filePath} ({edits.length} edits)</span>
@@ -2131,7 +2170,7 @@ const MessageRendererBase: React.FC<{
         return (
           <div className={`message tool-message${isSubagentMessage ? ' subagent' : ''}`}>
             <div className={`tool-use standalone${isSubagentMessage ? ' subagent-tool' : ''}`}>
-              {isSubagentMessage && <span className="subagent-indicator">↳</span>}
+              {isSubagentMessage && <span className="subagent-indicator"><IconArrowForward size={10} stroke={1.5} /></span>}
               <IconNotebook size={14} stroke={1.5} className="tool-icon" />
               <span className="tool-action">editing notebook</span>
               <span className="tool-detail">{filePath} ({editMode})</span>
@@ -2145,7 +2184,7 @@ const MessageRendererBase: React.FC<{
         return (
           <div className="message tool-message subagent">
             <div className="tool-use standalone subagent-tool">
-              <span className="subagent-indicator">↳</span>
+              <span className="subagent-indicator"><IconArrowForward size={10} stroke={1.5} /></span>
               {display.icon && <span className="tool-icon">{display.icon}</span>}
               <span className="tool-action">{display.action}</span>
               {display.detail && <span className="tool-detail">{display.detail}</span>}

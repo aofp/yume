@@ -6,10 +6,11 @@ import { readFileSync, writeFileSync, existsSync, unlinkSync } from 'fs';
 import net from 'net';
 import crypto from 'crypto';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
+
 // Write PID file for cleanup
-const __filename_temp = fileURLToPath(import.meta.url);
-const __dirname_temp = dirname(__filename_temp);
-const VITE_PID_FILE = resolve(__dirname_temp, '.vite.pid');
+const VITE_PID_FILE = resolve(__dirname, '.vite.pid');
 
 // Write our PID so kill-ports.js can find us
 writeFileSync(VITE_PID_FILE, String(process.pid));
@@ -30,9 +31,6 @@ if (!crypto.hash) {
     return outputEncoding ? hash.digest(outputEncoding) : hash.digest();
   };
 }
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
 
 // Function to find an available port synchronously
 function findAvailablePortSync(startPort = 60000, endPort = 61000) {

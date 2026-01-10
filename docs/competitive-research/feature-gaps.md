@@ -1,6 +1,6 @@
 # Feature Gap Analysis & Improvement Opportunities
 
-*Last Updated: January 9, 2026*
+*Last Updated: January 10, 2026*
 
 ## Executive Summary
 
@@ -112,7 +112,7 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 | **30 themes** | Way more than any competitor |
 | **9 hook events** | Most comprehensive hook system |
 | **Crash recovery** | Auto-save with 24hr restoration window |
-| **$9 one-time** | vs $240-2400/year subscriptions |
+| **$21 one-time** | vs $240-2400/year subscriptions |
 
 ---
 

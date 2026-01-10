@@ -39,6 +39,7 @@ import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 // PERFORMANCE: Lazy load modals and heavy components - only loaded when user opens them
 const RecentConversationsModal = React.lazy(() => import('../RecentConversationsModal').then(m => ({ default: m.RecentConversationsModal })));
 const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
+const ClaudeMdEditorModal = React.lazy(() => import('../ClaudeMdEditor').then(m => ({ default: m.ClaudeMdEditorModal })));
 import { FEATURE_FLAGS } from '../../config/features';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { isBashPrefix } from '../../utils/helpers';
@@ -335,6 +336,7 @@ export const ClaudeChat: React.FC = () => {
   const rollbackInitializedRef = useRef(false);
   const [confirmDialogSelection, setConfirmDialogSelection] = useState(1); // 0 = cancel, 1 = confirm (default)
   const [showResumeModal, setShowResumeModal] = useState(false);
+  const [showClaudeMdEditor, setShowClaudeMdEditor] = useState(false);
   const [hasResumableConversations, setHasResumableConversations] = useState<{ [sessionId: string]: boolean }>({});
   // Per-session panel states (derived values set after store destructuring)
   const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; git: boolean; rollback: boolean } }>({});
@@ -445,6 +447,16 @@ export const ClaudeChat: React.FC = () => {
     const session = state.sessions.find(s => s.id === currentSessionId);
     return session?.messages?.length || 0;
   });
+
+  // Helper to reset hover states after modal interactions (Tauri webview workaround)
+  const resetHoverStates = useCallback(() => {
+    requestAnimationFrame(() => {
+      document.body.style.pointerEvents = 'none';
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = '';
+      });
+    });
+  }, []);
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
@@ -898,74 +910,136 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
 
-  // macOS focus fix: Periodically check and restore textarea focus
-  // WKWebView can randomly drop focus during DOM updates or system events
+  // macOS focus fix: Multi-strategy approach to handle WKWebView focus desync
+  // Strategy 1: Window-level focus event handler (most reliable)
+  // Strategy 2: Periodic check as fallback
+  // Strategy 3: RAF-based check during streaming for DOM update recovery
   useEffect(() => {
     if (!isMac) return;
 
-    // Faster check during streaming (500ms), slower when idle (1500ms)
-    const interval = currentSession?.streaming ? 500 : 1500;
-
-    const focusCheckInterval = setInterval(() => {
-      // Only restore if window is focused and textarea exists
-      if (!document.hasFocus() || !inputRef.current) return;
-
+    const canRestoreFocus = () => {
+      if (!document.hasFocus() || !inputRef.current) return false;
       // Skip if user is selecting text
       const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return;
-
-      // Skip if any modal is open
+      if (selection && selection.toString().length > 0) return false;
+      // Skip if any modal is open - check all overlay classes used in the app
       if (document.querySelector('.modal-overlay') ||
+          document.querySelector('.recent-modal-overlay') ||
+          document.querySelector('.projects-modal-overlay') ||
+          document.querySelector('.settings-modal-overlay') ||
           document.querySelector('.mt-modal-overlay') ||
           document.querySelector('[role="dialog"]') ||
-          showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return;
-
+          showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return false;
       // Skip if session is read-only or context is almost full (>95%)
       const totalTokens = currentSession?.analytics?.tokens?.total || 0;
       const isContextFull = (totalTokens / 200000 * 100) > 95;
-      if (currentSession?.readOnly || isContextFull) return;
+      if (currentSession?.readOnly || isContextFull) return false;
+      return true;
+    };
 
+    const restoreFocus = () => {
+      if (!canRestoreFocus()) return;
       const activeEl = document.activeElement;
-      // If focus is on body or null (lost focus), restore to textarea
-      if (!activeEl || activeEl === document.body) {
-        inputRef.current.focus();
+      // If focus is on body, html, or null (lost focus), restore to textarea
+      if (!activeEl || activeEl === document.body || activeEl === document.documentElement) {
+        inputRef.current?.focus();
       }
-    }, interval);
+    };
 
-    return () => clearInterval(focusCheckInterval);
+    // Strategy 1: Window focus event - immediately restore focus when window regains focus
+    const handleWindowFocus = () => {
+      // Use queueMicrotask for more immediate execution than setTimeout
+      queueMicrotask(() => {
+        // Double-check after microtask to let WKWebView settle
+        requestAnimationFrame(() => {
+          restoreFocus();
+        });
+      });
+    };
+    window.addEventListener('focus', handleWindowFocus);
+
+    // Strategy 2: Periodic check with adaptive interval
+    // Faster during streaming (300ms), slower when idle (2000ms)
+    const interval = currentSession?.streaming ? 300 : 2000;
+    const focusCheckInterval = setInterval(restoreFocus, interval);
+
+    // Strategy 3: RAF-based check during streaming - catches focus loss from rapid DOM updates
+    let rafId: number | null = null;
+    let rafCounter = 0;
+    const rafCheck = () => {
+      if (!currentSession?.streaming) {
+        rafId = null;
+        return;
+      }
+      // Only check every 10 frames (~166ms at 60fps) to reduce overhead
+      rafCounter++;
+      if (rafCounter >= 10) {
+        rafCounter = 0;
+        restoreFocus();
+      }
+      rafId = requestAnimationFrame(rafCheck);
+    };
+    if (currentSession?.streaming) {
+      rafId = requestAnimationFrame(rafCheck);
+    }
+
+    return () => {
+      window.removeEventListener('focus', handleWindowFocus);
+      clearInterval(focusCheckInterval);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [currentSession?.streaming, currentSession?.readOnly, currentSession?.analytics?.tokens?.total, isMac, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
 
-  // macOS aggressive focus fix: Force blur/focus cycle to reset stuck WKWebView focus state
-  // This handles the case where textarea is focused but not receiving keyboard input
+  // macOS focus recovery: Detect "stuck" focus state where textarea is focused but not receiving input
+  // Uses a heartbeat mechanism - if no keydown events reach the textarea for too long while it
+  // appears focused, force a focus reset
   useEffect(() => {
-    if (!isMac || currentSession?.streaming) return;
+    if (!isMac) return;
 
-    // Only run every 5 seconds when idle (not during streaming where it could interfere)
-    const forceRefocusInterval = setInterval(() => {
-      if (!document.hasFocus() || !inputRef.current) return;
-      if (document.querySelector('.modal-overlay') || document.querySelector('.mt-modal-overlay') || document.querySelector('[role="dialog"]')) return;
-      if (currentSession?.readOnly) return;
+    let lastKeystrokeTime = Date.now();
+    let lastFocusResetTime = 0;
 
-      // Skip if user is selecting text
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return;
+    const handleKeyDown = () => {
+      lastKeystrokeTime = Date.now();
+    };
+
+    // Track keystrokes on the textarea
+    const textarea = inputRef.current;
+    textarea?.addEventListener('keydown', handleKeyDown);
+
+    // Check for stuck state every 3 seconds
+    const stuckCheckInterval = setInterval(() => {
+      if (!inputRef.current || !document.hasFocus()) return;
+      if (currentSession?.readOnly || currentSession?.streaming) return;
+      if (document.querySelector('.modal-overlay') || document.querySelector('[role="dialog"]')) return;
 
       const activeEl = document.activeElement;
-      // Only force refocus if textarea is already focused (but might be stuck)
-      if (activeEl === inputRef.current) {
-        // Save cursor position
+      const now = Date.now();
+
+      // If textarea is focused but no keystroke in 10 seconds, might be stuck
+      // Also ensure we don't reset more than once per 15 seconds
+      if (activeEl === inputRef.current &&
+          now - lastKeystrokeTime > 10000 &&
+          now - lastFocusResetTime > 15000) {
+        // Force a focus reset cycle
         const start = inputRef.current.selectionStart;
         const end = inputRef.current.selectionEnd;
-        // Force reset focus state
         inputRef.current.blur();
-        inputRef.current.focus();
-        // Restore cursor position
-        inputRef.current.selectionStart = start;
-        inputRef.current.selectionEnd = end;
+        requestAnimationFrame(() => {
+          inputRef.current?.focus();
+          if (inputRef.current) {
+            inputRef.current.selectionStart = start;
+            inputRef.current.selectionEnd = end;
+          }
+        });
+        lastFocusResetTime = now;
       }
-    }, 5000);
+    }, 3000);
 
-    return () => clearInterval(forceRefocusInterval);
+    return () => {
+      textarea?.removeEventListener('keydown', handleKeyDown);
+      clearInterval(stuckCheckInterval);
+    };
   }, [isMac, currentSession?.streaming, currentSession?.readOnly]);
 
   // Handle bash running timer and dots animation per session
@@ -3866,21 +3940,33 @@ export const ClaudeChat: React.FC = () => {
               {!showRollbackPanel && <span className="tool-panel-hint">rmb to @ref</span>}
               {showRollbackPanel && <span className="tool-panel-hint">click to rollback</span>}
             </span>
-            <button
-              className="tool-panel-close"
-              onClick={() => {
-                setShowFilesPanel(false);
-                setShowGitPanel(false);
-                setShowRollbackPanel(false);
-                setSelectedFile(null);
-                setFileContent('');
-                setSelectedGitFile(null);
-                setGitDiff(null);
-                setPreviewCollapsed(true);
-              }}
-            >
-              <IconX size={14} />
-            </button>
+            <div className="tool-panel-header-actions">
+              {showFilesPanel && currentSession?.workingDirectory && (
+                <button
+                  className="tool-panel-edit-claude-md"
+                  onClick={() => setShowClaudeMdEditor(true)}
+                  title="edit CLAUDE.md"
+                >
+                  <IconFile size={12} stroke={1.5} />
+                  <span>CLAUDE.md</span>
+                </button>
+              )}
+              <button
+                className="tool-panel-close"
+                onClick={() => {
+                  setShowFilesPanel(false);
+                  setShowGitPanel(false);
+                  setShowRollbackPanel(false);
+                  setSelectedFile(null);
+                  setFileContent('');
+                  setSelectedGitFile(null);
+                  setGitDiff(null);
+                  setPreviewCollapsed(true);
+                }}
+              >
+                <IconX size={14} />
+              </button>
+            </div>
           </div>
           <div className="tool-panel-body">
             {/* Files Panel */}
@@ -4663,7 +4749,7 @@ export const ClaudeChat: React.FC = () => {
           <AgentExecutor
             sessionId={currentSessionId}
             isOpen={showAgentExecutor}
-            onClose={() => setShowAgentExecutor(false)}
+            onClose={() => { setShowAgentExecutor(false); resetHoverStates(); }}
           />
         </React.Suspense>
       )}
@@ -4777,7 +4863,7 @@ export const ClaudeChat: React.FC = () => {
       {/* Model & Tools Modal */}
       <ModelToolsModal
         isOpen={showModelToolsModal}
-        onClose={() => setShowModelToolsModal(false)}
+        onClose={() => { setShowModelToolsModal(false); resetHoverStates(); }}
         selectedModel={selectedModel}
         onModelChange={setSelectedModel}
         enabledTools={enabledTools}
@@ -4786,7 +4872,7 @@ export const ClaudeChat: React.FC = () => {
       />
 
       {showStatsModal && (
-        <div className="stats-modal-overlay" onClick={() => setShowStatsModal(false)}>
+        <div className="stats-modal-overlay" onClick={() => { setShowStatsModal(false); resetHoverStates(); }}>
           <div className="stats-modal" onClick={(e) => e.stopPropagation()}>
             <div className="stats-header">
               <h3>
@@ -4809,7 +4895,7 @@ export const ClaudeChat: React.FC = () => {
                     <div className="toggle-switch-slider" />
                   </div>
                 </div>
-                <button className="stats-close" title="close (esc)" onClick={() => setShowStatsModal(false)}>
+                <button className="stats-close" title="close (esc)" onClick={() => { setShowStatsModal(false); resetHoverStates(); }}>
                   <IconX size={16} />
                 </button>
               </div>
@@ -5081,10 +5167,21 @@ export const ClaudeChat: React.FC = () => {
       {/* Resume conversations modal */}
       <RecentConversationsModal
         isOpen={showResumeModal}
-        onClose={() => setShowResumeModal(false)}
+        onClose={() => { setShowResumeModal(false); resetHoverStates(); }}
         onConversationSelect={handleResumeConversation}
         workingDirectory={currentSession?.workingDirectory}
       />
+
+      {/* CLAUDE.md Editor Modal */}
+      {showClaudeMdEditor && currentSession?.workingDirectory && (
+        <React.Suspense fallback={null}>
+          <ClaudeMdEditorModal
+            isOpen={showClaudeMdEditor}
+            onClose={() => { setShowClaudeMdEditor(false); resetHoverStates(); }}
+            workingDirectory={currentSession.workingDirectory}
+          />
+        </React.Suspense>
+      )}
     </div>
   );
 };

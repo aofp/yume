@@ -1,6 +1,6 @@
 # Yurucode Competitive Advantages
 
-*Last Updated: January 9, 2026*
+*Last Updated: January 10, 2026*
 
 ## Core Value Proposition
 
@@ -22,7 +22,7 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 | **30 themes** | Way more than Cursor (~5), Windsurf (~3), Opcode (0) |
 | **9 hook events** | user_prompt_submit, pre_tool_use, post_tool_use, assistant_response, session_start, session_end, context_warning, compaction_trigger, error |
 | **Crash recovery** | Auto-save with 24hr restoration window |
-| **$9 one-time** | vs $240-2400/year subscriptions |
+| **$21 one-time** | vs $240-2400/year subscriptions |
 | **Bash mode** | !/$ prefix for direct terminal commands |
 
 ## Advantages Over Claude Code CLI
@@ -108,7 +108,7 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 "All the power, none of the lag, plus 12 unique features"
 
 ### vs Cursor
-"Claude-native, no IDE bloat, $9 vs $240+/year"
+"Claude-native, no IDE bloat, $21 vs $240+/year"
 
 ### vs Opcode
 "More features: 5h/7d tracking, guard, agents, 30 themes, hooks, crash recovery"
@@ -159,7 +159,7 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 4. **Desktop**: "Native app, native experience"
 5. **Limits**: "Track your actual Anthropic 5h + 7-day limits"
 6. **Agents**: "5 specialized AI agents built-in"
-7. **Value**: "$9 one-time vs $20-200/mo subscriptions"
+7. **Value**: "$21 one-time vs $20-200/mo subscriptions"
 8. **Themes**: "30 themes - make it yours"
 9. **Keyboard**: "32+ shortcuts - never leave the keyboard"
 10. **Security**: "Yurucode Guard protects you from dangerous commands"
@@ -176,7 +176,7 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 | 30 themes | ✅ No | ✅ ~5 | ✅ 0 |
 | 9 hook events | ✅ Partial | ✅ Partial | ✅ 0 |
 | Crash recovery | ✅ No | ✅ No | ✅ No |
-| $9 one-time | ✅ Usage | ✅ $240+/yr | ✅ Free (less features) |
+| $21 one-time | ✅ Usage | ✅ $240+/yr | ✅ Free (less features) |
 | Native performance | ✅ React Ink | ✅ Electron issues | ✅ Unknown |
 
 ## Success Metrics

@@ -1,7 +1,7 @@
 # Yurucode Production TODO
 
-Last Updated: 2025-01-03  
-**Target Release:** End of January 2025  
+Last Updated: 2026-01-10
+**Target Release:** End of January 2026  
 **Platforms:** macOS (Priority 1) | Windows (Priority 2)
 
 ## 🚨 CRITICAL BLOCKERS (Must Fix Before Any Release) - ✅ ALL COMPLETED
@@ -334,7 +334,7 @@ Last Updated: 2025-01-03
 **Total Estimated Time:** 4-6 weeks with 1-2 developers  
 **Minimum Viable Release:** ✅ READY - Critical fixes completed  
 **Recommended Release:** 4 weeks (with polish)  
-**Target Price:** $29-39 one-time purchase  
+**Target Price:** $21 one-time purchase  
 
 ## ✅ COMPLETED IN THIS SESSION
 
@@ -356,4 +356,4 @@ Last Updated: 2025-01-03
 
 **APP STATUS: 100% PRODUCTION READY** for core functionality  
 
-⚠️ **Note:** Auto-compact threshold changed from 96% to 97% in latest build
+⚠️ **Note:** Auto-compact thresholds: 55% warning, 60% auto, 65% force

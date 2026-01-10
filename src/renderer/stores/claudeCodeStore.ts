@@ -9,7 +9,7 @@ import { invoke } from '@tauri-apps/api/core';
 import { claudeCodeClient } from '../services/claudeCodeClient';
 import { systemPromptService } from '../services/systemPromptService';
 import { isBashPrefix } from '../utils/helpers';
-import { loadEnabledTools, DEFAULT_ENABLED_TOOLS } from '../config/tools';
+import { loadEnabledTools, DEFAULT_ENABLED_TOOLS, ALL_TOOLS } from '../config/tools';
 
 // Fast message hash for deduplication - much faster than JSON.stringify comparison
 // Uses message id + type + content signature
@@ -387,6 +387,7 @@ interface ClaudeCodeStore {
   deleteAllSessions: () => void;
   reorderSessions: (fromIndex: number, toIndex: number) => void;
   renameSession: (sessionId: string, newTitle: string) => void;
+  forkSession: (sessionId: string) => Promise<string | undefined>;
   interruptSession: (sessionId?: string) => Promise<void>;
   clearContext: (sessionId: string) => void;
   updateSessionDraft: (sessionId: string, input: string, attachments: any[]) => void;
@@ -870,10 +871,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         }
 
         // Use enabled tools from store (user-configurable via Cmd+O modal)
+        // Compute disallowed tools = ALL_TOOLS - enabledTools
         const enabledToolsList = get().enabledTools;
+        const disabledToolsList = ALL_TOOLS
+          .map(t => t.id)
+          .filter(id => !enabledToolsList.includes(id));
 
         const result = await claudeClient.createSession(sessionName, workingDirectory, {
-          allowedTools: enabledToolsList.length > 0 ? enabledToolsList : undefined,
+          disallowedTools: disabledToolsList.length > 0 ? disabledToolsList : undefined,
           permissionMode: 'default',
           maxTurns: 30,
           model: resolveModelId(selectedModel),
@@ -3428,21 +3433,21 @@ ${content}`;
   
   renameSession: (sessionId: string, newTitle: string) => {
     set(state => ({
-      sessions: state.sessions.map(s => 
-        s.id === sessionId 
-          ? { 
-              ...s, 
+      sessions: state.sessions.map(s =>
+        s.id === sessionId
+          ? {
+              ...s,
               claudeTitle: newTitle.trim().toLowerCase(),
               userRenamed: true // Mark as user renamed to skip auto title
-            } 
+            }
           : s
       )
     }));
-    
+
     // Save title to localStorage for persistence
     const state = get();
     const session = state.sessions.find(s => s.id === sessionId);
-    
+
     // Save tabs if remember tabs is enabled
     if (state.rememberTabs) {
       state.saveTabs();
@@ -3450,7 +3455,7 @@ ${content}`;
     if (session && session.claudeSessionId) {
       localStorage.setItem(`session-title-${session.claudeSessionId}`, newTitle.trim().toLowerCase());
     }
-    
+
     // Update the session mapping with new name
     if (session && session.claudeSessionId) {
       state.updateSessionMapping(sessionId, session.claudeSessionId, {
@@ -3458,10 +3463,59 @@ ${content}`;
         projectPath: session.workingDirectory
       });
     }
-    
+
     console.log('[Store] Session renamed:', sessionId, newTitle);
   },
-  
+
+  forkSession: async (sessionId: string) => {
+    const { sessions, createSession } = get();
+    const sourceSession = sessions.find(s => s.id === sessionId);
+
+    if (!sourceSession) {
+      console.error('[Store] Cannot fork: session not found', sessionId);
+      return undefined;
+    }
+
+    console.log('[Store] Forking session:', sessionId);
+
+    // Create a new session in the same working directory
+    const newSessionId = await createSession(undefined, sourceSession.workingDirectory);
+
+    if (!newSessionId) {
+      console.error('[Store] Failed to create forked session');
+      return undefined;
+    }
+
+    // Copy messages from source session to new session
+    const messagesToCopy = sourceSession.messages.map(msg => ({ ...msg }));
+
+    // Update the new session with copied messages and metadata
+    set(state => ({
+      sessions: state.sessions.map(s => {
+        if (s.id === newSessionId) {
+          const forkedTitle = sourceSession.claudeTitle
+            ? `${sourceSession.claudeTitle} (fork)`
+            : 'forked session';
+          return {
+            ...s,
+            messages: messagesToCopy,
+            claudeTitle: forkedTitle,
+            analytics: {
+              ...s.analytics,
+              totalMessages: messagesToCopy.length,
+              userMessages: messagesToCopy.filter(m => m.type === 'user').length,
+              assistantMessages: messagesToCopy.filter(m => m.type === 'assistant').length
+            }
+          };
+        }
+        return s;
+      })
+    }));
+
+    console.log('[Store] Session forked successfully:', newSessionId);
+    return newSessionId;
+  },
+
   interruptSession: async (targetSessionId?: string) => {
     const { currentSessionId, sessions } = get();
     // Use explicit sessionId if provided, otherwise use currentSessionId

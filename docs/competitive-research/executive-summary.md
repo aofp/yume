@@ -10,7 +10,7 @@
 
 **Yurucode** is a native desktop GUI for Claude Code CLI. It wraps the existing Claude Code CLI to provide a flicker-free, lag-free desktop experience while preserving all of Claude Code's capabilities.
 
-**Pricing**: $9 one-time purchase (uses user's existing Claude Pro/Max subscription)
+**Pricing**: $21 one-time purchase (uses user's existing Claude Pro/Max subscription)
 
 ---
 
@@ -148,18 +148,18 @@ We're not trying to replace CLI power users who love the terminal.
 
 ## Business Model
 
-### Why $9 One-Time?
+### Why $21 One-Time?
 
 | Approach | Why We Chose It |
 |----------|-----------------|
 | **Not subscription** | Developers hate subscription fatigue |
 | **Not API-based** | Uses existing Claude subscription |
 | **Not free** | We need to sustain development |
-| **Low price** | $9 is impulse-buy, not budget decision |
+| **Low price** | $21 is impulse-buy, not budget decision |
 | **One-time** | Ownership > renting |
 
 ### Revenue Model
-- $9 per license
+- $21 per license
 - No recurring fees
 - No API markup
 - No upsells

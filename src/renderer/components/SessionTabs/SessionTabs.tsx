@@ -29,6 +29,7 @@ export const SessionTabs: React.FC = () => {
     renameSession,
     clearContext,
     interruptSession,
+    forkSession,
     claudeMdTokens,
     calculateClaudeMdTokens
   } = useClaudeCodeStore();
@@ -1224,7 +1225,17 @@ export const SessionTabs: React.FC = () => {
             }
             setContextMenu(null);
           }}>duplicate tab ({modKey}+d)</button>
-          
+
+          <button onClick={async () => {
+            const targetSession = sessions.find(s => s.id === contextMenu.sessionId);
+            if (targetSession && targetSession.messages.length > 0) {
+              await forkSession(contextMenu.sessionId);
+            }
+            setContextMenu(null);
+          }} disabled={!sessions.find(s => s.id === contextMenu.sessionId)?.messages.length} style={{
+            opacity: sessions.find(s => s.id === contextMenu.sessionId)?.messages.length ? 1 : 0.3
+          }}>fork session (copy messages)</button>
+
           <button onClick={() => {
             const session = sessions.find(s => s.id === contextMenu.sessionId);
             if (session) {

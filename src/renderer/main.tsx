@@ -357,31 +357,68 @@ const preserveFocus = async (asyncOperation: () => Promise<void>) => {
 window.addEventListener('focus', () => {
   // WORKAROUND: Force hover state re-evaluation on window focus
   // Tauri webview doesn't always update :hover correctly without this
+  // This affects BOTH macOS and Windows/Linux
   const isMac = platform.includes('mac');
-  if (!isMac) {
-    // Windows/Linux: use pointer-events hack to fix hover state
-    document.body.style.pointerEvents = 'none';
-    requestAnimationFrame(() => {
-      document.body.style.pointerEvents = '';
 
-      // Restore textarea focus after pointer events are re-enabled
+  // Apply pointer-events hack to force browser to re-evaluate hover states
+  // This is now enabled for ALL platforms as macOS also has this issue
+  document.body.style.pointerEvents = 'none';
+  requestAnimationFrame(() => {
+    document.body.style.pointerEvents = '';
+
+    if (!isMac) {
+      // Windows/Linux: Direct focus restoration works reliably
       const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
-      if (textarea && !document.querySelector('.modal-overlay')) {
+      const hasOpenModal = document.querySelector('.modal-overlay') ||
+                           document.querySelector('.recent-modal-overlay') ||
+                           document.querySelector('.projects-modal-overlay') ||
+                           document.querySelector('.settings-modal-overlay') ||
+                           document.querySelector('.mt-modal-overlay') ||
+                           document.querySelector('[role="dialog"]');
+      if (textarea && !hasOpenModal) {
         textarea.focus();
       }
-    });
-  } else {
+    }
+  });
+
+  if (isMac) {
     // macOS: WKWebView can lose internal focus when window regains focus
-    // Use delayed focus restoration to let webview settle
-    setTimeout(() => {
+    // Use multi-stage focus restoration for reliability:
+    // 1. Immediate check via queueMicrotask (catches quick focus loss)
+    // 2. RAF check (catches post-render focus loss)
+    // 3. Delayed check (catches WKWebView settling issues)
+    const restoreFocusIfLost = () => {
       const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
       const activeEl = document.activeElement;
-      // Only restore if focus was lost (on body or null) and no modal is open
-      if (textarea && (!activeEl || activeEl === document.body) &&
-          !document.querySelector('.modal-overlay') && !document.querySelector('[role="dialog"]')) {
+      // Only restore if focus was lost (on body, html, or null) and no modal is open
+      // Check all modal overlay classes used in the app
+      const hasOpenModal = document.querySelector('.modal-overlay') ||
+                           document.querySelector('.recent-modal-overlay') ||
+                           document.querySelector('.projects-modal-overlay') ||
+                           document.querySelector('.settings-modal-overlay') ||
+                           document.querySelector('.mt-modal-overlay') ||
+                           document.querySelector('[role="dialog"]');
+      if (textarea && (!activeEl || activeEl === document.body || activeEl === document.documentElement) && !hasOpenModal) {
         textarea.focus();
+        return true;
       }
-    }, 100);
+      return false;
+    };
+
+    // Stage 1: Immediate via microtask
+    queueMicrotask(() => {
+      if (restoreFocusIfLost()) return;
+
+      // Stage 2: After render via RAF
+      requestAnimationFrame(() => {
+        if (restoreFocusIfLost()) return;
+
+        // Stage 3: After WKWebView settles (50ms delay)
+        setTimeout(() => {
+          restoreFocusIfLost();
+        }, 50);
+      });
+    });
   }
 
   const store = useClaudeCodeStore.getState();
@@ -438,8 +475,7 @@ document.addEventListener('visibilitychange', () => {
             }
           }
         }
-        // Restore focus after all reconnections (Windows only)
-        // Skip on macOS - aggressive focus restoration disrupts webview focus state
+        // Restore focus after all reconnections
         const isMac = platform.includes('mac');
         if (!isMac) {
           requestAnimationFrame(() => {
@@ -447,6 +483,21 @@ document.addEventListener('visibilitychange', () => {
             if (textarea && document.hasFocus() && !document.querySelector('.modal-overlay')) {
               textarea.focus();
             }
+          });
+        } else {
+          // macOS: Use gentler multi-stage focus restoration after visibility change
+          queueMicrotask(() => {
+            requestAnimationFrame(() => {
+              setTimeout(() => {
+                const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+                const activeEl = document.activeElement;
+                if (textarea && document.hasFocus() &&
+                    (!activeEl || activeEl === document.body || activeEl === document.documentElement) &&
+                    !document.querySelector('.modal-overlay')) {
+                  textarea.focus();
+                }
+              }, 100);
+            });
           });
         }
       };

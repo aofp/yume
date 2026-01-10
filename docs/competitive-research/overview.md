@@ -1,6 +1,6 @@
 # Competitive Research Overview
 
-*Last Updated: January 9, 2026*
+*Last Updated: January 10, 2026*
 
 > **For Claude Code Team**: See [Executive Summary](./executive-summary.md) for a presentation-ready overview.
 
@@ -105,7 +105,7 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 
 ### Extended Research
 - [User Sentiment](./user-sentiment.md) - Reddit/HN/GitHub complaints, pain points
-- [Pricing Analysis](./pricing-analysis.md) - $9 one-time model analysis
+- [Pricing Analysis](./pricing-analysis.md) - $21 one-time model analysis
 - [Enterprise Features](./enterprise-features.md) - SOC2, SSO, compliance
 - [Emerging Trends](./emerging-trends.md) - New tools, market dynamics
 - [Technical Architecture](./technical-architecture.md) - Tauri, tree-sitter, performance
@@ -133,4 +133,4 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | **30 themes** | Way more than any competitor |
 | **9 hook events** | Most comprehensive hook system |
 | **Crash recovery** | Auto-save with 24hr restoration |
-| **$9 one-time** | vs $240-2400/year subscriptions |
+| **$21 one-time** | vs $240-2400/year subscriptions |

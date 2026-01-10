@@ -1,6 +1,6 @@
 # Claude Code CLI - Deep Analysis
 
-*Last Updated: January 9, 2026*
+*Last Updated: January 10, 2026*
 
 *Our primary competitor and the tool yurucode wraps*
 
@@ -190,7 +190,7 @@ Claude Code CLI requires a Claude subscription:
 - Weekly usage safeguards apply
 - Extra usage available with prepay
 
-**Yurucode Model**: $9 one-time purchase
+**Yurucode Model**: $21 one-time purchase
 - Uses user's existing Claude Pro/Max subscription
 - No additional API costs
 - No recurring fees

@@ -26,9 +26,10 @@ interface ProjectsModalProps {
   onClose: () => void;
   onSelectSession: (projectPath: string, sessionId: string | null, title?: string, messageCount?: number) => void;
   onProjectAnalytics?: (projectPath: string) => void;
+  onForkSession?: (projectPath: string, sessionId: string) => void;
 }
 
-export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, onSelectSession, onProjectAnalytics }) => {
+export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, onSelectSession, onProjectAnalytics, onForkSession }) => {
   const [projects, setProjects] = useState<ClaudeProject[]>([]);
   const [loading, setLoading] = useState(false);
   const [projectCount, setProjectCount] = useState<number | null>(null);
@@ -1005,18 +1006,31 @@ export const ProjectsModal: React.FC<ProjectsModalProps> = ({ isOpen, onClose, o
               </>
             )}
             {contextMenu.type === 'session' && (
-              <button className="context-menu-item" onClick={() => {
-                // View/load this session
-                const session = sessionsByProject[contextMenu.path]?.find(s => s.id === contextMenu.sessionId);
-                if (session) {
-                  const storedTitle = localStorage.getItem(`session-title-${session.id}`);
-                  const title = storedTitle || session.title || session.summary;
-                  handleSelectSession(contextMenu.path, session.id, title);
-                }
-                setContextMenu(null);
-              }}>
-                view session
-              </button>
+              <>
+                <button className="context-menu-item" onClick={() => {
+                  // View/load this session
+                  const session = sessionsByProject[contextMenu.path]?.find(s => s.id === contextMenu.sessionId);
+                  if (session) {
+                    const storedTitle = localStorage.getItem(`session-title-${session.id}`);
+                    const title = storedTitle || session.title || session.summary;
+                    handleSelectSession(contextMenu.path, session.id, title);
+                  }
+                  setContextMenu(null);
+                }}>
+                  view session
+                </button>
+                {onForkSession && (
+                  <button className="context-menu-item" onClick={() => {
+                    if (contextMenu.sessionId) {
+                      onForkSession(contextMenu.path, contextMenu.sessionId);
+                      onClose();
+                    }
+                    setContextMenu(null);
+                  }}>
+                    fork session
+                  </button>
+                )}
+              </>
             )}
             <button className="context-menu-item" onClick={handleClearHistory}>
               {contextMenu.type === 'project' ? 'clear project history' : 'delete session'}

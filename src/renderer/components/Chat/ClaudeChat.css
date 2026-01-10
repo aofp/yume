@@ -2531,14 +2531,6 @@ textarea.context-full {
   border-radius: 4px;
 }
 
-.recent-item:hover {
-  background: rgba(var(--accent-rgb), 0.15);
-}
-
-.recent-item:hover .recent-item-name {
-  color: var(--accent-color);
-}
-
 /* unified focus state - single source of truth for keyboard/mouse */
 .recent-item-container.focused .recent-item .recent-item-name {
   color: var(--accent-color);
@@ -2606,11 +2598,11 @@ textarea.context-full {
   opacity: 0;
 }
 
-.recent-item-container:hover .recent-item-remove {
+.recent-item-container.focused .recent-item-remove {
   opacity: 1;
 }
 
-.recent-item-container:hover .recent-item-time {
+.recent-item-container.focused .recent-item-time {
   color: var(--fg-50);
 }
 
@@ -2791,7 +2783,7 @@ textarea.context-full {
   align-items: center;
   justify-content: space-between;
   padding: 8px 12px;
-  background: rgba(0, 0, 0, 0.3);
+  background: var(--background-color);
   border-bottom: 1px solid var(--fg-10);
   flex-shrink: 0;
 }
@@ -2839,6 +2831,26 @@ textarea.context-full {
   gap: 6px;
 }
 
+.tool-panel-edit-claude-md {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  background: none;
+  border: 1px solid #333;
+  border-radius: 2px;
+  color: #666;
+  font-size: 10px;
+  font-family: inherit;
+  cursor: default;
+  transition: all 0.2s;
+}
+
+.tool-panel-edit-claude-md:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
 .tool-panel-toggle {
   background: transparent;
   border: 1px solid var(--fg-20);
@@ -2879,6 +2891,7 @@ textarea.context-full {
   overflow-y: auto;
   overflow-x: hidden;
   padding: 0;
+  background: var(--bg-overlay);
   border-bottom: 1px solid var(--fg-10);
   font-size: 11px;
   font-family: var(--font-mono);

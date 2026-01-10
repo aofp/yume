@@ -78,7 +78,7 @@
 | GitHub Copilot Business | $114,000 | $19/mo |
 | Cursor Business | $192,000 | $32/mo |
 | Tabnine Enterprise | $234,000 | $39/mo |
-| Windsurf Team | $90,000 | $15/mo |
+| Windsurf Team | $210,000 | $15/mo |
 
 ---
 
@@ -125,12 +125,12 @@
 
 ## Yurucode Pricing Model
 
-### Chosen Model: $9 One-Time Purchase
+### Chosen Model: $21 One-Time Purchase
 
 Yurucode uses a fundamentally different approach:
 
 ```
-User pays: $9 one-time + existing Claude subscription
+User pays: $21 one-time + existing Claude subscription
           ↓
 Uses: Claude Code CLI under the hood
           ↓
@@ -141,7 +141,7 @@ Result: No API costs, no recurring fees, uses subscription limits
 
 | Component | Who Pays | How Much |
 |-----------|----------|----------|
-| Yurucode app | User → Yurucode | $9 once |
+| Yurucode app | User → Yurucode | $21 once |
 | Claude usage | User → Anthropic | Pro $20/mo, Max $100-200/mo |
 | API calls | N/A | Uses subscription, not API |
 
@@ -150,7 +150,7 @@ Result: No API costs, no recurring fees, uses subscription limits
 1. **No surprise bills** - Users already budgeted for Claude subscription
 2. **Simple** - Pay once, use forever
 3. **Developer-friendly** - One-time purchase appeals to devs
-4. **Low barrier** - $9 is impulse-buy territory
+4. **Low barrier** - $21 is impulse-buy territory
 5. **Aligns incentives** - We improve product, not extract recurring revenue
 
 ### Competitive Comparison
@@ -161,14 +161,14 @@ Result: No API costs, no recurring fees, uses subscription limits
 | Windsurf | Subscription | $15/mo ($180/yr) |
 | Copilot Pro | Subscription | $19/mo ($228/yr) |
 | Cline | BYOK | Free + API costs |
-| **Yurucode** | **One-time** | **$9 once** |
+| **Yurucode** | **One-time** | **$21 once** |
 
 ### Value Proposition
 
-> "Pay $9 once. Use your Claude subscription without the lag."
+> "Pay $21 once. Use your Claude subscription without the lag."
 
 For a Claude Pro user at $20/mo:
-- Year 1: $9 (yurucode) + $240 (Claude) = $249
+- Year 1: $21 (yurucode) + $240 (Claude) = $261
 - Year 2+: $0 (yurucode) + $240 (Claude) = $240
 
 vs Cursor:
@@ -179,7 +179,7 @@ vs Cursor:
 
 ### Pricing Psychology
 
-- $9 feels like "buying a coffee"
+- $21 is impulse-buy territory (one nice lunch)
 - No subscription fatigue
 - One decision, not monthly justification
 - Ownership feeling vs. renting

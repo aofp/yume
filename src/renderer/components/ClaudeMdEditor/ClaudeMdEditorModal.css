@@ -1,0 +1,184 @@
+.claude-md-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: #000;
+  z-index: 999999;
+  cursor: default;
+}
+
+.claude-md-modal {
+  background: #000;
+  width: 100%;
+  height: calc(100% - 60px);
+  margin-top: 60px;
+  display: flex;
+  flex-direction: column;
+  cursor: default;
+}
+
+.claude-md-modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 7px 12px;
+  border-bottom: 1px solid var(--fg-10);
+  background: var(--background-color);
+  flex-shrink: 0;
+}
+
+.claude-md-modal-title {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--accent-color);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+}
+
+.claude-md-modal-title svg {
+  opacity: 0.7;
+}
+
+.claude-md-new-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(var(--positive-rgb), 0.2);
+  color: var(--positive-color);
+  border-radius: 2px;
+}
+
+.claude-md-modified-badge {
+  font-size: 10px;
+  padding: 2px 6px;
+  background: rgba(var(--warning-rgb), 0.2);
+  color: var(--warning-color);
+  border-radius: 2px;
+}
+
+.claude-md-modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.claude-md-save-btn,
+.claude-md-close-btn {
+  background: none;
+  border: none;
+  color: #666;
+  cursor: default;
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.2s;
+}
+
+.claude-md-save-btn:hover:not(:disabled) {
+  color: var(--positive-color);
+}
+
+.claude-md-save-btn:disabled {
+  opacity: 0.5;
+}
+
+.claude-md-close-btn:hover {
+  color: var(--negative-color);
+}
+
+.claude-md-modal-body {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.claude-md-loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 100%;
+  color: var(--fg-30);
+  font-size: 12px;
+}
+
+.claude-md-error {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--negative-color);
+  font-size: 12px;
+}
+
+.claude-md-editor {
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+  background: transparent;
+  border: none;
+  outline: none;
+  resize: none;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  color: #999;
+  caret-color: var(--accent-color);
+}
+
+.claude-md-editor::placeholder {
+  color: #444;
+}
+
+.claude-md-modal-footer {
+  padding: 6px 12px;
+  border-top: 1px solid var(--fg-10);
+}
+
+.claude-md-path {
+  font-size: 9px;
+  color: var(--fg-30);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Scrollbar styling - thin, minimal */
+.claude-md-editor::-webkit-scrollbar {
+  width: 3px;
+}
+
+.claude-md-editor::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.claude-md-editor::-webkit-scrollbar-thumb {
+  background: var(--fg-10);
+  border-radius: 4px;
+}
+
+.claude-md-editor::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-20);
+}
+
+/* Minimal toast */
+.claude-md-toast {
+  position: fixed;
+  top: 66px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 3px 9px;
+  background: #000;
+  color: var(--positive-color);
+  font-size: 11px;
+  font-family: var(--font-mono);
+  border-radius: 2px;
+  border: 1px solid var(--positive-color);
+  z-index: 1;
+}

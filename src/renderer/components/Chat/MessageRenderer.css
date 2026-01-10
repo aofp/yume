@@ -815,12 +815,6 @@ ol {
   line-height: 1;
 }
 
-/* Subagent tool messages - nested visual indicator */
-.tool-message.subagent {
-  margin-left: 16px;
-  opacity: 0.75;
-}
-
 .tool-use.subagent-tool {
   display: flex;
   align-items: center;
@@ -1320,6 +1314,14 @@ body.platform-win32 .tool-detail {
   opacity: 0.7;
 }
 
+/* Read-only tool outputs - same reduced opacity as read */
+.tool-result.search-output,
+.tool-result.file-list,
+.tool-result.dir-listing,
+.tool-result.web-search {
+  opacity: 0.7;
+}
+
 .read-content {
   margin: 0;
   font-family: var(--font-mono);
@@ -1427,6 +1429,14 @@ body.platform-win32 .tool-detail {
   font-family: var(--font-mono);
 }
 
+.bash-more.clickable {
+  cursor: pointer;
+}
+
+.bash-more.clickable:hover {
+  color: var(--accent-color);
+}
+
 .read-more, .search-more, .result-more {
   display: block;
   margin-top: 4px;
@@ -1450,11 +1460,13 @@ body.platform-win32 .tool-detail {
   cursor: default;
   user-select: none;
   opacity: 1;
-  transition: opacity 0.15s ease;
 }
 
-.tool-result.collapsible .collapsible-header:hover {
-  color: rgba(var(--accent-rgb), 0.1)
+.tool-result.collapsible .collapsible-header:hover .collapsible-icon,
+.tool-result.collapsible .collapsible-header:hover .collapsible-summary,
+.tool-result.collapsible .collapsible-header:hover .collapsible-detail,
+.tool-result.collapsible .collapsible-header:hover .collapse-chevron {
+  color: var(--accent-color);
 }
 
 .tool-result.collapsible .collapse-chevron {

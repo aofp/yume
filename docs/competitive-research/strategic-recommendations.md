@@ -27,7 +27,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 | 30 themes | ✅ | Way more than Cursor (~5), Windsurf (~3), Opcode (0) |
 | 9 hook events | ✅ | Most comprehensive hook system |
 | Crash recovery | ✅ | Auto-save with 24hr restoration |
-| $9 one-time | ✅ | vs $240-2400/year subscriptions |
+| $21 one-time | ✅ | vs $240-2400/year subscriptions |
 | Bash mode | ✅ | !/$ prefix for direct commands |
 
 ### What's Missing (Gaps)
@@ -80,7 +80,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 
 - Solves terminal flicker (GitHub #1913)
 - Full Claude ecosystem support
-- One-time purchase ($9)
+- One-time purchase ($21)
 - Privacy-focused (no telemetry)
 - 12+ unique features
 
@@ -99,7 +99,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 
 **Key points:**
 1. Solves the #1 Claude Code complaint (flicker)
-2. $9 one-time vs $20-200/mo subscriptions
+2. $21 one-time vs $20-200/mo subscriptions
 3. Native Rust performance
 4. 12+ unique features (5h/7d limits, agents, guard, etc.)
 
@@ -110,7 +110,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 ### Cursor ($29.3B)
 - **Threat level**: Low (different market segment)
 - **Weaknesses**: Performance issues, expensive, subscription fatigue
-- **We win on**: Native performance, $9 one-time, no telemetry
+- **We win on**: Native performance, $21 one-time, no telemetry
 
 ### Windsurf
 - **Threat level**: Low (corporate chaos, different segment)
@@ -163,7 +163,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 | 30 themes | ✅ Best in class |
 | 9 hook events | ✅ Best in class |
 | Crash recovery | ✅ UNIQUE |
-| $9 one-time | ✅ UNIQUE |
+| $21 one-time | ✅ UNIQUE |
 
 ---
 
@@ -185,7 +185,7 @@ Yurucode is **definitively the best Claude Code UI** as of January 2026.
 ### Completed (Unique Advantages)
 - ✅ 12+ unique features no competitor has
 - ✅ Native performance (no flicker)
-- ✅ $9 one-time pricing
+- ✅ $21 one-time pricing
 
 ### Remaining Items (4 days)
 1. **Light mode** - 1 day

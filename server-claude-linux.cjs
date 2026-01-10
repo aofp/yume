@@ -107,6 +107,41 @@ function getWrapperSession(sessionId) {
   return wrapperState.sessions.get(sessionId);
 }
 
+// Calculate accumulated context tokens from existing messages
+// This reads the LAST usage data which contains the total context at that point
+function calculateAccumulatedTokensFromMessages(messages) {
+  if (!messages || messages.length === 0) return 0;
+
+  // Find the last message with usage data - this contains the total context
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const msg = messages[i];
+    const usage = msg.usage || msg.message?.usage;
+    if (usage) {
+      // The cache_read represents all previously cached content
+      // cache_creation is new content being added
+      // Context window = input tokens only (matches Claude Code formula)
+      const cacheRead = usage.cache_read_input_tokens || 0;
+      const cacheCreation = usage.cache_creation_input_tokens || 0;
+      const input = usage.input_tokens || 0;
+      // Note: output tokens are NOT counted in context window
+      const total = cacheRead + cacheCreation + input;
+      console.log(`📊 [WRAPPER] Calculated context from history: ${total} (cache_read=${cacheRead}, cache_creation=${cacheCreation}, input=${input})`);
+      return total;
+    }
+  }
+  return 0;
+}
+
+// Initialize wrapper session with existing tokens (for resumed sessions)
+function initWrapperSessionWithTokens(sessionId, initialTokens) {
+  const session = getWrapperSession(sessionId);
+  if (initialTokens > 0 && session.totalTokens === 0) {
+    session.totalTokens = initialTokens;
+    console.log(`📊 [WRAPPER] Initialized session ${sessionId} with ${initialTokens} accumulated tokens from history`);
+  }
+  return session;
+}
+
 function processWrapperLine(line, sessionId) {
   if (!line || !line.trim()) return line;
   
@@ -183,12 +218,21 @@ function processWrapperLine(line, sessionId) {
     }
     
     // Update tokens if usage present
-    if (data.usage) {
-      const input = data.usage.input_tokens || 0;
-      const output = data.usage.output_tokens || 0;
-      const cacheCreation = data.usage.cache_creation_input_tokens || 0;
-      const cacheRead = data.usage.cache_read_input_tokens || 0;
+    // CRITICAL: Skip 'result' messages - they contain CUMULATIVE session totals, not per-turn usage!
+    // The result message sums up all cache_read_input_tokens across ALL turns, which corrupts
+    // our context tracking. Only assistant messages have accurate per-turn context size.
+    // NOTE: Usage can be at data.usage OR data.message.usage depending on message type
+    const usage = data.usage || data.message?.usage;
+    if (usage && data.type !== 'result') {
+      const input = usage.input_tokens || 0;
+      const output = usage.output_tokens || 0;
+      const cacheCreation = usage.cache_creation_input_tokens || 0;
+      const cacheRead = usage.cache_read_input_tokens || 0;
 
+      // IMPORTANT: Claude API returns TOTAL context window usage, not deltas!
+      // However, when Anthropic's cache expires, cache_read becomes 0 even though
+      // the conversation history still exists. We track the max seen to prevent
+      // the counter from going down when cache expires.
       const prevTotal = session.totalTokens;
 
       // Set current values (not accumulate)
@@ -203,13 +247,16 @@ function processWrapperLine(line, sessionId) {
       // cache_read = previous conversation (cached by Anthropic)
       // cache_creation = new content being cached
       // input = new input not in cache
-      session.totalTokens = cacheRead + cacheCreation + input;
+      const reportedTotal = cacheRead + cacheCreation + input;
+
+      // Keep the higher value - prevents counter from resetting when cache expires
+      // The actual conversation history is still there even if cache_read is 0
+      session.totalTokens = Math.max(session.totalTokens, reportedTotal);
 
       const delta = session.totalTokens - prevTotal;
       wrapperState.stats.totalTokens += delta;
 
-      // Show context usage (input context only, per Claude Code)
-      console.log(`📊 [WRAPPER] CONTEXT +${delta} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
+      console.log(`📊 [WRAPPER] TOKENS +${delta} → ${session.totalTokens}/200000 (${Math.round(session.totalTokens/2000)}%)`);
       if (cacheCreation > 0 || cacheRead > 0) {
         console.log(`   📦 Cache: creation=${cacheCreation}, read=${cacheRead}`);
       }
@@ -3695,7 +3742,8 @@ io.on('connection', (socket) => {
         interruptedSessionId: null,  // Store interrupted session ID separately
         hasGeneratedTitle: existingMessages.length > 0,  // If we have messages, we likely have a title
         wasInterrupted: false,  // Track if last conversation was interrupted vs completed
-        wasCompacted: existingSession?.wasCompacted || false  // Preserve compacted state
+        wasCompacted: existingSession?.wasCompacted || false,  // Preserve compacted state
+        disallowedTools: data.disallowedTools || []  // User-disabled tools from modal
       };
       
       sessions.set(sessionId, sessionData);
@@ -4241,12 +4289,18 @@ io.on('connection', (socket) => {
         }
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
+      // Combine system-disallowed tools with user-disabled tools from modal
+      const systemDisallowed = ['AskUserQuestion', 'EnterPlanMode', 'ExitPlanMode'];
+      const userDisallowed = session.disallowedTools || [];
+      const allDisallowed = [...new Set([...systemDisallowed, ...userDisallowed])];
+      console.log(`🔧 Disallowed tools: ${allDisallowed.join(',')}`);
+
       const args = [
         '--print',
         '--output-format', 'stream-json',
         '--verbose',
         '--dangerously-skip-permissions',
-        '--disallowed-tools', 'AskUserQuestion,EnterPlanMode,ExitPlanMode'
+        '--disallowed-tools', allDisallowed.join(',')
       ];
       
       // Add system prompt if configured (passed from frontend or use default)

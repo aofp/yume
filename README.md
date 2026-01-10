@@ -36,11 +36,11 @@ A powerful, minimal GUI for Claude Code with intelligent context management.
 # Install dependencies
 npm install
 
-# Run development server
-npm run dev
-
-# Run Tauri in development mode
+# Run Tauri in development mode with hot reload
 npm run tauri:dev
+
+# Frontend only (for UI work)
+npm run dev:frontend
 
 # Build for production
 npm run tauri:build:mac   # macOS
@@ -74,8 +74,8 @@ Contributions are welcome! Please read CONTRIBUTING.md first.
 ## 🔗 Links
 
 - [Documentation](docs/)
-- [Issue Tracker](https://github.com/yourusername/yurucode/issues)
-- [Discord Community](https://discord.gg/yurucode)
+- [Troubleshooting Guide](docs/TROUBLESHOOTING_GUIDE.md)
+- [Architecture Overview](docs/COMPLETE_ARCHITECTURE.md)
 
 ---
 

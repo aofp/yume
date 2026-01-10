@@ -23,9 +23,7 @@
   "include": [
     "src/**/*.ts",
     "src/**/*.tsx",
-    "vite.config.ts",
-    "electron/**/*.ts",
-    "electron/**/*.js"
+    "vite.config.ts"
   ],
   "exclude": [
     "node_modules",

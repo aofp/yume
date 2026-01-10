@@ -3612,7 +3612,8 @@ io.on('connection', (socket) => {
         claudeSessionId: existingClaudeSessionId,  // Preserve Claude session ID
         hasGeneratedTitle: existingMessages.length > 0,  // If we have messages, we likely have a title
         wasInterrupted: false,  // Track if last conversation was interrupted vs completed
-        wasCompacted: existingSession?.wasCompacted || false  // Preserve compacted state
+        wasCompacted: existingSession?.wasCompacted || false,  // Preserve compacted state
+        disallowedTools: data.disallowedTools || []  // User-disabled tools from modal
       };
       
       sessions.set(sessionId, sessionData);
@@ -3895,12 +3896,18 @@ io.on('connection', (socket) => {
         }
 
       // Build the claude command - EXACTLY LIKE WINDOWS BUT WITH MACOS FLAGS
+      // Combine system-disallowed tools with user-disabled tools from modal
+      const systemDisallowed = ['AskUserQuestion', 'EnterPlanMode', 'ExitPlanMode'];
+      const userDisallowed = session.disallowedTools || [];
+      const allDisallowed = [...new Set([...systemDisallowed, ...userDisallowed])];
+      console.log(`🔧 Disallowed tools: ${allDisallowed.join(',')}`);
+
       const args = [
         '--print',
         '--output-format', 'stream-json',
         '--verbose',
         '--dangerously-skip-permissions',
-        '--disallowed-tools', 'AskUserQuestion,EnterPlanMode,ExitPlanMode',
+        '--disallowed-tools', allDisallowed.join(','),
         '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred. !!FOR COMPLEX TASKS: YOU MUST PLAN FIRST use THINK and TODO as MUCH AS POSSIBLE to break down everything, including planning into multiple steps and do edits in small chunks!!'
       ];
       

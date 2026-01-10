@@ -141,7 +141,7 @@ Features NO competitor has:
 | 5 built-in agents | architect, explorer, implementer, guardian, specialist |
 | 30 themes | Way more than Cursor (~5), Windsurf (~3), Opcode (0) |
 | 9 hook events | Most comprehensive hook system |
-| $9 one-time | vs $240-2400/year subscriptions |
+| $21 one-time | vs $240-2400/year subscriptions |
 | Crash recovery | Auto-save with 24hr restoration |
 | @ mention system | @r recent, @m modified, folder navigation |
 

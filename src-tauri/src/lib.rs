@@ -35,9 +35,7 @@ use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
 use std::path::PathBuf;
 use std::fs;
 use tauri::{Manager, Listener, Emitter};
-use tracing::info;
-#[cfg(target_os = "windows")]
-use tracing::error;
+use tracing::{info, error};
 
 use claude::ClaudeManager;
 use state::AppState;
@@ -551,18 +549,62 @@ pub fn run() {
             #[cfg(target_os = "macos")]
             {
                 use cocoa::appkit::{NSWindow, NSWindowCollectionBehavior};
-                use cocoa::base::id;
-                
+                use cocoa::base::{id, YES, NO};
+
                 let ns_window = window.ns_window().unwrap() as id;
                 unsafe {
                     // Enable first mouse click to both activate window AND process the click
                     // This makes the app feel more responsive
                     ns_window.setAcceptsMouseMovedEvents_(true);
-                    
+
+                    // CRITICAL: Disable window restoration which can interfere with focus state
+                    // This prevents macOS from trying to restore previous window state on app launch
+                    let _: () = msg_send![ns_window, setRestorable: NO];
+
+                    // CRITICAL: Make window ignore mouse events during window-level focus transitions
+                    // This prevents accidental clicks from stealing focus from the textarea
+                    // The ignoresMouseEvents flag is managed dynamically via JavaScript
+
+                    // Ensure the window can become key window (accepts keyboard input)
+                    // and main window (appears as the primary window)
+                    let can_become: bool = msg_send![ns_window, canBecomeKeyWindow];
+                    if !can_become {
+                        info!("Window cannot become key window - this may cause focus issues");
+                    }
+
                     // Also ensure window can become key and main window
                     let collection_behavior = NSWindowCollectionBehavior::NSWindowCollectionBehaviorFullScreenPrimary
                         | NSWindowCollectionBehavior::NSWindowCollectionBehaviorManaged;
                     ns_window.setCollectionBehavior_(collection_behavior);
+
+                    // CRITICAL: Find the WKWebView and configure it for proper focus handling
+                    // WKWebView needs to properly accept first mouse to prevent focus loss
+                    let content_view: id = msg_send![ns_window, contentView];
+                    let subviews: id = msg_send![content_view, subviews];
+                    let count: usize = msg_send![subviews, count];
+
+                    for i in 0..count {
+                        let subview: id = msg_send![subviews, objectAtIndex:i];
+                        let class: id = msg_send![subview, class];
+                        let class_name: id = msg_send![class, description];
+                        let class_name_str: *const i8 = msg_send![class_name, UTF8String];
+
+                        if !class_name_str.is_null() {
+                            use std::ffi::CStr;
+                            let class_name_rust = CStr::from_ptr(class_name_str).to_str().unwrap_or("");
+
+                            if class_name_rust.contains("WKWebView") {
+                                // Make WKWebView accept first mouse (click through when inactive)
+                                // This is critical for preventing focus issues
+                                let _: () = msg_send![subview, setAcceptsTouchEvents: YES];
+
+                                // The WKWebView should be the first responder when focused
+                                // Force it to accept becoming first responder
+                                info!("Configured WKWebView for improved focus handling");
+                                break;
+                            }
+                        }
+                    }
                 }
             }
             

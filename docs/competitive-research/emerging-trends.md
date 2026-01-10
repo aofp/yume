@@ -16,7 +16,7 @@
 - **50%+**: Fortune 500 companies using Cursor
 
 ### Market Leaders (January 2026)
-1. **Cursor** - $29.3B valuation, $500M+ ARR, 50%+ Fortune 500
+1. **Cursor** - $29.3B valuation, **$1B+ ARR** (Dec 2025), Series D $2.3B, 50%+ Fortune 500
 2. **GitHub Copilot** - 68% usage among devs, GitHub integration
 3. **Windsurf** - Google acqui-hired founders, Cognition acquired tech
 4. **Claude Code** - 80.9% SWE-bench (highest), Anthropic official CLI
@@ -113,8 +113,10 @@ Chinese models: 70-95% cheaper, closing performance gap.
 - Signals: Big tech desperately wants AI coding tools
 
 ### Cursor's Rise
-- **$29.3B valuation** (2025) - makes it one of highest-valued AI startups
-- **$500M+ ARR** - crossing profitability threshold
+- **$29.3B valuation** (2025) - one of highest-valued AI startups
+- **$1B+ ARR** (Dec 2025) - fastest growing AI tool
+- **Series D $2.3B** (Dec 2025) - massive funding
+- **Acquired Graphite** (Dec 2025) - enhanced git workflows
 - **50%+ Fortune 500** adoption
 - June 2025 pricing change caused user backlash but revenue held
 
@@ -198,7 +200,7 @@ This is NOT competing with Cursor/Windsurf (full IDEs). It's solving a specific 
 
 | Advantage | Why It Matters | Competitor Status |
 |-----------|----------------|-------------------|
-| **$9 one-time** | No subscription fatigue | Cursor: $20-200/mo, Windsurf: $15-60/mo |
+| **$21 one-time** | No subscription fatigue | Cursor: $20-200/mo, Windsurf: $15-60/mo |
 | **Auto-compact 60%/65%** | No one else does this | **UNIQUE** |
 | **Native Rust** | Performance validated | Cursor has memory issues |
 | **80.9% SWE-bench** | Claude leads benchmarks | We're Claude-native |

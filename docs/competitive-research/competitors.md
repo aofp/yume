@@ -1,14 +1,15 @@
 # Competitor Deep Dives
 
-*Last Updated: January 9, 2026*
+*Last Updated: January 10, 2026*
 
 ## IDE-Based Competitors
 
 ### Cursor
 
 **Type**: AI-augmented IDE (VS Code fork)
-**Valuation**: $29.3B (2025), $500M+ ARR
+**Valuation**: $29.3B (2025), **$1B+ ARR** (Dec 2025)
 **Adoption**: 50%+ Fortune 500 companies
+**Funding**: Series D $2.3B (Dec 2025)
 **Price**: $20/mo Pro, $200/mo Ultra, $40/user Teams
 
 **Key Features**:
@@ -16,59 +17,66 @@
 - **Agent Mode (Cmd+I)**: Plans multi-step tasks, edits multiple files, runs terminal
 - **Composer**: MoE model with codebase-wide semantic search
 - **Background Agents (v0.50)**: Parallel tasks via git worktrees
-- **Bugbot**: Watches code changes, flags potential errors (mid-2025)
+- **Bugbot**: Watches code changes, flags potential errors
 - **Debug Mode (v2.2)**: Generates hypotheses, instruments logging, verifies fixes
-- **Visual Editor (v2.2)**: Design + code with browser sidebar and component tree
+- **Visual Browser Editor (v2.2)**: Design + code with browser sidebar and component tree
 - **Memories**: AI recalls context from previous sessions
+- **Instant Grep**: All agent grep commands now instant with sidebar search
+- **Multi-Agent Judging**: Auto-evaluates parallel agents, recommends best solution
+- **AI Code Reviews**: Find/fix bugs in sidepanel (separate from Bugbot)
+- **Plan Mode**: Inline Mermaid diagrams, send to-dos to new agents
+- **Layout Customization**: 4 default layouts (agent, editor, zen, browser), Cmd+Opt+Tab
 
 **Strengths**:
-- Market leader with massive adoption
+- Market leader with massive adoption and $1B+ ARR
 - VS Code extension ecosystem
 - Multi-model support (OpenAI, Claude, Gemini, xAI)
 - Enterprise-ready (SOC 2, SSO)
 - Proprietary speed-optimized models
+- Acquired Graphite for enhanced git workflow
 
 **Weaknesses**:
-- Performance issues since v0.45.9 (freezing, memory leaks)
-- Context "forgets" mid-conversation (v0.46+)
+- Performance issues persist (freezing, memory leaks)
+- Context "forgets" mid-conversation
 - AI breaks code during complex edits
 - Expensive for heavy users ($200-500/mo actual costs)
 - Hijacks VS Code shortcuts, auto-updates forced
 - WSL integration memory issues
 
-**Recent Updates (2025-2026)**:
+**Recent Updates (Jan 2026)**:
+- **Jan 8, 2026**: New CLI controls for models, MCP management, rules, major hooks performance
+- **Jan 6, 2026**: "Hooks for security and platform teams" partnership announcement
 - v2.3 (Dec 2025): Process separation for stability
-- v2.2 (Dec 2025): Debug Mode, Visual Editor, Plan Mode with Mermaid diagrams
-- v2.0 (Nov 2025): AI Code Reviews in sidepanel, Clarifying Questions UI
-- v1.7 (Oct 2025): Agent Autocomplete, Hooks (beta), Team Rules
-- Acquired Graphite (Dec 2025): Enhanced git workflow integration
-- June 2025: Token-based pricing (was request-based), caused user backlash
-- Priority Processing: 2x rate for guaranteed low-latency (~50 tokens/sec)
+- v2.2 (Dec 2025): Debug Mode, Visual Editor, Plan Mode with Mermaid
+- Acquired Graphite (Dec 22, 2025): Enhanced git workflow integration
+- Series D $2.3B, passed $1B ARR (Dec 4, 2025)
 
-**2026 Roadmap (announced)**:
-- Hooks for security/platform teams (enterprise)
+**2026 Roadmap**:
+- Hooks for enterprise security/platform teams
 - Proprietary models optimized for coding
 - Air-gapped enterprise deployments
 
-**Relevance to Yurucode**: Cursor's scale proves demand. But performance complaints validate yurucode's native Rust approach. Their Visual Editor and Debug Mode are differentiators we lack.
+**Relevance to Yurucode**: Cursor's scale proves demand. But performance complaints validate yurucode's native Rust approach. Their $1B ARR shows market size, but our $21 one-time disrupts their model.
 
 ---
 
 ### Windsurf
 
-**Type**: AI IDE (VS Code fork, by Codeium)
+**Type**: AI IDE (VS Code fork, by Windsurf - formerly Codeium)
 **Price**: $15/mo Pro, $30/user Teams, $60+/user Enterprise
-**Status**: OpenAI tried to acquire for $3B (May 2025), Google acqui-hired founders instead
+**Status**: Company rebranded from Codeium to Windsurf in 2026
 
 **Key Features**:
-- **Cascade**: Agent combining copilot + autonomous modes
+- **Cascade**: Agent combining copilot + autonomous modes (40% faster time-to-first-commit on 1M+ LOC)
 - **SWE-1.5 Model**: 950 tok/s, near Claude 4.5 performance at 13x speed
 - **Fast Context**: 2,800+ tok/s codebase understanding
-- **Memories**: User rules + auto-generated preferences
+- **Flow (2026)**: Shared workspace where AI finishes your refactors without losing context
+- **Memories**: User rules + auto-generated preferences (now with auto-generate toggle)
 - **Planning Mode (Wave 10)**: Short/long-term project understanding
-- **Multi-Agent Sessions (Wave 13)**: Parallel agent workflows with git worktrees
+- **Multi-Agent Sessions (Wave 13)**: Parallel agent workflows with git worktrees, side-by-side Cascade panes
 - **Codemaps (Beta)**: Visual code mapping
 - **Lifeguard (Beta)**: In-IDE bug detection
+- **BYOK Claude 4**: Bring your own API key for Sonnet/Opus 4 (including thinking models)
 
 **Strengths**:
 - Best automatic context selection (no manual @ tagging)
@@ -76,6 +84,7 @@
 - Cleaner UI than Cursor
 - Cheaper pricing ($15 vs $20)
 - Plugins for 40+ IDEs (JetBrains, Vim, XCode)
+- Flow feature for seamless AI collaboration
 
 **Weaknesses**:
 - Struggles with files >300-500 lines
@@ -85,47 +94,62 @@
 - Not SOC2 compliant
 - "Beta experience" feel
 
-**Recent Updates (2025-2026)**:
-- Wave 13 (Dec 2025): Multi-agent sessions with parallel execution via git worktrees
-- Auto-Generate Memories: Autonomous context retention across sessions
-- Tab to Jump: Predicts next edit location
-- Rules Files: Granular `.windsurf/rules` configuration
-- Latest Models: GPT-5.2, Gemini 3 Flash, Claude Opus 4.5
-- JetBrains Integration: Native agentic experience
-- MCP: GitLab support, GitHub OAuth
+**Recent Updates (Jan 2026)**:
+- **Company Rebrand**: Codeium → Windsurf (extension now "Windsurf Plugin")
+- **GPT-5.2**: Available with 0x credits for paid users (limited time)
+- **Gemini 3 Pro**: Low/High available for Trial/Pro/Teams (preview)
+- **Claude 4 BYOK**: Sonnet, Opus, and thinking variants via user API keys
+- **Priority Processing**: 2x rate for GPT-5.1 with ~50 tokens/sec guaranteed
+- Wave 13: Multi-agent with git worktrees, side-by-side Cascade
+- Auto-Generate Memories toggle
+- Enterprise .codeiumignore in ~/.codeium/
+- Granular `.windsurf/rules` configuration
 
 **Recognition**: Named "Leader in 2025 Gartner Magic Quadrant for AI Code Assistants"
 
-**Corporate Drama (2025)**: OpenAI's $3B acquisition blocked; Google acqui-hired founders for DeepMind; Cognition acquired remaining tech for $250M.
+**Corporate History**: OpenAI's $3B acquisition failed; Google acqui-hired founders for DeepMind; Cognition acquired remaining tech for $250M.
 
-**Relevance to Yurucode**: Windsurf sets UX bar and automatic context handling. Their multi-agent visualization is something we should match.
+**Relevance to Yurucode**: Windsurf's Flow feature shows future direction. Their multi-agent visualization and auto-memories are gaps we could address.
 
 ---
 
 ### Zed
 
 **Type**: Native code editor (Rust)
-**Price**: Free (AI features require API key or Zed account)
+**Price**: Free (50 prompts/mo), $20/mo Pro (500 prompts)
 
 **Key Features**:
 - 120 FPS rendering (GPUI framework)
 - 58ms response time (vs 97ms VS Code)
-- Edit Prediction: Multi-line tab completion
+- **Agentic Editing**: Natural language code changes with editable diff view
+- **Edit Prediction**: Multi-line tab completion with Zeta (Zed's own open-source model)
+- **Inline Transformations**: Send selected code to LLM
+- **Text Threads**: Plain text LLM interface (just an editor)
 - Agent Panel: No pre-indexing required
 - Real-time collaboration built-in
+- Privacy-focused: Code conversations not logged/used for training
 
 **Strengths**:
 - Fastest editor by far (Rust + GPU)
 - Clean, minimal UI
-- Open source
-- Growing fast (9% Rust dev adoption, up from 1%)
+- Open source (Zeta model too)
+- Growing fast (9% Rust dev adoption)
+- BYOK support + Ollama for local models
+- Privacy by default
 
 **Weaknesses**:
 - Smaller extension ecosystem
 - macOS/Linux only (Windows coming)
-- Less AI-specific features than Cursor
+- Fewer AI features than Cursor
+- Prompt limits on free tier
 
-**Relevance to Yurucode**: Zed proves native performance matters. Tauri (Rust backend) is the right architecture choice.
+**Recent Updates (2026)**:
+- Agentic editing with editable diff view
+- Zeta open-source language model for Edit Prediction
+- $20/mo Pro plan with 500 prompts
+- Enhanced privacy controls
+
+**Relevance to Yurucode**: Zed validates native Rust performance. Their Zeta model and privacy focus are differentiators. Tauri is the right architecture.
 
 ---
 
@@ -133,26 +157,30 @@
 
 ### Opcode
 
-**Type**: Claude Code desktop GUI (open source)
-**Price**: Free
+**Type**: Claude Code desktop GUI (open source, Tauri 2)
+**Price**: Free (AGPL license)
 **GitHub**: github.com/winfunc/opcode
+**Website**: opcode.sh
 
 **Key Features**:
 - Visual project browser (~/.claude/projects/)
-- Session history with context
-- Custom AI agents with system prompts
-- Background agent execution
-- Usage analytics (cost tracking)
-- MCP server management UI
-- Timeline & checkpoints
-- CLAUDE.md editor
-- Process isolation for agents
+- Session history with resume capability
+- Custom AI agents with system prompts and permission settings
+- Background agent execution (isolated processes)
+- Usage analytics (cost tracking via API)
+- MCP server registry
+- Timeline & checkpoints with diff viewer
+- CLAUDE.md editor with live preview
+- Session forking from checkpoints
+- SQLite local storage (fully local/self-hosted)
 
 **Strengths**:
-- Free/open source
-- CLAUDE.md visual editor
+- Free/open source (AGPL)
+- CLAUDE.md visual editor with live preview
 - Per-agent permission controls
-- No telemetry
+- No telemetry (only Claude API calls)
+- Session forking capability
+- Also built on Tauri 2
 
 **Weaknesses**:
 - ❌ No 5h/7-day Anthropic limit tracking (only cost)
@@ -192,10 +220,11 @@
 | Git diff viewer | ✅ | ✅ |
 | MCP support | ✅ | ✅ |
 | Checkpoints | ✅ | ✅ |
+| Session forking | ❌ | ✅ |
 | CLAUDE.md editor | ❌ | ✅ |
-| Price | $9 one-time | Free |
+| Price | $21 one-time | Free |
 
-**Relevance to Yurucode**: Direct competitor. Opcode is Y Combinator backed but technically inferior in almost every way. Yurucode's paid model funds development of superior features.
+**Relevance to Yurucode**: Direct competitor, also Tauri-based. Opcode is free but feature-limited. Yurucode's paid model funds 15+ unique features they lack. Their session forking and CLAUDE.md editor are differentiators.
 
 ---
 
@@ -281,28 +310,44 @@
 
 **Type**: Terminal AI pair programmer (open source)
 **Price**: Free + API costs
+**GitHub**: github.com/Aider-AI/aider
 
 **Key Features**:
 - **Best context fetching**: treesitter + ripgrep (outperforms VectorDB)
 - Three modes: Code, Architect, Ask
 - Auto-commits with sensible messages
-- Works with any LLM (Claude, GPT, DeepSeek, local)
+- Works with any LLM (Claude, GPT, Gemini, DeepSeek, local via Ollama)
 - Voice-to-code, image input
 - 100+ language support
+- **Web Browser Mode**: Run in browser, not just CLI
+- **Thinking Tokens**: --thinking-tokens CLI option for thinking models
+- VS Code extensions available (Aider Composer)
 
 **Strengths**:
-- Superior context understanding
+- Superior context understanding (treesitter + ripgrep)
 - Git-native workflow
 - Privacy (local, no cloud required)
 - Power user friendly
 - Open source
+- Multi-file changes via natural language
+- Now has browser and VS Code options
 
 **Weaknesses**:
-- CLI-only (less accessible)
+- CLI/browser-only (no native desktop)
 - Steeper learning curve
-- Not agentic (you drive, AI assists)
+- Not fully agentic (you drive, AI assists)
+- Dropped Python 3.9 support
 
-**Relevance to Yurucode**: Learn from Aider's context fetching approach. Consider treesitter integration for better code understanding.
+**Recent Updates (2026)**:
+- Claude Sonnet 4, Opus 4 support across providers
+- Gemini 2.5 Pro/Flash with thinking tokens
+- GPT-5.2, GPT-4.1 (mini/nano) support
+- o3-pro, o1-pro Responses API models
+- New patch/editor edit formats
+- --thinking-tokens CLI option
+- Browser-based mode
+
+**Relevance to Yurucode**: Aider's treesitter + ripgrep context is best in class. Their CLI focus means we serve different users. Consider thinking tokens display.
 
 ---
 
@@ -338,28 +383,37 @@
 
 ### GitHub Copilot
 
-**Type**: IDE extension + GitHub integration
+**Type**: IDE extension + GitHub integration + Cloud Agent
 **Price**: $19/mo Pro, $39/mo Pro+
 
 **Key Features**:
-- New coding agent (May 2025): Assign issues to Copilot
-- Runs in GitHub Actions background
-- AGENTS.md for project instructions
+- **Coding Agent**: Assign issues from GitHub, Azure Boards, Raycast, Linear, Slack, Teams
+- **Cloud Agent (VS 2026)**: Delegate tasks from Visual Studio, runs in GitHub Actions
+- **Agent Skills**: Folders with instructions/scripts auto-loaded when relevant (Dec 2025)
+- **Agent Mode + MCP**: Independent code translation, auto subtasks, tool calls, self-healing
+- **Multi-Model (Jan 2026)**: GPT-5.2 GA, Claude Opus 4.5 GA, Gemini 3 Flash preview
+- Custom agents for frontend, docs, testing, etc.
 - Third-party agent assignment (Claude, Codex)
-- 2x throughput, 37.6% better retrieval (Sept 2025)
 
 **Strengths**:
-- Massive ecosystem
-- Deep GitHub integration
-- Enterprise trusted
-- Multi-IDE support
+- Massive ecosystem and GitHub integration
+- Enterprise trusted (VS 2026 GA)
+- Multi-IDE + cloud execution
+- Multi-model support now
 
 **Weaknesses**:
-- More expensive
+- More expensive than competitors
 - Less autonomous than Claude Code
 - GitHub lock-in
+- Cloud agent requires GitHub Actions
 
-**Relevance to Yurucode**: GitHub integration is table stakes for enterprise. Consider GitHub issue integration.
+**Recent Updates (Jan 2026)**:
+- GPT-5.2, Claude Opus 4.5, Gemini 3 Flash all GA/preview
+- Agent Skills for context-aware loading
+- Visual Studio 2026 GA with cloud agent
+- Agent Mode with MCP support
+
+**Relevance to Yurucode**: GitHub integration is table stakes. Their multi-model support and cloud agent show market direction. We stay focused on Claude excellence.
 
 ---
 
@@ -426,18 +480,18 @@
 
 ## Comparison Matrix (January 2026)
 
-| Tool | Type | Price | Agentic | Tab Complete | Multi-Agent | Native |
-|------|------|-------|---------|--------------|-------------|--------|
-| **Cursor** | IDE | $20-200/mo | Yes (background) | Yes (250 tok/s) | Yes (8 parallel) | No (Electron) |
-| **Windsurf** | IDE | $15-60/mo | Yes (Cascade) | Yes | Yes (Wave 13) | No (Electron) |
-| **Zed** | IDE | Free | Yes | Yes | No | Yes (Rust) |
-| **Claude Code CLI** | CLI | Pro/Max | Yes (subagents) | No | Yes | Terminal |
-| **Yurucode** | Desktop | $9 one-time | Yes (via Claude) | No | Yes (5 agents) | Yes (Tauri/Rust) |
-| **Opcode** | Desktop | Free | Yes | No | Yes | No (Electron?) |
-| **Aider** | CLI | API costs | No | No | No | Terminal |
-| **Cline** | Extension | API costs | Yes | No | No | No (VS Code) |
-| **Copilot** | Extension | $19-39/mo | Yes | Yes | No | No |
-| **Continue** | Extension | Free | Limited | Yes | No | No |
+| Tool | Type | Price | Agentic | Tab Complete | Multi-Agent | Native | ARR/Status |
+|------|------|-------|---------|--------------|-------------|--------|------------|
+| **Cursor** | IDE | $20-200/mo | Yes (background) | Yes (250 tok/s) | Yes (8+ parallel) | No (Electron) | $1B+ ARR |
+| **Windsurf** | IDE | $15-60/mo | Yes (Cascade) | Yes | Yes (Wave 13) | No (Electron) | Rebranded |
+| **Zed** | IDE | Free-$20/mo | Yes | Yes (Zeta) | No | Yes (Rust) | Growing |
+| **Claude Code CLI** | CLI | Pro/Max | Yes (subagents) | No | Yes | Terminal | 80.9% SWE |
+| **Yurucode** | Desktop | $21 one-time | Yes (via Claude) | No | Yes (5 agents) | Yes (Tauri/Rust) | Indie |
+| **Opcode** | Desktop | Free | Yes | No | Yes | Yes (Tauri) | OSS |
+| **Aider** | CLI | API costs | Partial | No | No | Terminal/Browser | OSS |
+| **Cline** | Extension | API costs | Yes | No | No | No (VS Code) | OSS |
+| **Copilot** | Extension | $19-39/mo | Yes (cloud) | Yes | Yes (custom) | No | Enterprise |
+| **Continue** | Extension | Free | Limited | Yes | No | No | OSS |
 
 ## Feature Gap Summary (Yurucode vs Leaders)
 
@@ -470,13 +524,140 @@
 | CLAUDE.md editor | ❌ | ❌ | ✅ | ❌ | Gap |
 | Background agents | ✅ | ✅ | ✅ | ✅ Via Claude | No |
 
+---
+
+## Comprehensive Comparison Chart (January 2026)
+
+### Yurucode vs All Competitors - Feature Matrix
+
+| Feature | Yurucode | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
+|---------|----------|------------|--------|----------|--------|-----|-------|
+| **Price** | $21 once | Pro/Max sub | $20-200/mo | $15-60/mo | Free | Free-$20/mo | Free+API |
+| **Type** | Desktop GUI | CLI | IDE | IDE | Desktop GUI | IDE | CLI |
+| **Native Performance** | ✅ Tauri/Rust | ❌ React Ink | ❌ Electron | ❌ Electron | ✅ Tauri | ✅ Rust | ❌ Python |
+| **No Flickering** | ✅ | ❌ (700+ upvotes) | ⚠️ Issues | ⚠️ | ✅ | ✅ | N/A |
+| **Multi-Tab Sessions** | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Crash Recovery** | ✅ 24hr | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### Context & Analytics
+
+| Feature | Yurucode | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
+|---------|----------|------------|--------|----------|--------|-----|-------|
+| **5h/7d Limit Tracking** | ✅ UNIQUE | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Token Counter** | ✅ Visual | Partial | ❌ | Partial | ✅ | ❌ | ❌ |
+| **Cost Tracking** | ✅ Full | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Auto-Compaction** | ✅ 60/65% | ✅ 95% | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Usage Analytics** | ✅ Full modal | /stats | ❌ | ❌ | ✅ | ❌ | ❌ |
+
+### Input Features
+
+| Feature | Yurucode | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
+|---------|----------|------------|--------|----------|--------|-----|-------|
+| **@ Mentions** | ✅ @r/@m/folders | Partial | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Ultrathink Support** | ✅ Cmd+K + rainbow | Typing only | ❌ | ❌ | ❌ | ❌ | Partial |
+| **Slash Commands** | ✅ 12+ custom | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Bash Mode (!/$)** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
+| **Drag & Drop** | ✅ Files+tabs | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **Image Paste** | ✅ | ✅ | ✅ | ✅ | ❓ | ✅ | ✅ |
+
+### Output & Visual
+
+| Feature | Yurucode | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
+|---------|----------|------------|--------|----------|--------|-----|-------|
+| **Stream Timers** | ✅ UNIQUE | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Diff Viewer** | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Files Panel** | ✅ +git status | ❌ | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Git Panel** | ✅ +/- stats | ❌ | ✅ | ✅ | ❓ | ✅ | ✅ |
+| **History/Rollback** | ✅ UNIQUE | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Syntax Highlighting** | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+### Agents & Customization
+
+| Feature | Yurucode | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
+|---------|----------|------------|--------|----------|--------|-----|-------|
+| **Built-in Agents** | ✅ 5 agents | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Custom Agents** | ✅ | ✅ /agents | ✅ | ✅ | ✅ | ✅ | ❌ |
+| **Themes** | ✅ 30 | ❌ terminal | ~5 | ~3 | ❌ | ✅ | ❌ |
+| **Font Customization** | ✅ | ❌ | ✅ | ❌ | ❌ | ✅ | ❌ |
+| **Background Opacity** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+
+### Hooks & Security
+
+| Feature | Yurucode | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
+|---------|----------|------------|--------|----------|--------|-----|-------|
+| **Hook Events** | ✅ 9 events | Partial | Partial | ❌ | ❌ | ❌ | ❌ |
+| **Yurucode Guard** | ✅ UNIQUE | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **MCP Support** | ✅ Visual UI | ✅ JSON | ❌ | ✅ | ✅ | ❌ | ❌ |
+
+### Sessions & Checkpoints
+
+| Feature | Yurucode | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
+|---------|----------|------------|--------|----------|--------|-----|-------|
+| **Checkpoints** | ✅ Visual | ✅ /rewind | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Timeline Navigator** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Session Forking** | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **CLAUDE.md Editor** | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+
+### Keyboard & UX
+
+| Feature | Yurucode | Claude CLI | Cursor | Windsurf | Opcode | Zed | Aider |
+|---------|----------|------------|--------|----------|--------|-----|-------|
+| **Keyboard Shortcuts** | ✅ 32+ | ~10 | ✅ Many | ✅ | ❌ | ✅ | ~5 |
+| **Light Mode** | ❌ | ❌ | ✅ | ✅ | ❓ | ✅ | ❌ |
+| **Command Palette** | ❌ | ❌ | ✅ | ✅ | ❌ | ✅ | ❌ |
+| **Memories** | ❌ | ❌ | ✅ | ✅ | ❌ | ❌ | ❌ |
+
+---
+
+### Strengths & Weaknesses Summary
+
+#### Yurucode Strengths
+| Strength | Details |
+|----------|---------|
+| **Native Performance** | Tauri/Rust, zero flickering, <50ms latency |
+| **5h/7d Limit Tracking** | ONLY tool tracking actual Anthropic subscription limits |
+| **$21 One-Time** | No subscriptions, no recurring fees |
+| **5 Built-in Agents** | architect, explorer, implementer, guardian, specialist |
+| **30 Themes** | More than any competitor |
+| **9 Hook Events** | Most comprehensive hook system |
+| **Yurucode Guard** | Built-in security blocking dangerous commands |
+| **Stream Timers** | Live thinking/bash/compacting duration |
+| **@ Mention System** | @r recent, @m modified, folder navigation |
+| **Crash Recovery** | Auto-save with 24hr window |
+| **History/Rollback** | Visual message history with rollback |
+| **Ultrathink** | Cmd+K insert + rainbow highlighting |
+
+#### Yurucode Weaknesses
+| Weakness | Competitor Advantage |
+|----------|---------------------|
+| No light mode | Cursor, Windsurf, Zed have it |
+| No command palette | Standard UX pattern missing |
+| No CLAUDE.md editor | Opcode has live preview |
+| No session forking | Opcode can fork from checkpoints |
+| No memories | Cursor/Windsurf persist preferences |
+| No tab completion | IDE feature (different product category) |
+
+#### When to Choose Each Tool
+
+| Use Case | Best Choice | Why |
+|----------|-------------|-----|
+| Claude Code without lag | **Yurucode** | Native rendering, all CLI features |
+| Full IDE replacement | **Cursor** | Most features, large ecosystem |
+| Budget-conscious | **Yurucode** ($21) or **Opcode** (free) | One-time vs subscriptions |
+| Privacy-focused | **Yurucode** or **Zed** | No telemetry, local-first |
+| Enterprise/Teams | **Cursor** or **Copilot** | SOC2, SSO, admin controls |
+| Multi-model flexibility | **Aider** or **Continue** | Provider-agnostic |
+| Best AI quality | **Claude Code** tools | 80.9% SWE-bench leads market |
+
+---
+
 ## Key Insights (Updated January 2026)
 
 1. **Native performance validated**: Cursor's memory/performance issues prove Electron struggles at scale. Zed and yurucode's Rust approach is correct.
 
 2. **Tab completion is an IDE feature**: Cursor/Windsurf are code editors with inline completion. Yurucode is a chat interface - different product category. Not a real gap.
 
-3. **Subscriptions cause friction**: Cursor's June pricing changes caused backlash. Yurucode's $9 one-time is a major differentiator vs Cursor/Windsurf. Opcode is free but has fewer features.
+3. **Subscriptions cause friction**: Cursor's June pricing changes caused backlash. Yurucode's $21 one-time is a major differentiator vs Cursor/Windsurf. Opcode is free but has fewer features.
 
 4. **Context memory matters**: Both Cursor and Windsurf added "Memories" - persisting preferences across sessions. Gap for yurucode.
 

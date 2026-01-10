@@ -46,7 +46,26 @@ export const App: React.FC = () => {
   const [appReady, setAppReady] = useState(false);
 
   console.log('App component rendering, sessions:', sessions, 'currentSessionId:', currentSessionId);
-  
+
+  // Helper function to restore focus and hover states after modal closes
+  const restoreFocusToChat = React.useCallback(() => {
+    // Use RAF to ensure modal is fully unmounted before restoring focus
+    requestAnimationFrame(() => {
+      // WORKAROUND: Reset hover states by toggling pointer-events
+      // Tauri webview (especially on macOS) can get stuck hover states after modal interactions
+      document.body.style.pointerEvents = 'none';
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = '';
+
+        // Now restore keyboard focus
+        const textarea = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
+        if (textarea && document.hasFocus()) {
+          textarea.focus();
+        }
+      });
+    });
+  }, []);
+
   // Load session mappings and initialize fonts on startup
   useEffect(() => {
     loadSessionMappings();
@@ -1032,14 +1051,14 @@ export const App: React.FC = () => {
       {showSettings && (
         <ErrorBoundary name="SettingsModal">
           <Suspense fallback={null}>
-            <SettingsModalTabbed onClose={() => setShowSettings(false)} />
+            <SettingsModalTabbed onClose={() => { setShowSettings(false); restoreFocusToChat(); }} />
           </Suspense>
         </ErrorBoundary>
       )}
       {showAbout && (
         <ErrorBoundary name="AboutModal">
           <Suspense fallback={null}>
-            <AboutModal isOpen={showAbout} onClose={() => setShowAbout(false)} onShowUpgrade={() => {
+            <AboutModal isOpen={showAbout} onClose={() => { setShowAbout(false); restoreFocusToChat(); }} onShowUpgrade={() => {
               setShowAbout(false);
               setUpgradeReason('trial');
               setShowUpgradeModal(true);
@@ -1050,7 +1069,7 @@ export const App: React.FC = () => {
       {showHelpModal && (
         <ErrorBoundary name="KeyboardShortcuts">
           <Suspense fallback={null}>
-            <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />
+            <KeyboardShortcuts onClose={() => { setShowHelpModal(false); restoreFocusToChat(); }} />
           </Suspense>
         </ErrorBoundary>
       )}
@@ -1059,7 +1078,7 @@ export const App: React.FC = () => {
           <Suspense fallback={null}>
             <RecentProjectsModal
               isOpen={showRecentModal}
-              onClose={() => setShowRecentModal(false)}
+              onClose={() => { setShowRecentModal(false); restoreFocusToChat(); }}
               onProjectSelect={(path) => {
                 const name = path.split(/[/\\]/).pop() || path;
                 createSession(name, path);
@@ -1073,7 +1092,7 @@ export const App: React.FC = () => {
           <Suspense fallback={null}>
             <ProjectsModal
               isOpen={showProjectsModal}
-              onClose={() => setShowProjectsModal(false)}
+              onClose={() => { setShowProjectsModal(false); restoreFocusToChat(); }}
         onSelectSession={async (projectPath: string, sessionId: string | null, sessionTitle?: string, sessionMessageCount?: number) => {
           // If no sessionId, create a new session in the project
           if (!sessionId) {
@@ -1239,6 +1258,45 @@ export const App: React.FC = () => {
           // setAnalyticsProject(projectName);
           // setShowAnalytics(true);
         }}
+        onForkSession={async (projectPath, sessionId) => {
+          // Load the session data from server then create a forked session
+          try {
+            const serverPort = claudeCodeClient.getServerPort();
+            if (!serverPort) throw new Error('server port not available');
+
+            const response = await fetch(`http://localhost:${serverPort}/claude-session/${encodeURIComponent(projectPath)}/${encodeURIComponent(sessionId)}`);
+            if (!response.ok) throw new Error('failed to load session');
+            const data = await response.json();
+
+            // Create a new forked session with messages copied
+            const store = useClaudeCodeStore.getState();
+            const fullPath = projectPath.replace(/^-/, '/').replace(/-/g, '/');
+            const newSessionId = await store.createSession(undefined, fullPath);
+
+            if (newSessionId && data.messages) {
+              // Copy messages to the new session
+              useClaudeCodeStore.setState(state => ({
+                sessions: state.sessions.map(s => {
+                  if (s.id === newSessionId) {
+                    return {
+                      ...s,
+                      messages: data.messages,
+                      claudeTitle: `${data.title || 'session'} (fork)`,
+                      analytics: {
+                        ...s.analytics,
+                        totalMessages: data.messages.length
+                      }
+                    };
+                  }
+                  return s;
+                })
+              }));
+              console.log('[App] Forked session from projects:', sessionId, '→', newSessionId);
+            }
+          } catch (error) {
+            console.error('Failed to fork session:', error);
+          }
+        }}
             />
           </Suspense>
         </ErrorBoundary>
@@ -1248,7 +1306,7 @@ export const App: React.FC = () => {
           <Suspense fallback={null}>
             <AgentsModal
               isOpen={showAgentsModal}
-              onClose={() => setShowAgentsModal(false)}
+              onClose={() => { setShowAgentsModal(false); restoreFocusToChat(); }}
               onSelectAgent={(agent) => {
                 // Apply selected agent to the store
                 const store = useClaudeCodeStore.getState();
@@ -1268,6 +1326,7 @@ export const App: React.FC = () => {
               onClose={() => {
                 setShowAnalytics(false);
                 setAnalyticsProject(undefined);
+                restoreFocusToChat();
               }}
               initialProject={analyticsProject}
             />
@@ -1279,7 +1338,7 @@ export const App: React.FC = () => {
           <Suspense fallback={null}>
             <UpgradeModal
               isOpen={showUpgradeModal}
-              onClose={() => setShowUpgradeModal(false)}
+              onClose={() => { setShowUpgradeModal(false); restoreFocusToChat(); }}
               reason={upgradeReason}
             />
           </Suspense>
