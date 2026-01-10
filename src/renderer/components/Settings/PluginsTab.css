@@ -75,8 +75,8 @@
 
 .plugins-action-btn {
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: rgba(255, 255, 255, 0.4);
+  border: 1px solid var(--fg-20);
+  color: var(--fg-60);
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 10px;
@@ -99,7 +99,7 @@
   justify-content: center;
   gap: 8px;
   padding: 20px;
-  color: #666;
+  color: var(--fg-50);
   font-size: 11px;
 }
 
@@ -120,16 +120,16 @@
   justify-content: center;
   gap: 8px;
   padding: 24px;
-  color: #666;
+  color: var(--fg-50);
   font-size: 11px;
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;
   text-align: center;
 }
 
 .no-plugins-hint {
-  color: #555;
+  color: var(--fg-40);
   font-size: 10px;
   margin: 4px 0 0 0;
 }
@@ -143,18 +143,18 @@
 
 /* Plugin Item */
 .plugin-item {
-  background: rgba(255, 255, 255, 0.02);
-  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
   border-radius: 4px;
   transition: all 0.2s;
 }
 
 .plugin-item:hover {
-  border-color: rgba(255, 255, 255, 0.12);
+  border-color: var(--fg-25);
 }
 
 .plugin-item.enabled {
-  border-color: rgba(var(--accent-rgb), 0.2);
+  border-color: rgba(var(--accent-rgb), 0.3);
 }
 
 /* Plugin Header Row */
@@ -168,7 +168,7 @@
 .plugin-expand {
   background: transparent;
   border: none;
-  color: #666;
+  color: var(--fg-50);
   cursor: default;
   padding: 2px;
   display: flex;
@@ -181,6 +181,7 @@
   color: var(--accent-color);
 }
 
+/* Plugin Info */
 .plugin-info {
   flex: 1;
   min-width: 0;
@@ -196,20 +197,20 @@
 }
 
 .plugin-name {
-  color: rgba(255, 255, 255, 0.9);
+  color: var(--fg-90);
   font-size: 11px;
   font-weight: 500;
 }
 
 .plugin-version {
-  color: #666;
+  color: var(--fg-50);
   font-size: 9px;
   font-family: var(--font-mono, monospace);
 }
 
 .plugin-description {
-  color: #666;
-  font-size: 9px;
+  color: var(--fg-60);
+  font-size: 10px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -227,15 +228,15 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  color: #666;
+  color: var(--fg-60);
   font-size: 9px;
   padding: 2px 4px;
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--fg-08);
   border-radius: 2px;
 }
 
 .component-count svg {
-  opacity: 0.7;
+  opacity: 0.8;
 }
 
 /* Plugin Actions */
@@ -246,62 +247,16 @@
   flex-shrink: 0;
 }
 
-/* Hide checkbox input */
-.plugin-actions .checkbox-input {
-  position: absolute;
-  opacity: 0;
+/* Compact toggle loading state for plugins */
+.plugin-actions .toggle-switch.compact.loading {
+  opacity: 0.6;
   pointer-events: none;
-  width: 0;
-  height: 0;
-}
-
-/* Mini toggle switch for plugins */
-.plugin-actions .toggle-switch.mini {
-  position: relative;
-  width: 32px;
-  height: 16px;
-  border: 1px solid var(--fg-15, rgba(255, 255, 255, 0.15));
-  border-radius: 8px;
-  cursor: default;
-  transition: all 0.2s ease;
-  background: var(--background-color, #000);
-  display: flex;
-  align-items: center;
-}
-
-.plugin-actions .toggle-switch.mini:hover {
-  border-color: rgba(var(--accent-rgb), 0.5);
-}
-
-.plugin-actions .toggle-switch.mini .toggle-switch-slider {
-  position: absolute;
-  top: 2px;
-  left: 2px;
-  width: 10px;
-  height: 10px;
-  background: var(--fg-30, rgba(255, 255, 255, 0.3));
-  border-radius: 50%;
-  transition: all 0.2s ease;
-}
-
-.plugin-actions .toggle-switch.mini.active {
-  border-color: var(--accent-color);
-  background: rgba(var(--accent-rgb), 0.1);
-}
-
-.plugin-actions .toggle-switch.mini.active .toggle-switch-slider {
-  transform: translateX(16px);
-  background: var(--accent-color);
-}
-
-.plugin-actions .toggle-switch.mini.loading .toggle-switch-slider {
-  opacity: 0.5;
 }
 
 .plugin-remove {
   background: transparent;
   border: none;
-  color: #666;
+  color: var(--fg-40);
   cursor: default;
   padding: 4px;
   transition: color 0.2s;
@@ -316,7 +271,7 @@
 /* Expanded Details */
 .plugin-details {
   padding: 8px 12px 12px 28px;
-  border-top: 1px solid rgba(255, 255, 255, 0.05);
+  border-top: 1px solid var(--fg-10);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -329,7 +284,7 @@
 }
 
 .detail-label {
-  color: #666;
+  color: var(--fg-50);
   font-size: 9px;
   text-transform: lowercase;
   display: flex;
@@ -339,7 +294,7 @@
 
 .detail-label svg {
   color: var(--accent-color);
-  opacity: 0.6;
+  opacity: 0.7;
 }
 
 .detail-items {
@@ -350,17 +305,17 @@
 }
 
 .detail-item {
-  color: rgba(255, 255, 255, 0.6);
+  color: var(--fg-70);
   font-size: 10px;
   font-family: var(--font-mono, monospace);
   padding: 2px 6px;
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  background: var(--fg-08);
+  border: 1px solid var(--fg-12);
   border-radius: 2px;
 }
 
 .plugin-author {
-  color: #555;
+  color: var(--fg-40);
   font-size: 9px;
   font-style: italic;
   margin-top: 4px;

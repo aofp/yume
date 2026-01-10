@@ -44,20 +44,20 @@
 }
 
 .claude-selector-button {
-  min-width: 120px;
+  min-width: 52px;
   width: auto;
-  max-width: 160px;
-  height: 23px;
-  background: var(--fg-05);
-  border: 1px solid var(--fg-10);
-  border-radius: 4px;
-  padding: 0 8px;
-  font-size: 10px;
+  max-width: 120px;
+  height: 18px;
+  background: var(--background-color);
+  border: 1px solid var(--fg-15);
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: 9px;
   font-family: var(--font-mono);
   cursor: default;
   transition: all 0.2s ease;
   text-align: center;
-  color: var(--foreground-color);
+  color: var(--fg-80);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -70,7 +70,7 @@
 }
 
 .claude-selector-button:hover {
-  background: var(--fg-05);
+  background: var(--background-color);
   color: var(--foreground-color);
-  border-color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.9);
 }

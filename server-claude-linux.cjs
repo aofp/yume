@@ -2635,7 +2635,20 @@ app.get('/claude-projects-quick', async (req, res) => {
 // Get recent conversations across all projects for resume modal
 app.get('/claude-recent-conversations', async (req, res) => {
   try {
-    console.log('📂 Loading recent conversations across all projects');
+    // Get optional project filter from query param
+    const filterProject = req.query.project;
+    let filterProjectDir = null;
+
+    if (filterProject) {
+      // Encode the project path to match Claude's directory naming
+      // /home/user/project -> -home-user-project
+      filterProjectDir = filterProject.replace(/\//g, '-');
+      console.log('📂 Loading conversations for project:', filterProject);
+      console.log('📂 Looking for directory:', filterProjectDir);
+    } else {
+      console.log('📂 Loading recent conversations across all projects');
+    }
+
     const projectsDir = join(homedir(), '.claude', 'projects');
 
     if (!existsSync(projectsDir)) {
@@ -2656,6 +2669,11 @@ app.get('/claude-recent-conversations', async (req, res) => {
           lowerName.includes('tmp') ||
           lowerName.includes('yurucode-server') ||
           lowerName.includes('yurucode-title-gen')) {
+        continue;
+      }
+
+      // Filter by project if specified
+      if (filterProjectDir && projectDir !== filterProjectDir) {
         continue;
       }
 

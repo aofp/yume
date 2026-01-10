@@ -1,7 +1,7 @@
 /* Unified Tab Button Styles */
 
 .tab-btn {
-  padding: 4px 12px;
+  padding: 4px 8px;
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #666;
@@ -10,7 +10,6 @@
   transition: all 0.2s;
   border-radius: 2px;
   text-transform: lowercase;
-  min-width: 60px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

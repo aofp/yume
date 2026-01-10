@@ -171,6 +171,44 @@ pub fn read_file_content(path: String) -> Result<Option<String>, String> {
     }
 }
 
+/// Write a skill file to ~/.claude/skills/
+#[tauri::command]
+pub fn write_skill_file(name: String, content: String) -> Result<(), String> {
+    use std::fs;
+
+    let home = dirs::home_dir().ok_or("Could not find home directory")?;
+    let skills_dir = home.join(".claude").join("skills");
+
+    // Create skills directory if it doesn't exist
+    fs::create_dir_all(&skills_dir)
+        .map_err(|e| format!("Failed to create skills directory: {}", e))?;
+
+    let file_path = skills_dir.join(format!("{}.md", name));
+
+    fs::write(&file_path, content)
+        .map_err(|e| format!("Failed to write skill file: {}", e))?;
+
+    println!("[skills] wrote skill file: {}", file_path.display());
+    Ok(())
+}
+
+/// Remove a skill file from ~/.claude/skills/
+#[tauri::command]
+pub fn remove_skill_file(name: String) -> Result<(), String> {
+    use std::fs;
+
+    let home = dirs::home_dir().ok_or("Could not find home directory")?;
+    let file_path = home.join(".claude").join("skills").join(format!("{}.md", name));
+
+    if file_path.exists() {
+        fs::remove_file(&file_path)
+            .map_err(|e| format!("Failed to remove skill file: {}", e))?;
+        println!("[skills] removed skill file: {}", file_path.display());
+    }
+
+    Ok(())
+}
+
 /// Atomic file restore with backup - restores a file and returns the previous content
 /// This allows undo if something goes wrong
 #[tauri::command]
@@ -1259,261 +1297,6 @@ pub fn delete_project_agent(agent_name: String, directory: String) -> Result<(),
     }
     
     Ok(())
-}
-
-// ============================================================================
-// YURUCODE AGENTS SYNC - Write/Remove yurucode-*.md files to ~/.claude/agents/
-// ============================================================================
-
-/// The 5 Yurucode Core Agents - these get written to ~/.claude/agents/
-/// All agents use the currently selected model (passed in at sync time)
-const YURUCODE_AGENTS: &[(&str, &str, &str)] = &[
-    // (name, description, system_prompt)
-    (
-        "yurucode-architect",
-        "proactively use this agent before implementing complex features. plans architecture, decomposes tasks into steps, identifies dependencies and risks. use this first when task has 3+ steps.",
-        "architect agent. plan, design, decompose. think first. output: steps, dependencies, risks. use TodoWrite."
-    ),
-    (
-        "yurucode-explorer",
-        "proactively use this agent for codebase exploration and context gathering. searches files, reads code, understands structure. use instead of manual Glob/Grep for broad searches. read-only.",
-        "explorer agent. find, read, understand. use Glob, Grep, Read. output: paths, snippets, structure. no edits."
-    ),
-    (
-        "yurucode-implementer",
-        "proactively use this agent for code changes after planning. makes small, focused edits. use for implementing planned changes from architect.",
-        "implementer agent. code, edit, build. read before edit. small changes. output: working code, minimal diff."
-    ),
-    (
-        "yurucode-guardian",
-        "proactively use this agent after significant code changes. reviews for bugs, security issues, performance problems. use after implementer completes work.",
-        "guardian agent. review, audit, verify. check bugs, security, performance. output: issues, severity, fixes."
-    ),
-    (
-        "yurucode-specialist",
-        "proactively use this agent for domain-specific tasks: writing tests, documentation, devops configs, data processing.",
-        "specialist agent. adapt to domain: test, docs, devops, data. output: domain artifacts."
-    ),
-];
-
-/// Get the path to the yurucode PID tracking directory
-fn get_yurucode_pids_dir() -> Result<PathBuf, String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-    Ok(home_dir.join(".claude").join("agents").join(".yurucode-pids"))
-}
-
-/// Register this yurucode instance's PID
-fn register_yurucode_pid() -> Result<(), String> {
-    let pids_dir = get_yurucode_pids_dir()?;
-
-    // Create directory if it doesn't exist
-    if !pids_dir.exists() {
-        fs::create_dir_all(&pids_dir)
-            .map_err(|e| format!("Failed to create PIDs directory: {}", e))?;
-    }
-
-    // Write our PID to a file
-    let pid = std::process::id();
-    let pid_file = pids_dir.join(format!("{}", pid));
-    fs::write(&pid_file, pid.to_string())
-        .map_err(|e| format!("Failed to write PID file: {}", e))?;
-
-    Ok(())
-}
-
-/// Unregister this yurucode instance's PID
-fn unregister_yurucode_pid() -> Result<(), String> {
-    let pids_dir = get_yurucode_pids_dir()?;
-    let pid = std::process::id();
-    let pid_file = pids_dir.join(format!("{}", pid));
-
-    if pid_file.exists() {
-        let _ = fs::remove_file(&pid_file);
-    }
-
-    Ok(())
-}
-
-/// Check if a process with given PID is still running
-#[cfg(target_os = "macos")]
-fn is_process_running(pid: u32) -> bool {
-    use std::process::Command;
-
-    Command::new("kill")
-        .args(["-0", &pid.to_string()])
-        .output()
-        .map(|o| o.status.success())
-        .unwrap_or(false)
-}
-
-#[cfg(target_os = "windows")]
-fn is_process_running(pid: u32) -> bool {
-    use std::process::Command;
-
-    Command::new("tasklist")
-        .args(["/FI", &format!("PID eq {}", pid), "/NH"])
-        .output()
-        .map(|o| {
-            let output = String::from_utf8_lossy(&o.stdout);
-            output.contains(&pid.to_string())
-        })
-        .unwrap_or(false)
-}
-
-#[cfg(not(any(target_os = "macos", target_os = "windows")))]
-fn is_process_running(pid: u32) -> bool {
-    // Linux: check /proc/PID
-    std::path::Path::new(&format!("/proc/{}", pid)).exists()
-}
-
-/// Check if other yurucode instances are running (besides this one)
-fn other_yurucode_instances_running() -> bool {
-    let pids_dir = match get_yurucode_pids_dir() {
-        Ok(dir) => dir,
-        Err(_) => return false,
-    };
-
-    if !pids_dir.exists() {
-        return false;
-    }
-
-    let current_pid = std::process::id();
-
-    // Read all PID files and check if those processes are alive
-    if let Ok(entries) = fs::read_dir(&pids_dir) {
-        for entry in entries.flatten() {
-            if let Some(filename) = entry.file_name().to_str() {
-                if let Ok(pid) = filename.parse::<u32>() {
-                    // Skip our own PID
-                    if pid == current_pid {
-                        continue;
-                    }
-
-                    // Check if this process is still alive
-                    if is_process_running(pid) {
-                        return true;
-                    } else {
-                        // Clean up stale PID file
-                        let _ = fs::remove_file(entry.path());
-                    }
-                }
-            }
-        }
-    }
-
-    false
-}
-
-/// Write yurucode agent files to ~/.claude/agents/
-/// Uses the provided model for all agents
-fn write_yurucode_agent_files(model: &str) -> Result<(), String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-
-    let agents_dir = home_dir.join(".claude").join("agents");
-
-    // Create directory if it doesn't exist
-    if !agents_dir.exists() {
-        fs::create_dir_all(&agents_dir)
-            .map_err(|e| format!("Failed to create agents directory: {}", e))?;
-    }
-
-    // Write each agent file with the current model
-    // Quote values to handle YAML special characters like colons
-    for (name, description, system_prompt) in YURUCODE_AGENTS {
-        let content = format!(
-            "---\nname: \"{}\"\nmodel: \"{}\"\ndescription: \"{}\"\n---\n\n{}",
-            name, model, description, system_prompt
-        );
-
-        let file_path = agents_dir.join(format!("{}.md", name));
-        fs::write(&file_path, content)
-            .map_err(|e| format!("Failed to write agent file {}: {}", name, e))?;
-    }
-
-    Ok(())
-}
-
-/// Remove yurucode agent files from ~/.claude/agents/
-fn remove_yurucode_agent_files() -> Result<(), String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-
-    let agents_dir = home_dir.join(".claude").join("agents");
-
-    // Remove each agent file
-    for (name, _, _) in YURUCODE_AGENTS {
-        let file_path = agents_dir.join(format!("{}.md", name));
-        if file_path.exists() {
-            let _ = fs::remove_file(&file_path);
-        }
-    }
-
-    Ok(())
-}
-
-/// Sync yurucode agents to ~/.claude/agents/ based on enabled state
-/// Call this on app startup and when toggling agents or switching models
-#[tauri::command]
-pub fn sync_yurucode_agents(enabled: bool, model: Option<String>) -> Result<(), String> {
-    if enabled {
-        // Use provided model or default to "opus"
-        let model_str = model.as_deref().unwrap_or("opus");
-        // Register our PID and write agent files
-        register_yurucode_pid()?;
-        write_yurucode_agent_files(model_str)?;
-        tracing::info!("Yurucode agents synced to ~/.claude/agents/ with model: {}", model_str);
-    } else {
-        // Remove agent files (but keep PID registered for cleanup logic)
-        remove_yurucode_agent_files()?;
-        tracing::info!("Yurucode agents removed from ~/.claude/agents/");
-    }
-
-    Ok(())
-}
-
-/// Cleanup yurucode agents on app exit
-/// Only removes agent files if no other yurucode instances are running
-#[tauri::command]
-pub fn cleanup_yurucode_agents_on_exit() -> Result<(), String> {
-    // Unregister our PID first
-    unregister_yurucode_pid()?;
-
-    // Only remove agent files if no other instances are running
-    if !other_yurucode_instances_running() {
-        remove_yurucode_agent_files()?;
-
-        // Also clean up the PIDs directory if empty
-        if let Ok(pids_dir) = get_yurucode_pids_dir() {
-            let _ = fs::remove_dir(&pids_dir); // Only succeeds if empty
-        }
-
-        tracing::info!("Yurucode agents cleaned up (last instance)");
-    } else {
-        tracing::info!("Yurucode agents kept (other instances running)");
-    }
-
-    Ok(())
-}
-
-/// Check if yurucode agents are currently synced to ~/.claude/agents/
-#[tauri::command]
-pub fn are_yurucode_agents_synced() -> Result<bool, String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-
-    let agents_dir = home_dir.join(".claude").join("agents");
-
-    // Check if all yurucode agent files exist
-    for (name, _, _) in YURUCODE_AGENTS {
-        let file_path = agents_dir.join(format!("{}.md", name));
-        if !file_path.exists() {
-            return Ok(false);
-        }
-    }
-
-    Ok(true)
 }
 
 // ============================================================================

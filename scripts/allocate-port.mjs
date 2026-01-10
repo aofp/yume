@@ -13,13 +13,14 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 const projectRoot = join(__dirname, '..');
 
-function findAvailablePortSync(startPort = 60000, endPort = 61000, excludePorts = []) {
+// Use ports 49152-55000 to avoid Windows Hyper-V/WSL reserved ranges (often 60000-61000)
+function findAvailablePortSync(startPort = 49152, endPort = 55000, excludePorts = []) {
   const randomStart = startPort + Math.floor(Math.random() * (endPort - startPort + 1));
-  
+
   for (let offset = 0; offset <= (endPort - startPort); offset++) {
     const port = startPort + ((randomStart - startPort + offset) % (endPort - startPort + 1));
     if (excludePorts.includes(port)) continue;
-    
+
     const server = net.createServer();
     try {
       // Explicitly bind to IPv4 localhost
@@ -30,13 +31,13 @@ function findAvailablePortSync(startPort = 60000, endPort = 61000, excludePorts 
       // Port in use, try next
     }
   }
-  
+
   return 5173; // Fallback
 }
 
-// Find available ports
+// Find available ports in safe range
 const vitePort = findAvailablePortSync();
-const serverPort = findAvailablePortSync(60000, 61000, [vitePort]);
+const serverPort = findAvailablePortSync(49152, 55000, [vitePort]);
 
 console.log(`Allocating ports: Vite=${vitePort}, Server=${serverPort}`);
 

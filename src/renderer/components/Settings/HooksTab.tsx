@@ -7,9 +7,12 @@ import {
   IconEdit,
   IconX,
   IconCheck,
-  IconRotateClockwise
+  IconRotateClockwise,
+  IconPuzzle
 } from '@tabler/icons-react';
 import { hooksService } from '../../services/hooksService';
+import { pluginService } from '../../services/pluginService';
+import { PluginBadge } from '../common/PluginBadge';
 import { invoke } from '@tauri-apps/api/core';
 import { YURUCODE_HOOKS } from './hooks-data';
 
@@ -27,6 +30,14 @@ export const HooksTab: React.FC<HooksTabProps> = ({
   setHookScripts
 }) => {
   const [customHooks, setCustomHooks] = useState<any[]>([]);
+  const [pluginHooks, setPluginHooks] = useState<Array<{
+    name: string;
+    event: string;
+    description: string;
+    pluginId: string;
+    pluginName: string;
+    filePath: string;
+  }>>([]);
   const [showCustomModal, setShowCustomModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [editingHook, setEditingHook] = useState<any>(null);
@@ -50,7 +61,18 @@ export const HooksTab: React.FC<HooksTabProps> = ({
   useEffect(() => {
     loadCustomHooks();
     loadSavedStates();
+    loadPluginHooks();
   }, []);
+
+  const loadPluginHooks = async () => {
+    try {
+      await pluginService.initialize();
+      const hooks = pluginService.getEnabledPluginHooks();
+      setPluginHooks(hooks);
+    } catch (error) {
+      console.error('Failed to load plugin hooks:', error);
+    }
+  };
 
   const loadCustomHooks = () => {
     const saved = localStorage.getItem('custom_hooks');
@@ -239,14 +261,15 @@ export const HooksTab: React.FC<HooksTabProps> = ({
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
       
-      {/* Built-in Hooks */}
+      {/* Built-in Hooks - only show if there are any */}
+      {YURUCODE_HOOKS.length > 0 && (
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>yurucode hooks</h4>
-          <button 
+          <button
             onClick={resetAllToDefaults}
             className="reset-defaults-btn"
-            style={{ 
+            style={{
               background: 'transparent',
               border: '1px solid rgba(255, 255, 255, 0.2)',
               color: 'rgba(255, 255, 255, 0.4)',
@@ -272,7 +295,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
             reset to defaults
           </button>
         </div>
-        
+
         {YURUCODE_HOOKS.map(hook => (
           <div key={hook.id} style={{ marginBottom: '6px' }}>
             <div className="checkbox-setting">
@@ -323,7 +346,8 @@ export const HooksTab: React.FC<HooksTabProps> = ({
           </div>
         ))}
       </div>
-      
+      )}
+
       {/* Custom Hooks */}
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
@@ -427,6 +451,35 @@ export const HooksTab: React.FC<HooksTabProps> = ({
           ))
         )}
       </div>
+
+      {/* Plugin Hooks */}
+      {pluginHooks.length > 0 && (
+        <div className="settings-section">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+            <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>
+              <IconPuzzle size={12} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
+              plugin hooks
+            </h4>
+          </div>
+
+          {pluginHooks.map(hook => (
+            <div key={`${hook.pluginId}-${hook.name}`} style={{ marginBottom: '6px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '11px', color: '#999' }}>
+                  {hook.name}
+                  <PluginBadge pluginName={hook.pluginName} size="small" />
+                </span>
+                <span style={{ fontSize: '9px', color: '#666', fontFamily: 'var(--font-mono, monospace)' }}>
+                  {hook.event}
+                </span>
+              </div>
+              {hook.description && (
+                <p style={{ fontSize: '9px', color: '#555', margin: '2px 0 0 0' }}>{hook.description}</p>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Edit Hook Modal */}
       {showEditModal && editingHook && (

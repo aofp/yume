@@ -945,6 +945,109 @@ input[type="checkbox"].checkbox-input {
   background: var(--fg-15);
 }
 
+/* Compact Toggle Switch - smaller variant for settings */
+.toggle-switch.compact {
+  position: relative;
+  width: 52px;
+  height: 18px;
+  top: 0;
+  background: var(--background-color);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0;
+  cursor: default;
+  border: 1px solid var(--fg-15);
+  transition: all 0.2s ease;
+}
+
+.toggle-switch.compact:hover {
+  border-color: rgba(var(--accent-rgb), 0.9);
+}
+
+.toggle-switch.compact .toggle-switch-label {
+  font-size: 9px;
+  font-weight: bold;
+  user-select: none;
+  z-index: 1;
+  flex: 1;
+  text-align: center;
+  transition: opacity 0.2s ease;
+}
+
+.toggle-switch.compact .toggle-switch-label.off {
+  color: var(--fg-80);
+  opacity: 1;
+}
+
+.toggle-switch.compact .toggle-switch-label.on {
+  color: rgba(var(--accent-rgb), 1);
+  opacity: 0;
+}
+
+.toggle-switch.compact.active .toggle-switch-label.off {
+  opacity: 0;
+}
+
+.toggle-switch.compact.active .toggle-switch-label.on {
+  opacity: 1;
+}
+
+.toggle-switch.compact .toggle-switch-slider {
+  position: absolute;
+  top: 0px;
+  left: 0px;
+  width: 25px;
+  height: 16px;
+  background: var(--fg-20);
+  border-radius: 2px;
+  transition: transform 0.2s ease, background 0.2s ease;
+  pointer-events: none;
+}
+
+.toggle-switch.compact.active .toggle-switch-slider {
+  transform: translateX(25px);
+  background: rgba(var(--accent-rgb), 0.4);
+}
+
+.toggle-switch.compact:hover .toggle-switch-slider {
+  background: var(--fg-25);
+}
+
+.toggle-switch.compact.active:hover .toggle-switch-slider {
+  background: rgba(var(--accent-rgb), 0.5);
+}
+
+/* Compact checkbox setting row */
+.checkbox-setting.compact {
+  padding: 3px 0;
+}
+
+.checkbox-setting.compact .checkbox-label {
+  font-size: 11px;
+}
+
+/* Two-column layout for settings groups */
+.settings-columns {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.settings-columns .settings-column {
+  display: flex;
+  flex-direction: column;
+}
+
+.settings-columns .settings-column h4 {
+  color: var(--accent-color);
+  font-size: 11px;
+  font-weight: 500;
+  margin: 0 0 4px 0;
+  text-transform: lowercase;
+}
+
 .checkbox-label {
   color: var(--fg-60);
   font-size: 11px;

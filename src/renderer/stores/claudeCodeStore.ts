@@ -360,6 +360,7 @@ interface ClaudeCodeStore {
   showMcpSettings: boolean; // Whether to show mcp tab in settings
   showHooksSettings: boolean; // Whether to show hooks tab in settings
   showPluginsSettings: boolean; // Whether to show plugins tab in settings
+  showSkillsSettings: boolean; // Whether to show skills tab in settings
 
   // UI state
   isDraggingTab: boolean; // Whether a tab is currently being dragged
@@ -456,6 +457,7 @@ interface ClaudeCodeStore {
   setShowMcpSettings: (show: boolean) => void;
   setShowHooksSettings: (show: boolean) => void;
   setShowPluginsSettings: (show: boolean) => void;
+  setShowSkillsSettings: (show: boolean) => void;
 
   // UI state
   setIsDraggingTab: (isDragging: boolean) => void;
@@ -677,6 +679,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   showMcpSettings: false, // Default to hidden
   showHooksSettings: false, // Default to hidden
   showPluginsSettings: false, // Default to hidden
+  showSkillsSettings: false, // Default to hidden
   isDraggingTab: false, // No tab is being dragged initially
   agents: [], // No agents initially, will load from localStorage
   currentAgentId: null, // No agent selected initially
@@ -4491,6 +4494,11 @@ ${content}`;
     localStorage.setItem('yurucode-show-plugins-settings', JSON.stringify(show));
   },
 
+  setShowSkillsSettings: (show: boolean) => {
+    set({ showSkillsSettings: show });
+    localStorage.setItem('yurucode-show-skills-settings', JSON.stringify(show));
+  },
+
   setIsDraggingTab: (isDragging: boolean) => {
     set({ isDraggingTab: isDragging });
   },
@@ -4700,6 +4708,7 @@ ${content}`;
         showMcpSettings: state.showMcpSettings,
         showHooksSettings: state.showHooksSettings,
         showPluginsSettings: state.showPluginsSettings,
+        showSkillsSettings: state.showSkillsSettings,
         agents: state.agents,
         currentAgentId: state.currentAgentId
         // Do NOT persist sessionId - sessions should not survive app restarts

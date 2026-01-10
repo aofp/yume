@@ -5,6 +5,7 @@ use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
+use tauri::Manager;
 
 // ============================================================================
 // Types
@@ -247,12 +248,16 @@ fn discover_components(plugin_dir: &Path, plugin_id: &str) -> Result<PluginCompo
         mcp_servers: None,
     };
 
+    println!("[plugins] discover_components: plugin_dir={}", plugin_dir.display());
+
     // Scan commands directory
     let commands_dir = plugin_dir.join("commands");
+    println!("[plugins] commands_dir={}, exists={}", commands_dir.display(), commands_dir.exists());
     if commands_dir.exists() && commands_dir.is_dir() {
         if let Ok(entries) = fs::read_dir(&commands_dir) {
             for entry in entries.flatten() {
                 let path = entry.path();
+                println!("[plugins] found file: {}", path.display());
                 if path.extension().map_or(false, |e| e == "md") {
                     if let Ok(content) = fs::read_to_string(&path) {
                         let name = path.file_stem()
@@ -263,6 +268,7 @@ fn discover_components(plugin_dir: &Path, plugin_id: &str) -> Result<PluginCompo
                             .and_then(|fm| fm.get("description").and_then(|v| v.as_str()).map(|s| s.to_string()))
                             .unwrap_or_default();
 
+                        println!("[plugins] adding command: name={}, desc={}", name, description);
                         components.commands.push(PluginCommand {
                             name,
                             description,
@@ -273,6 +279,8 @@ fn discover_components(plugin_dir: &Path, plugin_id: &str) -> Result<PluginCompo
                 }
             }
         }
+    } else {
+        println!("[plugins] commands_dir does not exist or is not a directory");
     }
 
     // Scan agents directory
@@ -486,7 +494,13 @@ fn sync_plugin_skills(plugin: &InstalledPlugin, enabled: bool) -> Result<(), Str
 #[tauri::command]
 pub fn plugin_list() -> Result<Vec<InstalledPlugin>, String> {
     let registry = load_registry()?;
-    Ok(registry.plugins.values().cloned().collect())
+    let plugins: Vec<InstalledPlugin> = registry.plugins.values().cloned().collect();
+    println!("[plugins] plugin_list: returning {} plugins", plugins.len());
+    for p in &plugins {
+        println!("[plugins]   - {} (enabled={}, commands={}, agents={})",
+            p.id, p.enabled, p.components.commands.len(), p.components.agents.len());
+    }
+    Ok(plugins)
 }
 
 /// Get the plugins directory path
@@ -702,4 +716,183 @@ pub fn plugin_rescan(plugin_id: String) -> Result<InstalledPlugin, String> {
     registry.plugins.get(&plugin_id)
         .cloned()
         .ok_or_else(|| "Failed to update plugin".to_string())
+}
+
+/// Find the bundled yurucode plugin path
+fn find_bundled_plugin_path(app_handle: &tauri::AppHandle) -> Option<std::path::PathBuf> {
+    let mut candidate_paths = Vec::new();
+
+    // 1. Try resource_dir (production)
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        candidate_paths.push(resource_dir.join("yurucode-plugin"));
+    }
+
+    // 2. Try current_dir/src-tauri/resources (dev mode from project root)
+    if let Ok(cwd) = std::env::current_dir() {
+        candidate_paths.push(cwd.join("src-tauri").join("resources").join("yurucode-plugin"));
+        candidate_paths.push(cwd.join("resources").join("yurucode-plugin"));
+    }
+
+    // 3. Try relative to executable
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            candidate_paths.push(exe_dir.join("resources").join("yurucode-plugin"));
+            candidate_paths.push(exe_dir.join("yurucode-plugin"));
+        }
+    }
+
+    for path in candidate_paths {
+        if path.join(".claude-plugin").join("plugin.json").exists() {
+            return Some(path);
+        }
+    }
+
+    None
+}
+
+/// Initialize bundled yurucode plugin if not already installed
+/// Called on app startup to ensure the core plugin is available
+#[tauri::command]
+pub fn plugin_init_bundled(app_handle: tauri::AppHandle) -> Result<Option<InstalledPlugin>, String> {
+    println!("[plugins] plugin_init_bundled called");
+    let mut registry = load_registry()?;
+    println!("[plugins] registry loaded, plugins count: {}", registry.plugins.len());
+
+    // Find bundled plugin source path first
+    let bundled_path = find_bundled_plugin_path(&app_handle);
+    println!("[plugins] bundled plugin path: {:?}", bundled_path);
+
+    // Check if yurucode plugin already installed
+    if let Some(existing) = registry.plugins.get("yurucode").cloned() {
+        println!("[plugins] yurucode plugin exists: enabled={}, commands={}, agents={}",
+            existing.enabled, existing.components.commands.len(), existing.components.agents.len());
+
+        let plugin_path = std::path::Path::new(&existing.path);
+
+        // Check if bundled has more/different components than installed
+        let mut needs_reinstall = !plugin_path.exists();
+
+        if !needs_reinstall {
+            if let Some(ref bundled) = bundled_path {
+                if let Ok(bundled_components) = discover_components(bundled, "yurucode") {
+                    let installed_components = discover_components(plugin_path, "yurucode").ok();
+
+                    let bundled_cmd_count = bundled_components.commands.len();
+                    let bundled_agent_count = bundled_components.agents.len();
+                    let installed_cmd_count = installed_components.as_ref().map(|c| c.commands.len()).unwrap_or(0);
+                    let installed_agent_count = installed_components.as_ref().map(|c| c.agents.len()).unwrap_or(0);
+
+                    println!("[plugins] bundled: cmds={}, agents={} | installed: cmds={}, agents={}",
+                        bundled_cmd_count, bundled_agent_count, installed_cmd_count, installed_agent_count);
+
+                    // Reinstall if bundled has different component counts
+                    if bundled_cmd_count != installed_cmd_count || bundled_agent_count != installed_agent_count {
+                        println!("[plugins] bundled plugin updated, reinstalling");
+                        needs_reinstall = true;
+                    }
+                }
+            }
+        }
+
+        if needs_reinstall {
+            println!("[plugins] removing stale yurucode entry for reinstall");
+            registry.plugins.remove("yurucode");
+            save_registry(&registry)?;
+            // Fall through to reinstall
+        } else {
+            // Just ensure enabled and synced
+            let components = discover_components(plugin_path, "yurucode")?;
+
+            if let Some(p) = registry.plugins.get_mut("yurucode") {
+                p.components = components;
+                p.enabled = true;
+            }
+            save_registry(&registry)?;
+
+            let final_plugin = registry.plugins.get("yurucode").cloned().unwrap();
+            println!("[plugins] syncing yurucode: commands={}, agents={}",
+                final_plugin.components.commands.len(), final_plugin.components.agents.len());
+            sync_plugin_commands(&final_plugin, true).ok();
+            sync_plugin_agents(&final_plugin, true).ok();
+            sync_plugin_skills(&final_plugin, true).ok();
+            return Ok(Some(final_plugin));
+        }
+    }
+
+    println!("[plugins] yurucode plugin not found or outdated, installing from bundled");
+
+    // Use the bundled path we found earlier
+    if let Some(path) = bundled_path {
+        return install_bundled_plugin(&path);
+    }
+
+    Err("Bundled yurucode plugin not found".to_string())
+}
+
+/// Cleanup yurucode plugin on exit
+/// Removes synced commands from ~/.claude/commands/
+#[tauri::command]
+pub fn plugin_cleanup_on_exit() -> Result<(), String> {
+    let registry = load_registry()?;
+
+    // Only clean up yurucode plugin
+    if let Some(plugin) = registry.plugins.get("yurucode") {
+        if plugin.enabled {
+            // Remove synced commands
+            sync_plugin_commands(plugin, false).ok();
+            // Remove synced agents
+            sync_plugin_agents(plugin, false).ok();
+            // Remove synced skills
+            sync_plugin_skills(plugin, false).ok();
+        }
+    }
+
+    Ok(())
+}
+
+/// Helper to install the bundled yurucode plugin
+fn install_bundled_plugin(source: &Path) -> Result<Option<InstalledPlugin>, String> {
+    // Validate the plugin
+    let manifest = parse_plugin_manifest(source)?;
+    let plugin_id = manifest.name.clone();
+
+    // Create plugins directory
+    let plugins_dir = get_plugins_dir()?;
+    fs::create_dir_all(&plugins_dir)
+        .map_err(|e| format!("Failed to create plugins directory: {}", e))?;
+
+    // Copy plugin to plugins directory
+    let dest_dir = plugins_dir.join(&plugin_id);
+    if dest_dir.exists() {
+        fs::remove_dir_all(&dest_dir)
+            .map_err(|e| format!("Failed to clean existing plugin directory: {}", e))?;
+    }
+
+    copy_dir_recursive(source, &dest_dir)?;
+
+    // Discover components
+    let components = discover_components(&dest_dir, &plugin_id)?;
+
+    // Create installed plugin entry - ENABLED by default for yurucode plugin
+    let plugin = InstalledPlugin {
+        id: plugin_id.clone(),
+        manifest,
+        installed_at: now_timestamp(),
+        enabled: true, // yurucode plugin is enabled by default
+        path: dest_dir.to_string_lossy().to_string(),
+        components,
+    };
+
+    // Save to registry
+    let mut registry = load_registry()?;
+    registry.plugins.insert(plugin_id.clone(), plugin.clone());
+    registry.last_updated = now_timestamp();
+    save_registry(&registry)?;
+
+    // Sync components since it's enabled
+    sync_plugin_commands(&plugin, true)?;
+    sync_plugin_agents(&plugin, true)?;
+    sync_plugin_skills(&plugin, true)?;
+
+    Ok(Some(plugin))
 }

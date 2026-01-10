@@ -34,11 +34,18 @@ class PluginService {
 
   /**
    * Initialize the plugin service by loading plugins from backend
+   * Also ensures bundled yurucode plugin is installed
+   * Always refreshes the cache to ensure latest data
    */
   async initialize(): Promise<void> {
-    if (this.initialized) return;
-
     try {
+      // Ensure bundled yurucode plugin is installed
+      try {
+        await invoke('plugin_init_bundled');
+      } catch (e) {
+        console.warn('Bundled plugin init failed:', e);
+      }
+
       const plugins = await this.listPlugins();
       this.plugins.clear();
       for (const plugin of plugins) {
@@ -133,17 +140,89 @@ class PluginService {
     const plugin = this.plugins.get(pluginId);
     if (plugin) {
       plugin.enabled = true;
+
+      // Handle plugin hooks - sync to yurucode hooks system
+      if (plugin.components.hooks.length > 0) {
+        await this.syncPluginHooks(plugin, true);
+      }
     }
+  }
+
+  /**
+   * Sync plugin hooks with yurucode hooks system
+   */
+  private async syncPluginHooks(plugin: InstalledPlugin, enabled: boolean): Promise<void> {
+    for (const hook of plugin.components.hooks) {
+      const hookId = `${plugin.id}_${hook.name.replace(/\s+/g, '_').toLowerCase()}`;
+
+      if (enabled) {
+        // Read hook file and extract script
+        try {
+          const content = await invoke<string>('read_file_content', { path: hook.filePath });
+          const script = this.extractHookScript(content);
+
+          if (script) {
+            // Save to localStorage for yurucode hooks system
+            localStorage.setItem(`hook_${hookId}_enabled`, 'true');
+            localStorage.setItem(`hook_${hookId}_script`, script);
+            localStorage.setItem(`hook_${hookId}_name`, hook.name);
+            localStorage.setItem(`hook_${hookId}_pluginId`, plugin.id);
+          }
+        } catch (e) {
+          console.warn(`Failed to read hook file ${hook.filePath}:`, e);
+        }
+      } else {
+        // Remove from localStorage
+        localStorage.removeItem(`hook_${hookId}_enabled`);
+        localStorage.removeItem(`hook_${hookId}_script`);
+        localStorage.removeItem(`hook_${hookId}_name`);
+        localStorage.removeItem(`hook_${hookId}_pluginId`);
+      }
+    }
+  }
+
+  /**
+   * Extract Python script from hook .md file
+   */
+  private extractHookScript(content: string): string | null {
+    // Look for ```python block
+    const pythonMatch = content.match(/```python\n([\s\S]*?)```/);
+    if (pythonMatch) {
+      return pythonMatch[1].trim();
+    }
+
+    // Look for generic ``` block
+    const codeMatch = content.match(/```\n([\s\S]*?)```/);
+    if (codeMatch) {
+      return codeMatch[1].trim();
+    }
+
+    // If no code block, check if the body (after frontmatter) is the script
+    const frontmatterEnd = content.indexOf('---', 3);
+    if (frontmatterEnd !== -1) {
+      const body = content.slice(frontmatterEnd + 3).trim();
+      if (body.startsWith('#!/') || body.startsWith('import ') || body.startsWith('import json')) {
+        return body;
+      }
+    }
+
+    return null;
   }
 
   /**
    * Disable a plugin (removes synced components)
    */
   async disablePlugin(pluginId: string): Promise<void> {
+    // Update local cache first to get plugin info
+    const plugin = this.plugins.get(pluginId);
+
+    // Handle plugin hooks - remove from yurucode hooks system
+    if (plugin && plugin.components.hooks.length > 0) {
+      await this.syncPluginHooks(plugin, false);
+    }
+
     await invoke('plugin_disable', { pluginId });
 
-    // Update local cache
-    const plugin = this.plugins.get(pluginId);
     if (plugin) {
       plugin.enabled = false;
     }
@@ -348,6 +427,41 @@ class PluginService {
     }
 
     return hooks;
+  }
+
+  /**
+   * Get all skills from enabled plugins
+   */
+  getEnabledPluginSkills(): Array<{
+    name: string;
+    description: string;
+    pluginId: string;
+    pluginName: string;
+    filePath: string;
+  }> {
+    const skills: Array<{
+      name: string;
+      description: string;
+      pluginId: string;
+      pluginName: string;
+      filePath: string;
+    }> = [];
+
+    for (const plugin of Array.from(this.plugins.values())) {
+      if (!plugin.enabled) continue;
+
+      for (const skill of plugin.components.skills) {
+        skills.push({
+          name: skill.name,
+          description: skill.description || '',
+          pluginId: plugin.id,
+          pluginName: plugin.manifest.name,
+          filePath: skill.filePath
+        });
+      }
+    }
+
+    return skills;
   }
 
   /**

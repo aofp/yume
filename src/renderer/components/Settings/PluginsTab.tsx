@@ -301,21 +301,13 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
 
                   {/* Toggle + Remove */}
                   <div className="plugin-actions">
-                    <input
-                      type="checkbox"
-                      id={`plugin-${plugin.id}`}
-                      className="checkbox-input"
-                      checked={plugin.enabled}
-                      disabled={isToggling}
-                      onChange={(e) => togglePlugin(plugin.id, e.target.checked)}
-                    />
-                    <div className="toggle-switch-container">
-                      <label
-                        htmlFor={`plugin-${plugin.id}`}
-                        className={`toggle-switch mini ${plugin.enabled ? 'active' : ''} ${isToggling ? 'loading' : ''}`}
-                      >
-                        <span className="toggle-switch-slider" />
-                      </label>
+                    <div
+                      className={`toggle-switch compact ${plugin.enabled ? 'active' : ''} ${isToggling ? 'loading' : ''}`}
+                      onClick={() => !isToggling && togglePlugin(plugin.id, !plugin.enabled)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
                     </div>
                     <button
                       className="plugin-remove"

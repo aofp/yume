@@ -29,58 +29,8 @@ export interface Agent {
   created_at: number;
   updated_at: number;
   icon?: string;
-  isYurucode?: boolean;
+  pluginId?: string; // Set if agent comes from a plugin
 }
-
-// The 5 Yurucode Core Agents - built-in, non-deletable
-// All yurucode agents use the currently selected model
-const YURUCODE_AGENTS: Agent[] = [
-  {
-    id: 'yurucode-architect',
-    name: 'architect',
-    model: 'opus', // Placeholder - actual model is set by current selection
-    system_prompt: 'architect agent. plan, design, decompose. think first. output: steps, dependencies, risks. use TodoWrite.',
-    created_at: 0,
-    updated_at: 0,
-    isYurucode: true
-  },
-  {
-    id: 'yurucode-explorer',
-    name: 'explorer',
-    model: 'opus',
-    system_prompt: 'explorer agent. find, read, understand. use Glob, Grep, Read. output: paths, snippets, structure. no edits.',
-    created_at: 0,
-    updated_at: 0,
-    isYurucode: true
-  },
-  {
-    id: 'yurucode-implementer',
-    name: 'implementer',
-    model: 'opus',
-    system_prompt: 'implementer agent. code, edit, build. read before edit. small changes. output: working code, minimal diff.',
-    created_at: 0,
-    updated_at: 0,
-    isYurucode: true
-  },
-  {
-    id: 'yurucode-guardian',
-    name: 'guardian',
-    model: 'opus',
-    system_prompt: 'guardian agent. review, audit, verify. check bugs, security, performance. output: issues, severity, fixes.',
-    created_at: 0,
-    updated_at: 0,
-    isYurucode: true
-  },
-  {
-    id: 'yurucode-specialist',
-    name: 'specialist',
-    model: 'opus',
-    system_prompt: 'specialist agent. adapt to domain: test, docs, devops, data. output: domain artifacts.',
-    created_at: 0,
-    updated_at: 0,
-    isYurucode: true
-  }
-];
 
 interface AgentsModalProps {
   isOpen: boolean;
@@ -101,20 +51,21 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   const [agentScope, setAgentScope] = useState<'yurucode' | 'global' | 'project'>('yurucode');
   const [globalAgents, setGlobalAgents] = useState<Agent[]>([]);
   const [projectAgents, setProjectAgents] = useState<Agent[]>([]);
-  const [agentsEnabled, setAgentsEnabled] = useState(() => systemPromptService.getCurrent().agentsEnabled);
-  
+  const [yurucodeAgents, setYurucodeAgents] = useState<Agent[]>([]);
+  const [yurucodePluginEnabled, setYurucodePluginEnabled] = useState(true);
+
   // Get current session's directory
   const currentSession = sessions.find(s => s.id === currentSessionId);
   const currentDirectory = currentSession?.workingDirectory;
   const projectName = currentDirectory ? currentDirectory.split(/[/\\]/).pop() || currentDirectory : null;
-  
+
   // Form state for editing/creating
   const [formData, setFormData] = useState<Partial<Agent>>({
     name: '',
     model: 'opus', // Default to latest model
     system_prompt: ''
   });
-  
+
   // Confirmation modal state
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -124,35 +75,57 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     isDangerous?: boolean;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
-  // Yurucode agent names to filter from global tab
-  // Match both short names (architect) and full file names (yurucode-architect)
-  const yurucodeAgentNames = useMemo(() =>
-    new Set([
-      ...YURUCODE_AGENTS.map(a => a.name),
-      ...YURUCODE_AGENTS.map(a => `yurucode-${a.name}`)
-    ]),
-  []);
+  // Load yurucode plugin agents
+  useEffect(() => {
+    const loadYurucodeAgents = async () => {
+      await pluginService.initialize();
+      const plugins = await pluginService.listPlugins();
+      const yurucodePlugin = plugins.find(p => p.id === 'yurucode');
+
+      if (yurucodePlugin) {
+        setYurucodePluginEnabled(yurucodePlugin.enabled);
+        const agents: Agent[] = yurucodePlugin.components.agents.map(a => ({
+          id: `yurucode--${a.name}`,
+          name: a.name,
+          model: (a.model || 'sonnet') as 'opus' | 'sonnet' | 'haiku',
+          system_prompt: a.description || '',
+          created_at: 0,
+          updated_at: 0,
+          pluginId: 'yurucode'
+        }));
+        setYurucodeAgents(agents);
+      }
+    };
+
+    if (isOpen) {
+      loadYurucodeAgents();
+    }
+  }, [isOpen]);
 
   // Get current agents based on scope
   const currentAgents = useMemo(() => {
-    if (agentScope === 'yurucode') return YURUCODE_AGENTS;
+    if (agentScope === 'yurucode') return yurucodeAgents;
     if (agentScope === 'global') {
-      // Filter out yurucode agents from global tab since they're shown in yurucode tab
-      return globalAgents.filter(a => !yurucodeAgentNames.has(a.name));
+      // Filter out plugin agents from global tab
+      return globalAgents.filter(a => !a.pluginId && !a.name.includes('--'));
     }
     return projectAgents;
-  }, [agentScope, globalAgents, projectAgents, yurucodeAgentNames]);
+  }, [agentScope, globalAgents, projectAgents, yurucodeAgents]);
 
-  // Toggle yurucode agents enabled/disabled
+  // Toggle yurucode plugin enabled/disabled
   const handleToggleAgents = useCallback(async () => {
-    const newEnabled = !agentsEnabled;
-    setAgentsEnabled(newEnabled);
-    const settings = systemPromptService.getCurrent();
-    // Extract model name (opus/sonnet) from full model ID
-    const modelName = selectedModel?.includes('opus') ? 'opus' : 'sonnet';
-    // Use saveAndSync to also write/remove agent files from ~/.claude/agents/
-    await systemPromptService.saveAndSync({ ...settings, agentsEnabled: newEnabled }, modelName);
-  }, [agentsEnabled, selectedModel]);
+    const newEnabled = !yurucodePluginEnabled;
+    try {
+      if (newEnabled) {
+        await pluginService.enablePlugin('yurucode');
+      } else {
+        await pluginService.disablePlugin('yurucode');
+      }
+      setYurucodePluginEnabled(newEnabled);
+    } catch (err) {
+      console.error('Failed to toggle yurucode plugin:', err);
+    }
+  }, [yurucodePluginEnabled]);
   
   // Filter agents based on search
   const filteredAgents = useMemo(() => {
@@ -188,10 +161,10 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     setCreateMode(false);
   }, []);
 
-  // Save agent (create or update) - not allowed for yurucode agents
+  // Save agent (create or update) - not allowed for plugin agents
   const handleSave = useCallback(async () => {
     if (agentScope === 'yurucode') {
-      return; // yurucode agents are read-only
+      return; // plugin agents are read-only
     }
 
     if (!formData.name || !formData.system_prompt) {
@@ -240,10 +213,10 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     });
   }, [formData, selectedAgent, agentScope, currentDirectory, globalAgents, projectAgents]);
 
-  // Delete agent with confirmation - not allowed for yurucode agents
+  // Delete agent with confirmation - not allowed for plugin agents
   const handleDelete = useCallback((agent: Agent) => {
-    if (agent.isYurucode) {
-      return; // yurucode agents cannot be deleted
+    if (agent.pluginId || agent.name.includes('--')) {
+      return; // plugin agents cannot be deleted
     }
 
     setConfirmModal({
@@ -454,13 +427,13 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                   label="yurucode"
                   active={agentScope === 'yurucode'}
                   onClick={() => setAgentScope('yurucode')}
-                  count={5}
+                  count={yurucodeAgents.length}
                 />
                 <TabButton
                   label="global"
                   active={agentScope === 'global'}
                   onClick={() => setAgentScope('global')}
-                  count={globalAgents.filter(a => !yurucodeAgentNames.has(a.name)).length}
+                  count={globalAgents.filter(a => !a.pluginId && !a.name.includes('--')).length}
                 />
                 <TabButton
                   label="project"
@@ -496,41 +469,48 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
         <div className="agents-content">
           {!editMode && !createMode ? (
             <>
-              {/* Yurucode agents tab - with enable/disable toggle */}
+              {/* Yurucode agents tab - from plugin, with enable/disable toggle */}
               {agentScope === 'yurucode' && (
                 <>
                   <div className="yurucode-toggle">
-                    <span className="toggle-label">yurucode agents</span>
+                    <span className="toggle-label">
+                      yurucode plugin
+                      <PluginBadge pluginName="yurucode" size="small" />
+                    </span>
                     <input
                       type="checkbox"
                       id="yurucode-agents-toggle"
                       className="checkbox-input"
-                      checked={agentsEnabled}
+                      checked={yurucodePluginEnabled}
                       onChange={handleToggleAgents}
                     />
-                    <label htmlFor="yurucode-agents-toggle" className={`toggle-switch ${agentsEnabled ? 'active' : ''}`}>
+                    <label htmlFor="yurucode-agents-toggle" className={`toggle-switch ${yurucodePluginEnabled ? 'active' : ''}`}>
                       <span className="toggle-switch-slider" />
                       <span className="toggle-switch-label off">OFF</span>
                       <span className="toggle-switch-label on">ON</span>
                     </label>
                   </div>
-                  <div className="yurucode-model-info">
-                    uses current model: <span className="current-model">{selectedModel?.includes('opus') ? 'opus' : 'sonnet'}</span>
-                  </div>
-                  <div className={`agents-list ${!agentsEnabled ? 'agents-disabled' : ''}`}>
-                    {YURUCODE_AGENTS.map((agent, index) => (
-                      <div
-                        key={agent.id}
-                        className={`agent-item yurucode-agent ${focusedIndex === index ? 'focused' : ''}`}
-                        onMouseEnter={() => setFocusedIndex(index)}
-                      >
-                        <div className="agent-info">
-                          <div className="agent-name">{agent.name}</div>
+                  {yurucodeAgents.length === 0 ? (
+                    <div className="agents-empty">loading plugin agents...</div>
+                  ) : (
+                    <div className={`agents-list ${!yurucodePluginEnabled ? 'agents-disabled' : ''}`}>
+                      {yurucodeAgents.map((agent, index) => (
+                        <div
+                          key={agent.id}
+                          className={`agent-item yurucode-agent ${focusedIndex === index ? 'focused' : ''}`}
+                          onMouseEnter={() => setFocusedIndex(index)}
+                        >
+                          <div className="agent-info">
+                            <div className="agent-name-row">
+                              <div className="agent-name">{agent.name}</div>
+                              <span className="agent-model">{agent.model}</span>
+                            </div>
+                          </div>
+                          <div className="agent-prompt-preview">{agent.system_prompt}</div>
                         </div>
-                        <div className="agent-prompt-preview">{agent.system_prompt}</div>
-                      </div>
-                    ))}
-                  </div>
+                      ))}
+                    </div>
+                  )}
                 </>
               )}
 
@@ -554,47 +534,52 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                     </div>
                   ) : (
                     <div className="agents-list">
-                      {filteredAgents.map((agent, index) => (
-                        <div
-                          key={agent.id}
-                          className={`agent-item ${focusedIndex === index ? 'focused' : ''} ${selectedAgent?.id === agent.id ? 'selected' : ''}`}
-                          onClick={() => handleEdit(agent)}
-                          onMouseEnter={() => setFocusedIndex(index)}
-                        >
-                          <div className="agent-info">
-                            <div className="agent-name-row">
-                              <div className="agent-name">{agent.name.includes('--') ? agent.name.split('--')[1] : agent.name}</div>
-                              {agent.name.includes('--') && (
-                                <PluginBadge pluginName={agent.name.split('--')[0]} size="small" />
-                              )}
+                      {filteredAgents.map((agent, index) => {
+                        const isPluginAgent = agent.pluginId || agent.name.includes('--');
+                        return (
+                          <div
+                            key={agent.id}
+                            className={`agent-item ${focusedIndex === index ? 'focused' : ''} ${selectedAgent?.id === agent.id ? 'selected' : ''} ${isPluginAgent ? 'plugin-agent' : ''}`}
+                            onClick={() => !isPluginAgent && handleEdit(agent)}
+                            onMouseEnter={() => setFocusedIndex(index)}
+                          >
+                            <div className="agent-info">
+                              <div className="agent-name-row">
+                                <div className="agent-name">{agent.name.includes('--') ? agent.name.split('--')[1] : agent.name}</div>
+                                {isPluginAgent && (
+                                  <PluginBadge pluginName={agent.pluginId || agent.name.split('--')[0]} size="small" />
+                                )}
+                              </div>
+                              <div className="agent-model">{agent.model}</div>
                             </div>
-                            <div className="agent-model">{agent.model}</div>
+                            {!isPluginAgent && (
+                              <div className="agent-actions">
+                                <button
+                                  className="agent-action"
+                                  onClick={(e) => { e.stopPropagation(); handleEdit(agent); }}
+                                  title="edit"
+                                >
+                                  <IconEdit size={14} />
+                                </button>
+                                <button
+                                  className="agent-action"
+                                  onClick={(e) => { e.stopPropagation(); handleDuplicate(agent); }}
+                                  title="duplicate"
+                                >
+                                  <IconCopy size={14} />
+                                </button>
+                                <button
+                                  className="agent-action agent-delete"
+                                  onClick={(e) => { e.stopPropagation(); handleDelete(agent); }}
+                                  title="delete"
+                                >
+                                  <IconTrash size={14} />
+                                </button>
+                              </div>
+                            )}
                           </div>
-                          <div className="agent-actions">
-                            <button
-                              className="agent-action"
-                              onClick={(e) => { e.stopPropagation(); handleEdit(agent); }}
-                              title="edit"
-                            >
-                              <IconEdit size={14} />
-                            </button>
-                            <button
-                              className="agent-action"
-                              onClick={(e) => { e.stopPropagation(); handleDuplicate(agent); }}
-                              title="duplicate"
-                            >
-                              <IconCopy size={14} />
-                            </button>
-                            <button
-                              className="agent-action agent-delete"
-                              onClick={(e) => { e.stopPropagation(); handleDelete(agent); }}
-                              title="delete"
-                            >
-                              <IconTrash size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      ))}
+                        );
+                      })}
                       <div
                         className="agent-item add-agent-item"
                         onClick={handleCreateNew}

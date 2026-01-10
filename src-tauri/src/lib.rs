@@ -920,6 +920,8 @@ pub fn run() {
             commands::write_file_content,
             commands::delete_file,
             commands::read_file_content,
+            commands::write_skill_file,
+            commands::remove_skill_file,
             commands::atomic_file_restore,
             commands::atomic_file_delete,
             commands::new_window,
@@ -968,9 +970,6 @@ pub fn run() {
             commands::save_project_agent,
             commands::delete_global_agent,
             commands::delete_project_agent,
-            commands::sync_yurucode_agents,
-            commands::cleanup_yurucode_agents_on_exit,
-            commands::are_yurucode_agents_synced,
             commands::close_window,
             commands::show_context_menu,
             commands::restore_window_focus,
@@ -1053,6 +1052,8 @@ pub fn run() {
             commands::plugins::plugin_get_directory,
             commands::plugins::plugin_validate,
             commands::plugins::plugin_rescan,
+            commands::plugins::plugin_init_bundled,
+            commands::plugins::plugin_cleanup_on_exit,
             // Rollback conflict detection
             commands::get_file_mtime,
             commands::check_file_conflicts,
@@ -1073,9 +1074,9 @@ pub fn run() {
                     // Note: The destroyed window is already removed from the list
                     if remaining_windows.is_empty() {
                         info!("Last window destroyed, stopping server and cleaning up...");
-                        // Clean up yurucode agents from ~/.claude/agents/
-                        if let Err(e) = commands::cleanup_yurucode_agents_on_exit() {
-                            error!("Failed to cleanup yurucode agents: {}", e);
+                        // Clean up yurucode plugin synced files (commands, agents, skills)
+                        if let Err(e) = commands::plugins::plugin_cleanup_on_exit() {
+                            error!("Failed to cleanup yurucode plugin: {}", e);
                         }
                         // Kill all bash processes first
                         commands::kill_all_bash_processes();
@@ -1095,9 +1096,9 @@ pub fn run() {
     // Final cleanup when the app exits normally
     // Ensures all child processes are terminated
     info!("App exiting normally, cleaning up...");
-    // Clean up yurucode agents from ~/.claude/agents/
-    if let Err(e) = commands::cleanup_yurucode_agents_on_exit() {
-        error!("Failed to cleanup yurucode agents: {}", e);
+    // Clean up yurucode plugin synced files (commands, agents, skills)
+    if let Err(e) = commands::plugins::plugin_cleanup_on_exit() {
+        error!("Failed to cleanup yurucode plugin: {}", e);
     }
     commands::kill_all_bash_processes();
     logged_server::stop_logged_server();

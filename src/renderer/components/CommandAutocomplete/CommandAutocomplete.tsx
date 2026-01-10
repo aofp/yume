@@ -84,28 +84,35 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Load commands (built-in + custom + plugin)
+  // Load commands (built-in + custom + plugin) - reload every time component shows
   useEffect(() => {
     const loadAllCommands = async () => {
       const customCommands = loadCustomCommands();
 
       // Load plugin commands
-      await pluginService.initialize();
-      const pluginCommands = pluginService.getEnabledPluginCommands().map(cmd => ({
-        name: cmd.name.includes('--') ? cmd.name.split('--')[1] : cmd.name,
-        description: cmd.description || 'plugin command',
-        icon: <IconPuzzle size={14} />,
-        handleLocally: false,
-        isCustom: false,
-        pluginId: cmd.pluginId,
-        pluginName: cmd.pluginName
-      }));
+      try {
+        await pluginService.initialize();
+        const rawPluginCommands = pluginService.getEnabledPluginCommands();
 
-      setAllCommands([...builtInCommands, ...customCommands, ...pluginCommands]);
+        const pluginCommands = rawPluginCommands.map(cmd => ({
+          name: cmd.name.includes('--') ? cmd.name.split('--')[1] : cmd.name,
+          description: cmd.description || 'plugin command',
+          icon: <IconPuzzle size={14} />,
+          handleLocally: false,
+          isCustom: false,
+          pluginId: cmd.pluginId,
+          pluginName: cmd.pluginName
+        }));
+
+        setAllCommands([...builtInCommands, ...customCommands, ...pluginCommands]);
+      } catch (error) {
+        console.error('Failed to load plugin commands:', error);
+        setAllCommands([...builtInCommands, ...customCommands]);
+      }
     };
 
     loadAllCommands();
-  }, []);
+  }, [trigger]);
 
   // Parse the search query from the trigger
   const searchQuery = trigger.slice(1).toLowerCase(); // Remove / symbol
@@ -120,13 +127,12 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
       const filtered = allCommands.filter(cmd => {
         const cmdName = cmd.name.toLowerCase();
         const query = searchQuery.toLowerCase();
-        
+
         // Only show commands that start with the query
-        // Don't do fuzzy matching on "contains" or description
         return cmdName.startsWith(query);
       });
-      
-      // Sort alphabetically 
+
+      // Sort alphabetically
       filtered.sort((a, b) => {
         // Prioritize exact matches
         if (a.name.toLowerCase() === searchQuery) return -1;
@@ -136,7 +142,7 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
         if (a.isCustom && !b.isCustom) return 1;
         return a.name.localeCompare(b.name);
       });
-      
+
       setFilteredCommands(filtered);
     }
     setSelectedIndex(0);

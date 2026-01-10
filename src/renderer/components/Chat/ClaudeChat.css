@@ -2524,7 +2524,6 @@ textarea.context-full {
   color: #fffa;
   text-align: left;
   cursor: default;
-  transition: all 0.15s ease;
   border-radius: 4px;
 }
 
@@ -2562,18 +2561,17 @@ textarea.context-full {
 }
 
 .recent-item-title {
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 700;
-  color: var(--fg-60);
+  color: var(--fg-80);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  transition: color 0.15s ease;
 }
 
 .recent-item-time {
-  font-size: 7pt;
-  color: var(--fg-30);
+  font-size: 9px;
+  color: var(--fg-40);
   white-space: nowrap;
   transition: color 0.15s ease;
   margin-left: 4px;
@@ -2744,14 +2742,13 @@ textarea.context-full {
   background: transparent;
   border: 1px solid var(--fg-10, var(--fg-10));
   color: var(--fg-40, var(--fg-40));
-  font-size: 13px;
+  font-size: 11px;
   font-family: var(--font-mono);
-  padding: 10px 20px;
+  padding: 8px 12px;
   border-radius: 6px;
   cursor: default;
   transition: all 0.2s ease;
   text-transform: lowercase;
-  animation: fadeIn 0.3s ease-out;
 }
 
 @keyframes fadeIn {

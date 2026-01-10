@@ -135,38 +135,36 @@ class SystemPromptService {
 
   /**
    * Sync yurucode agents to ~/.claude/agents/ based on enabled state.
-   * Call this on app startup, when toggling agents, or when switching models.
-   * @param model - The model to use for all agents (e.g., 'opus', 'sonnet')
+   * Now handled by the plugin system - agents are part of the yurucode plugin.
+   * This is kept for backwards compatibility but is a no-op.
+   * @param model - The model to use for all agents (ignored, plugin handles this)
    */
   async syncAgentsToFilesystem(model?: string): Promise<void> {
-    try {
-      const enabled = this.getCurrent().agentsEnabled;
-      await invoke('sync_yurucode_agents', { enabled, model });
-      console.log(`[SystemPrompt] Yurucode agents ${enabled ? `synced with model: ${model || 'default'}` : 'removed'}`);
-    } catch (error) {
-      console.error('[SystemPrompt] Failed to sync agents:', error);
-    }
+    // Agents are now managed by the yurucode plugin system
+    // The plugin_init_bundled command handles syncing agents to ~/.claude/agents/
+    console.log('[SystemPrompt] Agent sync handled by plugin system');
   }
 
   /**
    * Cleanup yurucode agents on app exit.
-   * Only removes agent files if no other yurucode instances are running.
+   * Now handled by the plugin system.
    */
   async cleanupAgentsOnExit(): Promise<void> {
-    try {
-      await invoke('cleanup_yurucode_agents_on_exit');
-      console.log('[SystemPrompt] Cleanup called on exit');
-    } catch (error) {
-      console.error('[SystemPrompt] Failed to cleanup agents:', error);
-    }
+    // Agents cleanup is now handled by plugin_cleanup_on_exit
+    console.log('[SystemPrompt] Agent cleanup handled by plugin system');
   }
 
   /**
    * Check if yurucode agents are currently synced to filesystem.
+   * Now checks via the plugin system - yurucode plugin enabled = agents synced.
    */
   async areAgentsSynced(): Promise<boolean> {
     try {
-      return await invoke<boolean>('are_yurucode_agents_synced');
+      // Import dynamically to avoid circular dependency
+      const { pluginService } = await import('./pluginService');
+      await pluginService.initialize();
+      const plugin = pluginService.getPlugin('yurucode');
+      return plugin?.enabled ?? false;
     } catch (error) {
       console.error('[SystemPrompt] Failed to check agents sync status:', error);
       return false;
