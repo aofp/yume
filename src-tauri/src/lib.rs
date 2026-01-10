@@ -1021,6 +1021,10 @@ pub fn run() {
                     // Note: The destroyed window is already removed from the list
                     if remaining_windows.is_empty() {
                         info!("Last window destroyed, stopping server and cleaning up...");
+                        // Clean up yurucode agents from ~/.claude/agents/
+                        if let Err(e) = commands::cleanup_yurucode_agents_on_exit() {
+                            error!("Failed to cleanup yurucode agents: {}", e);
+                        }
                         // Kill all bash processes first
                         commands::kill_all_bash_processes();
                         // Then stop the server (which also runs pkill cleanup)
@@ -1039,6 +1043,10 @@ pub fn run() {
     // Final cleanup when the app exits normally
     // Ensures all child processes are terminated
     info!("App exiting normally, cleaning up...");
+    // Clean up yurucode agents from ~/.claude/agents/
+    if let Err(e) = commands::cleanup_yurucode_agents_on_exit() {
+        error!("Failed to cleanup yurucode agents: {}", e);
+    }
     commands::kill_all_bash_processes();
     logged_server::stop_logged_server();
 }
