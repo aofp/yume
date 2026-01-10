@@ -2799,7 +2799,7 @@ textarea.context-full {
 .tool-panel-title {
   font-size: 11px;
   font-family: var(--font-mono);
-  color: var(--fg-50);
+  color: var(--accent-color);
   text-transform: lowercase;
   display: flex;
   align-items: center;
@@ -2950,8 +2950,7 @@ textarea.context-full {
 }
 
 .tool-panel-preview-close:hover {
-  background: var(--fg-10);
-  color: var(--fg-70);
+  color: var(--accent-color);
 }
 
 .tool-panel-preview-content {
@@ -2973,6 +2972,10 @@ textarea.context-full {
   overflow: auto;
   padding: 0;
   min-height: 0; /* Critical for flex scroll */
+}
+
+.tool-panel-preview-diff .diff-header {
+  display: none;
 }
 
 .file-truncated-indicator {
@@ -3062,6 +3065,7 @@ textarea.context-full {
   align-items: center;
   gap: 6px;
   padding: 2px 4px;
+  padding-right: 8px;
   border-radius: 3px;
   cursor: default;
   font-size: 11px;
@@ -3128,12 +3132,14 @@ textarea.context-full {
 
 /* Total git line stats next to git button */
 .git-total-stats {
-  font-size: 8px;
+  font-size: 9px;
   font-family: var(--font-mono);
   opacity: 1;
   display: flex;
   gap: 4px;
   margin-left: 4px;
+  position:relative;
+  top: 1px;
 }
 
 .git-total-added {

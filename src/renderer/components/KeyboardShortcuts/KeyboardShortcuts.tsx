@@ -191,15 +191,6 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
                 <span className="shortcut-dots"></span>
                 <span className="shortcut-desc">sessions browser</span>
               </div>
-              <div className="shortcut-item">
-                <div className="shortcut-keys">
-                  <span className="key-btn">{modKey}</span>
-                  <span className="key-plus">+</span>
-                  <span className="key-btn">p</span>
-                </div>
-                <span className="shortcut-dots"></span>
-                <span className="shortcut-desc">command palette</span>
-              </div>
             </div>
           </div>
 

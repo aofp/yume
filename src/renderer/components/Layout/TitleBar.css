@@ -304,7 +304,7 @@
 .stats-header h3 {
   margin: 0;
   font-size: 12px;
-  color: #808080;
+  color: var(--accent-color);
   font-weight: normal;
 }
 

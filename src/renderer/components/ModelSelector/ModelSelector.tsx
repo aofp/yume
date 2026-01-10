@@ -69,7 +69,7 @@ export const ModelSelector: React.FC<ModelSelectorProps> = ({
       >
         <span className="model-selector-text">{selectedModel.name}</span>
         {toolCount !== undefined && (
-          <span className="model-selector-tools">[{toolCount}]</span>
+          <span className="model-selector-tools">{toolCount}</span>
         )}
       </button>
     </div>

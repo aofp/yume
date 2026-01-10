@@ -609,7 +609,7 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.key === 'p') {
         e.preventDefault();
         // TODO: setShowCommandPalette(true);
-        console.log('Command palette - coming soon');
+        console.log('Command palette - coming soon??');
       }
       
       // Ctrl+N for agents modal
