@@ -2409,21 +2409,19 @@ textarea.context-full {
 }
 
 .modal-close-btn {
-  background: none;
+  background: transparent;
   border: none;
-  color: var(--fg-30);
-  padding: 4px;
+  color: var(--fg-40);
+  padding: 2px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border-radius: 4px;
   cursor: default;
-  transition: all 0.15s ease;
+  transition: all 0.2s ease;
 }
 
 .modal-close-btn:hover {
-  background: var(--fg-10);
-  color: var(--fg-60);
+  color: var(--negative-color);
 }
 
 .modal-refresh-btn {
@@ -2798,23 +2796,17 @@ textarea.context-full {
 
 .tool-panel-close {
   background: transparent;
-  border: 1px solid var(--fg-20);
+  border: none;
   color: var(--fg-40);
-  padding: 3px 8px;
-  cursor: pointer;
+  padding: 2px;
+  cursor: default;
   display: flex;
   align-items: center;
-  gap: 4px;
-  border-radius: 4px;
-  font-size: 10px;
-  font-family: var(--font-mono);
-  text-transform: lowercase;
+  transition: all 0.2s ease;
 }
 
 .tool-panel-close:hover {
-  background: var(--fg-05);
-  color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.6);
+  color: var(--negative-color);
 }
 
 .tool-panel-header-actions {
@@ -3000,9 +2992,9 @@ textarea.context-full {
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 4px 6px;
+  padding: 2px 4px;
   border-radius: 3px;
-  cursor: pointer;
+  cursor: default;
   color: var(--fg-50);
   font-size: 11px;
 }
@@ -3044,10 +3036,10 @@ textarea.context-full {
 .git-file-item {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px;
+  gap: 6px;
+  padding: 2px 4px;
   border-radius: 3px;
-  cursor: pointer;
+  cursor: default;
   font-size: 11px;
 }
 
@@ -3287,7 +3279,7 @@ textarea.context-full {
   gap: 8px;
   padding: 6px 8px;
   border-radius: 4px;
-  cursor: pointer;
+  cursor: default;
   font-size: 11px;
   background: transparent;
   transition: background 0.15s ease;

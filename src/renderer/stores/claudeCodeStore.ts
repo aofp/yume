@@ -122,6 +122,9 @@ const claudeClient = claudeCodeClient;
 const PENDING_SESSION_TIMEOUT_MS = 5000;
 const PENDING_SESSION_CHECK_INTERVAL_MS = 100;
 
+// Maximum number of restore points per session to prevent unbounded memory growth
+// Each restore point contains file snapshots with full file content
+const MAX_RESTORE_POINTS_PER_SESSION = 50;
 
 // Fetch session tokens from session file - single source of truth
 // Called after stream_end to get accurate token counts
@@ -2013,11 +2016,16 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // Track file changes for assistant messages with tool_use blocks
               let restorePoints = [...(s.restorePoints || [])];
               let modifiedFiles = new Set(s.modifiedFiles || []);
-              
+
               if (message.type === 'assistant' && !message.streaming) {
                 const restorePoint = trackFileChange(s, message, existingMessages.length - 1);
                 if (restorePoint) {
                   restorePoints.push(restorePoint);
+                  // Limit restore points to prevent unbounded memory growth
+                  // Keep most recent points, discard oldest
+                  if (restorePoints.length > MAX_RESTORE_POINTS_PER_SESSION) {
+                    restorePoints = restorePoints.slice(-MAX_RESTORE_POINTS_PER_SESSION);
+                  }
                   // Update modified files set
                   restorePoint.fileSnapshots.forEach(snapshot => {
                     modifiedFiles.add(snapshot.path);
@@ -2420,6 +2428,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       fileSnapshots: [fileSnapshot],
                       description: `${operation} ${snapshot.path.split(/[/\\]/).pop()}`
                     });
+                    // Limit restore points to prevent unbounded memory growth
+                    if (restorePoints.length > MAX_RESTORE_POINTS_PER_SESSION) {
+                      restorePoints = restorePoints.slice(-MAX_RESTORE_POINTS_PER_SESSION);
+                    }
                     modifiedFiles.add(snapshot.path);
                     console.log(`📸 [Store] Captured file snapshot for rollback: ${snapshot.path} (mtime=${snapshot.mtime})`);
 
@@ -3327,6 +3339,12 @@ ${content}`;
     if ((session as any)?.cleanup) {
       (session as any).cleanup();
     }
+
+    // Clear session edits from global registry to prevent orphan entries
+    invoke('clear_session_edits', { sessionId }).catch(error => {
+      console.error('Failed to clear session edits from registry:', error);
+    });
+
     set(state => {
       const newSessions = state.sessions.filter(s => s.id !== sessionId);
       let newCurrentId = state.currentSessionId;
@@ -3627,11 +3645,18 @@ ${content}`;
                 },
                 model: get().selectedModel || DEFAULT_MODEL_ID
               },
+              restorePoints: [], // Clear restore points to prevent stale rollback data
+              modifiedFiles: new Set(), // Clear modified files tracking
               updatedAt: new Date()
             }
           : s
         )
       };
+    });
+
+    // Clear session edits from global registry to prevent orphan entries
+    invoke('clear_session_edits', { sessionId }).catch(error => {
+      console.error('Failed to clear session edits from registry:', error);
     });
 
     // Log the result
@@ -4110,11 +4135,25 @@ ${content}`;
         const session = sessions[sessionIdx];
         // Keep only messages up to and including the specified index
         const restoredMessages = session.messages.slice(0, messageIndex + 1);
-        
+
+        // Filter restorePoints to only keep those with messageIndex <= target
+        // This prevents stale restorePoints referencing non-existent messages
+        const filteredRestorePoints = (session.restorePoints || []).filter(
+          rp => rp.messageIndex <= messageIndex
+        );
+
+        // Rebuild modifiedFiles set from remaining restorePoints
+        const newModifiedFiles = new Set<string>();
+        filteredRestorePoints.forEach(rp => {
+          rp.fileSnapshots.forEach(snap => newModifiedFiles.add(snap.path));
+        });
+
         // Reset session to continue from this point
         sessions[sessionIdx] = {
           ...session,
           messages: restoredMessages,
+          restorePoints: filteredRestorePoints,
+          modifiedFiles: newModifiedFiles,
           claudeSessionId: undefined, // Clear Claude session to start fresh
           streaming: false,
           updatedAt: new Date(),
@@ -4141,11 +4180,11 @@ ${content}`;
             thinkingTime: session.analytics?.thinkingTime || 0
           }
         };
-        
+
         // Notify server to clear the Claude session
         claudeClient.clearSession(sessionId);
-        
-        console.log(`Restored session ${sessionId} to message ${messageIndex}`);
+
+        console.log(`Restored session ${sessionId} to message ${messageIndex}, kept ${filteredRestorePoints.length} restorePoints`);
       }
       return { sessions };
     });

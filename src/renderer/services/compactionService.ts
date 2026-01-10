@@ -175,6 +175,14 @@ class CompactionService {
     console.log('[Compaction] 🎯 triggerAutoCompaction called for session:', sessionId);
 
     const store = useClaudeCodeStore.getState();
+
+    // Guard: Don't trigger if auto-compact is disabled
+    if (store.autoCompactEnabled === false) {
+      console.log('[Compaction] ⚠️ Auto-compact disabled, not setting pending flag');
+      await invoke('reset_compaction_flags', { sessionId });
+      return;
+    }
+
     const session = store.sessions.find(s => s.id === sessionId);
 
     // Guard: Don't flag if already pending or compacting

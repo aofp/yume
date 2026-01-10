@@ -1251,6 +1251,39 @@ export const ClaudeChat: React.FC = () => {
 
     const { messageIndex, messageContent, filesToRestore } = pendingRollbackData;
 
+    // Re-verify file conflicts at confirmation time (TOCTOU protection)
+    // Files may have changed between initial check and user clicking confirm
+    if (filesToRestore.length > 0) {
+      try {
+        const { invoke } = await import('@tauri-apps/api/core');
+        const filesToCheck: Array<[string, number | null, boolean]> = filesToRestore.map(([path, data]) => [
+          path,
+          data.mtime || null,
+          data.isNewFile
+        ]);
+
+        const freshConflicts = await invoke<Array<{
+          path: string;
+          conflict_type: string;
+        }>>('check_file_conflicts', { files: filesToCheck });
+
+        const hasNewConflicts = freshConflicts.some(c => c.conflict_type !== 'none');
+        if (hasNewConflicts) {
+          console.warn('[Rollback] Files modified since conflict check, aborting');
+          // Close the confirm dialog - user needs to re-initiate rollback
+          setShowRollbackConfirm(false);
+          setPendingRollbackData(null);
+          // Could show a toast/notification here, but for now just abort silently
+          return;
+        }
+      } catch (err) {
+        console.error('[Rollback] Failed to re-verify conflicts:', err);
+        setShowRollbackConfirm(false);
+        setPendingRollbackData(null);
+        return;
+      }
+    }
+
     // Restore files using atomic Tauri commands with backup for rollback on failure
     const backups: Array<{ path: string; content: string | null; wasDeleted: boolean }> = [];
     let rollbackError: Error | null = null;
@@ -1386,11 +1419,21 @@ export const ClaudeChat: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [showClearConfirm, showCompactConfirm, showRollbackConfirm, confirmDialogSelection, confirmClearContext, confirmCompactContext, confirmRollback]);
 
+  // Helper to filter user messages excluding bash commands
+  const getNonBashUserMessages = useCallback((messages: any[] | undefined) => {
+    return (messages || []).filter(msg => {
+      if (msg.type !== 'user') return false;
+      const content = msg.message?.content;
+      let text = typeof content === 'string' ? content :
+        Array.isArray(content) ? content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ') : '';
+      return !isBashPrefix(text.trim());
+    });
+  }, []);
+
   // Rollback panel initialization - only select last item once when panel opens
   useEffect(() => {
     if (showRollbackPanel && !rollbackInitializedRef.current) {
-      const userMessages = currentSession?.messages
-        .filter(msg => msg.type === 'user') || [];
+      const userMessages = getNonBashUserMessages(currentSession?.messages);
       const maxIndex = userMessages.length - 1;
       setRollbackSelectedIndex(maxIndex);
       rollbackListRef.current?.focus();
@@ -1398,14 +1441,13 @@ export const ClaudeChat: React.FC = () => {
     } else if (!showRollbackPanel) {
       rollbackInitializedRef.current = false;
     }
-  }, [showRollbackPanel, currentSession?.messages]);
+  }, [showRollbackPanel, currentSession?.messages, getNonBashUserMessages]);
 
   // Rollback panel keyboard navigation
   useEffect(() => {
     if (!showRollbackPanel || showRollbackConfirm) return;
 
-    const userMessages = currentSession?.messages
-      .filter(msg => msg.type === 'user') || [];
+    const userMessages = getNonBashUserMessages(currentSession?.messages);
     const maxIndex = userMessages.length - 1;
 
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -1444,7 +1486,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showRollbackPanel, showRollbackConfirm, currentSession?.messages, currentSession?.streaming, rollbackSelectedIndex, setShowRollbackPanel]);
+  }, [showRollbackPanel, showRollbackConfirm, currentSession?.messages, currentSession?.streaming, rollbackSelectedIndex, setShowRollbackPanel, getNonBashUserMessages]);
 
   // Handle resume conversation selection from modal
   const handleResumeConversation = useCallback(async (conversation: any) => {
@@ -1704,8 +1746,14 @@ export const ClaudeChat: React.FC = () => {
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'h') {
         e.preventDefault();
-        // Toggle rollback/history panel
-        const hasUserMessages = currentSession?.messages.filter(m => m.type === 'user').length ?? 0;
+        // Toggle rollback/history panel (exclude bash commands)
+        const hasUserMessages = currentSession?.messages.filter(m => {
+          if (m.type !== 'user') return false;
+          const content = m.message?.content;
+          let text = typeof content === 'string' ? content :
+            Array.isArray(content) ? content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ') : '';
+          return !isBashPrefix(text.trim());
+        }).length ?? 0;
         if (hasUserMessages > 0) {
           setShowRollbackPanel(prev => !prev);
           setShowFilesPanel(false);
@@ -3846,7 +3894,7 @@ export const ClaudeChat: React.FC = () => {
                 setPreviewCollapsed(true);
               }}
             >
-              <IconX size={12} stroke={1.5} /> esc
+              <IconX size={14} />
             </button>
           </div>
           <div className="tool-panel-body">
@@ -4063,10 +4111,25 @@ export const ClaudeChat: React.FC = () => {
               <div className="rollback-panel">
                 <div className="rollback-list" ref={rollbackListRef} tabIndex={-1}>
                   {(() => {
-                    // Get user messages with their indices for rollback
+                    // Get user messages with their indices for rollback (exclude bash commands)
                     const userMessages = currentSession.messages
                       .map((msg, idx) => ({ msg, idx }))
-                      .filter(({ msg }) => msg.type === 'user');
+                      .filter(({ msg }) => {
+                        if (msg.type !== 'user') return false;
+                        // Extract text content to check for bash prefix
+                        const content = msg.message?.content;
+                        let text = '';
+                        if (typeof content === 'string') {
+                          text = content;
+                        } else if (Array.isArray(content)) {
+                          text = content
+                            .filter((c: any) => c.type === 'text')
+                            .map((c: any) => c.text)
+                            .join(' ');
+                        }
+                        // Filter out bash commands ($ or ! prefix)
+                        return !isBashPrefix(text.trim());
+                      });
 
                     if (userMessages.length === 0) {
                       return <div className="tool-panel-empty">no messages to rollback</div>;
@@ -4605,12 +4668,25 @@ export const ClaudeChat: React.FC = () => {
 
                   {/* Compacting indicator - show when compacting context */}
                   {currentSession?.compactionState?.isCompacting && (
-                    <div className="inline-activity-indicator compacting">
+                    <div className="compacting-indicator-bottom">
                       <LoadingIndicator size="small" color="positive" />
-                      <span className="activity-text">compacting</span>
-                      {currentSessionId && compactingStartTimes[currentSessionId] && (
-                        <CompactingTimer startTime={compactingStartTimes[currentSessionId]} />
-                      )}
+                      <span className="compacting-text-wrapper">
+                        <span className="compacting-text">
+                          {'compacting'.split('').map((char, i) => (
+                            <span
+                              key={i}
+                              className="compacting-char"
+                              style={{ animationDelay: `${i * 0.05}s` }}
+                            >
+                              {char}
+                            </span>
+                          ))}
+                          <span className="compacting-dots"></span>
+                        </span>
+                        {currentSessionId && compactingStartTimes[currentSessionId] && (
+                          <CompactingTimer startTime={compactingStartTimes[currentSessionId]} />
+                        )}
+                      </span>
                       {currentSession?.compactionState?.pendingAutoCompactMessage && (
                         <span className="compacting-followup">
                           <span className="compacting-followup-label">then:</span>
@@ -4625,12 +4701,25 @@ export const ClaudeChat: React.FC = () => {
 
                   {/* Bash indicator - show when running bash */}
                   {(isRunningBash || isUserBash) && !currentSession?.compactionState?.isCompacting && (
-                    <div className="inline-activity-indicator bash">
+                    <div className="bash-indicator-bottom">
                       <LoadingIndicator size="small" color="negative" />
-                      <span className="activity-text">bash running</span>
-                      {currentSessionId && bashStartTimes[currentSessionId] && (
-                        <BashTimer startTime={bashStartTimes[currentSessionId]} />
-                      )}
+                      <span className="bash-text-wrapper">
+                        <span className="bash-text">
+                          {'bash running'.split('').map((char, i) => (
+                            <span
+                              key={i}
+                              className="bash-char"
+                              style={{ animationDelay: `${i * 0.05}s` }}
+                            >
+                              {char}
+                            </span>
+                          ))}
+                          <span className="bash-dots"></span>
+                        </span>
+                        {currentSessionId && bashStartTimes[currentSessionId] && (
+                          <BashTimer startTime={bashStartTimes[currentSessionId]} />
+                        )}
+                      </span>
                     </div>
                   )}
 
@@ -4889,7 +4978,18 @@ export const ClaudeChat: React.FC = () => {
 
           {/* Center - rollback button */}
           {(() => {
-            const historyCount = currentSession?.messages.filter(m => m.type === 'user').length || 0;
+            // Count user messages excluding bash commands ($ or ! prefix)
+            const historyCount = currentSession?.messages.filter(m => {
+              if (m.type !== 'user') return false;
+              const content = m.message?.content;
+              let text = '';
+              if (typeof content === 'string') {
+                text = content;
+              } else if (Array.isArray(content)) {
+                text = content.filter((c: any) => c.type === 'text').map((c: any) => c.text).join(' ');
+              }
+              return !isBashPrefix(text.trim());
+            }).length || 0;
             return (
               <button
                 className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
@@ -4918,6 +5018,11 @@ export const ClaudeChat: React.FC = () => {
               const totalContextTokens = currentSession?.analytics?.tokens?.total || 0;
               const cacheTokens = currentSession?.analytics?.tokens?.cacheSize || 0;
 
+              // Check if tokens are pending after compact
+              // compactPending is set after /compact and cleared on next message
+              const isTokensPending = currentSession?.analytics?.compactPending === true ||
+                (currentSession?.wasCompacted === true && totalContextTokens === 0);
+
               // Disabled spammy token indicator log
 
               // Opus 4.1 has 200k context window
@@ -4929,8 +5034,8 @@ export const ClaudeChat: React.FC = () => {
               // Don't cap at 100% - show real value for context awareness
               const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
               const percentageNum = rawPercentage; // Use raw percentage, don't cap
-              // Format: always show 2 decimal places
-              const percentage = percentageNum.toFixed(2);
+              // Format: always show 2 decimal places, or '?' if waiting for tokens after compact
+              const percentage = isTokensPending ? '?' : percentageNum.toFixed(2);
 
               // Log warning if tokens exceed context window
               if (rawPercentage > 100) {
@@ -5109,16 +5214,19 @@ export const ClaudeChat: React.FC = () => {
                 const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
                 // Don't cap at 100% - show real percentage for context usage awareness
                 const percentageNum = rawPercentage;
-                const percentage = percentageNum.toFixed(2);
-                
+                // Check if tokens are pending after compact
+                const isTokensPending = currentSession?.analytics?.compactPending === true ||
+                  (currentSession?.wasCompacted === true && totalContextTokens === 0);
+                const percentage = isTokensPending ? '?' : percentageNum.toFixed(2);
+
                 return (
                   <>
                     <div className="stats-column" style={{ gridColumn: 'span 2' }}>
                       <div className="stats-section">
                         <div className="usage-bar-container" style={{ marginBottom: '8px' }}>
                           <div className="usage-bar-label">
-                            <span>{(currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k</span>
-                            <span className={((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100) >= 60 ? 'usage-negative' : ''}>{((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100).toFixed(2)}%</span>
+                            <span>{isTokensPending ? '?' : (currentSession?.analytics?.tokens?.total || 0).toLocaleString()} / 200k</span>
+                            <span className={((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100) >= 60 ? 'usage-negative' : ''}>{isTokensPending ? '?%' : `${((currentSession?.analytics?.tokens?.total || 0) / 200000 * 100).toFixed(2)}%`}</span>
                           </div>
                           <div className="usage-bar">
                             <div className="usage-bar-fill" style={{
