@@ -7165,9 +7165,52 @@ function cleanupOldPidFiles() {
 // Clean up old PID files before starting
 cleanupOldPidFiles();
 
+// ============================================
+// PARENT PID WATCHDOG - BULLETPROOF ZOMBIE PREVENTION
+// ============================================
+// The server will self-terminate when its parent (Tauri) dies.
+// On Windows, we check if the parent process still exists.
+
+const PARENT_PID_AT_STARTUP = process.ppid;
+console.log(`👁️ Parent PID watchdog initialized: parent=${PARENT_PID_AT_STARTUP}, self=${process.pid}`);
+
+function isParentAlive() {
+  try {
+    // Try to signal parent - if it fails with ESRCH, parent is dead
+    process.kill(PARENT_PID_AT_STARTUP, 0);
+    return true;
+  } catch (err) {
+    if (err.code === 'ESRCH') {
+      console.log(`💀 Parent process ${PARENT_PID_AT_STARTUP} no longer exists (ESRCH)`);
+      return false;
+    }
+    // EPERM means process exists but we don't have permission - parent is alive
+    return true;
+  }
+}
+
+let watchdogInterval = null;
+
+function startParentWatchdog() {
+  watchdogInterval = setInterval(() => {
+    if (!isParentAlive()) {
+      console.log('🛑 Parent process died - server self-terminating to prevent zombie...');
+      cleanupGitLocks();
+      forceKillAllChildren();
+      removePidFile();
+      if (watchdogInterval) clearInterval(watchdogInterval);
+      console.log('✅ Self-termination complete - goodbye!');
+      process.exit(0);
+    }
+  }, 500);
+  watchdogInterval.unref();
+  console.log('👁️ Parent watchdog started - server will self-terminate if parent dies');
+}
+
 // Start server with error handling
 httpServer.listen(PORT, () => {
   writePidFile();
+  startParentWatchdog();
   console.log(`🚀 yurucode server running on port ${PORT}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🖥️ Platform: ${platform()}`);

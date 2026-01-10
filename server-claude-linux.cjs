@@ -6858,9 +6858,60 @@ function cleanupOldPidFiles() {
 // Clean up old PID files before starting
 cleanupOldPidFiles();
 
+// ============================================
+// PARENT PID WATCHDOG - BULLETPROOF ZOMBIE PREVENTION
+// ============================================
+// The server will self-terminate when its parent (Tauri) dies.
+// This is the ONLY reliable way to prevent zombie processes when:
+// - User closes window on Linux
+// - Tauri crashes
+// - System kills the app
+// - Force quit
+// Without this, the server becomes orphaned (PPID=1) and runs forever.
+
+const PARENT_PID_AT_STARTUP = process.ppid;
+console.log(`👁️ Parent PID watchdog initialized: parent=${PARENT_PID_AT_STARTUP}, self=${process.pid}`);
+
+function isParentAlive() {
+  try {
+    const currentPpid = process.ppid;
+    if (currentPpid === 1 && PARENT_PID_AT_STARTUP !== 1) {
+      console.log(`💀 Parent died! PPID changed from ${PARENT_PID_AT_STARTUP} to 1 (init)`);
+      return false;
+    }
+    process.kill(PARENT_PID_AT_STARTUP, 0);
+    return true;
+  } catch (err) {
+    if (err.code === 'ESRCH') {
+      console.log(`💀 Parent process ${PARENT_PID_AT_STARTUP} no longer exists (ESRCH)`);
+      return false;
+    }
+    return true;
+  }
+}
+
+let watchdogInterval = null;
+
+function startParentWatchdog() {
+  watchdogInterval = setInterval(() => {
+    if (!isParentAlive()) {
+      console.log('🛑 Parent process died - server self-terminating to prevent zombie...');
+      cleanupGitLocks();
+      forceKillAllChildren();
+      removePidFile();
+      if (watchdogInterval) clearInterval(watchdogInterval);
+      console.log('✅ Self-termination complete - goodbye!');
+      process.exit(0);
+    }
+  }, 500);
+  watchdogInterval.unref();
+  console.log('👁️ Parent watchdog started - server will self-terminate if parent dies');
+}
+
 // Start server with error handling
 httpServer.listen(PORT, () => {
   writePidFile();
+  startParentWatchdog();
   console.log(`🚀 yurucode server running on port ${PORT}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🖥️ Platform: ${platform()}`);
