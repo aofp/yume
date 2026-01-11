@@ -75,6 +75,11 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     isDangerous?: boolean;
   }>({ isOpen: false, title: '', message: '', onConfirm: () => {} });
 
+  // Derive the current model name from selectedModel
+  const currentModelName = useMemo(() => {
+    return selectedModel.includes('opus') ? 'opus' : 'sonnet';
+  }, [selectedModel]);
+
   // Load yurucode plugin agents
   useEffect(() => {
     const loadYurucodeAgents = async () => {
@@ -84,10 +89,11 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
 
       if (yurucodePlugin) {
         setYurucodePluginEnabled(yurucodePlugin.enabled);
+        // All yurucode agents use the currently selected model
         const agents: Agent[] = yurucodePlugin.components.agents.map(a => ({
           id: `yurucode--${a.name}`,
           name: a.name,
-          model: (a.model || 'sonnet') as 'opus' | 'sonnet' | 'haiku',
+          model: currentModelName as 'opus' | 'sonnet' | 'haiku',
           system_prompt: a.description || '',
           created_at: 0,
           updated_at: 0,
@@ -100,14 +106,14 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     if (isOpen) {
       loadYurucodeAgents();
     }
-  }, [isOpen]);
+  }, [isOpen, currentModelName]);
 
   // Get current agents based on scope
   const currentAgents = useMemo(() => {
     if (agentScope === 'yurucode') return yurucodeAgents;
     if (agentScope === 'global') {
-      // Filter out plugin agents from global tab
-      return globalAgents.filter(a => !a.pluginId && !a.name.includes('--'));
+      // Filter out plugin agents from global tab (including yurucode agents)
+      return globalAgents.filter(a => !a.pluginId && !a.name.includes('--') && !a.name.startsWith('yurucode-'));
     }
     return projectAgents;
   }, [agentScope, globalAgents, projectAgents, yurucodeAgents]);
@@ -118,6 +124,8 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     try {
       if (newEnabled) {
         await pluginService.enablePlugin('yurucode');
+        // Sync agents with the current model
+        await pluginService.syncYurucodeAgents(true, currentModelName);
       } else {
         await pluginService.disablePlugin('yurucode');
       }
@@ -125,7 +133,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     } catch (err) {
       console.error('Failed to toggle yurucode plugin:', err);
     }
-  }, [yurucodePluginEnabled]);
+  }, [yurucodePluginEnabled, currentModelName]);
   
   // Filter agents based on search
   const filteredAgents = useMemo(() => {
@@ -433,7 +441,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                   label="global"
                   active={agentScope === 'global'}
                   onClick={() => setAgentScope('global')}
-                  count={globalAgents.filter(a => !a.pluginId && !a.name.includes('--')).length}
+                  count={globalAgents.filter(a => !a.pluginId && !a.name.includes('--') && !a.name.startsWith('yurucode-')).length}
                 />
                 <TabButton
                   label="project"
@@ -473,10 +481,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
               {agentScope === 'yurucode' && (
                 <>
                   <div className="yurucode-toggle">
-                    <span className="toggle-label">
-                      yurucode plugin
-                      <PluginBadge pluginName="yurucode" size="small" />
-                    </span>
+                    <span className="toggle-label">yurucode agents</span>
                     <input
                       type="checkbox"
                       id="yurucode-agents-toggle"
@@ -484,11 +489,12 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
                       checked={yurucodePluginEnabled}
                       onChange={handleToggleAgents}
                     />
-                    <label htmlFor="yurucode-agents-toggle" className={`toggle-switch ${yurucodePluginEnabled ? 'active' : ''}`}>
+                    <label htmlFor="yurucode-agents-toggle" className={`toggle-switch compact ${yurucodePluginEnabled ? 'active' : ''}`}>
                       <span className="toggle-switch-slider" />
                       <span className="toggle-switch-label off">OFF</span>
                       <span className="toggle-switch-label on">ON</span>
                     </label>
+                    <span className="yurucode-model-info">using: {currentModelName}</span>
                   </div>
                   {yurucodeAgents.length === 0 ? (
                     <div className="agents-empty">loading plugin agents...</div>

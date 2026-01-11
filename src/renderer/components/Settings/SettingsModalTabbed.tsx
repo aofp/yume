@@ -379,6 +379,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     monoFont, sansFont, setMonoFont, setSansFont,
     rememberTabs, setRememberTabs,
     autoGenerateTitle, setAutoGenerateTitle,
+    wordWrapCode, setWordWrapCode,
+    soundOnComplete, setSoundOnComplete, playCompletionSound,
     showProjectsMenu, setShowProjectsMenu,
     showAgentsMenu, setShowAgentsMenu,
     showAnalyticsMenu, setShowAnalyticsMenu,
@@ -1001,10 +1003,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       case 'general':
         return (
           <>
-            {/* Options and Claude Code in columns */}
+            {/* All settings in two columns */}
             <div className="settings-section">
               <div className="settings-columns">
-                {/* Options column */}
+                {/* Left column: Options + Menu */}
                 <div className="settings-column">
                   <h4>options</h4>
 
@@ -1031,27 +1033,39 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       <div className="toggle-switch-slider" />
                     </div>
                   </div>
-                </div>
 
-                {/* Claude Code column */}
-                <div className="settings-column">
-                  <h4>claude code</h4>
-                  <ClaudeSelector onSettingsChange={(settings) => {
-                    console.log('Claude settings updated:', settings);
-                  }} />
-                  <SystemPromptSelector onSettingsChange={(settings) => {
-                    console.log('System prompt settings updated:', settings);
-                  }} />
-                </div>
-              </div>
-            </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">word wrap code</span>
+                    <div
+                      className={`toggle-switch compact ${wordWrapCode ? 'active' : ''}`}
+                      onClick={() => setWordWrapCode(!wordWrapCode)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
 
-            {/* Menu and Settings in columns */}
-            <div className="settings-section">
-              <div className="settings-columns">
-                {/* Menu visibility column */}
-                <div className="settings-column">
-                  <h4>menu</h4>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">sound on complete</span>
+                    <div
+                      className={`toggle-switch compact ${soundOnComplete ? 'active' : ''}`}
+                      onClick={() => {
+                        const newValue = !soundOnComplete;
+                        setSoundOnComplete(newValue);
+                        // Play a preview of the sound when enabling
+                        if (newValue) {
+                          setTimeout(() => playCompletionSound(), 100);
+                        }
+                      }}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <h4 style={{ marginTop: '16px' }}>menu</h4>
 
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">agents</span>
@@ -1090,9 +1104,17 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </div>
                 </div>
 
-                {/* Settings visibility column */}
+                {/* Right column: Claude Code + Settings */}
                 <div className="settings-column">
-                  <h4>settings</h4>
+                  <h4>claude code</h4>
+                  <ClaudeSelector onSettingsChange={(settings) => {
+                    console.log('Claude settings updated:', settings);
+                  }} />
+                  <SystemPromptSelector onSettingsChange={(settings) => {
+                    console.log('System prompt settings updated:', settings);
+                  }} />
+
+                  <h4 style={{ marginTop: '16px' }}>settings</h4>
 
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">commands</span>
@@ -1228,7 +1250,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     className="opacity-slider"
                   />
                   <span style={{ fontSize: '11px', color: 'var(--fg-50)', minWidth: '28px' }}>
-                    {htmlOpacity.toFixed(2)}
+                    {Math.round(htmlOpacity * 100)}%
                   </span>
                 </div>
               </div>

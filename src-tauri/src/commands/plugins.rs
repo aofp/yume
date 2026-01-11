@@ -429,7 +429,8 @@ fn sync_plugin_commands(plugin: &InstalledPlugin, enabled: bool) -> Result<(), S
 }
 
 /// Sync plugin agents to ~/.claude/agents/
-fn sync_plugin_agents(plugin: &InstalledPlugin, enabled: bool) -> Result<(), String> {
+/// If model is provided, replaces the model in the agent frontmatter
+fn sync_plugin_agents(plugin: &InstalledPlugin, enabled: bool, model: Option<&str>) -> Result<(), String> {
     let claude_dir = get_claude_dir()?;
     let agents_dir = claude_dir.join("agents");
 
@@ -443,9 +444,21 @@ fn sync_plugin_agents(plugin: &InstalledPlugin, enabled: bool) -> Result<(), Str
         let dest_path = agents_dir.join(&dest_name);
 
         if enabled {
-            // Copy agent file
-            fs::copy(&agent.file_path, &dest_path)
-                .map_err(|e| format!("Failed to copy agent {}: {}", agent.name, e))?;
+            if let Some(new_model) = model {
+                // Read the file and replace the model in frontmatter
+                let content = fs::read_to_string(&agent.file_path)
+                    .map_err(|e| format!("Failed to read agent {}: {}", agent.name, e))?;
+
+                // Replace model in frontmatter using regex-like approach
+                let updated_content = replace_model_in_frontmatter(&content, new_model);
+
+                fs::write(&dest_path, updated_content)
+                    .map_err(|e| format!("Failed to write agent {}: {}", agent.name, e))?;
+            } else {
+                // Just copy the file as-is
+                fs::copy(&agent.file_path, &dest_path)
+                    .map_err(|e| format!("Failed to copy agent {}: {}", agent.name, e))?;
+            }
         } else {
             // Remove agent file
             if dest_path.exists() {
@@ -455,6 +468,36 @@ fn sync_plugin_agents(plugin: &InstalledPlugin, enabled: bool) -> Result<(), Str
     }
 
     Ok(())
+}
+
+/// Replace the model field in YAML frontmatter
+fn replace_model_in_frontmatter(content: &str, new_model: &str) -> String {
+    let content = content.trim();
+    if !content.starts_with("---") {
+        return content.to_string();
+    }
+
+    // Find the end of frontmatter
+    let rest = &content[3..];
+    if let Some(end_idx) = rest.find("---") {
+        let frontmatter = &rest[..end_idx];
+        let body = &rest[end_idx..];
+
+        // Replace model line in frontmatter
+        let mut new_frontmatter = String::new();
+        for line in frontmatter.lines() {
+            if line.trim().starts_with("model:") {
+                new_frontmatter.push_str(&format!("model: {}", new_model));
+            } else {
+                new_frontmatter.push_str(line);
+            }
+            new_frontmatter.push('\n');
+        }
+
+        format!("---{}{}", new_frontmatter.trim_end(), body)
+    } else {
+        content.to_string()
+    }
 }
 
 /// Sync plugin skills to ~/.claude/skills/
@@ -641,7 +684,7 @@ pub fn plugin_enable(plugin_id: String) -> Result<(), String> {
 
     // Sync all components
     sync_plugin_commands(&plugin, true)?;
-    sync_plugin_agents(&plugin, true)?;
+    sync_plugin_agents(&plugin, true, None)?;
     sync_plugin_skills(&plugin, true)?;
     // Note: Hooks and MCP are handled by frontend services
 
@@ -670,7 +713,7 @@ pub fn plugin_disable(plugin_id: String) -> Result<(), String> {
 
     // Remove all synced components
     sync_plugin_commands(&plugin, false)?;
-    sync_plugin_agents(&plugin, false)?;
+    sync_plugin_agents(&plugin, false, None)?;
     sync_plugin_skills(&plugin, false)?;
     // Note: Hooks and MCP are handled by frontend services
 
@@ -723,7 +766,11 @@ fn find_bundled_plugin_path(app_handle: &tauri::AppHandle) -> Option<std::path::
     let mut candidate_paths = Vec::new();
 
     // 1. Try resource_dir (production)
+    // Tauri 2.x bundles resources in Contents/Resources/resources/ on macOS
     if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        // Try nested resources folder first (Tauri 2.x structure)
+        candidate_paths.push(resource_dir.join("resources").join("yurucode-plugin"));
+        // Also try direct path (in case structure changes)
         candidate_paths.push(resource_dir.join("yurucode-plugin"));
     }
 
@@ -741,12 +788,18 @@ fn find_bundled_plugin_path(app_handle: &tauri::AppHandle) -> Option<std::path::
         }
     }
 
+    for path in &candidate_paths {
+        println!("[plugins] checking candidate path: {}", path.display());
+    }
+
     for path in candidate_paths {
         if path.join(".claude-plugin").join("plugin.json").exists() {
+            println!("[plugins] found plugin at: {}", path.display());
             return Some(path);
         }
     }
 
+    println!("[plugins] bundled plugin not found in any candidate path");
     None
 }
 
@@ -813,7 +866,7 @@ pub fn plugin_init_bundled(app_handle: tauri::AppHandle) -> Result<Option<Instal
             println!("[plugins] syncing yurucode: commands={}, agents={}",
                 final_plugin.components.commands.len(), final_plugin.components.agents.len());
             sync_plugin_commands(&final_plugin, true).ok();
-            sync_plugin_agents(&final_plugin, true).ok();
+            sync_plugin_agents(&final_plugin, true, None).ok();
             sync_plugin_skills(&final_plugin, true).ok();
             return Ok(Some(final_plugin));
         }
@@ -841,7 +894,7 @@ pub fn plugin_cleanup_on_exit() -> Result<(), String> {
             // Remove synced commands
             sync_plugin_commands(plugin, false).ok();
             // Remove synced agents
-            sync_plugin_agents(plugin, false).ok();
+            sync_plugin_agents(plugin, false, None).ok();
             // Remove synced skills
             sync_plugin_skills(plugin, false).ok();
         }
@@ -891,8 +944,57 @@ fn install_bundled_plugin(source: &Path) -> Result<Option<InstalledPlugin>, Stri
 
     // Sync components since it's enabled
     sync_plugin_commands(&plugin, true)?;
-    sync_plugin_agents(&plugin, true)?;
+    sync_plugin_agents(&plugin, true, None)?;
     sync_plugin_skills(&plugin, true)?;
 
     Ok(Some(plugin))
+}
+
+/// Sync yurucode agents with a specific model
+/// Called when user changes the selected model to update all yurucode agents
+#[tauri::command]
+pub fn sync_yurucode_agents(enabled: bool, model: String) -> Result<(), String> {
+    let registry = load_registry()?;
+
+    if let Some(plugin) = registry.plugins.get("yurucode") {
+        println!("[plugins] sync_yurucode_agents: enabled={}, model={}", enabled, model);
+        sync_plugin_agents(plugin, enabled, Some(&model))?;
+    }
+
+    Ok(())
+}
+
+/// Check if yurucode agents are currently synced
+#[tauri::command]
+pub fn are_yurucode_agents_synced() -> Result<bool, String> {
+    let claude_dir = get_claude_dir()?;
+    let agents_dir = claude_dir.join("agents");
+
+    // Check if any yurucode agent file exists
+    if agents_dir.exists() {
+        if let Ok(entries) = fs::read_dir(&agents_dir) {
+            for entry in entries.flatten() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                if name.starts_with("yurucode--") && name.ends_with(".md") {
+                    return Ok(true);
+                }
+            }
+        }
+    }
+
+    Ok(false)
+}
+
+/// Cleanup yurucode agents on app exit (called from frontend)
+#[tauri::command]
+pub fn cleanup_yurucode_agents_on_exit() -> Result<(), String> {
+    let registry = load_registry()?;
+
+    if let Some(plugin) = registry.plugins.get("yurucode") {
+        if plugin.enabled {
+            sync_plugin_agents(plugin, false, None)?;
+        }
+    }
+
+    Ok(())
 }

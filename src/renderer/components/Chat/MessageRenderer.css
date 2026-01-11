@@ -2675,3 +2675,20 @@ pre code,
   color: rgba(var(--foreground-rgb), 0.6);
   font-family: var(--font-mono);
 }
+
+/* Word wrap toggle for code blocks - applied when html element has .word-wrap-code class */
+:root.word-wrap-code .markdown-content pre,
+:root.word-wrap-code .markdown-content pre code,
+:root.word-wrap-code .code-block-pre,
+:root.word-wrap-code .code-block-pre code,
+:root.word-wrap-code .thinking-code-block,
+:root.word-wrap-code .thinking-code-block code,
+:root.word-wrap-code .thinking-code-pre,
+:root.word-wrap-code .thinking-code,
+:root.word-wrap-code .bash-output-content,
+:root.word-wrap-code .tool-result-content pre {
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+  word-break: break-word;
+}

@@ -539,7 +539,11 @@ pub fn run() {
                             }
                         }
                     }
-                    
+
+                    // Force shadow recalculation after all transparency setup
+                    // This is required for macOS to properly render shadows on transparent windows
+                    let _: () = msg_send![ns_window, invalidateShadow];
+
                     // Note: WKWebView configuration happens in the window.eval() section below
                 }
             }
@@ -1054,6 +1058,9 @@ pub fn run() {
             commands::plugins::plugin_rescan,
             commands::plugins::plugin_init_bundled,
             commands::plugins::plugin_cleanup_on_exit,
+            commands::plugins::sync_yurucode_agents,
+            commands::plugins::are_yurucode_agents_synced,
+            commands::plugins::cleanup_yurucode_agents_on_exit,
             // Rollback conflict detection
             commands::get_file_mtime,
             commands::check_file_conflicts,

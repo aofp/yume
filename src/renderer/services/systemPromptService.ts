@@ -140,9 +140,18 @@ class SystemPromptService {
    * @param model - The model to use for all agents (ignored, plugin handles this)
    */
   async syncAgentsToFilesystem(model?: string): Promise<void> {
-    // Agents are now managed by the yurucode plugin system
-    // The plugin_init_bundled command handles syncing agents to ~/.claude/agents/
-    console.log('[SystemPrompt] Agent sync handled by plugin system');
+    // Sync yurucode agents with the specified model via plugin system
+    if (model) {
+      try {
+        const { pluginService } = await import('./pluginService');
+        await pluginService.syncYurucodeAgents(true, model);
+        console.log(`[SystemPrompt] Synced agents with model: ${model}`);
+      } catch (error) {
+        console.error('[SystemPrompt] Failed to sync agents:', error);
+      }
+    } else {
+      console.log('[SystemPrompt] Agent sync skipped - no model specified');
+    }
   }
 
   /**

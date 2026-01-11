@@ -496,6 +496,47 @@ class PluginService {
     }
     return plugins;
   }
+
+  // ============================================================================
+  // Yurucode Agents Management
+  // ============================================================================
+
+  /**
+   * Sync yurucode agents with a specific model
+   * Called when user changes the selected model to update all yurucode agents
+   */
+  async syncYurucodeAgents(enabled: boolean, model: string): Promise<void> {
+    try {
+      await invoke('sync_yurucode_agents', { enabled, model });
+      console.log(`[pluginService] Synced yurucode agents: enabled=${enabled}, model=${model}`);
+    } catch (error) {
+      console.error('Failed to sync yurucode agents:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Check if yurucode agents are currently synced
+   */
+  async areYurucodeAgentsSynced(): Promise<boolean> {
+    try {
+      return await invoke<boolean>('are_yurucode_agents_synced');
+    } catch (error) {
+      console.error('Failed to check yurucode agents sync status:', error);
+      return false;
+    }
+  }
+
+  /**
+   * Cleanup yurucode agents on app exit
+   */
+  async cleanupYurucodeAgentsOnExit(): Promise<void> {
+    try {
+      await invoke('cleanup_yurucode_agents_on_exit');
+    } catch (error) {
+      console.error('Failed to cleanup yurucode agents:', error);
+    }
+  }
 }
 
 // Export singleton instance

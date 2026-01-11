@@ -349,6 +349,12 @@ interface ClaudeCodeStore {
   // Title generation
   autoGenerateTitle: boolean; // Whether to auto-generate titles for new sessions
 
+  // Code display
+  wordWrapCode: boolean; // Whether to wrap long lines in code blocks
+
+  // Sound notifications
+  soundOnComplete: boolean; // Whether to play sound when Claude finishes responding
+
   // Auto-compact
   autoCompactEnabled: boolean; // Whether to auto-compact at 60% threshold
 
@@ -445,6 +451,13 @@ interface ClaudeCodeStore {
   
   // Title generation
   setAutoGenerateTitle: (autoGenerate: boolean) => void;
+
+  // Code display
+  setWordWrapCode: (wrap: boolean) => void;
+
+  // Sound notifications
+  setSoundOnComplete: (enabled: boolean) => void;
+  playCompletionSound: () => void;
 
   // Auto-compact
   setAutoCompactEnabled: (enabled: boolean) => void;
@@ -671,6 +684,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
   rememberTabs: false, // Default to not remembering tabs (disabled by default)
   savedTabs: [], // Empty array of saved tabs
   autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
+  wordWrapCode: false, // Default to not wrapping code (horizontal scroll)
+  soundOnComplete: (() => {
+    const stored = localStorage.getItem('yurucode-sound-on-complete');
+    return stored ? JSON.parse(stored) : false;
+  })(), // Load from localStorage or default to false
   autoCompactEnabled: true, // Default to enabled (auto-compact at 60%)
   showProjectsMenu: false, // Default to hidden
   showAgentsMenu: false, // Default to hidden
@@ -2143,6 +2161,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
             } else if (message.type === 'streaming_end') {
               // Special message to clear streaming state
               console.log('🏁 [Store] STREAMING_END received - clearing streaming state');
+
+              // Play completion sound if enabled
+              get().playCompletionSound();
+
               sessions = sessions.map(s => {
                 if (s.id === sessionId) {
                   // Calculate thinking time before clearing
@@ -4453,6 +4475,72 @@ ${content}`;
     console.log('[Store] Auto-generate title:', autoGenerate);
   },
 
+  setWordWrapCode: (wrap: boolean) => {
+    set({ wordWrapCode: wrap });
+    localStorage.setItem('yurucode-word-wrap-code', JSON.stringify(wrap));
+    // Apply CSS class to document for global code wrapping
+    if (wrap) {
+      document.documentElement.classList.add('word-wrap-code');
+    } else {
+      document.documentElement.classList.remove('word-wrap-code');
+    }
+    console.log('[Store] Word wrap code:', wrap);
+  },
+
+  setSoundOnComplete: (enabled: boolean) => {
+    set({ soundOnComplete: enabled });
+    localStorage.setItem('yurucode-sound-on-complete', JSON.stringify(enabled));
+    console.log('[Store] Sound on complete:', enabled);
+  },
+
+  playCompletionSound: async () => {
+    const { soundOnComplete } = get();
+    if (!soundOnComplete) return;
+
+    try {
+      // Create a minimal, unobtrusive completion sound using Web Audio API
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+
+      // Resume context if suspended (required after page load without user gesture)
+      if (audioContext.state === 'suspended') {
+        await audioContext.resume();
+      }
+
+      const now = audioContext.currentTime;
+
+      // Create a soft, gentle two-tone chime
+      const createTone = (frequency: number, startTime: number, duration: number, gain: number) => {
+        const oscillator = audioContext.createOscillator();
+        const gainNode = audioContext.createGain();
+
+        oscillator.type = 'sine';
+        oscillator.frequency.setValueAtTime(frequency, startTime);
+
+        // Soft attack and decay envelope
+        gainNode.gain.setValueAtTime(0, startTime);
+        gainNode.gain.linearRampToValueAtTime(gain, startTime + 0.02); // Quick attack
+        gainNode.gain.exponentialRampToValueAtTime(0.001, startTime + duration); // Gentle decay
+
+        oscillator.connect(gainNode);
+        gainNode.connect(audioContext.destination);
+
+        oscillator.start(startTime);
+        oscillator.stop(startTime + duration);
+      };
+
+      // Two gentle tones: ascending soft chime
+      createTone(880, now, 0.15, 0.08);        // A5 - first note
+      createTone(1108.73, now + 0.08, 0.2, 0.06); // C#6 - second note (major third up)
+
+      // Clean up audio context after sound completes
+      setTimeout(() => {
+        audioContext.close();
+      }, 500);
+    } catch (err) {
+      console.warn('[Store] Could not play completion sound:', err);
+    }
+  },
+
   setAutoCompactEnabled: (enabled: boolean) => {
     set({ autoCompactEnabled: enabled });
     localStorage.setItem('yurucode-auto-compact-enabled', JSON.stringify(enabled));
@@ -4700,6 +4788,8 @@ ${content}`;
         sansFont: state.sansFont,
         rememberTabs: state.rememberTabs,
         autoGenerateTitle: state.autoGenerateTitle,
+        wordWrapCode: state.wordWrapCode,
+        soundOnComplete: state.soundOnComplete,
         autoCompactEnabled: state.autoCompactEnabled,
         showProjectsMenu: state.showProjectsMenu,
         showAgentsMenu: state.showAgentsMenu,
@@ -4712,7 +4802,13 @@ ${content}`;
         agents: state.agents,
         currentAgentId: state.currentAgentId
         // Do NOT persist sessionId - sessions should not survive app restarts
-      })
+      }),
+      onRehydrateStorage: () => (state) => {
+        // Apply word-wrap class on rehydration if setting is enabled
+        if (state?.wordWrapCode) {
+          document.documentElement.classList.add('word-wrap-code');
+        }
+      }
     }
   )
 );

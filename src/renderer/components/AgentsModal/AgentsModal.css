@@ -474,14 +474,16 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 12px;
+  padding: 8px 12px;
   margin-bottom: 8px;
+  border-bottom: 1px solid #222;
 }
 
-.toggle-label {
-  color: #999;
-  font-size: 13px;
-  font-weight: 500;
+.yurucode-toggle .toggle-label {
+  color: var(--accent-color);
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: lowercase;
 }
 
 /* Hide checkbox input */
@@ -493,92 +495,86 @@
   height: 0;
 }
 
-/* Toggle switch - matching settings style */
-.yurucode-toggle .toggle-switch {
+/* Compact Toggle Switch for yurucode agents */
+.yurucode-toggle .toggle-switch.compact {
   position: relative;
-  width: 118px;
-  height: 23px;
-  border: 1px solid var(--fg-15);
-  border-radius: 4px;
-  cursor: default;
-  transition: all 0.2s ease;
-  display: inline-flex;
+  width: 52px;
+  height: 18px;
+  background: var(--background-color);
+  border-radius: 3px;
+  display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 0;
-  background: var(--background-color);
+  cursor: default;
+  border: 1px solid var(--fg-15);
+  transition: all 0.2s ease;
 }
 
-.yurucode-toggle .toggle-switch:hover {
-  border-color: rgba(var(--accent-rgb), 1);
+.yurucode-toggle .toggle-switch.compact:hover {
+  border-color: rgba(var(--accent-rgb), 0.9);
 }
 
-.yurucode-toggle .toggle-switch-label {
-  font-size: 11px;
+.yurucode-toggle .toggle-switch.compact .toggle-switch-label {
+  font-size: 9px;
   font-weight: bold;
   user-select: none;
-  transition: opacity 0.2s ease;
   z-index: 1;
-  padding: 0;
-  text-align: center;
   flex: 1;
+  text-align: center;
+  transition: opacity 0.2s ease;
 }
 
-.yurucode-toggle .toggle-switch-label.off {
-  color: var(--fg-50);
+.yurucode-toggle .toggle-switch.compact .toggle-switch-label.off {
+  color: var(--fg-80);
   opacity: 1;
 }
 
-.yurucode-toggle .toggle-switch-label.on {
+.yurucode-toggle .toggle-switch.compact .toggle-switch-label.on {
   color: rgba(var(--accent-rgb), 1);
   opacity: 0;
 }
 
-.yurucode-toggle .toggle-switch.active .toggle-switch-label.off {
+.yurucode-toggle .toggle-switch.compact.active .toggle-switch-label.off {
   opacity: 0;
 }
 
-.yurucode-toggle .toggle-switch.active .toggle-switch-label.on {
+.yurucode-toggle .toggle-switch.compact.active .toggle-switch-label.on {
   opacity: 1;
 }
 
-.yurucode-toggle .toggle-switch-slider {
+.yurucode-toggle .toggle-switch.compact .toggle-switch-slider {
   position: absolute;
-  top: 0;
-  left: 0;
-  width: 58px;
-  height: 21px;
-  background: var(--fg-05);
-  border-radius: 3px;
-  transition: transform 0.2s ease;
+  top: 0px;
+  left: 0px;
+  width: 25px;
+  height: 16px;
+  background: var(--fg-20);
+  border-radius: 2px;
+  transition: transform 0.2s ease, background 0.2s ease;
   pointer-events: none;
 }
 
-.yurucode-toggle .toggle-switch.active .toggle-switch-slider {
-  transform: translateX(58px);
-  background: rgba(var(--accent-rgb), 0.2);
+.yurucode-toggle .toggle-switch.compact.active .toggle-switch-slider {
+  transform: translateX(25px);
+  background: rgba(var(--accent-rgb), 0.4);
 }
 
-.yurucode-toggle .toggle-switch:hover .toggle-switch-slider {
-  background: var(--fg-15);
+.yurucode-toggle .toggle-switch.compact:hover .toggle-switch-slider {
+  background: var(--fg-25);
 }
 
-.yurucode-toggle .toggle-switch.active:hover .toggle-switch-slider {
-  background: rgba(var(--accent-rgb), 0.25);
+.yurucode-toggle .toggle-switch.compact.active:hover .toggle-switch-slider {
+  background: rgba(var(--accent-rgb), 0.5);
 }
 
-/* Yurucode model info */
+/* Yurucode model info - inline with toggle */
 .yurucode-model-info {
-  padding: 8px 12px;
-  margin-bottom: 8px;
-  font-size: 11px;
+  font-size: 10px;
   color: #666;
-}
-
-.yurucode-model-info .current-model {
-  color: var(--accent-color);
-  font-weight: 600;
-  text-transform: uppercase;
+  margin-left: auto;
+  margin-right: 12px;
+  text-transform: lowercase;
 }
 
 /* Yurucode agent items */
