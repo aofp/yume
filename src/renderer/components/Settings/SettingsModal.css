@@ -340,6 +340,11 @@
   justify-content: flex-start;
 }
 
+.color-preview, .opacity-container,
+.font-input {
+  margin-left: 2px;
+}
+
 .color-preview {
   display: flex;
   align-items: center;

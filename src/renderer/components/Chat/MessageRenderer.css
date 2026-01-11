@@ -250,7 +250,7 @@
 .message.assistant .message-bubble pre:has(code.language-shell),
 .message.assistant .message-bubble code.language-zsh,
 .message.assistant .message-bubble pre:has(code.language-zsh) {
-  color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
+  color: color-mix(in srgb, var(--foreground-color) 80%, var(--negative-color) 20%);
 }
 
 /* Assistant response to bash command - uses negative-mix styling */
@@ -261,7 +261,7 @@
 .message.assistant .message-bubble.bash-response .markdown-content,
 .message.assistant .message-bubble.bash-response .markdown-content pre,
 .message.assistant .message-bubble.bash-response .markdown-content code {
-  color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
+  color: color-mix(in srgb, var(--foreground-color) 80%, var(--negative-color) 20%);
   font-family: var(--font-mono);
 }
 
