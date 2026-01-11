@@ -2012,7 +2012,7 @@ const MessageRendererBase: React.FC<{
           {hasTextContent && (
             <div className="message assistant">
               <div className="message-content">
-                <div className="message-bubble">
+                <div className={`message-bubble${message.id?.startsWith('bash-') ? ' bash-response' : ''}`}>
                   {renderContent(textContent, message, searchQuery, isCurrentMatch)}
                 </div>
               </div>

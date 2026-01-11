@@ -2632,7 +2632,7 @@ textarea.context-full {
   flex: 1;
   min-height: 0; /* Important for proper flex behavior */
   width: 100%;
-  padding-right: 2px;
+  padding-right: 3px;
 }
 
 .messages-virtualized {

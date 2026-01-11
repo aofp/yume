@@ -410,17 +410,32 @@ fn sync_plugin_commands(plugin: &InstalledPlugin, enabled: bool) -> Result<(), S
     }
 
     for cmd in &plugin.components.commands {
+        // Create namespaced version (plugin--command.md)
         let dest_name = format!("{}--{}.md", plugin.id, cmd.name);
         let dest_path = commands_dir.join(&dest_name);
 
+        // Also create shortcut without prefix (command.md) for yurucode plugin
+        let shortcut_name = format!("{}.md", cmd.name);
+        let shortcut_path = commands_dir.join(&shortcut_name);
+
         if enabled {
-            // Copy command file
+            // Copy command file (namespaced version)
             fs::copy(&cmd.file_path, &dest_path)
                 .map_err(|e| format!("Failed to copy command {}: {}", cmd.name, e))?;
+
+            // For yurucode plugin, also create shortcut version
+            if plugin.id == "yurucode" {
+                fs::copy(&cmd.file_path, &shortcut_path)
+                    .map_err(|e| format!("Failed to copy command shortcut {}: {}", cmd.name, e))?;
+            }
         } else {
             // Remove command file
             if dest_path.exists() {
                 let _ = fs::remove_file(&dest_path);
+            }
+            // Also remove shortcut for yurucode plugin
+            if plugin.id == "yurucode" && shortcut_path.exists() {
+                let _ = fs::remove_file(&shortcut_path);
             }
         }
     }

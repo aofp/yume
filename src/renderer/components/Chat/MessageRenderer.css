@@ -245,6 +245,12 @@
   color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
 }
 
+/* Assistant response to bash command - uses negative-mix styling */
+.message.assistant .message-bubble.bash-response {
+  color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
+  font-family: var(--font-mono);
+}
+
 .message.user .message-content {
   max-width: 80%;
   width: auto;

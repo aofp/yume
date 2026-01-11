@@ -3531,29 +3531,30 @@ export const ClaudeChat: React.FC = () => {
           }, 0);
         }
       } else {
-        // For other commands like /compact and /init, insert into input and optionally send
-      const newValue = input.substring(0, start) + replacement + input.substring(end);
-      setInput(newValue);
-      setCommandTrigger(null);
-      
-      // For /init command, automatically send it
-      if (command === '/init') {
-        // Set the input then immediately send
-        setTimeout(() => {
-          handleSend();
-        }, 0);
-      } else {
-        // Focus back on the input and set cursor after the replacement
-        if (inputRef.current) {
-          inputRef.current.focus();
-          const newCursorPos = start + replacement.length;
+        // For other commands (plugin commands, /init, /compact etc), insert into input
+        const newValue = input.substring(0, start) + replacement + input.substring(end);
+        setInput(newValue);
+        setCommandTrigger(null);
+
+        // Auto-send for most commands - only /compact is passthrough (Claude handles it without auto-send)
+        // Plugin commands (/commit, /review, etc) should auto-send
+        if (command !== '/compact') {
+          // Set the input then immediately send
           setTimeout(() => {
-            if (inputRef.current) {
-              inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
-            }
+            handleSend();
           }, 0);
+        } else {
+          // Focus back on the input and set cursor after the replacement
+          if (inputRef.current) {
+            inputRef.current.focus();
+            const newCursorPos = start + replacement.length;
+            setTimeout(() => {
+              if (inputRef.current) {
+                inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
+              }
+            }, 0);
+          }
         }
-      }
       }
     }
   };
