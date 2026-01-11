@@ -81,7 +81,6 @@
   border-radius: 4px;
   font-size: 10px;
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -180,7 +179,6 @@
   background: var(--fg-05);
   border: 1px solid var(--fg-15);
   border-radius: 4px;
-  transition: all 0.2s;
 }
 
 .skill-item:hover {
@@ -252,7 +250,6 @@
   color: var(--fg-40);
   cursor: default;
   padding: 4px;
-  transition: color 0.2s;
   display: flex;
   align-items: center;
 }
@@ -325,7 +322,6 @@
   font-size: 11px;
   padding: 8px;
   outline: none;
-  transition: border-color 0.2s;
   font-family: inherit;
 }
 
@@ -352,7 +348,6 @@
   border-radius: 4px;
   font-size: 10px;
   cursor: default;
-  transition: all 0.2s;
 }
 
 .skill-cancel-btn {

@@ -57,7 +57,6 @@
   padding: 4px 6px;
   border-radius: 3px;
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -126,7 +125,6 @@
   transform: translate(-50%, -50%);
   cursor: default;
   z-index: 10;
-  transition: all 0.2s ease;
 }
 
 .timeline-node-icon {
@@ -139,7 +137,6 @@
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.5);
-  transition: all 0.2s ease;
 }
 
 .timeline-node:hover .timeline-node-icon {
@@ -232,7 +229,6 @@
   padding: 4px 8px;
   border-radius: 3px;
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -307,7 +303,6 @@
   padding: 8px 12px;
   border-radius: 20px;
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 8px;

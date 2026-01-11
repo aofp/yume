@@ -535,6 +535,7 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
 }) => {
   const [isCollapsed, setIsCollapsed] = useState(defaultCollapsed);
   const [hasUserToggled, setHasUserToggled] = useState(false);
+  const headerRef = useRef<HTMLDivElement>(null);
 
   // Sync with defaultCollapsed prop only if user hasn't manually toggled
   useEffect(() => {
@@ -545,13 +546,22 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
 
   const handleToggle = useCallback(() => {
     setHasUserToggled(true);
-    setIsCollapsed(prev => !prev);
+    setIsCollapsed(prev => {
+      const willExpand = prev; // if currently collapsed, we're expanding
+      if (willExpand && headerRef.current) {
+        // scroll header into view after expanding
+        setTimeout(() => {
+          headerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 10);
+      }
+      return !prev;
+    });
   }, []);
 
   return (
     <div className="message tool-result-message">
       <div className={`tool-result standalone collapsible ${className} ${isCollapsed ? 'collapsed' : 'expanded'}`}>
-        <div className="collapsible-header" onClick={handleToggle}>
+        <div ref={headerRef} className="collapsible-header" onClick={handleToggle}>
           <span className="collapse-chevron">
             {isCollapsed ? <IconChevronRight size={10} stroke={2} /> : <IconChevronDown size={10} stroke={2} />}
           </span>

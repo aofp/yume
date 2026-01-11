@@ -64,7 +64,6 @@
   padding: 6px;
   border-radius: 4px;
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -111,7 +110,6 @@
   font-size: 13px;
   font-family: var(--font-mono);
   outline: none;
-  transition: all 0.2s ease;
   cursor: default;
 }
 
@@ -136,7 +134,6 @@
   font-size: 12px;
   font-family: var(--font-mono);
   outline: none;
-  transition: all 0.2s ease;
   resize: vertical;
 }
 
@@ -161,7 +158,6 @@
   font-size: 12px;
   font-family: var(--font-mono);
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -270,7 +266,6 @@
   font-size: 13px;
   font-family: var(--font-mono);
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 8px;

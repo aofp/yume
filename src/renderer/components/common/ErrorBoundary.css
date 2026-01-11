@@ -79,7 +79,6 @@
   font-size: 13px;
   font-weight: 500;
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .error-btn-primary {

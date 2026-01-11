@@ -55,6 +55,24 @@ import('@tauri-apps/api/core').then(m => {
   // Not in Tauri environment
 });
 
+// Import Tauri event listener for reliable window focus detection
+import('@tauri-apps/api/event').then(({ listen }) => {
+  // Listen for native window focus changes from Tauri
+  // This is more reliable than web 'focus' event on macOS
+  listen<boolean>('window-focus-change', (event) => {
+    if (event.payload) {
+      // Window gained focus - force hover state re-evaluation
+      // macOS webview doesn't reliably update CSS :hover states on focus change
+      document.body.style.pointerEvents = 'none';
+      requestAnimationFrame(() => {
+        document.body.style.pointerEvents = '';
+      });
+    }
+  });
+}).catch(() => {
+  // Not in Tauri environment, fallback to web focus event
+});
+
 const mainLogger = log.setContext('Main');
 
 // Variables for sleep/wake detection and session persistence
@@ -358,18 +376,9 @@ const preserveFocus = async (asyncOperation: () => Promise<void>) => {
 };
 
 // Handle window focus/blur for better session management
+// NOTE: Hover fix is now handled by tauri 'window-focus-change' event (more reliable)
+// This web 'focus' event is kept for session reconnection logic
 window.addEventListener('focus', () => {
-  // WORKAROUND: Force hover state re-evaluation on window focus
-  // Tauri webview doesn't always update :hover correctly without this
-  // Apply pointer-events hack to force browser to re-evaluate hover states
-  document.body.style.pointerEvents = 'none';
-  requestAnimationFrame(() => {
-    document.body.style.pointerEvents = '';
-  });
-
-  // NOTE: Aggressive focus restoration removed - typing auto-focuses via handleGlobalTyping
-  // in ClaudeChat.tsx, which is less intrusive and allows text selection in other areas
-
   const store = useClaudeCodeStore.getState();
   const { sessions, currentSessionId } = store;
 

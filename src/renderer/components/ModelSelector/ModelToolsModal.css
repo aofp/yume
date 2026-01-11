@@ -76,7 +76,6 @@
   cursor: default;
   text-transform: lowercase;
   font-family: var(--font-mono);
-  transition: all 0.15s ease;
 }
 
 .mt-model-btn:hover {
@@ -186,7 +185,6 @@
   margin-bottom: 3px;
   padding-left: 0;
   cursor: default;
-  transition: color 0.15s ease;
 }
 
 .mt-category-name:hover {
@@ -209,7 +207,6 @@
   cursor: default;
   text-transform: lowercase;
   font-family: var(--font-mono);
-  transition: all 0.15s ease;
 }
 
 .mt-tool:hover {

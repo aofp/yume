@@ -102,7 +102,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.15s ease;
 }
 
 .search-btn:hover:not(:disabled) {
@@ -190,7 +189,6 @@
   font-size: 12px;
   font-weight: 500;
 
-  transition: background 0.2s ease;
   text-transform: lowercase;
 }
 
@@ -232,7 +230,6 @@
   border-radius: 6px;
   font-size: 10px;
 
-  transition: background 0.2s ease;
   text-transform: lowercase;
 }
 
@@ -400,7 +397,6 @@
   color: var(--accent-color);
   text-decoration: none;
   border-bottom: 1px solid transparent;
-  transition: border-color 0.2s;
 }
 
 .message-text a:hover {
@@ -892,7 +888,6 @@
   padding: 2px 2px 3px 2px; /* Default padding */
   background: var(--background-color);
   border-top: 1px solid var(--fg-20);
-  transition: background 0.2s ease;
   min-height: 60px;
   max-height: 40vh;
   overflow-y: auto;
@@ -963,7 +958,6 @@
   font-family: var(--font-mono);
   text-transform: lowercase;
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .context-full-actions .btn-compact:hover,
@@ -990,7 +984,6 @@ textarea.context-full {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s;
   opacity: 1;
   animation: streaming-pulse 2s infinite !important;
   z-index: 20;
@@ -1053,7 +1046,6 @@ textarea.context-full {
   max-height: 106px; /* 5 lines: 18px * 5 + 16px padding */
   box-sizing: border-box;
   resize: none;
-  transition: all 0.2s ease;
   font-family: var(--font-sans);
   outline: none;
   overflow-y: auto;
@@ -1171,7 +1163,6 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   cursor: default;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   transform: scale(1);
@@ -1188,7 +1179,6 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   cursor: default;
-  transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
   overflow: hidden;
   transform: scale(1);
@@ -1205,7 +1195,6 @@ textarea.context-full {
   border-radius: 50%;
   background: rgba(128, 128, 128, 0.3);
   transform: translate(-50%, -50%);
-  transition: width 0.4s, height 0.4s;
 }
 
 .btn-send:active:not(:disabled) {
@@ -1328,7 +1317,6 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s ease, color 0.2s ease;
 }
 
 .attached-image:hover .remove-image {
@@ -1427,7 +1415,6 @@ textarea.context-full {
   font-size: 10px;
   font-family: var(--font-mono);
   text-transform: lowercase;
-  transition: all 0.2s ease;
   cursor: default;
   line-height: 9pt;
 }
@@ -1537,7 +1524,6 @@ textarea.context-full {
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: all 0.2s ease;
   cursor: default;
   height: 32px;
   width: 32px;
@@ -1567,7 +1553,6 @@ textarea.context-full {
 .btn-stats-auto {
   font-size: 9px;
   opacity: 0.7;
-  transition: color 0.2s ease;
 }
 
 .btn-stats:hover {
@@ -1612,7 +1597,6 @@ textarea.context-full {
 
 .btn-stats-limit-fill {
   height: 100%;
-  transition: width 0.3s ease;
 }
 
 .btn-stats-limit-fill.normal {
@@ -1676,7 +1660,6 @@ textarea.context-full {
 }
 
 .context-usage {
-  transition: color 0.2s ease;
   font-family: var(--font-mono);
 }
 
@@ -1713,7 +1696,6 @@ textarea.context-full {
   background: var(--background-color, #000000);
   border: 1px solid var(--fg-15);
   border-radius: 3px;
-  transition: all 0.2s;
   user-select: none;
 }
 
@@ -1740,7 +1722,6 @@ textarea.context-full {
   justify-content: center;
   cursor: default;
   opacity: 1;
-  transition: color 0.2s;
   font-size: 10px;
 }
 
@@ -1830,7 +1811,6 @@ textarea.context-full {
   color: var(--fg-40);
   cursor: default;
   padding: 2px;
-  transition: all 0.2s ease;
 }
 
 .help-close:hover {
@@ -1973,7 +1953,6 @@ textarea.context-full {
   color: var(--fg-40);
   cursor: default;
   padding: 2px;
-  transition: all 0.2s ease;
 }
 
 .stats-close:hover {
@@ -2011,7 +1990,6 @@ textarea.context-full {
   padding: 0;
   cursor: default;
   border: 1px solid var(--fg-15);
-  transition: all 0.2s ease;
 }
 
 .toggle-switch.compact:hover {
@@ -2025,7 +2003,6 @@ textarea.context-full {
   z-index: 1;
   flex: 1;
   text-align: center;
-  transition: opacity 0.2s ease;
 }
 
 .toggle-switch.compact .toggle-switch-label.off {
@@ -2054,7 +2031,6 @@ textarea.context-full {
   height: 16px;
   background: var(--fg-10);
   border-radius: 2px;
-  transition: transform 0.2s ease, background 0.2s ease;
   pointer-events: none;
 }
 
@@ -2185,7 +2161,6 @@ textarea.context-full {
 .input-bar {
   height: 100%;
   background: rgba(var(--accent-rgb), 0.8);
-  transition: width 0.3s ease, background 0.3s ease;
 }
 
 .input-bar.medium {
@@ -2439,7 +2414,6 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .modal-close-btn:hover {
@@ -2456,7 +2430,6 @@ textarea.context-full {
   justify-content: center;
   border-radius: 4px;
   cursor: default;
-  transition: all 0.15s ease;
 }
 
 .modal-refresh-btn:hover:not(:disabled) {
@@ -2478,7 +2451,6 @@ textarea.context-full {
   justify-content: center;
   border-radius: 4px;
   cursor: default;
-  transition: all 0.15s ease;
 }
 
 .clear-all-icon:hover:not(:disabled) {
@@ -2573,7 +2545,6 @@ textarea.context-full {
   font-size: 9px;
   color: var(--fg-40);
   white-space: nowrap;
-  transition: color 0.15s ease;
   margin-left: 4px;
 }
 
@@ -2588,7 +2559,6 @@ textarea.context-full {
   border: none;
   color: var(--fg-30);
   cursor: default;
-  transition: all 0.15s ease;
   border-radius: 4px;
   opacity: 0;
 }
@@ -2616,7 +2586,6 @@ textarea.context-full {
   color: var(--fg-30);
   width: 18px;
   text-align: right;
-  transition: color 0.15s ease;
 }
 
 /* focused state - accent number */
@@ -2688,7 +2657,6 @@ textarea.context-full {
   padding: 6px;
   border-radius: 4px;
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2710,7 +2678,6 @@ textarea.context-full {
   padding: 6px;
   border-radius: 4px;
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2747,7 +2714,6 @@ textarea.context-full {
   padding: 8px 12px;
   border-radius: 6px;
   cursor: default;
-  transition: all 0.2s ease;
   text-transform: lowercase;
 }
 
@@ -2817,7 +2783,6 @@ textarea.context-full {
   cursor: default;
   display: flex;
   align-items: center;
-  transition: all 0.2s ease;
 }
 
 .tool-panel-close:hover {
@@ -2842,7 +2807,6 @@ textarea.context-full {
   font-size: 10px;
   font-family: inherit;
   cursor: default;
-  transition: all 0.2s;
 }
 
 .tool-panel-edit-claude-md:hover {
@@ -3277,7 +3241,6 @@ textarea.context-full {
   border-radius: 4px;
   color: var(--fg-60);
   cursor: default;
-  transition: all 0.2s ease;
   line-height: 9pt;
   width: 40px;
 }
@@ -3338,7 +3301,6 @@ textarea.context-full {
   cursor: default;
   font-size: 11px;
   background: transparent;
-  transition: background 0.15s ease;
 }
 
 .rollback-item:hover:not(.disabled),

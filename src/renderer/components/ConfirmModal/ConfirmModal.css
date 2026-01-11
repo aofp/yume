@@ -73,7 +73,6 @@
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  transition: background 0.2s, color 0.2s;
 }
 
 .confirm-modal-close:hover {
@@ -106,7 +105,6 @@
   font-size: 12px;
   font-weight: 500;
   cursor: default;
-  transition: background 0.2s, color 0.2s, border-color 0.2s;
   border: none;
 }
 

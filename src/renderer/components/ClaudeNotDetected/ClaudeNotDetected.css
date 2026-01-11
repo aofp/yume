@@ -145,7 +145,6 @@
   text-decoration: none;
   font-size: 12px;
   font-family: var(--font-sans);
-  transition: all 0.2s ease;
 }
 
 .claude-download-link:hover {

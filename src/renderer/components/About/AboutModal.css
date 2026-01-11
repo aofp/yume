@@ -51,7 +51,6 @@
   color: rgba(255, 255, 255, 0.4);
   cursor: default;
   padding: 2px;
-  transition: all 0.2s ease;
 }
 
 .about-close:hover {
@@ -118,7 +117,6 @@
   font-weight: 500;
   text-transform: lowercase;
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .about-buy-license:hover {
@@ -152,7 +150,6 @@
 .about-site a {
   color: rgba(255, 255, 255, 0.5);
   text-decoration: none;
-  transition: all 0.2s ease;
 }
 
 .about-site a:hover {

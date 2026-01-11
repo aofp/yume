@@ -46,7 +46,6 @@
   color: var(--fg-40);
   cursor: default;
   padding: 2px;
-  transition: all 0.2s ease;
 }
 
 .help-close:hover {

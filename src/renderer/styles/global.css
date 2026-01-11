@@ -37,8 +37,8 @@
   --bg-20: rgba(var(--background-rgb), 0.2);     /* Subtle overlay */
 
   /* Brightened background variants - mix background with white, then apply opacity */
-  --bg-brighter: color-mix(in srgb, var(--background-color) 90%, white 10%);
-  --bg-brighter-alpha: color-mix(in srgb, var(--bg-brighter) 40%, transparent 60%);
+  --bg-brighter: color-mix(in srgb, var(--background-color) 85%, var(--foreground-color) 15%);
+  --bg-brighter-alpha: color-mix(in srgb, var(--bg-brighter) 50%, transparent 50%);
 
   /* Darkened background overlay - use for container backgrounds */
   --bg-overlay: linear-gradient(var(--bg-20), var(--bg-20)), #000000;
@@ -363,7 +363,6 @@ button {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  transition: background var(--transition-fast), color var(--transition-fast), border-color var(--transition-fast), opacity var(--transition-fast);
 }
 
 button:disabled {
@@ -381,7 +380,6 @@ textarea {
   border: 1px solid rgba(var(--accent-rgb), 0.5);
   border-radius: var(--radius-sm);
   padding: var(--space-2) var(--space-3);
-  transition: border-color var(--transition-fast), background var(--transition-fast);
 }
 
 input:focus,
@@ -393,7 +391,6 @@ textarea:focus {
 a {
   color: var(--color-accent-blue);
   text-decoration: none;
-  transition: color var(--transition-fast);
 }
 
 a:hover {

@@ -52,7 +52,6 @@
   color: rgba(255, 255, 255, 0.4);
   cursor: default;
   padding: 2px;
-  transition: all 0.2s ease;
 }
 
 .font-picker-close:hover {
@@ -118,7 +117,6 @@
   border-radius: 4px;
   color: #cccccc;
   cursor: default;
-  transition: all 0.15s ease;
   margin-bottom: 4px;
 }
 
@@ -183,7 +181,6 @@
   color: var(--accent-color);
   font-size: 11px;
   cursor: default;
-  transition: all 0.2s ease;
   text-transform: lowercase;
 }
 

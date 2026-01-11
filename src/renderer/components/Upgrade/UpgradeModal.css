@@ -54,7 +54,6 @@
   color: var(--fg-40);
   cursor: default;
   padding: 2px;
-  transition: all 0.2s ease;
 }
 
 .upgrade-close:hover {
@@ -123,7 +122,6 @@
   font-weight: 500;
   text-transform: lowercase;
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .upgrade-button:hover {
@@ -162,7 +160,6 @@
   text-transform: uppercase;
   border-radius: 4px;
   outline: none;
-  transition: all 0.2s ease;
 }
 
 .license-input::placeholder {
@@ -186,7 +183,6 @@
   font-weight: 500;
   text-transform: lowercase;
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .activate-button:hover {

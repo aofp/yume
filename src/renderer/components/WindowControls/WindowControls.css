@@ -42,7 +42,6 @@
   background: transparent;
   -webkit-app-region: no-drag;
   z-index: 10002;
-  transition: all 0.2s ease, opacity 0.1s ease-in-out;
 }
 
 /* Windows left side controls */
@@ -50,7 +49,6 @@
   display: flex;
   align-items: center;
   gap: 2px;
-  transition: all 0.2s ease, opacity 0.1s ease-in-out;
 }
 
 /* Toggle button styling */
@@ -65,7 +63,6 @@
   padding: 0;
   border-radius: 4px;
   font-size: 10px;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -88,7 +85,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: opacity 0.2s;
   -webkit-app-region: no-drag;
   padding: 0;
 }
@@ -162,7 +158,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: background-color 0.2s;
 }
 
 .window-control:hover {
@@ -179,7 +174,6 @@
   padding: 0;
   border-radius: 4px;
   font-size: 10px;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;

@@ -692,13 +692,13 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
       wordWrapCode: (() => {
         const stored = localStorage.getItem('yurucode-word-wrap-code');
-        const enabled = stored ? JSON.parse(stored) : false;
+        const enabled = stored !== null ? JSON.parse(stored) : true;
         // Apply CSS class immediately on init
         if (enabled) {
           document.documentElement.classList.add('word-wrap-code');
         }
         return enabled;
-      })(), // Load from localStorage or default to false
+      })(), // Load from localStorage or default to true
       soundOnComplete: (() => {
         const stored = localStorage.getItem('yurucode-sound-on-complete');
         return stored ? JSON.parse(stored) : true;
@@ -707,7 +707,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         const stored = localStorage.getItem('yurucode-show-result-stats');
         return stored ? JSON.parse(stored) : true;
       })(), // Load from localStorage or default to true
-      autoCompactEnabled: true, // Default to enabled (auto-compact at 60%)
+      autoCompactEnabled: (() => {
+        const stored = localStorage.getItem('yurucode-auto-compact-enabled');
+        return stored ? JSON.parse(stored) : true;
+      })(), // Load from localStorage or default to true
       showProjectsMenu: false, // Default to hidden
       showAgentsMenu: false, // Default to hidden
       showAnalyticsMenu: false, // Default to hidden
@@ -1148,30 +1151,19 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   (message.usage?.input_tokens === 0 &&
                     message.usage?.output_tokens === 0);
 
-                // If it's not a compact result, it's a normal result - process through main handler
+                // If it's not a compact result, it's a normal result - process through addMessageToSession
+                // addMessageToSession has deduplication logic to prevent duplicate messages
                 if (!isCompactResult) {
-                  console.log('[Store] 📊 NORMAL RESULT on temp channel (not compact), forwarding to main handler:', {
+                  console.log('[Store] 📊 NORMAL RESULT on temp channel (not compact), processing via addMessageToSession:', {
                     sessionId,
                     hasWrapper: !!message.wrapper,
                     wrapperTokens: message.wrapper?.tokens,
                     usage: message.usage,
-                    messageType: message.type
+                    messageType: message.type,
+                    messageId: message.id
                   });
 
-                  // NOTE: Don't clear streaming here - wait for streaming_end message
-                  // Result messages come BEFORE streaming_end, so clearing here causes UI to show idle prematurely
-                  console.log('[Store] 📊 Result received on temp channel - NOT clearing streaming (wait for streaming_end)');
-
-                  // Process as normal message through the main handler
-                  // Ensure all fields are preserved for display
-                  console.log('[Store] 📊 Result message fields:', {
-                    duration_ms: message.duration_ms,
-                    usage: message.usage,
-                    model: message.model,
-                    total_cost_usd: message.total_cost_usd
-                  });
-
-                  // Add the complete result message with all fields
+                  // Process as normal message - addMessageToSession handles deduplication by message ID
                   get().addMessageToSession(sessionId, message);
                   return;
                 }

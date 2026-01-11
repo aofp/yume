@@ -99,7 +99,6 @@
   font-size: 13px;
   font-family: var(--font-mono);
   outline: none;
-  transition: all 0.2s ease;
 }
 
 .checkpoint-description-input:focus {
@@ -150,7 +149,6 @@
   font-size: 12px;
   font-family: var(--font-mono);
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .checkpoint-cancel-btn {

@@ -67,7 +67,6 @@
   flex-direction: column;
   gap: 2px;
   opacity: 0;
-  transition: opacity 0.2s ease;
   margin-left: 2px;
   align-self: flex-end;
   justify-content: flex-end;
@@ -93,7 +92,6 @@
   border-radius: 4px;
   color: rgba(var(--foreground-rgb), 0.5);
   cursor: default;
-  transition: all 0.15s ease;
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -409,7 +407,6 @@
   border-radius: 4px;
   font-size: 11px;
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .code-copy-btn:hover {
@@ -494,7 +491,6 @@ ol {
   color: var(--accent-color);
   text-decoration: none;
   border-bottom: 1px dotted transparent;
-  transition: border-color 0.2s;
 }
 
 .markdown-content a:hover {
@@ -2232,7 +2228,6 @@ hr {
   padding: 0;
   border-radius: 4px;
   font-size: 12px;
-  transition: all 0.2s ease;
   color: var(--fg-80);
 }
 

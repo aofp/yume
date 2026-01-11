@@ -79,7 +79,6 @@
   border-radius: 4px;
   font-size: 10px;
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   gap: 4px;
@@ -134,7 +133,6 @@
   border-radius: 4px;
   font-size: 10px;
   cursor: default;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -181,7 +179,6 @@
   font-size: 11px;
   font-family: var(--font-mono);
   outline: none;
-  transition: all 0.2s;
 }
 
 .form-field input:focus {
@@ -204,7 +201,6 @@
   border-radius: 2px;
   font-size: 10px;
   cursor: default;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -228,7 +224,6 @@
   color: var(--accent-color);
   cursor: default;
   padding: 2px;
-  transition: opacity 0.2s;
 }
 
 .add-env-btn:hover {
@@ -257,7 +252,6 @@
   color: #ff9999;
   cursor: default;
   padding: 4px;
-  transition: opacity 0.2s;
 }
 
 .remove-env-btn:hover {
@@ -277,7 +271,6 @@
   border-radius: 4px;
   font-size: 11px;
   cursor: default;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -357,7 +350,6 @@
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid rgba(255, 255, 255, 0.08);
   border-radius: 4px;
-  transition: all 0.2s;
 }
 
 .server-item:hover {
@@ -411,7 +403,6 @@
   font-size: 10px;
   cursor: default;
   padding: 2px 4px;
-  transition: color 0.2s;
   display: flex;
   align-items: center;
   gap: 2px;

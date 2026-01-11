@@ -90,7 +90,6 @@
   color: var(--fg-40);
   cursor: default;
   padding: 2px;
-  transition: all 0.2s ease;
   -webkit-app-region: no-drag;
   flex-shrink: 0; /* Prevent close button from shrinking */
   position: sticky;
@@ -172,7 +171,6 @@
   align-items: center;
   justify-content: center;
   cursor: default;
-  transition: all 0.2s ease;
 }
 
 .zoom-btn.small {
@@ -259,7 +257,6 @@
   border-radius: 3px;
   color: var(--fg-60);
   cursor: default;
-  transition: all 0.2s ease;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -314,7 +311,6 @@
 
 .opacity-slider::-webkit-slider-thumb {
   appearance: none;
-  transition: background 0.2s ease;
   -webkit-appearance: none;
   width: 10px;
   height: 10px;
@@ -355,7 +351,6 @@
   border: 1px solid var(--fg-15);
   border-radius: 3px;
   cursor: default;
-  transition: all 0.2s ease;
   padding: 2px;
   box-sizing: border-box;
 }
@@ -377,7 +372,6 @@
   font-weight: bold;
   padding: 0 4px;
   cursor: default;
-  transition: all 0.15s ease;
   box-sizing: border-box;
   appearance: none;
   -webkit-appearance: none;
@@ -417,7 +411,6 @@
   font-family: var(--font-sans);
   padding: 0 4px;
   cursor: default;
-  transition: all 0.15s ease;
   box-sizing: border-box;
   text-align: center;
 }
@@ -446,7 +439,6 @@
   color: var(--foreground-color);
   cursor: default;
   text-align: center;
-  transition: all 0.1s ease;
 }
 
 .preset-dropdown-item:hover {
@@ -457,6 +449,11 @@
 .preset-dropdown-item.active {
   color: var(--accent-color);
   font-weight: bold;
+}
+
+.preset-dropdown-item.focused {
+  background: var(--fg-10);
+  color: var(--accent-color);
 }
 
 .preset-dropdown-divider {
@@ -557,7 +554,6 @@
   color: var(--fg-40);
   cursor: default;
   padding: 2px;
-  transition: all 0.2s ease;
 }
 
 .color-picker-close:hover {
@@ -591,7 +587,6 @@
   border: 1px solid transparent;
   border-radius: 3px;
   cursor: default;
-  transition: all 0.15s ease;
   position: relative;
   flex-shrink: 0;
 }
@@ -643,6 +638,184 @@
 
 .color-swatch.bg-swatch.active::after {
   color: #fff;
+}
+
+/* Enhanced Color Picker */
+.color-picker-enhanced {
+  width: 280px;
+}
+
+.color-picker-enhanced .color-picker-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--fg-10);
+}
+
+.color-picker-enhanced .color-picker-header h4 {
+  margin: 0;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--fg-60);
+  text-transform: lowercase;
+}
+
+.color-picker-header-preview {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+
+.color-picker-header-preview .preview-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  border: 1px solid var(--fg-20);
+}
+
+.color-picker-header-preview .preview-hex {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  color: var(--fg-50);
+  text-transform: uppercase;
+}
+
+.color-picker-enhanced .color-picker-content {
+  padding: 12px;
+}
+
+.color-picker-presets {
+  margin-bottom: 0;
+}
+
+.color-picker-presets .color-row {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 4px;
+}
+
+.color-picker-presets .color-row:last-child {
+  margin-bottom: 0;
+}
+
+.color-picker-presets .color-swatch {
+  width: 22px;
+  height: 22px;
+  border-radius: 4px;
+  border: 1px solid var(--fg-08);
+  cursor: default;
+}
+
+.color-picker-presets .color-swatch:hover {
+  transform: scale(1.1);
+  border-color: var(--fg-30);
+}
+
+.color-picker-presets .color-swatch.active {
+  border-color: var(--accent-color);
+  box-shadow: 0 0 0 2px var(--background-color), 0 0 0 3px var(--accent-color);
+}
+
+.color-picker-divider {
+  height: 1px;
+  background: var(--fg-10);
+  margin: 12px 0;
+}
+
+.color-picker-square {
+  position: relative;
+  width: 100%;
+  height: 140px;
+  border-radius: 6px;
+  cursor: crosshair;
+  margin-bottom: 10px;
+}
+
+.color-picker-cursor {
+  position: absolute;
+  width: 14px;
+  height: 14px;
+  border: 2px solid #fff;
+  border-radius: 50%;
+  box-shadow: 0 0 0 1px rgba(0,0,0,0.3), inset 0 0 0 1px rgba(0,0,0,0.2);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.color-picker-hue {
+  position: relative;
+  width: 100%;
+  height: 14px;
+  border-radius: 7px;
+  background: linear-gradient(to right,
+    hsl(0, 100%, 50%),
+    hsl(60, 100%, 50%),
+    hsl(120, 100%, 50%),
+    hsl(180, 100%, 50%),
+    hsl(240, 100%, 50%),
+    hsl(300, 100%, 50%),
+    hsl(360, 100%, 50%)
+  );
+  cursor: pointer;
+  margin-bottom: 12px;
+}
+
+.color-picker-hue-cursor {
+  position: absolute;
+  top: 50%;
+  width: 6px;
+  height: 18px;
+  background: #fff;
+  border: 1px solid rgba(0,0,0,0.2);
+  border-radius: 3px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.3);
+  transform: translate(-50%, -50%);
+  pointer-events: none;
+}
+
+.color-picker-input-row {
+  display: flex;
+  gap: 8px;
+}
+
+.color-picker-hex-input {
+  flex: 1;
+  background: var(--fg-05);
+  border: 1px solid var(--fg-15);
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--fg-80);
+  text-transform: uppercase;
+  outline: none;
+}
+
+.color-picker-hex-input:focus {
+  border-color: var(--accent-color);
+}
+
+.color-picker-hex-input::placeholder {
+  color: var(--fg-30);
+  text-transform: uppercase;
+}
+
+.color-picker-apply {
+  background: var(--accent-color);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 16px;
+  font-size: 11px;
+  font-weight: 500;
+  color: #000;
+  cursor: pointer;
+}
+
+.color-picker-apply:hover {
+  opacity: 0.9;
 }
 
 @keyframes fadeIn {
@@ -707,7 +880,6 @@
   color: var(--fg-60);
   font-size: 12px;
   cursor: default;
-  transition: all 0.2s;
 }
 
 .watermark-upload-btn:hover {
@@ -784,7 +956,6 @@
   color: var(--accent-color);
   font-size: 10px;
   cursor: default;
-  transition: all 0.2s;
   text-transform: lowercase;
   width: 100%;
   max-width: 110px;
@@ -870,7 +1041,6 @@
   color: var(--accent-color);
   font-size: 11px;
   cursor: default;
-  transition: all 0.2s;
 }
 
 .upgrade-btn:hover {
@@ -924,7 +1094,6 @@
   padding: 2px 6px;
   text-transform: none;
   cursor: default;
-  transition: all 0.2s;
   text-align: center;
   display: flex;
   align-items: center;
@@ -991,7 +1160,6 @@ input[type="checkbox"].checkbox-input {
   border: none;  /* No borders */
   border-radius: 4px;
   cursor: default;
-  transition: background 0.2s ease;
   display: inline-flex;
   align-items: center;
   justify-content: space-between;
@@ -1003,7 +1171,6 @@ input[type="checkbox"].checkbox-input {
   font-size: 11px;
   font-weight: bold;
   user-select: none;
-  transition: opacity 0.2s ease;
   z-index: 1;
   padding: 0;
   text-align: center;
@@ -1036,7 +1203,6 @@ input[type="checkbox"].checkbox-input {
   height: calc(23px - 2px);  /* Adjust height for padding */
   background: var(--fg-05);
   border-radius: 3px;  /* Smaller radius for inner slider */
-  transition: transform 0.2s ease;
   pointer-events: none;
 }
 
@@ -1067,7 +1233,6 @@ input[type="checkbox"].checkbox-input {
   padding: 0;
   cursor: default;
   border: 1px solid var(--fg-15);
-  transition: all 0.2s ease;
 }
 
 .toggle-switch.compact:hover {
@@ -1081,7 +1246,6 @@ input[type="checkbox"].checkbox-input {
   z-index: 1;
   flex: 1;
   text-align: center;
-  transition: opacity 0.2s ease;
 }
 
 .toggle-switch.compact .toggle-switch-label.off {
@@ -1110,7 +1274,6 @@ input[type="checkbox"].checkbox-input {
   height: 16px;
   background: var(--fg-20);
   border-radius: 2px;
-  transition: transform 0.2s ease, background 0.2s ease;
   pointer-events: none;
 }
 

@@ -791,7 +791,7 @@ pub fn run() {
                                 let window_for_save = window_clone.clone();
                                 let app_for_save = app_handle.clone();
                                 let save_flag = save_pending.clone();
-                                
+
                                 tauri::async_runtime::spawn(async move {
                                     // Debounce - wait 500ms before saving
                                     tokio::time::sleep(std::time::Duration::from_millis(500)).await;
@@ -799,6 +799,11 @@ pub fn run() {
                                     save_flag.store(false, Ordering::SeqCst);
                                 });
                             }
+                        }
+                        tauri::WindowEvent::Focused(focused) => {
+                            // Emit focus change event to frontend for hover state fix
+                            // macOS webview doesn't reliably update CSS :hover states on focus change
+                            let _ = window_clone.emit("window-focus-change", focused);
                         }
                         _ => {}
                     }

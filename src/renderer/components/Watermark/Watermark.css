@@ -6,7 +6,6 @@
   height: 42px;
   z-index: 10;
   pointer-events: none;
-  transition: opacity 0.3s ease;
   opacity: 0.8;
   user-select: none;
   -webkit-user-select: none;

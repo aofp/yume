@@ -203,7 +203,6 @@ ul {
   font-size: 11px;
   cursor: default;
   border-radius: 4px;
-  transition: background 0.2s ease;
   text-transform: lowercase;
   text-align: left;
 }

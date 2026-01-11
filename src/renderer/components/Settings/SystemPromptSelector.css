@@ -43,7 +43,6 @@
   font-size: 9px;
   font-family: var(--font-mono);
   cursor: default;
-  transition: all 0.2s ease;
   text-align: center;
   color: var(--fg-80);
   display: flex;

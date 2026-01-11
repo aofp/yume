@@ -68,7 +68,6 @@
   margin: 0;
   margin-right: 8px;
   padding: 2px 4px;
-  transition: color 0.2s;
   font-family: inherit;
   display: flex;
   align-items: center;
@@ -96,7 +95,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s;
   position: relative;
   z-index: 1;
   -webkit-app-region: no-drag;
@@ -268,7 +266,6 @@
 .model-bar-fill {
   height: 100%;
   background: var(--accent-color);
-  transition: width 0.3s ease-out;
   opacity: 0.6;
 }
 
@@ -345,7 +342,6 @@
 
 .analytics-project-item.clickable {
   cursor: default;
-  transition: all 0.2s;
 }
 
 .analytics-project-item.clickable:hover {
@@ -364,7 +360,6 @@
   color: #666;
   opacity: 0.7;
   flex-shrink: 0;
-  transition: color 0.2s;
 }
 
 .analytics-project-item.clickable:hover .analytics-project-info svg {

@@ -45,7 +45,6 @@
   align-items: center;
   justify-content: center;
   cursor: default;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   -webkit-app-region: no-drag;
   z-index: 10001;
   pointer-events: auto !important;
@@ -81,7 +80,6 @@
   color: rgba(255, 153, 204, 0.6);
   border-radius: 4px;
   cursor: default;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
   margin-right: 12px;
   -webkit-app-region: no-drag;
   z-index: 10;
@@ -170,7 +168,6 @@
   height: 28px;
   border-radius: 8px;
   color: #a0a0a0;
-  transition: background 0.2s ease, color 0.2s ease;
 }
 
 .titlebar-action:hover {
@@ -200,7 +197,6 @@
   width: 46px;
   height: 100%;
   color: var(--fg-90);
-  transition: background 0.1s ease;
   /* FORCE NO DRAG ON EACH BUTTON */
   -webkit-app-region: no-drag !important;
   pointer-events: auto !important;
@@ -258,7 +254,6 @@
   color: var(--fg-40);
   font-size: 10px;
   cursor: default;
-  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
 
 .stats-btn:hover {

@@ -77,7 +77,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s;
 }
 
 .agents-new:hover:not(:disabled) {
@@ -99,7 +98,6 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  transition: color 0.2s;
 }
 
 .agents-close:hover {
@@ -183,7 +181,6 @@
   border: 1px solid #222;
   border-radius: 2px;
   cursor: default;
-  transition: all 0.2s;
 }
 
 .agent-item:hover,
@@ -200,7 +197,6 @@
 .agent-item.add-agent-item {
   border-style: dashed;
   opacity: 0.6;
-  transition: all 0.2s;
 }
 
 .agent-item.add-agent-item:hover {
@@ -260,7 +256,6 @@
   display: flex;
   gap: 4px;
   opacity: 0;
-  transition: opacity 0.2s;
 }
 
 .agent-item:hover .agent-actions {
@@ -274,7 +269,6 @@
   border-radius: 4px;
   color: #666;
   cursor: default;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
 }
@@ -315,7 +309,6 @@
   padding: 4px 8px;
   font-size: 11px;
   cursor: default;
-  transition: all 0.2s;
   border-radius: 2px;
 }
 
@@ -365,7 +358,6 @@
   font-size: 12px;
   font-family: var(--mono-font);
   outline: none;
-  transition: all 0.2s;
 }
 
 .form-group input:focus,
@@ -403,7 +395,6 @@
   font-size: 12px;
   font-family: var(--mono-font);
   outline: none;
-  transition: all 0.2s;
   cursor: default;
   appearance: none;
   -webkit-appearance: none;
@@ -440,7 +431,6 @@
   font-size: 12px;
   font-weight: 500;
   cursor: default;
-  transition: all 0.2s;
   display: flex;
   align-items: center;
   gap: 6px;
@@ -508,7 +498,6 @@
   padding: 0;
   cursor: default;
   border: 1px solid var(--fg-15);
-  transition: all 0.2s ease;
 }
 
 .yurucode-toggle .toggle-switch.compact:hover {
@@ -522,7 +511,6 @@
   z-index: 1;
   flex: 1;
   text-align: center;
-  transition: opacity 0.2s ease;
 }
 
 .yurucode-toggle .toggle-switch.compact .toggle-switch-label.off {
@@ -551,7 +539,6 @@
   height: 16px;
   background: var(--fg-20);
   border-radius: 2px;
-  transition: transform 0.2s ease, background 0.2s ease;
   pointer-events: none;
 }
 
