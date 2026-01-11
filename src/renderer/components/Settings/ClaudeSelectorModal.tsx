@@ -10,6 +10,7 @@ interface ClaudeSelectorModalProps {
   onSelect: (mode: 'native-windows' | 'wsl' | 'native') => void;
   onClose: () => void;
   onRefresh: () => void;
+  isLoading?: boolean;
 }
 
 export const ClaudeSelectorModal: React.FC<ClaudeSelectorModalProps> = ({
@@ -17,6 +18,7 @@ export const ClaudeSelectorModal: React.FC<ClaudeSelectorModalProps> = ({
   currentMode,
   onSelect,
   onClose,
+  isLoading = false,
 }) => {
   const [claudeVersion, setClaudeVersion] = useState<string>('checking...');
   const [claudePath, setClaudePath] = useState<string>('');
@@ -148,7 +150,14 @@ export const ClaudeSelectorModal: React.FC<ClaudeSelectorModalProps> = ({
           )}
         </div>
 
-        {isWindows && !detection?.nativeWindows && !detection?.wsl && (
+        {isWindows && isLoading && (
+          <div className="claude-modal-loading">
+            <span className="loading-spinner" />
+            <span>detecting installations...</span>
+          </div>
+        )}
+
+        {isWindows && !isLoading && !detection?.nativeWindows && !detection?.wsl && (
           <div className="claude-modal-warning">
             <IconAlertTriangle size={14} />
             <span>no claude installations found</span>

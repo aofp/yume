@@ -1001,6 +1001,8 @@ pub fn run() {
             commands::get_git_status,
             commands::cleanup_git_lock,
             commands::get_git_diff_numstat,
+            commands::get_git_branch,
+            commands::get_git_ahead_count,
             commands::get_folder_contents,
             // Database operations
             commands::database::db_save_session,

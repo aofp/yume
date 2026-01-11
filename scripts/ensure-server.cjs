@@ -18,13 +18,13 @@ let buildScript;
 if (platform === 'darwin') {
   // Check architecture for macOS
   const arch = process.arch;
-  binaryName = arch === 'arm64' ? 'server-macos-arm64' : 'server-macos-x64';
+  binaryName = arch === 'arm64' ? 'yurucode-server-macos-arm64' : 'yurucode-server-macos-x64';
   buildScript = 'build:server:macos';
 } else if (platform === 'win32') {
-  binaryName = 'server-windows-x64.exe';
+  binaryName = 'yurucode-server-windows-x64.exe';
   buildScript = 'build:server:windows';
 } else {
-  binaryName = 'server-linux-x64';
+  binaryName = 'yurucode-server-linux-x64';
   buildScript = 'build:server:linux';
 }
 

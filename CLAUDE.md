@@ -143,17 +143,17 @@ npm run minify:servers         # Minify server code
 - `Chat/DiffViewer.tsx` - Code diff rendering
 
 ### Server Binaries (in resources/)
-- `server-macos-arm64` / `server-macos-x64` - macOS binaries
-- `server-windows-x64.exe` - Windows binary
-- `server-linux-x64` - Linux binary
+- `yurucode-server-macos-arm64` / `yurucode-server-macos-x64` - macOS binaries
+- `yurucode-server-windows-x64.exe` - Windows binary
+- `yurucode-server-linux-x64` - Linux binary
 
 ## Important Implementation Details
 
 ### Server Architecture
 The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg):
-- macOS: `server-macos-arm64` (Apple Silicon) and `server-macos-x64` (Intel)
-- Windows: `server-windows-x64.exe`
-- Linux: `server-linux-x64`
+- macOS: `yurucode-server-macos-arm64` (Apple Silicon) and `yurucode-server-macos-x64` (Intel)
+- Windows: `yurucode-server-windows-x64.exe`
+- Linux: `yurucode-server-linux-x64`
 
 **Source files are at root level**, not in resources/:
 - `server-claude-macos.cjs` - macOS server source

@@ -302,7 +302,7 @@ async function build() {
 
     // Step 4: Compile with pkg
     const isWindows = target.platform === 'windows';
-    const outputName = `server-${target.platform}-${target.arch}${isWindows ? '.exe' : ''}`;
+    const outputName = `yurucode-server-${target.platform}-${target.arch}${isWindows ? '.exe' : ''}`;
     const outputPath = join(DIST, outputName);
     console.log(`   4/4 Packaging binary with pkg...`);
 

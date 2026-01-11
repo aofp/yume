@@ -197,6 +197,13 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
     mcp: <IconDatabase size={10} />
   };
 
+  // Sort plugins: yurucode always first, then alphabetically
+  const sortedPlugins = [...plugins].sort((a, b) => {
+    if (a.id === 'yurucode') return -1;
+    if (b.id === 'yurucode') return 1;
+    return a.manifest.name.localeCompare(b.manifest.name);
+  });
+
   if (loading) {
     return (
       <div className="plugins-loading">
@@ -261,9 +268,10 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
             </p>
           </div>
         ) : (
-          plugins.map(plugin => {
+          sortedPlugins.map(plugin => {
             const counts = getComponentCounts(plugin);
             const isToggling = togglingPlugins.has(plugin.id);
+            const isYurucode = plugin.id === 'yurucode';
 
             return (
               <div key={plugin.id} className={`plugin-item ${plugin.enabled ? 'enabled' : ''}`}>
@@ -309,13 +317,15 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
                       <span className="toggle-switch-label on">on</span>
                       <div className="toggle-switch-slider" />
                     </div>
-                    <button
-                      className="plugin-remove"
-                      onClick={() => removePlugin(plugin)}
-                      title="remove plugin"
-                    >
-                      <IconTrash size={12} />
-                    </button>
+                    {!isYurucode && (
+                      <button
+                        className="plugin-remove"
+                        onClick={() => removePlugin(plugin)}
+                        title="remove plugin"
+                      >
+                        <IconTrash size={12} />
+                      </button>
+                    )}
                   </div>
                 </div>
 

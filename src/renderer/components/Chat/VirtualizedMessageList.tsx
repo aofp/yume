@@ -200,6 +200,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   const pendingScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isAutoScrollingRef = useRef(false); // Track when we're auto-scrolling (to ignore in handleScroll)
   const followUpScrollTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const collapsibleTogglingRef = useRef(false); // Track when collapsible is being toggled (pause auto-scroll)
 
   // Scroll anchoring refs - used to maintain position when user has scrolled up
   const scrollAnchorRef = useRef<{ index: number; offset: number } | null>(null);
@@ -446,6 +447,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   // Expose scroll methods to parent components
   useImperativeHandle(ref, () => ({
     scrollToBottom: (behavior: 'auto' | 'smooth' = 'auto') => {
+      // DON'T scroll if collapsible is being toggled
+      if (collapsibleTogglingRef.current) return;
+
       // DON'T scroll if user has manually scrolled up (with cooldown)
       if (userHasScrolledRef.current) {
         const elapsed = Date.now() - userScrolledAtRef.current;
@@ -540,6 +544,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
   useLayoutEffect(() => {
     if (!parentRef.current || !userHasScrolledRef.current || !scrollAnchorRef.current) return;
 
+    // Skip if collapsible is being toggled (let it control scroll)
+    if (collapsibleTogglingRef.current) return;
+
     // Only process if content actually changed (new message, not just remeasurement)
     if (contentHash === lastAnchorContentHashRef.current) return;
     lastAnchorContentHashRef.current = contentHash;
@@ -592,6 +599,12 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
           return;
         }
 
+        // Skip if collapsible is being toggled (let it control scroll)
+        if (collapsibleTogglingRef.current) {
+          rafIdRef.current = requestAnimationFrame(scrollLoop);
+          return;
+        }
+
         // Skip if user is selecting text
         if (hasActiveSelection()) {
           rafIdRef.current = requestAnimationFrame(scrollLoop);
@@ -634,6 +647,24 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
       }
     };
   }, [isStreaming, showThinking, hasActiveSelection]);
+
+  // Listen for collapsible toggle events to pause auto-scrolling
+  useEffect(() => {
+    const handleCollapsibleStart = () => {
+      collapsibleTogglingRef.current = true;
+    };
+    const handleCollapsibleEnd = () => {
+      collapsibleTogglingRef.current = false;
+    };
+
+    window.addEventListener('collapsible-toggle-start', handleCollapsibleStart);
+    window.addEventListener('collapsible-toggle-end', handleCollapsibleEnd);
+
+    return () => {
+      window.removeEventListener('collapsible-toggle-start', handleCollapsibleStart);
+      window.removeEventListener('collapsible-toggle-end', handleCollapsibleEnd);
+    };
+  }, []);
 
   // Cleanup pending scroll on unmount
   useEffect(() => {

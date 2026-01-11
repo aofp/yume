@@ -287,10 +287,10 @@ Key Features:
 The Node.js server is distributed as compiled binaries using @yao-pkg/pkg, with .cjs fallback files for development and backwards compatibility:
 
 **Compiled Binaries:**
-- `server-macos-arm64` - macOS Apple Silicon
-- `server-macos-x64` - macOS Intel
-- `server-windows-x64.exe` - Windows x64
-- `server-linux-x64` - Linux x64
+- `yurucode-server-macos-arm64` - macOS Apple Silicon
+- `yurucode-server-macos-x64` - macOS Intel
+- `yurucode-server-windows-x64.exe` - Windows x64
+- `yurucode-server-linux-x64` - Linux x64
 
 **Fallback .cjs Files:**
 - `server-claude-macos.cjs`

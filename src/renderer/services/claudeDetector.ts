@@ -42,7 +42,7 @@ interface WindowsPaths {
 
 class ClaudeDetectorService {
   private detectionCache: ClaudeDetectionResult | null = null;
-  private cacheTimeout = 5 * 60 * 1000; // 5 minutes cache
+  private cacheTimeout = 30 * 60 * 1000; // 30 minutes cache (detection is expensive)
   private windowsPathsCache: WindowsPaths | null = null;
   private claudeVersionCache: string | null = null;
 

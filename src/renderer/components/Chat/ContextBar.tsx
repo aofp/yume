@@ -198,8 +198,21 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
       </div>
 
-      {/* Center absolute - history + dictation */}
+      {/* Center absolute - dictation + history */}
       <div className="context-center-absolute">
+        <button
+          className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
+          onClick={onToggleDictation}
+          disabled={isReadOnly || messages.length === 0}
+          title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
+        >
+          {isDictating ? (
+            <IconMicrophone size={12} stroke={1.5} />
+          ) : (
+            <IconMicrophoneOff size={12} stroke={1.5} />
+          )}
+        </button>
+
         <button
           className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
           onClick={() => {
@@ -217,21 +230,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           <IconHistory size={12} stroke={1.5} />
           {historyCount > 0 && <span className="btn-rollback-count">{historyCount}</span>}
         </button>
-
-        {messages.length > 0 && (
-          <button
-            className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
-            onClick={onToggleDictation}
-            disabled={isReadOnly}
-            title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
-          >
-            {isDictating ? (
-              <IconMicrophone size={12} stroke={1.5} />
-            ) : (
-              <IconMicrophoneOff size={12} stroke={1.5} />
-            )}
-          </button>
-        )}
       </div>
 
       {/* Right - stats and clear */}

@@ -368,9 +368,9 @@ if usage >= 0.65 {
 **Our Solution**: Compile server to platform-specific binaries using @yao-pkg/pkg
 
 Server binaries are stored in `src-tauri/resources/` for each platform:
-- `server-macos-arm64` / `server-macos-x64` for macOS
-- `server-windows-x64.exe` for Windows
-- `server-linux-x64` for Linux
+- `yurucode-server-macos-arm64` / `yurucode-server-macos-x64` for macOS
+- `yurucode-server-windows-x64.exe` for Windows
+- `yurucode-server-linux-x64` for Linux
 
 **Benefits**:
 - No Node.js required for end users

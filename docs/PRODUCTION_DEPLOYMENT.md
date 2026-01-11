@@ -229,10 +229,10 @@ npm run build:server:all
 
 #### Server Binary Locations
 After building, binaries are placed in `src-tauri/resources/`:
-- macOS Apple Silicon: `server-macos-arm64`
-- macOS Intel: `server-macos-x64`
-- Windows: `server-windows-x64.exe`
-- Linux: `server-linux-x64`
+- macOS Apple Silicon: `yurucode-server-macos-arm64`
+- macOS Intel: `yurucode-server-macos-x64`
+- Windows: `yurucode-server-windows-x64.exe`
+- Linux: `yurucode-server-linux-x64`
 
 #### Fallback .cjs Files
 For backwards compatibility, .cjs fallback files exist:

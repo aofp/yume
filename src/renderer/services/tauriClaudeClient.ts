@@ -465,10 +465,14 @@ export class TauriClaudeClient {
         };
       } else if (message.type === 'result') {
         // Result message (completion) - THIS is when we clear streaming
-        // Send a special streaming end message
-        handler({
-          type: 'streaming_end',
-          sessionId: sessionId
+        // CRITICAL: Use queueMicrotask to ensure pending tool_use messages are processed first
+        // This fixes a race condition where streaming_end is processed before tool_use
+        // due to Zustand/React state update batching
+        queueMicrotask(() => {
+          handler({
+            type: 'streaming_end',
+            sessionId: sessionId
+          });
         });
 
         // Clear tracking

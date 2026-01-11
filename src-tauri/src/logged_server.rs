@@ -393,7 +393,7 @@ fn get_our_server_path() -> Option<String> {
     #[cfg(target_os = "macos")]
     {
         let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
-        let binary_name = format!("server-macos-{}", arch);
+        let binary_name = format!("yurucode-server-macos-{}", arch);
 
         if cfg!(debug_assertions) {
             // Dev mode - server is in project's src-tauri/resources/
@@ -411,7 +411,7 @@ fn get_our_server_path() -> Option<String> {
 
     #[cfg(target_os = "windows")]
     {
-        let binary_name = "server-windows-x64.exe";
+        let binary_name = "yurucode-server-windows-x64.exe";
         if cfg!(debug_assertions) {
             exe_path.parent()?.parent()?.parent()?.parent()
                 .map(|p| p.join("src-tauri").join("resources").join(binary_name))
@@ -425,7 +425,7 @@ fn get_our_server_path() -> Option<String> {
 
     #[cfg(target_os = "linux")]
     {
-        let binary_name = "server-linux-x64";
+        let binary_name = "yurucode-server-linux-x64";
         if cfg!(debug_assertions) {
             exe_path.parent()?.parent()?.parent()?.parent()
                 .map(|p| p.join("src-tauri").join("resources").join(binary_name))
@@ -444,7 +444,7 @@ fn get_our_server_path() -> Option<String> {
 fn kill_orphaned_server_zombies() {
     #[cfg(target_os = "macos")]
     {
-        // Find all server-macos processes with PPID=1 (orphaned)
+        // Find all yurucode-server-macos processes with PPID=1 (orphaned)
         // ps -ax -o ppid,pid,comm outputs: PPID PID COMMAND
         if let Ok(output) = Command::new("ps")
             .args(&["-ax", "-o", "ppid,pid,comm"])
@@ -454,8 +454,8 @@ fn kill_orphaned_server_zombies() {
             for line in stdout.lines() {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 3 {
-                    // Check if PPID is 1 (orphaned) and command contains server-macos
-                    if parts[0] == "1" && parts[2].contains("server-macos") {
+                    // Check if PPID is 1 (orphaned) and command contains yurucode-server-macos
+                    if parts[0] == "1" && parts[2].contains("yurucode-server-macos") {
                         if let Ok(pid) = parts[1].parse::<u32>() {
                             let _ = Command::new("kill")
                                 .args(&["-9", &pid.to_string()])
@@ -479,7 +479,7 @@ fn kill_orphaned_server_zombies() {
             for line in stdout.lines() {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 3 {
-                    if parts[0] == "1" && parts[2].contains("server-linux") {
+                    if parts[0] == "1" && parts[2].contains("yurucode-server-linux") {
                         if let Ok(pid) = parts[1].parse::<u32>() {
                             let _ = Command::new("kill")
                                 .args(&["-9", &pid.to_string()])
@@ -506,9 +506,9 @@ fn kill_server_processes_by_name() {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-        // Kill any server-windows processes
+        // Kill any yurucode-server-windows processes
         let _ = Command::new("taskkill")
-            .args(&["/F", "/IM", "server-windows-x64.exe"])
+            .args(&["/F", "/IM", "yurucode-server-windows-x64.exe"])
             .creation_flags(CREATE_NO_WINDOW)
             .output();
     }
@@ -517,7 +517,7 @@ fn kill_server_processes_by_name() {
     {
         // Use pkill to kill by process name pattern
         let _ = Command::new("pkill")
-            .args(&["-9", "-f", "server-macos-arm64|server-macos-x64|server-claude-macos"])
+            .args(&["-9", "-f", "yurucode-server-macos-arm64|yurucode-server-macos-x64|server-claude-macos"])
             .output();
         info!("Attempted to kill orphaned macOS server processes by name");
     }
@@ -525,7 +525,7 @@ fn kill_server_processes_by_name() {
     #[cfg(target_os = "linux")]
     {
         let _ = Command::new("pkill")
-            .args(&["-9", "-f", "server-linux-x64|server-claude-linux"])
+            .args(&["-9", "-f", "yurucode-server-linux-x64|server-claude-linux"])
             .output();
         info!("Attempted to kill orphaned Linux server processes by name");
     }
@@ -717,7 +717,7 @@ fn start_server_internal(port: u16) {
 }
 
 /// macOS-specific server startup
-/// Uses compiled binary (server-macos-arm64 or server-macos-x64) instead of Node.js
+/// Uses compiled binary (yurucode-server-macos-arm64 or yurucode-server-macos-x64) instead of Node.js
 /// This hides source code and removes Node.js dependency for end users
 #[cfg(target_os = "macos")]
 fn start_macos_server(port: u16) {
@@ -731,7 +731,7 @@ fn start_macos_server(port: u16) {
 
     // Detect architecture
     let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
-    let binary_name = format!("server-macos-{}", arch);
+    let binary_name = format!("yurucode-server-macos-{}", arch);
     write_log(&format!("Architecture: {}, binary: {}", arch, binary_name));
 
     // Find the server binary
@@ -893,7 +893,7 @@ fn start_macos_server(port: u16) {
 }
 
 /// Windows-specific server startup
-/// Uses compiled binary (server-windows-x64.exe) instead of Node.js
+/// Uses compiled binary (yurucode-server-windows-x64.exe) instead of Node.js
 /// This hides source code and removes Node.js dependency for end users
 #[cfg(target_os = "windows")]
 fn start_windows_server(port: u16) {
@@ -906,7 +906,7 @@ fn start_windows_server(port: u16) {
     write_log(&format!("Executable path: {:?}", exe_path));
 
     // Windows binary name
-    let binary_name = "server-windows-x64.exe";
+    let binary_name = "yurucode-server-windows-x64.exe";
     write_log(&format!("Binary: {}", binary_name));
 
     // Find the server binary
@@ -1091,7 +1091,7 @@ fn start_windows_server(port: u16) {
 }
 
 /// Linux-specific server startup
-/// Uses compiled binary (server-linux-x64) instead of Node.js
+/// Uses compiled binary (yurucode-server-linux-x64) instead of Node.js
 /// This hides source code and removes Node.js dependency for end users
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn start_linux_server(port: u16) {
@@ -1104,7 +1104,7 @@ fn start_linux_server(port: u16) {
     write_log(&format!("Executable path: {:?}", exe_path));
 
     // Linux binary name (currently only x64 supported)
-    let binary_name = "server-linux-x64";
+    let binary_name = "yurucode-server-linux-x64";
     write_log(&format!("Binary: {}", binary_name));
 
     // Find the server binary

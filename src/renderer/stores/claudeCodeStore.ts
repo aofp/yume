@@ -2175,6 +2175,17 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     return { sessions };
                   } else if (message.type === 'streaming_end') {
                     // Special message to clear streaming state
+                    // CRITICAL FIX: Check if we still have pending tools (agents, subagents, etc.)
+                    const session = sessions.find(s => s.id === sessionId);
+                    const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+
+                    if (hasPendingTools) {
+                      // Don't clear streaming - agent tools are still running
+                      console.log(`🔄 [STREAMING-FIX] streaming_end received but ${session?.pendingToolIds?.size} tools still pending - keeping streaming=true`);
+                      // Don't play sound yet - wait for all tools to complete
+                      return { sessions };
+                    }
+
                     console.log('🏁 [Store] STREAMING_END received - clearing streaming state');
 
                     // Play completion sound if enabled
@@ -3016,9 +3027,21 @@ ${content}`;
                 s.id === sessionId ? { ...s, streaming: true } : s
               );
             } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
-              sessions = sessions.map(s =>
-                s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
-              );
+              // CRITICAL FIX: Check for pending tools before clearing streaming
+              const session = sessions.find(s => s.id === sessionId);
+              const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+
+              if (hasPendingTools && message.subtype === 'stream_end') {
+                // Don't clear streaming - agent tools are still running
+                console.log(`🔄 [STREAMING-FIX] stream_end (reconnect) but ${session?.pendingToolIds?.size} tools pending - keeping streaming=true`);
+                sessions = sessions.map(s =>
+                  s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
+                );
+              } else {
+                sessions = sessions.map(s =>
+                  s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
+                );
+              }
             }
 
             persistSessions(sessions);
@@ -3354,10 +3377,22 @@ ${content}`;
                   return s;
                 });
               } else if (message.type === 'system' && (message.subtype === 'interrupted' || message.subtype === 'error' || message.subtype === 'stream_end')) {
-                // Don't clear streaming on result - wait for streaming_end
-                sessions = sessions.map(s =>
-                  s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
-                );
+                // CRITICAL FIX: Check for pending tools before clearing streaming
+                const session = sessions.find(s => s.id === sessionId);
+                const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+
+                if (hasPendingTools && message.subtype === 'stream_end') {
+                  // Don't clear streaming - agent tools are still running
+                  console.log(`🔄 [STREAMING-FIX] stream_end (temp) but ${session?.pendingToolIds?.size} tools pending - keeping streaming=true`);
+                  sessions = sessions.map(s =>
+                    s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
+                  );
+                } else {
+                  // Clear streaming on interrupted/error OR stream_end with no pending tools
+                  sessions = sessions.map(s =>
+                    s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
+                  );
+                }
               }
 
               return { sessions };
@@ -4150,10 +4185,16 @@ ${content}`;
                   // Only trigger compaction check at 55%+ (thresholds: 55% warning, 60% auto, 65% force)
                   // Use the tracked tokens, not the cumulative API values
                   if (contextPercentage >= 55 && trackedContextTokens > 0) {
-                    console.log(`🗜️ [COMPACTION] Checking auto-compact in addMessageToSession: ${contextPercentage.toFixed(2)}% (${trackedContextTokens} tracked tokens)`);
-                    import('../services/compactionService').then(({ compactionService }) => {
-                      compactionService.updateContextUsage(sessionId, contextPercentage);
-                    }).catch(err => console.error('[Compaction] Failed to import compactionService:', err));
+                    // Check if auto-compact is enabled before triggering any compaction logic
+                    const autoCompactEnabled = get().autoCompactEnabled;
+                    if (autoCompactEnabled === false) {
+                      console.log(`🗜️ [COMPACTION] Auto-compact disabled, skipping check at ${contextPercentage.toFixed(2)}%`);
+                    } else {
+                      console.log(`🗜️ [COMPACTION] Checking auto-compact in addMessageToSession: ${contextPercentage.toFixed(2)}% (${trackedContextTokens} tracked tokens)`);
+                      import('../services/compactionService').then(({ compactionService }) => {
+                        compactionService.updateContextUsage(sessionId, contextPercentage);
+                      }).catch(err => console.error('[Compaction] Failed to import compactionService:', err));
+                    }
                   }
                 }
               }

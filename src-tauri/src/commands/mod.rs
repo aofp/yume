@@ -758,11 +758,11 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
         {
             use std::os::windows::process::CommandExt;
             const CREATE_NO_WINDOW: u32 = 0x08000000;
-            
-            // Try WSL first, then Git Bash, then cmd
-            let output = Command::new("wsl")
+
+            // Use PowerShell first (supports bash-like commands), then Git Bash, then cmd
+            let output = Command::new("powershell")
                 .current_dir(&cwd)
-                .args(&["bash", "-c", &command])
+                .args(&["-NoProfile", "-NonInteractive", "-Command", &command])
                 .creation_flags(CREATE_NO_WINDOW)
                 .output()
                 .or_else(|_| {
@@ -898,9 +898,10 @@ pub async fn spawn_bash(
         // Use combined flags to prevent focus loss
         let creation_flags = CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
         
-        Command::new("wsl")
+        // Use PowerShell first (most reliable on Windows), then Git Bash, then cmd
+        Command::new("powershell")
             .current_dir(&cwd)
-            .args(&["bash", "-c", &command])
+            .args(&["-NoProfile", "-NonInteractive", "-Command", &command])
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .stdin(Stdio::null())
@@ -1917,6 +1918,100 @@ pub async fn get_git_diff_numstat(directory: String) -> Result<String, String> {
     }
 
     Ok(String::from_utf8_lossy(&output.stdout).to_string())
+}
+
+/// Gets the current git branch name
+/// Uses native git on Windows to avoid WSL issues
+#[tauri::command]
+pub async fn get_git_branch(directory: String) -> Result<String, String> {
+    use std::process::Command;
+
+    let dir_path = PathBuf::from(&directory);
+    if !dir_path.exists() {
+        return Err(format!("Directory does not exist: {}", directory));
+    }
+
+    // Acquire git mutex to serialize with other git operations
+    let _git_guard = GIT_OPERATION_MUTEX.lock().await;
+
+    // Wait for any existing git lock to clear
+    if !wait_for_git_lock(&dir_path) {
+        return Err("Git is busy (index.lock exists)".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    let output = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        Command::new("git")
+            .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+            .current_dir(&dir_path)
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map_err(|e| format!("Failed to run git: {}", e))?
+    };
+
+    #[cfg(not(target_os = "windows"))]
+    let output = Command::new("git")
+        .args(&["rev-parse", "--abbrev-ref", "HEAD"])
+        .current_dir(&dir_path)
+        .output()
+        .map_err(|e| format!("Failed to run git: {}", e))?;
+
+    if !output.status.success() {
+        return Err("Failed to get git branch".to_string());
+    }
+
+    Ok(String::from_utf8_lossy(&output.stdout).trim().to_string())
+}
+
+/// Gets the number of commits ahead of upstream
+/// Uses native git on Windows to avoid WSL issues
+#[tauri::command]
+pub async fn get_git_ahead_count(directory: String) -> Result<i32, String> {
+    use std::process::Command;
+
+    let dir_path = PathBuf::from(&directory);
+    if !dir_path.exists() {
+        return Err(format!("Directory does not exist: {}", directory));
+    }
+
+    // Acquire git mutex to serialize with other git operations
+    let _git_guard = GIT_OPERATION_MUTEX.lock().await;
+
+    // Wait for any existing git lock to clear
+    if !wait_for_git_lock(&dir_path) {
+        return Err("Git is busy (index.lock exists)".to_string());
+    }
+
+    #[cfg(target_os = "windows")]
+    let output = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+
+        Command::new("git")
+            .args(&["rev-list", "--count", "@{upstream}..HEAD"])
+            .current_dir(&dir_path)
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map_err(|e| format!("Failed to run git: {}", e))?
+    };
+
+    #[cfg(not(target_os = "windows"))]
+    let output = Command::new("git")
+        .args(&["rev-list", "--count", "@{upstream}..HEAD"])
+        .current_dir(&dir_path)
+        .output()
+        .map_err(|e| format!("Failed to run git: {}", e))?;
+
+    if !output.status.success() {
+        // No upstream configured, return 0
+        return Ok(0);
+    }
+
+    let count_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    count_str.parse::<i32>().map_err(|_| "Failed to parse ahead count".to_string())
 }
 
 /// Helper function for fuzzy matching

@@ -53,14 +53,14 @@ console.log(`\n🧹 Preparing resources for ${targetPlatform} build...\n`);
 // Define what files to KEEP for each platform
 const platformFiles = {
   macos: [
-    'server-macos-arm64',
-    'server-macos-x64',
+    'yurucode-server-macos-arm64',
+    'yurucode-server-macos-x64',
   ],
   windows: [
-    'server-windows-x64.exe',
+    'yurucode-server-windows-x64.exe',
   ],
   linux: [
-    'server-linux-x64',
+    'yurucode-server-linux-x64',
   ],
 };
 
@@ -94,10 +94,10 @@ const filesToKeep = platformFiles[targetPlatform] || [];
 
 // Also remove OTHER platform binaries
 const allPlatformBinaries = [
-  'server-macos-arm64',
-  'server-macos-x64',
-  'server-windows-x64.exe',
-  'server-linux-x64',
+  'yurucode-server-macos-arm64',
+  'yurucode-server-macos-x64',
+  'yurucode-server-windows-x64.exe',
+  'yurucode-server-linux-x64',
 ];
 
 const otherPlatformBinaries = allPlatformBinaries.filter(

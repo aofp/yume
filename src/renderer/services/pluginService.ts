@@ -124,8 +124,13 @@ class PluginService {
 
   /**
    * Uninstall a plugin
+   * Note: The "yurucode" plugin cannot be uninstalled
    */
   async uninstallPlugin(pluginId: string): Promise<void> {
+    // Prevent deletion of bundled yurucode plugin
+    if (pluginId === 'yurucode') {
+      throw new Error('The yurucode plugin cannot be uninstalled');
+    }
     await invoke('plugin_uninstall', { pluginId });
     this.plugins.delete(pluginId);
   }

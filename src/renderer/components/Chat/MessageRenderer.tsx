@@ -546,15 +546,42 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
 
   const handleToggle = useCallback(() => {
     setHasUserToggled(true);
+
+    // Dispatch event to pause auto-scrolling in VirtualizedMessageList
+    window.dispatchEvent(new CustomEvent('collapsible-toggle-start'));
+
     setIsCollapsed(prev => {
-      const willExpand = prev; // if currently collapsed, we're expanding
-      if (willExpand && headerRef.current) {
-        // scroll header into view after expanding
+      const newState = !prev;
+      // Always scroll header into view after toggle (both expand and collapse)
+      // Use setTimeout to allow DOM to update and virtualizer to remeasure
+      setTimeout(() => {
+        if (headerRef.current) {
+          // Get the scroll container (virtualized message list)
+          const scrollContainer = headerRef.current.closest('.messages-virtualized') as HTMLElement | null;
+          if (scrollContainer) {
+            const headerRect = headerRef.current.getBoundingClientRect();
+            const containerRect = scrollContainer.getBoundingClientRect();
+
+            // Calculate where header should be positioned
+            // Always ensure the header is visible near the top of the viewport
+            const headerTop = headerRect.top - containerRect.top;
+            const targetScrollTop = scrollContainer.scrollTop + headerTop - 20; // 20px padding from top
+
+            // Smooth scroll to position header at top with padding
+            scrollContainer.scrollTo({
+              top: Math.max(0, targetScrollTop),
+              behavior: 'smooth'
+            });
+          }
+        }
+
+        // Resume auto-scrolling after scroll completes
         setTimeout(() => {
-          headerRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-        }, 10);
-      }
-      return !prev;
+          window.dispatchEvent(new CustomEvent('collapsible-toggle-end'));
+        }, 300);
+      }, 50); // Wait for DOM update and virtualizer remeasurement
+
+      return newState;
     });
   }, []);
 
@@ -3384,24 +3411,16 @@ const MessageRendererBase: React.FC<{
                   </div>
                 )}
               </div>
-              {showResultStats && (
-                <div className="elapsed-time">
-                  {elapsedSeconds}s
-                  {message.model && ` • ${
-                    message.model.includes('opus') ? 'opus 4.5' :
-                    message.model.includes('sonnet') ? 'sonnet 4.5' :
-                    message.model
-                  }`}
-                </div>
-              )}
+              <div className="elapsed-time">
+                {elapsedSeconds}s
+                {showResultStats && message.model && ` • ${
+                  message.model.includes('opus') ? 'opus 4.5' :
+                  message.model.includes('sonnet') ? 'sonnet 4.5' :
+                  message.model
+                }`}
+              </div>
             </div>
           );
-        }
-
-        // When result stats are hidden, don't render result messages at all
-        // The assistant message bubble will show the response content
-        if (!showResultStats) {
-          return null;
         }
 
         return (
@@ -3469,19 +3488,17 @@ const MessageRendererBase: React.FC<{
                 </div>
               </div>
             )}
-            {showResultStats && (
-              <div className="elapsed-time">
-                {elapsedSeconds}s
-                {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
-                {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
-                {message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
-                {message.model && ` • ${
-                  message.model.includes('opus') ? 'opus 4.5' :
-                  message.model.includes('sonnet') ? 'sonnet 4.5' :
-                  message.model
-                }`}
-              </div>
-            )}
+            <div className="elapsed-time">
+              {elapsedSeconds}s
+              {showResultStats && totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
+              {showResultStats && toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
+              {showResultStats && message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
+              {showResultStats && message.model && ` • ${
+                message.model.includes('opus') ? 'opus 4.5' :
+                message.model.includes('sonnet') ? 'sonnet 4.5' :
+                message.model
+              }`}
+            </div>
           </div>
         );
       } else if (message.is_error && !looksLikeSuccess) {

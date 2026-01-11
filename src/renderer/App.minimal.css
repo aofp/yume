@@ -186,7 +186,7 @@ ul {
   border-radius: 6px;
   padding: 4px;
   min-width: 150px;
-  box-shadow: 0 4px 12px var(--bg-50);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.8);
   z-index: 200000; /* Above all modals including upgrade modal */
 }
 

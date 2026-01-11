@@ -868,21 +868,26 @@ pub fn plugin_init_bundled(app_handle: tauri::AppHandle) -> Result<Option<Instal
             save_registry(&registry)?;
             // Fall through to reinstall
         } else {
-            // Just ensure enabled and synced
+            // Update components but preserve user's enabled state
             let components = discover_components(plugin_path, "yurucode")?;
+            let was_enabled = registry.plugins.get("yurucode").map(|p| p.enabled).unwrap_or(true);
 
             if let Some(p) = registry.plugins.get_mut("yurucode") {
                 p.components = components;
-                p.enabled = true;
+                // Don't force enabled = true, preserve user's choice
             }
             save_registry(&registry)?;
 
             let final_plugin = registry.plugins.get("yurucode").cloned().unwrap();
-            println!("[plugins] syncing yurucode: commands={}, agents={}",
-                final_plugin.components.commands.len(), final_plugin.components.agents.len());
-            sync_plugin_commands(&final_plugin, true).ok();
-            sync_plugin_agents(&final_plugin, true, None).ok();
-            sync_plugin_skills(&final_plugin, true).ok();
+            println!("[plugins] yurucode plugin: enabled={}, commands={}, agents={}",
+                was_enabled, final_plugin.components.commands.len(), final_plugin.components.agents.len());
+
+            // Only sync components if plugin is enabled
+            if was_enabled {
+                sync_plugin_commands(&final_plugin, true).ok();
+                sync_plugin_agents(&final_plugin, true, None).ok();
+                sync_plugin_skills(&final_plugin, true).ok();
+            }
             return Ok(Some(final_plugin));
         }
     }

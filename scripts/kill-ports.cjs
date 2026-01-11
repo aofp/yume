@@ -121,9 +121,9 @@ killPattern(`esbuild.*${PROJECT_DIR.replace(/\//g, '\\/')}`, 'esbuild service(s)
 // IMPORTANT: Only kill servers from THIS project's resources dir, not production app servers
 const platform = os.platform();
 if (platform === 'darwin') {
-  killPattern(`${RESOURCES_DIR}/server-macos`, 'dev server(s)');
+  killPattern(`${RESOURCES_DIR}/yurucode-server-macos`, 'dev server(s)');
 } else if (platform === 'linux') {
-  killPattern(`${RESOURCES_DIR}/server-linux`, 'dev server(s)');
+  killPattern(`${RESOURCES_DIR}/yurucode-server-linux`, 'dev server(s)');
 }
 // Windows: killPattern skips win32, so no action needed
 

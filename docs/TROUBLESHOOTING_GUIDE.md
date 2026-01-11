@@ -404,9 +404,9 @@ console.log('Server port:', store.serverPort);
 ```
 
 **Note:** The server runs as a compiled binary on each platform:
-- macOS: `server-macos-arm64` (Apple Silicon) or `server-macos-x64` (Intel)
-- Windows: `server-windows-x64.exe`
-- Linux: `server-linux-x64`
+- macOS: `yurucode-server-macos-arm64` (Apple Silicon) or `yurucode-server-macos-x64` (Intel)
+- Windows: `yurucode-server-windows-x64.exe`
+- Linux: `yurucode-server-linux-x64`
 
 Fallback .cjs files exist for backwards compatibility when binaries fail.
 

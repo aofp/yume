@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { claudeDetector, ClaudeDetectionResult, ClaudeSettings } from '../../services/claudeDetector';
 import { ClaudeSelectorModal } from './ClaudeSelectorModal';
 import { invoke } from '@tauri-apps/api/core';
@@ -11,6 +11,7 @@ interface ClaudeSelectorProps {
 export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange }) => {
   const [showModal, setShowModal] = useState(false);
   const [detection, setDetection] = useState<ClaudeDetectionResult | null>(null);
+  const [isDetecting, setIsDetecting] = useState(false);
   const [claudeVersion, setClaudeVersion] = useState<string>(() => {
     // Initialize with cached version for instant display
     return claudeDetector.getCachedVersion() || '';
@@ -25,14 +26,15 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
     return saved;
   });
 
+  // Track if detection has been done this session
+  const hasDetectedRef = useRef(false);
+
+  // Lazy version fetch - only if not cached and modal is open
   useEffect(() => {
-    // Initial detection on mount - use cache if available (no force)
-    detectInstallations(false);
-    // Only fetch version if not cached
-    if (!claudeVersion) {
+    if (showModal && !claudeVersion) {
       fetchClaudeVersion();
     }
-  }, []);
+  }, [showModal, claudeVersion]);
 
   const fetchClaudeVersion = async () => {
     try {
@@ -55,10 +57,17 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
     }
   };
 
-  const detectInstallations = async (force = false) => {
+  const detectInstallations = useCallback(async (force = false) => {
+    // Avoid redundant detection within same session unless forced
+    if (!force && hasDetectedRef.current && detection) {
+      return;
+    }
+
+    setIsDetecting(true);
     try {
       const result = await claudeDetector.detectInstallations(force);
       setDetection(result);
+      hasDetectedRef.current = true;
 
       // Set preferred installation based on current mode
       const newSettings = { ...settings };
@@ -70,8 +79,10 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
       updateSettings(newSettings);
     } catch (error) {
       console.error('Detection failed:', error);
+    } finally {
+      setIsDetecting(false);
     }
-  };
+  }, [detection, settings]);
 
   const updateSettings = (newSettings: ClaudeSettings) => {
     setSettings(newSettings);
@@ -115,14 +126,21 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
     return mode;
   };
 
+  // Open modal and trigger lazy detection
+  const handleOpenModal = useCallback(() => {
+    setShowModal(true);
+    // Trigger detection lazily when modal opens (uses cache if available)
+    detectInstallations(false);
+  }, [detectInstallations]);
+
   return (
     <>
       <div className="claude-setting">
         <span className="claude-label">claude cli</span>
         <div className="claude-button-container">
-          <button 
-            className="claude-selector-button" 
-            onClick={() => setShowModal(true)}
+          <button
+            className="claude-selector-button"
+            onClick={handleOpenModal}
             title={claudeVersion ? `Claude CLI v${claudeVersion}` : 'Claude CLI configuration'}
           >
             {getCurrentModeDisplay()}
@@ -137,6 +155,7 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
           onSelect={handleModeSelect}
           onClose={() => setShowModal(false)}
           onRefresh={() => detectInstallations(true)}
+          isLoading={isDetecting}
         />
       )}
     </>

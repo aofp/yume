@@ -1961,8 +1961,14 @@ export const ClaudeChat: React.FC = () => {
       try {
         await invoke('get_git_status', { directory: currentSession.workingDirectory });
         setIsGitRepo(true);
-      } catch {
-        setIsGitRepo(false);
+      } catch (error) {
+        // Only set isGitRepo to false if it's definitively not a git repo
+        // Don't change state on transient errors like "Git is busy"
+        const errorStr = String(error);
+        if (errorStr.includes('Not a git repository') || errorStr.includes('Directory does not exist')) {
+          setIsGitRepo(false);
+        }
+        // For other errors (like git lock), keep the previous state
       }
     };
     checkGitRepo();
@@ -2040,12 +2046,9 @@ export const ClaudeChat: React.FC = () => {
     // Helper to get commits ahead of upstream (main/origin)
     const fetchAheadCount = async (workingDir: string): Promise<number> => {
       try {
-        // Try to get commits ahead of upstream
-        const result = await invoke('execute_bash', {
-          command: 'git rev-list --count @{upstream}..HEAD 2>/dev/null || echo 0',
-          workingDir
-        }) as string;
-        return parseInt(result.trim(), 10) || 0;
+        // Use native git command to avoid WSL issues on Windows
+        const result = await invoke('get_git_ahead_count', { directory: workingDir }) as number;
+        return result;
       } catch {
         return 0;
       }
@@ -2064,11 +2067,11 @@ export const ClaudeChat: React.FC = () => {
         });
 
         // Run git operations sequentially to avoid lock conflicts
-        const branchResult = await invoke('execute_bash', {
-          command: 'git rev-parse --abbrev-ref HEAD',
-          workingDir: currentSession.workingDirectory
+        // Use native git commands to avoid WSL issues on Windows
+        const branchResult = await invoke('get_git_branch', {
+          directory: currentSession.workingDirectory
         }) as string;
-        setGitBranch(branchResult.trim());
+        setGitBranch(branchResult);
 
         const lineStats = await fetchLineStats(currentSession.workingDirectory);
         setGitLineStats(lineStats);
@@ -2095,11 +2098,11 @@ export const ClaudeChat: React.FC = () => {
         });
 
         // Run git operations sequentially to avoid lock conflicts
-        const branchResult = await invoke('execute_bash', {
-          command: 'git rev-parse --abbrev-ref HEAD',
-          workingDir: currentSession.workingDirectory
+        // Use native git commands to avoid WSL issues on Windows
+        const branchResult = await invoke('get_git_branch', {
+          directory: currentSession.workingDirectory
         }) as string;
-        setGitBranch(branchResult.trim());
+        setGitBranch(branchResult);
 
         const lineStats = await fetchLineStats(currentSession.workingDirectory);
         setGitLineStats(lineStats);
