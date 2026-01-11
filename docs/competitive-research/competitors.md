@@ -508,6 +508,9 @@
 | **5h/7d limit tracking** | ❌ | ❌ | ❌ | ✅ | **Unique** |
 | Checkpoints | ❌ | ❌ | ✅ | ✅ | No |
 | Auto-compact | ❌ | ❌ | ❌ | ✅ 60%/65% | **Unique** |
+| Analytics | ❌ | ❌ | ✅ Cost | ✅ Project+cost | **Advantage** |
+| Streak tracking | ❌ | ❌ | ❌ | ❌ | Gap (vs CLI) |
+| Peak hour analysis | ❌ | ❌ | ❌ | ❌ | Gap (vs CLI) |
 | MCP support | ❌ | ✅ | ✅ | ✅ Full UI | No |
 | Themes | ~5 | ~3 | ❌ | ✅ **30 themes** | **Advantage** |
 | Built-in agents | ❌ | ❌ | ❌ | ✅ **5 agents** | **Unique** |
@@ -551,7 +554,9 @@
 | **Token Counter** | ✅ Visual | Partial | ❌ | Partial | ✅ | ❌ | ❌ |
 | **Cost Tracking** | ✅ Full | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **Auto-Compaction** | ✅ 60/65% | ✅ 95% | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Usage Analytics** | ✅ Full modal | /stats | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Usage Analytics** | ✅ project+cost | ✅ /stats heatmap | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **Streak Tracking** | ❌ gap | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
+| **Peak Hour Analysis** | ❌ gap | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ |
 
 ### Input Features
 
@@ -600,7 +605,7 @@
 | **Checkpoints** | ✅ Visual | ✅ /rewind | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **Timeline Navigator** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 | **Session Forking** | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
-| **CLAUDE.md Editor** | ❌ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
+| **CLAUDE.md Editor** | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ |
 
 ### Keyboard & UX
 
@@ -639,6 +644,9 @@
 | No session forking | Opcode can fork from checkpoints |
 | No memories | Cursor/Windsurf persist preferences |
 | No tab completion | IDE feature (different product category) |
+| No activity heatmap | CLI has year/week grid |
+| No streak tracking | CLI tracks current/longest streaks |
+| No peak hour analysis | CLI shows usage patterns by hour |
 
 #### When to Choose Each Tool
 
@@ -690,8 +698,10 @@
 
 17. **Crash recovery**: Auto-save every 5 min. Opcode doesn't have this.
 
-18. **Market consolidation**: OpenAI tried to buy Windsurf, Google grabbed the founders. Cursor at $29B. Small players getting squeezed.
+18. **Analytics gap vs CLI**: CLI's `/stats` has heatmap, streaks, and peak hour analysis that yurucode lacks. But yurucode has per-project breakdowns and cost tracking CLI doesn't. Opportunity to combine both.
 
-19. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.
+19. **Market consolidation**: OpenAI tried to buy Windsurf, Google grabbed the founders. Cursor at $29B. Small players getting squeezed.
 
-20. **Opcode has 15K+ stars but lacks key features**: They have community momentum but yurucode is technically superior in 12+ categories. Opcode's only advantage is session forking.
+20. **Claude Code leads benchmarks**: 80.9% SWE-bench. Being Claude-native is an advantage, not a limitation.
+
+21. **Opcode has 15K+ stars but lacks key features**: They have community momentum but yurucode is technically superior in 12+ categories. Opcode's only advantage is session forking.

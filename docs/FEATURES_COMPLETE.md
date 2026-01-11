@@ -19,6 +19,11 @@
 11. [Security Features](#11-security-features)
 12. [Performance Features](#12-performance-features)
 13. [Platform-Specific Features](#13-platform-specific-features)
+14. [License Management](#14-license-management)
+15. [Plugin System](#15-plugin-system)
+16. [Skills System](#16-skills-system)
+17. [Analytics & Reporting](#17-analytics--reporting)
+18. [Timeline & Checkpoints](#18-timeline--checkpoints)
 
 ## 1. Core Features
 
@@ -906,10 +911,426 @@ use windows::Win32::*;
 - RPM (Fedora/RHEL)
 - AUR (Arch Linux)
 
+## 14. License Management
+
+### 14.1 Overview
+
+**Description**: Commercial licensing system with trial and Pro tiers.
+
+**Pricing**:
+- **Trial**: Free (2 tabs, 1 window)
+- **Pro**: $21 one-time (99 tabs, 99 windows)
+
+### 14.2 Implementation
+
+**Location**: `src/renderer/stores/licenseManager.ts` (Zustand store)
+
+**License Format**: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` (29 characters)
+
+**Validation**:
+- Server-side validation: `https://license.yurucode.com/validate`
+- Response caching: 5-minute TTL
+- Encrypted storage: XOR cipher in localStorage
+- Auto-revalidation: Every 30 minutes
+
+### 14.3 Features
+
+**License Operations**:
+```typescript
+interface LicenseManager {
+  validateLicense(key: string): Promise<boolean>
+  activateLicense(key: string): Promise<void>
+  deactivateLicense(): void
+  getFeatures(): LicenseFeatures
+  refreshLicenseStatus(): Promise<void>
+}
+
+interface LicenseFeatures {
+  maxTabs: number      // 2 (trial) or 99 (pro)
+  maxWindows: number   // 1 (trial) or 99 (pro)
+  isTrial: boolean
+  isLicensed: boolean
+}
+```
+
+**UI Component**: `UpgradeModal.tsx`
+- Shows upgrade prompts with reasons: `tabLimit`, `feature`, `trial`
+- Purchase link integration
+- License key input and validation
+
+## 15. Plugin System
+
+### 15.1 Overview
+
+**Description**: Complete extensibility framework for adding custom functionality without code changes.
+
+**Plugin Directory**: `~/.yurucode/plugins/`
+
+### 15.2 Plugin Structure
+
+```
+~/.yurucode/plugins/{plugin-id}/
+  plugin.json         # Metadata (id, name, version, author, components)
+  commands/           # Custom slash commands (*.md)
+  agents/             # Custom agent definitions (*.md with YAML frontmatter)
+  hooks/              # Event-based hooks (*.js, *.py, *.sh)
+  skills/             # Auto-injected context triggers (*.json)
+  mcp/                # MCP server configurations (*.json)
+```
+
+### 15.3 Plugin Components
+
+**1. Commands**: Custom slash commands
+- Format: Markdown files with YAML frontmatter
+- Template variables: `$ARGUMENTS`, `$1`, `$2`, etc.
+- Example: `/review` command for code reviews
+
+**2. Agents**: Custom AI agent definitions
+- Format: Markdown files with YAML frontmatter (name, model, description)
+- System prompts in markdown body
+- Synced to `~/.claude/agents/` when plugin enabled
+
+**3. Hooks**: Event-based behavior customization
+- Events: SessionStart, PreToolUse, PostToolUse, Stop
+- Languages: JavaScript, Python, Bash
+- Actions: continue, block, modify
+
+**4. Skills**: Auto-injected context
+- Triggers: File extensions, keywords, regex patterns
+- Content: Context/knowledge to inject
+- Automatic activation based on triggers
+
+**5. MCP Servers**: Model Context Protocol integrations
+- Configuration: Server command, args, env variables
+- Auto-start capability
+- Claude CLI integration
+
+### 15.4 Plugin API
+
+**Backend**: `src-tauri/src/commands/plugins.rs`
+```rust
+#[tauri::command]
+pub fn list_plugins() -> Vec<Plugin>
+
+#[tauri::command]
+pub fn install_plugin(source_path: String) -> Result<(), String>
+
+#[tauri::command]
+pub fn uninstall_plugin(plugin_id: String) -> Result<(), String>
+
+#[tauri::command]
+pub fn enable_plugin(plugin_id: String) -> Result<(), String>
+
+#[tauri::command]
+pub fn disable_plugin(plugin_id: String) -> Result<(), String>
+
+#[tauri::command]
+pub fn validate_plugin(plugin_path: String) -> Result<PluginMetadata, String>
+```
+
+**Frontend**: `src/renderer/services/pluginService.ts`
+```typescript
+class PluginService {
+  initialize(): Promise<void>
+  listPlugins(): Promise<Plugin[]>
+  installPlugin(sourcePath: string): Promise<void>
+  installPluginFromDialog(): Promise<void>
+  uninstallPlugin(pluginId: string): Promise<void>
+  enablePlugin(pluginId: string): Promise<void>
+  disablePlugin(pluginId: string): Promise<void>
+  refresh(): Promise<void>
+}
+```
+
+### 15.5 UI Component
+
+**Location**: `src/renderer/components/Settings/PluginsTab.tsx`
+
+**Features**:
+- List installed plugins with metadata
+- Enable/disable toggle per plugin
+- View component counts (commands, agents, hooks, skills, MCP)
+- Install plugin from folder
+- Remove plugin with confirmation
+- Refresh plugin list
+- Expand/collapse plugin details
+
+### 15.6 Bundled Plugin
+
+**yurucode Plugin**: Bundled plugin synced on initialization
+- Contains default commands, agents, and hooks
+- Automatically enabled on first launch
+- Cannot be uninstalled
+
+## 16. Skills System
+
+### 16.1 Overview
+
+**Description**: Auto-inject context or knowledge into conversations based on triggers.
+
+**Location**: `src/renderer/components/Settings/SkillsTab.tsx`
+
+### 16.2 Skill Types
+
+**1. Custom Skills**: User-created skills
+- Storage: localStorage (`yurucode_custom_skills`)
+- Full CRUD operations
+- Immediate effect when enabled
+
+**2. Plugin Skills**: Sourced from enabled plugins
+- Read-only (managed by plugin)
+- Attributed to source plugin
+- Synced when plugin enabled/disabled
+
+### 16.3 Skill Structure
+
+```json
+{
+  "id": "skill-id",
+  "name": "Skill Name",
+  "description": "What this skill does",
+  "triggers": [
+    "*.py",           // File extension glob
+    "python",         // Keyword match
+    "/^def /"         // Regex pattern
+  ],
+  "content": "Context to inject when triggered",
+  "enabled": true,
+  "source": "custom" | "plugin:{plugin-id}"
+}
+```
+
+### 16.4 Trigger Matching
+
+**Supported Trigger Types**:
+1. **File Extensions**: `*.py`, `*.ts`, `*.md`
+2. **Keywords**: `python`, `react`, `api`
+3. **Regex Patterns**: `/^def /`, `/class \w+/`
+
+**Matching Logic**:
+- Triggers evaluated on message send
+- File context, message content, and working directory checked
+- Multiple triggers combined with OR logic
+- First matching skill's content injected
+
+### 16.5 UI Features
+
+**SkillsTab Component**:
+- Create/edit/delete custom skills
+- View all skills (custom + plugin)
+- Toggle enable/disable per skill
+- Source attribution for plugin skills
+- Real-time preview of trigger patterns
+- Skill count badges
+
+### 16.6 Use Cases
+
+**Example Skills**:
+- **Python Best Practices**: Triggered by `*.py` files
+- **API Documentation**: Triggered by `api`, `endpoint` keywords
+- **Git Workflow**: Triggered by `git`, `.git/` paths
+- **Testing Guidelines**: Triggered by `*.test.ts`, `*.spec.js`
+
+## 17. Analytics & Reporting
+
+### 17.1 Overview
+
+**Description**: Comprehensive usage analytics with breakdowns by project, model, and date.
+
+**Location**: `src/renderer/components/Modals/Analytics/AnalyticsModal.tsx`
+
+### 17.2 Metrics Tracked
+
+**Global Metrics**:
+- Total sessions created
+- Total messages sent
+- Total tokens consumed (input, output, cache read, cache creation)
+- Total cost in USD
+
+**Breakdown Dimensions**:
+1. **By Project**: Per working directory
+   - Session count
+   - Token usage
+   - Cost
+   - Last accessed timestamp
+
+2. **By Model**: Opus vs Sonnet vs Haiku
+   - Session count per model
+   - Token usage per model
+   - Cost per model
+   - Average tokens per session
+
+3. **By Date**: Daily/weekly breakdown
+   - Tokens per day
+   - Cost per day
+   - Session count per day
+   - Trend visualization
+
+### 17.3 Time Ranges
+
+**Available Ranges**:
+- **7 days**: Last week's activity
+- **14 days**: Two-week view
+- **30 days**: Monthly overview
+- **All-time**: Complete history
+
+**Date Filtering**: Results filtered by timestamp in database queries
+
+### 17.4 View Modes
+
+**1. All Sessions**: Global analytics across all projects
+**2. Specific Project**: Filter by working directory
+
+### 17.5 Data Source
+
+**Server Endpoint**: `http://localhost:{port}/analytics`
+
+**Query Parameters**:
+- `timeRange`: "7d" | "14d" | "30d" | "all"
+- `projectPath`: Optional project filter
+
+**Data Format**:
+```typescript
+interface AnalyticsData {
+  totalSessions: number
+  totalMessages: number
+  totalTokens: {
+    input: number
+    output: number
+    cacheRead: number
+    cacheCreation: number
+  }
+  totalCost: number
+  byProject: ProjectBreakdown[]
+  byModel: ModelBreakdown[]
+  byDate: DailyBreakdown[]
+}
+```
+
+### 17.6 UI Features
+
+**AnalyticsModal Component**:
+- Time range selector (7d, 14d, 30d, all)
+- Project filter dropdown
+- Metric cards with icons
+- Token breakdown pie chart
+- Cost trend line chart
+- Per-project table with sorting
+- Per-model comparison
+- Export to CSV/JSON
+
+## 18. Timeline & Checkpoints
+
+### 18.1 Overview
+
+**Description**: Visual timeline of conversation checkpoints for state management and restoration.
+
+**Location**: `src/renderer/components/Timeline/TimelineNavigator.tsx`
+
+**Feature Flag**: `FEATURE_FLAGS.SHOW_TIMELINE`
+
+### 18.2 Checkpoint System
+
+**Checkpoint Structure**:
+```typescript
+interface Checkpoint {
+  id: string
+  sessionId: string
+  timestamp: number
+  title?: string
+  messageCount: number
+  tokenCount: number
+  metadata?: {
+    model: string
+    workingDirectory: string
+    createdBy: 'user' | 'auto'
+  }
+}
+```
+
+**Auto-Checkpoints**:
+- Created every N messages (configurable)
+- Created before compaction
+- Created on significant state changes
+- Automatic cleanup after 30 days
+
+**Manual Checkpoints**:
+- User-created via UI
+- Custom titles/descriptions
+- Persisted indefinitely
+- Exportable
+
+### 18.3 Timeline API
+
+**Load Timeline**:
+```typescript
+async function getTimeline(sessionId: string): Promise<Checkpoint[]>
+```
+
+**Restore Checkpoint**:
+```typescript
+async function restoreCheckpoint(
+  sessionId: string,
+  checkpointId: string
+): Promise<void>
+```
+
+**Events**:
+- `checkpoint-created`: Emitted when new checkpoint saved
+- `checkpoint-restored`: Emitted when checkpoint restored
+
+### 18.4 UI Features
+
+**TimelineNavigator Component**:
+- Visual timeline with date markers
+- Checkpoint nodes with metadata
+- Hover preview with message count, tokens, cost
+- Click to restore conversation state
+- Collapse/expand timeline view
+- Keyboard navigation (arrow keys)
+- Selection state tracking
+
+**Checkpoint Actions**:
+- Create manual checkpoint
+- Restore to checkpoint
+- Delete checkpoint
+- Export checkpoint
+- View checkpoint diff (before/after messages)
+
+### 18.5 Storage
+
+**Database Table**: `checkpoints` (SQLite)
+```sql
+CREATE TABLE checkpoints (
+    id TEXT PRIMARY KEY,
+    session_id TEXT NOT NULL,
+    timestamp INTEGER NOT NULL,
+    title TEXT,
+    messages TEXT NOT NULL,  -- JSON
+    token_stats TEXT,        -- JSON
+    metadata TEXT,           -- JSON
+    FOREIGN KEY (session_id) REFERENCES sessions(id)
+);
+```
+
+### 18.6 Use Cases
+
+**Checkpoint Scenarios**:
+1. **Before Refactoring**: Save state before major code changes
+2. **Pre-Compaction**: Auto-saved before context compaction
+3. **Branch Exploration**: Create checkpoint before exploring alternative approaches
+4. **Session Milestones**: Mark completion of major tasks
+5. **Undo/Redo**: Restore to previous conversation state
+
 ## Feature Comparison Matrix
 
 | Feature | Yurucode | Opcode | Claudia | Continue |
 |---------|----------|--------|---------|----------|
+| **License system (trial/pro)** | ✅ | ❌ | ❌ | ❌ |
+| **Plugin system** | ✅ | ❌ | ❌ | ❌ |
+| **Skills system** | ✅ | ❌ | ❌ | ❌ |
+| **Performance monitoring** | ✅ | ❌ | ❌ | ❌ |
+| **Analytics dashboard** | ✅ | ⚠️ | ❌ | ❌ |
 | **5h + 7d limit tracking** | ✅ | ❌ | ❌ | ❌ |
 | Auto-compact (60% auto, 65% force) | ✅ | ❌ | ❌ | ❌ |
 | Multi-session tabs | ✅ | ✅ | ❌ | ✅ |
@@ -948,19 +1369,62 @@ use windows::Win32::*;
 Yurucode offers a comprehensive feature set that surpasses competitors (including YC-backed Opcode) in key areas:
 
 1. **Unique Features**:
+   - **License system** with trial/pro tiers ($21 one-time)
+   - **Plugin system** - complete extensibility framework (commands, agents, hooks, skills, MCP)
+   - **Skills system** - auto-inject context based on triggers (file extensions, keywords, regex)
+   - **Performance monitoring** - real-time FPS, memory, render time metrics
+   - **Analytics dashboard** - comprehensive usage tracking by project/model/date
+   - **Timeline & checkpoints** - visual conversation state management
+   - **CLAUDE.md editor** - in-app project documentation editing
    - 5h + 7-day Anthropic limit tracking (no competitor has this)
    - Auto-compaction (55% warn, 60% auto, 65% force) - same 38% buffer as Claude Code
    - Crash recovery (auto-save every 5 min)
    - Built-in agents (architect, explorer, implementer, guardian, specialist)
    - Custom commands with templates
-   - Hook system for behavior customization
-2. **Performance**: Virtual scrolling, bounded buffers, lazy loading, native Tauri/Rust
-3. **Privacy**: No telemetry, local-only operation
-4. **Extensibility**: Hooks (9 events), MCP support, custom commands
-5. **Polish**: 30 themes, 30+ keyboard shortcuts, drag & drop, git diff viewer
+   - Hook system for behavior customization (9 events)
+
+2. **Performance**:
+   - Virtual scrolling for 1000+ message sessions
+   - Bounded buffers and lazy loading
+   - Native Tauri/Rust backend
+   - Real-time performance monitoring and metrics export
+   - Message virtualization with overscan
+
+3. **Privacy**:
+   - No telemetry
+   - Local-only operation
+   - Encrypted license storage
+   - All data stored locally (SQLite database)
+
+4. **Extensibility**:
+   - Plugin system (5 component types)
+   - Skills system (custom + plugin skills)
+   - Hooks (9 event triggers)
+   - MCP support (8M+ servers)
+   - Custom commands with template variables
+
+5. **Polish**:
+   - 30 themes
+   - 30+ keyboard shortcuts
+   - Drag & drop tabs
+   - Git diff viewer
+   - Recent conversations/projects modals
+   - Context bar with visual usage indicator
+   - Adaptive window controls (platform-specific)
+   - Global watermark support
+   - Font picker (mono + sans)
+   - Window transparency control
 
 **Yurucode vs Opcode**: Opcode is YC-backed but yurucode is technically superior in almost every category:
-- Yurucode has: 5h/7d limit tracking, hooks, themes, agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands
-- Opcode has: CLAUDE.md editor (yurucode doesn't have this yet)
+- **Yurucode has**: License system, plugins, skills, performance monitoring, analytics, timeline/checkpoints, CLAUDE.md editor, 5h/7d limit tracking, hooks, themes, agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands
+- **Opcode has**: Multi-session tabs, basic token tracking (but missing most advanced features above)
 
-The combination of advanced features with a focus on performance and privacy makes Yurucode the most capable Claude GUI available.
+**Key Differentiators**:
+1. **Plugin System** - No competitor offers a complete plugin framework with 5 component types
+2. **Skills System** - Unique auto-inject context system based on triggers
+3. **Performance Monitoring** - Only Yurucode has real-time metrics with export
+4. **Analytics Dashboard** - Most comprehensive usage tracking and reporting
+5. **License Management** - Commercial licensing system with trial/pro tiers
+6. **Timeline & Checkpoints** - Visual conversation state management and restoration
+
+The combination of advanced features with a focus on performance, privacy, and extensibility makes Yurucode the most capable Claude GUI available.

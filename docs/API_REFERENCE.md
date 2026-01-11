@@ -1412,6 +1412,171 @@ invoke('migrate_commands_to_filesystem', {
 }) => Promise<void>
 ```
 
+### Plugin Management
+
+These commands manage the plugin system for extending Yurucode functionality.
+
+#### `plugin_list`
+Lists all installed plugins from `~/.yurucode/plugins/`.
+
+```typescript
+invoke('plugin_list') => Promise<InstalledPlugin[]>
+```
+
+**Returns:**
+```typescript
+interface InstalledPlugin {
+  id: string;
+  name: string;
+  version: string;
+  author?: string;
+  description?: string;
+  enabled: boolean;
+  install_path: string;
+  components: {
+    commands: number;
+    agents: number;
+    hooks: number;
+    skills: number;
+    mcp: number;
+  };
+}
+```
+
+#### `plugin_get_directory`
+Gets the plugin directory path (`~/.yurucode/plugins/`).
+
+```typescript
+invoke('plugin_get_directory') => Promise<string>
+```
+
+#### `plugin_validate`
+Validates a plugin directory structure and manifest before installation.
+
+```typescript
+invoke('plugin_validate', {
+  sourcePath: string
+}) => Promise<PluginManifest>
+```
+
+**Returns:**
+```typescript
+interface PluginManifest {
+  id: string;
+  name: string;
+  version: string;
+  author?: string;
+  description?: string;
+  components?: string[];  // ["commands", "agents", "hooks", "skills", "mcp"]
+}
+```
+
+#### `plugin_install`
+Installs a plugin by copying from source directory to `~/.yurucode/plugins/{id}/`.
+
+```typescript
+invoke('plugin_install', {
+  sourcePath: string
+}) => Promise<InstalledPlugin>
+```
+
+**Validation**:
+- Checks for valid `plugin.json` manifest
+- Ensures plugin ID doesn't already exist
+- Copies all plugin files to plugin directory
+
+#### `plugin_uninstall`
+Uninstalls a plugin by removing its directory.
+
+```typescript
+invoke('plugin_uninstall', {
+  pluginId: string
+}) => Promise<void>
+```
+
+**Notes**:
+- Disables plugin before uninstalling
+- Removes all plugin files
+- Cannot uninstall bundled "yurucode" plugin
+
+#### `plugin_enable`
+Enables a plugin and syncs its components to active use.
+
+```typescript
+invoke('plugin_enable', {
+  pluginId: string
+}) => Promise<void>
+```
+
+**Component Sync**:
+- Commands → `~/.claude/commands/`
+- Agents → `~/.claude/agents/`
+- Hooks → Active hooks registry
+- Skills → localStorage
+- MCP → Claude settings
+
+#### `plugin_disable`
+Disables a plugin and removes its components from active use.
+
+```typescript
+invoke('plugin_disable', {
+  pluginId: string
+}) => Promise<void>
+```
+
+**Component Cleanup**:
+- Removes synced commands
+- Removes synced agents
+- Deregisters hooks
+- Disables skills
+- Removes MCP servers
+
+#### `plugin_get_details`
+Gets detailed information about a specific plugin.
+
+```typescript
+invoke('plugin_get_details', {
+  pluginId: string
+}) => Promise<InstalledPlugin>
+```
+
+#### `plugin_rescan`
+Rescans a plugin directory to update component counts.
+
+```typescript
+invoke('plugin_rescan', {
+  pluginId: string
+}) => Promise<InstalledPlugin>
+```
+
+**Use Case**: Call after manually adding/removing component files
+
+#### `plugin_init_bundled`
+Initializes the bundled "yurucode" plugin on first launch.
+
+```typescript
+invoke('plugin_init_bundled', {
+  appHandle: AppHandle
+}) => Promise<InstalledPlugin | null>
+```
+
+**Notes**:
+- Called automatically during app initialization
+- Creates bundled plugin with default components
+- Returns null if already initialized
+
+#### `plugin_cleanup_on_exit`
+Cleans up plugin state on app exit.
+
+```typescript
+invoke('plugin_cleanup_on_exit') => Promise<void>
+```
+
+**Cleanup Tasks**:
+- Saves plugin registry state
+- Removes temporary files
+- Ensures all components properly deregistered
+
 ---
 
 ## Tauri Events API
@@ -1664,6 +1829,200 @@ class HooksService {
   getSampleHooks(): Promise<[string, string, string][]>  // [name, event, script]
 }
 ```
+
+### PluginService
+
+**Location:** `src/renderer/services/pluginService.ts`
+
+Manages plugin installation, enabling, and component syncing.
+
+```typescript
+class PluginService {
+  // Singleton instance
+  static getInstance(): PluginService
+
+  // Initialization
+  initialize(): Promise<void>
+
+  // Plugin Management
+  listPlugins(): Promise<Plugin[]>
+  installPlugin(sourcePath: string): Promise<void>
+  installPluginFromDialog(): Promise<void>
+  uninstallPlugin(pluginId: string): Promise<void>
+  enablePlugin(pluginId: string): Promise<void>
+  disablePlugin(pluginId: string): Promise<void>
+  refresh(): Promise<void>
+}
+
+interface Plugin {
+  id: string
+  name: string
+  version: string
+  author?: string
+  description?: string
+  enabled: boolean
+  components: {
+    commands: number
+    agents: number
+    hooks: number
+    skills: number
+    mcp: number
+  }
+}
+```
+
+### PerformanceMonitor
+
+**Location:** `src/renderer/services/performanceMonitor.ts`
+
+Real-time performance monitoring with metrics collection and export.
+
+```typescript
+class PerformanceMonitor {
+  // Singleton instance
+  static getInstance(): PerformanceMonitor
+
+  // Measurements
+  mark(name: string): void
+  measure(name: string): void
+  recordMetric(name: string, value: number, unit: string): void
+
+  // Retrieval
+  getMetricsSummary(): MetricsSummary
+  exportMetrics(): PerformanceMetric[]
+
+  // Control
+  setEnabled(enabled: boolean): void
+  isEnabled(): boolean
+  reset(): void
+}
+
+interface PerformanceMetric {
+  name: string
+  value: number
+  unit: string
+  timestamp: number
+  tags?: Record<string, string>
+}
+
+interface MetricsSummary {
+  [metricName: string]: {
+    avg: number
+    min: number
+    max: number
+    p50: number
+    p90: number
+    p99: number
+    count: number
+  }
+}
+```
+
+**Monitored Metrics**:
+- **FPS**: Frame rate (target 60fps, warn <30fps)
+- **Memory**: Heap usage (warn 100MB, critical 200MB)
+- **Startup Time**: App initialization (warn 3s, critical 5s)
+- **Message Send**: Message send latency (warn 500ms, critical 1s)
+- **Compaction**: Compaction duration (warn 5s, critical 10s)
+- **Long Tasks**: Main thread blocking >50ms
+- **Layout Shift**: CLS score tracking
+
+### FileSearchService
+
+**Location:** `src/renderer/services/fileSearchService.ts`
+
+Fast file search with caching and multiple search strategies.
+
+```typescript
+class FileSearchService {
+  // Search Operations
+  searchFiles(
+    query: string,
+    workingDirectory: string,
+    options?: SearchOptions
+  ): Promise<FileSearchResult[]>
+
+  getRecentFiles(
+    workingDirectory: string,
+    limit: number
+  ): Promise<FileSearchResult[]>
+
+  getFolderContents(
+    folderPath: string,
+    maxResults: number
+  ): Promise<FileSearchResult[]>
+
+  getGitChangedFiles(
+    workingDirectory: string
+  ): Promise<FileSearchResult[]>
+}
+
+interface SearchOptions {
+  includeHidden?: boolean
+  maxResults?: number
+  searchType?: 'fuzzy' | 'glob' | 'substring'
+}
+
+interface FileSearchResult {
+  type: 'file' | 'directory'
+  path: string
+  name: string
+  relativePath: string
+  lastModified?: number
+}
+```
+
+**Search Strategies**:
+- **Fuzzy**: Sequential character matching with relevance scoring
+- **Glob**: Wildcard patterns (*.ts, **/*.tsx)
+- **Substring**: Simple substring matching
+
+**Caching**: 5-second TTL cache to prevent excessive searches
+
+### ModalService
+
+**Location:** `src/renderer/services/modalService.ts`
+
+Global alert and confirm dialog system.
+
+```typescript
+class ModalService {
+  // Singleton instance
+  static getInstance(): ModalService
+
+  // Dialog Methods
+  alert(message: string): Promise<void>
+  confirm(message: string): Promise<boolean>
+}
+```
+
+**Features**:
+- Overrides global `window.alert()` and `window.confirm()`
+- React-based modal rendering
+- Single container with lazy initialization
+
+### ConsoleOverride
+
+**Location:** `src/renderer/services/consoleOverride.ts`
+
+Production console routing and debug mode support.
+
+```typescript
+// Setup (called during app initialization)
+setupConsoleOverride(): void
+
+// Restore
+restoreConsole(): void
+
+// Debug mode toggle via localStorage
+localStorage.setItem('yurucode_debug_mode', 'true')
+```
+
+**Features**:
+- Routes all console methods in production
+- Tracks console usage statistics
+- Preserves original console functionality
+- Can be enabled/disabled dynamically
 
 ---
 
@@ -2312,6 +2671,293 @@ const result = await invoke('mcp_test_connection', {
 // Import from Claude Desktop
 const importResult = await invoke('mcp_import_claude_desktop');
 console.log('Imported servers:', importResult);
+```
+
+### Plugin Management
+
+```typescript
+import { invoke } from '@tauri-apps/api/core';
+
+// List installed plugins
+const plugins = await invoke('plugin_list');
+console.log('Installed plugins:', plugins);
+
+// Validate plugin before installation
+const manifest = await invoke('plugin_validate', {
+  sourcePath: '/path/to/plugin-directory'
+});
+console.log('Plugin manifest:', manifest);
+
+// Install plugin
+const installedPlugin = await invoke('plugin_install', {
+  sourcePath: '/path/to/plugin-directory'
+});
+console.log('Installed:', installedPlugin);
+
+// Enable plugin (syncs components)
+await invoke('plugin_enable', {
+  pluginId: 'my-plugin'
+});
+
+// Get plugin details
+const details = await invoke('plugin_get_details', {
+  pluginId: 'my-plugin'
+});
+console.log('Components:', details.components);
+
+// Disable plugin
+await invoke('plugin_disable', {
+  pluginId: 'my-plugin'
+});
+
+// Uninstall plugin
+await invoke('plugin_uninstall', {
+  pluginId: 'my-plugin'
+});
+```
+
+### Using Performance Monitor
+
+```typescript
+import { PerformanceMonitor } from '@/services/performanceMonitor';
+
+// Get singleton instance
+const perfMonitor = PerformanceMonitor.getInstance();
+
+// Enable monitoring
+perfMonitor.setEnabled(true);
+
+// Mark start of operation
+perfMonitor.mark('message-send');
+
+// ... perform operation ...
+
+// Measure duration
+perfMonitor.measure('message-send');
+
+// Record custom metric
+perfMonitor.recordMetric('custom-operation', 123.45, 'ms');
+
+// Get statistical summary
+const summary = perfMonitor.getMetricsSummary();
+console.log('Message send avg:', summary['message-send']?.avg);
+console.log('Message send p99:', summary['message-send']?.p99);
+
+// Export all metrics for analysis
+const allMetrics = perfMonitor.exportMetrics();
+console.log(JSON.stringify(allMetrics, null, 2));
+
+// Disable monitoring
+perfMonitor.setEnabled(false);
+```
+
+### Using File Search Service
+
+```typescript
+import { FileSearchService } from '@/services/fileSearchService';
+
+const fileSearch = new FileSearchService();
+
+// Fuzzy search for files
+const results = await fileSearch.searchFiles(
+  'componentts',  // Fuzzy matches "Component.ts"
+  '/path/to/project',
+  {
+    searchType: 'fuzzy',
+    maxResults: 20,
+    includeHidden: false
+  }
+);
+
+// Glob pattern search
+const tsxFiles = await fileSearch.searchFiles(
+  '**/*.tsx',
+  '/path/to/project',
+  { searchType: 'glob' }
+);
+
+// Get recently modified files
+const recentFiles = await fileSearch.getRecentFiles(
+  '/path/to/project',
+  10
+);
+
+// Get Git changed files
+const changedFiles = await fileSearch.getGitChangedFiles(
+  '/path/to/project'
+);
+
+// Get folder contents
+const folderContents = await fileSearch.getFolderContents(
+  '/path/to/project/src',
+  100
+);
+```
+
+### Using Plugin Service
+
+```typescript
+import { PluginService } from '@/services/pluginService';
+
+// Get singleton instance
+const pluginService = PluginService.getInstance();
+
+// Initialize (loads plugin registry)
+await pluginService.initialize();
+
+// List all plugins
+const plugins = await pluginService.listPlugins();
+console.log('Found plugins:', plugins.length);
+
+// Install plugin with file picker dialog
+await pluginService.installPluginFromDialog();
+
+// Install plugin from path
+await pluginService.installPlugin('/path/to/plugin');
+
+// Enable plugin
+await pluginService.enablePlugin('my-plugin');
+
+// Disable plugin
+await pluginService.disablePlugin('my-plugin');
+
+// Uninstall plugin
+await pluginService.uninstallPlugin('my-plugin');
+
+// Refresh plugin list
+await pluginService.refresh();
+```
+
+### Using Skills System
+
+```typescript
+// Skills are managed via localStorage and Settings UI
+
+// Create custom skill
+const skill = {
+  id: 'react-best-practices',
+  name: 'React Best Practices',
+  description: 'Injects React coding standards',
+  triggers: ['*.tsx', '*.jsx', 'react', '/^import.*from [\'"]react[\'"]/'],
+  content: 'When working with React...',
+  enabled: true,
+  source: 'custom'
+};
+
+// Save to localStorage
+const existingSkills = JSON.parse(
+  localStorage.getItem('yurucode_custom_skills') || '[]'
+);
+existingSkills.push(skill);
+localStorage.setItem(
+  'yurucode_custom_skills',
+  JSON.stringify(existingSkills)
+);
+
+// Load custom skills
+const customSkills = JSON.parse(
+  localStorage.getItem('yurucode_custom_skills') || '[]'
+);
+
+// Skills from plugins are loaded automatically when plugin is enabled
+```
+
+### Using Modal Service
+
+```typescript
+import { ModalService } from '@/services/modalService';
+
+// Get singleton instance
+const modalService = ModalService.getInstance();
+
+// Show alert
+await modalService.alert('Operation completed successfully!');
+
+// Show confirmation dialog
+const confirmed = await modalService.confirm(
+  'Are you sure you want to delete this session?'
+);
+
+if (confirmed) {
+  // User clicked OK
+  console.log('Deleting session...');
+} else {
+  // User clicked Cancel
+  console.log('Cancelled');
+}
+
+// These also work via global overrides
+await alert('Global alert');
+const result = await confirm('Global confirm');
+```
+
+### License Management
+
+```typescript
+import { useLicenseStore } from '@/stores/licenseManager';
+
+// Get store instance
+const licenseStore = useLicenseStore.getState();
+
+// Validate license key
+const isValid = await licenseStore.validateLicense(
+  'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX'
+);
+
+if (isValid) {
+  // Activate license
+  await licenseStore.activateLicense(
+    'XXXXX-XXXXX-XXXXX-XXXXX-XXXXX'
+  );
+  console.log('License activated!');
+}
+
+// Get current features
+const features = licenseStore.getFeatures();
+console.log('Max tabs:', features.maxTabs);       // 2 (trial) or 99 (pro)
+console.log('Max windows:', features.maxWindows); // 1 (trial) or 99 (pro)
+console.log('Is trial:', features.isTrial);
+console.log('Is licensed:', features.isLicensed);
+
+// Manually refresh license status
+await licenseStore.refreshLicenseStatus();
+
+// Deactivate license
+licenseStore.deactivateLicense();
+```
+
+### Analytics Dashboard
+
+```typescript
+// Analytics are accessed via server endpoint
+
+const port = await invoke('get_server_port');
+
+// Fetch analytics data
+const response = await fetch(
+  `http://localhost:${port}/analytics?timeRange=30d&projectPath=/path/to/project`
+);
+
+const analytics = await response.json();
+
+console.log('Total sessions:', analytics.totalSessions);
+console.log('Total tokens:', analytics.totalTokens);
+console.log('Total cost:', analytics.totalCost);
+
+// Breakdown by project
+analytics.byProject.forEach(project => {
+  console.log(`${project.projectPath}: ${project.sessionCount} sessions`);
+});
+
+// Breakdown by model
+analytics.byModel.forEach(model => {
+  console.log(`${model.model}: ${model.tokenCount} tokens`);
+});
+
+// Daily breakdown
+analytics.byDate.forEach(day => {
+  console.log(`${day.date}: ${day.tokenCount} tokens`);
+});
 ```
 
 ---

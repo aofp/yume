@@ -33,7 +33,7 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - **v2.0.68**: Fixed IME for Chinese/Japanese/Korean, fixed CJK word navigation
 - **v2.0.67**: Fixed non-Latin text handling (Cyrillic, Greek, Arabic, Hebrew, Thai)
 - Background agents, named sessions, model switching (alt+p)
-- `/stats` command with usage graphs and streaks
+- **`/stats` command**: Activity heatmap (year grid), streak tracking, peak hour analysis, longest session, fun token comparisons
 - Enterprise managed settings
 
 ### Major 2025 Platform Updates (176 updates shipped)
