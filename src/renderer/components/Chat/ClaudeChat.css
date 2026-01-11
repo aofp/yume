@@ -268,7 +268,7 @@
 
 .message {
   margin-bottom: 8px;
-  margin-right: 8px;
+  margin-right: 4px;
   max-width: 100%;
   box-sizing: border-box;
   /* NOTE: will-change and contain moved to VirtualItemWrapper in JS

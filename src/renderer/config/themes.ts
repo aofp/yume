@@ -37,7 +37,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#6699ff',
     positiveColor: '#66aa44',
     negativeColor: '#cc4444',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -48,7 +48,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc8844',
     positiveColor: '#88aa88',
     negativeColor: '#cc4444',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === COOL TONES ===
@@ -60,7 +60,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#4477cc',
     positiveColor: '#55aa44',
     negativeColor: '#cc4466',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -71,7 +71,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#99ccff',
     positiveColor: '#99ffdd',
     negativeColor: '#ff99bb',
-    opacity: 0.89,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === WARM TONES ===
@@ -83,7 +83,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc6644',
     positiveColor: '#88aa88',
     negativeColor: '#cc4444',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -94,7 +94,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#aa9988',
     positiveColor: '#88aa88',
     negativeColor: '#aa8888',
-    opacity: 0.93,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -105,7 +105,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#ccaa44',
     positiveColor: '#88ff66',
     negativeColor: '#cc6644',
-    opacity: 0.90,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === NATURE ===
@@ -117,7 +117,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#4499bb',
     positiveColor: '#66ff99',
     negativeColor: '#cc4444',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -128,7 +128,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#7744cc',
     positiveColor: '#66ffdd',
     negativeColor: '#cc4488',
-    opacity: 0.90,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -139,7 +139,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#9966ff',
     positiveColor: '#66aa44',
     negativeColor: '#cc4466',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === PURPLE / PINK ===
@@ -151,7 +151,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#aa44cc',
     positiveColor: '#99ffcc',
     negativeColor: '#ff99dd',
-    opacity: 0.91,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -162,7 +162,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc66ff',
     positiveColor: '#99ffbb',
     negativeColor: '#ff6699',
-    opacity: 0.89,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -173,7 +173,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#9f88aa',
     positiveColor: '#66aa44',
     negativeColor: '#aa8894',
-    opacity: 0.93,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === VIBRANT ===
@@ -185,7 +185,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#66ccff',
     positiveColor: '#66ffcc',
     negativeColor: '#ff6699',
-    opacity: 0.88,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -196,7 +196,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc66ff',
     positiveColor: '#66ffdd',
     negativeColor: '#ff66cc',
-    opacity: 0.90,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -207,7 +207,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#00eeff',
     positiveColor: '#00ff66',
     negativeColor: '#ff0066',
-    opacity: 0.88,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === RETRO / STYLIZED ===
@@ -219,7 +219,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#44bb99',
     positiveColor: '#66ff99',
     negativeColor: '#cc4444',
-    opacity: 0.94,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -230,7 +230,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc8844',
     positiveColor: '#99aa88',
     negativeColor: '#cc4444',
-    opacity: 0.94,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -241,7 +241,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#44bbbb',
     positiveColor: '#66ffcc',
     negativeColor: '#cc4466',
-    opacity: 0.93,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === SPECIAL ===
@@ -253,7 +253,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#99ccff',
     positiveColor: '#99aa88',
     negativeColor: '#cc4466',
-    opacity: 0.91,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -264,7 +264,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#99ddff',
     positiveColor: '#88aa88',
     negativeColor: '#d9b3b3',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -275,7 +275,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#6699ff',
     positiveColor: '#99aa88',
     negativeColor: '#ff6666',
-    opacity: 0.94,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === AI-INSPIRED ===
@@ -287,7 +287,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#cc6644',
     positiveColor: '#88aa88',
     negativeColor: '#aa889f',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -298,7 +298,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#44aabb',
     positiveColor: '#66ff99',
     negativeColor: '#cc4444',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -309,7 +309,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#4477cc',
     positiveColor: '#55aa44',
     negativeColor: '#cc4444',
-    opacity: 0.91,
+    opacity: 1.0,
     isBuiltIn: true
   },
   // === ADDITIONAL ===
@@ -321,7 +321,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#44bbbb',
     positiveColor: '#99ffcc',
     negativeColor: '#ff99bb',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -332,7 +332,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#ccaa44',
     positiveColor: '#88aa88',
     negativeColor: '#aa8888',
-    opacity: 0.92,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -343,7 +343,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#8899aa',
     positiveColor: '#88aa88',
     negativeColor: '#aa8888',
-    opacity: 0.94,
+    opacity: 1.0,
     isBuiltIn: true
   },
   {
@@ -354,7 +354,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     accentColor: '#8899aa',
     positiveColor: '#88ff66',
     negativeColor: '#cc4444',
-    opacity: 0.91,
+    opacity: 1.0,
     isBuiltIn: true
   }
 ];

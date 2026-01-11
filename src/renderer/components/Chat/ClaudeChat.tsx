@@ -1139,8 +1139,9 @@ export const ClaudeChat: React.FC = () => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
-      setIsDictating(false);
     }
+    // Always reset state, even if ref is already null
+    setIsDictating(false);
   }, []);
   
   const toggleDictation = useCallback(() => {
@@ -3789,23 +3790,6 @@ export const ClaudeChat: React.FC = () => {
   return (
     <div
       className="chat-container"
-      onClick={(e) => {
-        // macOS focus fix: restore focus when clicking in chat area
-        // Only if click target is not an interactive element
-        if (!isMac) return;
-        const target = e.target as HTMLElement;
-        if (target.closest('button, a, input, textarea, [role="button"], [tabindex]')) return;
-        if (!inputRef.current || currentSession?.readOnly) return;
-        // Skip if user is selecting text
-        const selection = window.getSelection();
-        if (selection && selection.toString().length > 0) return;
-        // Check if context is almost full (>95%)
-        const totalTokens = currentSession?.analytics?.tokens?.total || 0;
-        if ((totalTokens / 200000 * 100) > 95) return;
-        if (document.activeElement === inputRef.current) return;
-        // Small delay to not interfere with other click handlers
-        setTimeout(() => inputRef.current?.focus(), 10);
-      }}
     >
       {/* Search bar */}
       {searchVisible && (

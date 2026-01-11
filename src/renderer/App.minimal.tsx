@@ -757,7 +757,7 @@ export const App: React.FC = () => {
 
     // Apply html opacity (theme setting)
     const savedHtmlOpacity = localStorage.getItem('htmlOpacity');
-    const opacityValue = savedHtmlOpacity ? parseFloat(savedHtmlOpacity) : 0.92;
+    const opacityValue = savedHtmlOpacity ? parseFloat(savedHtmlOpacity) : 1.0;
     document.documentElement.style.opacity = opacityValue.toString();
 
     // Apply saved zoom level

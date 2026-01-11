@@ -1482,6 +1482,7 @@ const MessageRendererBase: React.FC<{
   const store = useClaudeCodeStore.getState();
   const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
   const sessionMessages = currentSession?.messages || [];
+  const showResultStats = store.showResultStats;
 
   // Ref for selection preservation during streaming
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1836,6 +1837,9 @@ const MessageRendererBase: React.FC<{
       // Check if this is a bash command
       const isBashCommand = typeof displayText === 'string' && isBashPrefix(displayText);
 
+      // Check if this is a slash command
+      const isSlashCommand = typeof displayText === 'string' && displayText.trim().startsWith('/');
+
       // Helper to render text with ultrathink rainbow animation
       const renderWithUltrathink = (text: string): React.ReactNode => {
         if (!/ultrathink/i.test(text)) {
@@ -1871,7 +1875,7 @@ const MessageRendererBase: React.FC<{
               <IconCopy size={12} stroke={1.5} />
             </button>
           </div>
-          <div className={`message-bubble ${isBashCommand ? 'font-mono bash-mode' : ''}`}>
+          <div className={`message-bubble ${isBashCommand ? 'font-mono bash-mode' : ''}${isSlashCommand ? ' command-mode' : ''}`}>
             {typeof displayText === 'string' ? (
               displayText.includes('\n') ? (
                 <span>{renderMultilineWithUltrathink(displayText)}</span>
@@ -3356,23 +3360,29 @@ const MessageRendererBase: React.FC<{
                   </div>
                 )}
               </div>
-              <div className="elapsed-time">
-                {elapsedSeconds}s
-                {message.model && ` • ${
-                  message.model.includes('opus') ? 'opus 4.5' :
-                  message.model.includes('sonnet') ? 'sonnet 4.5' :
-                  message.model
-                }`}
-              </div>
+              {showResultStats && (
+                <div className="elapsed-time">
+                  {elapsedSeconds}s
+                  {message.model && ` • ${
+                    message.model.includes('opus') ? 'opus 4.5' :
+                    message.model.includes('sonnet') ? 'sonnet 4.5' :
+                    message.model
+                  }`}
+                </div>
+              )}
             </div>
           );
         }
 
-        // Always render result metadata (elapsed time, tokens, cost, model)
-        // Only show text content if there's unique text not duplicated in assistant message
+        // When result stats are hidden, don't render result messages at all
+        // The assistant message bubble will show the response content
+        if (!showResultStats) {
+          return null;
+        }
+
         return (
           <div className="message result-success">
-            {showResultText && !isCompactResult && (
+            {showResultText && !isCompactResult && showResultStats && (
               <div className="assistant-bubble">
                 <div className="message-content">
                   <div className="markdown-content"><ReactMarkdown
@@ -3435,17 +3445,19 @@ const MessageRendererBase: React.FC<{
                 </div>
               </div>
             )}
-            <div className="elapsed-time">
-              {elapsedSeconds}s
-              {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
-              {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
-              {message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
-              {message.model && ` • ${
-                message.model.includes('opus') ? 'opus 4.5' :
-                message.model.includes('sonnet') ? 'sonnet 4.5' :
-                message.model
-              }`}
-            </div>
+            {showResultStats && (
+              <div className="elapsed-time">
+                {elapsedSeconds}s
+                {totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
+                {toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
+                {message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
+                {message.model && ` • ${
+                  message.model.includes('opus') ? 'opus 4.5' :
+                  message.model.includes('sonnet') ? 'sonnet 4.5' :
+                  message.model
+                }`}
+              </div>
+            )}
           </div>
         );
       } else if (message.is_error && !looksLikeSuccess) {

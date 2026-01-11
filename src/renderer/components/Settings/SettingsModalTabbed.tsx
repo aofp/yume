@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import {
   IconX, IconPlus, IconMinus, IconSettings, IconPalette,
   IconPhoto, IconRotateClockwise, IconCrown, IconInfoCircle,
@@ -35,22 +36,6 @@ type SettingsTab = 'general' | 'theme' | 'hooks' | 'commands' | 'mcp' | 'plugins
 
 // Color type with name for tooltips
 type NamedColor = { hex: string; name: string };
-
-// Helper function to blend two hex colors 50/50
-const blendColors = (color1: string, color2: string): string => {
-  const hex1 = color1.replace('#', '');
-  const hex2 = color2.replace('#', '');
-  const r1 = parseInt(hex1.substr(0, 2), 16);
-  const g1 = parseInt(hex1.substr(2, 2), 16);
-  const b1 = parseInt(hex1.substr(4, 2), 16);
-  const r2 = parseInt(hex2.substr(0, 2), 16);
-  const g2 = parseInt(hex2.substr(2, 2), 16);
-  const b2 = parseInt(hex2.substr(4, 2), 16);
-  const r = Math.round((r1 + r2) / 2);
-  const g = Math.round((g1 + g2) / 2);
-  const b = Math.round((b1 + b2) / 2);
-  return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
-};
 
 // Color swatches - 9 rows × 21 columns for accent/positive/negative
 const COLOR_ROWS: NamedColor[][] = [
@@ -356,7 +341,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const [accentColor, setAccentColor] = useState(DEFAULT_COLORS.accent);
   const [positiveColor, setPositiveColor] = useState(DEFAULT_COLORS.positive);
   const [negativeColor, setNegativeColor] = useState(DEFAULT_COLORS.negative);
-  const [htmlOpacity, setHtmlOpacity] = useState(0.92);
+  const [htmlOpacity, setHtmlOpacity] = useState(1.0);
   const [showColorPicker, setShowColorPicker] = useState<'background' | 'foreground' | 'accent' | 'positive' | 'negative' | null>(null);
   const [hoveredColorType, setHoveredColorType] = useState<string | null>(null);
   const [previewColor, setPreviewColor] = useState<string | null>(null);
@@ -367,13 +352,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   // Theme system state
   const [customThemes, setCustomThemes] = useState<Theme[]>([]);
   const [currentThemeId, setCurrentThemeId] = useState<string>('default');
-  const [showThemeDropdown, setShowThemeDropdown] = useState(false);
-  const [editingThemeName, setEditingThemeName] = useState<string | null>(null);
-  const [hoveredThemeId, setHoveredThemeId] = useState<string | null>(null);
-  const [newThemeName, setNewThemeName] = useState('');
-  const [showNewThemeInput, setShowNewThemeInput] = useState(false);
-  const themeDropdownRef = useRef<HTMLDivElement>(null);
-  const newThemeInputRef = useRef<HTMLInputElement>(null);
+  const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
+  const [focusedIndex, setFocusedIndex] = useState(-1);
+  const themeJustAppliedRef = useRef(false);
+  const presetDropdownRef = useRef<HTMLDivElement>(null);
+  const dropdownMenuRef = useRef<HTMLDivElement>(null);
+  const triggerButtonRef = useRef<HTMLButtonElement>(null);
   const {
     globalWatermarkImage, setGlobalWatermark,
     monoFont, sansFont, setMonoFont, setSansFont,
@@ -381,6 +366,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     autoGenerateTitle, setAutoGenerateTitle,
     wordWrapCode, setWordWrapCode,
     soundOnComplete, setSoundOnComplete, playCompletionSound,
+    showResultStats, setShowResultStats,
     showProjectsMenu, setShowProjectsMenu,
     showAgentsMenu, setShowAgentsMenu,
     showAnalyticsMenu, setShowAnalyticsMenu,
@@ -578,7 +564,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
     // Load html opacity (user setting, not theme)
     const savedHtmlOpacity = localStorage.getItem('htmlOpacity');
-    const opacityValue = savedHtmlOpacity ? parseFloat(savedHtmlOpacity) : 0.92;
+    const opacityValue = savedHtmlOpacity ? parseFloat(savedHtmlOpacity) : 1.0;
     setHtmlOpacity(opacityValue);
     document.documentElement.style.opacity = opacityValue.toString();
 
@@ -606,22 +592,105 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     }
   }, []);
 
-  // Close theme dropdown when clicking outside
+  // Get all themes for keyboard nav
+  const allThemes = [...BUILT_IN_THEMES, ...customThemes];
+
+  // Close preset dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
-      if (themeDropdownRef.current && !themeDropdownRef.current.contains(e.target as Node)) {
-        setShowThemeDropdown(false);
-        setEditingThemeName(null);
+      const target = e.target as Node;
+      const clickedTrigger = presetDropdownRef.current?.contains(target);
+      const clickedMenu = dropdownMenuRef.current?.contains(target);
+      console.log('handleClickOutside', { clickedTrigger, clickedMenu, themeJustApplied: themeJustAppliedRef.current });
+      if (!clickedTrigger && !clickedMenu) {
+        if (!themeJustAppliedRef.current) {
+          restoreCurrentTheme(true);
+        }
+        themeJustAppliedRef.current = false;
+        setPresetDropdownOpen(false);
+        setFocusedIndex(-1);
       }
     };
-    if (showThemeDropdown) {
+    if (presetDropdownOpen) {
       document.addEventListener('mousedown', handleClickOutside);
       return () => document.removeEventListener('mousedown', handleClickOutside);
     }
-  }, [showThemeDropdown]);
+  }, [presetDropdownOpen]);
 
-  // Get all themes (built-in + custom)
-  const allThemes = [...BUILT_IN_THEMES, ...customThemes];
+  // Keyboard navigation for dropdown
+  useEffect(() => {
+    if (!presetDropdownOpen) return;
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setFocusedIndex(prev => Math.min(prev + 1, allThemes.length - 1));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setFocusedIndex(prev => Math.max(prev - 1, 0));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (focusedIndex >= 0 && focusedIndex < allThemes.length) {
+            applyTheme(allThemes[focusedIndex]);
+            setPresetDropdownOpen(false);
+            setFocusedIndex(-1);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          restoreCurrentTheme(true);
+          setPresetDropdownOpen(false);
+          setFocusedIndex(-1);
+          triggerButtonRef.current?.focus();
+          break;
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [presetDropdownOpen, focusedIndex, allThemes]);
+
+  // Preview focused theme
+  useEffect(() => {
+    if (presetDropdownOpen && focusedIndex >= 0 && focusedIndex < allThemes.length) {
+      previewTheme(allThemes[focusedIndex]);
+    }
+  }, [focusedIndex, presetDropdownOpen]);
+
+  // Preview theme on hover
+  const previewTheme = (theme: Theme) => {
+    document.documentElement.style.setProperty('--background-color', theme.backgroundColor);
+    const bgHex = theme.backgroundColor.replace('#', '');
+    document.documentElement.style.setProperty('--background-rgb', `${parseInt(bgHex.substr(0, 2), 16)}, ${parseInt(bgHex.substr(2, 2), 16)}, ${parseInt(bgHex.substr(4, 2), 16)}`);
+    document.documentElement.style.setProperty('--foreground-color', theme.foregroundColor);
+    const fgHex = theme.foregroundColor.replace('#', '');
+    document.documentElement.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16)}, ${parseInt(fgHex.substr(2, 2), 16)}, ${parseInt(fgHex.substr(4, 2), 16)}`);
+    document.documentElement.style.setProperty('--accent-color', theme.accentColor);
+    const accentHex = theme.accentColor.replace('#', '');
+    document.documentElement.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16)}, ${parseInt(accentHex.substr(2, 2), 16)}, ${parseInt(accentHex.substr(4, 2), 16)}`);
+    document.documentElement.style.setProperty('--positive-color', theme.positiveColor);
+    document.documentElement.style.setProperty('--negative-color', theme.negativeColor);
+  };
+
+  // Restore current theme after preview (only if dropdown still open)
+  const restoreCurrentTheme = (force = false) => {
+    // Don't restore if dropdown was just closed (theme was applied)
+    if (!force && !presetDropdownOpen) return;
+    document.documentElement.style.setProperty('--background-color', backgroundColor);
+    const bgHex = backgroundColor.replace('#', '');
+    document.documentElement.style.setProperty('--background-rgb', `${parseInt(bgHex.substr(0, 2), 16)}, ${parseInt(bgHex.substr(2, 2), 16)}, ${parseInt(bgHex.substr(4, 2), 16)}`);
+    document.documentElement.style.setProperty('--foreground-color', foregroundColor);
+    const fgHex = foregroundColor.replace('#', '');
+    document.documentElement.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16)}, ${parseInt(fgHex.substr(2, 2), 16)}, ${parseInt(fgHex.substr(4, 2), 16)}`);
+    document.documentElement.style.setProperty('--accent-color', accentColor);
+    const accentHex = accentColor.replace('#', '');
+    document.documentElement.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16)}, ${parseInt(accentHex.substr(2, 2), 16)}, ${parseInt(accentHex.substr(4, 2), 16)}`);
+    document.documentElement.style.setProperty('--positive-color', positiveColor);
+    document.documentElement.style.setProperty('--negative-color', negativeColor);
+  };
 
   // Find current theme object
   const getCurrentTheme = (): Theme | null => {
@@ -654,6 +723,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
   // Apply a theme (fonts are independent of themes)
   const applyTheme = (theme: Theme) => {
+    console.log('applyTheme called', theme.id);
+    themeJustAppliedRef.current = true;
     handleBackgroundColorChange(theme.backgroundColor);
     handleForegroundColorChange(theme.foregroundColor);
     handleAccentColorChange(theme.accentColor);
@@ -661,7 +732,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     handleNegativeColorChange(theme.negativeColor);
     setCurrentThemeId(theme.id);
     localStorage.setItem('currentThemeId', theme.id);
-    setShowThemeDropdown(false);
+    setPresetDropdownOpen(false);
+    setFocusedIndex(-1);
   };
 
   // Save current colors as a new custom theme (or update existing by name)
@@ -776,45 +848,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const getThemeFontDefault = (fontType: 'mono' | 'sans'): string => {
     return fontType === 'mono' ? 'Comic Mono' : 'Comic Neue';
   };
-
-  // Preview theme on hover (apply temporarily)
-  const previewTheme = (theme: Theme) => {
-    document.documentElement.style.setProperty('--background-color', theme.backgroundColor);
-    const bgHex = theme.backgroundColor.replace('#', '');
-    document.documentElement.style.setProperty('--background-rgb', `${parseInt(bgHex.substr(0, 2), 16)}, ${parseInt(bgHex.substr(2, 2), 16)}, ${parseInt(bgHex.substr(4, 2), 16)}`);
-
-    document.documentElement.style.setProperty('--foreground-color', theme.foregroundColor);
-    const fgHex = theme.foregroundColor.replace('#', '');
-    document.documentElement.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16)}, ${parseInt(fgHex.substr(2, 2), 16)}, ${parseInt(fgHex.substr(4, 2), 16)}`);
-
-    document.documentElement.style.setProperty('--accent-color', theme.accentColor);
-    const accentHex = theme.accentColor.replace('#', '');
-    document.documentElement.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16)}, ${parseInt(accentHex.substr(2, 2), 16)}, ${parseInt(accentHex.substr(4, 2), 16)}`);
-
-    document.documentElement.style.setProperty('--positive-color', theme.positiveColor);
-    document.documentElement.style.setProperty('--negative-color', theme.negativeColor);
-    // Fonts are not previewed with themes - they are independent
-  };
-
-  // Restore current theme after preview
-  const restoreCurrentTheme = () => {
-    document.documentElement.style.setProperty('--background-color', backgroundColor);
-    const bgHex = backgroundColor.replace('#', '');
-    document.documentElement.style.setProperty('--background-rgb', `${parseInt(bgHex.substr(0, 2), 16)}, ${parseInt(bgHex.substr(2, 2), 16)}, ${parseInt(bgHex.substr(4, 2), 16)}`);
-
-    document.documentElement.style.setProperty('--foreground-color', foregroundColor);
-    const fgHex = foregroundColor.replace('#', '');
-    document.documentElement.style.setProperty('--foreground-rgb', `${parseInt(fgHex.substr(0, 2), 16)}, ${parseInt(fgHex.substr(2, 2), 16)}, ${parseInt(fgHex.substr(4, 2), 16)}`);
-
-    document.documentElement.style.setProperty('--accent-color', accentColor);
-    const accentHex = accentColor.replace('#', '');
-    document.documentElement.style.setProperty('--accent-rgb', `${parseInt(accentHex.substr(0, 2), 16)}, ${parseInt(accentHex.substr(2, 2), 16)}, ${parseInt(accentHex.substr(4, 2), 16)}`);
-
-    document.documentElement.style.setProperty('--positive-color', positiveColor);
-    document.documentElement.style.setProperty('--negative-color', negativeColor);
-    // Fonts are not restored since they weren't changed during preview
-  };
-
 
   const handleWatermarkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -1035,10 +1068,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </div>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">word wrap code</span>
+                    <span className="checkbox-label">show result stats</span>
                     <div
-                      className={`toggle-switch compact ${wordWrapCode ? 'active' : ''}`}
-                      onClick={() => setWordWrapCode(!wordWrapCode)}
+                      className={`toggle-switch compact ${showResultStats ? 'active' : ''}`}
+                      onClick={() => setShowResultStats(!showResultStats)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -1046,6 +1079,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     </div>
                   </div>
 
+                  
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">sound on complete</span>
                     <div
@@ -1196,612 +1230,200 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       case 'theme':
         return (
           <>
-            {/* Theme selector at top */}
-            <div className="settings-section" style={{ marginBottom: '12px' }}>
-              <h4 style={{ textAlign: 'left' }}>theme</h4>
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '12px' }}>
-                <button
-                  onClick={() => setShowThemeDropdown(true)}
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '8px',
-                    padding: '6px 10px',
-                    background: 'transparent',
-                    border: '1px solid var(--fg-15)',
-                    borderRadius: '4px',
-                    cursor: 'default',
-                    width: '200px',
-                    transition: 'all 0.15s ease'
-                  }}
-                  onMouseEnter={(e) => {
-                    e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.5)';
-                    e.currentTarget.style.background = 'var(--fg-05)';
-                  }}
-                  onMouseLeave={(e) => {
-                    e.currentTarget.style.borderColor = 'var(--fg-15)';
-                    e.currentTarget.style.background = 'transparent';
-                  }}
-                >
-                  <div style={{ display: 'flex', gap: '2px' }}>
-                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: foregroundColor, border: '1px solid var(--fg-10)' }} />
-                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: accentColor }} />
-                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: positiveColor }} />
-                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: negativeColor }} />
-                    <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: backgroundColor, border: '1px solid var(--fg-20)' }} />
-                  </div>
-                  <span style={{
-                    fontSize: '11px',
-                    fontWeight: 'bold',
-                    color: blendColors(foregroundColor, accentColor)
-                  }}>
-                    {getCurrentThemeDisplayName()}
-                  </span>
-                </button>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '200px' }}>
-                  <span style={{ fontSize: '11px', color: 'var(--fg-50)' }}>opacity</span>
-                  <input
-                    type="range"
-                    min="0.70"
-                    max="1.00"
-                    step="0.01"
-                    value={htmlOpacity}
-                    onChange={(e) => handleHtmlOpacityChange(parseFloat(e.target.value))}
-                    className="opacity-slider"
-                  />
-                  <span style={{ fontSize: '11px', color: 'var(--fg-50)', minWidth: '28px' }}>
-                    {Math.round(htmlOpacity * 100)}%
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* Color controls */}
+            {/* Two column layout like general tab */}
             <div className="settings-section">
-              <h4>theme colors</h4>
-              <div className="color-settings-grid">
-                <div className="color-setting">
-                  <span className="color-label">foreground</span>
-                  <div className="color-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => handleForegroundColorChange(getThemeDefault('foreground'))}
-                      disabled={foregroundColor === getThemeDefault('foreground')}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <div className="color-picker-container">
-                      <button
-                        className="color-preview"
-                        onClick={() => setShowColorPicker('foreground')}
-                        onMouseEnter={() => setHoveredColorType('foreground')}
-                        onMouseLeave={() => setHoveredColorType(null)}
-                      >
-                        <span className="color-square" style={{ backgroundColor: foregroundColor }} />
-                        <span className="color-value">{foregroundColor}</span>
-                      </button>
-                      {hoveredColorType === 'foreground' && (
-                        <div className="color-var-tooltip">
-                          <div className="color-var-desc">{COLOR_VARIABLE_INFO.foreground.desc}</div>
-                          <div className="color-var-list">
-                            {COLOR_VARIABLE_INFO.foreground.vars.map(v => <code key={v}>{v}</code>)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="color-setting">
-                  <span className="color-label">accent</span>
-                  <div className="color-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => handleAccentColorChange(getThemeDefault('accent'))}
-                      disabled={accentColor === getThemeDefault('accent')}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <div className="color-picker-container">
-                      <button
-                        className="color-preview"
-                        onClick={() => setShowColorPicker('accent')}
-                        onMouseEnter={() => setHoveredColorType('accent')}
-                        onMouseLeave={() => setHoveredColorType(null)}
-                      >
-                        <span className="color-square" style={{ backgroundColor: accentColor }} />
-                        <span className="color-value">{accentColor}</span>
-                      </button>
-                      {hoveredColorType === 'accent' && (
-                        <div className="color-var-tooltip">
-                          <div className="color-var-desc">{COLOR_VARIABLE_INFO.accent.desc}</div>
-                          <div className="color-var-list">
-                            {COLOR_VARIABLE_INFO.accent.vars.map(v => <code key={v}>{v}</code>)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="color-setting">
-                  <span className="color-label">positive</span>
-                  <div className="color-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => handlePositiveColorChange(getThemeDefault('positive'))}
-                      disabled={positiveColor === getThemeDefault('positive')}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <div className="color-picker-container">
-                      <button
-                        className="color-preview"
-                        onClick={() => setShowColorPicker('positive')}
-                        onMouseEnter={() => setHoveredColorType('positive')}
-                        onMouseLeave={() => setHoveredColorType(null)}
-                      >
-                        <span className="color-square" style={{ backgroundColor: positiveColor }} />
-                        <span className="color-value">{positiveColor}</span>
-                      </button>
-                      {hoveredColorType === 'positive' && (
-                        <div className="color-var-tooltip">
-                          <div className="color-var-desc">{COLOR_VARIABLE_INFO.positive.desc}</div>
-                          <div className="color-var-list">
-                            {COLOR_VARIABLE_INFO.positive.vars.map(v => <code key={v}>{v}</code>)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="color-setting">
-                  <span className="color-label">negative</span>
-                  <div className="color-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => handleNegativeColorChange(getThemeDefault('negative'))}
-                      disabled={negativeColor === getThemeDefault('negative')}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <div className="color-picker-container">
-                      <button
-                        className="color-preview"
-                        onClick={() => setShowColorPicker('negative')}
-                        onMouseEnter={() => setHoveredColorType('negative')}
-                        onMouseLeave={() => setHoveredColorType(null)}
-                      >
-                        <span className="color-square" style={{ backgroundColor: negativeColor }} />
-                        <span className="color-value">{negativeColor}</span>
-                      </button>
-                      {hoveredColorType === 'negative' && (
-                        <div className="color-var-tooltip">
-                          <div className="color-var-desc">{COLOR_VARIABLE_INFO.negative.desc}</div>
-                          <div className="color-var-list">
-                            {COLOR_VARIABLE_INFO.negative.vars.map(v => <code key={v}>{v}</code>)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="color-setting">
-                  <span className="color-label">background</span>
-                  <div className="color-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => handleBackgroundColorChange(getThemeDefault('background'))}
-                      disabled={backgroundColor === getThemeDefault('background')}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <div className="color-picker-container">
-                      <button
-                        className="color-preview"
-                        onClick={() => setShowColorPicker('background')}
-                        onMouseEnter={() => setHoveredColorType('background')}
-                        onMouseLeave={() => setHoveredColorType(null)}
-                      >
-                        <span className="color-square" style={{ backgroundColor: backgroundColor, border: '1px solid var(--fg-20)' }} />
-                        <span className="color-value">{backgroundColor}</span>
-                      </button>
-                      {hoveredColorType === 'background' && (
-                        <div className="color-var-tooltip">
-                          <div className="color-var-desc">{COLOR_VARIABLE_INFO.background.desc}</div>
-                          <div className="color-var-list">
-                            {COLOR_VARIABLE_INFO.background.vars.map(v => <code key={v}>{v}</code>)}
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Font controls */}
-            <div className="settings-section">
-              <h4>fonts</h4>
-              <div className="font-settings">
-                <div className="font-setting">
-                  <span className="font-label">monospace</span>
-                  <div className="font-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => setMonoFont(getThemeFontDefault('mono'))}
-                      disabled={monoFont === getThemeFontDefault('mono')}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <div
-                      className="font-input"
-                      onClick={() => setShowFontPicker('monospace')}
-                      style={{ fontFamily: monoFont || getThemeFontDefault('mono') }}
-                    >
-                      {monoFont || getThemeFontDefault('mono')}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="font-setting">
-                  <span className="font-label">sans-serif</span>
-                  <div className="font-controls">
-                    <button
-                      className="color-reset"
-                      onClick={() => setSansFont(getThemeFontDefault('sans'))}
-                      disabled={sansFont === getThemeFontDefault('sans')}
-                    >
-                      <IconRotateClockwise size={12} />
-                    </button>
-                    <div
-                      className="font-input"
-                      onClick={() => setShowFontPicker('sans-serif')}
-                      style={{ fontFamily: sansFont || getThemeFontDefault('sans') }}
-                    >
-                      {sansFont || getThemeFontDefault('sans')}
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Reset buttons */}
-
-            {/* Theme Modal */}
-            {showThemeDropdown && (
-              <div
-                className="theme-modal-overlay"
-                style={{
-                  position: 'fixed',
-                  top: 0,
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  background: 'rgba(0, 0, 0, 0.6)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  zIndex: 10000
-                }}
-                onMouseDown={(e) => {
-                  if (e.target === e.currentTarget) {
-                    setShowThemeDropdown(false);
-                    restoreCurrentTheme();
-                  }
-                }}
-              >
-                <div
-                  style={{
-                    background: 'var(--background-color)',
-                    border: 'none',
-                    borderRadius: '0',
-                    width: '100%',
-                    height: '100%',
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden'
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div
-                    className="theme-modal-header"
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      alignItems: 'center',
-                      padding: '8px 12px',
-                      borderBottom: '1px solid var(--fg-15)',
-                      flexShrink: 0
-                    }}>
-                    <span style={{ fontSize: '11px', color: 'var(--accent-color)', fontWeight: 500 }}>
-                      <IconPalette size={12} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
-                      select theme
-                    </span>
-                    <button
-                      className="theme-modal-close"
-                      onClick={() => {
-                        setShowThemeDropdown(false);
-                        restoreCurrentTheme();
-                      }}
-                      style={{
-                        background: 'transparent',
-                        border: 'none',
-                        color: 'var(--fg-40)',
-                        cursor: 'default',
-                        padding: '2px',
-                        display: 'flex',
-                        alignItems: 'center'
-                      }}
-                    >
-                      <IconX size={16} />
-                    </button>
-                  </div>
-                  <div style={{ flex: 1, overflowY: 'auto', padding: '12px' }}>
-                    {/* Built-in themes - 5 column grid */}
-                    <div style={{
-                      display: 'grid',
-                      gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr',
-                      gap: '4px'
-                    }}>
-                      {BUILT_IN_THEMES.map(theme => (
-                        <div
-                          key={theme.id}
-                          style={{
-                            display: 'flex',
-                            flexDirection: 'column',
-                            gap: '4px',
-                            padding: '6px 8px',
-                            borderRadius: '4px',
-                            cursor: 'default',
-                            background: currentThemeId === theme.id ? 'rgba(var(--accent-rgb), 0.15)' : 'transparent',
-                            border: currentThemeId === theme.id ? '1px solid rgba(var(--accent-rgb), 0.3)' : '1px solid transparent',
-                            transition: 'all 0.15s ease'
-                          }}
-                          onMouseEnter={(e) => {
-                            if (currentThemeId !== theme.id) {
-                              e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.08)';
-                              e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.15)';
+              <div className="settings-columns">
+                {/* Left column: Theme + Colors */}
+                <div className="settings-column">
+                  <h4>theme</h4>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">preset</span>
+                    <div className="theme-controls-bg" ref={presetDropdownRef}>
+                      <div className="preset-dropdown-container">
+                        <button
+                          ref={triggerButtonRef}
+                          className="preset-dropdown-trigger"
+                          onClick={() => {
+                            if (!presetDropdownOpen && triggerButtonRef.current) {
+                              const rect = triggerButtonRef.current.getBoundingClientRect();
+                              setDropdownPosition({ top: rect.bottom + 2, left: rect.left });
                             }
-                            setHoveredThemeId(theme.id);
-                            previewTheme(theme);
+                            setPresetDropdownOpen(!presetDropdownOpen);
                           }}
-                          onMouseLeave={(e) => {
-                            if (currentThemeId !== theme.id) {
-                              e.currentTarget.style.background = 'transparent';
-                              e.currentTarget.style.borderColor = 'transparent';
-                            }
-                            setHoveredThemeId(null);
-                            restoreCurrentTheme();
-                          }}
-                          onClick={() => applyTheme(theme)}
                         >
-                          {/* Color preview swatches - all 5 colors */}
-                          <div style={{ display: 'flex', gap: '2px' }}>
-                            <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.foregroundColor, border: '1px solid var(--fg-10)' }} title="foreground" />
-                            <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.accentColor }} title="accent" />
-                            <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.positiveColor }} title="positive" />
-                            <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.negativeColor }} title="negative" />
-                            <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.backgroundColor, border: '1px solid var(--fg-20)' }} title="background" />
-                          </div>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            <span style={{
-                              flex: 1,
-                              fontSize: '10px',
-                              fontWeight: 'bold',
-                              color: blendColors(theme.foregroundColor, theme.accentColor),
-                              overflow: 'hidden',
-                              textOverflow: 'ellipsis',
-                              whiteSpace: 'nowrap'
-                            }}>
-                              {theme.name}
-                            </span>
-                            {currentThemeId === theme.id && (
-                              <IconCheck size={10} style={{ color: theme.accentColor, flexShrink: 0 }} />
-                            )}
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Custom themes */}
-                    {customThemes.length > 0 && (
-                      <>
-                        <div style={{ height: '1px', background: 'var(--fg-10)', margin: '8px 0' }} />
-                        <div style={{
-                          display: 'grid',
-                          gridTemplateColumns: '1fr 1fr 1fr 1fr 1fr',
-                          gap: '4px'
-                        }}>
-                          {customThemes.map(theme => (
-                            <div
-                              key={theme.id}
-                              style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                gap: '4px',
-                                padding: '6px 8px',
-                                borderRadius: '4px',
-                                cursor: 'default',
-                                background: currentThemeId === theme.id ? 'rgba(var(--accent-rgb), 0.15)' : 'transparent',
-                                border: currentThemeId === theme.id ? '1px solid rgba(var(--accent-rgb), 0.3)' : '1px solid transparent',
-                                transition: 'all 0.15s ease'
-                              }}
-                              onMouseEnter={(e) => {
-                                if (currentThemeId !== theme.id) {
-                                  e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.08)';
-                                  e.currentTarget.style.borderColor = 'rgba(var(--accent-rgb), 0.15)';
-                                }
-                                setHoveredThemeId(theme.id);
-                                previewTheme(theme);
-                              }}
-                              onMouseLeave={(e) => {
-                                if (currentThemeId !== theme.id) {
-                                  e.currentTarget.style.background = 'transparent';
-                                  e.currentTarget.style.borderColor = 'transparent';
-                                }
-                                setHoveredThemeId(null);
-                                restoreCurrentTheme();
-                              }}
-                              onClick={() => {
-                                if (editingThemeName !== theme.id) {
+                          {getCurrentThemeDisplayName()}
+                        </button>
+                        {presetDropdownOpen && createPortal(
+                          <div ref={dropdownMenuRef} className="preset-dropdown-menu" style={{ top: dropdownPosition.top, left: dropdownPosition.left }}>
+                            {BUILT_IN_THEMES.map((theme, idx) => (
+                              <div
+                                key={theme.id}
+                                className={`preset-dropdown-item ${currentThemeId === theme.id ? 'active' : ''} ${focusedIndex === idx ? 'focused' : ''}`}
+                                onMouseEnter={() => { setFocusedIndex(idx); previewTheme(theme); }}
+                                onMouseDown={(e) => {
+                                  e.stopPropagation();
                                   applyTheme(theme);
-                                }
-                              }}
-                            >
-                              {/* Color preview swatches - all 5 colors */}
-                              <div style={{ display: 'flex', gap: '2px' }}>
-                                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.foregroundColor, border: '1px solid var(--fg-10)' }} title="foreground" />
-                                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.accentColor }} title="accent" />
-                                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.positiveColor }} title="positive" />
-                                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.negativeColor }} title="negative" />
-                                <span style={{ width: '10px', height: '10px', borderRadius: '2px', background: theme.backgroundColor, border: '1px solid var(--fg-20)' }} title="background" />
+                                  setPresetDropdownOpen(false);
+                                  setFocusedIndex(-1);
+                                }}
+                              >
+                                {theme.name}
                               </div>
-                              <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                                <span style={{
-                                  flex: 1,
-                                  fontSize: '10px',
-                                  fontWeight: 'bold',
-                                  color: blendColors(theme.foregroundColor, theme.accentColor),
-                                  overflow: 'hidden',
-                                  textOverflow: 'ellipsis',
-                                  whiteSpace: 'nowrap'
-                                }}>
-                                  {theme.name}
-                                </span>
-                                {currentThemeId === theme.id && (
-                                  <IconCheck size={10} style={{ color: theme.accentColor, flexShrink: 0 }} />
-                                )}
-                                {/* Delete button */}
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    deleteTheme(theme.id);
-                                  }}
-                                  style={{
-                                    background: 'transparent',
-                                    border: 'none',
-                                    padding: '2px',
-                                    cursor: 'default',
-                                    color: 'var(--fg-30)',
-                                    display: 'flex',
-                                    alignItems: 'center',
-                                    borderRadius: '2px',
-                                    transition: 'all 0.15s ease',
-                                    flexShrink: 0
-                                  }}
-                                  onMouseEnter={(e) => {
-                                    e.currentTarget.style.color = 'var(--negative-color)';
-                                    e.currentTarget.style.background = 'rgba(var(--negative-rgb), 0.1)';
-                                  }}
-                                  onMouseLeave={(e) => {
-                                    e.currentTarget.style.color = 'var(--fg-30)';
-                                    e.currentTarget.style.background = 'transparent';
-                                  }}
-                                >
-                                  <IconTrash size={10} />
-                                </button>
-                              </div>
-                            </div>
-                          ))}
-                        </div>
-                      </>
-                    )}
-
-                    {/* Save current as new theme (show when in custom mode OR when theme has changes) */}
-                    {(currentThemeId === 'custom' || hasThemeChanges()) && (
-                      <>
-                        <div style={{ height: '1px', background: 'var(--fg-10)', margin: '4px 0' }} />
-                        {showNewThemeInput ? (
-                          <div style={{ display: 'flex', gap: '4px', padding: '4px 8px' }}>
-                            <input
-                              ref={newThemeInputRef}
-                              type="text"
-                              value={newThemeName}
-                              onChange={(e) => setNewThemeName(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter' && newThemeName.trim()) {
-                                  saveAsCustomTheme(newThemeName.trim());
-                                  setNewThemeName('');
-                                  setShowNewThemeInput(false);
-                                } else if (e.key === 'Escape') {
-                                  setNewThemeName('');
-                                  setShowNewThemeInput(false);
-                                }
-                              }}
-                              placeholder="theme name..."
-                              autoFocus
-                              style={{
-                                flex: 1,
-                                padding: '4px 6px',
-                                fontSize: '10px',
-                                background: 'var(--bg-50)',
-                                border: '1px solid var(--fg-15)',
-                                borderRadius: '3px',
-                                color: 'var(--foreground-color)',
-                                outline: 'none'
-                              }}
-                            />
-                            <button
-                              onClick={() => {
-                                if (newThemeName.trim()) {
-                                  saveAsCustomTheme(newThemeName.trim());
-                                  setNewThemeName('');
-                                  setShowNewThemeInput(false);
-                                }
-                              }}
-                              disabled={!newThemeName.trim()}
-                              style={{
-                                padding: '4px 8px',
-                                fontSize: '10px',
-                                background: newThemeName.trim() ? 'var(--accent-color)' : 'var(--fg-10)',
-                                border: 'none',
-                                borderRadius: '3px',
-                                color: newThemeName.trim() ? 'var(--background-color)' : 'var(--fg-30)',
-                                cursor: newThemeName.trim() ? 'pointer' : 'default'
-                              }}
-                            >
-                              save
-                            </button>
-                          </div>
-                        ) : (
-                          <button
-                            onClick={() => setShowNewThemeInput(true)}
-                            style={{
-                              width: '100%',
-                              display: 'flex',
-                              alignItems: 'center',
-                              gap: '8px',
-                              padding: '6px 8px',
-                              borderRadius: '4px',
-                              background: 'transparent',
-                              border: 'none',
-                              cursor: 'pointer',
-                              color: 'var(--fg-50)',
-                              fontSize: '10px',
-                              transition: 'all 0.15s ease'
-                            }}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.background = 'rgba(var(--accent-rgb), 0.08)';
-                              e.currentTarget.style.color = 'var(--accent-color)';
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.background = 'transparent';
-                              e.currentTarget.style.color = 'var(--fg-50)';
-                            }}
-                          >
-                            <IconPlus size={10} />
-                            save current as theme
-                          </button>
+                            ))}
+                            {customThemes.length > 0 && (
+                              <>
+                                <div className="preset-dropdown-divider" />
+                                {customThemes.map((theme, idx) => (
+                                  <div
+                                    key={theme.id}
+                                    className={`preset-dropdown-item ${currentThemeId === theme.id ? 'active' : ''} ${focusedIndex === BUILT_IN_THEMES.length + idx ? 'focused' : ''}`}
+                                    onMouseEnter={() => { setFocusedIndex(BUILT_IN_THEMES.length + idx); previewTheme(theme); }}
+                                    onMouseDown={(e) => {
+                                      e.stopPropagation();
+                                      applyTheme(theme);
+                                      setPresetDropdownOpen(false);
+                                      setFocusedIndex(-1);
+                                    }}
+                                  >
+                                    {theme.name}
+                                  </div>
+                                ))}
+                              </>
+                            )}
+                          </div>,
+                          document.body
                         )}
-                      </>
-                    )}
+                      </div>
+                    </div>
+                  </div>
+
+                  <h4 style={{ marginTop: '16px' }}>colors</h4>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">foreground</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => handleForegroundColorChange(getThemeDefault('foreground'))} disabled={foregroundColor === getThemeDefault('foreground')}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <button className="color-preview" onClick={() => setShowColorPicker('foreground')}>
+                        <span style={{ width: '12px', height: '12px', background: foregroundColor }} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">accent</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => handleAccentColorChange(getThemeDefault('accent'))} disabled={accentColor === getThemeDefault('accent')}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <button className="color-preview" onClick={() => setShowColorPicker('accent')}>
+                        <span style={{ width: '12px', height: '12px', background: accentColor }} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">positive</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => handlePositiveColorChange(getThemeDefault('positive'))} disabled={positiveColor === getThemeDefault('positive')}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <button className="color-preview" onClick={() => setShowColorPicker('positive')}>
+                        <span style={{ width: '12px', height: '12px', background: positiveColor }} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">negative</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => handleNegativeColorChange(getThemeDefault('negative'))} disabled={negativeColor === getThemeDefault('negative')}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <button className="color-preview" onClick={() => setShowColorPicker('negative')}>
+                        <span style={{ width: '12px', height: '12px', background: negativeColor }} />
+                      </button>
+                    </div>
+                  </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">background</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => handleBackgroundColorChange(getThemeDefault('background'))} disabled={backgroundColor === getThemeDefault('background')}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <button className="color-preview" onClick={() => setShowColorPicker('background')}>
+                        <span style={{ width: '12px', height: '12px', background: backgroundColor, border: '1px solid var(--fg-20)' }} />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right column: Display + Fonts */}
+                <div className="settings-column">
+                  <h4>display</h4>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">word wrap code</span>
+                    <div className="theme-controls-bg">
+                      <div
+                        className={`toggle-switch compact ${wordWrapCode ? 'active' : ''}`}
+                        onClick={() => setWordWrapCode(!wordWrapCode)}
+                      >
+                        <span className="toggle-switch-label off">off</span>
+                        <span className="toggle-switch-label on">on</span>
+                        <div className="toggle-switch-slider" />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">opacity</span>
+                    <div className="theme-controls-bg">
+                      <span className="opacity-value">{Math.round(htmlOpacity * 100)}%</span>
+                      <div className="opacity-container">
+                        <input
+                          type="range"
+                          min="0.70"
+                          max="1.00"
+                          step="0.01"
+                          value={htmlOpacity}
+                          onChange={(e) => handleHtmlOpacityChange(parseFloat(e.target.value))}
+                          className="opacity-slider"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  <h4 style={{ marginTop: '16px' }}>fonts</h4>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">monospace</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => setMonoFont(getThemeFontDefault('mono'))} disabled={monoFont === getThemeFontDefault('mono')}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <div
+                        className="font-input"
+                        onClick={() => setShowFontPicker('monospace')}
+                        style={{ fontFamily: monoFont || getThemeFontDefault('mono'), fontSize: '9.5px' }}
+                      >
+                        {monoFont || getThemeFontDefault('mono')}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">sans-serif</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => setSansFont(getThemeFontDefault('sans'))} disabled={sansFont === getThemeFontDefault('sans')}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <div
+                        className="font-input"
+                        onClick={() => setShowFontPicker('sans-serif')}
+                        style={{ fontFamily: sansFont || getThemeFontDefault('sans') }}
+                      >
+                        {sansFont || getThemeFontDefault('sans')}
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
+            </div>
+
           </>
         );
 

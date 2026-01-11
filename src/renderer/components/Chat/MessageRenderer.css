@@ -194,6 +194,11 @@
   color: rgba(var(--foreground-rgb), 0.9);
 }
 
+.message.user .message-bubble.command-mode {
+  background: rgba(var(--positive-rgb), 0.15);
+  color: rgba(var(--foreground-rgb), 0.9);
+}
+
 .message.assistant .message-bubble {
   background: rgba(128, 128, 128, 0.15);
   border: none;
@@ -234,10 +239,10 @@
   color: var(--code-color);
 }
 
-/* Bash/ANSI output in assistant messages uses negative color */
+/* Bash/ANSI output in assistant messages uses mix of foreground and negative */
 .message.assistant .message-bubble code.language-ansi,
 .message.assistant .message-bubble pre:has(code.language-ansi) {
-  color: rgba(var(--negative-rgb), 0.9);
+  color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
 }
 
 .message.user .message-content {
@@ -1380,7 +1385,7 @@ body.platform-win32 .tool-detail {
   padding: 0;
   font-family: var(--font-mono);
   font-size: 8px;
-  color: rgba(var(--foreground-rgb), 0.8);
+  color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
   white-space: pre;
   max-height: 400px;
   overflow-x: auto;
@@ -2686,9 +2691,37 @@ pre code,
 :root.word-wrap-code .thinking-code-pre,
 :root.word-wrap-code .thinking-code,
 :root.word-wrap-code .bash-output-content,
-:root.word-wrap-code .tool-result-content pre {
-  white-space: pre-wrap;
-  word-wrap: break-word;
-  overflow-wrap: break-word;
-  word-break: break-word;
+:root.word-wrap-code .tool-result-content pre,
+:root.word-wrap-code .tool-result.standalone .result-content,
+:root.word-wrap-code .line-content,
+:root.word-wrap-code .edit-content-line,
+:root.word-wrap-code .write-content,
+:root.word-wrap-code .diff-content,
+:root.word-wrap-code .diff-text,
+:root.word-wrap-code .edit-content,
+:root.word-wrap-code .edit-diff pre,
+:root.word-wrap-code pre.edit-diff {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+/* Diff/edit container adjustments for word wrap */
+:root.word-wrap-code .diff-container,
+:root.word-wrap-code .diff-content,
+:root.word-wrap-code .edit-content {
+  overflow-x: visible !important;
+}
+
+:root.word-wrap-code .diff-hunk,
+:root.word-wrap-code .edit-line {
+  min-width: 0;
+  display: block;
+}
+
+:root.word-wrap-code .diff-line,
+:root.word-wrap-code .edit-line {
+  min-width: 0;
+  flex-wrap: wrap;
 }
