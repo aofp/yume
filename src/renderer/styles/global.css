@@ -36,6 +36,10 @@
   --bg-30: rgba(var(--background-rgb), 0.3);     /* Light overlay */
   --bg-20: rgba(var(--background-rgb), 0.2);     /* Subtle overlay */
 
+  /* Brightened background variants - mix background with white, then apply opacity */
+  --bg-brighter: color-mix(in srgb, var(--background-color) 90%, white 10%);
+  --bg-brighter-alpha: color-mix(in srgb, var(--bg-brighter) 40%, transparent 60%);
+
   /* Darkened background overlay - use for container backgrounds */
   --bg-overlay: linear-gradient(var(--bg-20), var(--bg-20)), #000000;
 

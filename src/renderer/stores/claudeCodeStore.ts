@@ -701,12 +701,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       })(), // Load from localStorage or default to false
       soundOnComplete: (() => {
         const stored = localStorage.getItem('yurucode-sound-on-complete');
-        return stored ? JSON.parse(stored) : false;
-      })(), // Load from localStorage or default to false
+        return stored ? JSON.parse(stored) : true;
+      })(), // Load from localStorage or default to true
       showResultStats: (() => {
         const stored = localStorage.getItem('yurucode-show-result-stats');
-        return stored ? JSON.parse(stored) : false;
-      })(), // Load from localStorage or default to false (hidden by default)
+        return stored ? JSON.parse(stored) : true;
+      })(), // Load from localStorage or default to true
       autoCompactEnabled: true, // Default to enabled (auto-compact at 60%)
       showProjectsMenu: false, // Default to hidden
       showAgentsMenu: false, // Default to hidden

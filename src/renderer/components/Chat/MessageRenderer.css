@@ -200,7 +200,7 @@
 }
 
 .message.assistant .message-bubble {
-  background: rgba(128, 128, 128, 0.15);
+  background: var(--bg-brighter-alpha);
   border: none;
   color: var(--fg-100);
   padding: 8px 12px;
