@@ -6,7 +6,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use tauri::{AppHandle, Emitter, State};
-use tracing::{debug, error, info};
+use tracing::{debug, error, info, warn};
 
 use crate::claude_spawner::{ClaudeSpawner, SpawnOptions};
 use crate::state::AppState;
@@ -35,6 +35,12 @@ pub struct SpawnSessionResponse {
 pub struct SendMessageRequest {
     pub session_id: String,
     pub message: String,
+    /// The actual Claude session ID to resume (from frontend claudeSessionStore)
+    pub claude_session_id: Option<String>,
+    /// Project path for the session
+    pub project_path: Option<String>,
+    /// Model to use
+    pub model: Option<String>,
 }
 
 /// Request structure for resuming a Claude session
@@ -126,34 +132,44 @@ pub async fn send_claude_message(
     request: SendMessageRequest,
 ) -> Result<(), String> {
     info!("send_claude_message command called for session: {}", request.session_id);
-    
-    // Get the session info - handle both real and temp session IDs
+
+    // Get the session info - prefer values passed from frontend, fallback to session_manager
     let session_manager = state.session_manager();
-    
-    // Get the most recent session to find the real Claude session ID
-    let sessions = session_manager.list_sessions().await;
-    let session = sessions.into_iter()
-        .next()
-        .ok_or_else(|| format!("No active sessions found"))?;
-    
-    // Get the actual Claude session ID to resume
-    let claude_session_id = session.session_id.clone();
-    
+
+    // Use claude_session_id from request if provided (preferred - fixes multi-tab and interrupt issues)
+    // Otherwise fallback to session_manager lookup (legacy behavior)
+    let (claude_session_id, project_path, model) = if let Some(ref csid) = request.claude_session_id {
+        info!("Using claude_session_id from request: {}", csid);
+        (
+            csid.clone(),
+            request.project_path.clone().unwrap_or_else(|| ".".to_string()),
+            request.model.clone().unwrap_or_else(|| "claude-sonnet-4-20250514".to_string()),
+        )
+    } else {
+        // Fallback: Get from session_manager (legacy behavior, less reliable)
+        warn!("No claude_session_id in request, falling back to session_manager lookup");
+        let sessions = session_manager.list_sessions().await;
+        let session = sessions.into_iter()
+            .next()
+            .ok_or_else(|| format!("No active sessions found and no claude_session_id provided"))?;
+        (session.session_id.clone(), session.project_path.clone(), session.model.clone())
+    };
+
     info!("Found Claude session ID to resume: {}", claude_session_id);
-    
+
     // Get the ClaudeSpawner from AppState
     let registry = state.process_registry();
     let spawner = Arc::new(ClaudeSpawner::new(registry, session_manager.clone()));
-    
+
     // Store the original requesting session ID for /compact handling
     let original_session_id = request.session_id.clone();
     let is_compact = request.message.trim().starts_with("/compact");
-    
+
     // Create spawn options - claudia uses --resume with session ID!
     // NOT -c flag! That creates a new session!
     let options = SpawnOptions {
-        project_path: session.project_path.clone(),
-        model: session.model.clone(),
+        project_path: project_path,
+        model: model,
         prompt: request.message.clone(),  // Pass the message as prompt (including slash commands)
         resume_session_id: Some(claude_session_id.clone()),  // Use --resume with session ID
         continue_conversation: false,  // Don't use -c flag

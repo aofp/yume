@@ -5,7 +5,7 @@
   "identifier": "be.yuru.yurucode",
   "build": {
     "frontendDist": "../dist/renderer",
-    "devUrl": "http://localhost:52868",
+    "devUrl": "http://localhost:53798",
     "beforeDevCommand": "npm run dev:frontend",
     "beforeBuildCommand": "npm run build"
   },
@@ -13,7 +13,7 @@
     "withGlobalTauri": true,
     "macOSPrivateApi": true,
     "security": {
-      "csp": "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:* https://localhost:* ws://127.0.0.1:* wss://127.0.0.1:* http://127.0.0.1:* https://127.0.0.1:* https://github.com https://www.google.com https://*.googleapis.com https://yuru.be https://*.yuru.be; media-src 'self' blob: data: https://www.google.com https://*.googleapis.com; object-src 'none'; frame-src 'none'; worker-src 'self' blob:;"
+      "csp": "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:* https://localhost:* ws://127.0.0.1:* wss://127.0.0.1:* http://127.0.0.1:* https://127.0.0.1:* https://github.com https://www.google.com https://*.google.com wss://*.google.com https://*.googleapis.com wss://*.googleapis.com https://speech.googleapis.com wss://speech.googleapis.com https://yuru.be https://*.yuru.be; media-src 'self' blob: data: https://www.google.com https://*.google.com https://*.googleapis.com https://speech.googleapis.com; object-src 'none'; frame-src 'none'; worker-src 'self' blob:;"
     },
     "windows": [
       {
@@ -40,8 +40,7 @@
         "minimizable": true,
         "skipTaskbar": false,
         "shadow": true,
-        "theme": "Dark",
-        "proxyUrl": "http://localhost:60000"
+        "theme": "Dark"
       }
     ]
   },

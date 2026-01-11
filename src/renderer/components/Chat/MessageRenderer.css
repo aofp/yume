@@ -2699,47 +2699,83 @@ pre code,
   font-family: var(--font-mono);
 }
 
-/* Word wrap toggle for code blocks - applied when html element has .word-wrap-code class */
-:root.word-wrap-code .markdown-content pre,
-:root.word-wrap-code .markdown-content pre code,
-:root.word-wrap-code .code-block-pre,
-:root.word-wrap-code .code-block-pre code,
-:root.word-wrap-code .thinking-code-block,
-:root.word-wrap-code .thinking-code-block code,
-:root.word-wrap-code .thinking-code-pre,
-:root.word-wrap-code .thinking-code,
-:root.word-wrap-code .bash-output-content,
-:root.word-wrap-code .tool-result-content pre,
-:root.word-wrap-code .tool-result.standalone .result-content,
-:root.word-wrap-code .line-content,
-:root.word-wrap-code .edit-content-line,
-:root.word-wrap-code .write-content,
-:root.word-wrap-code .diff-content,
-:root.word-wrap-code .diff-text,
-:root.word-wrap-code .edit-content,
-:root.word-wrap-code .edit-diff pre,
-:root.word-wrap-code pre.edit-diff {
+/* Word wrap toggle for all chat content - applied when html element has .word-wrap class */
+/* Code blocks and pre-formatted content */
+:root.word-wrap .markdown-content pre,
+:root.word-wrap .markdown-content pre code,
+:root.word-wrap .code-block-pre,
+:root.word-wrap .code-block-pre code,
+:root.word-wrap .thinking-code-block,
+:root.word-wrap .thinking-code-block code,
+:root.word-wrap .thinking-code-pre,
+:root.word-wrap .thinking-code,
+:root.word-wrap .bash-output-content,
+:root.word-wrap .tool-result-content pre,
+:root.word-wrap .tool-result.standalone .result-content,
+:root.word-wrap .line-content,
+:root.word-wrap .edit-content-line,
+:root.word-wrap .write-content,
+:root.word-wrap .diff-content,
+:root.word-wrap .diff-text,
+:root.word-wrap .edit-content,
+:root.word-wrap .edit-diff pre,
+:root.word-wrap pre.edit-diff {
   white-space: pre-wrap !important;
   word-wrap: break-word !important;
   overflow-wrap: break-word !important;
   word-break: break-word !important;
 }
 
+/* Inline code */
+:root.word-wrap .markdown-content code,
+:root.word-wrap .message-text code,
+:root.word-wrap .thinking-inline-code {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+/* Console/bash output and tool results */
+:root.word-wrap .bash-line,
+:root.word-wrap .bash-command-text,
+:root.word-wrap .bash-output-line,
+:root.word-wrap .result-content,
+:root.word-wrap .tool-result,
+:root.word-wrap .tool-result-content {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+/* Message content and markdown text */
+:root.word-wrap .message-content,
+:root.word-wrap .message-text,
+:root.word-wrap .markdown-content,
+:root.word-wrap .markdown-content p,
+:root.word-wrap .thinking-content,
+:root.word-wrap .thinking-text {
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
 /* Diff/edit container adjustments for word wrap */
-:root.word-wrap-code .diff-container,
-:root.word-wrap-code .diff-content,
-:root.word-wrap-code .edit-content {
+:root.word-wrap .diff-container,
+:root.word-wrap .diff-content,
+:root.word-wrap .edit-content {
   overflow-x: visible !important;
 }
 
-:root.word-wrap-code .diff-hunk,
-:root.word-wrap-code .edit-line {
+:root.word-wrap .diff-hunk,
+:root.word-wrap .edit-line {
   min-width: 0;
   display: block;
 }
 
-:root.word-wrap-code .diff-line,
-:root.word-wrap-code .edit-line {
+:root.word-wrap .diff-line,
+:root.word-wrap .edit-line {
   min-width: 0;
   flex-wrap: wrap;
 }

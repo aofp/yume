@@ -148,6 +148,15 @@ impl ClaudeManager {
 
         // Configure Claude process with stream-json output for real-time parsing
         let mut cmd = Command::new(&claude_path);
+
+        // On Windows, hide the console window to prevent flashing
+        #[cfg(target_os = "windows")]
+        {
+            use std::os::windows::process::CommandExt;
+            const CREATE_NO_WINDOW: u32 = 0x08000000;
+            cmd.creation_flags(CREATE_NO_WINDOW);
+        }
+
         cmd.arg("--output-format")
             .arg("stream-json")
             .arg("--model")

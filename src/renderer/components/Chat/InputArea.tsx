@@ -26,6 +26,8 @@ interface InputAreaProps {
   isReadOnly: boolean;
   isStreaming: boolean;
   isContextFull: boolean;
+  isDictating: boolean;
+  isCommandMode: boolean;
   contextPercentage: number;
   bashCommandMode: boolean;
   workingDirectory: string | undefined;
@@ -58,6 +60,8 @@ export const InputArea = memo(function InputArea({
   isReadOnly,
   isStreaming,
   isContextFull,
+  isDictating,
+  isCommandMode,
   contextPercentage,
   bashCommandMode,
   workingDirectory,
@@ -151,7 +155,7 @@ export const InputArea = memo(function InputArea({
             )}
             <textarea
               ref={inputRef}
-              className={`chat-input ${bashCommandMode ? 'bash-mode' : ''} ${isContextFull ? 'context-full' : ''} ${hasUltrathink ? 'has-ultrathink' : ''}`}
+              className={`chat-input ${bashCommandMode ? 'bash-mode' : ''} ${isContextFull ? 'context-full' : ''} ${hasUltrathink ? 'has-ultrathink' : ''} ${isDictating ? 'dictating' : ''} ${isCommandMode ? 'command-mode' : ''}`}
               placeholder={getPlaceholder()}
               value={isReadOnly || isContextFull ? '' : input}
               onChange={onTextareaChange}

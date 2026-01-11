@@ -281,8 +281,9 @@ interface Attachment {
 }
 
 export const ClaudeChat: React.FC = () => {
-  // Platform detection for keyboard shortcuts
+  // Platform detection for keyboard shortcuts and feature support
   const isMac = navigator.platform.toLowerCase().includes('mac');
+  const isWindows = navigator.platform.toLowerCase().includes('win');
   const modKey = isMac ? 'cmd' : 'ctrl';
 
   const [input, setInput] = useState('');
@@ -301,6 +302,7 @@ export const ClaudeChat: React.FC = () => {
   const [showContextMenu, setShowContextMenu] = useState(false);
   const [isDictating, setIsDictating] = useState(false);
   const recognitionRef = useRef<any>(null);
+  const dictationBaseTextRef = useRef<string>(''); // Text before dictation started
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedSearchQuery, setDebouncedSearchQuery] = useState('');
   const [searchVisible, setSearchVisible] = useState(false);
@@ -1025,12 +1027,24 @@ export const ClaudeChat: React.FC = () => {
     // Check if Speech Recognition API is available
     if (!('webkitSpeechRecognition' in window) && !('SpeechRecognition' in window)) {
       console.error('[Dictation] Speech recognition not supported in this environment');
-      
-      // Show user-friendly error
-      const errorMsg = 'Dictation is not available. On macOS, please ensure:\n\n' +
-                       '1. yurucode has microphone permission in System Settings > Privacy & Security > Microphone\n' +
-                       '2. Dictation is enabled in System Settings > Keyboard > Dictation\n' +
-                       '3. Restart the app after granting permissions';
+
+      // Platform-specific error messages
+      let errorMsg = 'Dictation is not available.\n\n';
+      if (isWindows) {
+        errorMsg += 'On Windows, please ensure:\n' +
+                    '1. Windows has microphone permission for Yurucode\n' +
+                    '   Settings > Privacy & Security > Microphone > Let desktop apps access\n' +
+                    '2. You have an active internet connection (uses Google Cloud)\n' +
+                    '3. Try restarting Yurucode\n\n' +
+                    'If still not working, try: Settings > Advanced > Reset Dictation Permissions';
+      } else if (isMac) {
+        errorMsg += 'On macOS, please ensure:\n' +
+                    '1. yurucode has microphone permission in System Settings > Privacy & Security > Microphone\n' +
+                    '2. Dictation is enabled in System Settings > Keyboard > Dictation\n' +
+                    '3. Restart the app after granting permissions';
+      } else {
+        errorMsg += 'Please ensure your browser supports the Web Speech API and microphone access is granted.';
+      }
       alert(errorMsg);
       return;
     }
@@ -1046,9 +1060,22 @@ export const ClaudeChat: React.FC = () => {
           console.log('[Dictation] Microphone permission granted');
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Dictation] Microphone permission error:', err);
-      alert('Microphone access denied. Please grant microphone permission to use dictation.');
+      let errorMsg = 'Microphone access denied.\n\n';
+      if (isWindows) {
+        errorMsg += 'Please check:\n' +
+                    '1. Windows Settings > Privacy & Security > Microphone\n' +
+                    '2. Enable "Let desktop apps access your microphone"\n' +
+                    '3. Restart Yurucode after changing permissions\n\n' +
+                    'If permissions are correct but still failing,\n' +
+                    'try: Settings > Advanced > Reset Dictation Permissions';
+      } else if (isMac) {
+        errorMsg += 'Please grant permission in System Settings > Privacy & Security > Microphone';
+      } else {
+        errorMsg += 'Please grant microphone permission in your system settings.';
+      }
+      alert(errorMsg);
       return;
     }
 
@@ -1066,52 +1093,92 @@ export const ClaudeChat: React.FC = () => {
     };
     
     recognition.onresult = (event: any) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
-      
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
+      // Collect all finals and current interim from the entire results array
+      let allFinals = '';
+      let currentInterim = '';
+
+      for (let i = 0; i < event.results.length; i++) {
+        const transcript = event.results[i][0].transcript;
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          allFinals += transcript;
         } else {
-          interimTranscript += event.results[i][0].transcript;
+          currentInterim += transcript;
         }
       }
-      
-      if (finalTranscript) {
-        // Append final transcript to input
-        setInput(prev => {
-          const newText = prev + (prev && !prev.endsWith(' ') ? ' ' : '') + finalTranscript;
-          return newText;
-        });
-        console.log('[Dictation] Transcribed:', finalTranscript);
+
+      // Build full text: base + finals + interim (real-time update)
+      const base = dictationBaseTextRef.current;
+      const needsSpace = base && !base.endsWith(' ') && (allFinals || currentInterim);
+      const fullText = base + (needsSpace ? ' ' : '') + allFinals + currentInterim;
+
+      setInput(fullText);
+
+      if (allFinals || currentInterim) {
+        console.log('[Dictation] Real-time update - Finals:', allFinals, 'Interim:', currentInterim);
       }
     };
     
     recognition.onerror = (event: any) => {
       console.error('[Dictation] Error:', event.error, event);
-      
+
       let errorMsg = 'Dictation error: ';
       switch(event.error) {
         case 'not-allowed':
-          errorMsg += 'Microphone access denied. Please grant permission in System Settings.';
+          if (isWindows) {
+            errorMsg = 'Microphone access denied.\n\n' +
+                       'Please check Windows Settings > Privacy & Security > Microphone:\n' +
+                       '1. "Microphone access" is ON\n' +
+                       '2. "Let desktop apps access your microphone" is ON\n\n' +
+                       'After enabling, restart Yurucode.\n\n' +
+                       'If still not working, try:\n' +
+                       'Settings > Advanced > Reset Dictation Permissions';
+          } else {
+            errorMsg += 'Microphone access denied. Please grant permission in System Settings.';
+          }
           break;
         case 'no-speech':
           errorMsg += 'No speech detected. Please try again.';
           break;
         case 'network':
-          errorMsg += 'Network error. Browser speech recognition requires an active internet connection (uses Google Cloud services).';
+          errorMsg = 'Network error.\n\n' +
+                     'Speech recognition requires an active internet connection\n' +
+                     '(audio is processed by Google Cloud services).\n\n' +
+                     'Please check your internet connection and try again.';
           break;
         case 'aborted':
           errorMsg += 'Dictation was aborted.';
           break;
+        case 'audio-capture':
+          if (isWindows) {
+            errorMsg = 'Audio capture failed.\n\n' +
+                       'This usually means:\n' +
+                       '1. No microphone is connected\n' +
+                       '2. Microphone is being used by another app\n' +
+                       '3. WebView2 microphone permission was denied\n\n' +
+                       'Try: Settings > Advanced > Reset Dictation Permissions\n' +
+                       'Then restart Yurucode.';
+          } else {
+            errorMsg += 'Audio capture failed. Check your microphone connection.';
+          }
+          break;
+        case 'service-not-allowed':
+          if (isWindows) {
+            errorMsg = 'Speech service not allowed.\n\n' +
+                       'WebView2 has blocked speech recognition.\n\n' +
+                       'Try: Settings > Advanced > Reset Dictation Permissions\n' +
+                       'Then restart Yurucode.';
+          } else {
+            errorMsg += 'Speech recognition service not allowed.';
+          }
+          break;
         default:
           errorMsg += event.error;
       }
-      
+
       if (event.error !== 'no-speech' && event.error !== 'aborted') {
         alert(errorMsg);
       }
-      
+
       setIsDictating(false);
       recognitionRef.current = null;
     };
@@ -1123,23 +1190,30 @@ export const ClaudeChat: React.FC = () => {
     };
     
     recognitionRef.current = recognition;
-    
+
+    // Capture current input as base text before starting
+    dictationBaseTextRef.current = input;
+
     try {
       recognition.start();
-      console.log('[Dictation] Starting recognition...');
+      // Focus the input to show dictation is active
+      inputRef.current?.focus();
+      console.log('[Dictation] Starting recognition... Base text:', input);
     } catch (err) {
       console.error('[Dictation] Failed to start:', err);
       setIsDictating(false);
       recognitionRef.current = null;
+      dictationBaseTextRef.current = '';
       alert('Failed to start dictation. Please try again.');
     }
-  }, []);
+  }, [input, inputRef]);
   
   const stopDictation = useCallback(() => {
     if (recognitionRef.current) {
       recognitionRef.current.stop();
       recognitionRef.current = null;
     }
+    dictationBaseTextRef.current = ''; // Clear base text
     // Always reset state, even if ref is already null
     setIsDictating(false);
   }, []);
@@ -1182,6 +1256,45 @@ export const ClaudeChat: React.FC = () => {
     }
     setShowClearConfirm(false);
   }, [currentSessionId, clearContext, setIsAtBottom, setScrollPositions]);
+
+  // Stop bash command
+  const handleStopBash = useCallback(() => {
+    if (currentSession?.bashProcessId) {
+      import('@tauri-apps/api/core').then(({ invoke }) => {
+        invoke('kill_bash_process', {
+          processId: currentSession.bashProcessId
+        }).then(() => {
+          // Add cancelled message with elapsed time
+          const elapsedTime = bashElapsedTimes[currentSessionId || ''] || 0;
+          const cancelMessage = {
+            id: `bash-cancel-${Date.now()}`,
+            type: 'system' as const,
+            subtype: 'interrupted' as const,
+            message: `bash command cancelled (${elapsedTime}s)`,
+            timestamp: Date.now()
+          };
+
+          if (currentSessionId) {
+            addMessageToSession(currentSessionId, cancelMessage);
+          }
+
+          // Clear flags immediately
+          useClaudeCodeStore.setState(state => ({
+            sessions: state.sessions.map(s =>
+              s.id === currentSessionId
+                ? { ...s, runningBash: false, userBashRunning: false, bashProcessId: undefined }
+                : s
+            )
+          }));
+        }).catch(error => {
+          console.error('Failed to kill bash process:', error);
+        });
+      });
+    } else if (currentSession?.streaming) {
+      // Fallback to interrupting the session if no bash process but streaming
+      interruptSession();
+    }
+  }, [currentSession?.bashProcessId, currentSession?.streaming, currentSessionId, bashElapsedTimes, addMessageToSession, interruptSession]);
 
   // Compact context with confirmation
   const handleCompactContextRequest = useCallback(() => {
@@ -1784,46 +1897,11 @@ export const ClaudeChat: React.FC = () => {
           setSearchQuery('');
           setSearchMatches([]);
           setSearchIndex(0);
-        } else if (currentSession?.streaming || currentSession?.userBashRunning) {
+        } else if (currentSession?.streaming || currentSession?.userBashRunning || currentSession?.runningBash) {
           // Only interrupt if no panels/search are open
           e.preventDefault();
           console.log('[ClaudeChat] ESC pressed - interrupting');
-
-          // Kill bash process if running
-          if (currentSession?.bashProcessId) {
-            import('@tauri-apps/api/core').then(({ invoke }) => {
-              invoke('kill_bash_process', {
-                processId: currentSession.bashProcessId
-              }).then(() => {
-                // Add cancelled message with elapsed time
-                const elapsedTime = bashElapsedTimes[currentSessionId || ''] || 0;
-                const cancelMessage = {
-                  id: `bash-cancel-${Date.now()}`,
-                  type: 'system' as const,
-                  subtype: 'interrupted' as const,
-                  message: `bash command cancelled (${elapsedTime}s)`,
-                  timestamp: Date.now()
-                };
-
-                if (currentSessionId) {
-                  addMessageToSession(currentSessionId, cancelMessage);
-                }
-
-                // Clear flags immediately
-                useClaudeCodeStore.setState(state => ({
-                  sessions: state.sessions.map(s =>
-                    s.id === currentSessionId
-                      ? { ...s, userBashRunning: false, bashProcessId: undefined }
-                      : s
-                  )
-                }));
-              }).catch(error => {
-                console.error('Failed to kill bash process:', error);
-              });
-            });
-          } else {
-            interruptSession();
-          }
+          handleStopBash();
         }
       } else if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Enter') {
         // Panel keyboard navigation
@@ -1876,7 +1954,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation]);
+  }, [searchVisible, currentSessionId, handleClearContextRequest, currentSession, setShowStatsModal, interruptSession, setIsAtBottom, setScrollPositions, deleteSession, createSession, sessions.length, input, showFilesPanel, showGitPanel, showRollbackPanel, isGitRepo, fileTree, expandedFolders, focusedFileIndex, focusedGitIndex, gitStatus, autoCompactEnabled, setAutoCompactEnabled, toggleDictation, handleStopBash]);
 
 
 
@@ -4657,6 +4735,7 @@ export const ClaudeChat: React.FC = () => {
               bashStartTime={currentSessionId ? bashStartTimes[currentSessionId] : undefined}
               compactionState={currentSession?.compactionState}
               compactingStartTime={currentSessionId ? compactingStartTimes[currentSessionId] : undefined}
+              onStopBash={handleStopBash}
             />
           );
         })()}
@@ -4710,6 +4789,8 @@ export const ClaudeChat: React.FC = () => {
             isReadOnly={currentSession?.readOnly || false}
             isStreaming={currentSession?.streaming || false}
             isContextFull={isContextFull}
+            isDictating={isDictating}
+            isCommandMode={commandTrigger !== null}
             contextPercentage={contextPercentage}
             bashCommandMode={bashCommandMode}
             workingDirectory={currentSession?.workingDirectory}

@@ -24,6 +24,7 @@ export interface StreamIndicatorProps {
   bashStartTime?: number;
   compactionState?: CompactionState;
   compactingStartTime?: number;
+  onStopBash?: () => void;
 }
 
 export const StreamIndicator = React.memo(function StreamIndicator({
@@ -38,6 +39,7 @@ export const StreamIndicator = React.memo(function StreamIndicator({
   bashStartTime,
   compactionState,
   compactingStartTime,
+  onStopBash,
 }: StreamIndicatorProps) {
   const isCompacting = compactionState?.isCompacting;
 
@@ -123,6 +125,17 @@ export const StreamIndicator = React.memo(function StreamIndicator({
                   <BashTimer startTime={bashStartTime} />
                 )}
               </span>
+              {onStopBash && (
+                <button
+                  className="bash-stop-btn"
+                  onClick={onStopBash}
+                  title="Stop bash command (Esc)"
+                >
+                  <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor">
+                    <rect x="4" y="4" width="16" height="16" rx="2" />
+                  </svg>
+                </button>
+              )}
             </div>
           )}
 

@@ -646,7 +646,7 @@ pub fn run() {
                 let window_for_webview = window.clone();
                 let _ = window_for_webview.with_webview(|webview| {
                     use webview2_com::Microsoft::Web::WebView2::Win32::{
-                        ICoreWebView2Controller2, COREWEBVIEW2_COLOR
+                        ICoreWebView2Controller2, COREWEBVIEW2_COLOR,
                     };
                     use windows::core::Interface;
 
@@ -925,6 +925,8 @@ pub fn run() {
             commands::get_server_port,
             commands::read_port_file,
             commands::get_home_directory,
+            commands::get_webview2_data_path,
+            commands::clear_webview2_permissions,
             commands::get_current_directory,
             commands::write_file_content,
             commands::delete_file,

@@ -751,6 +751,38 @@
   text-align: left;
 }
 
+/* Bash stop button */
+.bash-stop-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  margin-left: 4px;
+  background: var(--negative-color);
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  color: var(--bg-primary);
+  opacity: 0.9;
+  transition: opacity 0.15s ease, transform 0.15s ease;
+}
+
+.bash-stop-btn:hover {
+  opacity: 1;
+  transform: scale(1.1);
+}
+
+.bash-stop-btn:active {
+  transform: scale(0.95);
+}
+
+.bash-stop-btn svg {
+  width: 10px;
+  height: 10px;
+}
+
 /* Removed - using LoadingIndicator component now */
 
 @keyframes spin {
@@ -1061,6 +1093,16 @@ textarea.context-full {
   overflow-y: auto; /* Show scrollbar on focus if content overflows */
 }
 
+/* Dictating state - negative caret color */
+.chat-input.dictating {
+  caret-color: var(--negative-color);
+}
+
+/* Command mode - positive border color when typing / commands */
+.chat-input.command-mode {
+  border-color: var(--positive-color);
+}
+
 /* Input always enabled for better UX */
 
 .chat-input::placeholder {
@@ -1116,7 +1158,7 @@ textarea.context-full {
 
 /* Wrapper to cover textarea text underneath */
 .ultrathink-wrapper {
-  background: var(--background-color);
+  background: var(--bg-overlay);
 }
 
 /* Rainbow gradient animation for ultrathink - using app accent palette */
@@ -1641,6 +1683,12 @@ textarea.context-full {
   color: var(--negative-color);
   border-color: var(--negative-color);
   animation: pulse-critical 1.5s ease-in-out infinite;
+}
+
+/* Disable pulse animation on hover - keep full opacity */
+.btn-stats.critical:hover {
+  animation: none;
+  opacity: 1;
 }
 
 @keyframes pulse-critical {

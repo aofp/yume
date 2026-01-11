@@ -160,11 +160,24 @@ export class TauriClaudeClient {
     }
   }
 
-  async sendMessage(sessionId: string, content: string, model?: string): Promise<void> {
+  async sendMessage(
+    sessionId: string,
+    content: string,
+    model?: string,
+    _autoGenerateTitle?: boolean,
+    claudeSessionId?: string,
+    workingDirectory?: string
+  ): Promise<void> {
     try {
       // Check if this session needs to be spawned first
       // This happens when createSession was called without a prompt OR when resuming a past conversation
       const sessionData = claudeSessionStore.get(sessionId);
+
+      // Use passed claudeSessionId/workingDirectory if not in sessionStore (happens after page refresh)
+      const effectiveClaudeSessionId = sessionData?.claudeSessionId || claudeSessionId;
+      const effectiveWorkingDirectory = sessionData?.workingDirectory || workingDirectory;
+      const effectiveModel = model ? resolveModelId(model) : sessionData?.model;
+
       if (sessionData?.pendingSpawn) {
         const mappedModel = model ? resolveModelId(model) : sessionData.model;
 
@@ -204,11 +217,16 @@ export class TauriClaudeClient {
         }
       } else {
         // Normal message send for already-spawned sessions
+        // Pass claude_session_id, project_path, and model to fix multi-tab and post-interrupt issues
         const request = {
           session_id: sessionId,
-          message: content
+          message: content,
+          claude_session_id: effectiveClaudeSessionId || null,
+          project_path: effectiveWorkingDirectory || null,
+          model: effectiveModel || null
         };
 
+        if (isDev) console.log('[TauriClient] Sending message with claude_session_id:', effectiveClaudeSessionId);
         await invoke('send_claude_message', { request });
       }
     } catch (error) {

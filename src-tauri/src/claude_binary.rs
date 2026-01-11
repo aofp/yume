@@ -155,9 +155,12 @@ fn try_which_command() -> Option<ClaudeInstallation> {
     {
         debug!("Trying 'where claude' to find binary on Windows...");
 
-        // On Windows, use 'where' command
+        // On Windows, use 'where' command with hidden console
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         let output = Command::new("where")
             .arg("claude")
+            .creation_flags(CREATE_NO_WINDOW)
             .output();
 
         match output {
@@ -437,7 +440,19 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
     }
 
     // Also check if claude is available in PATH (without full path)
-    if let Ok(output) = Command::new("claude").arg("--version").output() {
+    #[cfg(target_os = "windows")]
+    let version_check = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        Command::new("claude")
+            .arg("--version")
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+    };
+    #[cfg(not(target_os = "windows"))]
+    let version_check = Command::new("claude").arg("--version").output();
+
+    if let Ok(output) = version_check {
         if output.status.success() {
             debug!("claude is available in PATH");
             let version = extract_version_from_output(&output.stdout);
@@ -456,7 +471,19 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
 
 /// Get Claude version by running --version command
 fn get_claude_version(path: &str) -> Result<Option<String>, String> {
-    match Command::new(path).arg("--version").output() {
+    #[cfg(target_os = "windows")]
+    let output_result = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        Command::new(path)
+            .arg("--version")
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+    };
+    #[cfg(not(target_os = "windows"))]
+    let output_result = Command::new(path).arg("--version").output();
+
+    match output_result {
         Ok(output) => {
             if output.status.success() {
                 Ok(extract_version_from_output(&output.stdout))
@@ -567,7 +594,15 @@ fn compare_versions(a: &str, b: &str) -> Ordering {
 /// This ensures commands like Claude can find Node.js and other dependencies
 pub fn create_command_with_env(program: &str) -> Command {
     let mut cmd = Command::new(program);
-    
+
+    // On Windows, hide the console window to prevent flashing
+    #[cfg(target_os = "windows")]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        cmd.creation_flags(CREATE_NO_WINDOW);
+    }
+
     info!("Creating command for: {}", program);
 
     // Inherit essential environment variables from parent process

@@ -44,6 +44,21 @@ function getMessageHash(message: any): string {
 
 // Cache for message hashes to avoid recomputing
 const messageHashCache = new WeakMap<any, string>();
+
+// Streaming end debounce timers - prevent premature streaming=false when Claude continues working
+// Maps sessionId -> timeoutId
+const streamingEndTimers = new Map<string, ReturnType<typeof setTimeout>>();
+const STREAMING_END_DEBOUNCE_MS = 1500; // Wait 1.5s after streaming_end before actually clearing
+
+// Cancel any pending streaming end timer for a session (called when new work messages arrive)
+function cancelStreamingEndTimer(sessionId: string) {
+  const timerId = streamingEndTimers.get(sessionId);
+  if (timerId) {
+    clearTimeout(timerId);
+    streamingEndTimers.delete(sessionId);
+    console.log(`🔄 [STREAMING-DEBOUNCE] Cancelled streaming_end timer for ${sessionId} - more work incoming`);
+  }
+}
 function getCachedHash(message: any): string {
   let hash = messageHashCache.get(message);
   if (!hash) {
@@ -349,8 +364,8 @@ interface ClaudeCodeStore {
   // Title generation
   autoGenerateTitle: boolean; // Whether to auto-generate titles for new sessions
 
-  // Code display
-  wordWrapCode: boolean; // Whether to wrap long lines in code blocks
+  // Word wrap display
+  wordWrap: boolean; // Whether to wrap long lines in all chat content
 
   // Sound notifications
   soundOnComplete: boolean; // Whether to play sound when Claude finishes responding
@@ -455,8 +470,8 @@ interface ClaudeCodeStore {
   // Title generation
   setAutoGenerateTitle: (autoGenerate: boolean) => void;
 
-  // Code display
-  setWordWrapCode: (wrap: boolean) => void;
+  // Word wrap display
+  setWordWrap: (wrap: boolean) => void;
 
   // Sound notifications
   setSoundOnComplete: (enabled: boolean) => void;
@@ -690,12 +705,21 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       rememberTabs: false, // Default to not remembering tabs (disabled by default)
       savedTabs: [], // Empty array of saved tabs
       autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
-      wordWrapCode: (() => {
-        const stored = localStorage.getItem('yurucode-word-wrap-code');
+      wordWrap: (() => {
+        // Check both old and new keys for backwards compatibility
+        let stored = localStorage.getItem('yurucode-word-wrap');
+        if (stored === null) {
+          // Migrate from old key if present
+          stored = localStorage.getItem('yurucode-word-wrap-code');
+          if (stored !== null) {
+            localStorage.setItem('yurucode-word-wrap', stored);
+            localStorage.removeItem('yurucode-word-wrap-code');
+          }
+        }
         const enabled = stored !== null ? JSON.parse(stored) : true;
         // Apply CSS class immediately on init
         if (enabled) {
-          document.documentElement.classList.add('word-wrap-code');
+          document.documentElement.classList.add('word-wrap');
         }
         return enabled;
       })(), // Load from localStorage or default to true
@@ -1082,27 +1106,50 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               // Process ALL messages through the main handler, not just result messages
               // The temp channel receives all messages for the session
               if (message.type !== 'result') {
-                // Special handling for stream_end to clear streaming state
+                // Special handling for stream_end to clear streaming state - USE DEBOUNCE
                 if (message.type === 'system' && message.subtype === 'stream_end') {
-                  console.log('[Store] 🔚 Stream end on temp channel - clearing streaming state (but keeping thinkingStartTime for result)');
+                  console.log(`⏱️ [STREAMING-DEBOUNCE] Stream end on temp channel - starting debounce for ${sessionId}`);
 
-                  // Play completion sound
-                  get().playCompletionSound();
+                  // Cancel any existing timer
+                  cancelStreamingEndTimer(sessionId);
 
-                  set(state => ({
-                    sessions: state.sessions.map(s => {
-                      if (s.id === sessionId) {
-                        return {
-                          ...s,
-                          streaming: false,
-                          // DON'T clear thinkingStartTime here - we need it for the result message
-                          // It will be cleared when the result is processed
-                          pendingToolIds: new Set()
-                        };
-                      }
-                      return s;
-                    })
-                  }));
+                  // Start debounced timer
+                  const timerId = setTimeout(() => {
+                    streamingEndTimers.delete(sessionId);
+                    const currentState = get();
+                    const currentSession = currentState.sessions.find(s => s.id === sessionId);
+
+                    if (!currentSession) return;
+
+                    // Check if recent activity
+                    const timeSinceLastMessage = currentSession.lastMessageTime
+                      ? Date.now() - currentSession.lastMessageTime
+                      : Infinity;
+
+                    if (timeSinceLastMessage < STREAMING_END_DEBOUNCE_MS) {
+                      console.log(`🔄 [STREAMING-DEBOUNCE] temp channel debounce cancelled - recent activity`);
+                      return;
+                    }
+
+                    console.log(`🏁 [STREAMING-DEBOUNCE] temp channel debounce fired - clearing streaming for ${sessionId}`);
+                    get().playCompletionSound();
+
+                    set(state => ({
+                      sessions: state.sessions.map(s => {
+                        if (s.id === sessionId) {
+                          return {
+                            ...s,
+                            streaming: false,
+                            // DON'T clear thinkingStartTime here - we need it for the result message
+                            pendingToolIds: new Set()
+                          };
+                        }
+                        return s;
+                      })
+                    }));
+                  }, STREAMING_END_DEBOUNCE_MS);
+
+                  streamingEndTimers.set(sessionId, timerId);
                 }
                 // Special handling for streaming_resumed to set streaming state after interruption
                 else if (message.type === 'system' && message.subtype === 'streaming_resumed') {
@@ -2107,29 +2154,34 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   });
 
                   // Update streaming state based on message type
-                  if (message.type === 'assistant' || message.type === 'tool_result' || message.type === 'thinking') {
-                    // Update streaming state based on the message's streaming flag
-                    console.log(`[THINKING TIME DEBUG] ${message.type} message - streaming: ${message.streaming}, sessionId: ${sessionId}`);
-                    if (message.streaming === true) {
-                      // Ensure thinkingStartTime is set if not already (safeguard for timer display)
-                      console.log(`[THINKING TIME DEBUG] ${message.type} streaming started, ensuring thinkingStartTime exists`);
-                      sessions = sessions.map(s =>
-                        s.id === sessionId ? { ...s, streaming: true, lastMessageTime: Date.now(), thinkingStartTime: s.thinkingStartTime || Date.now() } : s
-                      );
-                    } else if (message.streaming === false) {
-                      // CRITICAL FIX: Don't clear streaming when individual messages complete!
-                      // Individual messages can finish (streaming=false) while the overall response is still active.
-                      // For example: assistant message completes -> tool_use starts -> tool_result -> more text
-                      // Only streaming_end (from result message) should clear streaming state.
-                      // This prevents the race condition where assistant message completes before tool_use arrives.
-                      console.log(`🔄 [STREAMING-FIX] ${message.type} message ${message.id} streaming=false - NOT clearing session streaming (wait for streaming_end)`);
-                      // Just update lastMessageTime to track activity, but keep streaming=true
-                      sessions = sessions.map(s =>
-                        s.id === sessionId ? { ...s, lastMessageTime: Date.now() } : s
-                      );
+                  // CRITICAL FIX: ANY message that indicates Claude is working should set streaming=true
+                  // This fixes the bug where streaming_end arrives but Claude continues for minutes
+                  if (message.type === 'assistant' || message.type === 'tool_use' || message.type === 'tool_result' || message.type === 'thinking') {
+                    // Cancel any pending streaming_end timer - we're clearly still working!
+                    cancelStreamingEndTimer(sessionId);
+
+                    // ALWAYS set streaming=true when we receive work messages (regardless of message.streaming flag)
+                    // This ensures we show the streaming indicator whenever Claude is actively working
+                    const session = sessions.find(s => s.id === sessionId);
+                    const wasStreaming = session?.streaming;
+
+                    console.log(`[STREAMING-FIX] ${message.type} message received - forcing streaming=true (was: ${wasStreaming}, message.streaming: ${message.streaming})`);
+
+                    sessions = sessions.map(s =>
+                      s.id === sessionId ? {
+                        ...s,
+                        streaming: true,
+                        lastMessageTime: Date.now(),
+                        thinkingStartTime: s.thinkingStartTime || Date.now()
+                      } : s
+                    );
+
+                    // If we just set streaming=true after it was false, log this correction
+                    if (!wasStreaming) {
+                      console.log(`🔄 [STREAMING-CORRECTION] Session ${sessionId} streaming was false but received ${message.type} - corrected to true`);
                     }
                   }
-                  // If streaming is undefined, don't change the state
+                  // tool_use messages also indicate work - handled above
 
                   if (message.type === 'error') {
                     // Handle error messages - ALWAYS clear streaming and show to user
@@ -2186,32 +2238,75 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       return { sessions };
                     }
 
-                    console.log('🏁 [Store] STREAMING_END received - clearing streaming state');
+                    // DEBOUNCE: Don't immediately clear streaming - wait to see if more messages arrive
+                    // This fixes the bug where Claude continues working after streaming_end
+                    console.log(`⏱️ [STREAMING-DEBOUNCE] streaming_end received - starting ${STREAMING_END_DEBOUNCE_MS}ms debounce timer for ${sessionId}`);
 
-                    // Play completion sound if enabled
-                    get().playCompletionSound();
+                    // Cancel any existing timer for this session
+                    cancelStreamingEndTimer(sessionId);
 
-                    sessions = sessions.map(s => {
-                      if (s.id === sessionId) {
-                        // Calculate thinking time before clearing
-                        let updatedAnalytics = s.analytics;
-                        if (s.thinkingStartTime && updatedAnalytics) {
-                          const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
-                          updatedAnalytics = {
-                            ...updatedAnalytics,
-                            thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
-                          };
-                          console.log(`📊 [THINKING TIME] Streaming end - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
-                        }
-                        return {
-                          ...s,
-                          streaming: false,
-                          thinkingStartTime: undefined,
-                          analytics: updatedAnalytics
-                        };
+                    // Start a new debounced timer
+                    const timerId = setTimeout(() => {
+                      streamingEndTimers.delete(sessionId);
+                      console.log(`🏁 [STREAMING-DEBOUNCE] Timer fired for ${sessionId} - now clearing streaming state`);
+
+                      // Check again if we should clear (in case state changed during debounce)
+                      const currentState = get();
+                      const currentSession = currentState.sessions.find(s => s.id === sessionId);
+
+                      if (!currentSession) {
+                        console.log(`🔄 [STREAMING-DEBOUNCE] Session ${sessionId} no longer exists, skipping clear`);
+                        return;
                       }
-                      return s;
-                    });
+
+                      // If new messages arrived during debounce, don't clear
+                      const timeSinceLastMessage = currentSession.lastMessageTime
+                        ? Date.now() - currentSession.lastMessageTime
+                        : Infinity;
+
+                      if (timeSinceLastMessage < STREAMING_END_DEBOUNCE_MS) {
+                        console.log(`🔄 [STREAMING-DEBOUNCE] Recent message activity (${timeSinceLastMessage}ms ago) - keeping streaming=true`);
+                        return;
+                      }
+
+                      // If still has pending tools, don't clear
+                      if (currentSession.pendingToolIds && currentSession.pendingToolIds.size > 0) {
+                        console.log(`🔄 [STREAMING-DEBOUNCE] Still has ${currentSession.pendingToolIds.size} pending tools - keeping streaming=true`);
+                        return;
+                      }
+
+                      // Play completion sound if enabled
+                      get().playCompletionSound();
+
+                      // Actually clear streaming state
+                      set(state => ({
+                        sessions: state.sessions.map(s => {
+                          if (s.id === sessionId) {
+                            // Calculate thinking time before clearing
+                            let updatedAnalytics = s.analytics;
+                            if (s.thinkingStartTime && updatedAnalytics) {
+                              const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                              updatedAnalytics = {
+                                ...updatedAnalytics,
+                                thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                              };
+                              console.log(`📊 [THINKING TIME] Streaming end (debounced) - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                            }
+                            return {
+                              ...s,
+                              streaming: false,
+                              thinkingStartTime: undefined,
+                              analytics: updatedAnalytics
+                            };
+                          }
+                          return s;
+                        })
+                      }));
+                    }, STREAMING_END_DEBOUNCE_MS);
+
+                    streamingEndTimers.set(sessionId, timerId);
+
+                    // Don't modify sessions here - the timer callback will handle it
                     return { sessions };
                   } else if (message.type === 'result') {
                     console.log('📊 [STREAMING-FIX] Result message received:', {
@@ -2353,13 +2448,81 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                             ? { ...s, runningBash: false, userBashRunning: false }
                             : s
                         );
-                      } else {
-                        console.log(`System message (${message.subtype}) received, clearing streaming and bash state`);
+                      } else if (message.subtype === 'stream_end') {
+                        // DEBOUNCE: For stream_end, use debounced approach to handle Claude continuing work
+                        console.log(`⏱️ [STREAMING-DEBOUNCE] stream_end system message - starting debounce timer for ${sessionId}`);
 
-                        // Play completion sound on stream_end (not on error/interrupted)
-                        if (message.subtype === 'stream_end') {
+                        // Cancel any existing timer
+                        cancelStreamingEndTimer(sessionId);
+
+                        // Clear bash state immediately but debounce streaming state
+                        sessions = sessions.map(s =>
+                          s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
+                        );
+
+                        // Start debounced timer for streaming state
+                        const timerId = setTimeout(() => {
+                          streamingEndTimers.delete(sessionId);
+                          const currentState = get();
+                          const currentSession = currentState.sessions.find(s => s.id === sessionId);
+
+                          if (!currentSession) return;
+
+                          // Check if recent activity
+                          const timeSinceLastMessage = currentSession.lastMessageTime
+                            ? Date.now() - currentSession.lastMessageTime
+                            : Infinity;
+
+                          if (timeSinceLastMessage < STREAMING_END_DEBOUNCE_MS) {
+                            console.log(`🔄 [STREAMING-DEBOUNCE] stream_end debounce cancelled - recent activity`);
+                            return;
+                          }
+
+                          if (currentSession.pendingToolIds && currentSession.pendingToolIds.size > 0) {
+                            console.log(`🔄 [STREAMING-DEBOUNCE] stream_end debounce cancelled - pending tools`);
+                            return;
+                          }
+
+                          console.log(`🏁 [STREAMING-DEBOUNCE] stream_end debounce fired - clearing streaming for ${sessionId}`);
                           get().playCompletionSound();
-                        }
+
+                          set(state => ({
+                            sessions: state.sessions.map(s => {
+                              if (s.id === sessionId) {
+                                let updatedAnalytics = s.analytics;
+                                if (s.thinkingStartTime && updatedAnalytics) {
+                                  const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                                  updatedAnalytics = {
+                                    ...updatedAnalytics,
+                                    thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                                  };
+                                }
+
+                                // Fetch tokens after stream end
+                                const claudeSessId = s.claudeSessionId;
+                                const workDir = s.workingDirectory;
+                                fetchSessionTokensFromFile(sessionId, claudeSessId, workDir).then(tokens => {
+                                  if (tokens) {
+                                    get().updateSessionAnalyticsFromFile(sessionId, tokens);
+                                  }
+                                });
+
+                                return {
+                                  ...s,
+                                  streaming: false,
+                                  thinkingStartTime: undefined,
+                                  analytics: updatedAnalytics
+                                };
+                              }
+                              return s;
+                            })
+                          }));
+                        }, STREAMING_END_DEBOUNCE_MS);
+
+                        streamingEndTimers.set(sessionId, timerId);
+                      } else {
+                        // interrupted or error - immediately clear streaming (user action or error)
+                        console.log(`System message (${message.subtype}) received, clearing streaming and bash state`);
 
                         sessions = sessions.map(s => {
                           if (s.id === sessionId) {
@@ -2371,12 +2534,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                                 ...updatedAnalytics,
                                 thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
                               };
-                              console.log(`📊 [THINKING TIME] Stream end - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                              console.log(`📊 [THINKING TIME] ${message.subtype} - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
                             }
-
-                            // DON'T clear pendingToolIds on stream_end - let tool_result clear them
-                            // Only clear on interrupted/error since user explicitly stopped
-                            const shouldClearPendingTools = message.subtype === 'interrupted' || message.subtype === 'error';
 
                             // Process wrapper tokens on interrupt to update context usage
                             if (message.subtype === 'interrupted' && (message as any).wrapper?.tokens) {
@@ -2421,14 +2580,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                             }
 
                             // Trigger async fetch of session tokens from file (single source of truth)
-                            // Also fetch on interrupt to get accurate context % from session file
-                            if (message.subtype === 'stream_end' || message.subtype === 'interrupted') {
+                            if (message.subtype === 'interrupted') {
                               const claudeSessId = s.claudeSessionId;
                               const workDir = s.workingDirectory;
-                              // Fire and forget - will update analytics when complete
                               fetchSessionTokensFromFile(sessionId, claudeSessId, workDir).then(tokens => {
                                 if (tokens) {
-                                  // Update analytics with authoritative token data from session file
                                   get().updateSessionAnalyticsFromFile(sessionId, tokens);
                                 }
                               });
@@ -2441,7 +2597,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                               runningBash: false,
                               userBashRunning: false,
                               analytics: updatedAnalytics,
-                              pendingToolIds: shouldClearPendingTools ? new Set() : s.pendingToolIds
+                              pendingToolIds: new Set() // Clear pending tools on interrupt/error
                             };
                           }
                           return s;
@@ -2870,11 +3026,21 @@ ${content}`;
 
           // Send message to Claude Code Server (REAL SDK) with selected model and auto-generate title setting
           const { selectedModel, autoGenerateTitle } = get();
+          // Get current session data to pass claudeSessionId and workingDirectory
+          // This fixes issues after interrupt or page refresh where claudeSessionStore is empty
+          const sessionForSend = get().sessions.find(s => s.id === sessionToUse);
           console.log('[Store] About to call claudeClient.sendMessage...');
-          console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse, 'autoGenerateTitle:', autoGenerateTitle);
+          console.log('[Store] Sending to Claude with model:', selectedModel, 'sessionId:', sessionToUse, 'claudeSessionId:', sessionForSend?.claudeSessionId, 'autoGenerateTitle:', autoGenerateTitle);
 
           try {
-            await claudeClient.sendMessage(sessionToUse, content, selectedModel, autoGenerateTitle);
+            await claudeClient.sendMessage(
+              sessionToUse,
+              content,
+              selectedModel,
+              autoGenerateTitle,
+              sessionForSend?.claudeSessionId,
+              sessionForSend?.workingDirectory
+            );
             console.log('[Store] claudeClient.sendMessage completed successfully');
           } catch (sendError) {
             console.error('[Store] claudeClient.sendMessage failed:', sendError);
@@ -4539,16 +4705,16 @@ ${content}`;
         console.log('[Store] Auto-generate title:', autoGenerate);
       },
 
-      setWordWrapCode: (wrap: boolean) => {
-        set({ wordWrapCode: wrap });
-        localStorage.setItem('yurucode-word-wrap-code', JSON.stringify(wrap));
-        // Apply CSS class to document for global code wrapping
+      setWordWrap: (wrap: boolean) => {
+        set({ wordWrap: wrap });
+        localStorage.setItem('yurucode-word-wrap', JSON.stringify(wrap));
+        // Apply CSS class to document for global content wrapping
         if (wrap) {
-          document.documentElement.classList.add('word-wrap-code');
+          document.documentElement.classList.add('word-wrap');
         } else {
-          document.documentElement.classList.remove('word-wrap-code');
+          document.documentElement.classList.remove('word-wrap');
         }
-        console.log('[Store] Word wrap code:', wrap, 'Class list:', document.documentElement.classList.contains('word-wrap-code'));
+        console.log('[Store] Word wrap:', wrap, 'Class list:', document.documentElement.classList.contains('word-wrap'));
       },
 
       setSoundOnComplete: (enabled: boolean) => {
@@ -4897,7 +5063,7 @@ ${content}`;
         sansFont: state.sansFont,
         rememberTabs: state.rememberTabs,
         autoGenerateTitle: state.autoGenerateTitle,
-        wordWrapCode: state.wordWrapCode,
+        wordWrap: state.wordWrap,
         soundOnComplete: state.soundOnComplete,
         showResultStats: state.showResultStats,
         autoCompactEnabled: state.autoCompactEnabled,
@@ -4915,8 +5081,8 @@ ${content}`;
       }),
       onRehydrateStorage: () => (state) => {
         // Apply word-wrap class on rehydration if setting is enabled
-        if (state?.wordWrapCode) {
-          document.documentElement.classList.add('word-wrap-code');
+        if (state?.wordWrap) {
+          document.documentElement.classList.add('word-wrap');
         }
       }
     }

@@ -88,10 +88,99 @@ pub struct ClaudeAgent {
 #[tauri::command]
 pub fn get_home_directory() -> Result<String, String> {
     use dirs::home_dir;
-    
+
     home_dir()
         .map(|path| path.to_string_lossy().to_string())
         .ok_or_else(|| "Could not determine home directory".to_string())
+}
+
+/// Get WebView2 user data path (Windows only)
+/// This is where WebView2 stores permission states
+#[tauri::command]
+pub fn get_webview2_data_path() -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use dirs::data_local_dir;
+
+        if let Some(local_app_data) = data_local_dir() {
+            let webview_path = local_app_data.join("be.yuru.yurucode").join("EBWebView");
+            return Ok(webview_path.to_string_lossy().to_string());
+        }
+        Err("Could not determine WebView2 data path".to_string())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("WebView2 is only available on Windows".to_string())
+    }
+}
+
+/// Clear WebView2 permission cache (Windows only)
+/// This resets stored microphone permissions that may have become corrupted
+#[tauri::command]
+pub fn clear_webview2_permissions() -> Result<String, String> {
+    #[cfg(target_os = "windows")]
+    {
+        use dirs::data_local_dir;
+
+        if let Some(local_app_data) = data_local_dir() {
+            // WebView2 stores permissions in the EBWebView folder
+            let webview_path = local_app_data.join("be.yuru.yurucode").join("EBWebView");
+
+            // The permissions are typically stored in "Default/Preferences" and related files
+            // We'll try to remove specific permission-related data
+            let preferences_path = webview_path.join("Default").join("Preferences");
+
+            if preferences_path.exists() {
+                // Read and modify the preferences file to reset microphone permission
+                if let Ok(content) = std::fs::read_to_string(&preferences_path) {
+                    // Try to parse and clear microphone permissions from JSON
+                    if let Ok(mut json) = serde_json::from_str::<serde_json::Value>(&content) {
+                        // Clear permission settings
+                        if let Some(profile) = json.get_mut("profile") {
+                            if let Some(content_settings) = profile.get_mut("content_settings") {
+                                if let Some(exceptions) = content_settings.get_mut("exceptions") {
+                                    // Remove microphone permission entries
+                                    if let Some(obj) = exceptions.as_object_mut() {
+                                        obj.remove("media_stream_mic");
+                                        obj.remove("media_stream_camera");
+                                        obj.remove("media_stream");
+                                    }
+                                }
+                            }
+                        }
+
+                        // Write back the modified preferences
+                        if let Ok(modified_content) = serde_json::to_string_pretty(&json) {
+                            if std::fs::write(&preferences_path, modified_content).is_ok() {
+                                return Ok("Cleared WebView2 microphone permissions. Please restart Yurucode.".to_string());
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Alternative: Delete the entire preferences file to force reset
+            // This is more aggressive but more reliable
+            let default_path = webview_path.join("Default");
+            if default_path.exists() {
+                // Try to delete just the Preferences file first
+                if preferences_path.exists() {
+                    if std::fs::remove_file(&preferences_path).is_ok() {
+                        return Ok("Reset WebView2 preferences. Please restart Yurucode for dictation to work.".to_string());
+                    }
+                }
+            }
+
+            return Err("WebView2 preferences not found. Try restarting Yurucode.".to_string());
+        }
+        Err("Could not determine WebView2 data path".to_string())
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        Err("WebView2 is only available on Windows".to_string())
+    }
 }
 
 /// Get the current working directory
@@ -2108,8 +2197,19 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
 #[tauri::command]
 pub async fn get_claude_version() -> Result<String, String> {
     use std::process::Command;
-    
+
     // Try to get Claude version
+    #[cfg(target_os = "windows")]
+    let output = {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        Command::new("claude")
+            .arg("--version")
+            .creation_flags(CREATE_NO_WINDOW)
+            .output()
+            .map_err(|e| format!("Failed to run claude --version: {}", e))?
+    };
+    #[cfg(not(target_os = "windows"))]
     let output = Command::new("claude")
         .arg("--version")
         .output()
@@ -2155,8 +2255,11 @@ pub async fn get_claude_path() -> Result<String, String> {
 
     #[cfg(target_os = "windows")]
     {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
         let output = Command::new("where")
             .arg("claude")
+            .creation_flags(CREATE_NO_WINDOW)
             .output()
             .map_err(|e| format!("Failed to run where claude: {}", e))?;
 

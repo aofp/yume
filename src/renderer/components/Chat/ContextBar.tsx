@@ -203,7 +203,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
         <button
           className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
           onClick={onToggleDictation}
-          disabled={isReadOnly || messages.length === 0}
+          disabled={isReadOnly}
           title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
         >
           {isDictating ? (
@@ -228,7 +228,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           title={`history (${modKey}+h)`}
         >
           <IconHistory size={12} stroke={1.5} />
-          {historyCount > 0 && <span className="btn-rollback-count">{historyCount}</span>}
+          <span className="btn-rollback-count">{historyCount}</span>
         </button>
       </div>
 

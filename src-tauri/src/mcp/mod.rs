@@ -184,19 +184,41 @@ impl MCPManager {
                     };
                     
                     // Check if command exists in PATH
-                    match std::process::Command::new(if cfg!(target_os = "windows") { "where" } else { "which" })
+                    #[cfg(target_os = "windows")]
+                    let which_result = {
+                        use std::os::windows::process::CommandExt;
+                        const CREATE_NO_WINDOW: u32 = 0x08000000;
+                        std::process::Command::new("where")
+                            .arg(base_command)
+                            .creation_flags(CREATE_NO_WINDOW)
+                            .output()
+                    };
+                    #[cfg(not(target_os = "windows"))]
+                    let which_result = std::process::Command::new("which")
                         .arg(base_command)
-                        .output() 
-                    {
+                        .output();
+
+                    match which_result {
                         Ok(output) if output.status.success() => {
                             Ok(format!("Connection test successful: '{}' command found", base_command))
                         }
                         _ => {
                             // Try to run the command with --version or --help to test
-                            match std::process::Command::new(base_command)
+                            #[cfg(target_os = "windows")]
+                            let version_result = {
+                                use std::os::windows::process::CommandExt;
+                                const CREATE_NO_WINDOW: u32 = 0x08000000;
+                                std::process::Command::new(base_command)
+                                    .arg("--version")
+                                    .creation_flags(CREATE_NO_WINDOW)
+                                    .output()
+                            };
+                            #[cfg(not(target_os = "windows"))]
+                            let version_result = std::process::Command::new(base_command)
                                 .arg("--version")
-                                .output()
-                            {
+                                .output();
+
+                            match version_result {
                                 Ok(_) => Ok(format!("Connection test successful: '{}' is available", base_command)),
                                 Err(e) => Err(format!("Command '{}' not found: {}", base_command, e))
                             }

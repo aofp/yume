@@ -428,7 +428,7 @@ PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
 - `showSkillsSettings` - Show skills tab
 - `rememberTabs` - Persist tabs on startup
 - `autoGenerateTitle` - Auto-generate session titles
-- `wordWrapCode` - Wrap code blocks
+- `wordWrap` - Wrap all chat content (code, console output, etc.)
 - `soundOnComplete` - Play sound when Claude finishes
 - `showResultStats` - Show token/cost stats after responses
 - `backgroundOpacity` - Window transparency (50-100%)

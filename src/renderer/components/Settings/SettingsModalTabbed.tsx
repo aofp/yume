@@ -73,7 +73,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     monoFont, sansFont, setMonoFont, setSansFont,
     rememberTabs, setRememberTabs,
     autoGenerateTitle, setAutoGenerateTitle,
-    wordWrapCode, setWordWrapCode,
+    wordWrap, setWordWrap,
     soundOnComplete, setSoundOnComplete, playCompletionSound,
     showResultStats, setShowResultStats,
     showProjectsMenu, setShowProjectsMenu,
@@ -848,6 +848,48 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       <div className="toggle-switch-slider" />
                     </div>
                   </div>
+
+                  {/* Windows-only: Dictation troubleshooting */}
+                  {navigator.platform.indexOf('Win') > -1 && (
+                    <>
+                      <h4 style={{ marginTop: '16px' }}>troubleshooting</h4>
+                      <button
+                        className="settings-action-btn"
+                        onClick={async () => {
+                          try {
+                            const result = await invoke<string>('clear_webview2_permissions');
+                            alert(result);
+                          } catch (err: any) {
+                            alert(`Failed to reset permissions: ${err.message || err}`);
+                          }
+                        }}
+                        style={{
+                          background: 'transparent',
+                          border: '1px solid rgba(255, 255, 255, 0.15)',
+                          color: '#888',
+                          padding: '6px 12px',
+                          fontSize: '11px',
+                          borderRadius: '2px',
+                          cursor: 'default',
+                          width: '100%',
+                          textAlign: 'left',
+                          marginTop: '4px',
+                          transition: 'all 0.2s'
+                        }}
+                        onMouseEnter={(e) => {
+                          e.currentTarget.style.borderColor = 'var(--accent-color)';
+                          e.currentTarget.style.color = 'var(--accent-color)';
+                        }}
+                        onMouseLeave={(e) => {
+                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
+                          e.currentTarget.style.color = '#888';
+                        }}
+                        title="Reset WebView2 microphone permissions if dictation stopped working"
+                      >
+                        reset dictation permissions
+                      </button>
+                    </>
+                  )}
                 </div>
 
                 {/* Right column: Claude Code + Settings */}
@@ -1071,11 +1113,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                 <div className="settings-column">
                   <h4>display</h4>
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">word wrap code</span>
+                    <span className="checkbox-label">word wrap</span>
                     <div className="theme-controls-bg">
                       <div
-                        className={`toggle-switch compact ${wordWrapCode ? 'active' : ''}`}
-                        onClick={() => setWordWrapCode(!wordWrapCode)}
+                        className={`toggle-switch compact ${wordWrap ? 'active' : ''}`}
+                        onClick={() => setWordWrap(!wordWrap)}
                       >
                         <span className="toggle-switch-label off">off</span>
                         <span className="toggle-switch-label on">on</span>
