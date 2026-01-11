@@ -4556,18 +4556,22 @@ export const ClaudeChat: React.FC = () => {
             // Only mark as last if it's the last user/assistant message
             const isLastRestorable = idx === lastRestorableIndex;
             
+            // Get previous message for bash response styling
+            const prevMessage = idx > 0 ? filteredMessages[idx - 1] : null;
+
             return (
-              <div 
+              <div
                 key={`${message.id || message.type}-${idx}`}
                 data-message-index={idx}
                 className={isHighlighted ? 'message-highlighted' : ''}
               >
-                <MessageRenderer 
-                  message={message} 
+                <MessageRenderer
+                  message={message}
                   index={idx}
                   isLast={isLastRestorable}
                   searchQuery={searchQuery}
                   isCurrentMatch={searchMatches[searchIndex] === idx}
+                  previousMessage={prevMessage}
                 />
               </div>
             );

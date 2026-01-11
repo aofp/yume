@@ -1477,12 +1477,15 @@ const MessageRendererBase: React.FC<{
   sessionId?: string;
   isStreaming?: boolean;
   thinkingFor?: number;
-}> = ({ message, index, isLast = false, searchQuery = '', isCurrentMatch = false, isStreaming = false }) => {
+  previousMessage?: ClaudeMessage | null;
+}> = ({ message, index, isLast = false, searchQuery = '', isCurrentMatch = false, isStreaming = false, previousMessage = null }) => {
+  // Get showResultStats with subscription so it updates when setting changes
+  const showResultStats = useClaudeCodeStore(state => state.showResultStats);
+
   // Get the current session to access previous messages for context
   const store = useClaudeCodeStore.getState();
   const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
   const sessionMessages = currentSession?.messages || [];
-  const showResultStats = store.showResultStats;
 
   // Ref for selection preservation during streaming
   const containerRef = useRef<HTMLDivElement>(null);
@@ -1984,6 +1987,17 @@ const MessageRendererBase: React.FC<{
       // The thinking indicator is shown separately in ClaudeChat
       const hasTextContent = textContent && ((Array.isArray(textContent) && textContent.length > 0) || (typeof textContent === 'string' && textContent.trim()));
 
+      // Check if previous message was a bash command to style response accordingly
+      const prevMsgContent = previousMessage?.message?.content;
+      const prevTextContent = typeof prevMsgContent === 'string'
+        ? prevMsgContent
+        : Array.isArray(prevMsgContent)
+          ? prevMsgContent.find((b: ContentBlock) => b.type === 'text')?.text
+          : '';
+      const followsBashCommand = previousMessage?.type === 'user' &&
+        typeof prevTextContent === 'string' &&
+        isBashPrefix(prevTextContent);
+
       // Debug logging for bash output issue
       if (message.id?.startsWith('bash-')) {
         console.log('[MessageRenderer] BASH MESSAGE DEBUG:', {
@@ -2012,7 +2026,7 @@ const MessageRendererBase: React.FC<{
           {hasTextContent && (
             <div className="message assistant">
               <div className="message-content">
-                <div className={`message-bubble${message.id?.startsWith('bash-') ? ' bash-response' : ''}`}>
+                <div className={`message-bubble${followsBashCommand ? ' bash-response' : ''}`}>
                   {renderContent(textContent, message, searchQuery, isCurrentMatch)}
                 </div>
               </div>

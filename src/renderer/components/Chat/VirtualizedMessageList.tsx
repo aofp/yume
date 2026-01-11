@@ -840,6 +840,9 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
           // Check if this message is the current search match
           const isCurrentSearchMatch = searchMatches.length > 0 && searchMatches[searchIndex] === virtualItem.index;
 
+          // Get previous message for bash response styling
+          const previousMessage = virtualItem.index > 0 ? displayMessages[virtualItem.index - 1] : null;
+
           return (
             <VirtualItemWrapper
               key={virtualItem.key}
@@ -855,6 +858,7 @@ export const VirtualizedMessageList = forwardRef<VirtualizedMessageListRef, Virt
                 thinkingFor={0}
                 searchQuery={searchQuery}
                 isCurrentMatch={isCurrentSearchMatch}
+                previousMessage={previousMessage}
               />
             </VirtualItemWrapper>
           );

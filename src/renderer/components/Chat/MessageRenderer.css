@@ -239,14 +239,28 @@
   color: var(--code-color);
 }
 
-/* Bash/ANSI output in assistant messages uses mix of foreground and negative */
+/* Bash/ANSI/shell output in assistant messages uses mix of foreground and negative */
 .message.assistant .message-bubble code.language-ansi,
-.message.assistant .message-bubble pre:has(code.language-ansi) {
+.message.assistant .message-bubble pre:has(code.language-ansi),
+.message.assistant .message-bubble code.language-bash,
+.message.assistant .message-bubble pre:has(code.language-bash),
+.message.assistant .message-bubble code.language-sh,
+.message.assistant .message-bubble pre:has(code.language-sh),
+.message.assistant .message-bubble code.language-shell,
+.message.assistant .message-bubble pre:has(code.language-shell),
+.message.assistant .message-bubble code.language-zsh,
+.message.assistant .message-bubble pre:has(code.language-zsh) {
   color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
 }
 
 /* Assistant response to bash command - uses negative-mix styling */
-.message.assistant .message-bubble.bash-response {
+.message.assistant .message-bubble.bash-response,
+.message.assistant .message-bubble.bash-response .content-text,
+.message.assistant .message-bubble.bash-response .content-text pre,
+.message.assistant .message-bubble.bash-response .content-text code,
+.message.assistant .message-bubble.bash-response .markdown-content,
+.message.assistant .message-bubble.bash-response .markdown-content pre,
+.message.assistant .message-bubble.bash-response .markdown-content code {
   color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
   font-family: var(--font-mono);
 }
@@ -1384,6 +1398,9 @@ body.platform-win32 .tool-detail {
   opacity: 1;
 }
 
+/* Bash output content - uses foreground/negative mix (override global pre) */
+pre.bash-content,
+.tool-result .bash-content,
 .bash-content {
   background: transparent;
   border: none;
