@@ -43,6 +43,7 @@ const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor')
 const ClaudeMdEditorModal = React.lazy(() => import('../ClaudeMdEditor').then(m => ({ default: m.ClaudeMdEditorModal })));
 import { FEATURE_FLAGS } from '../../config/features';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
+import { pluginService } from '../../services/pluginService';
 import { isBashPrefix } from '../../utils/helpers';
 import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
 import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions } from '../../constants/chat';
@@ -3091,6 +3092,35 @@ export const ClaudeChat: React.FC = () => {
         inputRef.current.style.overflow = 'hidden';
       }
       return;
+    } else if (trimmedInput.startsWith('/') && !trimmedInput.includes(' ')) {
+      // Block invalid slash commands (just "/" or "/invalid" with no args)
+      // Valid commands either have a space after them (args) or are known commands above
+      // Check if this is a known plugin/custom command
+      const baseCommand = trimmedInput.split(' ')[0];
+      const commandName = baseCommand.slice(1); // Remove leading /
+      const knownBuiltIn = ['/clear', '/compact', '/model', '/title', '/init'].includes(baseCommand);
+      const customCommands = getCachedCustomCommands() || [];
+      const isCustom = customCommands.some((cmd: any) => {
+        const trigger = cmd.name.startsWith('/') ? cmd.name : '/' + cmd.name;
+        return trigger === baseCommand && cmd.enabled;
+      });
+      // Check plugin commands (both short and full names)
+      const pluginCommands = pluginService.getEnabledPluginCommands();
+      const isPlugin = pluginCommands.some((cmd: any) => {
+        const shortName = cmd.name.includes('--') ? cmd.name.split('--')[1] : cmd.name;
+        return shortName === commandName || cmd.name === commandName;
+      });
+
+      if (!knownBuiltIn && !isCustom && !isPlugin) {
+        // Not a known command - don't send, just clear
+        console.log('[ClaudeChat] Blocking invalid slash command:', trimmedInput);
+        setInput('');
+        if (inputRef.current) {
+          inputRef.current.style.height = '44px';
+          inputRef.current.style.overflow = 'hidden';
+        }
+        return;
+      }
     }
 
     try {
@@ -3577,7 +3607,7 @@ export const ClaudeChat: React.FC = () => {
   };
 
   // Handle command selection
-  const handleCommandSelect = (replacement: string, start: number, end: number) => {
+  const handleCommandSelect = (replacement: string, start: number, end: number, submitAfter: boolean = false) => {
     // Check if this is a command we handle locally
     const command = replacement.trim();
     
@@ -3641,9 +3671,9 @@ export const ClaudeChat: React.FC = () => {
         setInput(newValue);
         setCommandTrigger(null);
 
-        // Auto-send for most commands - only /compact is passthrough (Claude handles it without auto-send)
-        // Plugin commands (/commit, /review, etc) should auto-send
-        if (command !== '/compact') {
+        // Auto-send for most commands, or if submitAfter is true (user pressed Enter)
+        // /compact only auto-sends if user pressed Enter, otherwise let them add args
+        if (command !== '/compact' || submitAfter) {
           // Set the input then immediately send
           setTimeout(() => {
             handleSend();

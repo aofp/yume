@@ -26,7 +26,7 @@ interface CommandAutocompleteProps {
   trigger: string;
   cursorPosition: number;
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
-  onSelect: (replacement: string, start: number, end: number) => void;
+  onSelect: (replacement: string, start: number, end: number, submitAfter?: boolean) => void;
   onClose: () => void;
 }
 
@@ -172,12 +172,15 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
           break;
         case 'Enter':
           // Only autocomplete on Enter if there are matches
-          // Otherwise let the input be sent as-is
+          // Otherwise close autocomplete (invalid command won't be sent)
           if (filteredCommands.length > 0) {
             e.preventDefault();
-            handleSelect(filteredCommands[selectedIndex]);
+            e.stopPropagation();
+            handleSelect(filteredCommands[selectedIndex], true); // true = submit after select
           } else {
-            // No matches - close autocomplete and let Enter send the command
+            // No matches - close autocomplete, don't let invalid command through
+            e.preventDefault();
+            e.stopPropagation();
             onClose();
           }
           break;
@@ -203,7 +206,7 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
   }, [selectedIndex]);
 
   // Handle command selection
-  const handleSelect = (command: Command) => {
+  const handleSelect = (command: Command, submitAfter: boolean = false) => {
     const input = inputRef.current;
     if (!input) return;
 
@@ -212,8 +215,8 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
     const commandName = command.fullName || command.name;
     const replacement = '/' + commandName + ' ';
 
-    // Pass both replacement and whether to handle locally
-    onSelect(replacement, start, cursorPosition);
+    // Pass both replacement and whether to submit after
+    onSelect(replacement, start, cursorPosition, submitAfter);
   };
 
   // Calculate position for the autocomplete dropdown
