@@ -38,9 +38,17 @@ type SettingsTab = 'general' | 'appearance' | 'hooks' | 'commands' | 'mcp' | 'pl
 // Theme system - imported from shared config
 import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_COLORS, type Theme } from '../../config/themes';
 
+const SETTINGS_TAB_STORAGE_KEY = 'yurucode_settings_last_tab';
+
 export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { isLicensed } = useLicenseStore();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
+  const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
+    const saved = localStorage.getItem(SETTINGS_TAB_STORAGE_KEY);
+    if (saved && ['general', 'appearance', 'hooks', 'commands', 'mcp', 'plugins', 'skills'].includes(saved)) {
+      return saved as SettingsTab;
+    }
+    return 'general';
+  });
   const [isDragging, setIsDragging] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(0);
@@ -86,6 +94,27 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     showSkillsSettings, setShowSkillsSettings,
     backgroundOpacity, setBackgroundOpacity
   } = useClaudeCodeStore();
+
+  // Save active tab to localStorage when it changes
+  useEffect(() => {
+    localStorage.setItem(SETTINGS_TAB_STORAGE_KEY, activeTab);
+  }, [activeTab]);
+
+  // Fall back to 'general' if the saved tab is now hidden
+  useEffect(() => {
+    const tabVisibility: Record<SettingsTab, boolean> = {
+      general: true,
+      appearance: true,
+      plugins: showPluginsSettings,
+      commands: showCommandsSettings,
+      hooks: showHooksSettings,
+      skills: showSkillsSettings,
+      mcp: showMcpSettings,
+    };
+    if (!tabVisibility[activeTab]) {
+      setActiveTab('general');
+    }
+  }, [showPluginsSettings, showCommandsSettings, showHooksSettings, showSkillsSettings, showMcpSettings]);
 
   // Handle escape key to close modal
   useEffect(() => {

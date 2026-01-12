@@ -652,8 +652,13 @@ export const App: React.FC = () => {
         setShowAnalytics(true);
       }
       
-      // ? for keyboard shortcuts (not in input fields)
-      if (e.key === '?' && !['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement).tagName)) {
+      // ? or F1 for keyboard shortcuts (not in input fields)
+      const target = e.target as HTMLElement;
+      const isInputField = target.tagName === 'INPUT' ||
+                           target.tagName === 'TEXTAREA' ||
+                           target.contentEditable === 'true';
+
+      if ((e.key === '?' || e.key === 'F1') && !isInputField) {
         e.preventDefault();
         setShowHelpModal(prev => !prev);
       }

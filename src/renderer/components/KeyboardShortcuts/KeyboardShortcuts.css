@@ -104,6 +104,13 @@
   user-select: none;
 }
 
+.key-or {
+  color: var(--fg-30);
+  font-size: 7pt;
+  padding: 0 2px;
+  user-select: none;
+}
+
 .shortcut-dots {
   flex: 1;
   margin: 0 3px;

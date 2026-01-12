@@ -178,3 +178,25 @@
   font-size: 8px;
   margin-left: 4px;
 }
+
+/* Word wrap support for DiffViewer */
+:root.word-wrap .diff-container {
+  overflow-x: hidden !important;
+}
+
+:root.word-wrap .diff-container .line-content {
+  white-space: pre-wrap !important;
+  word-wrap: break-word !important;
+  overflow-wrap: break-word !important;
+  word-break: break-word !important;
+}
+
+:root.word-wrap .diff-hunk {
+  min-width: 0;
+  display: block;
+}
+
+:root.word-wrap .diff-line {
+  min-width: 0;
+  flex-wrap: wrap;
+}

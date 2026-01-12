@@ -50,6 +50,10 @@ const messageHashCache = new WeakMap<any, string>();
 const streamingEndTimers = new Map<string, ReturnType<typeof setTimeout>>();
 const STREAMING_END_DEBOUNCE_MS = 1500; // Wait 1.5s after streaming_end before actually clearing
 
+// Track active subagent parent tool IDs - prevents streaming=false while subagent is working
+// Maps sessionId -> Set of parent_tool_use_ids that have active subagents
+const activeSubagentParents = new Map<string, Set<string>>();
+
 // Cancel any pending streaming end timer for a session (called when new work messages arrive)
 function cancelStreamingEndTimer(sessionId: string) {
   const timerId = streamingEndTimers.get(sessionId);
@@ -57,6 +61,31 @@ function cancelStreamingEndTimer(sessionId: string) {
     clearTimeout(timerId);
     streamingEndTimers.delete(sessionId);
     console.log(`🔄 [STREAMING-DEBOUNCE] Cancelled streaming_end timer for ${sessionId} - more work incoming`);
+  }
+}
+
+// Track subagent activity - keeps parent tool ID active while subagent messages arrive
+function trackSubagentActivity(sessionId: string, parentToolUseId: string) {
+  let parents = activeSubagentParents.get(sessionId);
+  if (!parents) {
+    parents = new Set();
+    activeSubagentParents.set(sessionId, parents);
+  }
+  parents.add(parentToolUseId);
+  console.log(`🤖 [SUBAGENT-TRACK] Session ${sessionId} has ${parents.size} active subagent parent(s)`);
+}
+
+// Check if session has active subagents
+function hasActiveSubagents(sessionId: string): boolean {
+  const parents = activeSubagentParents.get(sessionId);
+  return parents ? parents.size > 0 : false;
+}
+
+// Clear subagent tracking for a session (called on error/interrupt/cleanup)
+function clearSubagentTracking(sessionId: string) {
+  if (activeSubagentParents.has(sessionId)) {
+    activeSubagentParents.delete(sessionId);
+    console.log(`🤖 [SUBAGENT-TRACK] Cleared subagent tracking for session ${sessionId}`);
   }
 }
 function getCachedHash(message: any): string {
@@ -1131,6 +1160,21 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       return;
                     }
 
+                    // Check for pending tools
+                    if (currentSession.pendingToolIds && currentSession.pendingToolIds.size > 0) {
+                      console.log(`🔄 [STREAMING-DEBOUNCE] temp channel debounce cancelled - pending tools`);
+                      return;
+                    }
+
+                    // Check for active subagents
+                    if (hasActiveSubagents(sessionId)) {
+                      console.log(`🔄 [STREAMING-DEBOUNCE] temp channel debounce cancelled - active subagents`);
+                      return;
+                    }
+
+                    // Clear subagent tracking since we're done
+                    clearSubagentTracking(sessionId);
+
                     console.log(`🏁 [STREAMING-DEBOUNCE] temp channel debounce fired - clearing streaming for ${sessionId}`);
                     get().playCompletionSound();
 
@@ -2160,6 +2204,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // Cancel any pending streaming_end timer - we're clearly still working!
                     cancelStreamingEndTimer(sessionId);
 
+                    // SUBAGENT FIX: Track messages with parent_tool_use_id to keep streaming active
+                    // When a subagent is working, messages have parent_tool_use_id indicating the parent Task tool
+                    const parentToolUseId = (message as any).parent_tool_use_id;
+                    if (parentToolUseId) {
+                      trackSubagentActivity(sessionId, parentToolUseId);
+                      console.log(`🤖 [SUBAGENT] Message from subagent (parent: ${parentToolUseId.substring(0, 20)}...) - keeping streaming active`);
+                    }
+
                     // ALWAYS set streaming=true when we receive work messages (regardless of message.streaming flag)
                     // This ensures we show the streaming indicator whenever Claude is actively working
                     const session = sessions.find(s => s.id === sessionId);
@@ -2167,14 +2219,25 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
                     console.log(`[STREAMING-FIX] ${message.type} message received - forcing streaming=true (was: ${wasStreaming}, message.streaming: ${message.streaming})`);
 
-                    sessions = sessions.map(s =>
-                      s.id === sessionId ? {
-                        ...s,
-                        streaming: true,
-                        lastMessageTime: Date.now(),
-                        thinkingStartTime: s.thinkingStartTime || Date.now()
-                      } : s
-                    );
+                    // If this is a subagent message, ensure the parent tool ID stays in pendingToolIds
+                    sessions = sessions.map(s => {
+                      if (s.id === sessionId) {
+                        const pendingTools = new Set(s.pendingToolIds || []);
+                        // Keep parent tool ID in pending while subagent is working
+                        if (parentToolUseId && !pendingTools.has(parentToolUseId)) {
+                          pendingTools.add(parentToolUseId);
+                          console.log(`🤖 [SUBAGENT] Re-added parent tool ${parentToolUseId.substring(0, 20)}... to pendingToolIds (total: ${pendingTools.size})`);
+                        }
+                        return {
+                          ...s,
+                          streaming: true,
+                          lastMessageTime: Date.now(),
+                          thinkingStartTime: s.thinkingStartTime || Date.now(),
+                          pendingToolIds: pendingTools
+                        };
+                      }
+                      return s;
+                    });
 
                     // If we just set streaming=true after it was false, log this correction
                     if (!wasStreaming) {
@@ -2186,6 +2249,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   if (message.type === 'error') {
                     // Handle error messages - ALWAYS clear streaming and show to user
                     console.log('[Store] Error message received:', message.error);
+                    // Clear subagent tracking on error
+                    clearSubagentTracking(sessionId);
                     sessions = sessions.map(s => {
                       if (s.id === sessionId) {
                         // Calculate thinking time on error
@@ -2230,10 +2295,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                     // CRITICAL FIX: Check if we still have pending tools (agents, subagents, etc.)
                     const session = sessions.find(s => s.id === sessionId);
                     const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+                    const hasSubagents = hasActiveSubagents(sessionId);
 
-                    if (hasPendingTools) {
-                      // Don't clear streaming - agent tools are still running
-                      console.log(`🔄 [STREAMING-FIX] streaming_end received but ${session?.pendingToolIds?.size} tools still pending - keeping streaming=true`);
+                    if (hasPendingTools || hasSubagents) {
+                      // Don't clear streaming - agent tools or subagents are still running
+                      console.log(`🔄 [STREAMING-FIX] streaming_end received but work still pending - keeping streaming=true (pendingTools: ${session?.pendingToolIds?.size || 0}, activeSubagents: ${hasSubagents})`);
                       // Don't play sound yet - wait for all tools to complete
                       return { sessions };
                     }
@@ -2274,6 +2340,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         console.log(`🔄 [STREAMING-DEBOUNCE] Still has ${currentSession.pendingToolIds.size} pending tools - keeping streaming=true`);
                         return;
                       }
+
+                      // If still has active subagents, don't clear
+                      if (hasActiveSubagents(sessionId)) {
+                        console.log(`🔄 [STREAMING-DEBOUNCE] Still has active subagents - keeping streaming=true`);
+                        return;
+                      }
+
+                      // Clear subagent tracking since we're actually done
+                      clearSubagentTracking(sessionId);
 
                       // Play completion sound if enabled
                       get().playCompletionSound();
@@ -2439,10 +2514,11 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       // BUT preserve streaming state if there are pending tools (subagent tasks still running)
                       const session = sessions.find(s => s.id === sessionId);
                       const hasPendingTools = session?.pendingToolIds && (session.pendingToolIds?.size ?? 0) > 0;
+                      const hasSubagents = hasActiveSubagents(sessionId);
 
-                      if (hasPendingTools && message.subtype === 'stream_end') {
+                      if ((hasPendingTools || hasSubagents) && message.subtype === 'stream_end') {
                         // CRITICAL FIX: Don't clear streaming if subagent tasks are still pending
-                        console.log(`[Store] stream_end received but ${session?.pendingToolIds?.size ?? 0} tools still pending - keeping streaming=true`);
+                        console.log(`[Store] stream_end received but work still pending - keeping streaming=true (pendingTools: ${session?.pendingToolIds?.size ?? 0}, subagents: ${hasSubagents})`);
                         sessions = sessions.map(s =>
                           s.id === sessionId
                             ? { ...s, runningBash: false, userBashRunning: false }
@@ -2482,6 +2558,14 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                             console.log(`🔄 [STREAMING-DEBOUNCE] stream_end debounce cancelled - pending tools`);
                             return;
                           }
+
+                          if (hasActiveSubagents(sessionId)) {
+                            console.log(`🔄 [STREAMING-DEBOUNCE] stream_end debounce cancelled - active subagents`);
+                            return;
+                          }
+
+                          // Clear subagent tracking since we're actually done
+                          clearSubagentTracking(sessionId);
 
                           console.log(`🏁 [STREAMING-DEBOUNCE] stream_end debounce fired - clearing streaming for ${sessionId}`);
                           get().playCompletionSound();
@@ -2523,6 +2607,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       } else {
                         // interrupted or error - immediately clear streaming (user action or error)
                         console.log(`System message (${message.subtype}) received, clearing streaming and bash state`);
+                        // Clear subagent tracking on interrupt/error
+                        clearSubagentTracking(sessionId);
 
                         sessions = sessions.map(s => {
                           if (s.id === sessionId) {
@@ -3196,14 +3282,19 @@ ${content}`;
               // CRITICAL FIX: Check for pending tools before clearing streaming
               const session = sessions.find(s => s.id === sessionId);
               const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+              const hasSubagents = hasActiveSubagents(sessionId);
 
-              if (hasPendingTools && message.subtype === 'stream_end') {
-                // Don't clear streaming - agent tools are still running
-                console.log(`🔄 [STREAMING-FIX] stream_end (reconnect) but ${session?.pendingToolIds?.size} tools pending - keeping streaming=true`);
+              if ((hasPendingTools || hasSubagents) && message.subtype === 'stream_end') {
+                // Don't clear streaming - agent tools or subagents are still running
+                console.log(`🔄 [STREAMING-FIX] stream_end (reconnect) but work pending - keeping streaming=true (pendingTools: ${session?.pendingToolIds?.size || 0}, subagents: ${hasSubagents})`);
                 sessions = sessions.map(s =>
                   s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
                 );
               } else {
+                // Clear subagent tracking on error/interrupt
+                if (message.subtype === 'interrupted' || message.subtype === 'error') {
+                  clearSubagentTracking(sessionId);
+                }
                 sessions = sessions.map(s =>
                   s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
                 );
@@ -3546,14 +3637,19 @@ ${content}`;
                 // CRITICAL FIX: Check for pending tools before clearing streaming
                 const session = sessions.find(s => s.id === sessionId);
                 const hasPendingTools = session?.pendingToolIds && session.pendingToolIds.size > 0;
+                const hasSubagents = hasActiveSubagents(sessionId);
 
-                if (hasPendingTools && message.subtype === 'stream_end') {
-                  // Don't clear streaming - agent tools are still running
-                  console.log(`🔄 [STREAMING-FIX] stream_end (temp) but ${session?.pendingToolIds?.size} tools pending - keeping streaming=true`);
+                if ((hasPendingTools || hasSubagents) && message.subtype === 'stream_end') {
+                  // Don't clear streaming - agent tools or subagents are still running
+                  console.log(`🔄 [STREAMING-FIX] stream_end (temp) but work pending - keeping streaming=true (pendingTools: ${session?.pendingToolIds?.size || 0}, subagents: ${hasSubagents})`);
                   sessions = sessions.map(s =>
                     s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
                   );
                 } else {
+                  // Clear subagent tracking on error/interrupt
+                  if (message.subtype === 'interrupted' || message.subtype === 'error') {
+                    clearSubagentTracking(sessionId);
+                  }
                   // Clear streaming on interrupted/error OR stream_end with no pending tools
                   sessions = sessions.map(s =>
                     s.id === sessionId ? { ...s, streaming: false, runningBash: false, userBashRunning: false } : s
@@ -3802,6 +3898,8 @@ ${content}`;
 
         // Only interrupt if session exists and is actually streaming
         if (sessionIdToInterrupt && sessionToInterrupt?.streaming) {
+          // Clear subagent tracking on interrupt
+          clearSubagentTracking(sessionIdToInterrupt);
           // Immediately set streaming and runningBash to false to prevent double calls
           set(state => ({
             sessions: state.sessions.map(s => {
@@ -3893,6 +3991,9 @@ ${content}`;
           console.log(`🧹 [Store] Session is streaming, interrupting first`);
           await state.interruptSession(sessionId);  // Pass explicit session ID
         }
+
+        // Clear subagent tracking for this session
+        clearSubagentTracking(sessionId);
 
         // Clear local messages and reset analytics
         set(state => {

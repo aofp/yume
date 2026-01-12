@@ -3338,6 +3338,7 @@ textarea.context-full {
   flex-direction: column;
   gap: 2px;
   outline: none;
+  background: var(--bg-overlay);
 }
 
 .rollback-item {

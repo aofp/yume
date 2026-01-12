@@ -15,7 +15,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
   // Handle keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '?' || e.key === 'Escape') {
+      if (e.key === '?' || e.key === 'F1' || e.key === 'Escape') {
         e.preventDefault();
         onClose();
       }
@@ -168,6 +168,8 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
             <div className="shortcut-item">
               <div className="shortcut-keys">
                 <span className="key-btn">?</span>
+                <span className="key-or">or</span>
+                <span className="key-btn">F1</span>
               </div>
               <span className="shortcut-dots"></span>
               <span className="shortcut-desc">show help</span>

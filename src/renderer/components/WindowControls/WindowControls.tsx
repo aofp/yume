@@ -191,7 +191,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                   <IconSettingsFilled size={10} />
                 </button>
               )}
-              <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+              <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (? or F1)">
                 <span style={{ fontSize: '10px' }}>?</span>
               </button>
             </>
@@ -237,7 +237,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
                 <IconSettingsFilled size={10} />
               </button>
             )}
-            <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (?)">
+            <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (? or F1)">
               <span style={{ fontSize: '10px' }}>?</span>
             </button>
           </>

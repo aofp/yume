@@ -242,8 +242,8 @@ export const WelcomeScreen: React.FC = () => {
       // Don't process other shortcuts if in input field
       if (isInputField) return;
       
-      // Handle ? for help
-      if (e.key === '?' && !e.ctrlKey && !e.metaKey && !e.altKey) {
+      // Handle ? or F1 for help
+      if ((e.key === '?' || e.key === 'F1') && !e.ctrlKey && !e.metaKey && !e.altKey) {
         e.preventDefault();
         setShowHelpModal(true);
       }

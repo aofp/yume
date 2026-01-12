@@ -37,7 +37,7 @@
   --bg-20: rgba(var(--background-rgb), 0.2);     /* Subtle overlay */
 
   /* Brightened background variants - mix background with white, then apply opacity */
-  --bg-brighter: color-mix(in srgb, var(--background-color) 85%, var(--foreground-color) 15%);
+  --bg-brighter: color-mix(in srgb, var(--background-color) 90%, var(--foreground-color) 10%);
   --bg-brighter-alpha: color-mix(in srgb, var(--bg-brighter) 50%, transparent 50%);
 
   /* Darkened background overlay - use for container backgrounds */

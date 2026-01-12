@@ -51,7 +51,7 @@ export const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'arctic',
     name: 'arctic',
-    backgroundColor: '#080810',
+    backgroundColor: '#070709',
     foregroundColor: '#c6c8d1',
     accentColor: '#8fb8c8',
     positiveColor: '#b4be82',
