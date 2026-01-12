@@ -104,13 +104,13 @@ export const BUILT_IN_THEMES: Theme[] = [
   // ember - inspired by Anthropic's warm tones
   // Warm coral/terracotta accent
   {
-    id: 'ember',
-    name: 'ember',
+    id: 'burnt',
+    name: 'burnt',
     backgroundColor: '#0a0808',
     foregroundColor: '#e8dcd0',
-    accentColor: '#e58360',
+    accentColor: '#d57b60',
     positiveColor: '#8fbc8f',
-    negativeColor: '#cd8b8b',
+    negativeColor: '#fd8b8b',
     opacity: 1.0,
     isBuiltIn: true
   },
@@ -124,7 +124,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     foregroundColor: '#c9d1d9',
     accentColor: '#e890a0',
     positiveColor: '#56d364',
-    negativeColor: '#f07878',
+    negativeColor: '#f47676',
     opacity: 1.0,
     isBuiltIn: true
   },
