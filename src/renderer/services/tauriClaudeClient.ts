@@ -495,7 +495,29 @@ export class TauriClaudeClient {
 
         // Clear tracking
         streamingAssistantMessages.delete(sessionId);
-        
+
+        // DEBUG: Log raw result message to see what fields we're getting
+        console.log('[TauriClient] RAW RESULT MESSAGE:', {
+          type: message.type,
+          subtype: message.subtype,
+          duration_ms: message.duration_ms,
+          total_cost_usd: message.total_cost_usd,
+          usage: message.usage,
+          modelUsage: message.modelUsage,
+          is_error: message.is_error,
+          allKeys: Object.keys(message)
+        });
+
+        // Extract model from modelUsage keys (e.g., "claude-opus-4-5-20251101" or "claude-sonnet-4-5-20241022")
+        let model: string | undefined;
+        if (message.modelUsage && typeof message.modelUsage === 'object') {
+          const modelKeys = Object.keys(message.modelUsage);
+          if (modelKeys.length > 0) {
+            // Use the first (usually only) model key
+            model = modelKeys[0];
+          }
+        }
+
         transformedMessage = {
           type: 'result',
           subtype: message.subtype,
@@ -505,6 +527,7 @@ export class TauriClaudeClient {
           usage: message.usage,
           total_cost_usd: message.total_cost_usd,
           duration_ms: message.duration_ms,
+          model: model,
           // CRITICAL: Include fields needed for compact detection
           num_turns: message.num_turns,
           session_id: message.session_id,

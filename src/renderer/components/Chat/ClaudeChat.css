@@ -3352,10 +3352,14 @@ textarea.context-full {
   background: transparent;
 }
 
-.rollback-item:hover:not(.disabled),
 .rollback-item.selected:not(.disabled) {
   background: rgba(var(--accent-rgb), 0.1);
   outline: 1px solid rgba(var(--accent-rgb), 0.4);
+}
+
+.rollback-item.hovered:not(.disabled) {
+  background: rgba(var(--accent-rgb), 0.1);
+  outline: 1px solid rgba(var(--accent-rgb), 1);
 }
 
 .rollback-item.disabled {
@@ -3372,8 +3376,8 @@ textarea.context-full {
   min-width: 24px;
 }
 
-.rollback-item:hover:not(.disabled) .rollback-item-number,
-.rollback-item.selected:not(.disabled) .rollback-item-number {
+.rollback-item.selected:not(.disabled) .rollback-item-number,
+.rollback-item.hovered:not(.disabled) .rollback-item-number {
   color: var(--accent-color);
 }
 

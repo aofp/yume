@@ -335,6 +335,7 @@ export const ClaudeChat: React.FC = () => {
     targetTimestamp?: number;
   } | null>(null);
   const [rollbackSelectedIndex, setRollbackSelectedIndex] = useState(0);
+  const [rollbackHoveredIndex, setRollbackHoveredIndex] = useState<number | null>(null);
   const rollbackListRef = useRef<HTMLDivElement>(null);
   const rollbackInitializedRef = useRef(false);
   const [confirmDialogSelection, setConfirmDialogSelection] = useState(1); // 0 = cancel, 1 = confirm (default)
@@ -490,24 +491,46 @@ export const ClaudeChat: React.FC = () => {
     });
   }, [currentSessionId]);
 
-  // Fetch usage limits with 20-min cache, refresh every 20min
+  // Fetch usage limits with smart caching (shorter TTL for null values)
   const fetchUsageLimits = useCallback((force = false) => {
     const CACHE_KEY = 'yurucode_usage_limits_cache';
-    const CACHE_DURATION = 20 * 60 * 1000; // 20 minutes
+    const CACHE_DURATION_VALID = 20 * 60 * 1000; // 20 min for valid data
+    const CACHE_DURATION_NULL = 2 * 60 * 1000;   // 2 min for null data (retry sooner)
+
+    // Helper to filter raw API data
+    const filterData = (data: {
+      five_hour?: { utilization: number | null; resets_at: string | null };
+      seven_day?: { utilization: number | null; resets_at: string | null };
+      subscription_type?: string;
+      rate_limit_tier?: string;
+    }): typeof usageLimits => {
+      const filtered: typeof usageLimits = {
+        subscription_type: data.subscription_type,
+        rate_limit_tier: data.rate_limit_tier,
+      };
+      if (data.five_hour?.utilization != null && data.five_hour?.resets_at != null) {
+        filtered.five_hour = { utilization: data.five_hour.utilization, resets_at: data.five_hour.resets_at };
+      }
+      if (data.seven_day?.utilization != null && data.seven_day?.resets_at != null) {
+        filtered.seven_day = { utilization: data.seven_day.utilization, resets_at: data.seven_day.resets_at };
+      }
+      return filtered;
+    };
 
     // Check cache first (unless forced)
     if (!force) {
       try {
         const cached = localStorage.getItem(CACHE_KEY);
         if (cached) {
-          const { data, timestamp } = JSON.parse(cached);
+          const { data, timestamp, hasNullUsage } = JSON.parse(cached);
           const age = Date.now() - timestamp;
-          if (age < CACHE_DURATION) {
-            console.log('[UsageLimits] Using cached data, age:', Math.round(age / 1000), 's');
-            setUsageLimits(data);
+          const maxAge = hasNullUsage ? CACHE_DURATION_NULL : CACHE_DURATION_VALID;
+          if (age < maxAge) {
+            console.log('[UsageLimits] Using cached data, age:', Math.round(age / 1000), 's, hasNull:', hasNullUsage);
+            setUsageLimits(filterData(data));
             return;
           }
-          console.log('[UsageLimits] Cache expired, age:', Math.round(age / 1000), 's');
+          console.log('[UsageLimits] Cache expired, age:', Math.round(age / 1000), 's, wasNull:', hasNullUsage);
         }
       } catch (e) {
         console.log('[UsageLimits] Cache read failed:', e);
@@ -522,21 +545,12 @@ export const ClaudeChat: React.FC = () => {
     }>('get_claude_usage_limits')
       .then(data => {
         console.log('[UsageLimits] API response:', JSON.stringify(data));
-        // Filter out null values to match state type
-        const filteredData: typeof usageLimits = {
-          subscription_type: data.subscription_type,
-          rate_limit_tier: data.rate_limit_tier,
-        };
-        if (data.five_hour?.utilization != null && data.five_hour?.resets_at != null) {
-          filteredData.five_hour = { utilization: data.five_hour.utilization, resets_at: data.five_hour.resets_at };
-        }
-        if (data.seven_day?.utilization != null && data.seven_day?.resets_at != null) {
-          filteredData.seven_day = { utilization: data.seven_day.utilization, resets_at: data.seven_day.resets_at };
-        }
+        const filteredData = filterData(data);
         setUsageLimits(filteredData);
-        // Cache the result
+        // Cache with null flag (determines TTL on next read)
+        const hasNullUsage = !filteredData.five_hour || !filteredData.seven_day;
         try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+          localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
         } catch (e) {
           // Cache write failed, ignore
         }
@@ -1551,10 +1565,11 @@ export const ClaudeChat: React.FC = () => {
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        // Trigger click on selected item
+        // Trigger click on active item (hover takes priority over keyboard selection)
+        const activeIndex = rollbackHoveredIndex !== null ? rollbackHoveredIndex : rollbackSelectedIndex;
         const items = rollbackListRef.current?.querySelectorAll('.rollback-item');
-        if (items && items[rollbackSelectedIndex]) {
-          (items[rollbackSelectedIndex] as HTMLElement).click();
+        if (items && items[activeIndex]) {
+          (items[activeIndex] as HTMLElement).click();
         }
         return;
       }
@@ -1562,7 +1577,7 @@ export const ClaudeChat: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [showRollbackPanel, showRollbackConfirm, currentSession?.messages, currentSession?.streaming, rollbackSelectedIndex, setShowRollbackPanel, getNonBashUserMessages]);
+  }, [showRollbackPanel, showRollbackConfirm, currentSession?.messages, currentSession?.streaming, rollbackSelectedIndex, rollbackHoveredIndex, setShowRollbackPanel, getNonBashUserMessages]);
 
   // Handle resume conversation selection from modal
   const handleResumeConversation = useCallback(async (conversation: any) => {
@@ -4251,10 +4266,17 @@ export const ClaudeChat: React.FC = () => {
                       // Check if streaming - disable rollback during streaming
                       const isStreaming = currentSession?.streaming;
 
+                      // Determine active index: hover takes priority over keyboard selection
+                      const activeIndex = rollbackHoveredIndex !== null ? rollbackHoveredIndex : rollbackSelectedIndex;
+                      const isActive = activeIndex === userIdx;
+                      const isHovered = rollbackHoveredIndex === userIdx;
+
                       return (
                         <div
                           key={msg.id || idx}
-                          className={`rollback-item ${isStreaming ? 'disabled' : ''} ${rollbackSelectedIndex === userIdx ? 'selected' : ''}`}
+                          className={`rollback-item ${isStreaming ? 'disabled' : ''} ${isActive ? (isHovered ? 'hovered' : 'selected') : ''}`}
+                          onMouseEnter={() => setRollbackHoveredIndex(userIdx)}
+                          onMouseLeave={() => setRollbackHoveredIndex(null)}
                           onClick={async () => {
                             if (isStreaming) return;
 
@@ -4495,10 +4517,29 @@ export const ClaudeChat: React.FC = () => {
               return acc;
             }
             
-            // For result messages (completion)
+            // For result messages (completion) - deduplicate by ID or timestamp
             if (message.type === 'result') {
-              // Keep all result messages to show timing for each query
-              acc.push(message);
+              // Check for duplicate by ID
+              if (message.id) {
+                const existingIndex = acc.findIndex((m: any) =>
+                  m.type === 'result' && m.id === message.id
+                );
+                if (existingIndex >= 0) {
+                  // Update existing result message
+                  acc[existingIndex] = message;
+                  return acc;
+                }
+              }
+
+              // Also check for duplicate by timestamp (within 1 second)
+              const timestampDuplicate = acc.some((m: any) =>
+                m.type === 'result' &&
+                Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 1000
+              );
+
+              if (!timestampDuplicate) {
+                acc.push(message);
+              }
               return acc;
             }
 

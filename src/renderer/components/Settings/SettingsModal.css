@@ -486,16 +486,13 @@
 /* Color Picker Floating Container */
 .color-picker-floating {
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
   z-index: 100002;
-  animation: fadeInScale 0.2s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   user-select: none;
   -webkit-user-select: none;
-  max-width: 90vw;
-  max-height: 90vh;
-  overflow: visible;
 }
 
 /* Color Picker Dropdown */
@@ -504,8 +501,11 @@
   border: 1px solid var(--fg-15);
   border-radius: 8px;
   width: 444px;
+  max-width: 90vw;
+  max-height: 90vh;
   box-shadow: 0 4px 24px var(--bg-90);
   overflow: visible;
+  animation: fadeInScale 0.2s ease;
 }
 
 .color-picker-header {

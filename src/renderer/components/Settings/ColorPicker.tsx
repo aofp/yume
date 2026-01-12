@@ -40,20 +40,21 @@ const NEGATIVE_PRESETS = [
   ['#f87171', '#fb923c', '#fbbf24', '#f472b6', '#fb7185', '#ef4444', '#f97316', '#eab308', '#ec4899', '#e11d48']
 ];
 
-// HSL utilities
-const hexToHsl = (hex: string): { h: number; s: number; l: number } => {
+// HSV utilities (color picker uses HSV model, not HSL)
+const hexToHsv = (hex: string): { h: number; s: number; v: number } => {
   const r = parseInt(hex.slice(1, 3), 16) / 255;
   const g = parseInt(hex.slice(3, 5), 16) / 255;
   const b = parseInt(hex.slice(5, 7), 16) / 255;
 
   const max = Math.max(r, g, b);
   const min = Math.min(r, g, b);
-  let h = 0, s = 0;
-  const l = (max + min) / 2;
+  const d = max - min;
+
+  let h = 0;
+  const s = max === 0 ? 0 : d / max;
+  const v = max;
 
   if (max !== min) {
-    const d = max - min;
-    s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
     switch (max) {
       case r: h = ((g - b) / d + (g < b ? 6 : 0)) / 6; break;
       case g: h = ((b - r) / d + 2) / 6; break;
@@ -61,19 +62,31 @@ const hexToHsl = (hex: string): { h: number; s: number; l: number } => {
     }
   }
 
-  return { h: h * 360, s: s * 100, l: l * 100 };
+  return { h: h * 360, s: s * 100, v: v * 100 };
 };
 
-const hslToHex = (h: number, s: number, l: number): string => {
+const hsvToHex = (h: number, s: number, v: number): string => {
   s /= 100;
-  l /= 100;
-  const a = s * Math.min(l, 1 - l);
-  const f = (n: number) => {
-    const k = (n + h / 30) % 12;
-    const color = l - a * Math.max(Math.min(k - 3, 9 - k, 1), -1);
-    return Math.round(255 * color).toString(16).padStart(2, '0');
-  };
-  return `#${f(0)}${f(8)}${f(4)}`;
+  v /= 100;
+
+  const i = Math.floor(h / 60) % 6;
+  const f = h / 60 - Math.floor(h / 60);
+  const p = v * (1 - s);
+  const q = v * (1 - f * s);
+  const t = v * (1 - (1 - f) * s);
+
+  let r = 0, g = 0, b = 0;
+  switch (i) {
+    case 0: r = v; g = t; b = p; break;
+    case 1: r = q; g = v; b = p; break;
+    case 2: r = p; g = v; b = t; break;
+    case 3: r = p; g = q; b = v; break;
+    case 4: r = t; g = p; b = v; break;
+    case 5: r = v; g = p; b = q; break;
+  }
+
+  const toHex = (c: number) => Math.round(c * 255).toString(16).padStart(2, '0');
+  return `#${toHex(r)}${toHex(g)}${toHex(b)}`;
 };
 
 export const ColorPicker: React.FC<ColorPickerProps> = ({
@@ -84,8 +97,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
   onPreview,
   onPreviewEnd
 }) => {
-  const [hsl, setHsl] = useState(() => hexToHsl(color));
-  const [hexInput, setHexInput] = useState(color.toUpperCase());
+  const [hsv, setHsv] = useState(() => hexToHsv(color));
+  const [hexInput, setHexInput] = useState(color.toLowerCase());
   const [isDragging, setIsDragging] = useState<'square' | 'hue' | null>(null);
 
   const squareRef = useRef<HTMLDivElement>(null);
@@ -101,30 +114,30 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
   // Update hex input when color changes externally
   useEffect(() => {
-    setHexInput(color.toUpperCase());
-    setHsl(hexToHsl(color));
+    setHexInput(color.toLowerCase());
+    setHsv(hexToHsv(color));
   }, [color]);
 
-  // Preview current HSL color
+  // Preview current HSV color
   const previewCurrentColor = useCallback(() => {
-    const hex = hslToHex(hsl.h, hsl.s, hsl.l);
+    const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
     onPreview?.(hex);
-    setHexInput(hex.toUpperCase());
-  }, [hsl, onPreview]);
+    setHexInput(hex.toLowerCase());
+  }, [hsv, onPreview]);
 
   useEffect(() => {
     previewCurrentColor();
-  }, [hsl, previewCurrentColor]);
+  }, [hsv, previewCurrentColor]);
 
-  // Handle square (saturation/lightness) interaction
+  // Handle square (saturation/value) interaction
   const handleSquareInteraction = useCallback((e: MouseEvent | React.MouseEvent) => {
     if (!squareRef.current) return;
     const rect = squareRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     const y = Math.max(0, Math.min(1, (e.clientY - rect.top) / rect.height));
 
-    // x = saturation (0-100), y = lightness (100-0, inverted)
-    setHsl(prev => ({ ...prev, s: x * 100, l: (1 - y) * 100 }));
+    // x = saturation (0-100), y = value/brightness (100-0, inverted)
+    setHsv(prev => ({ ...prev, s: x * 100, v: (1 - y) * 100 }));
   }, []);
 
   // Handle hue slider interaction
@@ -132,7 +145,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     if (!hueRef.current) return;
     const rect = hueRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-    setHsl(prev => ({ ...prev, h: x * 360 }));
+    setHsv(prev => ({ ...prev, h: x * 360 }));
   }, []);
 
   // Mouse move/up handlers
@@ -158,15 +171,15 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
 
   // Handle hex input change
   const handleHexInputChange = (value: string) => {
-    setHexInput(value.toUpperCase());
+    setHexInput(value.toLowerCase());
     if (/^#[0-9A-Fa-f]{6}$/.test(value)) {
-      setHsl(hexToHsl(value));
+      setHsv(hexToHsv(value));
     }
   };
 
   // Apply color on click
   const applyColor = () => {
-    const hex = hslToHex(hsl.h, hsl.s, hsl.l);
+    const hex = hsvToHex(hsv.h, hsv.s, hsv.v);
     onChange(hex);
     onClose();
   };
@@ -183,7 +196,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
     onClose();
   };
 
-  const currentHex = hslToHex(hsl.h, hsl.s, hsl.l);
+  const currentHex = hsvToHex(hsv.h, hsv.s, hsv.v);
 
   return (
     <div className="color-picker-floating" onClick={(e) => e.target === e.currentTarget && handleClose()}>
@@ -221,13 +234,13 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
           {/* Divider */}
           <div className="color-picker-divider" />
 
-          {/* Color picker square (saturation/lightness) */}
+          {/* Color picker square (saturation/value) */}
           <div
             ref={squareRef}
             className="color-picker-square"
             style={{
               background: `linear-gradient(to bottom, transparent, #000),
-                           linear-gradient(to right, #fff, hsl(${hsl.h}, 100%, 50%))`
+                           linear-gradient(to right, #fff, hsl(${hsv.h}, 100%, 50%))`
             }}
             onMouseDown={(e) => {
               setIsDragging('square');
@@ -237,8 +250,8 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
             <div
               className="color-picker-cursor"
               style={{
-                left: `${hsl.s}%`,
-                top: `${100 - hsl.l}%`,
+                left: `${hsv.s}%`,
+                top: `${100 - hsv.v}%`,
                 backgroundColor: currentHex
               }}
             />
@@ -255,7 +268,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
           >
             <div
               className="color-picker-hue-cursor"
-              style={{ left: `${(hsl.h / 360) * 100}%` }}
+              style={{ left: `${(hsv.h / 360) * 100}%` }}
             />
           </div>
 

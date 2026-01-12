@@ -51,7 +51,7 @@ export const BUILT_IN_THEMES: Theme[] = [
   {
     id: 'arctic',
     name: 'arctic',
-    backgroundColor: '#070709',
+    backgroundColor: '#0a0a0d',
     foregroundColor: '#c6c8d1',
     accentColor: '#8fb8c8',
     positiveColor: '#b4be82',
@@ -74,16 +74,29 @@ export const BUILT_IN_THEMES: Theme[] = [
     isBuiltIn: true
   },
 
+  // 
+  {
+    id: 'iota',
+    name: 'iota',
+    backgroundColor: '#0c0c0d',
+    foregroundColor: '#ffffff',
+    accentColor: '#9df5Bd',
+    positiveColor: '#06b6d4',
+    negativeColor: '#ec4899',
+    opacity: 1.0,
+    isBuiltIn: true
+  },
+
   // dusk - authentic Zenburn adaptation for OLED
   // Warm, low-contrast, easy on eyes
   {
-    id: 'dusk',
-    name: 'dusk',
-    backgroundColor: '#0c0c0c',
+    id: 'bourbon',
+    name: 'bourbon',
+    backgroundColor: '#100f0f',
     foregroundColor: '#dcdccc',
-    accentColor: '#8cd0d3',
+    accentColor: '#e4d9Bd',
     positiveColor: '#7f9f7f',
-    negativeColor: '#cc9393',
+    negativeColor: '#e9b5b5',
     opacity: 1.0,
     isBuiltIn: true
   },
@@ -153,7 +166,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     foregroundColor: '#d4d4d4',
     accentColor: '#a0a0b0',
     positiveColor: '#88aa88',
-    negativeColor: '#bb8888',
+    negativeColor: '#d09b9b',
     opacity: 1.0,
     isBuiltIn: true
   },
@@ -164,9 +177,9 @@ export const BUILT_IN_THEMES: Theme[] = [
     id: 'grove',
     name: 'grove',
     backgroundColor: '#0a0a08',
-    foregroundColor: '#e8e4dc',
+    foregroundColor: '#bacebe',
     accentColor: '#83c092',
-    positiveColor: '#a7c080',
+    positiveColor: '#bfdB93',
     negativeColor: '#e67e80',
     opacity: 1.0,
     isBuiltIn: true

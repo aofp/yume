@@ -91,10 +91,6 @@
   flex-direction: column;
 }
 
-.command-item {
-  margin-bottom: 12px;
-}
-
 .command-trigger,
 .command-desc,
 .command-script {

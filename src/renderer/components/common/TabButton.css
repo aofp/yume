@@ -16,19 +16,24 @@
   -webkit-app-region: no-drag;
 }
 
-/* Hover state with accent color - use JS-controlled class for webview compatibility */
-.tab-btn.hovered {
-  border-color: var(--accent-color);
-  color: var(--accent-color);
-  background: rgba(var(--accent-rgb), 0.05);
-}
-
 /* Active state */
 .tab-btn.active {
-  background: rgba(var(--accent-rgb), 0.1);
-  border-color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.05);
+  border-color: rgba(var(--accent-rgb), 0.8);
   color: var(--accent-color);
   cursor: default;
+}
+
+/* Highlighted state (hover or keyboard focus) - more visible background */
+.tab-btn.highlighted {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+/* Active + highlighted - full opacity border on hover/focus */
+.tab-btn.active.highlighted {
+  border-color: var(--accent-color);
 }
 
 /* Disabled state */
