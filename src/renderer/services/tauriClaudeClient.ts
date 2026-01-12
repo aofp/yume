@@ -319,15 +319,21 @@ export class TauriClaudeClient {
         // Message complete - but DON'T clear streaming yet! Wait for result
         // Don't send any update here
       } else if (message.type === 'usage') {
-        // Token usage information
+        // Token usage information - transformed to partial result
+        // CRITICAL: Use deterministic ID so this merges with the final result message
+        // The final result will have a real ID, but we use a temp ID here that
+        // will be replaced by the ID-based dedup logic in addMessageToSession
         transformedMessage = {
           type: 'result',
+          id: `usage-${sessionId || 'temp'}-${Date.now()}`,
           usage: {
             input_tokens: message.input_tokens,
             output_tokens: message.output_tokens,
             cache_creation_input_tokens: message.cache_creation_input_tokens || 0,
             cache_read_input_tokens: message.cache_read_input_tokens || 0
-          }
+          },
+          // Mark as partial so we know this is just usage data, not final result
+          _partial: true
         };
       } else if (message.type === 'error') {
         transformedMessage = {

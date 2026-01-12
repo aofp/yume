@@ -785,6 +785,37 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <h4>options</h4>
 
                   <div className="checkbox-setting compact">
+                    <span className="checkbox-label">show result stats</span>
+                    <div
+                      className={`toggle-switch compact ${showResultStats ? 'active' : ''}`}
+                      onClick={() => setShowResultStats(!showResultStats)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+                  
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">sound on complete</span>
+                    <div
+                      className={`toggle-switch compact ${soundOnComplete ? 'active' : ''}`}
+                      onClick={() => {
+                        const newValue = !soundOnComplete;
+                        setSoundOnComplete(newValue);
+                        // Play a preview of the sound when enabling
+                        if (newValue) {
+                          setTimeout(() => playCompletionSound(), 100);
+                        }
+                      }}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <div className="checkbox-setting compact">
                     <span className="checkbox-label">remember tabs</span>
                     <div
                       className={`toggle-switch compact ${rememberTabs ? 'active' : ''}`}
@@ -801,38 +832,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     <div
                       className={`toggle-switch compact ${autoGenerateTitle ? 'active' : ''}`}
                       onClick={() => setAutoGenerateTitle(!autoGenerateTitle)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
-                  <div className="checkbox-setting compact">
-                    <span className="checkbox-label">show result stats</span>
-                    <div
-                      className={`toggle-switch compact ${showResultStats ? 'active' : ''}`}
-                      onClick={() => setShowResultStats(!showResultStats)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
-                  
-                  <div className="checkbox-setting compact">
-                    <span className="checkbox-label">sound on complete</span>
-                    <div
-                      className={`toggle-switch compact ${soundOnComplete ? 'active' : ''}`}
-                      onClick={() => {
-                        const newValue = !soundOnComplete;
-                        setSoundOnComplete(newValue);
-                        // Play a preview of the sound when enabling
-                        if (newValue) {
-                          setTimeout(() => playCompletionSound(), 100);
-                        }
-                      }}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>

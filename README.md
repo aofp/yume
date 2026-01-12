@@ -60,8 +60,9 @@ Three-process model:
 
 - [Complete Features](docs/FEATURES_COMPLETE.md)
 - [Architecture](docs/COMPLETE_ARCHITECTURE.md)
-- [Competitive Research](docs/competitive-research/)
+- [Competitive Analysis](docs/COMPETITIVE_ANALYSIS.md)
 - [Troubleshooting](docs/TROUBLESHOOTING_GUIDE.md)
+- [Master Index](docs/MASTER_DOCUMENTATION_INDEX.md)
 
 ## License
 
