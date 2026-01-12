@@ -347,7 +347,9 @@ export const WelcomeScreen: React.FC = () => {
         <span
           className="welcome-version-badge"
           onClick={() => {
-            if (!isLicensed) {
+            if (isLicensed) {
+              window.dispatchEvent(new CustomEvent('showAboutModal'));
+            } else {
               window.dispatchEvent(new CustomEvent('showUpgradeModal', {
                 detail: { reason: 'trial' }
               }));

@@ -193,6 +193,13 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('showHelpModal', handleShowHelp);
   }, []);
 
+  // Listen for about modal events
+  useEffect(() => {
+    const handleShowAbout = () => setShowAbout(true);
+    window.addEventListener('showAboutModal', handleShowAbout);
+    return () => window.removeEventListener('showAboutModal', handleShowAbout);
+  }, []);
+
   // Listen for trial instance blocked event from Rust backend
   useEffect(() => {
     if (!window.__TAURI__) return;

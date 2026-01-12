@@ -33,14 +33,14 @@ interface SettingsModalProps {
 }
 
 // Tab type definition
-type SettingsTab = 'general' | 'theme' | 'hooks' | 'commands' | 'mcp' | 'plugins' | 'skills';
+type SettingsTab = 'general' | 'appearance' | 'hooks' | 'commands' | 'mcp' | 'plugins' | 'skills';
 
 // Theme system - imported from shared config
 import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_COLORS, type Theme } from '../../config/themes';
 
 export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { isLicensed } = useLicenseStore();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('theme');
+  const [activeTab, setActiveTab] = useState<SettingsTab>('general');
   const [isDragging, setIsDragging] = useState(false);
   const headerRef = useRef<HTMLDivElement>(null);
   const [zoomLevel, setZoomLevel] = useState(0);
@@ -849,47 +849,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     </div>
                   </div>
 
-                  {/* Windows-only: Dictation troubleshooting */}
-                  {navigator.platform.indexOf('Win') > -1 && (
-                    <>
-                      <h4 style={{ marginTop: '16px' }}>troubleshooting</h4>
-                      <button
-                        className="settings-action-btn"
-                        onClick={async () => {
-                          try {
-                            const result = await invoke<string>('clear_webview2_permissions');
-                            alert(result);
-                          } catch (err: any) {
-                            alert(`Failed to reset permissions: ${err.message || err}`);
-                          }
-                        }}
-                        style={{
-                          background: 'transparent',
-                          border: '1px solid rgba(255, 255, 255, 0.15)',
-                          color: '#888',
-                          padding: '6px 12px',
-                          fontSize: '11px',
-                          borderRadius: '2px',
-                          cursor: 'default',
-                          width: '100%',
-                          textAlign: 'left',
-                          marginTop: '4px',
-                          transition: 'all 0.2s'
-                        }}
-                        onMouseEnter={(e) => {
-                          e.currentTarget.style.borderColor = 'var(--accent-color)';
-                          e.currentTarget.style.color = 'var(--accent-color)';
-                        }}
-                        onMouseLeave={(e) => {
-                          e.currentTarget.style.borderColor = 'rgba(255, 255, 255, 0.15)';
-                          e.currentTarget.style.color = '#888';
-                        }}
-                        title="Reset WebView2 microphone permissions if dictation stopped working"
-                      >
-                        reset dictation permissions
-                      </button>
-                    </>
-                  )}
                 </div>
 
                 {/* Right column: Claude Code + Settings */}
@@ -905,10 +864,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <h4 style={{ marginTop: '16px' }}>settings</h4>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">commands</span>
+                    <span className="checkbox-label">plugins</span>
                     <div
-                      className={`toggle-switch compact ${showCommandsSettings ? 'active' : ''}`}
-                      onClick={() => setShowCommandsSettings(!showCommandsSettings)}
+                      className={`toggle-switch compact ${showPluginsSettings ? 'active' : ''}`}
+                      onClick={() => setShowPluginsSettings(!showPluginsSettings)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -917,10 +876,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </div>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">mcp</span>
+                    <span className="checkbox-label">commands</span>
                     <div
-                      className={`toggle-switch compact ${showMcpSettings ? 'active' : ''}`}
-                      onClick={() => setShowMcpSettings(!showMcpSettings)}
+                      className={`toggle-switch compact ${showCommandsSettings ? 'active' : ''}`}
+                      onClick={() => setShowCommandsSettings(!showCommandsSettings)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -941,18 +900,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </div>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">plugins</span>
-                    <div
-                      className={`toggle-switch compact ${showPluginsSettings ? 'active' : ''}`}
-                      onClick={() => setShowPluginsSettings(!showPluginsSettings)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
-                  <div className="checkbox-setting compact">
                     <span className="checkbox-label">skills</span>
                     <div
                       className={`toggle-switch compact ${showSkillsSettings ? 'active' : ''}`}
@@ -963,6 +910,19 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       <div className="toggle-switch-slider" />
                     </div>
                   </div>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">mcp</span>
+                    <div
+                      className={`toggle-switch compact ${showMcpSettings ? 'active' : ''}`}
+                      onClick={() => setShowMcpSettings(!showMcpSettings)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
                 </div>
               </div>
             </div>
@@ -981,7 +941,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
           />
         );
 
-      case 'theme':
+      case 'appearance':
         return (
           <>
             {/* Two column layout like general tab */}
@@ -1539,20 +1499,20 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               {/* Tab navigation in header */}
               <div className="header-tabs">
                 <TabButton
-                  label="theme"
-                  active={activeTab === 'theme'}
-                  onClick={() => setActiveTab('theme')}
-                />
-                <TabButton
                   label="general"
                   active={activeTab === 'general'}
                   onClick={() => setActiveTab('general')}
                 />
-                {showHooksSettings && (
+                <TabButton
+                  label="appearance"
+                  active={activeTab === 'appearance'}
+                  onClick={() => setActiveTab('appearance')}
+                />
+                {showPluginsSettings && (
                   <TabButton
-                    label="hooks"
-                    active={activeTab === 'hooks'}
-                    onClick={() => setActiveTab('hooks')}
+                    label="plugins"
+                    active={activeTab === 'plugins'}
+                    onClick={() => setActiveTab('plugins')}
                   />
                 )}
                 {showCommandsSettings && (
@@ -1562,18 +1522,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     onClick={() => setActiveTab('commands')}
                   />
                 )}
-                {showMcpSettings && (
+                {showHooksSettings && (
                   <TabButton
-                    label="mcp"
-                    active={activeTab === 'mcp'}
-                    onClick={() => setActiveTab('mcp')}
-                  />
-                )}
-                {showPluginsSettings && (
-                  <TabButton
-                    label="plugins"
-                    active={activeTab === 'plugins'}
-                    onClick={() => setActiveTab('plugins')}
+                    label="hooks"
+                    active={activeTab === 'hooks'}
+                    onClick={() => setActiveTab('hooks')}
                   />
                 )}
                 {showSkillsSettings && (
@@ -1581,6 +1534,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     label="skills"
                     active={activeTab === 'skills'}
                     onClick={() => setActiveTab('skills')}
+                  />
+                )}
+                {showMcpSettings && (
+                  <TabButton
+                    label="mcp"
+                    active={activeTab === 'mcp'}
+                    onClick={() => setActiveTab('mcp')}
                   />
                 )}
               </div>
@@ -1595,11 +1555,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
             {renderTabContent()}
           </div>
 
-          {/* Bottom controls - show upgrade/about on general, zoom/watermark on theme */}
-          {(activeTab === 'general' || activeTab === 'theme') && (
+          {/* Bottom controls - show upgrade/about on general, zoom/watermark on appearance */}
+          {(activeTab === 'general' || activeTab === 'appearance') && (
             <div className="settings-bottom-controls">
               <div className="settings-bottom-left">
-                {activeTab === 'theme' && (
+                {activeTab === 'appearance' && (
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
                     <div>
                       <h4>zoom</h4>
@@ -1699,7 +1659,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     <span>about</span>
                   </button>
                 )}
-                {activeTab === 'theme' && (
+                {activeTab === 'appearance' && (
                   <div>
                     <h4>watermark image</h4>
                     <div className="watermark-controls">
