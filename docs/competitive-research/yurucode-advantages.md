@@ -12,6 +12,8 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 
 | Feature | Description |
 |---------|-------------|
+| **Plugin System** | Complete extensibility framework (commands, agents, hooks, skills, MCP) - install custom plugins from folder |
+| **Skills System** | Auto-inject context based on triggers (file extensions, keywords, regex) |
 | **5h + 7-day limit tracking** | Visual quota bars in context bar showing Anthropic subscription limits |
 | **Yurucode Guard** | Built-in security hook (blocks rm -rf, sudo, dangerous git, etc.) |
 | **5 built-in agents** | architect, explorer, implementer, guardian, specialist |
@@ -19,11 +21,13 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 | **Stream timers** | Live thinking/bash/compacting duration timers |
 | **History/rollback panel** | Visual message history with rollback |
 | **Ultrathink support** | Cmd+K insert + rainbow gradient highlighting |
-| **30 themes** | Way more than Cursor (~5), Windsurf (~3), Opcode (0) |
+| **30 themes** | Way more than Cursor (~5), Windsurf (~3), Opcode (0), Claudia (0) |
 | **9 hook events** | user_prompt_submit, pre_tool_use, post_tool_use, assistant_response, session_start, session_end, context_warning, compaction_trigger, error |
 | **Crash recovery** | Auto-save with 24hr restoration window |
 | **$21 one-time** | vs $240-2400/year subscriptions |
 | **Bash mode** | !/$ prefix for direct terminal commands |
+| **Performance monitoring** | Real-time FPS, memory, render time tracking |
+| **CLAUDE.md editor** | In-app editor for project documentation |
 
 ## Advantages Over Claude Code CLI
 

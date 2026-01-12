@@ -1,6 +1,6 @@
 # Competitive Research Overview
 
-*Last Updated: January 10, 2026*
+*Last Updated: January 11, 2026*
 
 > **For Claude Code Team**: See [Executive Summary](./executive-summary.md) for a presentation-ready overview.
 
@@ -11,8 +11,9 @@ The AI coding assistant market in 2025 is dominated by three categories:
 | Category | Tools | Approach |
 |----------|-------|----------|
 | **IDE-Based** | Cursor, Windsurf, Zed | Full IDE with AI deeply integrated |
-| **CLI/Terminal** | Claude Code CLI, Aider | Terminal-first, command-line workflows |
+| **CLI/Terminal** | Claude Code CLI, Aider, OpenCode | Terminal-first, command-line workflows |
 | **Extensions** | Copilot, Continue, Cline | IDE plugins/extensions |
+| **Desktop GUIs** | **Yurucode**, Opcode, Claudia, Crystal | Native wrappers for Claude CLI |
 
 ## Key Stats (2025)
 
@@ -69,6 +70,9 @@ The AI coding assistant market in 2025 is dominated by three categories:
 - Drag & drop (files + tabs)
 - Background opacity
 - Font customization
+- **Plugin system** (install custom commands, agents, hooks, skills, MCP)
+- **Skills system** (auto-inject context based on triggers)
+- **Performance monitoring** (FPS, memory, render time)
 
 ⬜ **Remaining**:
 - Light mode (1 day)
@@ -123,6 +127,8 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 
 | Feature | Description |
 |---------|-------------|
+| **Plugin system** | Complete extensibility (commands, agents, hooks, skills, MCP) |
+| **Skills system** | Auto-inject context based on triggers (file ext, keywords, regex) |
 | **5h + 7-day limit tracking** | Visual quota bars in context bar |
 | **Yurucode Guard** | Built-in security hook (blocks rm -rf, sudo, etc.) |
 | **5 built-in agents** | architect, explorer, implementer, guardian, specialist |
@@ -133,4 +139,24 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 | **30 themes** | Way more than any competitor |
 | **9 hook events** | Most comprehensive hook system |
 | **Crash recovery** | Auto-save with 24hr restoration |
+| **Performance monitoring** | Real-time FPS, memory, render time |
 | **$21 one-time** | vs $240-2400/year subscriptions |
+
+## Direct Competitors Comparison (Desktop GUIs)
+
+| Feature | Yurucode | Opcode | Claudia | Crystal |
+|---------|----------|--------|---------|---------|
+| Plugin/Skills System | ✅ | ❌ | ❌ | ❌ |
+| 5h/7d Limit Tracking | ✅ | ❌ | ❌ | ❌ |
+| Yurucode Guard | ✅ | ❌ | ❌ | ❌ |
+| 5 Built-in Agents | ✅ | ❌ | ❌ | ❌ |
+| 30 Themes | ✅ | ❌ | ❌ | ❌ |
+| 9 Hook Events | ✅ | ❌ | ❌ | ❌ |
+| Stream Timers | ✅ | ❌ | ❌ | ❌ |
+| @ Mentions | ✅ | ❌ | ❌ | ❌ |
+| Crash Recovery | ✅ | ❌ | ❌ | ❌ |
+| Ultrathink Support | ✅ | ❌ | ❌ | ❌ |
+| Multi-Model | ❌ | ❌ | ❌ | ✅ (Claude+Codex) |
+| YC Backed | ❌ | ❌ | ✅ | ❌ |
+| Price | $21 | Free | Free | Free |
+| Framework | Tauri | Tauri | Tauri | Electron |

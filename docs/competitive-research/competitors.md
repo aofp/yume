@@ -1,6 +1,6 @@
 # Competitor Deep Dives
 
-*Last Updated: January 10, 2026 (Revised with latest market data)*
+*Last Updated: January 11, 2026 (Added Claudia, Crystal, plugin system)*
 
 ## IDE-Based Competitors
 
@@ -158,6 +158,67 @@
 ---
 
 ## Direct Claude Code GUI Competitors
+
+### Crystal by Stravu (NEW - 2025)
+
+**Type**: Claude Code + Codex GUI (open source, Electron)
+**Price**: Free (MIT License)
+**GitHub**: github.com/stravu/crystal
+**Website**: stravu.com/crystal
+
+**Key Features**:
+- Multi-session parallel execution with git worktree isolation
+- Support for both Claude Code AND OpenAI Codex
+- Compare different AI approaches to same problem
+- Multi-agent session creation from single prompt
+- Git merge strategy (merge to main instead of rebase)
+- Slash commands and keyboard navigation
+
+**Unique Angle**: First "IVE" (Integrated Vibe Environment) - run multiple AI agents simultaneously on isolated branches
+
+**Strengths**:
+- Multi-model support (Claude + Codex)
+- Git worktree parallelization
+- Compare AI approaches side-by-side
+- True multi-agent orchestration
+
+**Weaknesses vs Yurucode**:
+- ❌ Built with Electron (heavier than Tauri)
+- ❌ Primarily macOS focused
+- ❌ No plugin/skills system
+- ❌ No usage analytics or cost tracking
+- ❌ No 5h/7-day limit tracking
+- ❌ No themes, hooks, or customization
+- ❌ No stream timers or @ mentions
+
+**Relevance to Yurucode**: Interesting multi-model approach, but different focus. They optimize for parallel agent comparison; we optimize for single-session excellence with Claude. Their git worktree feature is unique but complex.
+
+---
+
+### Claude Agent Desktop (Fergana-Labs)
+
+**Type**: Claude Agent SDK desktop wrapper
+**Price**: Free (open source)
+**GitHub**: github.com/Fergana-Labs/claude_agent_desktop
+
+**Key Features**:
+- BYOK (Bring Your Own Key) model
+- Comprehensive file operations
+- Premium skills from Claude web app (Excel, PowerPoint)
+- Native desktop environment
+
+**Strengths**:
+- Claude Agent SDK based (official)
+- Premium skills integration
+
+**Weaknesses vs Yurucode**:
+- Less mature than Yurucode
+- Fewer features overall
+- No theming, hooks, analytics
+
+**Relevance to Yurucode**: Minor competitor, less feature-rich.
+
+---
 
 ### Opcode
 
@@ -499,37 +560,37 @@
 
 ## Feature Gap Summary (Yurucode vs Leaders)
 
-| Feature | Cursor | Windsurf | Opcode | Yurucode | Gap? |
-|---------|--------|----------|--------|----------|------|
-| Smooth UI | Issues | Good | ? | ✅ Best (native) | No |
-| Tab completion | ✅ 250 tok/s | ✅ | ❌ | ❌ (different product) | N/A - IDE feature |
-| Visual diff | ✅ | ✅ | ✅ | ✅ | No |
-| Cost tracking | ❌ | Partial | ✅ | ✅ Full | No |
-| **5h/7d limit tracking** | ❌ | ❌ | ❌ | ✅ | **Unique** |
-| Checkpoints | ❌ | ❌ | ✅ | ✅ | No |
-| Auto-compact | ❌ | ❌ | ❌ | ✅ 60%/65% | **Unique** |
-| Analytics | ❌ | ❌ | ✅ Cost | ✅ Project+cost | **Advantage** |
-| Streak tracking | ❌ | ❌ | ❌ | ❌ | Gap (vs CLI) |
-| Peak hour analysis | ❌ | ❌ | ❌ | ❌ | Gap (vs CLI) |
-| MCP support | ❌ | ✅ | ✅ | ✅ Full UI | No |
-| Themes | ~5 | ~3 | ❌ | ✅ **30 themes** | **Advantage** |
-| Built-in agents | ❌ | ❌ | ❌ | ✅ **5 agents** | **Unique** |
-| Custom commands | ❌ | ❌ | ❌ | ✅ 12 defaults | **Unique** |
-| Hooks system | Partial | ❌ | ❌ | ✅ 9 events | **Advantage** |
-| Yurucode Guard | ❌ | ❌ | ❌ | ✅ Security hook | **Unique** |
-| @ mention system | ❌ | ❌ | ❌ | ✅ @r, @m, folders | **Unique** |
-| Stream timers | ❌ | ❌ | ❌ | ✅ Live durations | **Unique** |
-| Ultrathink support | ❌ | ❌ | ❌ | ✅ Cmd+K + highlighting | **Unique** |
-| History/rollback panel | ❌ | ❌ | ? | ✅ | **Unique** |
-| Bash mode (!/$) | ❌ | ❌ | ❌ | ✅ | **Unique** |
-| Crash recovery | ❌ | ❌ | ❌ | ✅ | **Unique** |
-| Keyboard shortcuts | ✅ | ✅ | ❌ | ✅ 32+ | No |
-| Drag & drop | ✅ | ✅ | ❌ | ✅ | No |
-| Light mode | ✅ | ✅ | ? | ❌ | Gap |
-| Memories | ✅ | ✅ | ❌ | ❌ | Gap |
-| Command palette | ✅ | ✅ | ❌ | ❌ | Gap |
-| CLAUDE.md editor | ❌ | ❌ | ✅ | ✅ | No |
-| Background agents | ✅ | ✅ | ✅ | ✅ Via Claude | No |
+| Feature | Cursor | Windsurf | Opcode | Crystal | Yurucode | Gap? |
+|---------|--------|----------|--------|---------|----------|------|
+| Plugin/Skills System | ❌ | ❌ | ❌ | ❌ | ✅ Full | **Unique** |
+| Smooth UI | Issues | Good | Good | Electron | ✅ Best (native) | No |
+| Tab completion | ✅ 250 tok/s | ✅ | ❌ | ❌ | ❌ (different product) | N/A - IDE feature |
+| Visual diff | ✅ | ✅ | ✅ | ✅ | ✅ | No |
+| Cost tracking | ❌ | Partial | ✅ | ❌ | ✅ Full | No |
+| **5h/7d limit tracking** | ❌ | ❌ | ❌ | ❌ | ✅ | **Unique** |
+| Checkpoints | ❌ | ❌ | ✅ | ❌ | ✅ | No |
+| Auto-compact | ❌ | ❌ | ❌ | ❌ | ✅ 60%/65% | **Unique** |
+| Analytics | ❌ | ❌ | ✅ Cost | ❌ | ✅ Project+cost | **Advantage** |
+| MCP support | ❌ | ✅ | ✅ | ❌ | ✅ Full UI | No |
+| Themes | ~5 | ~3 | ❌ | ❌ | ✅ **30 themes** | **Advantage** |
+| Built-in agents | ❌ | ❌ | ❌ | ❌ | ✅ **5 agents** | **Unique** |
+| Custom commands | ❌ | ❌ | ❌ | ❌ | ✅ 12 defaults | **Unique** |
+| Hooks system | Partial | ❌ | ❌ | ❌ | ✅ 9 events | **Advantage** |
+| Yurucode Guard | ❌ | ❌ | ❌ | ❌ | ✅ Security hook | **Unique** |
+| @ mention system | ❌ | ❌ | ❌ | ❌ | ✅ @r, @m, folders | **Unique** |
+| Stream timers | ❌ | ❌ | ❌ | ❌ | ✅ Live durations | **Unique** |
+| Ultrathink support | ❌ | ❌ | ❌ | ❌ | ✅ Cmd+K + highlighting | **Unique** |
+| History/rollback panel | ❌ | ❌ | ? | ❌ | ✅ | **Unique** |
+| Bash mode (!/$) | ❌ | ❌ | ❌ | ❌ | ✅ | **Unique** |
+| Crash recovery | ❌ | ❌ | ❌ | ❌ | ✅ | **Unique** |
+| Keyboard shortcuts | ✅ | ✅ | ❌ | ✅ | ✅ 32+ | No |
+| Drag & drop | ✅ | ✅ | ❌ | ❌ | ✅ | No |
+| Light mode | ✅ | ✅ | ? | ? | ❌ | Gap |
+| Memories | ✅ | ✅ | ❌ | ❌ | ❌ | Gap |
+| Command palette | ✅ | ✅ | ❌ | ❌ | ❌ | Gap |
+| CLAUDE.md editor | ❌ | ❌ | ✅ | ❌ | ✅ | No |
+| Background agents | ✅ | ✅ | ✅ | ✅ | ✅ Via Claude | No |
+| Multi-model | ❌ | ❌ | ❌ | ✅ Claude+Codex | ❌ | - |
 
 ---
 
