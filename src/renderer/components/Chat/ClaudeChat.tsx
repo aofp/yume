@@ -2525,6 +2525,15 @@ export const ClaudeChat: React.FC = () => {
 
           // Update state and position cursor after the inserted char
           setInput(newValue);
+
+          // Detect command/bash mode from the new value
+          if (isBashPrefix(newValue)) {
+            setBashCommandMode(true);
+          } else if (newValue.startsWith('/')) {
+            // Set command trigger for visual styling
+            setCommandTrigger(newValue);
+          }
+
           requestAnimationFrame(() => {
             if (inputRef.current) {
               inputRef.current.selectionStart = inputRef.current.selectionEnd = start + 1;
@@ -2536,7 +2545,7 @@ export const ClaudeChat: React.FC = () => {
 
     document.addEventListener('keydown', handleGlobalTyping);
     return () => document.removeEventListener('keydown', handleGlobalTyping);
-  }, [showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
+  }, [showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal, setBashCommandMode, setCommandTrigger]);
 
   // Stop dictation when component unmounts or session changes
   useEffect(() => {
