@@ -1629,6 +1629,8 @@ hr {
   align-items: center;
   padding: 4px 8px;
   background: rgba(var(--foreground-rgb), 0.03);
+  border-top-left-radius: 2px;
+  border-top-right-radius: 2px;
 }
 
 .bash-prompt {
