@@ -4549,35 +4549,37 @@ export const ClaudeChat: React.FC = () => {
               return acc;
             }
             
-            // For result messages (completion) - deduplicate by ID or timestamp
+            // For result messages (completion) - only ONE result per turn
+            // Claude sends one result per turn, so merge any duplicates aggressively
             if (message.type === 'result') {
-              // Check for duplicate by ID
-              if (message.id) {
-                const existingIndex = acc.findIndex((m: any) =>
-                  m.type === 'result' && m.id === message.id
-                );
-                if (existingIndex >= 0) {
-                  // Update existing result message
-                  acc[existingIndex] = message;
-                  return acc;
+              // Find the last user message index to define current turn boundary
+              let lastUserIndex = -1;
+              for (let i = acc.length - 1; i >= 0; i--) {
+                if (acc[i].type === 'user') {
+                  lastUserIndex = i;
+                  break;
                 }
               }
 
-              // Also check for duplicate by timestamp (within 1 second)
-              const timestampDuplicateIndex = acc.findIndex((m: any) =>
-                m.type === 'result' &&
-                Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 1000
+              // Find any existing result message after the last user message (same turn)
+              const existingResultIndex = acc.findIndex((m: any, idx: number) =>
+                m.type === 'result' && idx > lastUserIndex
               );
 
-              if (timestampDuplicateIndex >= 0) {
-                // Update existing - keep the one with more data (usage, duration)
-                const existing = acc[timestampDuplicateIndex];
-                const newHasMoreData = (message.usage && !existing.usage) ||
-                  (message.duration_ms && !existing.duration_ms) ||
-                  (message.total_cost_usd && !existing.total_cost_usd);
-                if (newHasMoreData) {
-                  acc[timestampDuplicateIndex] = message;
-                }
+              if (existingResultIndex >= 0) {
+                // Merge with existing result - keep the one with more data
+                const existing = acc[existingResultIndex];
+                const merged = {
+                  ...existing,
+                  ...message,
+                  // Prefer non-undefined values from either
+                  usage: message.usage || existing.usage,
+                  duration_ms: message.duration_ms || existing.duration_ms,
+                  total_cost_usd: message.total_cost_usd || existing.total_cost_usd,
+                  model: message.model || existing.model,
+                  result: message.result || existing.result
+                };
+                acc[existingResultIndex] = merged;
               } else {
                 acc.push(message);
               }

@@ -1718,6 +1718,35 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
                         existingMessages.push(message);
                       }
+                    } else if (message.type === 'result') {
+                      // Special handling for result messages without IDs
+                      // Only allow ONE result per turn - find and merge with any existing result
+                      let lastUserIndex = -1;
+                      for (let i = existingMessages.length - 1; i >= 0; i--) {
+                        if (existingMessages[i].type === 'user') {
+                          lastUserIndex = i;
+                          break;
+                        }
+                      }
+                      const existingResultIndex = existingMessages.findIndex((m, idx) =>
+                        m.type === 'result' && idx > lastUserIndex
+                      );
+                      if (existingResultIndex >= 0) {
+                        // Merge with existing result
+                        const existing = existingMessages[existingResultIndex];
+                        existingMessages[existingResultIndex] = {
+                          ...existing,
+                          ...message,
+                          usage: message.usage || existing.usage,
+                          duration_ms: message.duration_ms || (existing as any).duration_ms,
+                          total_cost_usd: message.total_cost_usd || (existing as any).total_cost_usd,
+                          model: message.model || (existing as any).model,
+                          result: message.result || (existing as any).result
+                        };
+                        console.log(`[Store] Merged result message without ID (dedup)`);
+                      } else {
+                        existingMessages.push(message);
+                      }
                     } else {
                       // Messages without ID - check for duplicate using fast hash comparison
                       const newHash = getCachedHash(message);
@@ -3564,6 +3593,35 @@ ${content}`;
                   } else {
                     existingMessages.push(message);
                   }
+                } else if (message.type === 'result') {
+                  // Special handling for result messages without IDs
+                  // Only allow ONE result per turn - find and merge with any existing result
+                  let lastUserIndex = -1;
+                  for (let i = existingMessages.length - 1; i >= 0; i--) {
+                    if (existingMessages[i].type === 'user') {
+                      lastUserIndex = i;
+                      break;
+                    }
+                  }
+                  const existingResultIndex = existingMessages.findIndex((m, idx) =>
+                    m.type === 'result' && idx > lastUserIndex
+                  );
+                  if (existingResultIndex >= 0) {
+                    // Merge with existing result
+                    const existing = existingMessages[existingResultIndex];
+                    existingMessages[existingResultIndex] = {
+                      ...existing,
+                      ...message,
+                      usage: message.usage || existing.usage,
+                      duration_ms: message.duration_ms || (existing as any).duration_ms,
+                      total_cost_usd: message.total_cost_usd || (existing as any).total_cost_usd,
+                      model: message.model || (existing as any).model,
+                      result: message.result || (existing as any).result
+                    };
+                    console.log(`[Store] Merged result message without ID (loadSessionHistory dedup)`);
+                  } else {
+                    existingMessages.push(message);
+                  }
                 } else {
                   // Fast hash-based duplicate check
                   const newHash = getCachedHash(message);
@@ -4322,6 +4380,37 @@ ${content}`;
                   updatedMessages = [...s.messages];
                   updatedMessages[existingIndex] = message;
                   console.log(`[Store] Updated existing message ${message.id} (dedup)`);
+                } else {
+                  updatedMessages = [...s.messages, message];
+                }
+              } else if (message.type === 'result') {
+                // Special handling for result messages without IDs
+                // Only allow ONE result per turn - find and merge with any existing result
+                const messages = [...s.messages];
+                let lastUserIndex = -1;
+                for (let i = messages.length - 1; i >= 0; i--) {
+                  if (messages[i].type === 'user') {
+                    lastUserIndex = i;
+                    break;
+                  }
+                }
+                const existingResultIndex = messages.findIndex((m, idx) =>
+                  m.type === 'result' && idx > lastUserIndex
+                );
+                if (existingResultIndex >= 0) {
+                  // Merge with existing result
+                  const existing = messages[existingResultIndex];
+                  messages[existingResultIndex] = {
+                    ...existing,
+                    ...message,
+                    usage: message.usage || existing.usage,
+                    duration_ms: message.duration_ms || (existing as any).duration_ms,
+                    total_cost_usd: message.total_cost_usd || (existing as any).total_cost_usd,
+                    model: message.model || (existing as any).model,
+                    result: message.result || (existing as any).result
+                  };
+                  console.log(`[Store] Merged result message (dedup)`);
+                  updatedMessages = messages;
                 } else {
                   updatedMessages = [...s.messages, message];
                 }
@@ -5156,6 +5245,36 @@ ${content}`;
                   messages[idx] = message;
                 } else {
                   console.log('[Store] 🎯 Adding new message to session');
+                  messages.push(message);
+                }
+              } else if (message.type === 'result') {
+                // Special handling for result messages without IDs
+                // Only allow ONE result per turn - find and merge with any existing result
+                let lastUserIndex = -1;
+                for (let i = messages.length - 1; i >= 0; i--) {
+                  if (messages[i].type === 'user') {
+                    lastUserIndex = i;
+                    break;
+                  }
+                }
+                const existingResultIndex = messages.findIndex((m, idx) =>
+                  m.type === 'result' && idx > lastUserIndex
+                );
+                if (existingResultIndex >= 0) {
+                  // Merge with existing result
+                  const existing = messages[existingResultIndex];
+                  messages[existingResultIndex] = {
+                    ...existing,
+                    ...message,
+                    usage: message.usage || existing.usage,
+                    duration_ms: message.duration_ms || (existing as any).duration_ms,
+                    total_cost_usd: message.total_cost_usd || (existing as any).total_cost_usd,
+                    model: message.model || (existing as any).model,
+                    result: message.result || (existing as any).result
+                  };
+                  console.log('[Store] 🎯 Merged result message without ID');
+                } else {
+                  console.log('[Store] 🎯 Adding first result message');
                   messages.push(message);
                 }
               } else {
