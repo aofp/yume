@@ -415,6 +415,19 @@ PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
 - Window buttons: Minimize, Maximize, Close (frameless window)
 - Tab drag detection with menu hide
 
+**Voice Dictation** (`ClaudeChat.tsx:1025`):
+- Native speech-to-text using Web Speech API
+- Toggle with F5 key or mic button in input bar
+- Continuous recognition mode with real-time transcription
+- Visual indicator (pulsing mic) when active
+- Preserves existing input text
+
+**Message Rollback** (History Panel):
+- Visual message history with undo capability
+- Roll back to any previous message state
+- Branching conversation support
+- Accessible via history button in context bar
+
 ### Configuration Options
 
 **UI Toggles** (in `claudeCodeStore.ts`):

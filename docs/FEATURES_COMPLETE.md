@@ -360,6 +360,31 @@ function parseMentions(text: string): FileMention[] {
 - Block quotes
 - Horizontal rules
 
+### 5.5 Voice Dictation
+
+**Description**: Native speech-to-text input for hands-free coding.
+
+**Location**: `src/renderer/components/Chat/ClaudeChat.tsx:1025`
+
+**Implementation**:
+- Uses Web Speech API (`webkitSpeechRecognition` / `SpeechRecognition`)
+- Continuous recognition mode
+- Real-time transcription appended to input
+- Toggle with F5 key or mic button
+
+**Features**:
+- Start/stop with F5 keyboard shortcut
+- Visual indicator when active (pulsing mic icon)
+- Preserves existing input text
+- Auto-punctuation and capitalization
+- Works alongside normal typing
+
+**Requirements**:
+- macOS: Microphone permission in entitlements.plist
+- Browser-level speech recognition support
+
+**Keyboard Shortcut**: `F5`
+
 ## 6. Hook System
 
 ### 6.1 Overview
