@@ -80,6 +80,7 @@ tmp/
 temp/
 *.tmp
 nul
+tmpclaude-*
 
 # Server PID files
 server.pid
