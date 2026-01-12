@@ -205,7 +205,7 @@ export const ColorPicker: React.FC<ColorPickerProps> = ({
           <h4>{colorType}</h4>
           <div className="color-picker-header-preview">
             <span className="preview-swatch" style={{ backgroundColor: currentHex }} />
-            <span className="preview-hex">{currentHex}</span>
+            <span className="preview-hex">{currentHex.toLowerCase()}</span>
           </div>
           <button className="color-picker-close" onClick={handleClose}>
             <IconX size={14} />

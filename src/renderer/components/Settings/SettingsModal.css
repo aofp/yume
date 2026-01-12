@@ -427,7 +427,7 @@
   border-radius: 3px;
   padding: 0;
   z-index: 100003;
-  max-height: 200px;
+  max-height: 400px;
   overflow-y: auto;
   min-width: 100px;
 }

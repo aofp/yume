@@ -60,28 +60,22 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
           
           <div className="about-version">
             {versionInfo.version}<br />
-            <span 
-              style={{ 
+            <span
+              style={{
                 color: 'var(--accent-color)',
-                cursor: 'pointer'
+                cursor: isLicensed ? 'default' : 'pointer'
               }}
               onClick={() => {
-                if (!isLicensed && onShowUpgrade) {
-                  // If we have an onShowUpgrade callback, use it
-                  // This will close the AboutModal first when called from Settings
+                if (isLicensed) return;
+                if (onShowUpgrade) {
                   onShowUpgrade();
-                } else if (!isLicensed) {
-                  // If no callback but not licensed, close modal and show upgrade
+                } else {
                   onClose();
-                  // Small delay to ensure modal closes before upgrade opens
                   setTimeout(() => {
-                    window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-                      detail: { reason: 'trial' } 
+                    window.dispatchEvent(new CustomEvent('showUpgradeModal', {
+                      detail: { reason: 'trial' }
                     }));
                   }, 100);
-                } else {
-                  // If licensed, just close
-                  onClose();
                 }
               }}
               onContextMenu={(e) => {

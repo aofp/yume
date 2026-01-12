@@ -80,11 +80,11 @@
   --color-text-disabled: var(--fg-25);
 
   /* Accent Colors */
-  --color-accent-blue: #3B82F6;
-  --color-accent-green: #10B981;
-  --color-accent-red: #EF4444;
-  --color-accent-yellow: #F59E0B;
-  --color-accent-purple: #8B5CF6;
+  --color-accent-blue: #3b82f6;
+  --color-accent-green: #10b981;
+  --color-accent-red: #ef4444;
+  --color-accent-yellow: #f59e0b;
+  --color-accent-purple: #8b5cf6;
 
   /* Interactive States - now derived from foreground */
   --color-hover: var(--fg-05);

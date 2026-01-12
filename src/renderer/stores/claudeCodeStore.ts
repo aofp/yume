@@ -2459,8 +2459,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                           : s
                       );
                     } else {
-                      // Normal result - streaming already cleared by streaming_end message
-                      console.log('🎯 [STREAMING-FIX] Normal result received (streaming already cleared):', {
+                      // Normal result - clear streaming IMMEDIATELY (no debounce)
+                      // Result message is the definitive signal that Claude is done
+                      console.log('🎯 [STREAMING-FIX] Normal result received - clearing streaming immediately:', {
                         sessionId,
                         subtype: message.subtype,
                         is_error: message.is_error,
@@ -2469,21 +2470,35 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         currentStreaming: session?.streaming
                       });
 
-                      // Never clear claudeSessionId - keep it for session resumption
-                      // Claude CLI handles session management, we just track the ID
-                      // Don't clear streaming here - it's handled by streaming_end message
-                      // DON'T clear pendingToolIds here - let tool_result messages clear them
-                      // This fixes the bug where subagent tasks would lose their streaming state
+                      // Cancel any pending debounce timer - result is authoritative
+                      cancelStreamingEndTimer(sessionId);
+
+                      // Clear subagent tracking since we're actually done
+                      clearSubagentTracking(sessionId);
+
+                      // Play completion sound if enabled
+                      get().playCompletionSound();
+
                       sessions = sessions.map(s => {
                         if (s.id === sessionId) {
-                          console.log(`✅ [STREAMING-FIX] Result processed for session ${sessionId}, pendingTools: ${s.pendingToolIds?.size || 0}`);
+                          // Calculate thinking time before clearing
+                          let updatedAnalytics = s.analytics;
+                          if (s.thinkingStartTime && updatedAnalytics) {
+                            const thinkingDuration = Math.floor((Date.now() - s.thinkingStartTime) / 1000);
+                            updatedAnalytics = {
+                              ...updatedAnalytics,
+                              thinkingTime: (updatedAnalytics.thinkingTime || 0) + thinkingDuration
+                            };
+                            console.log(`📊 [THINKING TIME] Result - Added ${thinkingDuration}s, total: ${updatedAnalytics.thinkingTime}s`);
+                          }
+                          console.log(`✅ [STREAMING-FIX] Result processed for session ${sessionId} - streaming=false`);
                           return {
                             ...s,
-                            // Don't clear streaming - handled by streaming_end
+                            streaming: false,
+                            thinkingStartTime: undefined,
                             runningBash: false,
-                            userBashRunning: false
-                            // DON'T clear pendingToolIds - tool_result handles that
-                            // Keep claudeSessionId for resumption
+                            userBashRunning: false,
+                            analytics: updatedAnalytics
                           };
                         }
                         return s;

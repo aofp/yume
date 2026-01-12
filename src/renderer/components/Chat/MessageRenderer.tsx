@@ -3511,8 +3511,45 @@ const MessageRendererBase: React.FC<{
             </span>
           </div>
         );
+      } else {
+        // Fallback: always show stats for result messages even if isSuccess logic didn't match
+        const elapsedMs = message.duration_ms || (message.message as any)?.duration_ms || message.duration || 0;
+        const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+        const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
+
+        // Count tool uses
+        const currentIndex = sessionMessages.findIndex(m => m.id === message.id);
+        let toolCount = (message as any).tool_count || 0;
+        if (currentIndex > 0 && !toolCount) {
+          for (let i = currentIndex - 1; i >= 0; i--) {
+            const msg = sessionMessages[i];
+            if (msg.type === 'user') break;
+            if (msg.type === 'assistant' && msg.message?.content) {
+              const content = msg.message.content;
+              if (Array.isArray(content)) {
+                toolCount += content.filter(block => block.type === 'tool_use').length;
+              }
+            }
+            if (msg.type === 'tool_use') toolCount++;
+          }
+        }
+
+        return (
+          <div className="message result-success">
+            <div className="elapsed-time">
+              {elapsedSeconds}s
+              {showResultStats && totalTokens > 0 && ` • ${totalTokens.toLocaleString()} tokens`}
+              {showResultStats && toolCount > 0 && ` • ${toolCount} tool${toolCount !== 1 ? 's' : ''}`}
+              {showResultStats && message.total_cost_usd && message.total_cost_usd > 0 && ` • $${message.total_cost_usd.toFixed(4)}`}
+              {showResultStats && message.model && ` • ${
+                message.model.includes('opus') ? 'opus 4.5' :
+                message.model.includes('sonnet') ? 'sonnet 4.5' :
+                message.model
+              }`}
+            </div>
+          </div>
+        );
       }
-      return null;
       
     case 'permission':
       // Hide permission request messages

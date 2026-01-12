@@ -851,7 +851,8 @@ ol {
 }
 
 .subagent-indicator {
-  color: var(--color-accent);
+  color: var(--accent-color) !important;
+  opacity: .8;
   font-size: 10px;
   margin-right: 2px;
 }
