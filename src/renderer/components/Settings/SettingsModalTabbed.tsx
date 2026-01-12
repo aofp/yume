@@ -843,10 +843,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <h4 style={{ marginTop: '16px' }}>menu</h4>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">agents</span>
+                    <span className="checkbox-label">analytics</span>
                     <div
-                      className={`toggle-switch compact ${showAgentsMenu ? 'active' : ''}`}
-                      onClick={() => setShowAgentsMenu(!showAgentsMenu)}
+                      className={`toggle-switch compact ${showAnalyticsMenu ? 'active' : ''}`}
+                      onClick={() => setShowAnalyticsMenu(!showAnalyticsMenu)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -855,10 +855,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </div>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">analytics</span>
+                    <span className="checkbox-label">agents</span>
                     <div
-                      className={`toggle-switch compact ${showAnalyticsMenu ? 'active' : ''}`}
-                      onClick={() => setShowAnalyticsMenu(!showAnalyticsMenu)}
+                      className={`toggle-switch compact ${showAgentsMenu ? 'active' : ''}`}
+                      onClick={() => setShowAgentsMenu(!showAgentsMenu)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>

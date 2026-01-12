@@ -1387,6 +1387,7 @@ textarea.context-full {
 
 .chat-input.bash-mode {
   padding-left: 4px;
+  font-size: 11.5px;
   font-family: var(--font-mono);
   border-color: rgba(var(--negative-rgb), 0.6);
 }
