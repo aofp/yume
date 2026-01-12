@@ -190,6 +190,7 @@
 .message.user .message-bubble.bash-mode {
   background: rgba(var(--negative-rgb), 0.15);
   color: rgba(var(--foreground-rgb), 0.9);
+  font-size: 10px;
 }
 
 .message.user .message-bubble.command-mode {
