@@ -10,34 +10,44 @@ interface ColorPickerProps {
   onPreviewEnd?: () => void;
 }
 
-// Background presets (dark colors)
+// Background presets (from themes + similar subtle dark colors)
 const BG_PRESETS = [
-  ['#000000', '#0a0a0a', '#0f0f0f', '#141414', '#1a1a1a', '#0a0a0f', '#0f0a0f', '#0a0f0a', '#0f0a0a', '#050510'],
-  ['#1e1e2e', '#11111b', '#181825', '#1a1b26', '#16161e', '#0d1117', '#161b22', '#0e0e16', '#1c1c28', '#0c0c14']
+  // Row 1: Theme backgrounds (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  ['#0f0f0f', '#0a0a0a', '#0a0a0d', '#050505', '#0d0c0e', '#100f0f', '#0a0808', '#080a0a', '#060810', '#0a0908'],
+  // Row 2: More theme backgrounds + subtle variations (void, grove, warm tints, cool tints)
+  ['#000000', '#0a0a08', '#0c0a0a', '#0a0c0c', '#0a0a0c', '#080808', '#0c0c0c', '#0e0e0e', '#101010', '#121212']
 ];
 
-// Foreground presets (light colors - all visible on dark bg)
+// Foreground presets (from themes + similar light colors)
 const FG_PRESETS = [
-  ['#ffffff', '#f8f8f2', '#e4e4e7', '#d4d4d8', '#cdd6f4', '#c9d1d9', '#abb2bf', '#b4befe', '#a6adc8', '#9ca0b0'],
-  ['#f0f0ff', '#fff0f0', '#f0fff0', '#fffff0', '#f0ffff', '#ffd0d0', '#d0ffd0', '#d0d0ff', '#ffd0ff', '#d0ffff']
+  // Row 1: Theme foregrounds (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  ['#ffffff', '#c0c5ce', '#c6c8d1', '#f0f0f0', '#e7e7da', '#e8dcd0', '#c9d1d9', '#d6deeb', '#ebdbb2', '#d4d4d4'],
+  // Row 2: More theme foregrounds + variations (void, grove, warm/cool tints)
+  ['#bacebe', '#e0e0e0', '#f5f5f5', '#fafafa', '#eeeeee', '#d0d0d0', '#c8c8c8', '#b8b8b8', '#a8a8a8', '#989898']
 ];
 
-// Accent presets (vibrant, visible colors - no dark)
+// Accent presets (from themes + similar vibrant colors)
 const ACCENT_PRESETS = [
-  ['#bb99ff', '#99bbff', '#ff99bb', '#ffbb99', '#99ffbb', '#bbff99', '#ff99ff', '#99ffff', '#ffff99', '#ffffff'],
-  ['#a78bfa', '#60a5fa', '#f472b6', '#fb923c', '#4ade80', '#a3e635', '#e879f9', '#22d3ee', '#facc15', '#f9a8d4']
+  // Row 1: Theme accents (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  ['#c4b5ff', '#61afef', '#8fb8c8', '#36d7e6', '#9df5bd', '#e4d9bd', '#d57b60', '#e890a0', '#82aaff', '#e9a828'],
+  // Row 2: More theme accents + variations (void, grove, similar pastels)
+  ['#a0a0b0', '#83c092', '#a78bfa', '#60a5fa', '#f472b6', '#4ade80', '#22d3ee', '#facc15', '#e879f9', '#fb923c']
 ];
 
-// Positive presets (cool colors - greens, blues, teals)
+// Positive presets (from themes + similar greens/teals)
 const POSITIVE_PRESETS = [
-  ['#99ff99', '#99ffbb', '#99ffdd', '#99ffff', '#99ddff', '#bbff99', '#ddff99', '#aaffaa', '#88ffaa', '#77ffbb'],
-  ['#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#38bdf8', '#a3e635', '#84cc16', '#10b981', '#06b6d4', '#14b8a6']
+  // Row 1: Theme positives (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  ['#99ff99', '#98c379', '#b4be82', '#72f1b8', '#06b6d4', '#7cc07c', '#8fbc8f', '#56d364', '#addb67', '#b8bb26'],
+  // Row 2: More theme positives + variations (void, grove, similar greens)
+  ['#e0f5e4', '#74d1d8', '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#a3e635', '#10b981', '#14b8a6', '#84cc16']
 ];
 
-// Negative presets (warm colors - reds, oranges, pinks)
+// Negative presets (from themes + similar reds/pinks)
 const NEGATIVE_PRESETS = [
-  ['#ff9999', '#ffaa99', '#ffbb99', '#ffcc99', '#ff99aa', '#ff99bb', '#ff99cc', '#ffaaaa', '#ff8888', '#ff7799'],
-  ['#f87171', '#fb923c', '#fbbf24', '#f472b6', '#fb7185', '#ef4444', '#f97316', '#eab308', '#ec4899', '#e11d48']
+  // Row 1: Theme negatives (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  ['#ff9999', '#e06c75', '#e27878', '#f25d7a', '#ec4899', '#df8383', '#fd8b8b', '#f47676', '#ef5350', '#cc241d'],
+  // Row 2: More theme negatives + variations (void, grove, similar reds)
+  ['#d09b9b', '#e67e80', '#f87171', '#fb7185', '#f472b6', '#ef4444', '#e11d48', '#dc2626', '#f43f5e', '#be123c']
 ];
 
 // HSV utilities (color picker uses HSV model, not HSL)

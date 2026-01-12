@@ -229,8 +229,8 @@ export const MCPTab: React.FC<MCPTabProps> = () => {
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
         message={confirmModal.message}
-        confirmText="Remove"
-        cancelText="Cancel"
+        confirmText="remove"
+        cancelText="cancel"
         isDangerous={confirmModal.isDangerous}
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}

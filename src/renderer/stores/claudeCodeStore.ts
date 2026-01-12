@@ -1640,9 +1640,22 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                         }
 
                         // Never update tool_use or tool_result messages - they should be immutable
-                        // Result messages should also be immutable - they only come once with final tokens
-                        if (existingMessage.type === 'tool_use' || existingMessage.type === 'tool_result' || existingMessage.type === 'result') {
+                        if (existingMessage.type === 'tool_use' || existingMessage.type === 'tool_result') {
                           console.log(`Skipping update for ${existingMessage.type} message - preserving original`);
+                        } else if (existingMessage.type === 'result') {
+                          // For result messages, merge to keep the most complete data
+                          const merged = {
+                            ...existingMessage,
+                            ...message,
+                            // Preserve existing data if new message lacks it
+                            usage: message.usage || existingMessage.usage,
+                            duration_ms: message.duration_ms || existingMessage.duration_ms,
+                            total_cost_usd: message.total_cost_usd || existingMessage.total_cost_usd,
+                            model: message.model || existingMessage.model,
+                            wrapper: message.wrapper || existingMessage.wrapper
+                          };
+                          existingMessages[existingIndex] = merged;
+                          console.log(`[Store] Merged result message - usage: ${!!merged.usage}, duration: ${merged.duration_ms}, model: ${merged.model}`);
                         } else if (message.type === 'assistant') {
                           // For assistant messages during streaming, handle array or string content
                           const existingContent = existingMessage.message?.content || '';
@@ -3876,7 +3889,9 @@ ${content}`;
                   ...s.analytics,
                   totalMessages: messagesToCopy.length,
                   userMessages: messagesToCopy.filter(m => m.type === 'user').length,
-                  assistantMessages: messagesToCopy.filter(m => m.type === 'assistant').length
+                  assistantMessages: messagesToCopy.filter(m => m.type === 'assistant').length,
+                  // Copy token analytics so context % is preserved
+                  tokens: { ...sourceSession.analytics.tokens }
                 }
               };
             }

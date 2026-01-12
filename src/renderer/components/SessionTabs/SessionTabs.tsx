@@ -1234,7 +1234,7 @@ export const SessionTabs: React.FC = () => {
             setContextMenu(null);
           }} disabled={!sessions.find(s => s.id === contextMenu.sessionId)?.messages.length} style={{
             opacity: sessions.find(s => s.id === contextMenu.sessionId)?.messages.length ? 1 : 0.3
-          }}>fork session (copy messages)</button>
+          }}>fork session ({modKey}+shift+d)</button>
 
           <button onClick={() => {
             const session = sessions.find(s => s.id === contextMenu.sessionId);

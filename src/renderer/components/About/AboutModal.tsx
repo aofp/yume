@@ -108,7 +108,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
                     window.open('https://yuru.be', '_blank');
                   }
                 }}
-                style={{ textDecoration: 'none', cursor: 'pointer' }}
+                style={{ textDecoration: 'none' }}
               >
                 yuru.be
               </a>

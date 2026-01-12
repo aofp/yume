@@ -254,8 +254,8 @@ export const HooksTab: React.FC<HooksTabProps> = ({
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
         message={confirmModal.message}
-        confirmText={confirmModal.title.includes('Delete') ? 'Delete' : 'Reset'}
-        cancelText="Cancel"
+        confirmText={confirmModal.title.toLowerCase().includes('delete') ? 'delete' : 'reset'}
+        cancelText="cancel"
         isDangerous={confirmModal.isDangerous}
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}

@@ -60,7 +60,7 @@
         var fgB = parseInt(fgHex.substr(4, 2), 16) || 255;
         document.documentElement.style.setProperty('--foreground-rgb', fgR + ', ' + fgG + ', ' + fgB);
 
-        var savedAccentColor = localStorage.getItem('accentColor') || '#bb99ff';
+        var savedAccentColor = localStorage.getItem('accentColor') || '#c4b5ff';
         document.documentElement.style.setProperty('--accent-color', savedAccentColor);
         var accentHex = savedAccentColor.replace('#', '');
         var accentR = parseInt(accentHex.substr(0, 2), 16) || 187;

@@ -25,6 +25,7 @@
   overflow-y: auto;
   user-select: none;
   -webkit-user-select: none;
+  cursor: default;
 }
 
 .about-header {
@@ -150,6 +151,7 @@
 .about-site a {
   color: rgba(255, 255, 255, 0.5);
   text-decoration: none;
+  cursor: pointer;
 }
 
 .about-site a:hover {

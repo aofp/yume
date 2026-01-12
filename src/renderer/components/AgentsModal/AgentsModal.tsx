@@ -414,8 +414,8 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
         isOpen={confirmModal.isOpen}
         title={confirmModal.title}
         message={confirmModal.message}
-        confirmText="Delete"
-        cancelText="Cancel"
+        confirmText="delete"
+        cancelText="cancel"
         isDangerous={confirmModal.isDangerous}
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}

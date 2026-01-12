@@ -409,7 +409,8 @@ export const ClaudeChat: React.FC = () => {
     renameSession,
     autoCompactEnabled,
     setAutoCompactEnabled,
-    restoreToMessage
+    restoreToMessage,
+    forkSession
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -431,7 +432,8 @@ export const ClaudeChat: React.FC = () => {
     renameSession: state.renameSession,
     autoCompactEnabled: state.autoCompactEnabled,
     setAutoCompactEnabled: state.setAutoCompactEnabled,
-    restoreToMessage: state.restoreToMessage
+    restoreToMessage: state.restoreToMessage,
+    forkSession: state.forkSession
   })));
 
   // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
@@ -832,8 +834,8 @@ export const ClaudeChat: React.FC = () => {
   useEffect(() => {
     const handleResumeEvent = () => {
       if (!currentSession || !currentSessionId) return;
-      // Only trigger if session has no messages and has resumable conversations
-      if (currentSession.messages.length === 0 && hasResumableConversations[currentSessionId]) {
+      // Open modal if there are resumable conversations (will open in new tab if current has messages)
+      if (hasResumableConversations[currentSessionId]) {
         setShowResumeModal(true);
       }
     };
@@ -1584,12 +1586,10 @@ export const ClaudeChat: React.FC = () => {
   const handleResumeConversation = useCallback(async (conversation: any) => {
     console.log('[ClaudeChat] Resuming conversation:', conversation);
 
-    // Get the current session ID to reuse (resume in the same tab)
-    const existingSessionId = useClaudeCodeStore.getState().currentSessionId;
-    if (!existingSessionId) {
-      console.error('[ClaudeChat] No current session to resume into');
-      return;
-    }
+    // Check if current session has messages - if so, open in new tab
+    const storeState = useClaudeCodeStore.getState();
+    const currentSession = storeState.sessions.find(s => s.id === storeState.currentSessionId);
+    const hasExistingMessages = currentSession && currentSession.messages.length > 0;
 
     // Decode the project path to get the working directory
     let workingDirectory = '/';
@@ -1602,6 +1602,27 @@ export const ClaudeChat: React.FC = () => {
 
     // Get project name for tab title
     const projectName = conversation.projectName || 'resumed';
+
+    let targetSessionId: string;
+
+    if (hasExistingMessages) {
+      // Create a new tab for the resumed conversation
+      console.log('[ClaudeChat] Current session has messages, creating new tab for resume');
+      const newSessionId = await storeState.createSession(undefined, workingDirectory);
+      if (!newSessionId) {
+        console.error('[ClaudeChat] Failed to create new session for resume');
+        return;
+      }
+      targetSessionId = newSessionId;
+    } else {
+      // Use current session (existing behavior)
+      const existingSessionId = storeState.currentSessionId;
+      if (!existingSessionId) {
+        console.error('[ClaudeChat] No current session to resume into');
+        return;
+      }
+      targetSessionId = existingSessionId;
+    }
 
     try {
       // Load the session data from server
@@ -1647,9 +1668,9 @@ export const ClaudeChat: React.FC = () => {
       const serverUsage = data.usage || { inputTokens: 0, outputTokens: 0, totalContextTokens: 0 };
       const totalTokens = serverUsage.totalContextTokens || serverUsage.totalTokens || 0;
 
-      // Create the restored session object, reusing the existing session ID
+      // Create the restored session object
       const restoredSession = {
-        id: existingSessionId,
+        id: targetSessionId,
         name: tabTitle,
         claudeTitle: tabTitle,
         status: 'active' as const,
@@ -1678,11 +1699,12 @@ export const ClaudeChat: React.FC = () => {
         modifiedFiles: new Set<string>()
       };
 
-      // Update the existing session in the store (don't create a new one)
+      // Update the session in the store
       useClaudeCodeStore.setState((state: any) => ({
         sessions: state.sessions.map((s: any) =>
-          s.id === existingSessionId ? restoredSession : s
-        )
+          s.id === targetSessionId ? restoredSession : s
+        ),
+        currentSessionId: targetSessionId // Switch to the target session
       }));
 
       // Register session with server so it knows about the claudeSessionId for --resume
@@ -1690,15 +1712,15 @@ export const ClaudeChat: React.FC = () => {
       try {
         console.log('[ClaudeChat] Registering resumed session with server...');
         await claudeCodeClient.createSession(tabTitle, workingDirectory, {
-          sessionId: existingSessionId, // Use the existing session ID
-          existingSessionId: existingSessionId,
+          sessionId: targetSessionId,
+          existingSessionId: targetSessionId,
           claudeSessionId: conversation.id, // The real Claude session ID for --resume
           messages: messagesToLoad
         });
         console.log('[ClaudeChat] Session registered with server successfully');
 
         // Set up message listeners for the resumed session
-        useClaudeCodeStore.getState().reconnectSession(existingSessionId, conversation.id);
+        useClaudeCodeStore.getState().reconnectSession(targetSessionId, conversation.id);
         console.log('[ClaudeChat] Message listeners set up for resumed session');
       } catch (err) {
         console.error('[ClaudeChat] Failed to register session with server:', err);
@@ -1789,8 +1811,8 @@ export const ClaudeChat: React.FC = () => {
         handleCompactContextRequest();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r' && e.shiftKey) {
         e.preventDefault();
-        // Open resume conversation modal
-        if (currentSession?.messages.length === 0 && hasResumableConversations[currentSessionId || '']) {
+        // Open resume conversation modal (works even with messages - will open in new tab)
+        if (hasResumableConversations[currentSessionId || '']) {
           setShowResumeModal(true);
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'r' && !e.shiftKey) {
@@ -1825,27 +1847,9 @@ export const ClaudeChat: React.FC = () => {
         }
       } else if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'd') {
         e.preventDefault();
-        // Fork session - duplicate current session with all messages
-        if (currentSession?.workingDirectory) {
-          const newSession = createSession(undefined, currentSession.workingDirectory);
-          if (newSession && currentSession.messages.length > 0) {
-            // Copy messages to the new session
-            setTimeout(() => {
-              const store = useClaudeCodeStore.getState();
-              store.sessions.forEach(s => {
-                if (s.workingDirectory === currentSession.workingDirectory && s.id !== currentSession.id && s.messages.length === 0) {
-                  // This is the new session - copy messages
-                  useClaudeCodeStore.setState(state => ({
-                    sessions: state.sessions.map(sess =>
-                      sess.id === s.id
-                        ? { ...sess, messages: [...currentSession.messages] }
-                        : sess
-                    )
-                  }));
-                }
-              });
-            }, 100);
-          }
+        // Fork session - duplicate current session with all messages and context %
+        if (currentSession?.id && currentSession.messages.length > 0) {
+          forkSession(currentSession.id);
         }
       } else if (e.key === 'F5') {
         e.preventDefault();
@@ -2662,26 +2666,24 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [input, attachments, currentSessionId, updateSessionDraft]);
 
-  // Restore per-session textarea height when switching tabs
+  // Restore per-session textarea height when switching tabs or input changes
   useEffect(() => {
     if (inputRef.current && currentSessionId) {
-      const savedHeight = textareaHeights[currentSessionId] || 44;
-      inputRef.current.style.height = `${savedHeight}px`;
-      setOverlayHeight(savedHeight);
-      // Recalculate height based on content after a frame (for animation sync)
+      // Recalculate height based on actual content
       requestAnimationFrame(() => {
         if (inputRef.current) {
+          // Reset to auto to get true scrollHeight
+          inputRef.current.style.height = 'auto';
           const scrollHeight = inputRef.current.scrollHeight;
           const newHeight = Math.min(Math.max(scrollHeight, 44), 106);
           inputRef.current.style.height = `${newHeight}px`;
+          inputRef.current.style.overflow = scrollHeight > 106 ? 'auto' : 'hidden';
           setOverlayHeight(newHeight);
-          if (newHeight !== savedHeight) {
-            setTextareaHeights(prev => ({ ...prev, [currentSessionId]: newHeight }));
-          }
+          setTextareaHeights(prev => ({ ...prev, [currentSessionId]: newHeight }));
         }
       });
     }
-  }, [currentSessionId]);
+  }, [currentSessionId, input]);
 
   // Focus maintenance during streaming - disabled to allow text selection
   // The aggressive refocus was preventing users from selecting text while agent is active
@@ -4562,12 +4564,21 @@ export const ClaudeChat: React.FC = () => {
               }
 
               // Also check for duplicate by timestamp (within 1 second)
-              const timestampDuplicate = acc.some((m: any) =>
+              const timestampDuplicateIndex = acc.findIndex((m: any) =>
                 m.type === 'result' &&
                 Math.abs((m.timestamp || 0) - (message.timestamp || 0)) < 1000
               );
 
-              if (!timestampDuplicate) {
+              if (timestampDuplicateIndex >= 0) {
+                // Update existing - keep the one with more data (usage, duration)
+                const existing = acc[timestampDuplicateIndex];
+                const newHasMoreData = (message.usage && !existing.usage) ||
+                  (message.duration_ms && !existing.duration_ms) ||
+                  (message.total_cost_usd && !existing.total_cost_usd);
+                if (newHasMoreData) {
+                  acc[timestampDuplicateIndex] = message;
+                }
+              } else {
                 acc.push(message);
               }
               return acc;

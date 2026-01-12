@@ -94,39 +94,31 @@
   display: none; /* Chrome/Safari/Opera */
 }
 
-/* Custom scrollbar track */
+/* Custom scrollbar track - 1px always visible */
 .custom-scrollbar-track {
   position: absolute;
-  bottom: 0;
+  bottom: -1px;
   left: 0;
   right: 0;
-  height: 2px;
+  height: 1px;
   background: transparent;
   pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s ease;
 }
 
-.tabs-scroll-container:hover .custom-scrollbar-track,
-.custom-scrollbar-track.visible {
-  opacity: 1;
-}
-
-/* Custom scrollbar thumb */
+/* Custom scrollbar thumb - 1px indicator */
 .custom-scrollbar-thumb {
   position: absolute;
   bottom: 0;
-  height: 2px;
-  background: rgba(var(--accent-rgb), 0.35);
-  border-radius: 1px;
+  height: 1px;
+  background: rgba(var(--accent-rgb), 0.5);
+  border-radius: 0;
   pointer-events: auto;
   cursor: default;
-  transition: background 0.2s ease, height 0.1s ease;
+  transition: background 0.15s ease;
 }
 
 .custom-scrollbar-thumb:hover {
-  background: rgba(var(--accent-rgb), 0.5);
-  height: 3px;
+  background: rgba(var(--accent-rgb), 0.7);
 }
 
 .session-tab {

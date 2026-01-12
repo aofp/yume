@@ -23,6 +23,7 @@ import { useLicenseStore } from './services/licenseManager';
 import { platformBridge } from './services/platformBridge';
 import { claudeCodeClient } from './services/claudeCodeClient';
 import { systemPromptService } from './services/systemPromptService';
+import { pluginService } from './services/pluginService';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import './App.minimal.css';
 
@@ -67,6 +68,9 @@ export const App: React.FC = () => {
 
     // Sync yurucode agents to ~/.claude/agents/ based on settings
     systemPromptService.syncAgentsToFilesystem();
+
+    // Initialize plugin service early so slash commands work immediately
+    pluginService.initialize().catch(e => console.warn('Plugin init:', e));
 
     // Check Claude CLI connection with adaptive polling
     // Minimum 300ms delay ensures CSS is loaded and prevents flash

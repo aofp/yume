@@ -30,7 +30,7 @@ const COLOR_ROWS = [
     '#99ffee', '#99ffdd', '#99ffcc', '#99ffbb', '#99ff99',
     '#bbff99', '#ddff99', '#ffff99', '#ffdd99', '#ffbb99',
     '#ff9999', '#ff99bb', '#ff99dd', '#ff99ff', '#dd99ff',
-    '#bb99ff'
+    '#c4b5ff'
   ],
 
   // Row 3: Slightly lighter version of row 2 - 21 unique colors  
@@ -57,7 +57,7 @@ const ALL_COLORS = COLOR_ROWS.flat();
 export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { isLicensed } = useLicenseStore();
   const [zoomLevel, setZoomLevel] = useState(0);
-  const [accentColor, setAccentColor] = useState('#bb99ff');
+  const [accentColor, setAccentColor] = useState('#c4b5ff');
   const [positiveColor, setPositiveColor] = useState('#99ff99'); // default green
   const [negativeColor, setNegativeColor] = useState('#ff9999'); // default red
   const [showColorPicker, setShowColorPicker] = useState<'accent' | 'positive' | 'negative' | null>(null);
@@ -94,7 +94,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
     getZoom();
 
     // Get saved colors and apply them
-    const savedAccentColor = localStorage.getItem('accentColor') || '#bb99ff';
+    const savedAccentColor = localStorage.getItem('accentColor') || '#c4b5ff';
     setAccentColor(savedAccentColor);
     // Apply accent color
     document.documentElement.style.setProperty('--accent-color', savedAccentColor);
