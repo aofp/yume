@@ -1,6 +1,6 @@
 [package]
 name = "yurucode"
-version = "1.0.0"
+version = "0.1.0"
 description = "yurucode - Minimal UI for Claude CLI"
 authors = ["yurucode"]
 license = "MIT"

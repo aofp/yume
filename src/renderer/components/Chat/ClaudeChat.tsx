@@ -194,7 +194,6 @@ const FileTreeNode: React.FC<FileTreeNodeProps> = React.memo(({
               stroke={1.5}
               style={{
                 transform: isExpanded ? 'rotate(90deg)' : 'none',
-                transition: 'transform 0.15s ease'
               }}
             />
             <IconFolder size={12} stroke={1.5} />

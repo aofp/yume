@@ -4275,6 +4275,11 @@ ${content}`;
       },
 
       addMessageToSession: (sessionId: string, message: SDKMessage) => {
+        // Add client timestamp if not already present (for duration calculation)
+        if (!(message as any).clientTimestamp && !(message as any).timestamp) {
+          (message as any).clientTimestamp = Date.now();
+        }
+
         // DEBUG: Log bash messages specifically
         const isBash = message.id?.startsWith?.('bash-');
         if (isBash) {

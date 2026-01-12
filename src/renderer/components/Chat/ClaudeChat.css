@@ -766,7 +766,6 @@
   cursor: pointer;
   color: var(--bg-primary);
   opacity: 0.9;
-  transition: opacity 0.15s ease, transform 0.15s ease;
 }
 
 .bash-stop-btn:hover {

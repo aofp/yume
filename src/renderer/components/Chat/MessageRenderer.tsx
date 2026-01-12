@@ -567,18 +567,18 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
             const headerTop = headerRect.top - containerRect.top;
             const targetScrollTop = scrollContainer.scrollTop + headerTop - 20; // 20px padding from top
 
-            // Smooth scroll to position header at top with padding
+            // Instant scroll to position header at top with padding
             scrollContainer.scrollTo({
               top: Math.max(0, targetScrollTop),
-              behavior: 'smooth'
+              behavior: 'auto'
             });
           }
         }
 
-        // Resume auto-scrolling after scroll completes
+        // Resume auto-scrolling immediately (scroll is instant now)
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('collapsible-toggle-end'));
-        }, 300);
+        }, 0);
       }, 50); // Wait for DOM update and virtualizer remeasurement
 
       return newState;
@@ -3245,15 +3245,34 @@ const MessageRendererBase: React.FC<{
         });
         
         // Show elapsed time for successful completion
-        const elapsedMs = message.duration_ms || (message.message as any)?.duration_ms || message.duration || 0;
-        const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
-        const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
-        
-        
+        // CRITICAL: Calculate from frontend timing if server didn't provide duration_ms
+        let elapsedMs = message.duration_ms || (message.message as any)?.duration_ms || message.duration || 0;
+
         // Count tool uses in the current conversation turn only
         // Look back through messages to count tool_use messages since the last user message
         // Or use tool_count from message if provided (for synthetic result messages from resumed sessions)
         const currentIndex = sessionMessages.findIndex(m => m.id === message.id);
+
+        // If no server-provided duration, calculate from message timestamps
+        if (elapsedMs === 0 && currentIndex > 0) {
+          for (let i = currentIndex - 1; i >= 0; i--) {
+            const msg = sessionMessages[i];
+            if (msg.type === 'user') {
+              // Calculate duration from user message timestamp to result timestamp
+              const userTime = (msg as any).clientTimestamp || (msg as any).timestamp;
+              const resultTime = (message as any).clientTimestamp || (message as any).timestamp;
+              if (userTime && resultTime) {
+                const userMs = typeof userTime === 'number' ? userTime : new Date(userTime).getTime();
+                const resultMs = typeof resultTime === 'number' ? resultTime : new Date(resultTime).getTime();
+                elapsedMs = resultMs - userMs;
+              }
+              break;
+            }
+          }
+        }
+
+        const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+        const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
         let toolCount = (message as any).tool_count || 0;
         let hasAssistantMessage = false;
 
@@ -3513,12 +3532,32 @@ const MessageRendererBase: React.FC<{
         );
       } else {
         // Fallback: always show stats for result messages even if isSuccess logic didn't match
-        const elapsedMs = message.duration_ms || (message.message as any)?.duration_ms || message.duration || 0;
-        const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
-        const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
+        let elapsedMs = message.duration_ms || (message.message as any)?.duration_ms || message.duration || 0;
 
         // Count tool uses
         const currentIndex = sessionMessages.findIndex(m => m.id === message.id);
+
+        // If no server-provided duration, calculate from message timestamps
+        if (elapsedMs === 0 && currentIndex > 0) {
+          for (let i = currentIndex - 1; i >= 0; i--) {
+            const msg = sessionMessages[i];
+            if (msg.type === 'user') {
+              // Calculate duration from user message timestamp to result timestamp
+              const userTime = (msg as any).clientTimestamp || (msg as any).timestamp;
+              const resultTime = (message as any).clientTimestamp || (message as any).timestamp;
+              if (userTime && resultTime) {
+                const userMs = typeof userTime === 'number' ? userTime : new Date(userTime).getTime();
+                const resultMs = typeof resultTime === 'number' ? resultTime : new Date(resultTime).getTime();
+                elapsedMs = resultMs - userMs;
+              }
+              break;
+            }
+          }
+        }
+
+        const elapsedSeconds = (elapsedMs / 1000).toFixed(1);
+        const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
+
         let toolCount = (message as any).tool_count || 0;
         if (currentIndex > 0 && !toolCount) {
           for (let i = currentIndex - 1; i >= 0; i--) {

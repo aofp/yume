@@ -280,7 +280,6 @@ export const HooksTab: React.FC<HooksTabProps> = ({
               display: 'flex',
               alignItems: 'center',
               gap: '4px',
-              transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = 'var(--accent-color)';
@@ -330,7 +329,6 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                     cursor: 'default',
                     padding: '2px',
                     fontSize: '10px',
-                    transition: 'color 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.color = 'var(--accent-color)';
@@ -362,7 +360,6 @@ export const HooksTab: React.FC<HooksTabProps> = ({
               borderRadius: '4px',
               fontSize: '10px',
               cursor: 'default',
-              transition: 'all 0.2s ease'
             }}
             onMouseEnter={(e) => {
               e.currentTarget.style.borderColor = 'var(--accent-color)';
@@ -420,7 +417,6 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                         cursor: 'default',
                         padding: '2px',
                         fontSize: '10px',
-                        transition: 'color 0.2s ease'
                       }}
                       onMouseEnter={(e) => {
                         e.currentTarget.style.color = 'var(--accent-color)';
@@ -634,7 +630,6 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                 backgroundSize: '12px',
                 paddingRight: '28px',
                 backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E"), linear-gradient(180deg, rgba(255,255,255,0.02) 0%, rgba(255,255,255,0) 100%)`,
-                transition: 'border-color 0.2s, background-color 0.2s'
               }}
               onFocus={(e) => {
                 e.target.style.borderColor = '#99bbff';
@@ -674,7 +669,6 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                 resize: 'vertical',
                 minHeight: '120px',
                 outline: 'none',
-                transition: 'border-color 0.2s, background-color 0.2s'
               }}
               onFocus={(e) => {
                 e.target.style.borderColor = '#99bbff';

@@ -1187,7 +1187,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     borderRadius: '4px',
                     fontSize: '10px',
                     cursor: 'default',
-                    transition: 'all 0.2s ease'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.borderColor = 'var(--accent-color)';
@@ -1332,7 +1331,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                               cursor: 'default',
                               padding: '2px',
                               fontSize: '10px',
-                              transition: 'color 0.2s ease'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.color = 'var(--accent-color)';
@@ -1358,7 +1356,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                               cursor: 'default',
                               padding: '2px',
                               fontSize: '10px',
-                              transition: 'color 0.2s ease'
                             }}
                             onMouseEnter={(e) => {
                               e.currentTarget.style.color = '#ff9999';
@@ -1673,7 +1670,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       display: 'flex',
                       alignItems: 'center',
                       gap: '4px',
-                      transition: 'all 0.2s'
                     }}
                     onMouseEnter={(e) => {
                       e.currentTarget.style.borderColor = 'var(--accent-color)';

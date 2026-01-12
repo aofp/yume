@@ -1,7 +1,7 @@
 # Yurucode Complete Troubleshooting Guide
 
 **Version:** 0.1.0
-**Last Updated:** January 9, 2026
+**Last Updated:** January 12, 2026
 **Platforms:** macOS, Windows, Linux
 
 ## Table of Contents

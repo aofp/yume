@@ -114,7 +114,6 @@
   border-radius: 0;
   pointer-events: auto;
   cursor: default;
-  transition: background 0.15s ease;
 }
 
 .custom-scrollbar-thumb:hover {
@@ -130,7 +129,6 @@
   border: none;
   border-radius: 3px; /* Uniform radius */
   cursor: default;
-  transition: background 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   height: 26px;
   white-space: nowrap;
   overflow: hidden;
@@ -213,7 +211,6 @@
   background: var(--accent-color);
   opacity: 0.5;
   border-radius: 0;
-  transition: width 0.3s ease, left 0.3s ease;
   pointer-events: none;
 }
 
@@ -246,7 +243,6 @@
   bottom: 0;
   width: 100%;
   border-radius: 0;
-  transition: height 0.3s ease, background 0.3s ease;
 }
 
 .context-bar-text {
@@ -377,7 +373,6 @@
   align-items: center;
   justify-content: center;
   border-radius: 3px;
-  transition: color 0.2s ease, opacity 0.2s ease;
   opacity: 1;
   width: 18px;
   height: 18px;
@@ -403,7 +398,6 @@
   align-items: center;
   justify-content: center;
   border-radius: 3px; /* Uniform radius */
-  transition: all 0.2s ease;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -463,7 +457,6 @@
   align-items: center;
   justify-content: center;
   border-radius: 3px;
-  transition: all 0.2s ease;
   overflow: hidden;
   user-select: none;
   -webkit-user-select: none;
@@ -541,7 +534,6 @@
   font-size: 11px;
   cursor: default;
   border-radius: 4px;
-  transition: background 0.2s ease;
   text-transform: lowercase;
 }
 
@@ -586,7 +578,6 @@
   font-size: 10px;
   text-transform: lowercase;
   cursor: default;
-  transition: all 0.2s ease;
   user-select: none;
   -webkit-user-select: none;
 }

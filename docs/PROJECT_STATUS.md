@@ -1,29 +1,36 @@
 # Yurucode Project Status
 
-**Date:** January 9, 2026
+**Date:** January 12, 2026
 **Version:** 0.1.0 (Pre-Release)
-**Status:** ALPHA - Production Hardening Required
+**Status:** BETA - Approaching Release Readiness
 
 ## Executive Summary
 
-Yurucode is a sophisticated GUI for Claude CLI with intelligent context management that automatically compacts at 60% usage (65% force). While the core functionality is solid and surpasses competitors like Opcode, significant production hardening is required before commercial release.
+Yurucode is a sophisticated GUI for Claude CLI with intelligent context management that automatically compacts at 60% usage (65% force). The application has reached beta quality with major systems implemented: plugin architecture, skills system, error boundaries, CSP security, crash recovery, analytics, and compiled server binaries. Primary remaining work is code signing, console cleanup, and distribution preparation.
 
 ## Current State
 
 ### ✅ What's Working
-- **Auto-compact at 60%** - Unique feature working correctly
+- **Auto-compact at 60%** - Unique feature working correctly with 38% buffer
 - **Token tracking** - Accurate cost calculation (fixed)
-- **Session management** - Lazy reconnection, tab persistence
+- **Session management** - Lazy reconnection, tab persistence, crash recovery
 - **Multi-platform** - Runs on Windows, macOS, Linux
 - **License system** - Payment and validation functional
 - **Core UI** - Beautiful OLED theme with minimal design
+- **Plugin system** - Fully functional with commands, agents, hooks, skills, MCP
+- **Skills system** - Auto-inject context based on triggers
+- **Error boundaries** - Implemented across all major components
+- **CSP security** - Content Security Policy enabled
+- **Performance monitoring** - Real-time metrics tracking (FPS, memory, etc.)
+- **Analytics dashboard** - Comprehensive usage analytics with breakdowns
+- **Compiled server binaries** - No Node.js dependency for end users
 
-### ⚠️ Critical Issues
-1. **Memory leaks** - Process cleanup issues, unbounded buffers
-2. **Security gaps** - No code signing (CSP now enabled)
-3. ~~**No error boundaries**~~ - Error boundaries implemented
-4. **Missing monitoring** - No crash reporting or telemetry
-5. **Platform issues** - WSL edge cases, macOS notarization
+### ⚠️ Remaining Issues
+1. **Code signing** - Certificates needed for macOS/Windows distribution
+2. **Console.log cleanup** - 523 occurrences need removal
+3. **Memory optimization** - Bounded buffers implemented but can be tuned further
+4. **Platform testing** - Need more WSL and Linux testing
+5. **Documentation videos** - Tutorial videos not yet created
 
 ### 📊 Code Quality Metrics
 - **Total Lines of Code:** ~51,000 (39k TypeScript/TSX + 12k Rust)
@@ -52,31 +59,27 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for 
 
 ## Path to Production
 
-### Timeline: 4-6 Weeks
+### Updated Timeline: 2-3 Weeks
 
-#### Week 1: Critical Fixes (BLOCKING)
-- Fix memory leaks and process cleanup
-- Add error boundaries
-- Enable security (CSP, validation)
-- Remove debug code
+#### Week 1: Production Polish (CURRENT)
+- ✅ Error boundaries implemented
+- ✅ CSP security enabled
+- ✅ Crash recovery working
+- 🔄 Console.log cleanup (in progress)
+- 🔄 Code signing preparation
 
-#### Week 2: Platform Readiness
-- macOS code signing ($99/year)
-- Windows certificate ($300-600)
-- Auto-update system
-- Platform-specific testing
+#### Week 2: Distribution Readiness
+- Code signing certificates ($99 macOS + $300-600 Windows)
+- Build and sign releases for all platforms
+- Create distribution packages (DMG, MSI, AppImage)
+- Beta testing with 20-50 users
+- Documentation review and updates
 
-#### Week 3: UX Polish
-- Onboarding flow
-- Loading/empty states
-- Performance optimization
-- Accessibility improvements
-
-#### Week 4: Launch Preparation
-- Documentation completion
-- Beta testing (20-50 users)
-- Marketing materials
-- Support infrastructure
+#### Week 3: Launch
+- Public beta release
+- Marketing materials and announcements
+- Support infrastructure activation
+- Monitor feedback and iterate
 
 ## Financial Projections
 
@@ -86,14 +89,15 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for 
 - **Time:** 160-240 developer hours
 
 ### Revenue Potential
-- **Price Point:** $29-39 one-time
+- **Price Point:** $21 one-time
 - **Target:** 1,000 sales in Year 1
-- **Projected Revenue:** $29,000-39,000
+- **Projected Revenue:** $21,000
 
 ### Competitive Analysis
-- **Opcode:** Free/Open source - we offer premium features
-- **Claudia:** $20 - we're priced higher but offer more
-- **Market Size:** ~50,000 Claude Code users
+- **Opcode:** Free/Open source - we offer premium features (plugins, skills, auto-compact)
+- **Claudia:** $20 - we're $21 but offer significantly more (15+ unique features)
+- **Cursor/Windsurf:** $240-2400/year subscriptions - we're 90%+ cheaper one-time
+- **Market Size:** ~50,000 Claude Code users + IDE users seeking lightweight alternative
 
 ## Risk Assessment
 
@@ -129,9 +133,9 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for 
 
 ### Launch Strategy
 1. **Soft launch** with "Beta" badge
-2. **Early bird pricing** at $29 (regular $39)
-3. **Focus marketing** on auto-compact feature
-4. **Target communities:** Claude Discord, AI developers
+2. **One-time pricing** at $21 (all features included, no subscription)
+3. **Focus marketing** on auto-compact feature and plugin system
+4. **Target communities:** Claude Discord, AI developers, productivity tools users
 
 ## Success Criteria
 
@@ -162,7 +166,7 @@ Yurucode has strong technical foundations and a unique value proposition with au
 4. Recruit beta testers from existing network
 
 **Questions/Decisions Needed:**
-1. Budget approval for certificates ($400-700)
-2. Choose between Sentry/Rollbar for crash reporting
+1. Budget approval for certificates ($400-700) - Optional for 0.1.0
+2. Choose between Sentry/Rollbar for crash reporting - Optional for 0.1.0
 3. Decide on beta testing incentives
-4. Confirm pricing strategy ($29 vs $39)
+4. ✅ Pricing confirmed at $21 one-time
