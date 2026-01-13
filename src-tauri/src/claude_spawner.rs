@@ -215,7 +215,7 @@ impl ClaudeSpawner {
         // 6. --verbose for extra debugging info
         cmd.arg("--verbose");
 
-        // 7. Yurucode default settings: disable co-authored-by, enable extended thinking
+        // 7. Yume default settings: disable co-authored-by, enable extended thinking
         cmd.arg("--settings").arg(r#"{"attribution":{"commit":"","pr":""},"alwaysThinkingEnabled":true}"#);
 
         // 7. Platform-specific flags

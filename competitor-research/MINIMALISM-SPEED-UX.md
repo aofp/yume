@@ -5,7 +5,7 @@
 Anthropic acquired Bun in December 2025 - their first acquisition ever.
 Why? Because **Bun powers Claude Code infrastructure**.
 
-yurucode's goal: become so essential to Claude Code users that Anthropic wants it.
+yume's goal: become so essential to Claude Code users that Anthropic wants it.
 
 ---
 
@@ -24,7 +24,7 @@ Linear revolutionized project management with:
 - **no clutter**: every element earns its place
 - **speed as brand**: "built for speed" is core identity
 
-### yurucode Current Minimalism Score
+### yume Current Minimalism Score
 
 | Aspect | Status | Notes |
 |--------|--------|-------|
@@ -60,7 +60,7 @@ Linear revolutionized project management with:
 
 ### Tauri vs Electron Benchmarks
 
-| Metric | Tauri (yurucode) | Electron (cursor/windsurf) |
+| Metric | Tauri (yume) | Electron (cursor/windsurf) |
 |--------|------------------|---------------------------|
 | Bundle size | **3-10 MB** | 100-400 MB |
 | Memory idle | **30-40 MB** | 200-300 MB |
@@ -70,7 +70,7 @@ Linear revolutionized project management with:
 > "Switching to Tauri cut cold-start time by 70% and reduced installer from 120MB to 8MB"
 > — gethopp.app benchmark
 
-### yurucode Speed Metrics
+### yume Speed Metrics
 
 | Operation | Current | Target | Gold Standard |
 |-----------|---------|--------|---------------|
@@ -84,7 +84,7 @@ Linear revolutionized project management with:
 ### Speed Optimizations Already Present
 
 ```typescript
-// yurucode performance config
+// yume performance config
 VIRTUALIZATION_THRESHOLD: 20,      // ✅ virtualized lists
 VIRTUAL_OVERSCAN: 5,               // ✅ smooth scrolling
 SEARCH_DEBOUNCE: 300,              // ✅ input optimization
@@ -123,16 +123,16 @@ GPU_ACCELERATION: toggle,          // ✅ hardware rendering
 
 | App | Bundle | Memory | Install |
 |-----|--------|--------|---------|
-| yurucode | ~15MB | ~50MB | ~20MB |
+| yume | ~15MB | ~50MB | ~20MB |
 | cursor | ~400MB | ~300MB | ~450MB |
 | windsurf | ~350MB | ~280MB | ~400MB |
 | sculptor | ~50MB | ~100MB | ~60MB |
 | opcode | ~20MB | ~60MB | ~25MB |
 
-### yurucode Advantage
+### yume Advantage
 
 ```
-yurucode is:
+yume is:
 - 25x smaller than cursor
 - 23x smaller than windsurf
 - uses 6x less memory than electron apps
@@ -158,7 +158,7 @@ yurucode is:
 4. **immediate feedback**: every action has response
 5. **error prevention**: guide away from mistakes
 
-### yurucode Intuitiveness Audit
+### yume Intuitiveness Audit
 
 | Pattern | Status | Evidence |
 |---------|--------|----------|
@@ -237,7 +237,7 @@ yurucode is:
 ### Current Design System
 
 ```css
-/* yurucode theme */
+/* yume theme */
 --background-color: #000000     /* pure black */
 --foreground-color: #ffffff     /* pure white */
 --accent-color: #99bbff         /* soft blue */
@@ -288,7 +288,7 @@ yurucode is:
 - turbo mode (auto-execute commands)
 - context meter (token visibility)
 
-**yurucode must match or beat**:
+**yume must match or beat**:
 - [ ] action tracking
 - [ ] preview pane
 - [ ] turbo mode
@@ -302,7 +302,7 @@ yurucode is:
 - composer speed (4x faster)
 - multi-file awareness
 
-**yurucode must match or beat**:
+**yume must match or beat**:
 - [ ] parallel tabs
 - [ ] agent-focused ui
 - [ ] speed perception
@@ -315,7 +315,7 @@ yurucode is:
 - beautiful minimalism
 - speed as brand
 
-**yurucode should emulate**:
+**yume should emulate**:
 - [x] keyboard shortcuts (already have 30+)
 - [ ] instant feedback (improve animations)
 - [x] minimalism (already minimal)
@@ -335,7 +335,7 @@ Based on Bun acquisition reasoning:
 4. **technical excellence**: well-architected
 5. **team/talent**: skilled developers
 
-### yurucode's Current Acquisition Score
+### yume's Current Acquisition Score
 
 | Quality | Score | Notes |
 |---------|-------|-------|

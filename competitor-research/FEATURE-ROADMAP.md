@@ -1,4 +1,4 @@
-# yurucode Feature Roadmap (January 2026)
+# yume Feature Roadmap (January 2026)
 
 ## Strategic Goal: Beat Claude Code CLI's UX in Every Way a GUI Can
 
@@ -195,7 +195,7 @@ recommendation: start with A, add B later if needed
 - mutagen file sync
 - more isolation but slower
 
-**yurucode approach**:
+**yume approach**:
 - leverage existing multi-tab
 - add parallel dispatch
 - manual result comparison (v1)
@@ -308,7 +308,7 @@ concept:
 ### Onboarding Flow
 
 ```
-step 1: "welcome to yurucode" (first launch only)
+step 1: "welcome to yume" (first launch only)
 step 2: "drop a folder to start" (animated)
 step 3: "key shortcuts" (highlight 5 most used)
 step 4: "try cmd+k for ultrathink" (demo)
@@ -387,7 +387,7 @@ step 5: "press ? anytime for help"
 ## Ultimate Goal
 
 ```
-yurucode = the FASTEST, most NATIVE, most KEYBOARD-EFFICIENT Claude Code GUI
+yume = the FASTEST, most NATIVE, most KEYBOARD-EFFICIENT Claude Code GUI
 
 - sub-second everything
 - keyboard-first always

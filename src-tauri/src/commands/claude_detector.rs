@@ -4,6 +4,8 @@
 use std::process::Command;
 use std::path::Path;
 
+use crate::app::APP_ID;
+
 /// Check if a file exists on the filesystem
 #[tauri::command]
 pub fn check_file_exists(path: String) -> Result<bool, String> {
@@ -159,11 +161,11 @@ pub fn save_claude_settings(settings: serde_json::Value) -> Result<(), String> {
     // Store in app data directory
     let app_data_dir = dirs::config_dir()
         .ok_or_else(|| "Could not determine config directory".to_string())?;
-    
-    let settings_dir = app_data_dir.join("yurucode");
+
+    let settings_dir = app_data_dir.join(APP_ID);
     std::fs::create_dir_all(&settings_dir)
         .map_err(|e| format!("Failed to create settings directory: {}", e))?;
-    
+
     let settings_file = settings_dir.join("claude_settings.json");
     let content = serde_json::to_string_pretty(&settings)
         .map_err(|e| format!("Failed to serialize settings: {}", e))?;
@@ -180,7 +182,7 @@ pub fn load_claude_settings() -> Result<serde_json::Value, String> {
     let app_data_dir = dirs::config_dir()
         .ok_or_else(|| "Could not determine config directory".to_string())?;
 
-    let settings_file = app_data_dir.join("yurucode").join("claude_settings.json");
+    let settings_file = app_data_dir.join(APP_ID).join("claude_settings.json");
 
     if !settings_file.exists() {
         return Ok(serde_json::json!(null));

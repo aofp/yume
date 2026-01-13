@@ -28,7 +28,7 @@
    - "Complete codebase analysis" when only 21% analyzed
    - Users use words like "fraud," "scam," "gaslighting"
 
-5. **TUI Rendering** (High) - *Yurucode's opportunity*
+5. **TUI Rendering** (High) - *Yume's opportunity*
    - Flickering, lag, input delays
    - 10+ second waits for single characters
    - IME broken for Japanese/Chinese
@@ -176,11 +176,11 @@ Despite complaints, adoption is high because:
 
 ---
 
-## Yurucode Opportunity Analysis
+## Yume Opportunity Analysis
 
 ### Pain Points We Solve
 
-| User Complaint | How Yurucode Helps |
+| User Complaint | How Yume Helps |
 |----------------|-------------------|
 | TUI flickering/lag | Native desktop rendering |
 | Input delays | No terminal abstraction |

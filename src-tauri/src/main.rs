@@ -3,7 +3,7 @@
 // DO NOT REMOVE - without this, Windows will show both the GUI and a console window
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
-/// Main entry point for the yurucode Tauri application
+/// Main entry point for the yume Tauri application
 /// This is the actual executable entry that bootstraps the entire application
 fn main() {
     // Custom panic handler for graceful error handling
@@ -25,7 +25,7 @@ fn main() {
     
     // Delegate to the library crate where the actual application logic lives
     // This separation allows for better code organization and testing
-    yurucode_lib::run();
+    yume_lib::run();
     
     // Note: Server cleanup is handled within the library's run() function
     // Each instance's server is managed individually by logged_server::stop_logged_server()

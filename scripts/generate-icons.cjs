@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const { execSync } = require('child_process');
 
-const SOURCE = path.join(__dirname, '..', 'yurucode.png');
+const SOURCE = path.join(__dirname, '..', 'yume.png');
 const ICONS_DIR = path.join(__dirname, '..', 'src-tauri', 'icons');
 
 // All required sizes for Tauri
@@ -208,7 +208,7 @@ async function generateICNS(outputPath) {
 }
 
 async function main() {
-  console.log('Generating icons from yurucode.png...\n');
+  console.log('Generating icons from yume.png...\n');
 
   // Generate standard PNGs
   for (const [name, size] of Object.entries(SIZES)) {

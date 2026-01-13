@@ -1,4 +1,5 @@
 use serde::{Deserialize, Serialize};
+use crate::app::APP_ID;
 use std::process::{Command, Stdio};
 use std::time::Duration;
 use std::io::Write;
@@ -150,7 +151,8 @@ impl HookExecutor {
         };
         
         let script_path = temp_dir.join(format!(
-            "yurucode_hook_{}.{}",
+            "{}_hook_{}.{}",
+            APP_ID,
             chrono::Utc::now().timestamp_millis(),
             script_extension
         ));

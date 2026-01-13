@@ -1,4 +1,5 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { appStorageKey } from '../../config/app';
 import './ErrorBoundary.css';
 
 interface Props {
@@ -65,13 +66,14 @@ class ErrorBoundary extends Component<Props, State> {
 
     // Store in localStorage for debugging
     try {
-      const errors = JSON.parse(localStorage.getItem('yurucode_errors') || '[]');
+      const errorsKey = appStorageKey('errors');
+      const errors = JSON.parse(localStorage.getItem(errorsKey) || '[]');
       errors.push(errorReport);
       // Keep only last 10 errors
       if (errors.length > 10) {
         errors.shift();
       }
-      localStorage.setItem('yurucode_errors', JSON.stringify(errors));
+      localStorage.setItem(errorsKey, JSON.stringify(errors));
     } catch (e) {
       console.error('Failed to store error report:', e);
     }

@@ -12,7 +12,7 @@ This enables a **persistent process** that accepts JSON commands on stdin.
 
 ---
 
-## Current yurucode Approach (Suboptimal)
+## Current yume Approach (Suboptimal)
 
 ```
 User types message 1

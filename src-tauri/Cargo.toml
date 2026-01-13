@@ -1,8 +1,8 @@
 [package]
-name = "yurucode"
+name = "yume"
 version = "0.1.0"
-description = "yurucode - Minimal UI for Claude CLI"
-authors = ["yurucode"]
+description = "yume - Minimal UI for Claude CLI"
+authors = ["forkgatherer"]
 license = "MIT"
 repository = ""
 edition = "2021"
@@ -11,7 +11,7 @@ rust-version = "1.71"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [lib]
-name = "yurucode_lib"
+name = "yume_lib"
 crate-type = ["staticlib", "cdylib", "rlib"]
 
 [build-dependencies]
@@ -83,7 +83,7 @@ opt-level = 3
 strip = true
 
 [[bin]]
-name = "yurucode"
+name = "yume"
 path = "src/main.rs"
 
 # This is important for Windows to not show console window

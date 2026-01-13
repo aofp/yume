@@ -20,7 +20,7 @@ fn main() {
 
     // Extract name and version (simple JSON parsing to avoid dependencies)
     let name = extract_json_field(&package_json_content, "name")
-        .unwrap_or_else(|| "yurucode".to_string());
+        .unwrap_or_else(|| "yume".to_string());
     let version = extract_json_field(&package_json_content, "version")
         .unwrap_or_else(|| "0.1.0".to_string());
 

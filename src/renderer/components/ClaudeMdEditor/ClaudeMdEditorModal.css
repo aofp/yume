@@ -126,7 +126,7 @@
   resize: none;
   font-family: var(--font-mono);
   font-size: var(--text-base);
-  line-height: 1.6;
+  line-height: var(--leading-normal);
   color: #999;
   caret-color: var(--accent-color);
 }

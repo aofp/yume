@@ -1,14 +1,14 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "yuru code (dev)",
-  "identifier": "be.yuru.yurucode.dev",
+  "productName": "yume (dev)",
+  "identifier": "be.yuru.yume.dev",
   "build": {
     "beforeDevCommand": ""
   },
   "app": {
     "windows": [
       {
-        "title": "yuru code (dev)",
+        "title": "yume (dev)",
         "decorations": false,
         "transparent": true,
         "hiddenTitle": true

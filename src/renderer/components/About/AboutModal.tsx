@@ -45,7 +45,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
         </div>
         
         <div className="about-content">
-          <div className="about-logo" style={{ fontFamily: "'Comic Mono', monospace" }}>
+          <div className="about-logo" style={{ fontFamily: "var(--font-mono, 'Agave', monospace)" }}>
             <span className="yuru">y</span><span className="code">&gt;</span>
           </div>
 
@@ -66,7 +66,7 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
                   onClose();
                   setTimeout(() => {
                     window.dispatchEvent(new CustomEvent('showUpgradeModal', {
-                      detail: { reason: 'trial' }
+                      detail: { reason: 'demo' }
                     }));
                   }, 100);
                 }
@@ -78,10 +78,10 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
                 }
               }}
               title={isLicensed ? 'rmb to forget license' : 'click to upgrade'}
-            >[{isLicensed ? 'pro' : 'trial'}]</span>
+            >[{isLicensed ? 'pro' : 'demo'}]</span>
           </div>
           
-          <div className="about-credits">
+          <div className="about-credits" style={{display: 'none'}}>
             <div className="about-site">
               <a
                 href={`https://${APP_WEBSITE}`}

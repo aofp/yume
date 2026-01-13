@@ -450,7 +450,7 @@ class AgentExecutionService {
     this.runHistory.delete(sessionId);
   }
 
-  // The 5 Yurucode Core Agents
+  // The 5 Yume Core Agents
   static readonly AGENT_TEMPLATES = {
     architect: {
       name: 'architect',

@@ -138,7 +138,7 @@ Per research:
 
 ## Enterprise Readiness Checklist
 
-For yurucode to be enterprise-ready:
+For yume to be enterprise-ready:
 
 ### Phase 1: Basics
 - [ ] Privacy Mode (no telemetry)

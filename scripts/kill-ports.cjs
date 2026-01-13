@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 /**
- * Aggressive zombie process killer for yurucode dev mode
+ * Aggressive zombie process killer for yume dev mode
  * Kills ALL processes that could block dev startup
  */
 
@@ -121,9 +121,9 @@ killPattern(`esbuild.*${PROJECT_DIR.replace(/\//g, '\\/')}`, 'esbuild service(s)
 // IMPORTANT: Only kill servers from THIS project's resources dir, not production app servers
 const platform = os.platform();
 if (platform === 'darwin') {
-  killPattern(`${RESOURCES_DIR}/yurucode-server-macos`, 'dev server(s)');
+  killPattern(`${RESOURCES_DIR}/yume-server-macos`, 'dev server(s)');
 } else if (platform === 'linux') {
-  killPattern(`${RESOURCES_DIR}/yurucode-server-linux`, 'dev server(s)');
+  killPattern(`${RESOURCES_DIR}/yume-server-linux`, 'dev server(s)');
 }
 // Windows: killPattern skips win32, so no action needed
 
@@ -147,10 +147,10 @@ try {
   }
 } catch {}
 
-// 9. DO NOT kill Claude processes - they might be running outside of yurucode
+// 9. DO NOT kill Claude processes - they might be running outside of yume
 // Previously this killed all claude processes matching certain patterns, but this
-// incorrectly killed other Claude CLI instances not associated with yurucode.
-// Yurucode's ProcessRegistry handles cleanup of its own spawned Claude processes.
+// incorrectly killed other Claude CLI instances not associated with yume.
+// Yume's ProcessRegistry handles cleanup of its own spawned Claude processes.
 
 // Brief wait for ports to be released
 setTimeout(() => {

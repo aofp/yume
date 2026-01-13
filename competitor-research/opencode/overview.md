@@ -37,10 +37,10 @@ terminal-focused developers, privacy advocates, users wanting model flexibility,
 
 ---
 
-## vs yurucode Comparison
+## vs yume Comparison
 
-### yurucode Wins ⚡
-| Feature | yurucode | opencode |
+### yume Wins ⚡
+| Feature | yume | opencode |
 |---------|----------|----------|
 | GUI interface | ⚡ | ❌ terminal only |
 | Keyboard shortcuts | 30+ visual | cli commands |
@@ -51,7 +51,7 @@ terminal-focused developers, privacy advocates, users wanting model flexibility,
 | Native app | ⚡ tauri | ❌ node cli |
 
 ### opencode Wins
-| Feature | yurucode | opencode |
+| Feature | yume | opencode |
 |---------|----------|----------|
 | Multi-model support | claude only | ⚡ 75+ providers |
 | Local models | ❌ | ⚡ ollama |
@@ -61,8 +61,8 @@ terminal-focused developers, privacy advocates, users wanting model flexibility,
 
 ### Key Differentiator
 opencode = terminal power with model freedom
-yurucode = gui speed with claude focus
+yume = gui speed with claude focus
 
 ### Strategic Note
-different audiences - opencode for terminal purists, yurucode for gui users
+different audiences - opencode for terminal purists, yume for gui users
 no direct competition, complementary positioning

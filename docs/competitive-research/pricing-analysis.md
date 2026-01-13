@@ -123,11 +123,11 @@
 
 ---
 
-## Yurucode Pricing Model
+## Yume Pricing Model
 
 ### Chosen Model: $21 One-Time Purchase
 
-Yurucode uses a fundamentally different approach:
+Yume uses a fundamentally different approach:
 
 ```
 User pays: $21 one-time + existing Claude subscription
@@ -141,7 +141,7 @@ Result: No API costs, no recurring fees, uses subscription limits
 
 | Component | Who Pays | How Much |
 |-----------|----------|----------|
-| Yurucode app | User → Yurucode | $21 once |
+| Yume app | User → Yume | $21 once |
 | Claude usage | User → Anthropic | Pro $20/mo, Max $100-200/mo |
 | API calls | N/A | Uses subscription, not API |
 
@@ -161,21 +161,21 @@ Result: No API costs, no recurring fees, uses subscription limits
 | Windsurf | Subscription | $15/mo ($180/yr) |
 | Copilot Pro | Subscription | $19/mo ($228/yr) |
 | Cline | BYOK | Free + API costs |
-| **Yurucode** | **One-time** | **$21 once** |
+| **Yume** | **One-time** | **$21 once** |
 
 ### Value Proposition
 
 > "Pay $21 once. Use your Claude subscription without the lag."
 
 For a Claude Pro user at $20/mo:
-- Year 1: $21 (yurucode) + $240 (Claude) = $261
-- Year 2+: $0 (yurucode) + $240 (Claude) = $240
+- Year 1: $21 (yume) + $240 (Claude) = $261
+- Year 2+: $0 (yume) + $240 (Claude) = $240
 
 vs Cursor:
 - Year 1: $240
 - Year 2+: $240
 
-**Yurucode + Claude = same yearly cost as Cursor, but you get Claude's power.**
+**Yume + Claude = same yearly cost as Cursor, but you get Claude's power.**
 
 ### Pricing Psychology
 

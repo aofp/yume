@@ -3,7 +3,7 @@
 ## Overview
 - **Developer**: winfunc
 - **Type**: GUI wrapper for Claude Code
-- **Tech Stack**: Tauri 2 (same as yurucode)
+- **Tech Stack**: Tauri 2 (same as yume)
 - **Pricing**: Free
 - **License**: AGPL
 - **GitHub**: https://github.com/winfunc/opcode
@@ -27,7 +27,7 @@
 - package manager: bun
 
 ## Strengths
-- **same tech stack**: uses tauri 2 like yurucode
+- **same tech stack**: uses tauri 2 like yume
 - **open source**: agpl, 19.7k stars, large community
 - **custom agents**: create specialized agents with system prompts
 - **pre-built agents**: ready-to-use git/security/test agents
@@ -38,7 +38,7 @@
 
 ## Weaknesses
 - **agpl license**: restrictive for commercial derivatives
-- **no keyboard shortcuts depth**: fewer hotkeys than yurucode
+- **no keyboard shortcuts depth**: fewer hotkeys than yume
 - **no tab management**: can't cmd+t/w/d for quick tab ops
 - **no parallel execution**: agents run one at a time
 - **no live preview**: must check changes externally
@@ -50,10 +50,10 @@ developers wanting customizable claude code experience, teams needing analytics,
 
 ---
 
-## vs yurucode Comparison
+## vs yume Comparison
 
-### yurucode Wins ⚡
-| Feature | yurucode | opcode |
+### yume Wins ⚡
+| Feature | yume | opcode |
 |---------|----------|--------|
 | Keyboard shortcuts | 30+ | ~10 |
 | Tab management | cmd+t/w/d/1-9 | ❌ |
@@ -67,7 +67,7 @@ developers wanting customizable claude code experience, teams needing analytics,
 | Multi-tab sessions | ⚡ | ❌ |
 
 ### opcode Wins
-| Feature | yurucode | opcode |
+| Feature | yume | opcode |
 |---------|----------|--------|
 | Custom agents | ❌ | ⚡ cc_agents |
 | Pre-built agents | ❌ | ⚡ git/sast/test |
@@ -79,7 +79,7 @@ developers wanting customizable claude code experience, teams needing analytics,
 | Open source | ❌ | ⚡ AGPL |
 | GitHub stars | - | 19.7k |
 
-### How yurucode Beats opcode
+### How yume Beats opcode
 1. **add agent library** - match custom agent capability
 2. **add mcp registry ui** - settings tab for mcp management
 3. **add claude.md editor** - built-in editing
@@ -89,10 +89,10 @@ developers wanting customizable claude code experience, teams needing analytics,
 
 ### Key Differentiator
 opcode = feature-rich, community-driven (agpl restriction)
-yurucode = speed-first, keyboard-centric (no license restriction)
+yume = speed-first, keyboard-centric (no license restriction)
 
 ### Strategic Note
-opcode's 19.7k stars shows strong demand for gui wrappers. yurucode should:
+opcode's 19.7k stars shows strong demand for gui wrappers. yume should:
 - differentiate on SPEED and SHORTCUTS
 - consider adding most-requested opcode features
 - avoid agpl to allow commercial flexibility

@@ -1,12 +1,12 @@
-/* Font imports for yurucode */
+/* Font imports for yume */
 
 /* Override CSS variables with proper font stacks */
 :root {
-  /* Sans-serif font stack - Comic Neue first for consistency across platforms */
-  --font-sans: 'Comic Neue', 'Helvetica Neue', 'Segoe UI', 'Arial', 'Helvetica', 'Calibri', 'Tahoma', 'Verdana', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
+  /* Sans-serif font stack - Agave first for consistency across platforms */
+  --font-sans: 'Agave', 'Helvetica Neue', 'Segoe UI', 'Arial', 'Helvetica', 'Calibri', 'Tahoma', 'Verdana', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
 
-  /* Monospace font stack with Comic Mono as default */
-  --font-mono: 'Comic Mono', 'Cascadia Code', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', 'Lucida Console', 'Menlo', monospace;
+  /* Monospace font stack with Agave as default */
+  --font-mono: 'Agave', 'Cascadia Code', 'Consolas', 'Courier New', 'SF Mono', 'Monaco', 'Lucida Console', 'Menlo', monospace;
 }
 
 /* Ensure font ligatures are enabled for code */

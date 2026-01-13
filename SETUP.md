@@ -1,8 +1,8 @@
-# yurucode setup instructions
+# yume setup instructions
 
 ## prerequisites
 
-Before running yurucode, ensure you have the following installed:
+Before running yume, ensure you have the following installed:
 
 - **Node.js** (v18 or later)
 - **npm** (comes with Node.js)
@@ -22,7 +22,7 @@ Before running yurucode, ensure you have the following installed:
 
 ## fixing the "invalid api key" error
 
-The Claude Code SDK in yurucode needs an API key to work. Here is how to fix it:
+The Claude Code SDK in yume needs an API key to work. Here is how to fix it:
 
 ### option 1: set environment variable before running (recommended)
 
@@ -109,7 +109,7 @@ npm run tauri:dev
 
 ## architecture overview
 
-Yurucode is a Tauri desktop application with three processes:
+Yume is a Tauri desktop application with three processes:
 1. **Tauri Process** (Rust) - Native window management and system integration
 2. **Embedded Node.js Server** - Claude CLI integration and stream parsing
 3. **React Frontend** - UI rendering and state management

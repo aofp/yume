@@ -1,16 +1,18 @@
 import React, { useEffect } from 'react';
 import { IconX, IconSparkles } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
+import { APP_NAME, APP_WEBSITE } from '../../config/app';
 import './UpgradeModal.css';
 
 interface UpgradeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  reason?: 'tabLimit' | 'feature' | 'trial';
+  reason?: 'tabLimit' | 'feature' | 'demo';
 }
 
 export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, reason }) => {
   const features = useLicenseStore.getState().getFeatures();
+  const upgradeUrl = `https://${APP_WEBSITE}/${APP_NAME}`;
 
   useEffect(() => {
     const handleEsc = (e: KeyboardEvent) => {
@@ -41,7 +43,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
         <div className="upgrade-content">
           {reason === 'tabLimit' && (
             <div className="upgrade-reason">
-              <p>trial: {features.maxTabs} tabs max</p>
+              <p>demo: {features.maxTabs} tabs max</p>
             </div>
           )}
 
@@ -52,18 +54,18 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
             <button 
               className="upgrade-button"
               onClick={async () => {
-                // Open yuru.be/yurucode in default browser
+                // Open upgrade page in default browser
                 if (window.__TAURI__) {
                   const { invoke } = await import('@tauri-apps/api/core');
                   // Use our custom command to open URL in default browser
-                  await invoke('open_external', { url: 'https://yuru.be/yurucode' }).catch(() => {
+                  await invoke('open_external', { url: upgradeUrl }).catch(() => {
                     // Fallback to window.open if command fails
-                    window.open('https://yuru.be/yurucode', '_blank');
+                    window.open(upgradeUrl, '_blank');
                   });
                 } else if (window.electronAPI?.openExternal) {
-                  window.electronAPI.openExternal('https://yuru.be/yurucode');
+                  window.electronAPI.openExternal(upgradeUrl);
                 } else {
-                  window.open('https://yuru.be/yurucode', '_blank');
+                  window.open(upgradeUrl, '_blank');
                 }
               }}
             >
@@ -86,7 +88,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
                       useLicenseStore.getState().validateLicense(input.value).then(valid => {
                         if (valid) {
                           onClose();
-                          alert('thank you for registering yurucode');
+                          alert(`thank you for registering ${APP_NAME}`);
                         } else {
                           alert('invalid license key');
                         }
@@ -103,7 +105,7 @@ export const UpgradeModal: React.FC<UpgradeModalProps> = ({ isOpen, onClose, rea
                     useLicenseStore.getState().validateLicense(input.value).then(valid => {
                       if (valid) {
                         onClose();
-                        alert('thank you for registering yurucode');
+                        alert(`thank you for registering ${APP_NAME}`);
                       } else {
                         alert('invalid license key');
                       }

@@ -42,10 +42,10 @@ professional developers, teams, vs code power users, those needing max ai featur
 
 ---
 
-## vs yurucode Comparison
+## vs yume Comparison
 
-### yurucode Wins ⚡
-| Feature | yurucode | cursor |
+### yume Wins ⚡
+| Feature | yume | cursor |
 |---------|----------|--------|
 | Bundle size | ~15MB | ~400MB |
 | Cold startup | <2s | ~5s |
@@ -59,7 +59,7 @@ professional developers, teams, vs code power users, those needing max ai featur
 | Virtualized messages | ✅ | ✅ |
 
 ### cursor Wins
-| Feature | yurucode | cursor |
+| Feature | yume | cursor |
 |---------|----------|--------|
 | Parallel agents | ❌ | ⚡ 8 agents |
 | Custom model | ❌ | ⚡ composer 4x |
@@ -69,7 +69,7 @@ professional developers, teams, vs code power users, those needing max ai featur
 | IDE features | ❌ | ⚡ full ide |
 | Git worktrees | ❌ | ⚡ |
 
-### How yurucode Beats cursor
+### How yume Beats cursor
 1. **positioning**: don't compete as ide, compete as FASTEST wrapper
 2. **parallel tabs**: implement 8+ parallel sessions
 3. **size/speed**: emphasize 25x smaller, instant startup
@@ -78,11 +78,11 @@ professional developers, teams, vs code power users, those needing max ai featur
 
 ### Key Differentiator
 cursor = full ai ide (heavy, expensive, powerful)
-yurucode = fastest claude wrapper (light, free, focused)
+yume = fastest claude wrapper (light, free, focused)
 
 ### Strategic Note
 cursor targets developers who want everything in one place.
-yurucode targets users who:
+yume targets users who:
 - already have an editor they love
 - just want fastest claude access
 - don't need $20/mo ide subscription

@@ -1,5 +1,5 @@
 ---
-name: yurucode-explorer
+name: yume-explorer
 model: sonnet
 description: proactively use this agent for codebase exploration and context gathering. searches files, reads code, understands structure. use instead of manual Glob/Grep for broad searches. read-only.
 ---

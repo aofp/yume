@@ -16,9 +16,11 @@ use tracing::info;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::collections::VecDeque;
 
+use crate::app::{APP_ID, APP_NAME, SERVER_BINARY_PREFIX};
+
 // SIMPLE FLAG TO CONTROL CONSOLE VISIBILITY AND DEVTOOLS
 // Set to true during development to see server console output and force DevTools open
-pub const YURUCODE_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
+pub const YUME_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
 
 // Global handle to the server process and port
 // We use Arc<Mutex<>> for thread-safe access to the child process
@@ -167,28 +169,28 @@ impl Drop for ServerProcessGuard {
 }
 
 /// Returns the platform-specific path for server log files
-/// - macOS: ~/Library/Logs/yurucode/server.log
-/// - Windows: %LOCALAPPDATA%\yurucode\logs\server.log
-/// - Linux: ~/.yurucode/logs/server.log
+/// - macOS: ~/Library/Logs/{appId}/server.log
+/// - Windows: %LOCALAPPDATA%\{appId}\logs\server.log
+/// - Linux: ~/.{appId}/logs/server.log
 pub fn get_log_path() -> PathBuf {
     let log_dir = if cfg!(target_os = "macos") {
         dirs::home_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
             .join("Library")
             .join("Logs")
-            .join("yurucode")
+            .join(APP_ID)
     } else if cfg!(target_os = "windows") {
         dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("C:\\temp"))
-            .join("yurucode")
+            .join(APP_ID)
             .join("logs")
     } else {
         dirs::home_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join(".yurucode")
+            .join(format!(".{}", APP_ID))
             .join("logs")
     };
-    
+
     // Create log directory if it doesn't exist
     let _ = fs::create_dir_all(&log_dir);
     log_dir.join("server.log")
@@ -203,15 +205,15 @@ fn get_pid_file_path() -> PathBuf {
             .unwrap_or_else(|| PathBuf::from("/tmp"))
             .join("Library")
             .join("Application Support")
-            .join("yurucode")
+            .join(APP_ID)
     } else if cfg!(target_os = "windows") {
         dirs::data_local_dir()
             .unwrap_or_else(|| PathBuf::from("C:\\temp"))
-            .join("yurucode")
+            .join(APP_ID)
     } else {
         dirs::home_dir()
             .unwrap_or_else(|| PathBuf::from("/tmp"))
-            .join(".yurucode")
+            .join(format!(".{}", APP_ID))
     };
 
     let _ = fs::create_dir_all(&data_dir);
@@ -393,7 +395,7 @@ fn get_our_server_path() -> Option<String> {
     #[cfg(target_os = "macos")]
     {
         let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
-        let binary_name = format!("yurucode-server-macos-{}", arch);
+        let binary_name = format!("{}-macos-{}", SERVER_BINARY_PREFIX, arch);
 
         if cfg!(debug_assertions) {
             // Dev mode - server is in project's src-tauri/resources/
@@ -411,28 +413,28 @@ fn get_our_server_path() -> Option<String> {
 
     #[cfg(target_os = "windows")]
     {
-        let binary_name = "yurucode-server-windows-x64.exe";
+        let binary_name = format!("{}-windows-x64.exe", SERVER_BINARY_PREFIX);
         if cfg!(debug_assertions) {
             exe_path.parent()?.parent()?.parent()?.parent()
-                .map(|p| p.join("src-tauri").join("resources").join(binary_name))
+                .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         } else {
             exe_path.parent()
-                .map(|p| p.join("resources").join(binary_name))
+                .map(|p| p.join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         }
     }
 
     #[cfg(target_os = "linux")]
     {
-        let binary_name = "yurucode-server-linux-x64";
+        let binary_name = format!("{}-linux-x64", SERVER_BINARY_PREFIX);
         if cfg!(debug_assertions) {
             exe_path.parent()?.parent()?.parent()?.parent()
-                .map(|p| p.join("src-tauri").join("resources").join(binary_name))
+                .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         } else {
             exe_path.parent()
-                .map(|p| p.join("resources").join(binary_name))
+                .map(|p| p.join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         }
     }
@@ -444,8 +446,9 @@ fn get_our_server_path() -> Option<String> {
 fn kill_orphaned_server_zombies() {
     #[cfg(target_os = "macos")]
     {
-        // Find all yurucode-server-macos processes with PPID=1 (orphaned)
+        // Find all app server processes with PPID=1 (orphaned)
         // ps -ax -o ppid,pid,comm outputs: PPID PID COMMAND
+        let mac_prefix = format!("{}-macos", SERVER_BINARY_PREFIX);
         if let Ok(output) = Command::new("ps")
             .args(&["-ax", "-o", "ppid,pid,comm"])
             .output()
@@ -454,8 +457,8 @@ fn kill_orphaned_server_zombies() {
             for line in stdout.lines() {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 3 {
-                    // Check if PPID is 1 (orphaned) and command contains yurucode-server-macos
-                    if parts[0] == "1" && parts[2].contains("yurucode-server-macos") {
+                    // Check if PPID is 1 (orphaned) and command contains app server
+                    if parts[0] == "1" && parts[2].contains(&mac_prefix) {
                         if let Ok(pid) = parts[1].parse::<u32>() {
                             let _ = Command::new("kill")
                                 .args(&["-9", &pid.to_string()])
@@ -471,6 +474,7 @@ fn kill_orphaned_server_zombies() {
     #[cfg(target_os = "linux")]
     {
         // Same logic for Linux
+        let linux_prefix = format!("{}-linux", SERVER_BINARY_PREFIX);
         if let Ok(output) = Command::new("ps")
             .args(&["-ax", "-o", "ppid,pid,comm"])
             .output()
@@ -479,7 +483,7 @@ fn kill_orphaned_server_zombies() {
             for line in stdout.lines() {
                 let parts: Vec<&str> = line.split_whitespace().collect();
                 if parts.len() >= 3 {
-                    if parts[0] == "1" && parts[2].contains("yurucode-server-linux") {
+                    if parts[0] == "1" && parts[2].contains(&linux_prefix) {
                         if let Ok(pid) = parts[1].parse::<u32>() {
                             let _ = Command::new("kill")
                                 .args(&["-9", &pid.to_string()])
@@ -506,9 +510,10 @@ fn kill_server_processes_by_name() {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-        // Kill any yurucode-server-windows processes
+        // Kill any app server processes
+        let windows_binary = format!("{}-windows-x64.exe", SERVER_BINARY_PREFIX);
         let _ = Command::new("taskkill")
-            .args(&["/F", "/IM", "yurucode-server-windows-x64.exe"])
+            .args(&["/F", "/IM", &windows_binary])
             .creation_flags(CREATE_NO_WINDOW)
             .output();
     }
@@ -516,16 +521,22 @@ fn kill_server_processes_by_name() {
     #[cfg(target_os = "macos")]
     {
         // Use pkill to kill by process name pattern
+        let mac_pattern = format!(
+            "{}-macos-arm64|{}-macos-x64|server-claude-macos",
+            SERVER_BINARY_PREFIX,
+            SERVER_BINARY_PREFIX
+        );
         let _ = Command::new("pkill")
-            .args(&["-9", "-f", "yurucode-server-macos-arm64|yurucode-server-macos-x64|server-claude-macos"])
+            .args(&["-9", "-f", &mac_pattern])
             .output();
         info!("Attempted to kill orphaned macOS server processes by name");
     }
 
     #[cfg(target_os = "linux")]
     {
+        let linux_pattern = format!("{}-linux-x64|server-claude-linux", SERVER_BINARY_PREFIX);
         let _ = Command::new("pkill")
-            .args(&["-9", "-f", "yurucode-server-linux-x64|server-claude-linux"])
+            .args(&["-9", "-f", &linux_pattern])
             .output();
         info!("Attempted to kill orphaned Linux server processes by name");
     }
@@ -554,7 +565,7 @@ pub fn clear_log() {
         .open(get_log_path())
     {
         let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-        let _ = writeln!(file, "=== yurucode server log started at {} ===", timestamp);
+        let _ = writeln!(file, "=== {} server log started at {} ===", APP_NAME, timestamp);
     }
 }
 
@@ -568,7 +579,13 @@ pub fn get_server_logs() -> String {
         let log_path = get_log_path();
         if !log_path.exists() {
             let _ = fs::create_dir_all(log_path.parent().unwrap());
-            let _ = fs::write(&log_path, "=== yurucode server log ===\nEmbedded server running\nNote: Real-time logging not available in embedded mode\n");
+            let _ = fs::write(
+                &log_path,
+                format!(
+                    "=== {} server log ===\nEmbedded server running\nNote: Real-time logging not available in embedded mode\n",
+                    APP_NAME
+                ),
+            );
         }
     }
     
@@ -629,7 +646,7 @@ pub fn stop_logged_server() {
     // Remove PID file on clean shutdown
     remove_pid_file();
 
-    // Note: Claude processes spawned by Yurucode are cleaned up via ProcessRegistry's
+    // Note: Claude processes spawned by Yume are cleaned up via ProcessRegistry's
     // Drop trait, which only kills processes we spawned (not external Claude instances)
 }
 
@@ -717,7 +734,7 @@ fn start_server_internal(port: u16) {
 }
 
 /// macOS-specific server startup
-/// Uses compiled binary (yurucode-server-macos-arm64 or yurucode-server-macos-x64) instead of Node.js
+/// Uses compiled binary (<app>-server-macos-arm64 or <app>-server-macos-x64) instead of Node.js
 /// This hides source code and removes Node.js dependency for end users
 #[cfg(target_os = "macos")]
 fn start_macos_server(port: u16) {
@@ -731,7 +748,7 @@ fn start_macos_server(port: u16) {
 
     // Detect architecture
     let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
-    let binary_name = format!("yurucode-server-macos-{}", arch);
+    let binary_name = format!("{}-macos-{}", SERVER_BINARY_PREFIX, arch);
     write_log(&format!("Architecture: {}, binary: {}", arch, binary_name));
 
     // Find the server binary
@@ -893,7 +910,7 @@ fn start_macos_server(port: u16) {
 }
 
 /// Windows-specific server startup
-/// Uses compiled binary (yurucode-server-windows-x64.exe) instead of Node.js
+/// Uses compiled binary (<app>-server-windows-x64.exe) instead of Node.js
 /// This hides source code and removes Node.js dependency for end users
 #[cfg(target_os = "windows")]
 fn start_windows_server(port: u16) {
@@ -906,7 +923,7 @@ fn start_windows_server(port: u16) {
     write_log(&format!("Executable path: {:?}", exe_path));
 
     // Windows binary name
-    let binary_name = "yurucode-server-windows-x64.exe";
+    let binary_name = format!("{}-windows-x64.exe", SERVER_BINARY_PREFIX);
     write_log(&format!("Binary: {}", binary_name));
 
     // Find the server binary
@@ -917,7 +934,7 @@ fn start_windows_server(port: u16) {
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("src-tauri").join("resources").join(binary_name))
+            .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
     } else {
         // In production, look in resources directory
         info!("Production mode - looking for binary in resources");
@@ -930,7 +947,7 @@ fn start_windows_server(port: u16) {
                 let resources_dir = parent.join("resources");
                 write_log(&format!("Resources dir: {:?}", resources_dir));
 
-                let binary_path = resources_dir.join(binary_name);
+                let binary_path = resources_dir.join(&binary_name);
                 if binary_path.exists() {
                     write_log(&format!("Found binary at: {:?}", binary_path));
                     return Some(binary_path);
@@ -984,7 +1001,7 @@ fn start_windows_server(port: u16) {
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         const DETACHED_PROCESS: u32 = 0x00000008;
 
-        let flags = if YURUCODE_SHOW_CONSOLE {
+        let flags = if YUME_SHOW_CONSOLE {
             info!("Console VISIBLE + DETACHED");
             CREATE_NEW_CONSOLE | DETACHED_PROCESS
         } else {
@@ -1035,7 +1052,7 @@ fn start_windows_server(port: u16) {
                                     guard_clone1.add_stdout_line(line.clone());
                                     write_log(&format!("[SERVER OUT] {}", line));
                                     info!("[SERVER OUT] {}", line);
-                                    if YURUCODE_SHOW_CONSOLE {
+                                    if YUME_SHOW_CONSOLE {
                                         println!("[SERVER OUT] {}", line);
                                     }
                                 }
@@ -1061,7 +1078,7 @@ fn start_windows_server(port: u16) {
                                     guard_clone2.add_stderr_line(line.clone());
                                     write_log(&format!("[SERVER ERR] {}", line));
                                     info!("[SERVER ERR] {}", line);
-                                    if YURUCODE_SHOW_CONSOLE {
+                                    if YUME_SHOW_CONSOLE {
                                         eprintln!("[SERVER ERR] {}", line);
                                     }
                                 }
@@ -1091,7 +1108,7 @@ fn start_windows_server(port: u16) {
 }
 
 /// Linux-specific server startup
-/// Uses compiled binary (yurucode-server-linux-x64) instead of Node.js
+/// Uses compiled binary (<app>-server-linux-x64) instead of Node.js
 /// This hides source code and removes Node.js dependency for end users
 #[cfg(not(any(target_os = "macos", target_os = "windows")))]
 fn start_linux_server(port: u16) {
@@ -1104,7 +1121,7 @@ fn start_linux_server(port: u16) {
     write_log(&format!("Executable path: {:?}", exe_path));
 
     // Linux binary name (currently only x64 supported)
-    let binary_name = "yurucode-server-linux-x64";
+    let binary_name = format!("{}-linux-x64", SERVER_BINARY_PREFIX);
     write_log(&format!("Binary: {}", binary_name));
 
     // Find the server binary
@@ -1115,7 +1132,7 @@ fn start_linux_server(port: u16) {
         std::env::current_exe()
             .ok()
             .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
-            .map(|p| p.join("src-tauri").join("resources").join(binary_name))
+            .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
     } else {
         // In production, look in resources directory
         info!("Production mode - looking for binary in resources");
@@ -1128,7 +1145,7 @@ fn start_linux_server(port: u16) {
                 let resources_dir = parent.join("resources");
                 write_log(&format!("Resources dir: {:?}", resources_dir));
 
-                let binary_path = resources_dir.join(binary_name);
+                let binary_path = resources_dir.join(&binary_name);
                 if binary_path.exists() {
                     write_log(&format!("Found binary at: {:?}", binary_path));
                     return Some(binary_path);

@@ -1,4 +1,4 @@
-# Executive Summary: Yurucode & Claude Code CLI
+# Executive Summary: Yume & Claude Code CLI
 
 *Prepared for presentation to Claude Code team*
 
@@ -6,9 +6,9 @@
 
 ---
 
-## What is Yurucode?
+## What is Yume?
 
-**Yurucode** is a native desktop GUI for Claude Code CLI. It wraps the existing Claude Code CLI to provide a flicker-free, lag-free desktop experience while preserving all of Claude Code's capabilities.
+**Yume** is a native desktop GUI for Claude Code CLI. It wraps the existing Claude Code CLI to provide a flicker-free, lag-free desktop experience while preserving all of Claude Code's capabilities.
 
 **Pricing**: $21 one-time purchase (uses user's existing Claude Pro/Max subscription)
 
@@ -63,7 +63,7 @@ They preserved terminal muscle memory (text selection, scrollback, search) rathe
 ### Technical Architecture
 ```
 ┌────────────────────────────────────┐
-│     Yurucode Desktop Window        │ ← Native (Tauri)
+│     Yume Desktop Window        │ ← Native (Tauri)
 ├────────────────────────────────────┤
 │       React UI (WebView)           │ ← Proper rendering
 ├────────────────────────────────────┤
@@ -97,7 +97,7 @@ Everything that makes Claude Code great:
 ## What We Add
 
 ### Immediate Value
-| Problem | CLI Experience | Yurucode |
+| Problem | CLI Experience | Yume |
 |---------|----------------|----------|
 | Flickering | 4,000+ events/sec | 0 (native rendering) |
 | VS Code crashes | 10-20 min | Never |
@@ -185,7 +185,7 @@ We're not trying to replace CLI power users who love the terminal.
 
 ## About Us
 
-**yurucode** = Japanese for "loose/relaxed code"
+**yume** = Japanese for "loose/relaxed code"
 
 We're building tools that make AI coding more accessible. This is our first product.
 

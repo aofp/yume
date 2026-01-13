@@ -212,5 +212,8 @@ export const isTauri = (): boolean => {
 // Export the Tauri API directly
 export const platformAPI: TauriAPI = tauriAPI;
 
+// Re-export invoke for convenience
+export { invoke };
+
 // Export for direct usage
 export default platformAPI;

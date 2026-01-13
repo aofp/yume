@@ -1,11 +1,11 @@
-# CLI Flags Comparison: yurucode vs SDK
+# CLI Flags Comparison: yume vs SDK
 
-## Current yurucode Implementation
+## Current yume Implementation
 
 From `claude_spawner.rs`:
 
 ```rust
-// Flags yurucode currently uses:
+// Flags yume currently uses:
 --resume <session_id>         // Resume session
 -c                            // Continue conversation
 -p <prompt>                   // Initial prompt
@@ -22,7 +22,7 @@ From `claude_spawner.rs`:
 
 Based on `agentSdkTypes.d.ts`:
 
-| SDK Option | CLI Flag | yurucode Status | Priority |
+| SDK Option | CLI Flag | yume Status | Priority |
 |------------|----------|-----------------|----------|
 | `resume` | `--resume` | ✅ implemented | - |
 | `continue` | `-c` | ✅ implemented | - |
@@ -62,9 +62,9 @@ This enables:
 3. **Dynamic MCP server updates** - add/remove servers mid-session
 4. **File checkpointing** - rewindFiles() capability
 
-### Current yurucode Limitation
+### Current yume Limitation
 
-yurucode spawns a NEW process for each message:
+yume spawns a NEW process for each message:
 ```
 User message 1 → spawn claude → get response → process exits
 User message 2 → spawn claude --resume → get response → process exits
@@ -101,7 +101,7 @@ type PermissionMode =
   | 'dontAsk'           // Deny if not pre-approved
 ```
 
-### yurucode Current
+### yume Current
 
 Only uses `--dangerously-skip-permissions` on macOS, which maps to `bypassPermissions`.
 
@@ -188,7 +188,7 @@ These require `--input-format stream-json`:
 
 From SDK `agentSdkTypes.d.ts`:
 
-| Message Type | yurucode Status |
+| Message Type | yume Status |
 |--------------|-----------------|
 | `SDKAssistantMessage` | ✅ handled |
 | `SDKUserMessage` | ✅ handled |
@@ -252,4 +252,4 @@ Use `contextWindow` from `modelUsage` in result messages for accurate context tr
 
 - SDK types: `competitor-research/claude-agent-sdk/source/sdk-npm/entrypoints/agentSdkTypes.d.ts`
 - Claude Code repo: `competitor-research/claude-agent-sdk/source/claude-code/`
-- yurucode spawner: `src-tauri/src/claude_spawner.rs`
+- yume spawner: `src-tauri/src/claude_spawner.rs`

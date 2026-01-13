@@ -10,9 +10,12 @@
 
 // These are injected at build time by vite
 // @ts-ignore - injected by vite
-const packageName = import.meta.env.VITE_APP_NAME || 'yurucode';
+const packageName = import.meta.env.VITE_APP_NAME || 'yume';
 // @ts-ignore - injected by vite
 const packageVersion = import.meta.env.VITE_APP_VERSION || '0.1.0';
+// @ts-ignore - injected by vite
+const packageId = import.meta.env.VITE_APP_ID
+  || packageName.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
 /**
  * App display name - used in UI (window title, about modal, etc.)
@@ -27,24 +30,33 @@ export const APP_NAME = packageName;
 export const APP_VERSION = packageVersion;
 
 /**
- * App ID - FIXED internal identifier (always "yurucode")
- * Used for: file paths (~/.yurucode/), localStorage keys, database names
- * This NEVER changes to maintain backwards compatibility with existing installations
+ * App ID - internal identifier derived from package.json name
+ * Used for: file paths (~/.{appId}/), localStorage keys, database names
  */
-export const APP_ID = 'yurucode';
+export const APP_ID = packageId;
 
 /**
  * Agent prefix - uses APP_NAME for display (user-visible)
  * Shows as: {APP_NAME}-architect, {APP_NAME}-explorer, etc. in UI
- * Files still saved as: yurucode-architect.md (APP_ID)
  */
 export const AGENT_PREFIX = packageName.toLowerCase();
 
 /**
- * Plugin ID - FIXED (always "yurucode")
- * Used for the bundled core plugin in resources/yurucode-plugin/
+ * Plugin ID - internal identifier (defaults to APP_ID)
+ * Used for the bundled core plugin in resources/{appId}-plugin/
  */
-export const PLUGIN_ID = 'yurucode';
+export const PLUGIN_ID = APP_ID;
+
+/**
+ * Helper to build app-scoped storage keys and event names.
+ */
+export const appStorageKey = (suffix: string, separator: '-' | '_' = '-') =>
+  `${APP_ID}${separator}${suffix}`;
+
+export const appEventName = (suffix: string) => `${APP_ID}-${suffix}`;
+
+export const APP_AGENT_PREFIX = `${PLUGIN_ID}-`;
+export const APP_COMMAND_PREFIX = `${PLUGIN_ID}--`;
 
 /**
  * Author info - update these in package.json or here

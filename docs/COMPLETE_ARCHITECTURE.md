@@ -1,4 +1,4 @@
-# Yurucode Complete Architecture Documentation
+# Yume Complete Architecture Documentation
 
 **Version:** 0.1.0
 **Last Updated:** January 12, 2026
@@ -21,7 +21,7 @@
 
 ### 1.1 Three-Process Architecture
 
-Yurucode employs a sophisticated three-process architecture that ensures separation of concerns, security, and performance:
+Yume employs a sophisticated three-process architecture that ensures separation of concerns, security, and performance:
 
 ```
 ┌────────────────────────────────────────────────────────────────┐
@@ -92,7 +92,7 @@ claude/mod.rs           // Claude manager and process control
 claude_binary.rs        // Binary detection and validation
 claude_session.rs       // Session state management
 claude_spawner.rs       // Process spawning and IPC
-agents.rs               // In-memory agent CRUD (5 yurucode core agents)
+agents.rs               // In-memory agent CRUD (5 yume core agents)
                         // Sync to ~/.claude/agents/ via commands/mod.rs
 
 // Server Management
@@ -180,8 +180,8 @@ pub fn find_available_port() -> Option<u16> {
 }
 
 // Port cache stored at:
-// - macOS/Linux: ~/.config/yurucode/last_port.txt
-// - Windows: %APPDATA%\yurucode\last_port.txt
+// - macOS/Linux: ~/.config/yume/last_port.txt
+// - Windows: %APPDATA%\yume\last_port.txt
 ```
 - **Port Caching**: Persists last working port to disk for instant startup on subsequent launches
 - **TOCTOU Protection**: HeldPort keeps listener bound until server is ready
@@ -287,10 +287,10 @@ Key Features:
 The Node.js server is distributed as compiled binaries using @yao-pkg/pkg:
 
 **Compiled Binaries (in `src-tauri/resources/`):**
-- `yurucode-server-macos-arm64` - macOS Apple Silicon
-- `yurucode-server-macos-x64` - macOS Intel
-- `yurucode-server-windows-x64.exe` - Windows x64
-- `yurucode-server-linux-x64` - Linux x64
+- `yume-server-macos-arm64` - macOS Apple Silicon
+- `yume-server-macos-x64` - macOS Intel
+- `yume-server-windows-x64.exe` - Windows x64
+- `yume-server-linux-x64` - Linux x64
 
 **Source Files (at project root):**
 - `server-claude-macos.cjs` - macOS server source
@@ -302,7 +302,7 @@ The Node.js server is distributed as compiled binaries using @yao-pkg/pkg:
 
 ```rust
 // Configuration in logged_server.rs
-pub const YURUCODE_SHOW_CONSOLE: bool = false;  // Debug flag
+pub const YUME_SHOW_CONSOLE: bool = false;  // Debug flag
 
 // Global state
 static SERVER_PROCESS: Mutex<Option<Arc<ServerProcessGuard>>> = ...;
@@ -349,7 +349,7 @@ pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, Stri
 - Window: `toggle_devtools`, `minimize_window`, `maximize_window`, `close_window`, `new_window`
 - File System: `select_folder`, `check_is_directory`, `search_files`, `get_recent_files`, `get_folder_contents`
 - Settings: `save_settings`, `load_settings`, `get_recent_projects`, `add_recent_project`
-- Agents: `load_claude_agents`, `load_project_agents`, `save_global_agent`, `save_project_agent`, `delete_global_agent`, `sync_yurucode_agents`, `are_yurucode_agents_synced`, `cleanup_yurucode_agents_on_exit`
+- Agents: `load_claude_agents`, `load_project_agents`, `save_global_agent`, `save_project_agent`, `delete_global_agent`, `sync_yume_agents`, `are_yume_agents_synced`, `cleanup_yume_agents_on_exit`
 - Git: `get_git_status`, `get_git_diff_numstat`
 - Bash: `execute_bash`, `spawn_bash`, `kill_bash_process`
 - System: `get_home_directory`, `get_current_directory`, `get_system_fonts`, `open_external`
@@ -450,8 +450,8 @@ CREATE TABLE analytics (
 ```
 
 Database location:
-- Windows: `%APPDATA%\yurucode\yurucode.db`
-- macOS/Linux: `~/.yurucode/yurucode.db`
+- Windows: `%APPDATA%\yume\yume.db`
+- macOS/Linux: `~/.yume/yume.db`
 
 ### 3.4 Crash Recovery System
 
@@ -490,9 +490,9 @@ Features:
 - Panic hook integration for crash recording
 
 Recovery paths:
-- macOS: `~/Library/Application Support/yurucode/recovery/`
-- Windows: `%APPDATA%\yurucode\recovery\`
-- Linux: `~/.config/yurucode/recovery/`
+- macOS: `~/Library/Application Support/yume/recovery/`
+- Windows: `%APPDATA%\yume\recovery\`
+- Linux: `~/.config/yume/recovery/`
 
 ## 4. Frontend Architecture (React/TypeScript)
 
@@ -1019,11 +1019,11 @@ npm run tauri:build:linux # Build for Linux
 
 ## Conclusion
 
-Yurucode's architecture prioritizes:
+Yume's architecture prioritizes:
 1. **Reliability**: Crash recovery, error boundaries, process isolation
 2. **Performance**: Virtual scrolling, lazy loading, bounded buffers
 3. **Security**: CSP, sandboxing, input validation
 4. **User Experience**: Auto-compaction, fast responses, clean UI
 5. **Privacy**: No telemetry, local-only operation
 
-The three-process architecture with compiled server binaries provides a unique balance of simplicity and power, making Yurucode a production-ready Claude GUI that respects user privacy while delivering exceptional performance.
+The three-process architecture with compiled server binaries provides a unique balance of simplicity and power, making Yume a production-ready Claude GUI that respects user privacy while delivering exceptional performance.

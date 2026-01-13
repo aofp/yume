@@ -20,7 +20,7 @@ src-tauri/target/
 
 # Server binaries (built per-platform, not tracked)
 src-tauri/resources/server-*
-src-tauri/resources/yurucode-server-*
+src-tauri/resources/yume-server-*
 
 # Logs
 *.log
@@ -84,7 +84,7 @@ tmpclaude-*
 
 # Server PID files
 server.pid
-.yurucode-server.pid
+.yume-server.pid
 
 # Vite
 vite.config.js.timestamp-*
@@ -107,11 +107,11 @@ coverage/
 # Optional stylelint cache
 .stylelintcache
 # License system keypair (keep secret!)
-yurucode_keypair.json
-yurucode.com/
+yume_keypair.json
+yume.com/
 
 # Secret files - NEVER commit
 .env.secret
-yurucode.com/.env.secret
-yurucode.com/licenses/
+yume.com/.env.secret
+yume.com/licenses/
 *.log

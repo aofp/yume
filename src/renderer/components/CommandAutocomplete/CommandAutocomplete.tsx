@@ -32,7 +32,7 @@ interface CommandAutocompleteProps {
 
 interface Command {
   name: string;
-  fullName?: string; // Full name including plugin prefix (e.g., 'yurucode--commit'), used when sending to Claude
+  fullName?: string; // Full name including plugin prefix (e.g., '{appId}--commit'), used when sending to Claude
   description: string;
   icon: React.ReactNode;
   handleLocally?: boolean; // If true, handle on our side instead of sending to Claude
@@ -97,7 +97,7 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
 
         const pluginCommands = rawPluginCommands.map(cmd => ({
           name: cmd.name.includes('--') ? cmd.name.split('--')[1] : cmd.name,
-          fullName: cmd.name, // Store full name for Claude CLI (e.g., 'yurucode--commit')
+          fullName: cmd.name, // Store full name for Claude CLI (e.g., '{appId}--commit')
           description: cmd.description || 'plugin command',
           icon: <IconPuzzle size={14} />,
           handleLocally: false,

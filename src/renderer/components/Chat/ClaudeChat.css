@@ -304,7 +304,7 @@
 
 .message-text {
   margin-bottom: 8px;
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* Markdown styles */
@@ -1009,7 +1009,7 @@ textarea.context-full {
   position: absolute;
   right: 0px;
   bottom: 0px;
-  background: rgba(var(--negative-rgb), 0.1);
+  background: rgba(var(--negative-rgb), 0.2);
   border: 1px solid var(--negative-color);
   color: var(--negative-color);
   padding: 13px;
@@ -1024,7 +1024,7 @@ textarea.context-full {
 }
 
 .stop-streaming-btn:hover {
-  background: rgba(var(--negative-rgb), 0.15);
+  background: rgba(var(--negative-rgb), 0.3);
   border: 1px solid var(--negative-color);
   color: var(--negative-color);
   opacity: 1;
@@ -2337,7 +2337,7 @@ textarea.context-full {
 }
 
 .stats-footer-limit-name {
-  font-family: 'Comic Neue', cursive;
+  font-family: var(--font-sans);
 }
 
 .stats-footer-value {
@@ -2990,7 +2990,7 @@ textarea.context-full {
   color: var(--fg-60);
   white-space: pre-wrap;
   word-break: break-word;
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   background: var(--bg-overlay);
   min-height: 0; /* Critical for flex scroll */
   user-select: text;

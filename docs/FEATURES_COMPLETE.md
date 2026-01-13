@@ -1,4 +1,4 @@
-# Yurucode Complete Feature Documentation
+# Yume Complete Feature Documentation
 
 **Version:** 0.1.0
 **Last Updated:** January 12, 2026
@@ -495,13 +495,13 @@ impl McpManager {
 - Event streaming
 - Error handling
 
-### 7.4 Yurucode Agents System
+### 7.4 Yume Agents System
 
 **Description**: 5 built-in AI agents that sync to `~/.claude/agents/` for Claude CLI integration. All agents automatically use the **currently selected model** (opus or sonnet).
 
 **Location**: `src-tauri/src/commands/mod.rs` (sync), `src/renderer/services/agentExecutionService.ts` (execution)
 
-**The 5 Yurucode Core Agents**:
+**The 5 Yume Core Agents**:
 
 | Agent | Purpose | Key Tools |
 |-------|---------|-----------|
@@ -512,16 +512,16 @@ impl McpManager {
 | **specialist** | Domain-specific: tests, docs, devops | Varies |
 
 **Sync Mechanism**:
-- Agents are written as `.md` files to `~/.claude/agents/yurucode-*.md`
+- Agents are written as `.md` files to `~/.claude/agents/yume-*.md`
 - Uses YAML frontmatter format compatible with Claude CLI
-- PID tracking prevents multiple yurucode instances from conflicting
+- PID tracking prevents multiple yume instances from conflicting
 - Agents removed on app exit (only if last instance running)
 - **Agents re-synced automatically when user switches models**
 
-**File Format** (written to `~/.claude/agents/yurucode-architect.md`):
+**File Format** (written to `~/.claude/agents/yume-architect.md`):
 ```yaml
 ---
-name: yurucode-architect
+name: yume-architect
 model: <selectedModel>
 description: proactively use this agent before implementing complex features...
 ---
@@ -530,9 +530,9 @@ architect agent. plan, design, decompose. think first. output: steps, dependenci
 ```
 
 **Commands**:
-- `sync_yurucode_agents(enabled, model)`: Enable/disable agent sync with specified model
-- `are_yurucode_agents_synced()`: Check if agents are currently synced
-- `cleanup_yurucode_agents_on_exit()`: Remove agents on app exit
+- `sync_yume_agents(enabled, model)`: Enable/disable agent sync with specified model
+- `are_yume_agents_synced()`: Check if agents are currently synced
+- `cleanup_yume_agents_on_exit()`: Remove agents on app exit
 
 ## 8. Database & Persistence
 
@@ -720,7 +720,7 @@ ORDER BY rank;
 
 ### 10.1 Debug Mode
 
-**Activation**: Set `YURUCODE_DEBUG=true`
+**Activation**: Set `YUME_DEBUG=true`
 
 **Features**:
 - Verbose logging
@@ -747,7 +747,7 @@ commands.register({
 
 **Plugin System** (Future):
 ```typescript
-interface YurucodePlugin {
+interface YumePlugin {
   name: string;
   version: string;
   
@@ -953,7 +953,7 @@ use windows::Win32::*;
 **License Format**: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` (29 characters)
 
 **Validation**:
-- Server-side validation: `https://license.yurucode.com/validate`
+- Server-side validation: `https://license.yume.com/validate`
 - Response caching: 5-minute TTL
 - Encrypted storage: XOR cipher in localStorage
 - Auto-revalidation: Every 30 minutes
@@ -989,12 +989,12 @@ interface LicenseFeatures {
 
 **Description**: Complete extensibility framework for adding custom functionality without code changes.
 
-**Plugin Directory**: `~/.yurucode/plugins/`
+**Plugin Directory**: `~/.yume/plugins/`
 
 ### 15.2 Plugin Structure
 
 ```
-~/.yurucode/plugins/{plugin-id}/
+~/.yume/plugins/{plugin-id}/
   plugin.json         # Metadata (id, name, version, author, components)
   commands/           # Custom slash commands (*.md)
   agents/             # Custom agent definitions (*.md with YAML frontmatter)
@@ -1082,7 +1082,7 @@ class PluginService {
 
 ### 15.6 Bundled Plugin
 
-**yurucode Plugin**: Bundled plugin synced on initialization
+**yume Plugin**: Bundled plugin synced on initialization
 - Contains default commands, agents, and hooks
 - Automatically enabled on first launch
 - Cannot be uninstalled
@@ -1098,7 +1098,7 @@ class PluginService {
 ### 16.2 Skill Types
 
 **1. Custom Skills**: User-created skills
-- Storage: localStorage (`yurucode_custom_skills`)
+- Storage: localStorage (`yume_custom_skills`)
 - Full CRUD operations
 - Immediate effect when enabled
 
@@ -1349,7 +1349,7 @@ CREATE TABLE checkpoints (
 
 ## Feature Comparison Matrix
 
-| Feature | Yurucode | Opcode | Claudia | Continue |
+| Feature | Yume | Opcode | Claudia | Continue |
 |---------|----------|--------|---------|----------|
 | **License system (trial/pro)** | ✅ | ❌ | ❌ | ❌ |
 | **Plugin system** | ✅ | ❌ | ❌ | ❌ |
@@ -1391,7 +1391,7 @@ CREATE TABLE checkpoints (
 
 ## Conclusion
 
-Yurucode offers a comprehensive feature set that surpasses competitors (including YC-backed Opcode) in key areas:
+Yume offers a comprehensive feature set that surpasses competitors (including YC-backed Opcode) in key areas:
 
 1. **Unique Features**:
    - **License system** with trial/pro tiers ($21 one-time)
@@ -1440,16 +1440,16 @@ Yurucode offers a comprehensive feature set that surpasses competitors (includin
    - Font picker (mono + sans)
    - Window transparency control
 
-**Yurucode vs Opcode**: Opcode is YC-backed but yurucode is technically superior in almost every category:
-- **Yurucode has**: License system, plugins, skills, performance monitoring, analytics, timeline/checkpoints, CLAUDE.md editor, 5h/7d limit tracking, hooks, themes, agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands
+**Yume vs Opcode**: Opcode is YC-backed but yume is technically superior in almost every category:
+- **Yume has**: License system, plugins, skills, performance monitoring, analytics, timeline/checkpoints, CLAUDE.md editor, 5h/7d limit tracking, hooks, themes, agents, auto-compaction, crash recovery, keyboard shortcuts, custom commands
 - **Opcode has**: Multi-session tabs, basic token tracking (but missing most advanced features above)
 
 **Key Differentiators**:
 1. **Plugin System** - No competitor offers a complete plugin framework with 5 component types
 2. **Skills System** - Unique auto-inject context system based on triggers
-3. **Performance Monitoring** - Only Yurucode has real-time metrics with export
+3. **Performance Monitoring** - Only Yume has real-time metrics with export
 4. **Analytics Dashboard** - Most comprehensive usage tracking and reporting
 5. **License Management** - Commercial licensing system with trial/pro tiers
 6. **Timeline & Checkpoints** - Visual conversation state management and restoration
 
-The combination of advanced features with a focus on performance, privacy, and extensibility makes Yurucode the most capable Claude GUI available.
+The combination of advanced features with a focus on performance, privacy, and extensibility makes Yume the most capable Claude GUI available.

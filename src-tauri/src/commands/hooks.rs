@@ -118,7 +118,7 @@ pub fn get_hook_events() -> Vec<String> {
     ]
 }
 
-/// Get sample yurucode hook scripts
+/// Get sample yume hook scripts
 #[tauri::command]
 pub fn get_sample_hooks() -> Vec<(String, String, String)> {
     vec![

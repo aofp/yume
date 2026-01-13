@@ -14,7 +14,7 @@ import { hooksService } from '../../services/hooksService';
 import { pluginService } from '../../services/pluginService';
 import { PluginBadge } from '../common/PluginBadge';
 import { invoke } from '@tauri-apps/api/core';
-import { YURUCODE_HOOKS } from './hooks-data';
+import { YUME_HOOKS } from './hooks-data';
 import { APP_NAME } from '../../config/app';
 
 interface HooksTabProps {
@@ -83,11 +83,11 @@ export const HooksTab: React.FC<HooksTabProps> = ({
   };
 
   const loadSavedStates = () => {
-    // Load saved states for yurucode hooks - default to enabled
+    // Load saved states for yume hooks - default to enabled
     const states: any = {};
     const scripts: any = {};
-    
-    YURUCODE_HOOKS.forEach(hook => {
+
+    YUME_HOOKS.forEach(hook => {
       const saved = localStorage.getItem(`hook_${hook.id}_enabled`);
       // If never saved before, default to true and save it
       if (saved === null) {
@@ -97,7 +97,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
       } else {
         states[hook.id] = saved === 'true';
       }
-      
+
       // Load saved scripts or use default
       const savedScript = localStorage.getItem(`hook_${hook.id}_script`);
       if (savedScript === null) {
@@ -108,7 +108,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
         scripts[hook.id] = savedScript;
       }
     });
-    
+
     setSelectedHooks(states);
     setHookScripts(scripts);
   };
@@ -160,9 +160,9 @@ export const HooksTab: React.FC<HooksTabProps> = ({
   const loadSampleHooks = async () => {
     try {
       const samples = await invoke<Array<[string, string, string]>>('get_sample_hooks');
-      
+
       samples.forEach(([name, event, script]) => {
-        const hook = YURUCODE_HOOKS.find(h => h.id === event);
+        const hook = YUME_HOOKS.find(h => h.id === event);
         if (hook) {
           setHookScripts({ ...hookScripts, [event]: script });
           localStorage.setItem(`hook_${event}_script`, script);
@@ -224,23 +224,23 @@ export const HooksTab: React.FC<HooksTabProps> = ({
         // Reset all hooks to defaults
         const defaultStates: any = {};
         const defaultScripts: any = {};
-        
-        YURUCODE_HOOKS.forEach(hook => {
+
+        YUME_HOOKS.forEach(hook => {
           defaultStates[hook.id] = true; // All enabled by default
           defaultScripts[hook.id] = hook.script;
-          
+
           // Save to localStorage
           localStorage.setItem(`hook_${hook.id}_enabled`, 'true');
           localStorage.setItem(`hook_${hook.id}_script`, hook.script);
-          
+
           // Save to hooksService
-          hooksService.saveHook(hook.id, { 
-            enabled: true, 
+          hooksService.saveHook(hook.id, {
+            enabled: true,
             script: hook.script,
             name: hook.name
           });
         });
-        
+
         setSelectedHooks(defaultStates);
         setHookScripts(defaultScripts);
         setConfirmModal(prev => ({ ...prev, isOpen: false }));
@@ -261,9 +261,9 @@ export const HooksTab: React.FC<HooksTabProps> = ({
         onConfirm={confirmModal.onConfirm}
         onCancel={() => setConfirmModal(prev => ({ ...prev, isOpen: false }))}
       />
-      
+
       {/* Built-in Hooks - only show if there are any */}
-      {YURUCODE_HOOKS.length > 0 && (
+      {YUME_HOOKS.length > 0 && (
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
           <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>{APP_NAME} hooks</h4>
@@ -296,7 +296,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
           </button>
         </div>
 
-        {YURUCODE_HOOKS.map(hook => (
+        {YUME_HOOKS.map(hook => (
           <div key={hook.id} style={{ marginBottom: '6px' }}>
             <div className="checkbox-setting">
               <span className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -664,7 +664,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
                 border: '1px solid #333',
                 color: '#fff',
                 fontSize: '11px',
-                fontFamily: 'var(--font-mono, "Comic Mono", monospace)',
+                fontFamily: 'var(--font-mono, "Agave", monospace)',
                 borderRadius: '4px',
                 marginBottom: '12px',
                 resize: 'vertical',

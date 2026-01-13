@@ -1,6 +1,6 @@
 #!/bin/bash
 
-echo "🚀 yurucode Tauri Test Script"
+echo "🚀 yume Tauri Test Script"
 echo "=============================="
 
 # Colors for output

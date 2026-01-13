@@ -37,10 +37,10 @@ terminal power users, developers preferring cli workflows, open source advocates
 
 ---
 
-## vs yurucode Comparison
+## vs yume Comparison
 
-### yurucode Wins ⚡
-| Feature | yurucode | aider |
+### yume Wins ⚡
+| Feature | yume | aider |
 |---------|----------|-------|
 | GUI interface | ⚡ | ❌ |
 | Visual shortcuts | 30+ | cli commands |
@@ -52,7 +52,7 @@ terminal power users, developers preferring cli workflows, open source advocates
 | Beginner friendly | ⚡ | terminal required |
 
 ### aider Wins
-| Feature | yurucode | aider |
+| Feature | yume | aider |
 |---------|----------|-------|
 | Truly free | uses claude sub | ⚡ byok |
 | Open source | ❌ | ⚡ |
@@ -62,11 +62,11 @@ terminal power users, developers preferring cli workflows, open source advocates
 
 ### Key Differentiator
 aider = terminal-first, git-native workflow
-yurucode = gui-first, keyboard-centric speed
+yume = gui-first, keyboard-centric speed
 
 ### Strategic Note
-aider and yurucode serve different user preferences:
+aider and yume serve different user preferences:
 - aider: developers who live in terminal
-- yurucode: developers who want visual + keyboard speed
+- yume: developers who want visual + keyboard speed
 
 no need to compete - can coexist peacefully

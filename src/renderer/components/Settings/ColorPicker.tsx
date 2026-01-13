@@ -12,7 +12,7 @@ interface ColorPickerProps {
 
 // Background presets (from themes + similar subtle dark colors)
 const BG_PRESETS = [
-  // Row 1: Theme backgrounds (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  // Row 1: Theme backgrounds (yume, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
   ['#0f0f0f', '#0a0a0a', '#0a0a0d', '#050505', '#0d0c0e', '#100f0f', '#0a0808', '#080a0a', '#060810', '#0a0908'],
   // Row 2: More theme backgrounds + subtle variations (void, grove, warm tints, cool tints)
   ['#000000', '#0a0a08', '#0c0a0a', '#0a0c0c', '#0a0a0c', '#080808', '#0c0c0c', '#0e0e0e', '#101010', '#121212']
@@ -20,7 +20,7 @@ const BG_PRESETS = [
 
 // Foreground presets (from themes + similar light colors)
 const FG_PRESETS = [
-  // Row 1: Theme foregrounds (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  // Row 1: Theme foregrounds (yume, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
   ['#ffffff', '#c0c5ce', '#c6c8d1', '#f0f0f0', '#e7e7da', '#e8dcd0', '#c9d1d9', '#d6deeb', '#faf0d6', '#d4d4d4'],
   // Row 2: More theme foregrounds + variations (void, grove, warm/cool tints)
   ['#bacebe', '#e0e0e0', '#f5f5f5', '#fafafa', '#eeeeee', '#d0d0d0', '#c8c8c8', '#b8b8b8', '#a8a8a8', '#989898']
@@ -28,7 +28,7 @@ const FG_PRESETS = [
 
 // Accent presets (from themes + similar vibrant colors)
 const ACCENT_PRESETS = [
-  // Row 1: Theme accents (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  // Row 1: Theme accents (yume, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
   ['#c4b5ff', '#61afef', '#8fb8c8', '#36d7e6', '#9df5bd', '#e4d9bd', '#d57b60', '#e890a0', '#82aaff', '#e9a828'],
   // Row 2: More theme accents + variations (void, grove, similar pastels)
   ['#a0a0b0', '#afff76', '#a78bfa', '#60a5fa', '#f472b6', '#4ade80', '#22d3ee', '#facc15', '#e879f9', '#fb923c']
@@ -36,7 +36,7 @@ const ACCENT_PRESETS = [
 
 // Positive presets (from themes + similar greens/teals)
 const POSITIVE_PRESETS = [
-  // Row 1: Theme positives (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  // Row 1: Theme positives (yume, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
   ['#99ff99', '#98c379', '#b4be82', '#72f1b8', '#06b6d4', '#7cc07c', '#8fbc8f', '#56d364', '#addb67', '#87bb26'],
   // Row 2: More theme positives + variations (void, grove, similar greens)
   ['#e0f5e4', '#5affa9', '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#a3e635', '#10b981', '#14b8a6', '#84cc16']
@@ -44,7 +44,7 @@ const POSITIVE_PRESETS = [
 
 // Negative presets (from themes + similar reds/pinks)
 const NEGATIVE_PRESETS = [
-  // Row 1: Theme negatives (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
+  // Row 1: Theme negatives (yume, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
   ['#ff9999', '#e06c75', '#e27878', '#f25d7a', '#ec4899', '#df8383', '#fd8b8b', '#f47676', '#ef5350', '#cc241d'],
   // Row 2: More theme negatives + variations (void, grove, similar reds)
   ['#d09b9b', '#e67e80', '#f87171', '#fb7185', '#f472b6', '#ef4444', '#df2d53', '#dc2626', '#f43f5e', '#be123c']

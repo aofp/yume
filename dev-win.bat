@@ -1,6 +1,6 @@
 @echo off
 echo ===============================================
-echo     yurucode - Windows Development Mode
+echo     yume - Windows Development Mode
 echo ===============================================
 echo.
 

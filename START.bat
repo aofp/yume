@@ -1,6 +1,6 @@
 @echo off
 echo ===============================================
-echo     yurucode - Multi-Instance Development
+echo     yume - Multi-Instance Development
 echo ===============================================
 echo.
 

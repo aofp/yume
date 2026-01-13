@@ -1,5 +1,5 @@
 ---
-name: yurucode guard
+name: yume guard
 event: PreToolUse
 description: blocks dangerous commands, privilege escalation, and protected paths
 ---
@@ -56,7 +56,7 @@ try:
     if tool == 'Bash':
         cmd = inp.get('command', '')
         if any(re.search(p, cmd, re.I) for p in DANGEROUS_PATTERNS):
-            print('{"action":"block","message":"blocked by yurucode guard"}')
+            print('{"action":"block","message":"blocked by yume guard"}')
             sys.exit(2)
 
     if tool in ['Write', 'Edit', 'MultiEdit', 'NotebookEdit']:

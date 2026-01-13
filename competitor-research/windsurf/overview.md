@@ -42,10 +42,10 @@ teams on large codebases, beginners learning ai coding, budget-conscious develop
 
 ---
 
-## vs yurucode Comparison
+## vs yume Comparison
 
-### yurucode Wins ⚡
-| Feature | yurucode | windsurf |
+### yume Wins ⚡
+| Feature | yume | windsurf |
 |---------|----------|----------|
 | Bundle size | ~15MB | ~350MB |
 | Cold startup | <2s | ~5s |
@@ -60,7 +60,7 @@ teams on large codebases, beginners learning ai coding, budget-conscious develop
 | Performance presets | auto-detect | ❌ |
 
 ### windsurf Wins
-| Feature | yurucode | windsurf |
+| Feature | yume | windsurf |
 |---------|----------|----------|
 | Real-time awareness | ❌ | ⚡ cascade |
 | Live preview | ❌ | ⚡ click-to-edit |
@@ -69,7 +69,7 @@ teams on large codebases, beginners learning ai coding, budget-conscious develop
 | Fast search | ❌ | ⚡ 20x swe-grep |
 | Planning agent | ❌ | ⚡ |
 
-### How yurucode Beats windsurf
+### How yume Beats windsurf
 1. **add real-time tracking**: action logger for context
 2. **add live preview**: embedded preview pane
 3. **add context meter**: token usage in status bar
@@ -78,7 +78,7 @@ teams on large codebases, beginners learning ai coding, budget-conscious develop
 
 ### Key Differentiator
 windsurf = all-in-one ai ide with smart context
-yurucode = fastest native claude wrapper with smart shortcuts
+yume = fastest native claude wrapper with smart shortcuts
 
 ### Priority Features to Steal
 1. **context window meter** - easy win, high impact
@@ -88,7 +88,7 @@ yurucode = fastest native claude wrapper with smart shortcuts
 
 ### Strategic Note
 windsurf's cascade features are genuinely impressive.
-yurucode must implement the core speed features:
+yume must implement the core speed features:
 - context meter (easy)
 - turbo mode (medium)
 - live preview (hard but worth it)

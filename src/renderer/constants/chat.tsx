@@ -15,6 +15,7 @@ import {
   IconNotebook,
   IconTool,
 } from '@tabler/icons-react';
+import { APP_ID } from '../config/app';
 
 // PRE-CREATED ICONS - avoid JSX creation on every render (performance optimization)
 export const TOOL_ICONS = {
@@ -36,7 +37,8 @@ export const TOOL_ICONS = {
 } as const;
 
 // Pre-compiled regex for path stripping (avoid regex compilation in hot path)
-export const PATH_STRIP_REGEX = /^\/mnt\/c\/Users\/[^\/]+\/Desktop\/yurucode\//;
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+export const PATH_STRIP_REGEX = new RegExp(`^/mnt/c/Users/[^/]+/Desktop/${escapeRegExp(APP_ID)}/`);
 
 // Binary/non-text file extensions that shouldn't be previewed
 export const binaryExtensions = new Set([

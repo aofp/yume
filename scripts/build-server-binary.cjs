@@ -15,7 +15,9 @@ const os = require('os');
 const ROOT = join(__dirname, '..');
 const RESOURCES = join(ROOT, 'src-tauri', 'resources');
 const DIST = join(ROOT, 'dist-server');
-const NODE18_DIR = join(os.homedir(), '.yurucode-node18');
+const packageJson = JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8'));
+const APP_ID = packageJson.name.toLowerCase().replace(/[^a-z0-9-]/g, '');
+const NODE18_DIR = join(os.homedir(), `.${APP_ID}-node18`);
 
 // Ensure dist directory exists
 if (!existsSync(DIST)) {
@@ -302,7 +304,7 @@ async function build() {
 
     // Step 4: Compile with pkg
     const isWindows = target.platform === 'windows';
-    const outputName = `yurucode-server-${target.platform}-${target.arch}${isWindows ? '.exe' : ''}`;
+    const outputName = `${APP_ID}-server-${target.platform}-${target.arch}${isWindows ? '.exe' : ''}`;
     const outputPath = join(DIST, outputName);
     console.log(`   4/4 Packaging binary with pkg...`);
 

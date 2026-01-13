@@ -1,5 +1,9 @@
 // Chat helper functions extracted from ClaudeChat.tsx
 
+import { appStorageKey } from '../config/app';
+
+const COMMANDS_KEY = appStorageKey('commands', '_');
+
 // Cached custom commands to avoid parsing localStorage on every command execution
 let cachedCustomCommands: any[] | null = null;
 let cachedCommandsTimestamp = 0;
@@ -9,7 +13,7 @@ export const getCachedCustomCommands = () => {
   const now = Date.now();
   if (!cachedCustomCommands || now - cachedCommandsTimestamp > 5000) {
     try {
-      cachedCustomCommands = JSON.parse(localStorage.getItem('yurucode_commands') || '[]');
+      cachedCustomCommands = JSON.parse(localStorage.getItem(COMMANDS_KEY) || '[]');
       cachedCommandsTimestamp = now;
     } catch {
       cachedCustomCommands = [];

@@ -21,7 +21,7 @@ import {
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { pluginService } from '../../services/pluginService';
 import { InstalledPlugin } from '../../types/plugin';
-import { APP_NAME } from '../../config/app';
+import { APP_NAME, PLUGIN_ID } from '../../config/app';
 import './PluginsTab.css';
 
 interface PluginsTabProps {
@@ -198,10 +198,10 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
     mcp: <IconDatabase size={10} />
   };
 
-  // Sort plugins: yurucode always first, then alphabetically
+  // Sort plugins: core plugin always first, then alphabetically
   const sortedPlugins = [...plugins].sort((a, b) => {
-    if (a.id === 'yurucode') return -1;
-    if (b.id === 'yurucode') return 1;
+    if (a.id === PLUGIN_ID) return -1;
+    if (b.id === PLUGIN_ID) return 1;
     return a.manifest.name.localeCompare(b.manifest.name);
   });
 
@@ -272,7 +272,7 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
           sortedPlugins.map(plugin => {
             const counts = getComponentCounts(plugin);
             const isToggling = togglingPlugins.has(plugin.id);
-            const isYurucode = plugin.id === 'yurucode';
+            const isCorePlugin = plugin.id === PLUGIN_ID;
 
             return (
               <div key={plugin.id} className={`plugin-item ${plugin.enabled ? 'enabled' : ''}`}>
@@ -290,10 +290,10 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
 
                   <div className="plugin-info">
                     <div className="plugin-name-row">
-                      <span className="plugin-name">{isYurucode ? APP_NAME : plugin.manifest.name}</span>
+                      <span className="plugin-name">{isCorePlugin ? APP_NAME : plugin.manifest.name}</span>
                       <span className="plugin-version">v{plugin.manifest.version}</span>
                     </div>
-                    <div className="plugin-description">{isYurucode ? `commands, agents, and security guard for ${APP_NAME}` : plugin.manifest.description}</div>
+                    <div className="plugin-description">{isCorePlugin ? `commands, agents, and security guard for ${APP_NAME}` : plugin.manifest.description}</div>
                   </div>
 
                   {/* Component counts as small badges */}
@@ -318,7 +318,7 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
                       <span className="toggle-switch-label on">on</span>
                       <div className="toggle-switch-slider" />
                     </div>
-                    {!isYurucode && (
+                    {!isCorePlugin && (
                       <button
                         className="plugin-remove"
                         onClick={() => removePlugin(plugin)}

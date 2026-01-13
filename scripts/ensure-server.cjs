@@ -10,6 +10,8 @@ const { execSync } = require('child_process');
 
 const platform = process.platform;
 const resourcesDir = path.join(__dirname, '..', 'src-tauri', 'resources');
+const packageJson = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'package.json'), 'utf8'));
+const APP_ID = packageJson.name.toLowerCase().replace(/[^a-z0-9-]/g, '');
 
 // Determine expected binary name
 let binaryName;
@@ -18,13 +20,15 @@ let buildScript;
 if (platform === 'darwin') {
   // Check architecture for macOS
   const arch = process.arch;
-  binaryName = arch === 'arm64' ? 'yurucode-server-macos-arm64' : 'yurucode-server-macos-x64';
+  binaryName = arch === 'arm64'
+    ? `${APP_ID}-server-macos-arm64`
+    : `${APP_ID}-server-macos-x64`;
   buildScript = 'build:server:macos';
 } else if (platform === 'win32') {
-  binaryName = 'yurucode-server-windows-x64.exe';
+  binaryName = `${APP_ID}-server-windows-x64.exe`;
   buildScript = 'build:server:windows';
 } else {
-  binaryName = 'yurucode-server-linux-x64';
+  binaryName = `${APP_ID}-server-linux-x64`;
   buildScript = 'build:server:linux';
 }
 

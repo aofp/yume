@@ -10,7 +10,7 @@
 
 ## Speed & Performance Features
 
-| Feature | yurucode | sculptor | opcode | cursor | windsurf | claude cli |
+| Feature | yume | sculptor | opcode | cursor | windsurf | claude cli |
 |---------|----------|----------|--------|--------|----------|------------|
 | Native app (not electron) | ⚡ tauri | ⚡ tauri | ⚡ tauri | ❌ electron | ❌ electron | ⚡ bun cli |
 | Cold startup time | ⚡ <2s | 🔶 ~1min (docker) | ✅ ~5s | 🔶 ~5s | 🔶 ~5s | ⚡ instant |
@@ -26,7 +26,7 @@
 
 ## Keyboard Shortcuts & UX Speed
 
-| Feature | yurucode | sculptor | opcode | cursor | windsurf | claude cli |
+| Feature | yume | sculptor | opcode | cursor | windsurf | claude cli |
 |---------|----------|----------|--------|--------|----------|------------|
 | Total shortcuts | ⚡ 30+ | 🔶 ~5 | 🔶 ~10 | ✅ ~25 | ✅ ~20 | ⚡ 30+ |
 | Tab management (cmd+t/w/d) | ⚡ | ❌ | ❌ | ✅ | ✅ | n/a |
@@ -45,7 +45,7 @@
 
 ## Parallel & Agent Features
 
-| Feature | yurucode | sculptor | opcode | cursor | windsurf | claude cli |
+| Feature | yume | sculptor | opcode | cursor | windsurf | claude cli |
 |---------|----------|----------|--------|--------|----------|------------|
 | Parallel agents | ❌ | ⚡ docker containers | ✅ background | ⚡ 8 agents | ✅ | ⚡ Task tool |
 | Container isolation | ❌ | ⚡ docker | ❌ | ✅ worktrees | ❌ | ❌ |
@@ -59,7 +59,7 @@
 
 ## Context & Intelligence
 
-| Feature | yurucode | sculptor | opcode | cursor | windsurf | claude cli |
+| Feature | yume | sculptor | opcode | cursor | windsurf | claude cli |
 |---------|----------|----------|--------|--------|----------|------------|
 | Context window meter | ❌ | ✅ token meter | ❌ | ❌ | ⚡ real-time | ✅ status line |
 | Live preview in IDE | ❌ | ❌ | ❌ | ⚡ visual editor | ⚡ click-to-edit | ❌ |
@@ -75,7 +75,7 @@
 
 ## Session & Project Management
 
-| Feature | yurucode | sculptor | opcode | cursor | windsurf | claude cli |
+| Feature | yume | sculptor | opcode | cursor | windsurf | claude cli |
 |---------|----------|----------|--------|--------|----------|------------|
 | Multi-tab sessions | ⚡ | ❌ | ❌ | ✅ | ✅ | ❌ (terminal) |
 | Session restore | ✅ | ✅ | ⚡ | ✅ | ✅ | ⚡ --resume |
@@ -90,7 +90,7 @@
 
 ## Analytics & Tracking
 
-| Feature | yurucode | sculptor | opcode | cursor | windsurf | claude cli |
+| Feature | yume | sculptor | opcode | cursor | windsurf | claude cli |
 |---------|----------|----------|--------|--------|----------|------------|
 | Usage analytics modal | ⚡ detailed | ❌ | ⚡ visual charts | ✅ | ✅ | ✅ /stats |
 | Cost tracking | ⚡ | ❌ | ⚡ detailed | ✅ | ✅ | ⚡ /cost |
@@ -102,7 +102,7 @@
 
 ## Configuration & Extensibility
 
-| Feature | yurucode | sculptor | opcode | cursor | windsurf | claude cli |
+| Feature | yume | sculptor | opcode | cursor | windsurf | claude cli |
 |---------|----------|----------|--------|--------|----------|------------|
 | MCP server management | ✅ ui | ⚡ custom | ⚡ registry | ❌ | ✅ | ⚡ /mcp |
 | CLAUDE.md editor | ❌ | ❌ | ⚡ built-in | ❌ | ❌ | ⚡ /memory |
@@ -117,7 +117,7 @@
 
 ## Platform & Distribution
 
-| Feature | yurucode | sculptor | opcode | cursor | windsurf | claude cli |
+| Feature | yume | sculptor | opcode | cursor | windsurf | claude cli |
 |---------|----------|----------|--------|--------|----------|------------|
 | macOS | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ |
 | Windows native | ⚡ | ❌ wsl only | 🔶 issues | ✅ | ✅ | ✅ |
@@ -132,7 +132,7 @@
 
 | Tool | Price | Notes |
 |------|-------|-------|
-| yurucode | $9 one-time | uses your claude subscription |
+| yume | $9 one-time | uses your claude subscription |
 | sculptor | free (beta) | requires claude pro/max or api |
 | opcode | free forever | AGPL, open source |
 | cursor | $20-200/mo | $20 Pro, $60 Pro+, $200 Ultra |
@@ -162,14 +162,14 @@
 
 ## Key Competitive Insights
 
-### yurucode WINS vs Claude CLI
+### yume WINS vs Claude CLI
 - Visual tab management with cmd+t/w/d/1-9
 - Custom theming with 65+ color options
 - Built-in usage analytics dashboard
 - Point-and-click MCP server management
 - Visual project/session browsers
 
-### yurucode LOSES vs Claude CLI
+### yume LOSES vs Claude CLI
 - No real-time steering (queuing messages during processing)
 - No plugin system (12+ official plugins)
 - No vim mode
@@ -177,28 +177,28 @@
 - No /export command
 - No /stats graphs
 
-### yurucode WINS vs Cursor
+### yume WINS vs Cursor
 - 25x smaller bundle size
 - 6x less memory usage
 - $9 one-time vs $20+/month
 - No Electron security vulnerabilities
 - Full MCP support
 
-### yurucode LOSES vs Cursor
+### yume LOSES vs Cursor
 - No parallel agents (0 vs 8)
 - No BugBot PR review
 - No visual editor
 - No background cloud agents
 - No Composer model speed
 
-### yurucode WINS vs Windsurf
+### yume WINS vs Windsurf
 - Faster startup (<2s vs ~5s)
 - Smaller footprint
 - No subscription required
 - Keyboard-first design
 - No Chromium vulnerabilities
 
-### yurucode LOSES vs Windsurf
+### yume LOSES vs Windsurf
 - No turbo mode (auto-execute)
 - No context meter
 - No Cascade memory system
@@ -210,7 +210,7 @@
 ## Strategic Positioning Summary
 
 ```
-yurucode = FASTEST native Claude Code GUI
+yume = FASTEST native Claude Code GUI
 
 vs sculptor: faster (no docker overhead), windows native
 vs opcode: more shortcuts, better analytics, stable windows

@@ -3,12 +3,12 @@
 # Fix for DMG build failure on macOS
 # This script creates the DMG manually after Tauri build
 
-APP_PATH="/Users/yuru/yurucode/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yurucode.app"
-DMG_PATH="/Users/yuru/yurucode/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/yurucode_0.1.0_aarch64.dmg"
+APP_PATH="/Users/yuru/yume/src-tauri/target/aarch64-apple-darwin/release/bundle/macos/yume.app"
+DMG_PATH="/Users/yuru/yume/src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/yume_0.1.0_aarch64.dmg"
 
 if [ -d "$APP_PATH" ]; then
     echo "📦 Creating DMG manually..."
-    hdiutil create -volname "yurucode" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
+    hdiutil create -volname "yume" -srcfolder "$APP_PATH" -ov -format UDZO "$DMG_PATH"
     
     if [ -f "$DMG_PATH" ]; then
         echo "✅ DMG created successfully!"

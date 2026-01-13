@@ -13,9 +13,9 @@ async function convertToWebP() {
   
   const imagePaths = [
     // Public directory
-    { dir: path.join(__dirname, '../public'), files: ['yurucode.png', 'icon.png', 'favicon.png'] },
+    { dir: path.join(__dirname, '../public'), files: ['yume.png', 'icon.png', 'favicon.png'] },
     // Dist directory (if exists)
-    { dir: path.join(__dirname, '../dist/renderer'), files: ['yurucode.png', 'icon.png'] },
+    { dir: path.join(__dirname, '../dist/renderer'), files: ['yume.png', 'icon.png'] },
     { dir: path.join(__dirname, '../dist/renderer/assets'), files: [] }  // Will scan for PNG files
   ];
   
@@ -87,8 +87,8 @@ async function convertToWebP() {
     
     // Update favicon to WebP with PNG fallback
     indexContent = indexContent.replace(
-      '<link rel="icon" type="image/png" href="./yurucode.png" />',
-      '<link rel="icon" type="image/webp" href="./yurucode.webp" />\n    <link rel="icon" type="image/png" href="./yurucode.png" />'
+      '<link rel="icon" type="image/png" href="./yume.png" />',
+      '<link rel="icon" type="image/webp" href="./yume.webp" />\n    <link rel="icon" type="image/png" href="./yume.png" />'
     );
     
     if (indexContent !== originalIndex) {

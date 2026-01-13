@@ -1,4 +1,4 @@
-# yurucode: The Official Claude Code GUI
+# yume: The Official Claude Code GUI
 
 ## For Anthropic's Consideration
 
@@ -13,21 +13,21 @@ Current options:
 - **Electron bloatware** (cursor/windsurf) - 400MB, slow, resource-hungry
 - **Docker complexity** (sculptor) - 60s first launch, WSL required on windows
 
-**yurucode fills the gap**: native, fast, minimal, focused on claude.
+**yume fills the gap**: native, fast, minimal, focused on claude.
 
 ---
 
-## Why yurucode
+## Why yume
 
 ### 1. Fastest Possible Architecture
 
 ```
               Bundle    Memory    Startup
-yurucode      15MB      50MB      <2s
+yume      15MB      50MB      <2s
 cursor        400MB     300MB     5s
 windsurf      350MB     280MB     5s
 
-yurucode is 25x smaller, uses 6x less RAM
+yume is 25x smaller, uses 6x less RAM
 ```
 
 **Tauri 2 = same stack bun uses** (rust + webview)
@@ -52,9 +52,9 @@ unique features:
 |------|-------|-------------|
 | cursor | multi-AI IDE | cursor ai, gpt, claude |
 | windsurf | codeium ecosystem | codeium, claude, etc |
-| yurucode | **claude only** | zero distraction |
+| yume | **claude only** | zero distraction |
 
-**yurucode exists solely to make claude code better**
+**yume exists solely to make claude code better**
 
 ### 4. Cross-Platform Native
 
@@ -64,7 +64,7 @@ unique features:
 ✅ Linux - native appimage/deb
 ```
 
-sculptor requires WSL on windows. yurucode works natively everywhere.
+sculptor requires WSL on windows. yume works natively everywhere.
 
 ---
 
@@ -147,7 +147,7 @@ lowercase everywhere (consistent personality)
 
 ```
 user downloads claude code
-  → includes yurucode as default gui
+  → includes yume as default gui
   → terminal still available for power users
   → seamless experience out of box
 ```
@@ -156,7 +156,7 @@ user downloads claude code
 
 ```
 existing claude desktop users
-  → one-click install yurucode
+  → one-click install yume
   → specialized coding interface
   → shares authentication
 ```
@@ -165,7 +165,7 @@ existing claude desktop users
 
 ```
 companies buying claude max/enterprise
-  → managed yurucode deployment
+  → managed yume deployment
   → centralized configuration
   → usage analytics
 ```
@@ -176,7 +176,7 @@ companies buying claude max/enterprise
 
 ### Why Not Just Build It?
 
-1. **Time**: yurucode is 6+ months ahead
+1. **Time**: yume is 6+ months ahead
 2. **Expertise**: deep tauri/claude code knowledge
 3. **Design**: consistent minimalist vision
 4. **Keyboard UX**: 30+ shortcuts already working
@@ -191,7 +191,7 @@ companies buying claude max/enterprise
 | sculptor | docker dependency, linux-first |
 | opcode | AGPL license complications |
 
-**yurucode = lightest, fastest, claude-only, commercial-ready**
+**yume = lightest, fastest, claude-only, commercial-ready**
 
 ---
 
@@ -222,9 +222,9 @@ For Users:
 
 ## Summary
 
-> "yurucode is the Bun of Claude Code UI"
+> "yume is the Bun of Claude Code UI"
 
-Just as Anthropic acquired Bun to power Claude Code's backend infrastructure, yurucode should power the frontend experience.
+Just as Anthropic acquired Bun to power Claude Code's backend infrastructure, yume should power the frontend experience.
 
 **fastest. smallest. claude-only. keyboard-first.**
 

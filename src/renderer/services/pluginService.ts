@@ -3,6 +3,7 @@
 
 import { invoke } from '@tauri-apps/api/core';
 import { open } from '@tauri-apps/plugin-dialog';
+import { APP_NAME, PLUGIN_ID, appStorageKey } from '../config/app';
 import {
   InstalledPlugin,
   InstalledPluginRust,
@@ -12,7 +13,7 @@ import {
   pluginFromRust
 } from '../types/plugin';
 
-const REGISTRY_KEY = 'yurucode_plugin_registry';
+const REGISTRY_KEY = appStorageKey('plugin_registry', '_');
 
 class PluginService {
   private static instance: PluginService;
@@ -34,12 +35,12 @@ class PluginService {
 
   /**
    * Initialize the plugin service by loading plugins from backend
-   * Also ensures bundled yurucode plugin is installed
+   * Also ensures bundled core plugin is installed
    * Always refreshes the cache to ensure latest data
    */
   async initialize(): Promise<void> {
     try {
-      // Ensure bundled yurucode plugin is installed
+      // Ensure bundled core plugin is installed
       try {
         await invoke('plugin_init_bundled');
       } catch (e) {
@@ -124,12 +125,12 @@ class PluginService {
 
   /**
    * Uninstall a plugin
-   * Note: The "yurucode" plugin cannot be uninstalled
+   * Note: The bundled core plugin cannot be uninstalled
    */
   async uninstallPlugin(pluginId: string): Promise<void> {
-    // Prevent deletion of bundled yurucode plugin
-    if (pluginId === 'yurucode') {
-      throw new Error('The yurucode plugin cannot be uninstalled');
+    // Prevent deletion of bundled core plugin
+    if (pluginId === PLUGIN_ID) {
+      throw new Error(`The ${APP_NAME} plugin cannot be uninstalled`);
     }
     await invoke('plugin_uninstall', { pluginId });
     this.plugins.delete(pluginId);
@@ -146,7 +147,7 @@ class PluginService {
     if (plugin) {
       plugin.enabled = true;
 
-      // Handle plugin hooks - sync to yurucode hooks system
+      // Handle plugin hooks - sync to core hooks system
       if (plugin.components.hooks.length > 0) {
         await this.syncPluginHooks(plugin, true);
       }
@@ -154,7 +155,7 @@ class PluginService {
   }
 
   /**
-   * Sync plugin hooks with yurucode hooks system
+   * Sync plugin hooks with core hooks system
    */
   private async syncPluginHooks(plugin: InstalledPlugin, enabled: boolean): Promise<void> {
     for (const hook of plugin.components.hooks) {
@@ -167,7 +168,7 @@ class PluginService {
           const script = this.extractHookScript(content);
 
           if (script) {
-            // Save to localStorage for yurucode hooks system
+            // Save to localStorage for core hooks system
             localStorage.setItem(`hook_${hookId}_enabled`, 'true');
             localStorage.setItem(`hook_${hookId}_script`, script);
             localStorage.setItem(`hook_${hookId}_name`, hook.name);
@@ -221,7 +222,7 @@ class PluginService {
     // Update local cache first to get plugin info
     const plugin = this.plugins.get(pluginId);
 
-    // Handle plugin hooks - remove from yurucode hooks system
+    // Handle plugin hooks - remove from core hooks system
     if (plugin && plugin.components.hooks.length > 0) {
       await this.syncPluginHooks(plugin, false);
     }
@@ -503,43 +504,43 @@ class PluginService {
   }
 
   // ============================================================================
-  // Yurucode Agents Management
+  // App Agents Management
   // ============================================================================
 
   /**
-   * Sync yurucode agents with a specific model
-   * Called when user changes the selected model to update all yurucode agents
+   * Sync app agents with a specific model
+   * Called when user changes the selected model to update all app agents
    */
-  async syncYurucodeAgents(enabled: boolean, model: string): Promise<void> {
+  async syncYumeAgents(enabled: boolean, model: string): Promise<void> {
     try {
-      await invoke('sync_yurucode_agents', { enabled, model });
-      console.log(`[pluginService] Synced yurucode agents: enabled=${enabled}, model=${model}`);
+      await invoke('sync_yume_agents', { enabled, model });
+      console.log(`[pluginService] Synced ${APP_NAME} agents: enabled=${enabled}, model=${model}`);
     } catch (error) {
-      console.error('Failed to sync yurucode agents:', error);
+      console.error(`Failed to sync ${APP_NAME} agents:`, error);
       throw error;
     }
   }
 
   /**
-   * Check if yurucode agents are currently synced
+   * Check if app agents are currently synced
    */
-  async areYurucodeAgentsSynced(): Promise<boolean> {
+  async areYumeAgentsSynced(): Promise<boolean> {
     try {
-      return await invoke<boolean>('are_yurucode_agents_synced');
+      return await invoke<boolean>('are_yume_agents_synced');
     } catch (error) {
-      console.error('Failed to check yurucode agents sync status:', error);
+      console.error(`Failed to check ${APP_NAME} agents sync status:`, error);
       return false;
     }
   }
 
   /**
-   * Cleanup yurucode agents on app exit
+   * Cleanup app agents on app exit
    */
-  async cleanupYurucodeAgentsOnExit(): Promise<void> {
+  async cleanupYumeAgentsOnExit(): Promise<void> {
     try {
-      await invoke('cleanup_yurucode_agents_on_exit');
+      await invoke('cleanup_yume_agents_on_exit');
     } catch (error) {
-      console.error('Failed to cleanup yurucode agents:', error);
+      console.error(`Failed to cleanup ${APP_NAME} agents:`, error);
     }
   }
 }

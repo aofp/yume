@@ -6369,7 +6369,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "yurucode"
+name = "yume"
 version = "0.1.0"
 dependencies = [
  "anyhow",

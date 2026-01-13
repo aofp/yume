@@ -1,4 +1,4 @@
-# Yurucode Project Status
+# Yume Project Status
 
 **Date:** January 12, 2026
 **Version:** 0.1.0 (Pre-Release)
@@ -6,7 +6,7 @@
 
 ## Executive Summary
 
-Yurucode is a sophisticated GUI for Claude CLI with intelligent context management that automatically compacts at 60% usage (65% force). The application has reached beta quality with major systems implemented: plugin architecture, skills system, error boundaries, CSP security, crash recovery, analytics, and compiled server binaries. Primary remaining work is code signing, console cleanup, and distribution preparation.
+Yume is a sophisticated GUI for Claude CLI with intelligent context management that automatically compacts at 60% usage (65% force). The application has reached beta quality with major systems implemented: plugin architecture, skills system, error boundaries, CSP security, crash recovery, analytics, and compiled server binaries. Primary remaining work is code signing, console cleanup, and distribution preparation.
 
 ## Current State
 
@@ -50,7 +50,7 @@ Yurucode is a sophisticated GUI for Claude CLI with intelligent context manageme
 The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for each platform, eliminating Node.js dependency for end users and hiding source code.
 
 ### Unique Features vs Competition
-| Feature | Yurucode | Opcode | Claudia |
+| Feature | Yume | Opcode | Claudia |
 |---------|----------|--------|---------|
 | Auto-compact | ✅ 60% | ❌ | ❌ Manual |
 | Compiled server | ✅ | ❌ | ❌ |
@@ -153,7 +153,7 @@ The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg) for 
 
 ## Conclusion
 
-Yurucode has strong technical foundations and a unique value proposition with auto-compact at 60%. However, it requires 4-6 weeks of production hardening before commercial release. The primary risks are technical (memory, security) rather than market-related.
+Yume has strong technical foundations and a unique value proposition with auto-compact at 60%. However, it requires 4-6 weeks of production hardening before commercial release. The primary risks are technical (memory, security) rather than market-related.
 
 **Recommendation:** Proceed with production hardening sprint, targeting Q1 2026 release with "Beta" designation for first 3 months.
 

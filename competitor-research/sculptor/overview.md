@@ -41,10 +41,10 @@ developers needing parallel testing environments, power users managing multiple 
 
 ---
 
-## vs yurucode Comparison
+## vs yume Comparison
 
-### yurucode Wins ⚡
-| Feature | yurucode | sculptor |
+### yume Wins ⚡
+| Feature | yume | sculptor |
 |---------|----------|----------|
 | Keyboard shortcuts | 30+ | ~5 |
 | Cold startup | <2s | ~1min |
@@ -58,7 +58,7 @@ developers needing parallel testing environments, power users managing multiple 
 | No docker required | ✅ | ❌ |
 
 ### sculptor Wins
-| Feature | yurucode | sculptor |
+| Feature | yume | sculptor |
 |---------|----------|----------|
 | Parallel agents | ❌ | ⚡ containers |
 | Pairing mode | ❌ | ⚡ mutagen |
@@ -68,7 +68,7 @@ developers needing parallel testing environments, power users managing multiple 
 | Custom MCP | ❌ | ✅ |
 | Context meter | ❌ | ✅ |
 
-### How yurucode Beats sculptor
+### How yume Beats sculptor
 1. **add parallel tabs** - same functionality without docker overhead
 2. **add fork/branch feature** - timeline branching without containers
 3. **add context meter** - real-time token visibility
@@ -77,4 +77,4 @@ developers needing parallel testing environments, power users managing multiple 
 
 ### Key Differentiator
 sculptor = power through isolation (heavy, slow start)
-yurucode = power through speed (light, instant start)
+yume = power through speed (light, instant start)

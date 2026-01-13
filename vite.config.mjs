@@ -11,6 +11,9 @@ const __dirname = dirname(__filename);
 
 // Read package.json for app metadata
 const packageJson = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'));
+const appId = packageJson.name
+  .toLowerCase()
+  .replace(/[^a-z0-9-]/g, '');
 
 // Write PID file for cleanup
 const VITE_PID_FILE = resolve(__dirname, '.vite.pid');
@@ -167,5 +170,6 @@ export default defineConfig({
     // Inject app metadata from package.json
     'import.meta.env.VITE_APP_NAME': JSON.stringify(packageJson.name),
     'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
+    'import.meta.env.VITE_APP_ID': JSON.stringify(appId),
   },
 });

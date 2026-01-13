@@ -52,7 +52,7 @@ if (existsSync(wrapperSource)) {
 
 // Ensure package.json exists in resources (for node_modules)
 const resourcePackage = {
-  name: "yurucode-server",
+  name: "yume-server",
   version: "1.0.0",
   type: "module", // Support ES modules
   private: true,

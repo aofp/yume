@@ -1,4 +1,5 @@
 import React from 'react';
+import { appStorageKey } from '../../config/app';
 import { IconFolderOpen, IconTrash, IconX } from '@tabler/icons-react';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 
@@ -19,6 +20,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   onClose,
   onProjectSelect,
 }) => {
+  const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
   // State to prevent duplicate selections
   const [isSelecting, setIsSelecting] = React.useState(false);
   const [hoveredIndex, setHoveredIndex] = React.useState<number | null>(null);
@@ -41,7 +43,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
     setIsSelecting(true);
     
     // update last opened and access count
-    const stored = localStorage.getItem('yurucode-recent-projects');
+    const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
     if (stored) {
       try {
         const projects = JSON.parse(stored);
@@ -59,7 +61,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         updated.sort((a: RecentProject, b: RecentProject) => 
           (b.lastOpened || 0) - (a.lastOpened || 0)
         );
-        localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+        localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
       } catch (err) {
         console.error('Failed to update project timestamps:', err);
       }
@@ -76,7 +78,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
 
   const removeProject = (projectPath: string, e: React.MouseEvent) => {
     e.stopPropagation();
-    const stored = localStorage.getItem('yurucode-recent-projects');
+    const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
     if (!stored) return;
     
     try {
@@ -84,9 +86,9 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
       const updated = projects.filter((p: any) => p.path !== projectPath);
       
       if (updated.length > 0) {
-        localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+        localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
       } else {
-        localStorage.removeItem('yurucode-recent-projects');
+        localStorage.removeItem(RECENT_PROJECTS_KEY);
         onClose();
       }
       
@@ -105,7 +107,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   };
 
   const handleConfirmClear = () => {
-    localStorage.removeItem('yurucode-recent-projects');
+    localStorage.removeItem(RECENT_PROJECTS_KEY);
     setShowClearConfirm(false);
     // Notify listeners that recent projects were updated
     window.dispatchEvent(new CustomEvent('recentProjectsUpdated'));
@@ -169,7 +171,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
   }, []);
 
   const renderProjects = () => {
-    const stored = localStorage.getItem('yurucode-recent-projects');
+    const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
     if (!stored) {
       return <div className="no-recent">no recent projects</div>;
     }
@@ -294,7 +296,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         return;
       }
       
-      const stored = localStorage.getItem('yurucode-recent-projects');
+      const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
       if (!stored) return;
       
       let projects: RecentProject[];
@@ -403,7 +405,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
               onClick={clearAllProjects}
               title="clear all"
               disabled={(() => {
-                const stored = localStorage.getItem('yurucode-recent-projects');
+                const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
                 if (!stored) return true;
                 try {
                   const projects = JSON.parse(stored);

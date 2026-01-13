@@ -60,7 +60,7 @@ app.use(express.json());
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', service: 'yurucode-claude' });
+  res.json({ status: 'ok', service: 'yume-claude' });
 });
 
 // Session states for tracking
@@ -80,7 +80,7 @@ let sessionStates = new Map();  // Map of sessionId -> state
 let sessionRetryCount = new Map();  // Map of sessionId -> retry count
 
 // Session persistence for recovery from crashes
-const SESSION_CACHE_FILE = path.join(os.tmpdir(), 'yurucode-sessions.json');
+const SESSION_CACHE_FILE = path.join(os.tmpdir(), 'yume-sessions.json');
 
 // Load persisted sessions on startup
 function loadPersistedSessions() {
@@ -505,9 +505,9 @@ io.on('connection', (socket) => {
       // This might be why Claude reports high token counts - it includes system prompts
       const args = ['--print', '--output-format', 'stream-json', '--verbose', '--dangerously-skip-permissions'];
       
-      // Add yurucode system prompt - MUST be lowercase and concise
+      // Add yume system prompt - MUST be lowercase and concise
       // Remove XML tags that break bash syntax
-      const casualPrompt = `CRITICAL: you are in yurucode ui. ALWAYS:
+      const casualPrompt = `CRITICAL: you are in yume ui. ALWAYS:
 - use all lowercase (no capitals ever)
 - be extremely concise
 - never use formal language  

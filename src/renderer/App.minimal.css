@@ -19,7 +19,7 @@ html {
 }
 
 body {
-  font-family: 'Comic Neue', 'Helvetica Neue', 'Helvetica', 'Inter', 'Segoe UI', 'Calibri', 'Tahoma', 'Verdana', 'Arial', -apple-system, BlinkMacSystemFont, 'Microsoft Sans Serif', sans-serif;
+  font-family: var(--font-sans, 'Agave', sans-serif);
   /* Use --bg-color for transparency - set by index.html before CSS loads
      On Windows: transparent (overlay provides tint)
      On macOS: rgba with alpha for native transparency */
@@ -219,7 +219,7 @@ ul {
 }
 
 /* Trial blocked toast notification */
-.trial-blocked-toast {
+.demo-blocked-toast {
   position: fixed;
   top: 50px;
   left: 50%;
@@ -228,11 +228,11 @@ ul {
   animation: toast-slide-in 0.3s ease-out;
 }
 
-.trial-blocked-toast.fade-out {
+.demo-blocked-toast.fade-out {
   animation: toast-fade-out 0.3s ease-out forwards;
 }
 
-.trial-blocked-toast-content {
+.demo-blocked-toast-content {
   background: rgba(0, 0, 0, 0.95);
   border: 1px solid var(--fg-15);
   border-radius: 8px;

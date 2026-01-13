@@ -2,7 +2,7 @@
 
 *Last Updated: January 10, 2026*
 
-*Our primary competitor and the tool yurucode wraps*
+*Our primary competitor and the tool yume wraps*
 
 ## Overview
 
@@ -63,7 +63,7 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 
 > "Claude Code dominated the CLI coding product experience this year."
 
-## Critical Weaknesses (Yurucode's Opportunity)
+## Critical Weaknesses (Yume's Opportunity)
 
 ### 1. TUI Rendering Issues (CRITICAL - Still Unresolved Jan 2026)
 
@@ -140,7 +140,7 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - Bug #13929: Auto-compact fails when conversation exceeds limit, blocking manual /compact
 - Users report "racing against compaction to document what Claude just did"
 
-**Yurucode Advantage**: Auto-compact at 55%/60%/65% thresholds - far ahead of CLI's 95%
+**Yume Advantage**: Auto-compact at 55%/60%/65% thresholds - far ahead of CLI's 95%
 
 ### 7. Usage Limits & Visibility
 
@@ -151,7 +151,7 @@ Claude Code CLI is Anthropic's official terminal-based agentic coding tool. It l
 - One analysis claims ~60% reduction in effective token limits over time
 - 5-hour reset windows confuse users
 
-**Yurucode Advantage**: Real-time token tracking + analytics dashboard
+**Yume Advantage**: Real-time token tracking + analytics dashboard
 
 ### 8. Trust & Safety Issues
 
@@ -190,12 +190,12 @@ Claude Code CLI requires a Claude subscription:
 - Weekly usage safeguards apply
 - Extra usage available with prepay
 
-**Yurucode Model**: $21 one-time purchase
+**Yume Model**: $21 one-time purchase
 - Uses user's existing Claude Pro/Max subscription
 - No additional API costs
 - No recurring fees
 
-## What Yurucode Must Solve
+## What Yume Must Solve
 
 1. **Eliminate TUI lag** - Native desktop UI, no terminal rendering
 2. **Smooth input** - No input lag regardless of session length

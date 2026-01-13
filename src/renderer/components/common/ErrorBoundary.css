@@ -39,7 +39,7 @@
   color: var(--text-secondary);
   margin: 0 0 16px 0;
   font-size: var(--text-lg);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .error-location {

@@ -1,9 +1,9 @@
 #!/bin/bash
 
-# Generate all icons from yurucode.png
+# Generate all icons from yume.png
 # Ensures all icons are RGBA format
 
-SOURCE="yurucode.png"
+SOURCE="yume.png"
 ICON_DIR="src-tauri/icons"
 
 echo "🎨 Generating icons from $SOURCE..."

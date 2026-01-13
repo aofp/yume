@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "description": "Minimal Claude Code UI",
   "type": "module",
-  "author": "yumespark",
+  "author": "forkgatherer",
   "scripts": {
     "cleanup": "node scripts/kill-ports.cjs",
     "dev": "npm run cleanup && tauri dev --config src-tauri/tauri.dev.conf.json",

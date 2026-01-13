@@ -31,11 +31,11 @@ From [Issue #6536](https://github.com/anthropics/claude-code/issues/6536):
 | OAuth token | ✅ Works | ❌ NOT SUPPORTED |
 | Billing | Subscription OR API | **API only (pay-per-token)** |
 
-### Impact on yurucode
+### Impact on yume
 
 **This is a DEALBREAKER for SDK adoption.**
 
-yurucode users:
+yume users:
 1. Have Claude Pro/Max subscriptions
 2. Expect to use subscription quota
 3. Don't want to pay separately for API usage
@@ -60,7 +60,7 @@ This means:
 
 ## Architecture Comparison
 
-### Current yurucode Flow
+### Current yume Flow
 ```
 Frontend → Tauri IPC → Rust Spawner → Claude CLI → stream-json → Parse → Events
 ```
@@ -72,7 +72,7 @@ SDK query() → Internal CLI Spawn → Built-in Parser → Message Stream
 
 ### Key Insight
 Both approaches spawn CLI. The difference is:
-- **yurucode**: reinvents SDK functionality in Rust
+- **yume**: reinvents SDK functionality in Rust
 - **agent sdk**: uses Anthropic's official abstractions
 
 ---
@@ -184,7 +184,7 @@ interface Query extends AsyncGenerator<SDKMessage, void> {
 
 ## Comparison: SDK vs Current Implementation
 
-### What yurucode Currently Has
+### What yume Currently Has
 
 | Feature | Status | Notes |
 |---------|--------|-------|
@@ -217,7 +217,7 @@ interface Query extends AsyncGenerator<SDKMessage, void> {
 
 ---
 
-## Current yurucode Bugs (Found in Review)
+## Current yume Bugs (Found in Review)
 
 ### Critical: Session Routing Bug
 `claude_commands.rs:134-137`:
@@ -328,9 +328,9 @@ Cons:
 
 ### ❌ SDK IS NOT VIABLE - API KEY REQUIREMENT
 
-**The SDK requires API key authentication, which breaks yurucode's value proposition.**
+**The SDK requires API key authentication, which breaks yume's value proposition.**
 
-yurucode users expect to use their Claude Pro/Max subscription. Requiring an API key would:
+yume users expect to use their Claude Pro/Max subscription. Requiring an API key would:
 1. Force users to pay TWICE (subscription + API usage)
 2. Require credit card setup in Anthropic Console
 3. Create billing confusion

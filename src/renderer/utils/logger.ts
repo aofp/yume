@@ -3,6 +3,13 @@
  * Replaces console.log statements with controlled, leveled logging
  */
 
+import { appStorageKey } from '../config/app';
+
+const LOG_LEVEL_KEY = appStorageKey('log_level', '_');
+const DEBUG_MODE_KEY = appStorageKey('debug_mode', '_');
+const LOGS_KEY = appStorageKey('logs', '_');
+const CRITICAL_ERRORS_KEY = appStorageKey('critical_errors', '_');
+
 export enum LogLevel {
   DEBUG = 0,
   INFO = 1,
@@ -32,7 +39,7 @@ class Logger {
 
   private constructor() {
     // Load log level from localStorage or environment
-    const savedLevel = localStorage.getItem('yurucode_log_level');
+    const savedLevel = localStorage.getItem(LOG_LEVEL_KEY);
     if (savedLevel) {
       this.logLevel = parseInt(savedLevel);
     } else if (import.meta.env.DEV) {
@@ -42,7 +49,7 @@ class Logger {
     }
 
     // Check if we should show console in production (debug mode)
-    const debugMode = localStorage.getItem('yurucode_debug_mode') === 'true';
+    const debugMode = localStorage.getItem(DEBUG_MODE_KEY) === 'true';
     if (debugMode) {
       this.logToConsole = true;
     }
@@ -63,7 +70,7 @@ class Logger {
 
   public setLogLevel(level: LogLevel): void {
     this.logLevel = level;
-    localStorage.setItem('yurucode_log_level', level.toString());
+    localStorage.setItem(LOG_LEVEL_KEY, level.toString());
   }
 
   public enableConsoleLogging(enable: boolean): void {
@@ -98,7 +105,7 @@ class Logger {
   private flushToLocalStorage(): void {
     try {
       const logs = JSON.stringify(this.logBuffer.slice(-100)); // Keep last 100 entries
-      localStorage.setItem('yurucode_logs', logs);
+      localStorage.setItem(LOGS_KEY, logs);
     } catch (e) {
       // Silently fail if localStorage is full
     }
@@ -160,14 +167,14 @@ class Logger {
     // For now, just store critical errors
     try {
       const criticalErrors = JSON.parse(
-        localStorage.getItem('yurucode_critical_errors') || '[]'
+        localStorage.getItem(CRITICAL_ERRORS_KEY) || '[]'
       );
       criticalErrors.push(entry);
       // Keep only last 20 critical errors
       if (criticalErrors.length > 20) {
         criticalErrors.shift();
       }
-      localStorage.setItem('yurucode_critical_errors', JSON.stringify(criticalErrors));
+      localStorage.setItem(CRITICAL_ERRORS_KEY, JSON.stringify(criticalErrors));
     } catch (e) {
       // Silently fail
     }
@@ -199,8 +206,8 @@ class Logger {
 
   public clearLogs(): void {
     this.logBuffer = [];
-    localStorage.removeItem('yurucode_logs');
-    localStorage.removeItem('yurucode_critical_errors');
+    localStorage.removeItem(LOGS_KEY);
+    localStorage.removeItem(CRITICAL_ERRORS_KEY);
   }
 
   public exportLogs(): string {

@@ -17,7 +17,7 @@ Align Windows and macOS server flows to ensure identical functionality while mai
 
 ### Windows Server Flow (Needs Alignment)
 1. **Server Type**: Embedded string in `logged_server.rs`
-2. **Location**: Temp directory (`%TEMP%/yurucode-server/`)
+2. **Location**: Temp directory (`%TEMP%/yume-server/`)
 3. **Process Spawning**: Complex with CREATE_NO_WINDOW flags
 4. **Console Handling**: Special Windows process flags
 5. **Process Management**: taskkill /F for termination

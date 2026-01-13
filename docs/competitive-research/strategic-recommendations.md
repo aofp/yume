@@ -1,10 +1,10 @@
-# Strategic Recommendations: Making Yurucode 100% Best Claude Code UI
+# Strategic Recommendations: Making Yume 100% Best Claude Code UI
 
 *January 2026 Analysis - UPDATED*
 
 ## Executive Summary
 
-Yurucode is **definitively the best Claude Code UI**. We have 12+ unique features no competitor offers. Only 2 minor gaps remain:
+Yume is **definitively the best Claude Code UI**. We have 12+ unique features no competitor offers. Only 2 minor gaps remain:
 
 1. ⬜ **Command palette** (Cmd+P or Cmd+Shift+K)
 2. ⬜ **Light mode**
@@ -13,12 +13,12 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 
 ## Current State Assessment
 
-### Yurucode Unique Features (No Competitor Has)
+### Yume Unique Features (No Competitor Has)
 
 | Feature | Status | Details |
 |---------|--------|---------|
 | 5h + 7-day limit tracking | ✅ | Visual quota bars in context bar |
-| Yurucode Guard | ✅ | Built-in security hook (blocks dangerous commands) |
+| Yume Guard | ✅ | Built-in security hook (blocks dangerous commands) |
 | 5 built-in agents | ✅ | architect, explorer, implementer, guardian, specialist |
 | @ mention system | ✅ | @r (recent), @m (modified), folder navigation |
 | Stream timers | ✅ | Live thinking/bash/compacting duration |
@@ -48,7 +48,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 3. ✅ Checkpoints + Timeline UI
 4. ✅ 30 themes
 5. ✅ 5 built-in agents
-6. ✅ 9 hook events + Yurucode Guard
+6. ✅ 9 hook events + Yume Guard
 7. ✅ Full analytics
 8. ✅ MCP visual manager
 9. ✅ @ mentions + / commands
@@ -74,7 +74,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 
 ## Strategic Positioning
 
-### What Yurucode IS
+### What Yume IS
 
 > **The native desktop experience for Claude Code CLI**
 
@@ -84,7 +84,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 - Privacy-focused (no telemetry)
 - 12+ unique features
 
-### What Yurucode is NOT
+### What Yume is NOT
 
 - A full IDE (let Claude Code handle it)
 - A Cursor competitor (different market)
@@ -122,7 +122,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 - **Their advantages**: Free, session forking, 15K+ GitHub community
 - **We win on**:
   - 5h/7d limit tracking (they don't have)
-  - Yurucode Guard (they don't have)
+  - Yume Guard (they don't have)
   - 5 built-in agents (they don't have)
   - 30 themes (they have 0)
   - 9 hook events (they have 0)
@@ -154,7 +154,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 | Feature | Status |
 |---------|--------|
 | 5h + 7-day limit tracking | ✅ UNIQUE |
-| Yurucode Guard | ✅ UNIQUE |
+| Yume Guard | ✅ UNIQUE |
 | 5 built-in agents | ✅ UNIQUE |
 | @ mention system | ✅ UNIQUE |
 | Stream timers | ✅ UNIQUE |
@@ -180,7 +180,7 @@ Yurucode is **definitively the best Claude Code UI**. We have 12+ unique feature
 
 ## Conclusion
 
-Yurucode is **definitively the best Claude Code UI** as of January 2026.
+Yume is **definitively the best Claude Code UI** as of January 2026.
 
 ### Completed (Unique Advantages)
 - ✅ 12+ unique features no competitor has
@@ -193,7 +193,7 @@ Yurucode is **definitively the best Claude Code UI** as of January 2026.
 
 ### Final Assessment
 
-**Bottom line**: Yurucode has MORE unique features than any competitor. Even Opcode (our direct competitor) is missing: 5h/7d tracking, Yurucode Guard, built-in agents, themes, hooks, crash recovery, @ mentions, stream timers, and keyboard shortcuts.
+**Bottom line**: Yume has MORE unique features than any competitor. Even Opcode (our direct competitor) is missing: 5h/7d tracking, Yume Guard, built-in agents, themes, hooks, crash recovery, @ mentions, stream timers, and keyboard shortcuts.
 
 Focus on:
 1. Marketing the unique advantages

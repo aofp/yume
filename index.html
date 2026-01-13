@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <!-- CSP temporarily disabled for debugging -->
     <!-- <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://localhost:* ws://localhost:*; connect-src 'self' http://localhost:* ws://localhost:*; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data: https:; font-src 'self' data: https://fonts.gstatic.com;"> -->
-    <title>yurucode</title>
+    <title>yume</title>
     <!-- Blocking polyfill script - runs before ANY modules -->
     <script>
       // CRITICAL: This MUST run before modules to prevent Object.assign errors
@@ -14,13 +14,13 @@
 
         // CRITICAL: Set --bg-color CSS variable BEFORE any stylesheets load
         // This enables transparency support from the very first paint
-        var savedOpacity = localStorage.getItem('yurucode-bg-opacity');
+        var savedOpacity = localStorage.getItem('yume-bg-opacity');
         // Default to 80% opacity for visible transparency effect
         var opacityPercent = savedOpacity ? parseInt(savedOpacity, 10) : 80;
         var alpha = Math.max(0, Math.min(1, opacityPercent / 100));
 
         // Store target opacity for when app loads
-        window.__YURUCODE_TARGET_OPACITY__ = alpha;
+        window.__YUME_TARGET_OPACITY__ = alpha;
 
         // Detect platform - Windows requires special handling
         var isWindows = navigator.platform.indexOf('Win') > -1;
@@ -108,8 +108,8 @@
         console.log('[Polyfill] Object.assign ready:', typeof Object.assign);
       })();
     </script>
-    <link rel="icon" type="image/webp" href="./yurucode.webp" />
-    <link rel="icon" type="image/png" href="./yurucode.png" />
+    <link rel="icon" type="image/webp" href="./yume.webp" />
+    <link rel="icon" type="image/png" href="./yume.png" />
     <!-- Import fonts CSS file with relative path for production -->
     <link rel="stylesheet" href="./fonts/fonts.css">
     <style>

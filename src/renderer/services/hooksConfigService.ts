@@ -3,6 +3,7 @@
  * Provides centralized configuration, state management, and logging for hooks
  */
 
+import { appStorageKey } from '../config/app';
 import { isWindows } from './platformUtils';
 
 export interface HookAdvancedConfig {
@@ -44,8 +45,8 @@ class HooksConfigService {
   private static instance: HooksConfigService;
   private config: Record<string, HookAdvancedConfig> = {};
   private state!: HookState;
-  private readonly STATE_KEY = 'yurucode_hooks_state';
-  private readonly CONFIG_KEY = 'yurucode_hooks_config';
+  private readonly STATE_KEY = appStorageKey('hooks_state', '_');
+  private readonly CONFIG_KEY = appStorageKey('hooks_config', '_');
 
   private constructor() {
     this.loadConfig();

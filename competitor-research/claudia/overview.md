@@ -3,7 +3,7 @@
 ## Overview
 - **Developer**: Unknown
 - **Type**: GUI wrapper for Claude Code
-- **Tech Stack**: Tauri 2 (same as yurucode)
+- **Tech Stack**: Tauri 2 (same as yume)
 - **Pricing**: Free
 - **License**: AGPL (open source)
 
@@ -36,10 +36,10 @@ competes on openness and freedom, appeals to developers who prioritize agpl lice
 
 ---
 
-## vs yurucode Comparison
+## vs yume Comparison
 
-### yurucode Wins ⚡
-| Feature | yurucode | claudia |
+### yume Wins ⚡
+| Feature | yume | claudia |
 |---------|----------|---------|
 | Keyboard shortcuts | 30+ | unknown |
 | Tab management | cmd+t/w/d/1-9 | 🔶 |
@@ -51,7 +51,7 @@ competes on openness and freedom, appeals to developers who prioritize agpl lice
 | Analytics | ✅ | 🔶 |
 
 ### claudia Wins
-| Feature | yurucode | claudia |
+| Feature | yume | claudia |
 |---------|----------|---------|
 | Open source | ❌ | ⚡ AGPL |
 | Forkable | ❌ | ⚡ |
@@ -59,11 +59,11 @@ competes on openness and freedom, appeals to developers who prioritize agpl lice
 
 ### Key Differentiator
 claudia = open source freedom (agpl)
-yurucode = speed-first, keyboard-centric (commercial flexibility)
+yume = speed-first, keyboard-centric (commercial flexibility)
 
 ### Strategic Note
 claudia's agpl license is both strength and weakness:
 - ✅ attracts open source advocates
 - ❌ prevents commercial derivatives
 
-yurucode advantage: can be acquired without license complications
+yume advantage: can be acquired without license complications

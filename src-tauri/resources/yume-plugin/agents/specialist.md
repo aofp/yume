@@ -1,5 +1,5 @@
 ---
-name: yurucode-specialist
+name: yume-specialist
 model: sonnet
 description: proactively use this agent for domain-specific tasks: writing tests, documentation, devops configs, data processing.
 ---

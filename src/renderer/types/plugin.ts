@@ -1,4 +1,4 @@
-// Plugin System Types for Yurucode
+// Plugin System Types for Yume
 // Supports Claude Code plugin format: https://github.com/anthropics/claude-code/tree/main/plugins
 
 export interface PluginAuthor {

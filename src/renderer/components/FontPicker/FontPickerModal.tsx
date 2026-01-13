@@ -18,8 +18,8 @@ interface FontPickerModalProps {
   fontType: 'monospace' | 'sans-serif';
 }
 
-// Yurucode bundled fonts - always available (downloaded with app)
-const YURUCODE_FONTS = ['Agave'];
+// Yume bundled fonts - always available (downloaded with app)
+const YUME_FONTS = ['Agave'];
 
 export const FontPickerModal: React.FC<FontPickerModalProps> = ({
   isOpen,
@@ -53,31 +53,31 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
     loadSystemFonts();
   }, []);
   
-  // Get yurucode bundled fonts
-  const getYurucodeFonts = () => {
-    return YURUCODE_FONTS;
+  // Get yume bundled fonts
+  const getYumeFonts = () => {
+    return YUME_FONTS;
   };
 
-  // Get system-detected fonts (excluding yurucode bundled fonts)
+  // Get system-detected fonts (excluding yume bundled fonts)
   const getDetectedSystemFonts = () => {
     if (systemFonts.length === 0) return [];
 
-    const yurucodeFontNames = YURUCODE_FONTS.map(f => f.toLowerCase());
+    const yumeFontNames = YUME_FONTS.map(f => f.toLowerCase());
 
-    // Show all fonts, no type filtering - exclude yurucode bundled fonts
+    // Show all fonts, no type filtering - exclude yume bundled fonts
     const filtered = systemFonts.filter(font => {
       const lower = font.toLowerCase();
-      // Skip if it's a yurucode bundled font
-      return !yurucodeFontNames.some(yf => lower.includes(yf.toLowerCase()));
+      // Skip if it's a yume bundled font
+      return !yumeFontNames.some(yf => lower.includes(yf.toLowerCase()));
     });
 
     return filtered.sort();
   };
 
-  const yurucodeFonts = getYurucodeFonts();
+  const yumeFonts = getYumeFonts();
   const otherFonts = getDetectedSystemFonts();
 
-  const filteredYurucodeFonts = yurucodeFonts.filter(font =>
+  const filteredYumeFonts = yumeFonts.filter(font =>
     font.toLowerCase().includes(searchTerm.toLowerCase())
   );
   const filteredOtherFonts = otherFonts.filter(font =>
@@ -120,10 +120,10 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
         </div>
 
         <div className="font-picker-list">
-          {filteredYurucodeFonts.length > 0 && (
+          {filteredYumeFonts.length > 0 && (
             <>
               <div className="font-section-header">{APP_NAME}</div>
-              {filteredYurucodeFonts.map(font => (
+              {filteredYumeFonts.map(font => (
                 <button
                   key={font}
                   className={`font-option ${currentFont === font ? 'selected' : ''}`}

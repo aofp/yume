@@ -6,7 +6,32 @@
 import { io, Socket } from 'socket.io-client';
 import platformAPI, { isTauri, isVSCode, getVSCodePort, getVSCodeCwd } from './tauriApi';
 import { hooksService } from './hooksService';
+import { APP_ID, APP_NAME, appStorageKey } from '../config/app';
 import { debugLog, isDev } from '../utils/helpers';
+
+const SERVICE_NAME = `${APP_ID}-claude`;
+const DEBUG_KEY = appStorageKey('debug');
+const PORT_KEY = appStorageKey('port');
+const ERROR_KEY = appStorageKey('error');
+const MONO_FONT_KEY = appStorageKey('mono-font');
+const SANS_FONT_KEY = appStorageKey('sans-font');
+const FONT_SIZE_KEY = appStorageKey('font-size');
+const LINE_HEIGHT_KEY = appStorageKey('line-height');
+const WORD_WRAP_KEY = appStorageKey('word-wrap');
+const AUTO_GENERATE_TITLE_KEY = appStorageKey('auto-generate-title');
+const SOUND_ON_COMPLETE_KEY = appStorageKey('sound-on-complete');
+const SHOW_RESULT_STATS_KEY = appStorageKey('show-result-stats');
+
+const SETTINGS_KEYS = [
+  MONO_FONT_KEY,
+  SANS_FONT_KEY,
+  FONT_SIZE_KEY,
+  LINE_HEIGHT_KEY,
+  WORD_WRAP_KEY,
+  AUTO_GENERATE_TITLE_KEY,
+  SOUND_ON_COMPLETE_KEY,
+  SHOW_RESULT_STATS_KEY
+];
 
 export class ClaudeCodeClient {
   private socket: Socket | null = null;
@@ -118,7 +143,7 @@ export class ClaudeCodeClient {
     debugLog('[ClaudeCodeClient] window.__TAURI__:', typeof window !== 'undefined' && '__TAURI__' in window);
 
     // FIRST: Try to get the actual running server port from Tauri
-    // The server writes port to ~/.yurucode/current-port.txt
+    // The server writes port to ~/.<appId>/current-port.txt
     if (isTauri() && platformAPI && platformAPI.claude && platformAPI.claude.readPortFile) {
       try {
         // Use custom Tauri command to read the port file
@@ -137,7 +162,7 @@ export class ClaudeCodeClient {
 
     // Write debug info to localStorage for production debugging
     if (typeof window !== 'undefined' && window.localStorage) {
-      window.localStorage.setItem('yurucode-debug', JSON.stringify({
+      window.localStorage.setItem(DEBUG_KEY, JSON.stringify({
         time: new Date().toISOString(),
         isTauri: isTauri(),
         hasTauriGlobal: '__TAURI__' in window,
@@ -158,7 +183,7 @@ export class ClaudeCodeClient {
 
         // Store port in localStorage for debugging
         if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.setItem('yurucode-port', String(port));
+          window.localStorage.setItem(PORT_KEY, String(port));
         }
 
         this.serverPort = port;
@@ -169,7 +194,7 @@ export class ClaudeCodeClient {
 
         // Store error in localStorage for debugging
         if (typeof window !== 'undefined' && window.localStorage) {
-          window.localStorage.setItem('yurucode-error', JSON.stringify({
+          window.localStorage.setItem(ERROR_KEY, JSON.stringify({
             time: new Date().toISOString(),
             error: err.message,
             stack: err.stack
@@ -206,7 +231,7 @@ export class ClaudeCodeClient {
         });
         if (response.ok) {
           const data = await response.json();
-          if (data.service === 'yurucode-claude') {
+          if (data.service === SERVICE_NAME) {
             return port;
           }
         }
@@ -965,23 +990,24 @@ export class ClaudeCodeClient {
   }
 
   private gatherSettings(): Record<string, any> {
-    // Gather all yurucode settings from localStorage
+    // Gather all app settings from localStorage
     const settings: Record<string, any> = {};
-    const keys = [
-      'yurucode-mono-font',
-      'yurucode-sans-font',
-      'yurucode-font-size',
-      'yurucode-line-height',
-      'yurucode-word-wrap',
-      'yurucode-auto-generate-title',
-      'yurucode-sound-on-complete',
-      'yurucode-show-result-stats'
-    ];
-    for (const key of keys) {
+    for (const key of SETTINGS_KEYS) {
       const value = localStorage.getItem(key);
       if (value !== null) {
         settings[key] = value;
       }
+    }
+    // Add app name and theme for vscode extension
+    // App name from window title or document title
+    settings.appName = document.title?.split(' - ')[0] || APP_NAME;
+    // Theme colors for vscode
+    const themeId = localStorage.getItem('currentThemeId');
+    const bgColor = localStorage.getItem('backgroundColor');
+    const fgColor = localStorage.getItem('foregroundColor');
+    const accentColor = localStorage.getItem('accentColor');
+    if (themeId || bgColor) {
+      settings.theme = { themeId, bgColor, fgColor, accentColor };
     }
     return settings;
   }
@@ -993,19 +1019,19 @@ export class ClaudeCodeClient {
     }
 
     // Apply font settings to CSS
-    if (settings['yurucode-mono-font']) {
-      document.documentElement.style.setProperty('--font-mono', `"${settings['yurucode-mono-font']}", monospace`);
+    if (settings[MONO_FONT_KEY]) {
+      document.documentElement.style.setProperty('--font-mono', `"${settings[MONO_FONT_KEY]}", monospace`);
     }
-    if (settings['yurucode-sans-font']) {
-      document.documentElement.style.setProperty('--font-sans', `"${settings['yurucode-sans-font']}", sans-serif`);
+    if (settings[SANS_FONT_KEY]) {
+      document.documentElement.style.setProperty('--font-sans', `"${settings[SANS_FONT_KEY]}", sans-serif`);
     }
-    if (settings['yurucode-font-size']) {
-      const size = parseInt(settings['yurucode-font-size']);
-      const xs = Math.round(size * 0.786);
-      const sm = Math.round(size * 0.857);
-      const lg = Math.round(size * 1.143);
-      const xl = Math.round(size * 1.429);
-      const xxl = Math.round(size * 1.714);
+    if (settings[FONT_SIZE_KEY]) {
+      const size = parseInt(settings[FONT_SIZE_KEY]);
+      const xs = Math.round(size * 0.9);
+      const sm = Math.round(size * 0.95);
+      const lg = Math.round(size * 1.05);
+      const xl = Math.round(size * 1.1);
+      const xxl = Math.round(size * 1.2);
       document.documentElement.style.setProperty('--text-xs', `${xs}px`);
       document.documentElement.style.setProperty('--text-sm', `${sm}px`);
       document.documentElement.style.setProperty('--text-base', `${size}px`);
@@ -1013,8 +1039,8 @@ export class ClaudeCodeClient {
       document.documentElement.style.setProperty('--text-xl', `${xl}px`);
       document.documentElement.style.setProperty('--text-2xl', `${xxl}px`);
     }
-    if (settings['yurucode-line-height']) {
-      const height = parseFloat(settings['yurucode-line-height']);
+    if (settings[LINE_HEIGHT_KEY]) {
+      const height = parseFloat(settings[LINE_HEIGHT_KEY]);
       const tight = Math.max(1.0, height - 0.3);
       const relaxed = height + 0.25;
       document.documentElement.style.setProperty('--leading-tight', String(tight));

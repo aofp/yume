@@ -98,7 +98,7 @@
 .confirm-modal-body p {
   margin: 0;
   font-size: var(--text-base);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .confirm-modal-footer {

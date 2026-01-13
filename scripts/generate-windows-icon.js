@@ -9,7 +9,7 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 async function generateWindowsIcon() {
-  const inputPath = path.join(__dirname, '../yurucode.png');
+  const inputPath = path.join(__dirname, '../yume.png');
   const iconPath = path.join(__dirname, '../src-tauri/icons/icon.ico');
   
   // Read the source image

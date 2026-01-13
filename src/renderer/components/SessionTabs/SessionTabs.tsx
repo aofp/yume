@@ -4,7 +4,7 @@ import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { AnalyticsModal } from '../Analytics/AnalyticsModal';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { isVSCode } from '../../services/tauriApi';
-import { APP_NAME } from '../../config/app';
+import { APP_NAME, appStorageKey } from '../../config/app';
 // RecentProjectsModal removed - handled by ClaudeChat component instead
 import './SessionTabs.css';
 
@@ -49,13 +49,14 @@ export const SessionTabs: React.FC = () => {
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [renameInputWidth, setRenameInputWidth] = useState(16);
+  const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
   
   // Helper function to measure text width
   const measureTextWidth = (text: string): number => {
     const canvas = document.createElement('canvas');
     const context = canvas.getContext('2d');
     if (!context) return text.length * 6 + 5;
-    context.font = '9px "Comic Mono", "Fira Code", monospace';
+    context.font = '9px "Agave", "Fira Code", monospace';
     return Math.ceil(context.measureText(text).width) + 5;
   };
   const [draggedTab, setDraggedTab] = useState<string | null>(null);
@@ -173,7 +174,7 @@ export const SessionTabs: React.FC = () => {
   // Check if there are recent projects
   useEffect(() => {
     const checkRecentProjects = () => {
-      const stored = localStorage.getItem('yurucode-recent-projects');
+      const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
       if (stored) {
         try {
           const projects = JSON.parse(stored);
@@ -404,7 +405,7 @@ export const SessionTabs: React.FC = () => {
         const newProject = { path: directory, name, lastOpened: Date.now() };
 
         // Get existing recent projects
-        const stored = localStorage.getItem('yurucode-recent-projects');
+        const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
         let recentProjects = [];
         try {
           if (stored) {
@@ -420,7 +421,7 @@ export const SessionTabs: React.FC = () => {
           ...recentProjects.filter((p: any) => p.path !== directory)
         ].slice(0, 10);
 
-        localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+        localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
 
         // Update hasRecentProjects state
         setHasRecentProjects(true);
@@ -1116,7 +1117,7 @@ export const SessionTabs: React.FC = () => {
                       const newProject = { path: workingDir, name, lastOpened: Date.now(), accessCount: 1 };
                       
                       // Get existing recent projects
-                      const stored = localStorage.getItem('yurucode-recent-projects');
+                      const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
                       let recentProjects = [];
                       try {
                         if (stored) {
@@ -1132,7 +1133,7 @@ export const SessionTabs: React.FC = () => {
                         ...recentProjects.filter((p: any) => p.path !== workingDir)
                       ].slice(0, 10);
 
-                      localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+                      localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
                       setHasRecentProjects(true);
 
                       // Optionally create a new tab with this project
@@ -1199,7 +1200,7 @@ export const SessionTabs: React.FC = () => {
                 const newProject = { path: workingDir, name, lastOpened: Date.now(), accessCount: 1 };
                 
                 // Get existing recent projects
-                const stored = localStorage.getItem('yurucode-recent-projects');
+                const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
                 let recentProjects = [];
                 try {
                   if (stored) {
@@ -1215,7 +1216,7 @@ export const SessionTabs: React.FC = () => {
                   ...recentProjects.filter((p: any) => p.path !== workingDir)
                 ].slice(0, 10);
 
-                localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+                localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
                 setHasRecentProjects(true);
               }
 

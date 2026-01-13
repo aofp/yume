@@ -25,6 +25,8 @@ import { TabButton } from '../common/TabButton';
 import { PluginBadge } from '../common/PluginBadge';
 import { pluginService } from '../../services/pluginService';
 import { ColorPicker } from './ColorPicker';
+import { claudeCodeClient } from '../../services/claudeCodeClient';
+import { appStorageKey } from '../../config/app';
 
 // electronAPI type is declared globally elsewhere
 
@@ -38,7 +40,7 @@ type SettingsTab = 'general' | 'appearance' | 'hooks' | 'commands' | 'mcp' | 'pl
 // Theme system - imported from shared config
 import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_COLORS, type Theme } from '../../config/themes';
 
-const SETTINGS_TAB_STORAGE_KEY = 'yurucode_settings_last_tab';
+const SETTINGS_TAB_STORAGE_KEY = appStorageKey('settings_last_tab', '_');
 
 export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) => {
   const { isLicensed } = useLicenseStore();
@@ -202,7 +204,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       });
   }, []);
 
-  // Auto-install vscode extension when enabled
+  // Auto-install/uninstall vscode extension when toggled
   useEffect(() => {
     if (vscodeExtensionEnabled && !vscodeConnected && vscodeInstalled) {
       // Auto-install when enabled
@@ -216,6 +218,15 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
         })
         .finally(() => {
           setVscodeInstalling(false);
+        });
+    } else if (!vscodeExtensionEnabled && vscodeInstalled) {
+      // Auto-uninstall when disabled
+      invoke('uninstall_vscode_extension')
+        .then(() => {
+          console.log('VSCode extension uninstalled');
+        })
+        .catch((err) => {
+          console.error('Failed to uninstall vscode extension:', err);
         });
     }
   }, [vscodeExtensionEnabled, vscodeInstalled]);
@@ -574,6 +585,15 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     }
   };
 
+  // Sync settings to vscode extension when theme colors change
+  useEffect(() => {
+    // Debounce to avoid too many syncs during color picking
+    const timer = setTimeout(() => {
+      claudeCodeClient.syncSettings();
+    }, 300);
+    return () => clearTimeout(timer);
+  }, [backgroundColor, foregroundColor, accentColor, currentThemeId]);
+
   // Check if current colors differ from the selected theme
   const hasThemeChanges = (): boolean => {
     if (currentThemeId === 'custom') return false;
@@ -625,7 +645,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     return map[colorType];
   };
 
-  // Get default yurucode font (fonts are independent of themes)
+  // Get default yume font (fonts are independent of themes)
   const getThemeFontDefault = (fontType: 'mono' | 'sans'): string => {
     return 'Agave';
   };
@@ -1156,6 +1176,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">opacity</span>
                     <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => handleHtmlOpacityChange(1.0)} disabled={Math.abs(htmlOpacity - 1.0) < 0.01}>
+                        <IconRotateClockwise size={10} />
+                      </button>
                       <span className="opacity-value">{Math.round(htmlOpacity * 100)}%</span>
                       <div className="opacity-container">
                         <input
@@ -1205,10 +1228,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">size</span>
                     <div className="theme-controls-bg">
-                      <button className="color-reset" onClick={() => setFontSize(11)} disabled={fontSize === 11}>
+                      <span className="opacity-value">{fontSize}</span>
+                      <button className="color-reset" onClick={() => setFontSize(12)} disabled={Math.abs(fontSize - 12) < 0.01}>
                         <IconRotateClockwise size={10} />
                       </button>
-                      <span className="opacity-value">{fontSize}px</span>
                       <div className="opacity-container">
                         <input
                           type="range"
@@ -1225,15 +1248,15 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">line height</span>
                     <div className="theme-controls-bg">
-                      <button className="color-reset" onClick={() => setLineHeight(1.25)} disabled={lineHeight === 1.25}>
+                      <span className="opacity-value">{lineHeight.toFixed(2)}</span>
+                      <button className="color-reset" onClick={() => setLineHeight(1.2)} disabled={Math.abs(lineHeight - 1.2) < 0.01}>
                         <IconRotateClockwise size={10} />
                       </button>
-                      <span className="opacity-value">{lineHeight.toFixed(2)}</span>
                       <div className="opacity-container">
                         <input
                           type="range"
                           min="0.9"
-                          max="2.0"
+                          max="1.8"
                           step="0.05"
                           value={lineHeight}
                           onChange={(e) => setLineHeight(Number(e.target.value))}
@@ -1666,7 +1689,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
               <div className="settings-bottom-left">
                 {activeTab === 'general' && (
                   <div
-                    className="checkbox-setting compact"
                     style={{
                       margin: 0,
                       opacity: vscodeInstalled ? 1 : 0.5,
@@ -1697,6 +1719,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           className="zoom-btn small"
                           onClick={handleZoomOut}
                           disabled={zoomLevel <= -50}
+                          title="⌘- (zoom out)"
                         >
                           <IconMinus size={12} />
                         </button>
@@ -1704,6 +1727,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           className="zoom-btn small"
                           onClick={handleZoomIn}
                           disabled={zoomLevel >= 200}
+                          title="⌘+ (zoom in)"
                         >
                           <IconPlus size={12} />
                         </button>
@@ -1711,6 +1735,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           className="zoom-btn small"
                           onClick={handleResetZoom}
                           disabled={zoomLevel === 0}
+                          title="⌘0 (reset zoom)"
                         >
                           <IconRotateClockwise size={12} />
                         </button>
@@ -1891,7 +1916,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
             // Small delay to ensure AboutModal closes before UpgradeModal opens
             setTimeout(() => {
               window.dispatchEvent(new CustomEvent('showUpgradeModal', {
-                detail: { reason: 'trial' }
+                detail: { reason: 'demo' }
               }));
             }, 100);
           }}

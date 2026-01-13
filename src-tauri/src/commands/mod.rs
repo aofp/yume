@@ -33,6 +33,7 @@ use once_cell::sync::Lazy;
 
 use crate::state::AppState;
 use crate::logged_server;
+use crate::app::{APP_ID, APP_IDENTIFIER, APP_NAME};
 
 // Global store for running bash processes
 static BASH_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Child>>>> = Lazy::new(|| {
@@ -103,7 +104,7 @@ pub fn get_webview2_data_path() -> Result<String, String> {
         use dirs::data_local_dir;
 
         if let Some(local_app_data) = data_local_dir() {
-            let webview_path = local_app_data.join("be.yuru.yurucode").join("EBWebView");
+            let webview_path = local_app_data.join(APP_IDENTIFIER).join("EBWebView");
             return Ok(webview_path.to_string_lossy().to_string());
         }
         Err("Could not determine WebView2 data path".to_string())
@@ -125,7 +126,7 @@ pub fn clear_webview2_permissions() -> Result<String, String> {
 
         if let Some(local_app_data) = data_local_dir() {
             // WebView2 stores permissions in the EBWebView folder
-            let webview_path = local_app_data.join("be.yuru.yurucode").join("EBWebView");
+            let webview_path = local_app_data.join(APP_IDENTIFIER).join("EBWebView");
 
             // The permissions are typically stored in "Default/Preferences" and related files
             // We'll try to remove specific permission-related data
@@ -153,7 +154,7 @@ pub fn clear_webview2_permissions() -> Result<String, String> {
                         // Write back the modified preferences
                         if let Ok(modified_content) = serde_json::to_string_pretty(&json) {
                             if std::fs::write(&preferences_path, modified_content).is_ok() {
-                                return Ok("Cleared WebView2 microphone permissions. Please restart Yurucode.".to_string());
+                                return Ok("Cleared WebView2 microphone permissions. Please restart Yume.".to_string());
                             }
                         }
                     }
@@ -167,12 +168,12 @@ pub fn clear_webview2_permissions() -> Result<String, String> {
                 // Try to delete just the Preferences file first
                 if preferences_path.exists() {
                     if std::fs::remove_file(&preferences_path).is_ok() {
-                        return Ok("Reset WebView2 preferences. Please restart Yurucode for dictation to work.".to_string());
+                        return Ok("Reset WebView2 preferences. Please restart Yume for dictation to work.".to_string());
                     }
                 }
             }
 
-            return Err("WebView2 preferences not found. Try restarting Yurucode.".to_string());
+            return Err("WebView2 preferences not found. Try restarting Yume.".to_string());
         }
         Err("Could not determine WebView2 data path".to_string())
     }
@@ -447,7 +448,7 @@ pub async fn get_server_port(state: State<'_, AppState>) -> Result<u16, String> 
     Ok(state.server_port())
 }
 
-/// Reads the port number from the ~/.yurucode/current-port.txt file
+/// Reads the port number from ~/.{appId}/current-port.txt
 /// This file is written by the server when it starts to enable discovery
 #[tauri::command]
 pub async fn read_port_file() -> Result<u16, String> {
@@ -458,7 +459,9 @@ pub async fn read_port_file() -> Result<u16, String> {
         .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| "Could not find home directory")?;
     
-    let port_file = PathBuf::from(home).join(".yurucode").join("current-port.txt");
+    let port_file = PathBuf::from(home)
+        .join(format!(".{}", APP_ID))
+        .join("current-port.txt");
     
     if !port_file.exists() {
         return Err(format!("Port file does not exist: {:?}", port_file));
@@ -479,9 +482,9 @@ pub async fn read_port_file() -> Result<u16, String> {
 #[tauri::command]
 pub async fn new_window(app: tauri::AppHandle) -> Result<(), String> {
     let title = if cfg!(debug_assertions) {
-        "yuru code (dev)"
+        format!("{} (dev)", APP_NAME)
     } else {
-        "yuru code"
+        APP_NAME.to_string()
     };
     
     let _window = tauri::WebviewWindowBuilder::new(
@@ -710,9 +713,9 @@ pub fn check_is_directory(path: String) -> Result<bool, String> {
 #[tauri::command]
 pub fn toggle_console_visibility() -> Result<String, String> {
     // Toggle the environment variable
-    let current = std::env::var("YURUCODE_SHOW_CONSOLE").unwrap_or_default();
+    let current = std::env::var("YUME_SHOW_CONSOLE").unwrap_or_default();
     let new_value = if current == "1" { "0" } else { "1" };
-    std::env::set_var("YURUCODE_SHOW_CONSOLE", &new_value);
+    std::env::set_var("YUME_SHOW_CONSOLE", &new_value);
     
     // Return status message
     if new_value == "1" {
@@ -1225,7 +1228,7 @@ pub fn clear_server_logs() -> Result<(), String> {
 }
 
 /// Load Claude agents from ~/.claude/agents directory (global agents)
-/// Does NOT include yurucode built-in agents
+/// Does NOT include yume built-in agents
 #[tauri::command]
 pub fn load_claude_agents() -> Result<Vec<ClaudeAgent>, String> {
     let home_dir = dirs::home_dir()
@@ -1777,7 +1780,7 @@ fn is_git_process_running() -> bool {
     #[cfg(not(target_os = "windows"))]
     {
         // Use pgrep to find actual git processes (not our own grep/pgrep)
-        // Look for /usr/bin/git or similar git binaries, excluding claude/yurucode processes
+        // Look for /usr/bin/git or similar git binaries, excluding claude/yume processes
         if let Ok(output) = Command::new("pgrep")
             .args(&["-x", "git"])  // -x for exact match on process name
             .output()
@@ -1935,7 +1938,7 @@ pub fn cleanup_stale_git_locks_on_startup() {
 
         // Check common project locations (avoid Documents/Desktop to prevent macOS permission prompts)
         let project_dirs = vec![
-            home.join("yurucode"),
+            home.join(APP_ID),
             home.join("projects"),
             home.join("code"),
             home.join("dev"),
@@ -2427,7 +2430,7 @@ fn get_file_edit_registry_path() -> std::path::PathBuf {
         std::path::PathBuf::from(home)
             .join("Library")
             .join("Application Support")
-            .join("yurucode")
+            .join(APP_ID)
             .join("file_edit_registry.json")
     }
 
@@ -2435,7 +2438,7 @@ fn get_file_edit_registry_path() -> std::path::PathBuf {
     {
         let appdata = std::env::var("APPDATA").unwrap_or_else(|_| ".".to_string());
         std::path::PathBuf::from(appdata)
-            .join("yurucode")
+            .join(APP_ID)
             .join("file_edit_registry.json")
     }
 
@@ -2444,7 +2447,7 @@ fn get_file_edit_registry_path() -> std::path::PathBuf {
         let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
         std::path::PathBuf::from(home)
             .join(".config")
-            .join("yurucode")
+            .join(APP_ID)
             .join("file_edit_registry.json")
     }
 }

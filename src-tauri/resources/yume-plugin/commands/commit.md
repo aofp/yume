@@ -11,7 +11,7 @@ description: create a concise, lowercase commit
 
 ## your task
 
-stage changes and commit with a yurucode-style message:
+stage changes and commit with a yume-style message:
 
 - all lowercase, no period, under 50 chars
 - present tense: add, fix, update, remove, refactor

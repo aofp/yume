@@ -42,6 +42,7 @@ const RecentConversationsModal = React.lazy(() => import('../RecentConversations
 const AgentExecutor = React.lazy(() => import('../AgentExecution/AgentExecutor').then(m => ({ default: m.AgentExecutor })));
 const ClaudeMdEditorModal = React.lazy(() => import('../ClaudeMdEditor').then(m => ({ default: m.ClaudeMdEditorModal })));
 import { FEATURE_FLAGS } from '../../config/features';
+import { APP_NAME, appEventName, appStorageKey } from '../../config/app';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { pluginService } from '../../services/pluginService';
 import { isBashPrefix } from '../../utils/helpers';
@@ -50,6 +51,12 @@ import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, form
 import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions } from '../../constants/chat';
 import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
 import './ClaudeChat.css';
+
+const USAGE_LIMITS_CACHE_KEY = appStorageKey('usage_limits_cache');
+const TRIGGER_RESUME_EVENT = appEventName('trigger-resume');
+const CHECK_RESUMABLE_EVENT = appEventName('check-resumable');
+const RESTORE_INPUT_EVENT = appEventName('restore-input');
+const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
 
 // Re-export invalidateCommandsCache for external use
 export { invalidateCommandsCache };
@@ -335,10 +342,10 @@ export const ClaudeChat: React.FC = () => {
     conflicts?: Array<{ path: string; conflictType: string; source?: string }>;
     targetTimestamp?: number;
   } | null>(null);
-  const [rollbackSelectedIndex, setRollbackSelectedIndex] = useState(0);
+  const [rollbackSelectedIndexes, setRollbackSelectedIndexes] = useState<Record<string, number | null>>({});
   const [rollbackHoveredIndex, setRollbackHoveredIndex] = useState<number | null>(null);
   const rollbackListRef = useRef<HTMLDivElement>(null);
-  const rollbackInitializedRef = useRef(false);
+  const rollbackInitializedSessions = useRef<Set<string>>(new Set());
   const [confirmDialogSelection, setConfirmDialogSelection] = useState(1); // 0 = cancel, 1 = confirm (default)
   const [showResumeModal, setShowResumeModal] = useState(false);
   const [showClaudeMdEditor, setShowClaudeMdEditor] = useState(false);
@@ -465,6 +472,16 @@ export const ClaudeChat: React.FC = () => {
     });
   }, []);
 
+  // Per-session rollback selected index (null = no selection)
+  const rollbackSelectedIndex = currentSessionId ? (rollbackSelectedIndexes[currentSessionId] ?? null) : null;
+  const setRollbackSelectedIndex = useCallback((value: number | ((prev: number | null) => number | null)) => {
+    if (!currentSessionId) return;
+    setRollbackSelectedIndexes(prev => ({
+      ...prev,
+      [currentSessionId]: typeof value === 'function' ? value(prev[currentSessionId] ?? null) : value
+    }));
+  }, [currentSessionId]);
+
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
   const showGitPanel = currentSessionId ? panelStates[currentSessionId]?.git ?? false : false;
@@ -497,7 +514,6 @@ export const ClaudeChat: React.FC = () => {
   // Fetch usage limits with smart caching (shorter TTL for null values)
   // In VSCode mode, tauri invoke isn't available - skip fetching
   const fetchUsageLimits = useCallback((force = false) => {
-    const CACHE_KEY = 'yurucode_usage_limits_cache';
     const CACHE_DURATION_VALID = 20 * 60 * 1000; // 20 min for valid data
     const CACHE_DURATION_NULL = 2 * 60 * 1000;   // 2 min for null data (retry sooner)
 
@@ -524,7 +540,7 @@ export const ClaudeChat: React.FC = () => {
     // Check cache first (unless forced)
     if (!force) {
       try {
-        const cached = localStorage.getItem(CACHE_KEY);
+        const cached = localStorage.getItem(USAGE_LIMITS_CACHE_KEY);
         if (cached) {
           const { data, timestamp, hasNullUsage } = JSON.parse(cached);
           const age = Date.now() - timestamp;
@@ -556,7 +572,7 @@ export const ClaudeChat: React.FC = () => {
           setUsageLimits(filteredData);
           const hasNullUsage = !filteredData.five_hour || !filteredData.seven_day;
           try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
+            localStorage.setItem(USAGE_LIMITS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
           } catch (e) { /* ignore */ }
         })
         .catch(err => console.error('[UsageLimits] HTTP fetch failed:', err));
@@ -574,7 +590,7 @@ export const ClaudeChat: React.FC = () => {
           // Cache with null flag (determines TTL on next read)
           const hasNullUsage = !filteredData.five_hour || !filteredData.seven_day;
           try {
-            localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
+            localStorage.setItem(USAGE_LIMITS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
           } catch (e) {
             // Cache write failed, ignore
           }
@@ -886,11 +902,11 @@ export const ClaudeChat: React.FC = () => {
       }
     };
 
-    window.addEventListener('yurucode-trigger-resume', handleResumeEvent);
-    window.addEventListener('yurucode-check-resumable', handleCheckResumable);
+    window.addEventListener(TRIGGER_RESUME_EVENT, handleResumeEvent);
+    window.addEventListener(CHECK_RESUMABLE_EVENT, handleCheckResumable);
     return () => {
-      window.removeEventListener('yurucode-trigger-resume', handleResumeEvent);
-      window.removeEventListener('yurucode-check-resumable', handleCheckResumable);
+      window.removeEventListener(TRIGGER_RESUME_EVENT, handleResumeEvent);
+      window.removeEventListener(CHECK_RESUMABLE_EVENT, handleCheckResumable);
     };
   }, [currentSession, currentSessionId, hasResumableConversations]);
 
@@ -904,9 +920,9 @@ export const ClaudeChat: React.FC = () => {
       }
     };
 
-    window.addEventListener('yurucode-restore-input', handleRestoreInput as EventListener);
+    window.addEventListener(RESTORE_INPUT_EVENT, handleRestoreInput as EventListener);
     return () => {
-      window.removeEventListener('yurucode-restore-input', handleRestoreInput as EventListener);
+      window.removeEventListener(RESTORE_INPUT_EVENT, handleRestoreInput as EventListener);
     };
   }, [currentSessionId]);
 
@@ -1071,14 +1087,14 @@ export const ClaudeChat: React.FC = () => {
       let errorMsg = 'Dictation is not available.\n\n';
       if (isWindows) {
         errorMsg += 'On Windows, please ensure:\n' +
-                    '1. Windows has microphone permission for Yurucode\n' +
+                    `1. Windows has microphone permission for ${APP_NAME}\n` +
                     '   Settings > Privacy & Security > Microphone > Let desktop apps access\n' +
                     '2. You have an active internet connection (uses Google Cloud)\n' +
-                    '3. Try restarting Yurucode\n\n' +
+                    `3. Try restarting ${APP_NAME}\n\n` +
                     'If still not working, try: Settings > Advanced > Reset Dictation Permissions';
       } else if (isMac) {
         errorMsg += 'On macOS, please ensure:\n' +
-                    '1. yurucode has microphone permission in System Settings > Privacy & Security > Microphone\n' +
+                    `1. ${APP_NAME} has microphone permission in System Settings > Privacy & Security > Microphone\n` +
                     '2. Dictation is enabled in System Settings > Keyboard > Dictation\n' +
                     '3. Restart the app after granting permissions';
       } else {
@@ -1106,7 +1122,7 @@ export const ClaudeChat: React.FC = () => {
         errorMsg += 'Please check:\n' +
                     '1. Windows Settings > Privacy & Security > Microphone\n' +
                     '2. Enable "Let desktop apps access your microphone"\n' +
-                    '3. Restart Yurucode after changing permissions\n\n' +
+                    '3. Restart Yume after changing permissions\n\n' +
                     'If permissions are correct but still failing,\n' +
                     'try: Settings > Advanced > Reset Dictation Permissions';
       } else if (isMac) {
@@ -1168,7 +1184,7 @@ export const ClaudeChat: React.FC = () => {
                        'Please check Windows Settings > Privacy & Security > Microphone:\n' +
                        '1. "Microphone access" is ON\n' +
                        '2. "Let desktop apps access your microphone" is ON\n\n' +
-                       'After enabling, restart Yurucode.\n\n' +
+                       'After enabling, restart Yume.\n\n' +
                        'If still not working, try:\n' +
                        'Settings > Advanced > Reset Dictation Permissions';
           } else {
@@ -1195,7 +1211,7 @@ export const ClaudeChat: React.FC = () => {
                        '2. Microphone is being used by another app\n' +
                        '3. WebView2 microphone permission was denied\n\n' +
                        'Try: Settings > Advanced > Reset Dictation Permissions\n' +
-                       'Then restart Yurucode.';
+                       'Then restart Yume.';
           } else {
             errorMsg += 'Audio capture failed. Check your microphone connection.';
           }
@@ -1205,7 +1221,7 @@ export const ClaudeChat: React.FC = () => {
             errorMsg = 'Speech service not allowed.\n\n' +
                        'WebView2 has blocked speech recognition.\n\n' +
                        'Try: Settings > Advanced > Reset Dictation Permissions\n' +
-                       'Then restart Yurucode.';
+                       'Then restart Yume.';
           } else {
             errorMsg += 'Speech recognition service not allowed.';
           }
@@ -1545,16 +1561,7 @@ export const ClaudeChat: React.FC = () => {
     });
   }, []);
 
-  // Rollback panel initialization - select first item (latest) when panel opens
-  useEffect(() => {
-    if (showRollbackPanel && !rollbackInitializedRef.current) {
-      const userMessages = getNonBashUserMessages(currentSession?.messages);
-      setRollbackSelectedIndex(0); // First item (latest)
-      rollbackInitializedRef.current = true;
-    } else if (!showRollbackPanel) {
-      rollbackInitializedRef.current = false;
-    }
-  }, [showRollbackPanel, currentSession?.messages, getNonBashUserMessages]);
+  // Rollback panel - no auto-selection, user controls selection via keyboard/mouse
 
   // Rollback panel keyboard navigation
   useEffect(() => {
@@ -1576,20 +1583,20 @@ export const ClaudeChat: React.FC = () => {
 
       if (e.key === 'ArrowDown' || e.key === 'j') {
         e.preventDefault();
-        setRollbackSelectedIndex(prev => Math.min(prev + 1, maxIndex));
+        setRollbackSelectedIndex(prev => prev === null ? 0 : Math.min(prev + 1, maxIndex));
         return;
       }
 
       if (e.key === 'ArrowUp' || e.key === 'k') {
         e.preventDefault();
-        setRollbackSelectedIndex(prev => Math.max(prev - 1, 0));
+        setRollbackSelectedIndex(prev => prev === null ? 0 : Math.max(prev - 1, 0));
         return;
       }
 
       if (e.key === 'Enter') {
         e.preventDefault();
         // Trigger click on active item (hover takes priority over keyboard selection)
-        const activeIndex = rollbackHoveredIndex !== null ? rollbackHoveredIndex : rollbackSelectedIndex;
+        const activeIndex = rollbackHoveredIndex !== null ? rollbackHoveredIndex : (rollbackSelectedIndex ?? 0);
         const items = rollbackListRef.current?.querySelectorAll('.rollback-item');
         if (items && items[activeIndex]) {
           (items[activeIndex] as HTMLElement).click();
@@ -3491,7 +3498,7 @@ export const ClaudeChat: React.FC = () => {
 
               // Add to recent projects
               const newProject = { path: wslPath, name: sessionName, lastOpened: Date.now(), accessCount: 1 };
-              const stored = localStorage.getItem('yurucode-recent-projects');
+              const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
               let recentProjects = [];
               try {
                 if (stored) {
@@ -3504,7 +3511,7 @@ export const ClaudeChat: React.FC = () => {
                 newProject,
                 ...recentProjects.filter((p: any) => p.path !== wslPath)
               ].slice(0, 10);
-              localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+              localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
 
               await createSession(sessionName, wslPath);
               return;
@@ -4365,7 +4372,10 @@ export const ClaudeChat: React.FC = () => {
                         <div
                           key={msg.id || idx}
                           className={`rollback-item ${isStreaming ? 'disabled' : ''} ${isActive ? (isHovered ? 'hovered' : 'selected') : ''}`}
-                          onMouseEnter={() => setRollbackHoveredIndex(userIdx)}
+                          onMouseEnter={() => {
+                            setRollbackHoveredIndex(userIdx);
+                            setRollbackSelectedIndex(null); // Clear keyboard selection when hovering
+                          }}
                           onMouseLeave={() => setRollbackHoveredIndex(null)}
                           onClick={async () => {
                             if (isStreaming) return;

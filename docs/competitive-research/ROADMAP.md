@@ -1,4 +1,4 @@
-# Yurucode Roadmap
+# Yume Roadmap
 
 *January 2026 - Updated*
 
@@ -6,7 +6,7 @@
 
 ## Current State: What Makes Us Better Than CLI
 
-Yurucode solves the #1 Claude Code CLI problem: **terminal flickering and input lag** (GitHub Issue #1913, 700+ upvotes, 9+ months unfixed).
+Yume solves the #1 Claude Code CLI problem: **terminal flickering and input lag** (GitHub Issue #1913, 700+ upvotes, 9+ months unfixed).
 
 ### Complete Feature List
 
@@ -113,13 +113,13 @@ Everything else is either:
 
 Total: ~4 days of focused work.
 
-After these 2 features, yurucode has no meaningful gaps vs CLI or competitors.
+After these 2 features, yume has no meaningful gaps vs CLI or competitors.
 
 ---
 
 ## Success Criteria
 
-Yurucode is "100% better than CLI" when:
+Yume is "100% better than CLI" when:
 
 1. ✅ No flickering or input lag (done)
 2. ✅ Visual management of sessions, files, MCP, hooks (done)
@@ -137,7 +137,7 @@ Features NO competitor has:
 | Feature | Details |
 |---------|---------|
 | 5h + 7d limit tracking | Visual quota bars in context bar |
-| Yurucode Guard hook | Built-in security protection |
+| Yume Guard hook | Built-in security protection |
 | 5 built-in agents | architect, explorer, implementer, guardian, specialist |
 | 30 themes | Way more than Cursor (~5), Windsurf (~3), Opcode (0) |
 | 9 hook events | Most comprehensive hook system |

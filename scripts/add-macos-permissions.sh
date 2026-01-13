@@ -18,19 +18,19 @@ fi
 echo "Adding macOS permissions to: $PLIST_FILE"
 
 # Add microphone permission
-/usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'yurucode needs access to your microphone for dictation and voice input features.'" "$PLIST_FILE" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription 'yurucode needs access to your microphone for dictation and voice input features.'" "$PLIST_FILE"
+/usr/libexec/PlistBuddy -c "Add :NSMicrophoneUsageDescription string 'yume needs access to your microphone for dictation and voice input features.'" "$PLIST_FILE" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSMicrophoneUsageDescription 'yume needs access to your microphone for dictation and voice input features.'" "$PLIST_FILE"
 
 # Add speech recognition permission
-/usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'yurucode needs access to speech recognition to convert your voice to text.'" "$PLIST_FILE" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSSpeechRecognitionUsageDescription 'yurucode needs access to speech recognition to convert your voice to text.'" "$PLIST_FILE"
+/usr/libexec/PlistBuddy -c "Add :NSSpeechRecognitionUsageDescription string 'yume needs access to speech recognition to convert your voice to text.'" "$PLIST_FILE" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSSpeechRecognitionUsageDescription 'yume needs access to speech recognition to convert your voice to text.'" "$PLIST_FILE"
 
 # Add accessibility permission (for enhanced dictation)
-/usr/libexec/PlistBuddy -c "Add :NSAccessibilityUsageDescription string 'yurucode needs accessibility permissions to support dictation and voice input.'" "$PLIST_FILE" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSAccessibilityUsageDescription 'yurucode needs accessibility permissions to support dictation and voice input.'" "$PLIST_FILE"
+/usr/libexec/PlistBuddy -c "Add :NSAccessibilityUsageDescription string 'yume needs accessibility permissions to support dictation and voice input.'" "$PLIST_FILE" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSAccessibilityUsageDescription 'yume needs accessibility permissions to support dictation and voice input.'" "$PLIST_FILE"
 
 # Add Apple Events permission (for system integration)
-/usr/libexec/PlistBuddy -c "Add :NSAppleEventsUsageDescription string 'yurucode needs to control system events for enhanced functionality.'" "$PLIST_FILE" 2>/dev/null || \
-/usr/libexec/PlistBuddy -c "Set :NSAppleEventsUsageDescription 'yurucode needs to control system events for enhanced functionality.'" "$PLIST_FILE"
+/usr/libexec/PlistBuddy -c "Add :NSAppleEventsUsageDescription string 'yume needs to control system events for enhanced functionality.'" "$PLIST_FILE" 2>/dev/null || \
+/usr/libexec/PlistBuddy -c "Set :NSAppleEventsUsageDescription 'yume needs to control system events for enhanced functionality.'" "$PLIST_FILE"
 
 echo "macOS permissions added successfully"

@@ -175,7 +175,7 @@
   border-radius: 12px 12px 4px 12px;
   min-width: 60px;
   font-size: var(--text-base);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   max-width: 100%;
   width: auto;
   word-wrap: break-word;
@@ -207,7 +207,7 @@
   min-width: 60px;
   max-width: 100%;
   font-size: var(--text-base);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   box-shadow: none;
   width: auto;
   display: inline-block;
@@ -287,7 +287,7 @@
 .markdown-content {
   color: var(--fg-100);
   font-size: var(--text-base);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   padding-left: 0;
   max-width: 100%;
   box-sizing: border-box;
@@ -625,14 +625,13 @@ ol {
   box-sizing: border-box;
   word-wrap: break-word;
   overflow-wrap: break-word;
-  line-height: 1.3;
 }
 
 /* Markdown styling for thinking blocks */
 .thinking-markdown {
   font-family: var(--font-sans);
-  font-size: var(--text-base);
-  line-height: 1.3;
+  font-size: var(--text-sm);
+line-height: var(--leading-relaxed);
   margin-right: 8px;
   color: rgba(var(--foreground-rgb), 0.8);
 }
@@ -645,12 +644,15 @@ ol {
   margin-bottom: 0;
 }
 
+.content-text ul,
+.content-text ol,
 .thinking-markdown ul,
 .thinking-markdown ol {
   margin-left: 10px;
   margin-bottom: 2px;
 }
 
+.content-text li,
 .thinking-markdown li {
   margin-bottom: 2px;
 }
@@ -2559,7 +2561,7 @@ pre code,
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
-   Compact Summary - minimal yurucode style
+   Compact Summary - minimal yume style
    ═══════════════════════════════════════════════════════════════════════════ */
 
 .compact-summary-card {
@@ -2818,4 +2820,36 @@ pre code,
   overflow-wrap: break-word !important;
   word-break: break-word !important;
   overflow-x: hidden !important;
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   Line height for code elements - uses the user's line-height setting
+   ═══════════════════════════════════════════════════════════════════════════ */
+pre,
+code,
+.code-block-pre,
+.code-block-pre code,
+.code-block-wrapper code,
+.code-block-wrapper pre,
+pre code,
+.markdown-content pre,
+.markdown-content pre code,
+.markdown-content code,
+.thinking-code-pre,
+.thinking-code,
+.thinking-code-block code,
+.thinking-markdown pre,
+.thinking-markdown pre code,
+.thinking-markdown code,
+.thinking-text,
+.thinking-content,
+.bash-output-content,
+.bash-content,
+.line-content,
+.diff-content,
+.edit-content,
+.read-content,
+.search-content,
+.result-content {
+  line-height: var(--leading-normal);
 }

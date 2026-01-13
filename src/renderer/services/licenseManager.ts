@@ -1,10 +1,11 @@
 /**
- * license management for yurucode
- * trial: 2 tabs, 1 window
+ * license management for yume
+ * demo: 2 tabs, 1 window
  * pro: unlimited tabs, unlimited windows
  */
 
 import { create } from 'zustand';
+import { appStorageKey } from '../config/app';
 import { persist } from 'zustand/middleware';
 
 // license validation API endpoint
@@ -41,7 +42,7 @@ interface LicenseStore extends LicenseState {
   clearLicense: () => void;
 }
 
-// trial: 2 tabs, 1 window
+// demo: 2 tabs, 1 window
 const TRIAL_FEATURES: LicenseFeatures = {
   maxTabs: 2,
   maxWindows: 1
@@ -263,7 +264,7 @@ export const useLicenseStore = create<LicenseStore>()(
       }
     }),
     {
-      name: 'yurucode-license-v3',
+      name: appStorageKey('license-v3'),
       storage: {
         getItem: (name) => {
           const str = localStorage.getItem(name);

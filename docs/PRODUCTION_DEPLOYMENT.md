@@ -1,4 +1,4 @@
-# Yurucode Production Deployment Guide
+# Yume Production Deployment Guide
 
 **Version:** 0.1.0
 **Last Updated:** January 12, 2026
@@ -229,10 +229,10 @@ npm run build:server:all
 
 #### Server Binary Locations
 After building, binaries are placed in `src-tauri/resources/`:
-- macOS Apple Silicon: `yurucode-server-macos-arm64`
-- macOS Intel: `yurucode-server-macos-x64`
-- Windows: `yurucode-server-windows-x64.exe`
-- Linux: `yurucode-server-linux-x64`
+- macOS Apple Silicon: `yume-server-macos-arm64`
+- macOS Intel: `yume-server-macos-x64`
+- Windows: `yume-server-windows-x64.exe`
+- Linux: `yume-server-linux-x64`
 
 #### Fallback .cjs Files
 For backwards compatibility, .cjs fallback files exist:
@@ -306,26 +306,26 @@ codesign --deep --force --verify --verbose \
   --sign "$APPLE_SIGNING_IDENTITY" \
   --options runtime \
   --entitlements src-tauri/entitlements.plist \
-  "src-tauri/target/release/bundle/macos/Yurucode.app"
+  "src-tauri/target/release/bundle/macos/Yume.app"
 
 # Verify signature
 codesign --verify --verbose=4 \
-  "src-tauri/target/release/bundle/macos/Yurucode.app"
+  "src-tauri/target/release/bundle/macos/Yume.app"
 
 # Check notarization readiness
 spctl --assess --verbose=4 \
-  "src-tauri/target/release/bundle/macos/Yurucode.app"
+  "src-tauri/target/release/bundle/macos/Yume.app"
 ```
 
 #### Notarization
 ```bash
 # Create ZIP for notarization
 ditto -c -k --keepParent \
-  "src-tauri/target/release/bundle/macos/Yurucode.app" \
-  "Yurucode.zip"
+  "src-tauri/target/release/bundle/macos/Yume.app" \
+  "Yume.zip"
 
 # Submit for notarization
-xcrun notarytool submit Yurucode.zip \
+xcrun notarytool submit Yume.zip \
   --apple-id "your-apple-id@example.com" \
   --team-id "TEAMID" \
   --password "app-specific-password" \
@@ -333,7 +333,7 @@ xcrun notarytool submit Yurucode.zip \
 
 # Staple the notarization
 xcrun stapler staple \
-  "src-tauri/target/release/bundle/macos/Yurucode.app"
+  "src-tauri/target/release/bundle/macos/Yume.app"
 ```
 
 ### 3.2 Windows Code Signing
@@ -355,13 +355,13 @@ $env:WINDOWS_CERTIFICATE_PASSWORD = "password"
 #### Sign Application
 ```powershell
 # Sign the executable
-signtool sign /f certificate.pfx /p password /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "src-tauri\target\release\yurucode.exe"
+signtool sign /f certificate.pfx /p password /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "src-tauri\target\release\yume.exe"
 
 # Sign the installer
-signtool sign /f certificate.pfx /p password /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "src-tauri\target\release\bundle\msi\yurucode_1.0.0_x64.msi"
+signtool sign /f certificate.pfx /p password /fd SHA256 /tr http://timestamp.digicert.com /td SHA256 "src-tauri\target\release\bundle\msi\yume_1.0.0_x64.msi"
 
 # Verify signature
-signtool verify /pa "src-tauri\target\release\yurucode.exe"
+signtool verify /pa "src-tauri\target\release\yume.exe"
 ```
 
 ---
@@ -376,15 +376,15 @@ signtool verify /pa "src-tauri\target\release\yurucode.exe"
 npm install -g create-dmg
 
 create-dmg \
-  --volname "Yurucode" \
-  --volicon "assets/icons/mac/yurucode.icns" \
+  --volname "Yume" \
+  --volicon "assets/icons/mac/yume.icns" \
   --background "assets/dmg-background.png" \
   --window-size 600 400 \
   --icon-size 100 \
-  --icon "Yurucode.app" 175 190 \
-  --hide-extension "Yurucode.app" \
+  --icon "Yume.app" 175 190 \
+  --hide-extension "Yume.app" \
   --app-drop-link 425 190 \
-  "Yurucode-1.0.0.dmg" \
+  "Yume-1.0.0.dmg" \
   "src-tauri/target/release/bundle/macos/"
 ```
 
@@ -400,7 +400,7 @@ create-dmg \
 ```xml
 <!-- wix/main.wxs -->
 <Product Id="*" 
-  Name="Yurucode"
+  Name="Yume"
   Language="1033"
   Version="1.0.0"
   Manufacturer="Yuru Software"
@@ -421,19 +421,19 @@ create-dmg \
 #### NSIS Configuration
 ```nsis
 ; installer.nsi
-!define PRODUCT_NAME "Yurucode"
+!define PRODUCT_NAME "Yume"
 !define PRODUCT_VERSION "1.0.0"
 !define PRODUCT_PUBLISHER "Yuru Software"
 
-InstallDir "$PROGRAMFILES64\Yurucode"
+InstallDir "$PROGRAMFILES64\Yume"
 RequestExecutionLevel admin
 
 Section "Main"
   SetOutPath "$INSTDIR"
   File /r "dist\*.*"
   
-  CreateShortcut "$DESKTOP\Yurucode.lnk" "$INSTDIR\yurucode.exe"
-  CreateShortcut "$SMPROGRAMS\Yurucode\Yurucode.lnk" "$INSTDIR\yurucode.exe"
+  CreateShortcut "$DESKTOP\Yume.lnk" "$INSTDIR\yume.exe"
+  CreateShortcut "$SMPROGRAMS\Yume\Yume.lnk" "$INSTDIR\yume.exe"
 SectionEnd
 ```
 
@@ -456,12 +456,12 @@ mkdir -p debian/usr/bin
 mkdir -p debian/usr/share/applications
 
 # Copy files
-cp target/release/yurucode debian/usr/bin/
-cp assets/yurucode.desktop debian/usr/share/applications/
+cp target/release/yume debian/usr/bin/
+cp assets/yume.desktop debian/usr/share/applications/
 
 # Create control file
 cat > debian/DEBIAN/control << EOF
-Package: yurucode
+Package: yume
 Version: 1.0.0
 Architecture: amd64
 Maintainer: Your Name <email@example.com>
@@ -469,33 +469,33 @@ Description: Claude GUI with auto-compaction
 EOF
 
 # Build package
-dpkg-deb --build debian yurucode_1.0.0_amd64.deb
+dpkg-deb --build debian yume_1.0.0_amd64.deb
 ```
 
 #### RPM Package
 ```bash
 # Create spec file
-cat > yurucode.spec << EOF
-Name: yurucode
+cat > yume.spec << EOF
+Name: yume
 Version: 1.0.0
 Release: 1
 Summary: Claude GUI with auto-compaction
 License: Proprietary
-URL: https://yurucode.app
+URL: https://yume.app
 
 %description
-Yurucode is a sophisticated GUI for Claude CLI
+Yume is a sophisticated GUI for Claude CLI
 
 %install
 mkdir -p %{buildroot}/usr/bin
-cp target/release/yurucode %{buildroot}/usr/bin/
+cp target/release/yume %{buildroot}/usr/bin/
 
 %files
-/usr/bin/yurucode
+/usr/bin/yume
 EOF
 
 # Build RPM
-rpmbuild -ba yurucode.spec
+rpmbuild -ba yume.spec
 ```
 
 ---
@@ -507,25 +507,25 @@ rpmbuild -ba yurucode.spec
 #### File Hosting
 ```bash
 # Generate checksums
-sha256sum Yurucode-*.dmg > checksums.txt
-sha256sum yurucode-*.msi >> checksums.txt
-sha256sum yurucode-*.AppImage >> checksums.txt
+sha256sum Yume-*.dmg > checksums.txt
+sha256sum yume-*.msi >> checksums.txt
+sha256sum yume-*.AppImage >> checksums.txt
 
 # Upload structure
 releases/
 ├── v1.0.0/
 │   ├── mac/
-│   │   ├── Yurucode-1.0.0-universal.dmg
-│   │   └── Yurucode-1.0.0-universal.dmg.sha256
+│   │   ├── Yume-1.0.0-universal.dmg
+│   │   └── Yume-1.0.0-universal.dmg.sha256
 │   ├── windows/
-│   │   ├── yurucode-1.0.0-x64.msi
-│   │   ├── yurucode-1.0.0-x64.msi.sha256
-│   │   ├── yurucode-1.0.0-x64-setup.exe
-│   │   └── yurucode-1.0.0-x64-setup.exe.sha256
+│   │   ├── yume-1.0.0-x64.msi
+│   │   ├── yume-1.0.0-x64.msi.sha256
+│   │   ├── yume-1.0.0-x64-setup.exe
+│   │   └── yume-1.0.0-x64-setup.exe.sha256
 │   └── linux/
-│       ├── yurucode-1.0.0.AppImage
-│       ├── yurucode-1.0.0.deb
-│       └── yurucode-1.0.0.rpm
+│       ├── yume-1.0.0.AppImage
+│       ├── yume-1.0.0.deb
+│       └── yume-1.0.0.rpm
 ```
 
 ### 5.2 GitHub Releases
@@ -538,47 +538,47 @@ git push origin v1.0.0
 
 # Create release with GitHub CLI
 gh release create v1.0.0 \
-  --title "Yurucode v1.0.0" \
+  --title "Yume v1.0.0" \
   --notes "Release notes here" \
   --draft
 
 # Upload assets
 gh release upload v1.0.0 \
-  Yurucode-1.0.0-universal.dmg \
-  yurucode-1.0.0-x64.msi \
-  yurucode-1.0.0.AppImage
+  Yume-1.0.0-universal.dmg \
+  yume-1.0.0-x64.msi \
+  yume-1.0.0.AppImage
 ```
 
 ### 5.3 Package Managers
 
 #### Homebrew (macOS)
 ```ruby
-# yurucode.rb
-class Yurucode < Formula
+# yume.rb
+class Yume < Formula
   desc "Claude GUI with auto-compaction"
-  homepage "https://yurucode.app"
-  url "https://github.com/yurucode/releases/download/v1.0.0/Yurucode-1.0.0.tar.gz"
+  homepage "https://yume.app"
+  url "https://github.com/yume/releases/download/v1.0.0/Yume-1.0.0.tar.gz"
   sha256 "SHA256_HERE"
   version "1.0.0"
   
   def install
-    bin.install "yurucode"
+    bin.install "yume"
   end
 end
 ```
 
 #### Chocolatey (Windows)
 ```xml
-<!-- yurucode.nuspec -->
+<!-- yume.nuspec -->
 <?xml version="1.0"?>
 <package>
   <metadata>
-    <id>yurucode</id>
+    <id>yume</id>
     <version>1.0.0</version>
-    <title>Yurucode</title>
+    <title>Yume</title>
     <authors>Yuru Software</authors>
     <description>Claude GUI with auto-compaction</description>
-    <projectUrl>https://yurucode.app</projectUrl>
+    <projectUrl>https://yume.app</projectUrl>
   </metadata>
 </package>
 ```
@@ -586,17 +586,17 @@ end
 #### Snap (Linux)
 ```yaml
 # snapcraft.yaml
-name: yurucode
+name: yume
 version: '1.0.0'
 summary: Claude GUI with auto-compaction
 description: |
-  Yurucode is a sophisticated GUI for Claude CLI
+  Yume is a sophisticated GUI for Claude CLI
   
 confinement: strict
 grade: stable
 
 parts:
-  yurucode:
+  yume:
     plugin: rust
     source: .
 ```
@@ -626,7 +626,7 @@ MAJOR.MINOR.PATCH
 
 #### Template
 ```markdown
-# Yurucode v1.0.0
+# Yume v1.0.0
 
 Released: January 3, 2025
 
@@ -686,20 +686,20 @@ Released: January 3, 2025
 ```typescript
 // Errors stored in localStorage
 const errors = JSON.parse(
-  localStorage.getItem('yurucode_errors') || '[]'
+  localStorage.getItem('yume_errors') || '[]'
 );
 ```
 
 #### Log Collection
 ```bash
 # macOS server logs
-~/Library/Logs/yurucode/server.log
+~/Library/Logs/yume/server.log
 
 # Windows server logs
-%LOCALAPPDATA%\yurucode\logs\server.log
+%LOCALAPPDATA%\yume\logs\server.log
 
 # Linux server logs
-~/.yurucode/logs/server.log
+~/.yume/logs/server.log
 ```
 
 ### 7.2 Performance Monitoring
@@ -801,13 +801,13 @@ echo "v1.0.0" > LATEST_STABLE
 #### macOS Notarization Failed
 ```bash
 # Check for unsigned libraries
-find Yurucode.app -type f -exec codesign -dv {} \; 2>&1 | grep "not signed"
+find Yume.app -type f -exec codesign -dv {} \; 2>&1 | grep "not signed"
 
 # Re-sign with hardened runtime
 codesign --deep --force --verify --verbose \
   --options runtime \
   --sign "$APPLE_SIGNING_IDENTITY" \
-  Yurucode.app
+  Yume.app
 ```
 
 #### Windows SmartScreen Warning
@@ -818,13 +818,13 @@ codesign --deep --force --verify --verbose \
 #### Linux AppImage Won't Run
 ```bash
 # Make executable
-chmod +x Yurucode.AppImage
+chmod +x Yume.AppImage
 
 # Check dependencies
-ldd Yurucode.AppImage
+ldd Yume.AppImage
 
 # Run with debug
-APPIMAGE_DEBUG=1 ./Yurucode.AppImage
+APPIMAGE_DEBUG=1 ./Yume.AppImage
 ```
 
 ---
@@ -849,4 +849,4 @@ APPIMAGE_DEBUG=1 ./Yurucode.AppImage
 
 ## Conclusion
 
-This deployment guide ensures a smooth, secure, and professional release of Yurucode. Follow each step carefully and maintain a deployment log for future reference. Remember: quality over speed for production releases.
+This deployment guide ensures a smooth, secure, and professional release of Yume. Follow each step carefully and maintain a deployment log for future reference. Remember: quality over speed for production releases.

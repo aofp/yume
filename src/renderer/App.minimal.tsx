@@ -25,10 +25,16 @@ import { claudeCodeClient } from './services/claudeCodeClient';
 import { systemPromptService } from './services/systemPromptService';
 import { pluginService } from './services/pluginService';
 import ErrorBoundary from './components/common/ErrorBoundary';
-import { APP_NAME } from './config/app';
-import { isVSCode } from './services/tauriApi';
+import { APP_NAME, appEventName, appStorageKey } from './config/app';
+import { isVSCode, invoke } from './services/tauriApi';
 import './App.minimal.css';
 
+const BG_OPACITY_KEY = appStorageKey('bg-opacity');
+const FONT_SIZE_KEY = appStorageKey('font-size');
+const LINE_HEIGHT_KEY = appStorageKey('line-height');
+const VSCODE_EXTENSION_KEY = appStorageKey('vscode-extension-enabled');
+const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
+const TRIGGER_RESUME_EVENT = appEventName('trigger-resume');
 export const App: React.FC = () => {
   const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity, vscodeConnected /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
@@ -40,7 +46,7 @@ export const App: React.FC = () => {
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [analyticsProject, setAnalyticsProject] = useState<string | undefined>(undefined);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [upgradeReason, setUpgradeReason] = useState<'tabLimit' | 'feature' | 'trial'>('tabLimit');
+  const [upgradeReason, setUpgradeReason] = useState<'tabLimit' | 'feature' | 'demo'>('tabLimit');
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; isTextInput?: boolean; target?: HTMLElement; isMessageBubble?: boolean; messageElement?: HTMLElement; hasSelection?: boolean; selectedText?: string } | null>(null);
   const contextMenuRef = useRef<HTMLDivElement>(null);
   const [isDragging, setIsDragging] = useState(false);
@@ -68,7 +74,7 @@ export const App: React.FC = () => {
   useEffect(() => {
     loadSessionMappings();
 
-    // Sync yurucode agents to ~/.claude/agents/ based on settings
+    // Sync yume agents to ~/.claude/agents/ based on settings
     systemPromptService.syncAgentsToFilesystem();
 
     // Initialize plugin service early so slash commands work immediately
@@ -116,7 +122,7 @@ export const App: React.FC = () => {
     const initialCheck = setTimeout(checkConnection, 50);
 
     // Apply saved background opacity and signal app is loaded
-    const savedOpacity = localStorage.getItem('yurucode-bg-opacity');
+    const savedOpacity = localStorage.getItem(BG_OPACITY_KEY);
     if (savedOpacity) {
       const opacity = Number(savedOpacity);
       if (!isNaN(opacity) && opacity >= 50 && opacity <= 100) {
@@ -129,12 +135,12 @@ export const App: React.FC = () => {
 
     // Signal that app is fully loaded - stops the loading animation
     // and applies the user's saved opacity setting
-    (window as any).__YURUCODE_LOADED__ = true;
+    (window as any).__YUME_LOADED__ = true;
 
     // Apply the target opacity now that app is loaded
     // Use document.documentElement.style.opacity for actual transparency effect
     // This works on both Windows and macOS
-    const targetOpacity = (window as any).__YURUCODE_TARGET_OPACITY__ || 0.8;
+    const targetOpacity = (window as any).__YUME_TARGET_OPACITY__ || 0.8;
     document.documentElement.style.opacity = String(targetOpacity);
     console.log('[App] Loaded - applied target opacity:', targetOpacity);
 
@@ -154,26 +160,31 @@ export const App: React.FC = () => {
   // Apply font size and line height (load from localStorage or use defaults)
   useEffect(() => {
     // Load font size from localStorage or use default
-    const savedFontSize = localStorage.getItem('yurucode-font-size');
+    const savedFontSize = localStorage.getItem(FONT_SIZE_KEY);
     const sizeToApply = savedFontSize ? Number(savedFontSize) : 11;
     if (!isNaN(sizeToApply)) {
       setFontSize(sizeToApply);
     }
 
     // Load line height from localStorage or use default
-    const savedLineHeight = localStorage.getItem('yurucode-line-height');
+    const savedLineHeight = localStorage.getItem(LINE_HEIGHT_KEY);
     const heightToApply = savedLineHeight ? Number(savedLineHeight) : 1.25;
     if (!isNaN(heightToApply)) {
       setLineHeight(heightToApply);
     }
   }, []); // Only run once on mount
 
-  // Cleanup yurucode agents from ~/.claude/agents/ on app exit
-  // Only removes files if no other yurucode instances are running
+  // Cleanup app agents and vscode extension on app exit
+  // Only removes files if no other app instances are running
   useEffect(() => {
     const handleBeforeUnload = () => {
       // Fire and forget - we can't await in beforeunload
       systemPromptService.cleanupAgentsOnExit();
+      // Uninstall vscode extension if it was enabled
+      const vscodeEnabled = localStorage.getItem(VSCODE_EXTENSION_KEY);
+      if (vscodeEnabled === 'true') {
+        invoke('uninstall_vscode_extension').catch(() => {});
+      }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -181,6 +192,10 @@ export const App: React.FC = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       // Also call cleanup when component unmounts
       systemPromptService.cleanupAgentsOnExit();
+      const vscodeEnabled = localStorage.getItem(VSCODE_EXTENSION_KEY);
+      if (vscodeEnabled === 'true') {
+        invoke('uninstall_vscode_extension').catch(() => {});
+      }
     };
   }, []);
 
@@ -235,7 +250,7 @@ export const App: React.FC = () => {
     return () => window.removeEventListener('showAboutModal', handleShowAbout);
   }, []);
 
-  // Listen for trial instance blocked event from Rust backend
+  // Listen for demo instance blocked event from Rust backend
   useEffect(() => {
     if (!window.__TAURI__) return;
 
@@ -243,13 +258,13 @@ export const App: React.FC = () => {
 
     (async () => {
       const { listen } = await import('@tauri-apps/api/event');
-      unlisten = await listen('trial-instance-blocked', () => {
-        // Show toast notification that trial mode only allows one instance
+      unlisten = await listen('demo-instance-blocked', () => {
+        // Show toast notification that demo mode only allows one instance
         const toast = document.createElement('div');
-        toast.className = 'trial-blocked-toast';
+        toast.className = 'demo-blocked-toast';
         toast.innerHTML = `
-          <div class="trial-blocked-toast-content">
-            <span>yurucode trial permits only one window</span>
+          <div class="demo-blocked-toast-content">
+            <span>yume demo permits only one window</span>
           </div>
         `;
         document.body.appendChild(toast);
@@ -461,7 +476,7 @@ export const App: React.FC = () => {
 
                       // Add to recent projects
                       const newProject = { path, name: sessionName, lastOpened: Date.now(), accessCount: 1 };
-                      const stored = localStorage.getItem('yurucode-recent-projects');
+                      const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
                       let recentProjects = [];
                       try {
                         if (stored) {
@@ -474,7 +489,7 @@ export const App: React.FC = () => {
                         newProject,
                         ...recentProjects.filter((p: any) => p.path !== path)
                       ].slice(0, 10);
-                      localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+                      localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
 
                       await createSession(sessionName, path);
                       return; // Only handle the first folder
@@ -638,14 +653,14 @@ export const App: React.FC = () => {
       if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'r') {
         e.preventDefault();
         // Dispatch custom event for ClaudeChat to handle
-        window.dispatchEvent(new CustomEvent('yurucode-trigger-resume'));
+        window.dispatchEvent(new CustomEvent(TRIGGER_RESUME_EVENT));
         return;
       }
 
       // Ctrl+R for recent projects
       if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'r' && !e.shiftKey) {
         e.preventDefault();
-        const stored = localStorage.getItem('yurucode-recent-projects');
+        const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
         if (stored) {
           try {
             const projects = JSON.parse(stored);
@@ -1111,7 +1126,7 @@ export const App: React.FC = () => {
           <Suspense fallback={null}>
             <AboutModal isOpen={showAbout} onClose={() => { setShowAbout(false); restoreFocusToChat(); }} onShowUpgrade={() => {
               setShowAbout(false);
-              setUpgradeReason('trial');
+              setUpgradeReason('demo');
               setShowUpgradeModal(true);
             }} />
           </Suspense>

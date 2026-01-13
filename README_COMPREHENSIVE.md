@@ -1,25 +1,25 @@
-# Yurucode - The Most Advanced Claude GUI
+# Yume - The Most Advanced Claude GUI
 
 <div align="center">
-  <img src="assets/yurucode.png" alt="Yurucode Logo" width="128" height="128">
+  <img src="assets/yume.png" alt="Yume Logo" width="128" height="128">
   
   **The Only Claude GUI with Automatic Context Compaction**
   
-  [![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yurucode/yurucode/releases)
-  [![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey)](https://yurucode.app)
+  [![Version](https://img.shields.io/badge/version-0.1.0-blue)](https://github.com/yume/yume/releases)
+  [![Platform](https://img.shields.io/badge/platform-macOS%20|%20Windows%20|%20Linux-lightgrey)](https://yume.app)
   [![License](https://img.shields.io/badge/license-MIT-green)](LICENSE)
   [![Production](https://img.shields.io/badge/status-Production%20Ready-green)](docs/PRODUCTION_DEPLOYMENT.md)
 </div>
 
 ---
 
-## 🌟 Why Yurucode?
+## 🌟 Why Yume?
 
-Yurucode is not just another Claude GUI - it's the **only** application that automatically manages your context window, preventing the frustrating "context full" errors that plague every other Claude interface. When your conversation reaches 60% capacity, Yurucode seamlessly compacts and continues, maintaining conversation flow without manual intervention.
+Yume is not just another Claude GUI - it's the **only** application that automatically manages your context window, preventing the frustrating "context full" errors that plague every other Claude interface. When your conversation reaches 60% capacity, Yume seamlessly compacts and continues, maintaining conversation flow without manual intervention.
 
 ### Unique Advantages
 
-| Feature | Yurucode | Others |
+| Feature | Yume | Others |
 |---------|----------|--------|
 | **Auto-compact at 60%** | ✅ Automatic | ❌ Manual or none |
 | **Embedded server** | ✅ No dependencies | ❌ External servers |
@@ -54,7 +54,7 @@ Yurucode is not just another Claude GUI - it's the **only** application that aut
 
 **The Problem**: Claude has a context window limit. When it fills up, conversations stop.
 
-**Our Solution**: At 60% capacity (65% force), Yurucode automatically:
+**Our Solution**: At 60% capacity (65% force), Yume automatically:
 1. Detects the threshold
 2. Saves conversation state
 3. Triggers intelligent compaction
@@ -104,25 +104,25 @@ Yurucode is not just another Claude GUI - it's the **only** application that aut
 #### macOS
 ```bash
 # Download DMG from releases
-curl -L https://github.com/yurucode/releases/latest/download/Yurucode-universal.dmg -o Yurucode.dmg
-hdiutil attach Yurucode.dmg
-cp -R /Volumes/Yurucode/Yurucode.app /Applications/
-hdiutil detach /Volumes/Yurucode
+curl -L https://github.com/yume/releases/latest/download/Yume-universal.dmg -o Yume.dmg
+hdiutil attach Yume.dmg
+cp -R /Volumes/Yume/Yume.app /Applications/
+hdiutil detach /Volumes/Yume
 ```
 
 #### Windows
 ```powershell
 # Download and run installer
-Invoke-WebRequest -Uri https://github.com/yurucode/releases/latest/download/yurucode-x64.msi -OutFile yurucode.msi
-msiexec /i yurucode.msi
+Invoke-WebRequest -Uri https://github.com/yume/releases/latest/download/yume-x64.msi -OutFile yume.msi
+msiexec /i yume.msi
 ```
 
 #### Linux
 ```bash
 # AppImage (universal)
-wget https://github.com/yurucode/releases/latest/download/Yurucode.AppImage
-chmod +x Yurucode.AppImage
-./Yurucode.AppImage
+wget https://github.com/yume/releases/latest/download/Yume.AppImage
+chmod +x Yume.AppImage
+./Yume.AppImage
 ```
 
 ### Claude CLI Setup
@@ -164,8 +164,8 @@ claude --version
 
 ```bash
 # Clone repository
-git clone https://github.com/yurucode/yurucode.git
-cd yurucode
+git clone https://github.com/yume/yume.git
+cd yume
 
 # Install dependencies
 npm install
@@ -194,7 +194,7 @@ cd src-tauri && cargo test # Backend tests
 ### Project Structure
 
 ```
-yurucode/
+yume/
 ├── src/                   # Frontend (React/TypeScript)
 │   └── renderer/
 │       ├── components/    # UI components
@@ -311,7 +311,7 @@ pub struct CrashRecoveryManager {
 
 ### No Telemetry, No Tracking
 
-Yurucode respects your privacy completely:
+Yume respects your privacy completely:
 - ❌ No analytics collection
 - ❌ No usage tracking
 - ❌ No automatic updates
@@ -446,20 +446,20 @@ MIT License - See [LICENSE](LICENSE) for details.
 
 ### Getting Help
 - 📖 [Documentation](docs/)
-- 🐛 [GitHub Issues](https://github.com/yurucode/yurucode/issues)
-- 💬 [Discord Community](https://discord.gg/yurucode)
-- 📧 [Email Support](mailto:support@yurucode.app)
+- 🐛 [GitHub Issues](https://github.com/yume/yume/issues)
+- 💬 [Discord Community](https://discord.gg/yume)
+- 📧 [Email Support](mailto:support@yume.app)
 
 ### Debug Information
 ```bash
 # Generate debug bundle
-yurucode --generate-debug-bundle
+yume --generate-debug-bundle
 
 # Check health
-yurucode --health-check
+yume --health-check
 
 # Version info
-yurucode --version --verbose
+yume --version --verbose
 ```
 
 ---
@@ -499,7 +499,7 @@ Created with ❤️ by the Yuru team.
 ---
 
 <div align="center">
-  <b>Yurucode - Where Conversations Never End</b>
+  <b>Yume - Where Conversations Never End</b>
   
   Made with 🦀 Rust + ⚛️ React + 🚀 Tauri
   

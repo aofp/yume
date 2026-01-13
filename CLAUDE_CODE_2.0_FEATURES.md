@@ -1,7 +1,7 @@
-# Claude Code 2.0 - Unimplemented Features in Yurucode
+# Claude Code 2.0 - Unimplemented Features in Yume
 
 ## Overview
-This document lists features available in Claude Code 2.0 that haven't been fully implemented in Yurucode GUI yet. These represent opportunities to make Yurucode the best UI for Claude Code.
+This document lists features available in Claude Code 2.0 that haven't been fully implemented in Yume GUI yet. These represent opportunities to make Yume the best UI for Claude Code.
 
 ## ✅ Implemented Features
 - Model selection (now includes Sonnet 4.5)
@@ -168,4 +168,4 @@ This document lists features available in Claude Code 2.0 that haven't been full
 - Ensure backward compatibility
 
 ## Conclusion
-Implementing these features would make Yurucode a comprehensive GUI that exposes all of Claude Code 2.0's capabilities while maintaining an intuitive user experience. The priority should be on features that enhance the core coding workflow and provide better control over Claude's behavior.
+Implementing these features would make Yume a comprehensive GUI that exposes all of Claude Code 2.0's capabilities while maintaining an intuitive user experience. The priority should be on features that enhance the core coding workflow and provide better control over Claude's behavior.

@@ -5,6 +5,7 @@ import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { FontPickerModal } from '../FontPicker/FontPickerModal';
 import { AboutModal } from '../About/AboutModal';
+import { APP_NAME } from '../../config/app';
 
 // Access the electron API exposed by preload script
 declare global {
@@ -424,21 +425,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <div className="font-controls">
                     <button
                       className="color-reset"
-                      onClick={() => setMonoFont('Comic Mono')}
+                      onClick={() => setMonoFont('Agave')}
                       title="reset to default"
-                      disabled={!monoFont || monoFont === 'Comic Mono'}
+                      disabled={!monoFont || monoFont === 'Agave'}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
                     <button
                       className="font-input"
                       onClick={() => {
-                        setSelectedFont(monoFont || 'Comic Mono');
+                        setSelectedFont(monoFont || 'Agave');
                         setShowFontPicker('monospace');
                       }}
-                      style={{ fontFamily: monoFont || 'Comic Mono' }}
+                      style={{ fontFamily: monoFont || 'Agave' }}
                     >
-                      {monoFont || 'Comic Mono'}
+                      {monoFont || 'Agave'}
                     </button>
                   </div>
                 </div>
@@ -447,21 +448,21 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                   <div className="font-controls">
                     <button
                       className="color-reset"
-                      onClick={() => setSansFont('Comic Neue')}
+                      onClick={() => setSansFont('Agave')}
                       title="reset to default"
-                      disabled={!sansFont || sansFont === 'Comic Neue'}
+                      disabled={!sansFont || sansFont === 'Agave'}
                     >
                       <IconRotateClockwise size={12} />
                     </button>
                     <button
                       className="font-input"
                       onClick={() => {
-                        setSelectedFont(sansFont || 'Comic Neue');
+                        setSelectedFont(sansFont || 'Agave');
                         setShowFontPicker('sans-serif');
                       }}
-                      style={{ fontFamily: sansFont || 'Comic Neue' }}
+                      style={{ fontFamily: sansFont || 'Agave' }}
                     >
-                      {sansFont || 'Comic Neue'}
+                      {sansFont || 'Agave'}
                     </button>
                   </div>
                 </div>
@@ -474,10 +475,10 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
                 onClick={() => {
                   setShowAboutModal(true);
                 }}
-                title="about yurucode"
+                title={`about ${APP_NAME}`}
               >
                 <IconInfoCircle size={10} />
-                <span>about yurucode</span>
+                <span>about {APP_NAME}</span>
               </button>
               {!isLicensed && (
                 <button
@@ -632,8 +633,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({ onClose }) => {
             setShowAboutModal(false);
             // Small delay to ensure AboutModal closes before UpgradeModal opens
             setTimeout(() => {
-              window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-                detail: { reason: 'trial' } 
+              window.dispatchEvent(new CustomEvent('showUpgradeModal', {
+                detail: { reason: 'demo' }
               }));
             }, 100);
           }}

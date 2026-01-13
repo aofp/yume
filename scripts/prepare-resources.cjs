@@ -53,14 +53,14 @@ console.log(`\n🧹 Preparing resources for ${targetPlatform} build...\n`);
 // Define what files to KEEP for each platform
 const platformFiles = {
   macos: [
-    'yurucode-server-macos-arm64',
-    'yurucode-server-macos-x64',
+    'yume-server-macos-arm64',
+    'yume-server-macos-x64',
   ],
   windows: [
-    'yurucode-server-windows-x64.exe',
+    'yume-server-windows-x64.exe',
   ],
   linux: [
-    'yurucode-server-linux-x64',
+    'yume-server-linux-x64',
   ],
 };
 
@@ -91,7 +91,7 @@ const dirsToRemove = [
 
 // Clean up vscode extension - keep only .vsix and out/
 function cleanVscodeExtension() {
-  const vscodeDir = path.join(resourcesDir, 'yurucode-vscode');
+  const vscodeDir = path.join(resourcesDir, 'yume-vscode');
   if (!fs.existsSync(vscodeDir)) return 0;
 
   let cleanedSize = 0;
@@ -129,10 +129,10 @@ const filesToKeep = platformFiles[targetPlatform] || [];
 
 // Also remove OTHER platform binaries
 const allPlatformBinaries = [
-  'yurucode-server-macos-arm64',
-  'yurucode-server-macos-x64',
-  'yurucode-server-windows-x64.exe',
-  'yurucode-server-linux-x64',
+  'yume-server-macos-arm64',
+  'yume-server-macos-x64',
+  'yume-server-windows-x64.exe',
+  'yume-server-linux-x64',
 ];
 
 const otherPlatformBinaries = allPlatformBinaries.filter(

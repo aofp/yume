@@ -1,4 +1,4 @@
-# yurucode Implementation Roadmap
+# yume Implementation Roadmap
 
 Based on Claude Agent SDK analysis.
 

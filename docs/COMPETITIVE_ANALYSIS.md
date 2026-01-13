@@ -5,7 +5,7 @@
 
 ## Executive Summary
 
-yurucode is a standalone desktop wrapper for claude cli, differentiating from ide extensions and cloud-based tools by providing:
+yume is a standalone desktop wrapper for claude cli, differentiating from ide extensions and cloud-based tools by providing:
 - **native desktop experience** with minimal gui (tauri 2.x, rust backend)
 - **multi-tab session management** with persistence and crash recovery
 - **advanced token analytics** with per-project/model/date breakdowns
@@ -123,7 +123,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
   - open source
 - **weaknesses:**
   - requires claude cli installation
-  - unclear differentiation from yurucode
+  - unclear differentiation from yume
   - recent rebrand from claudia may cause confusion
 - **pricing:** free (open source)
 
@@ -152,7 +152,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 
 ## Feature Comparison Matrix
 
-| Feature | Yurucode | Cursor | Windsurf | Continue.dev | Cody | Copilot WS | Replit | Bolt.new | Opcode |
+| Feature | Yume | Cursor | Windsurf | Continue.dev | Cody | Copilot WS | Replit | Bolt.new | Opcode |
 |---------|----------|--------|----------|--------------|------|------------|--------|----------|--------|
 | **Standalone App** | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ✅ |
 | **Multi-Tab Sessions** | ✅ (99 pro) | ✅ | ✅ | ❌ | ❌ | ❌ | ✅ | ❌ | ❓ |
@@ -162,7 +162,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 | **Timeline/Checkpoints** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❓ |
 | **Context Compaction** | ✅ (55/60/65% thresholds) | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ | ✅ | ❓ |
 | **Crash Recovery** | ✅ | ✅ | ✅ | n/a | n/a | ✅ | ✅ | ✅ | ❓ |
-| **Custom Agents** | ✅ (yurucode-* built-in) | ✅ | ✅ (cascade) | ✅ | ❌ | ✅ | ✅ | ❌ | ❓ |
+| **Custom Agents** | ✅ (yume-* built-in) | ✅ | ✅ (cascade) | ✅ | ❌ | ✅ | ✅ | ❌ | ❓ |
 | **Voice Dictation** | ✅ (web speech api) | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
 | **CLAUDE.md Editor** | ✅ (in-app) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | n/a | ❓ |
 | **Open Source** | ❌ | ❌ | ❌ | ✅ | ❌ | ❌ | ❌ | ❌ | ✅ |
@@ -170,7 +170,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 | **Multi-LLM Support** | ❌ (claude only) | ✅ | ✅ | ✅ | ✅ | ❌ (github models) | ✅ | ✅ | ❌ (claude only) |
 | **Price (Pro)** | $21 one-time | $16-20/mo | $15/mo | free | varies | $10-19/mo | $20-35/mo | undisclosed | free |
 
-## Yurucode's Unique Advantages
+## Yume's Unique Advantages
 
 ### 1. **Desktop-First Claude CLI Wrapper**
 - only standalone desktop app specifically designed for claude cli
@@ -186,7 +186,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 ### 3. **Complete Plugin Ecosystem**
 - commands, agents, hooks, skills, mcp in single framework
 - no code changes needed for extensibility
-- "yurucode" bundled plugin with 5 core agents
+- "yume" bundled plugin with 5 core agents
 - auto-sync agents with selected model (opus/sonnet)
 
 ### 4. **Performance Monitoring**
@@ -218,7 +218,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 ### Critical Gaps
 
 1. **Single LLM Support**
-   - yurucode locked to claude only
+   - yume locked to claude only
    - competitors support multiple llms (gpt-4, gemini, mixtral)
    - **recommendation:** maintain claude focus for v0.1.0, evaluate multi-llm post-launch
 
@@ -234,14 +234,14 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 
 4. **No Cloud Sync**
    - competitors offer cloud-based session sync
-   - yurucode is local-only
+   - yume is local-only
    - **recommendation:** potential future feature but ensure privacy/security first
 
 ### Emerging Opportunities
 
 1. **MCP Protocol Leadership**
    - mcp is gaining traction (copilot workspace, opcode)
-   - yurucode already has mcp support
+   - yume already has mcp support
    - **opportunity:** position as "best mcp experience for claude"
 
 2. **Performance-First Narrative**
@@ -250,16 +250,16 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
    - **opportunity:** market as "fastest claude gui" with proof
 
 3. **Plugin Marketplace**
-   - no competitor has comprehensive plugin ecosystem like yurucode
+   - no competitor has comprehensive plugin ecosystem like yume
    - **opportunity:** launch plugin marketplace post-v0.1.0 for discoverability
 
 4. **Team Collaboration**
    - cursor/windsurf/cody/replit all have team plans
-   - yurucode is single-user only
+   - yume is single-user only
    - **opportunity:** explore team features (shared sessions, knowledge bases)
 
 5. **Voice-First Coding**
-   - yurucode has voice dictation
+   - yume has voice dictation
    - competitors lack voice features
    - **opportunity:** expand voice commands beyond dictation (e.g., "run tests", "commit changes")
 
@@ -292,7 +292,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 
 4. **"Extend Without Code"**
    - plugin system for customization
-   - 5 built-in yurucode agents
+   - 5 built-in yume agents
    - skills auto-inject context
 
 ### Pre-Launch Checklist for v0.1.0
@@ -307,7 +307,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 #### Nice-to-Have Pre-Launch
 - [ ] video demo showcasing unique features
 - [ ] plugin examples (1-2 sample plugins)
-- [ ] comparison page on website (yurucode vs competitors)
+- [ ] comparison page on website (yume vs competitors)
 - [ ] testimonials from beta users
 
 #### Post-Launch Priorities
@@ -330,7 +330,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 - **subscription fatigue:** developers tired of monthly fees may resist $21 one-time
   - **mitigation:** generous trial (2 tabs) to prove value before purchase
 
-- **claude cli changes:** breaking changes to cli could disrupt yurucode
+- **claude cli changes:** breaking changes to cli could disrupt yume
   - **mitigation:** monitor cli releases, maintain compatibility layer
 
 ### Low Risk
@@ -375,7 +375,7 @@ yurucode is a standalone desktop wrapper for claude cli, differentiating from id
 
 ## Conclusion
 
-yurucode occupies unique position as **premium desktop wrapper for claude cli** with:
+yume occupies unique position as **premium desktop wrapper for claude cli** with:
 - advanced analytics unmatched by competitors
 - comprehensive plugin ecosystem
 - performance-first architecture

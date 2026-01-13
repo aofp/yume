@@ -1,10 +1,10 @@
-# Yurucode Competitive Advantages
+# Yume Competitive Advantages
 
 *Last Updated: January 10, 2026*
 
 ## Core Value Proposition
 
-**Yurucode = Claude Code CLI power + Native desktop performance + 12+ unique features**
+**Yume = Claude Code CLI power + Native desktop performance + 12+ unique features**
 
 We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide features no competitor has.
 
@@ -15,7 +15,7 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 | **Plugin System** | Complete extensibility framework (commands, agents, hooks, skills, MCP) - install custom plugins from folder |
 | **Skills System** | Auto-inject context based on triggers (file extensions, keywords, regex) |
 | **5h + 7-day limit tracking** | Visual quota bars in context bar showing Anthropic subscription limits |
-| **Yurucode Guard** | Built-in security hook (blocks rm -rf, sudo, dangerous git, etc.) |
+| **Yume Guard** | Built-in security hook (blocks rm -rf, sudo, dangerous git, etc.) |
 | **5 built-in agents** | architect, explorer, implementer, guardian, specialist |
 | **@ mention system** | @r (recent files), @m (modified files), folder navigation |
 | **Stream timers** | Live thinking/bash/compacting duration timers |
@@ -31,7 +31,7 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 
 ## Advantages Over Claude Code CLI
 
-| Problem | Claude Code CLI | Yurucode |
+| Problem | Claude Code CLI | Yume |
 |---------|-----------------|----------|
 | Flickering | React Ink redraws cause flicker | ✅ Native rendering, no flicker |
 | Input lag | 10+ seconds in long sessions | ✅ Consistent <100ms response |
@@ -64,7 +64,7 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 
 ### Tools
 - ✅ MCP manager (toggle switches, status)
-- ✅ Hooks UI (9 events + Yurucode Guard)
+- ✅ Hooks UI (9 events + Yume Guard)
 - ✅ Model selector (with tool count)
 
 ### Input
@@ -166,14 +166,14 @@ We solve Claude Code CLI's biggest problem (laggy, flickering TUI) AND provide f
 7. **Value**: "$21 one-time vs $20-200/mo subscriptions"
 8. **Themes**: "30 themes - make it yours"
 9. **Keyboard**: "32+ shortcuts - never leave the keyboard"
-10. **Security**: "Yurucode Guard protects you from dangerous commands"
+10. **Security**: "Yume Guard protects you from dangerous commands"
 
 ## Unique Selling Points Table
 
 | USP | vs CLI | vs Cursor | vs Opcode |
 |-----|--------|-----------|-----------|
 | 5h/7d limit tracking | ✅ No | ✅ No | ✅ No |
-| Yurucode Guard | ✅ No | ✅ No | ✅ No |
+| Yume Guard | ✅ No | ✅ No | ✅ No |
 | 5 built-in agents | ✅ No | ✅ No | ✅ No |
 | @ mention system | ✅ No | ✅ No | ✅ No |
 | Stream timers | ✅ No | ✅ No | ✅ No |

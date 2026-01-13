@@ -1,13 +1,13 @@
 @echo off
 echo ========================================
-echo Building yurucode for Windows...
+echo Building yume for Windows...
 echo ========================================
 echo.
 
 REM Clean previous build
 echo Cleaning previous build...
-if exist "src-tauri\target\release\yurucode.exe" (
-    del "src-tauri\target\release\yurucode.exe"
+if exist "src-tauri\target\release\yume.exe" (
+    del "src-tauri\target\release\yume.exe"
 )
 
 REM Build the frontend and Tauri app
@@ -25,11 +25,11 @@ echo ========================================
 echo BUILD SUCCESS!
 echo ========================================
 echo.
-echo Executable: src-tauri\target\release\yurucode.exe
+echo Executable: src-tauri\target\release\yume.exe
 echo.
 echo Installers created:
-echo - MSI: src-tauri\target\release\bundle\msi\yurucode_1.0.0_x64_en-US.msi
-echo - NSIS: src-tauri\target\release\bundle\nsis\yurucode_1.0.0_x64-setup.exe
+echo - MSI: src-tauri\target\release\bundle\msi\yume_1.0.0_x64_en-US.msi
+echo - NSIS: src-tauri\target\release\bundle\nsis\yume_1.0.0_x64-setup.exe
 echo.
 echo The exe will:
 echo - Auto-start Node.js server  

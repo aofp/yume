@@ -1,8 +1,8 @@
-# yurucode Competitive Research (January 2026)
+# yume Competitive Research (January 2026)
 
-comprehensive competitive landscape analysis for yurucode
+comprehensive competitive landscape analysis for yume
 
-**mission**: make yurucode the undisputed best Claude Code GUI
+**mission**: make yume the undisputed best Claude Code GUI
 
 ---
 
@@ -18,12 +18,12 @@ comprehensive competitive landscape analysis for yurucode
 | **windsurf** | acquired by cognition, SWE-1.5 13x faster, 94 chromium vulns |
 | **opcode** | 19.7k github stars, broken on windows, AGPL limits commercial |
 | **sculptor** | ~5k stars, docker overhead, ~1min cold start |
-| **yurucode** | fastest native GUI, 30+ shortcuts, unique features |
+| **yume** | fastest native GUI, 30+ shortcuts, unique features |
 
-### yurucode's position
+### yume's position
 
 ```
-yurucode is ALREADY the best native Claude Code GUI by:
+yume is ALREADY the best native Claude Code GUI by:
 - bundle size (25x smaller than cursor)
 - memory usage (6x less than cursor)
 - keyboard shortcuts (30+ vs competitors' 5-20)
@@ -90,11 +90,11 @@ yurucode is ALREADY the best native Claude Code GUI by:
 
 ---
 
-## yurucode unique advantages
+## yume unique advantages
 
 ### 1. native performance (tauri 2)
 ```
-yurucode: ~15MB bundle, ~50MB RAM, <2s startup
+yume: ~15MB bundle, ~50MB RAM, <2s startup
 cursor:   ~400MB bundle, ~300MB RAM, ~5s startup
 ```
 
@@ -110,14 +110,14 @@ unique:   !/$ bash mode, cmd+d duplicate
 ```
 cursor:   94 unpatched chromium vulnerabilities
 windsurf: 94 unpatched chromium vulnerabilities
-yurucode: native webview, minimal attack surface
+yume: native webview, minimal attack surface
 ```
 
 ### 4. cost
 ```
 cursor:   $20-200/month
 windsurf: $15-60/month
-yurucode: $9 one-time
+yume: $9 one-time
 ```
 
 ---
@@ -151,7 +151,7 @@ yurucode: $9 one-time
 
 ### vs claude cli
 
-| yurucode wins | cli wins |
+| yume wins | cli wins |
 |---------------|----------|
 | visual tabs with cmd+t/w/d | real-time steering |
 | full theming (65+ colors) | plugin system (12+) |
@@ -161,7 +161,7 @@ yurucode: $9 one-time
 
 ### vs cursor
 
-| yurucode wins | cursor wins |
+| yume wins | cursor wins |
 |---------------|-------------|
 | 25x smaller bundle | 8 parallel agents |
 | 6x less memory | Composer 4x faster |
@@ -171,7 +171,7 @@ yurucode: $9 one-time
 
 ### vs windsurf
 
-| yurucode wins | windsurf wins |
+| yume wins | windsurf wins |
 |---------------|---------------|
 | native, not electron | SWE-1.5 (13x faster) |
 | faster startup | turbo mode |
@@ -181,7 +181,7 @@ yurucode: $9 one-time
 
 ### vs sculptor
 
-| yurucode wins | sculptor wins |
+| yume wins | sculptor wins |
 |---------------|---------------|
 | <2s startup vs ~1min | parallel docker containers |
 | windows native | pairing mode |
@@ -190,7 +190,7 @@ yurucode: $9 one-time
 
 ### vs opcode
 
-| yurucode wins | opcode wins |
+| yume wins | opcode wins |
 |---------------|-------------|
 | stable windows support | 19.7k github stars |
 | more keyboard shortcuts | built-in CLAUDE.md editor |
@@ -202,7 +202,7 @@ yurucode: $9 one-time
 ## the pitch
 
 ### one-liner
-"yurucode is the bun of claude code ui - fastest, most native, most keyboard-efficient gui for developers"
+"yume is the bun of claude code ui - fastest, most native, most keyboard-efficient gui for developers"
 
 ### value proposition
 1. **speed**: 25x smaller than electron competitors
@@ -241,7 +241,7 @@ this analysis was conducted using 8 parallel research agents:
 2. **windsurf research** - web search for latest features
 3. **cursor research** - web search for latest features
 4. **other claude guis** - sculptor, opcode, opencode, aider, kilo
-5. **yurucode audit** - verify actual implementation
+5. **yume audit** - verify actual implementation
 6. **claude agent sdk** - integration possibilities
 7. **ux best practices** - 2025-2026 standards
 8. **market research** - sizing, valuations, acquisitions
@@ -250,7 +250,7 @@ this analysis was conducted using 8 parallel research agents:
 
 ## conclusion
 
-yurucode has the **technical foundation** to be the best claude code gui. the gap is closable in 4-6 weeks:
+yume has the **technical foundation** to be the best claude code gui. the gap is closable in 4-6 weeks:
 
 1. enable already-coded features (timeline, checkpoints)
 2. add context meter (windsurf parity)

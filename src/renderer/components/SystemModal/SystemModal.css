@@ -30,7 +30,7 @@
   padding: 16px 20px;
   color: rgba(255, 255, 255, 0.85);
   font-size: var(--text-base);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   text-align: center;
   word-wrap: break-word;
   text-transform: lowercase;

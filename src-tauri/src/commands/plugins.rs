@@ -1,4 +1,4 @@
-// Plugin management commands for Yurucode
+// Plugin management commands for Yume
 // Supports Claude Code plugin format: https://github.com/anthropics/claude-code/tree/main/plugins
 
 use serde::{Deserialize, Serialize};
@@ -6,6 +6,15 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::time::{SystemTime, UNIX_EPOCH};
 use tauri::Manager;
+
+use crate::app::{
+    APP_ID,
+    PLUGIN_ID,
+    PLUGIN_DIR_NAME,
+    VSCODE_DIR_NAME,
+    VSCODE_EXTENSION_ID,
+    VSCODE_EXTENSION_DIR_PREFIX,
+};
 
 // ============================================================================
 // Types
@@ -89,21 +98,21 @@ fn get_plugins_dir() -> Result<PathBuf, String> {
     #[cfg(target_os = "windows")]
     {
         if let Some(app_data) = dirs::data_dir() {
-            return Ok(app_data.join("yurucode").join("plugins"));
+            return Ok(app_data.join(APP_ID).join("plugins"));
         }
     }
 
     #[cfg(target_os = "macos")]
     {
         if let Some(app_support) = dirs::data_dir() {
-            return Ok(app_support.join("yurucode").join("plugins"));
+            return Ok(app_support.join(APP_ID).join("plugins"));
         }
     }
 
     #[cfg(target_os = "linux")]
     {
         if let Some(config) = dirs::config_dir() {
-            return Ok(config.join("yurucode").join("plugins"));
+            return Ok(config.join(APP_ID).join("plugins"));
         }
     }
 
@@ -414,7 +423,7 @@ fn sync_plugin_commands(plugin: &InstalledPlugin, enabled: bool) -> Result<(), S
         let dest_name = format!("{}--{}.md", plugin.id, cmd.name);
         let dest_path = commands_dir.join(&dest_name);
 
-        // Also create shortcut without prefix (command.md) for yurucode plugin
+        // Also create shortcut without prefix (command.md) for core plugin
         let shortcut_name = format!("{}.md", cmd.name);
         let shortcut_path = commands_dir.join(&shortcut_name);
 
@@ -423,8 +432,8 @@ fn sync_plugin_commands(plugin: &InstalledPlugin, enabled: bool) -> Result<(), S
             fs::copy(&cmd.file_path, &dest_path)
                 .map_err(|e| format!("Failed to copy command {}: {}", cmd.name, e))?;
 
-            // For yurucode plugin, also create shortcut version
-            if plugin.id == "yurucode" {
+            // For core plugin, also create shortcut version
+            if plugin.id == PLUGIN_ID {
                 fs::copy(&cmd.file_path, &shortcut_path)
                     .map_err(|e| format!("Failed to copy command shortcut {}: {}", cmd.name, e))?;
             }
@@ -433,8 +442,8 @@ fn sync_plugin_commands(plugin: &InstalledPlugin, enabled: bool) -> Result<(), S
             if dest_path.exists() {
                 let _ = fs::remove_file(&dest_path);
             }
-            // Also remove shortcut for yurucode plugin
-            if plugin.id == "yurucode" && shortcut_path.exists() {
+            // Also remove shortcut for core plugin
+            if plugin.id == PLUGIN_ID && shortcut_path.exists() {
                 let _ = fs::remove_file(&shortcut_path);
             }
         }
@@ -776,7 +785,7 @@ pub fn plugin_rescan(plugin_id: String) -> Result<InstalledPlugin, String> {
         .ok_or_else(|| "Failed to update plugin".to_string())
 }
 
-/// Find the bundled yurucode plugin path
+/// Find the bundled core plugin path
 fn find_bundled_plugin_path(app_handle: &tauri::AppHandle) -> Option<std::path::PathBuf> {
     let mut candidate_paths = Vec::new();
 
@@ -784,22 +793,22 @@ fn find_bundled_plugin_path(app_handle: &tauri::AppHandle) -> Option<std::path::
     // Tauri 2.x bundles resources in Contents/Resources/resources/ on macOS
     if let Ok(resource_dir) = app_handle.path().resource_dir() {
         // Try nested resources folder first (Tauri 2.x structure)
-        candidate_paths.push(resource_dir.join("resources").join("yurucode-plugin"));
+        candidate_paths.push(resource_dir.join("resources").join(PLUGIN_DIR_NAME));
         // Also try direct path (in case structure changes)
-        candidate_paths.push(resource_dir.join("yurucode-plugin"));
+        candidate_paths.push(resource_dir.join(PLUGIN_DIR_NAME));
     }
 
     // 2. Try current_dir/src-tauri/resources (dev mode from project root)
     if let Ok(cwd) = std::env::current_dir() {
-        candidate_paths.push(cwd.join("src-tauri").join("resources").join("yurucode-plugin"));
-        candidate_paths.push(cwd.join("resources").join("yurucode-plugin"));
+        candidate_paths.push(cwd.join("src-tauri").join("resources").join(PLUGIN_DIR_NAME));
+        candidate_paths.push(cwd.join("resources").join(PLUGIN_DIR_NAME));
     }
 
     // 3. Try relative to executable
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
-            candidate_paths.push(exe_dir.join("resources").join("yurucode-plugin"));
-            candidate_paths.push(exe_dir.join("yurucode-plugin"));
+            candidate_paths.push(exe_dir.join("resources").join(PLUGIN_DIR_NAME));
+            candidate_paths.push(exe_dir.join(PLUGIN_DIR_NAME));
         }
     }
 
@@ -818,7 +827,7 @@ fn find_bundled_plugin_path(app_handle: &tauri::AppHandle) -> Option<std::path::
     None
 }
 
-/// Initialize bundled yurucode plugin if not already installed
+/// Initialize bundled core plugin if not already installed
 /// Called on app startup to ensure the core plugin is available
 #[tauri::command]
 pub fn plugin_init_bundled(app_handle: tauri::AppHandle) -> Result<Option<InstalledPlugin>, String> {
@@ -830,9 +839,9 @@ pub fn plugin_init_bundled(app_handle: tauri::AppHandle) -> Result<Option<Instal
     let bundled_path = find_bundled_plugin_path(&app_handle);
     println!("[plugins] bundled plugin path: {:?}", bundled_path);
 
-    // Check if yurucode plugin already installed
-    if let Some(existing) = registry.plugins.get("yurucode").cloned() {
-        println!("[plugins] yurucode plugin exists: enabled={}, commands={}, agents={}",
+    // Check if core plugin already installed
+    if let Some(existing) = registry.plugins.get(PLUGIN_ID).cloned() {
+        println!("[plugins] core plugin exists: enabled={}, commands={}, agents={}",
             existing.enabled, existing.components.commands.len(), existing.components.agents.len());
 
         let plugin_path = std::path::Path::new(&existing.path);
@@ -842,8 +851,8 @@ pub fn plugin_init_bundled(app_handle: tauri::AppHandle) -> Result<Option<Instal
 
         if !needs_reinstall {
             if let Some(ref bundled) = bundled_path {
-                if let Ok(bundled_components) = discover_components(bundled, "yurucode") {
-                    let installed_components = discover_components(plugin_path, "yurucode").ok();
+                if let Ok(bundled_components) = discover_components(bundled, PLUGIN_ID) {
+                    let installed_components = discover_components(plugin_path, PLUGIN_ID).ok();
 
                     let bundled_cmd_count = bundled_components.commands.len();
                     let bundled_agent_count = bundled_components.agents.len();
@@ -863,23 +872,23 @@ pub fn plugin_init_bundled(app_handle: tauri::AppHandle) -> Result<Option<Instal
         }
 
         if needs_reinstall {
-            println!("[plugins] removing stale yurucode entry for reinstall");
-            registry.plugins.remove("yurucode");
+            println!("[plugins] removing stale core entry for reinstall");
+            registry.plugins.remove(PLUGIN_ID);
             save_registry(&registry)?;
             // Fall through to reinstall
         } else {
             // Update components but preserve user's enabled state
-            let components = discover_components(plugin_path, "yurucode")?;
-            let was_enabled = registry.plugins.get("yurucode").map(|p| p.enabled).unwrap_or(true);
+            let components = discover_components(plugin_path, PLUGIN_ID)?;
+            let was_enabled = registry.plugins.get(PLUGIN_ID).map(|p| p.enabled).unwrap_or(true);
 
-            if let Some(p) = registry.plugins.get_mut("yurucode") {
+            if let Some(p) = registry.plugins.get_mut(PLUGIN_ID) {
                 p.components = components;
                 // Don't force enabled = true, preserve user's choice
             }
             save_registry(&registry)?;
 
-            let final_plugin = registry.plugins.get("yurucode").cloned().unwrap();
-            println!("[plugins] yurucode plugin: enabled={}, commands={}, agents={}",
+            let final_plugin = registry.plugins.get(PLUGIN_ID).cloned().unwrap();
+            println!("[plugins] core plugin: enabled={}, commands={}, agents={}",
                 was_enabled, final_plugin.components.commands.len(), final_plugin.components.agents.len());
 
             // Only sync components if plugin is enabled
@@ -892,24 +901,24 @@ pub fn plugin_init_bundled(app_handle: tauri::AppHandle) -> Result<Option<Instal
         }
     }
 
-    println!("[plugins] yurucode plugin not found or outdated, installing from bundled");
+    println!("[plugins] core plugin not found or outdated, installing from bundled");
 
     // Use the bundled path we found earlier
     if let Some(path) = bundled_path {
         return install_bundled_plugin(&path);
     }
 
-    Err("Bundled yurucode plugin not found".to_string())
+    Err("Bundled core plugin not found".to_string())
 }
 
-/// Cleanup yurucode plugin on exit
+/// Cleanup core plugin on exit
 /// Removes synced commands from ~/.claude/commands/
 #[tauri::command]
 pub fn plugin_cleanup_on_exit() -> Result<(), String> {
     let registry = load_registry()?;
 
-    // Only clean up yurucode plugin
-    if let Some(plugin) = registry.plugins.get("yurucode") {
+    // Only clean up core plugin
+    if let Some(plugin) = registry.plugins.get(PLUGIN_ID) {
         if plugin.enabled {
             // Remove synced commands
             sync_plugin_commands(plugin, false).ok();
@@ -923,7 +932,7 @@ pub fn plugin_cleanup_on_exit() -> Result<(), String> {
     Ok(())
 }
 
-/// Helper to install the bundled yurucode plugin
+/// Helper to install the bundled core plugin
 fn install_bundled_plugin(source: &Path) -> Result<Option<InstalledPlugin>, String> {
     // Validate the plugin
     let manifest = parse_plugin_manifest(source)?;
@@ -946,12 +955,12 @@ fn install_bundled_plugin(source: &Path) -> Result<Option<InstalledPlugin>, Stri
     // Discover components
     let components = discover_components(&dest_dir, &plugin_id)?;
 
-    // Create installed plugin entry - ENABLED by default for yurucode plugin
+    // Create installed plugin entry - enabled by default for core plugin
     let plugin = InstalledPlugin {
         id: plugin_id.clone(),
         manifest,
         installed_at: now_timestamp(),
-        enabled: true, // yurucode plugin is enabled by default
+        enabled: true, // core plugin is enabled by default
         path: dest_dir.to_string_lossy().to_string(),
         components,
     };
@@ -970,32 +979,32 @@ fn install_bundled_plugin(source: &Path) -> Result<Option<InstalledPlugin>, Stri
     Ok(Some(plugin))
 }
 
-/// Sync yurucode agents with a specific model
-/// Called when user changes the selected model to update all yurucode agents
+/// Sync app agents with a specific model
+/// Called when user changes the selected model to update all app agents
 #[tauri::command]
-pub fn sync_yurucode_agents(enabled: bool, model: String) -> Result<(), String> {
+pub fn sync_yume_agents(enabled: bool, model: String) -> Result<(), String> {
     let registry = load_registry()?;
 
-    if let Some(plugin) = registry.plugins.get("yurucode") {
-        println!("[plugins] sync_yurucode_agents: enabled={}, model={}", enabled, model);
+    if let Some(plugin) = registry.plugins.get(PLUGIN_ID) {
+        println!("[plugins] sync_yume_agents: enabled={}, model={}", enabled, model);
         sync_plugin_agents(plugin, enabled, Some(&model))?;
     }
 
     Ok(())
 }
 
-/// Check if yurucode agents are currently synced
+/// Check if app agents are currently synced
 #[tauri::command]
-pub fn are_yurucode_agents_synced() -> Result<bool, String> {
+pub fn are_yume_agents_synced() -> Result<bool, String> {
     let claude_dir = get_claude_dir()?;
     let agents_dir = claude_dir.join("agents");
 
-    // Check if any yurucode agent file exists
+    // Check if any app agent file exists
     if agents_dir.exists() {
         if let Ok(entries) = fs::read_dir(&agents_dir) {
             for entry in entries.flatten() {
                 let name = entry.file_name().to_string_lossy().to_string();
-                if name.starts_with("yurucode--") && name.ends_with(".md") {
+                if name.starts_with(&format!("{}--", PLUGIN_ID)) && name.ends_with(".md") {
                     return Ok(true);
                 }
             }
@@ -1005,12 +1014,12 @@ pub fn are_yurucode_agents_synced() -> Result<bool, String> {
     Ok(false)
 }
 
-/// Cleanup yurucode agents on app exit (called from frontend)
+/// Cleanup app agents on app exit (called from frontend)
 #[tauri::command]
-pub fn cleanup_yurucode_agents_on_exit() -> Result<(), String> {
+pub fn cleanup_yume_agents_on_exit() -> Result<(), String> {
     let registry = load_registry()?;
 
-    if let Some(plugin) = registry.plugins.get("yurucode") {
+    if let Some(plugin) = registry.plugins.get(PLUGIN_ID) {
         if plugin.enabled {
             sync_plugin_agents(plugin, false, None)?;
         }
@@ -1023,36 +1032,108 @@ pub fn cleanup_yurucode_agents_on_exit() -> Result<(), String> {
 // VSCode Extension Commands
 // ============================================================================
 
-/// Check if VSCode CLI is available
-fn is_vscode_cli_available() -> bool {
-    // Try 'code --version' first
+/// Find the VSCode CLI path (handles GUI apps without shell PATH)
+fn find_vscode_cli() -> Option<String> {
+    // Try 'code' directly first (works in dev mode or if PATH is set)
     if std::process::Command::new("code")
         .arg("--version")
         .output()
         .map(|o| o.status.success())
         .unwrap_or(false)
     {
-        return true;
+        return Some("code".to_string());
     }
 
-    // Fallback: try 'which code' (unix) or 'where code' (windows)
-    #[cfg(not(target_os = "windows"))]
+    // macOS: check known VSCode locations
+    #[cfg(target_os = "macos")]
     {
-        std::process::Command::new("which")
-            .arg("code")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+        let macos_paths = [
+            "/usr/local/bin/code",
+            "/opt/homebrew/bin/code",
+            "/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code",
+            "/Applications/Visual Studio Code - Insiders.app/Contents/Resources/app/bin/code",
+        ];
+        for path in &macos_paths {
+            if std::path::Path::new(path).exists() {
+                if std::process::Command::new(path)
+                    .arg("--version")
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false)
+                {
+                    return Some(path.to_string());
+                }
+            }
+        }
     }
 
+    // Linux: check common locations
+    #[cfg(target_os = "linux")]
+    {
+        let linux_paths = [
+            "/usr/bin/code",
+            "/usr/local/bin/code",
+            "/snap/bin/code",
+        ];
+        for path in &linux_paths {
+            if std::path::Path::new(path).exists() {
+                if std::process::Command::new(path)
+                    .arg("--version")
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false)
+                {
+                    return Some(path.to_string());
+                }
+            }
+        }
+    }
+
+    // Windows: check common locations
     #[cfg(target_os = "windows")]
     {
-        std::process::Command::new("where")
-            .arg("code")
-            .output()
-            .map(|o| o.status.success())
-            .unwrap_or(false)
+        if let Some(local_app_data) = std::env::var_os("LOCALAPPDATA") {
+            let vscode_cmd = std::path::PathBuf::from(local_app_data)
+                .join("Programs")
+                .join("Microsoft VS Code")
+                .join("bin")
+                .join("code.cmd");
+            if vscode_cmd.exists() {
+                if std::process::Command::new(&vscode_cmd)
+                    .arg("--version")
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false)
+                {
+                    return Some(vscode_cmd.to_string_lossy().to_string());
+                }
+            }
+        }
+        // Also try Program Files
+        let program_files_paths = [
+            r"C:\Program Files\Microsoft VS Code\bin\code.cmd",
+            r"C:\Program Files (x86)\Microsoft VS Code\bin\code.cmd",
+        ];
+        for path in &program_files_paths {
+            if std::path::Path::new(path).exists() {
+                if std::process::Command::new(path)
+                    .arg("--version")
+                    .output()
+                    .map(|o| o.status.success())
+                    .unwrap_or(false)
+                {
+                    return Some(path.to_string());
+                }
+            }
+        }
     }
+
+    None
+}
+
+/// Check if VSCode CLI is available
+fn is_vscode_cli_available() -> bool {
+    find_vscode_cli().is_some()
 }
 
 /// Check if VSCode is installed (public command)
@@ -1066,16 +1147,16 @@ fn get_vscode_extensions_dir() -> Option<PathBuf> {
     dirs::home_dir().map(|h| h.join(".vscode").join("extensions"))
 }
 
-/// Check if yurucode VSCode extension is installed
+/// Check if app VSCode extension is installed
 #[tauri::command]
 pub fn check_vscode_extension_installed() -> Result<bool, String> {
-    // Check if .vscode/extensions/yurucode-* exists
+    // Check if .vscode/extensions/<app-id>.* exists
     if let Some(ext_dir) = get_vscode_extensions_dir() {
         if ext_dir.exists() {
             if let Ok(entries) = fs::read_dir(&ext_dir) {
                 for entry in entries.flatten() {
                     let name = entry.file_name().to_string_lossy().to_string();
-                    if name.starts_with("yurucode.yurucode-") {
+                    if name.starts_with(VSCODE_EXTENSION_DIR_PREFIX) {
                         return Ok(true);
                     }
                 }
@@ -1084,14 +1165,14 @@ pub fn check_vscode_extension_installed() -> Result<bool, String> {
     }
 
     // Also check using vscode cli
-    if is_vscode_cli_available() {
-        let output = std::process::Command::new("code")
+    if let Some(code_cli) = find_vscode_cli() {
+        let output = std::process::Command::new(&code_cli)
             .args(["--list-extensions"])
             .output();
 
         if let Ok(out) = output {
             let extensions = String::from_utf8_lossy(&out.stdout);
-            if extensions.lines().any(|l| l.trim() == "yurucode.yurucode") {
+            if extensions.lines().any(|l| l.trim() == VSCODE_EXTENSION_ID) {
                 return Ok(true);
             }
         }
@@ -1106,23 +1187,36 @@ fn find_vscode_extension_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
 
     // 1. Try resource_dir (production)
     if let Ok(resource_dir) = app_handle.path().resource_dir() {
-        // Try nested resources folder first (Tauri 2.x structure)
-        candidate_paths.push(resource_dir.join("resources").join("yurucode-vscode"));
-        // Also try direct path
-        candidate_paths.push(resource_dir.join("yurucode-vscode"));
+        // Try direct path first (Tauri 2.x macOS bundles resources directly in Resources/)
+        candidate_paths.push(resource_dir.join(VSCODE_DIR_NAME));
+        // Also try nested resources folder
+        candidate_paths.push(resource_dir.join("resources").join(VSCODE_DIR_NAME));
     }
 
-    // 2. Try current_dir/src-tauri/resources (dev mode from project root)
+    // 2. Try macOS .app bundle structure (production)
+    if let Ok(exe) = std::env::current_exe() {
+        // exe is at <app>.app/Contents/MacOS/<app>
+        // resources are at <app>.app/Contents/Resources/<app>-vscode
+        if let Some(exe_dir) = exe.parent() {
+            // exe_dir is Contents/MacOS
+            if let Some(contents_dir) = exe_dir.parent() {
+                // contents_dir is Contents
+                candidate_paths.push(contents_dir.join("Resources").join(VSCODE_DIR_NAME));
+            }
+        }
+    }
+
+    // 3. Try current_dir/src-tauri/resources (dev mode from project root)
     if let Ok(cwd) = std::env::current_dir() {
-        candidate_paths.push(cwd.join("src-tauri").join("resources").join("yurucode-vscode"));
-        candidate_paths.push(cwd.join("resources").join("yurucode-vscode"));
+        candidate_paths.push(cwd.join("src-tauri").join("resources").join(VSCODE_DIR_NAME));
+        candidate_paths.push(cwd.join("resources").join(VSCODE_DIR_NAME));
     }
 
-    // 3. Try relative to executable
+    // 4. Try relative to executable (other platforms)
     if let Ok(exe) = std::env::current_exe() {
         if let Some(exe_dir) = exe.parent() {
-            candidate_paths.push(exe_dir.join("resources").join("yurucode-vscode"));
-            candidate_paths.push(exe_dir.join("yurucode-vscode"));
+            candidate_paths.push(exe_dir.join("resources").join(VSCODE_DIR_NAME));
+            candidate_paths.push(exe_dir.join(VSCODE_DIR_NAME));
         }
     }
 
@@ -1138,13 +1232,14 @@ fn find_vscode_extension_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
 }
 
 /// Install VSCode extension
-/// This command installs the pre-built yurucode vscode extension
+/// This command installs the pre-built app vscode extension
 #[tauri::command]
 pub fn install_vscode_extension(app_handle: tauri::AppHandle) -> Result<(), String> {
-    // Check if vscode cli is available
-    if !is_vscode_cli_available() {
-        return Err("vscode cli not found. make sure 'code' command is in PATH".to_string());
-    }
+    // Check if vscode cli is available and get its path
+    let code_cli = find_vscode_cli()
+        .ok_or_else(|| "vscode cli not found. install vscode and ensure 'code' command is available".to_string())?;
+
+    println!("[vscode] using cli at: {}", code_cli);
 
     // Find the extension directory
     let ext_source = find_vscode_extension_dir(&app_handle)
@@ -1153,7 +1248,7 @@ pub fn install_vscode_extension(app_handle: tauri::AppHandle) -> Result<(), Stri
     println!("[vscode] extension source dir: {:?}", ext_source);
 
     // Find the pre-built vsix file
-    let vsix_path = ext_source.join("yurucode-0.1.0.vsix");
+    let vsix_path = ext_source.join(format!("{}-0.1.2.vsix", APP_ID));
 
     let vsix_file = if vsix_path.exists() {
         vsix_path
@@ -1172,7 +1267,7 @@ pub fn install_vscode_extension(app_handle: tauri::AppHandle) -> Result<(), Stri
     // Install the extension using vscode cli
     println!("[vscode] installing extension from {:?}", vsix_file);
 
-    let install = std::process::Command::new("code")
+    let install = std::process::Command::new(&code_cli)
         .args(["--install-extension", &vsix_file.to_string_lossy(), "--force"])
         .output()
         .map_err(|e| format!("failed to install extension: {}", e))?;
@@ -1184,5 +1279,40 @@ pub fn install_vscode_extension(app_handle: tauri::AppHandle) -> Result<(), Stri
     }
 
     println!("[vscode] extension installed successfully");
+    Ok(())
+}
+
+/// Uninstall VSCode extension
+/// This command uninstalls the app vscode extension
+#[tauri::command]
+pub fn uninstall_vscode_extension() -> Result<(), String> {
+    // Check if vscode cli is available and get its path
+    let code_cli = find_vscode_cli()
+        .ok_or_else(|| "vscode cli not found".to_string())?;
+
+    println!("[vscode] uninstalling extension using cli at: {}", code_cli);
+
+    // Uninstall the extension using vscode cli
+    let uninstall = std::process::Command::new(&code_cli)
+        .args(["--uninstall-extension", VSCODE_EXTENSION_ID])
+        .output()
+        .map_err(|e| format!("failed to uninstall extension: {}", e))?;
+
+    if !uninstall.status.success() {
+        let stderr = String::from_utf8_lossy(&uninstall.stderr);
+        let stdout = String::from_utf8_lossy(&uninstall.stdout);
+        // Don't fail if extension wasn't installed
+        if !stderr.contains("not installed") && !stdout.contains("not installed") {
+            return Err(format!("extension uninstall failed: {} {}", stderr, stdout));
+        }
+    }
+
+    println!("[vscode] extension uninstalled successfully");
+
+    // Reload vscode window to remove the extension
+    let _ = std::process::Command::new(&code_cli)
+        .args(["--command", "workbench.action.reloadWindow"])
+        .spawn();
+
     Ok(())
 }

@@ -108,7 +108,7 @@ if (existsSync(wrapperSource)) {
 
 // Create a minimal package.json for the resources
 const resourcePackage = {
-  name: "yurucode-server",
+  name: "yume-server",
   version: "1.0.0",
   type: "module", // Support ES modules
   private: true,

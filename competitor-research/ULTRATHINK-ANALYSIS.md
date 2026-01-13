@@ -1,26 +1,26 @@
-# ULTRATHINK: yurucode Competitive Position (January 2026)
+# ULTRATHINK: yume Competitive Position (January 2026)
 
 ## Executive Summary
 
 **current score: 7.5/10** → **target: 9.5/10**
 
-yurucode has an exceptional foundation with unique advantages. after deep analysis of 8 parallel research streams, the path to beating claude code cli's UI and all competitors is clear.
+yume has an exceptional foundation with unique advantages. after deep analysis of 8 parallel research streams, the path to beating claude code cli's UI and all competitors is clear.
 
 ---
 
-## Part 1: yurucode ACTUAL Strengths (Verified)
+## Part 1: yume ACTUAL Strengths (Verified)
 
 ### 1.1 Technical Excellence ⚡
 
 #### Tauri 2 Native Architecture (CONFIRMED)
 ```
-yurucode: ~15MB bundle, ~50MB RAM, <2s startup
+yume: ~15MB bundle, ~50MB RAM, <2s startup
 cursor:   ~400MB bundle, ~300MB RAM, ~5s startup
 windsurf: ~350MB bundle, ~280MB RAM, ~5s startup
 opcode:   ~20MB bundle, ~100MB RAM, ~5s startup
 sculptor: +docker overhead, ~1min cold start
 
-yurucode is 25x smaller than cursor, 6x less memory
+yume is 25x smaller than cursor, 6x less memory
 ```
 
 **why this matters for 2026**:
@@ -30,7 +30,7 @@ yurucode is 25x smaller than cursor, 6x less memory
 
 #### Verified Performance Features
 ```typescript
-// actually implemented in yurucode:
+// actually implemented in yume:
 VirtualizedMessageList      // tanstack/react-virtual
 GPU_ACCELERATION: toggle    // hardware rendering option
 memoized renders           // stable key references
@@ -48,7 +48,7 @@ view:     cmd+e (files), cmd+g (git), cmd+0/+/- (zoom)
 settings: cmd+, (prefs), cmd+y (analytics), cmd+n (agents)
 ```
 
-**unique to yurucode**:
+**unique to yume**:
 - `cmd+k` ultrathink insertion
 - `cmd+d` duplicate tab with context
 - `!/$ ` bash mode prefix
@@ -56,9 +56,9 @@ settings: cmd+, (prefs), cmd+y (analytics), cmd+n (agents)
 
 **no competitor matches this keyboard depth except claude cli itself**
 
-### 1.3 What yurucode HAS that others DON'T
+### 1.3 What yume HAS that others DON'T
 
-| Feature | yurucode | best competitor |
+| Feature | yume | best competitor |
 |---------|----------|-----------------|
 | 5 built-in agents | ⚡ architect/explorer/implementer/guardian/specialist | opcode has 3 |
 | 9 hook events | ⚡ full lifecycle | claude cli has 10 |
@@ -80,7 +80,7 @@ Actually implemented:
 
 ---
 
-## Part 2: What Claude Code CLI Has That yurucode DOESN'T
+## Part 2: What Claude Code CLI Has That yume DOESN'T
 
 ### 2.1 Real-Time Steering (CRITICAL UX GAP)
 
@@ -89,7 +89,7 @@ Claude CLI allows:
 - Queue messages with Enter during processing
 - Background execution with Ctrl+B
 
-**yurucode**: must wait for response before sending next message
+**yume**: must wait for response before sending next message
 
 **impact**: slower iteration, less fluid workflow
 
@@ -101,7 +101,7 @@ Claude CLI plugins:
 - hookify, plugin-dev, pr-review-toolkit
 - ralph-wiggum, security-guidance
 
-**yurucode**: no plugin system, hooks are close but not extensible
+**yume**: no plugin system, hooks are close but not extensible
 
 ### 2.3 Session Forking
 
@@ -110,7 +110,7 @@ Claude CLI:
 claude --fork-session [id]  # branch from any point
 ```
 
-**yurucode**: timeline/checkpoint UI exists but is DISABLED in code
+**yume**: timeline/checkpoint UI exists but is DISABLED in code
 
 ### 2.4 Export & Sharing
 
@@ -119,13 +119,13 @@ Claude CLI:
 /export  # export conversation for sharing
 ```
 
-**yurucode**: no export functionality found
+**yume**: no export functionality found
 
 ### 2.5 Vim Mode
 
 Claude CLI has `/vim` toggle with full keybindings
 
-**yurucode**: no vim mode
+**yume**: no vim mode
 
 ---
 
@@ -206,9 +206,9 @@ Claude CLI has `/vim` toggle with full keybindings
 
 ## Part 4: UX Gaps (2026 Standards)
 
-### 4.1 Missing From yurucode
+### 4.1 Missing From yume
 
-| Feature | 2026 Standard | yurucode Status |
+| Feature | 2026 Standard | yume Status |
 |---------|---------------|-----------------|
 | Context meter | green→yellow→red bar | ❌ missing |
 | Turbo mode | auto-approve safe commands | ❌ missing |
@@ -229,7 +229,7 @@ Text: should be #E0E0E0 off-white, not pure white
 
 ### 4.3 Performance Targets (2026)
 
-| Metric | 2026 Standard | yurucode | Gap |
+| Metric | 2026 Standard | yume | Gap |
 |--------|---------------|----------|-----|
 | Cold startup | <500ms | ~2s | 1.5s |
 | Hot startup | <100ms | ? | measure |
@@ -273,9 +273,9 @@ Text: should be #E0E0E0 off-white, not pure white
 
 ---
 
-## Part 6: yurucode's Unique Position
+## Part 6: yume's Unique Position
 
-### What ONLY yurucode has:
+### What ONLY yume has:
 
 1. **Visual Tab Management** - No other Claude GUI has cmd+t/w/d/1-9 tabs
 2. **Full Theming** - 65+ colors, custom themes, watermarks
@@ -289,7 +289,7 @@ Text: should be #E0E0E0 off-white, not pure white
 ### Positioning Statement
 
 ```
-yurucode = the native, keyboard-first, secure GUI for Claude Code
+yume = the native, keyboard-first, secure GUI for Claude Code
 
 - 25x smaller than electron competitors
 - no subscription, no monthly fees
@@ -349,9 +349,9 @@ yurucode = the native, keyboard-first, secure GUI for Claude Code
 4. **Technical Excellence** - Well-architected, MIT licensed
 5. **Open Source Community** - Strong developer adoption
 
-### yurucode Alignment
+### yume Alignment
 
-| Factor | Bun | yurucode | Gap |
+| Factor | Bun | yume | Gap |
 |--------|-----|----------|-----|
 | Infrastructure | ⚡ powers claude code | GUI layer | could power official GUI |
 | Speed | ⚡ fastest runtime | ⚡ fastest GUI | ✅ |
@@ -361,13 +361,13 @@ yurucode = the native, keyboard-first, secure GUI for Claude Code
 
 ### The Pitch (2026 Version)
 
-> "yurucode is what Bun is to Claude Code backend - the fastest, most native, most keyboard-efficient GUI. If Anthropic wants an official desktop experience, yurucode is production-ready with the best technical foundation in the market."
+> "yume is what Bun is to Claude Code backend - the fastest, most native, most keyboard-efficient GUI. If Anthropic wants an official desktop experience, yume is production-ready with the best technical foundation in the market."
 
 ---
 
 ## Conclusion
 
-yurucode is **already** the best native Claude Code GUI by several metrics. The gap to 9.5/10 is:
+yume is **already** the best native Claude Code GUI by several metrics. The gap to 9.5/10 is:
 
 1. **Enable existing features** - Timeline/checkpoints are coded but disabled
 2. **Add context meter** - 1-2 days, massive UX improvement
@@ -383,4 +383,4 @@ The market opportunity is massive:
 - 82% of developers use AI coding tools daily
 - Cursor at $29.3B shows what's possible
 
-**yurucode has the foundation. now execute.**
+**yume has the foundation. now execute.**

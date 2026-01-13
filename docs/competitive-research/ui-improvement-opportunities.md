@@ -2,7 +2,7 @@
 
 *Last Updated: January 2026*
 
-*Actionable improvements yurucode can make over Claude Code CLI*
+*Actionable improvements yume can make over Claude Code CLI*
 
 ## The Core Problem (Still Unfixed)
 
@@ -16,11 +16,11 @@ Impact: Crashes, data loss, accessibility hazard
 
 **Anthropic's fix attempts (v2.0.72-74)**: "Reduced terminal flickering" but fundamental architecture unchanged.
 
-## What Yurucode Solves Immediately
+## What Yume Solves Immediately
 
 ### 1. No Terminal Rendering Layer
 
-| Issue | Claude CLI | Yurucode |
+| Issue | Claude CLI | Yume |
 |-------|------------|----------|
 | Flickering | 4,000+ events/sec | 0 (native rendering) |
 | VS Code crashes | 10-20 min to crash | Never |
@@ -31,7 +31,7 @@ Impact: Crashes, data loss, accessibility hazard
 
 ### 2. Input Handling
 
-| Issue | Claude CLI | Yurucode |
+| Issue | Claude CLI | Yume |
 |-------|------------|----------|
 | Input delay | 100ms-10s+ | <50ms target |
 | Paste freeze (#16335) | Jan 2026: Still broken | Native paste |
@@ -40,7 +40,7 @@ Impact: Crashes, data loss, accessibility hazard
 
 ### 3. Session Stability
 
-| Issue | Claude CLI | Yurucode |
+| Issue | Claude CLI | Yume |
 |-------|------------|----------|
 | Long session degradation | Documented | No history accumulation issues |
 | Process spawning (7x) | Reported | Single process |
@@ -117,7 +117,7 @@ Unique features competitors don't have:
 - **Action**: Enable and test
 
 #### Agent Activity View ⚠️ (Partial)
-- AgentsModal exists with 5 built-in yurucode agents
+- AgentsModal exists with 5 built-in yume agents
 - Custom agent creation (global/project scoped)
 - Agent enable/disable toggle
 - Relies on Claude's native Task tool for execution

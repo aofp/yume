@@ -30,6 +30,7 @@ import { DEFAULT_COLORS } from './config/themes';
 })();
 
 import { App } from './App.minimal';
+import { APP_ID, appStorageKey } from './config/app';
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { log } from './utils/logger';
@@ -74,6 +75,13 @@ import('@tauri-apps/api/event').then(({ listen }) => {
 });
 
 const mainLogger = log.setContext('Main');
+const PROMISE_ERRORS_KEY = appStorageKey('promise_errors', '_');
+const WINDOW_ERRORS_KEY = appStorageKey('window_errors', '_');
+const SESSIONS_KEY = appStorageKey('sessions');
+const SESSIONS_TIMESTAMP_KEY = appStorageKey('sessions-timestamp');
+const SESSION_MAPPINGS_KEY = appStorageKey('session-mappings');
+const CHECKPOINT_PREFIX = `${APP_ID}-checkpoint-`;
+const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
 
 // Variables for sleep/wake detection and session persistence
 let lastActiveTime = Date.now();
@@ -98,7 +106,7 @@ window.addEventListener('unhandledrejection', (event) => {
   
   // Log to localStorage for debugging
   try {
-    const errors = JSON.parse(localStorage.getItem('yurucode_promise_errors') || '[]');
+    const errors = JSON.parse(localStorage.getItem(PROMISE_ERRORS_KEY) || '[]');
     errors.push({
       type: 'unhandled_rejection',
       reason: event.reason?.message || String(event.reason),
@@ -109,7 +117,7 @@ window.addEventListener('unhandledrejection', (event) => {
     if (errors.length > 10) {
       errors.shift();
     }
-    localStorage.setItem('yurucode_promise_errors', JSON.stringify(errors));
+    localStorage.setItem(PROMISE_ERRORS_KEY, JSON.stringify(errors));
   } catch (e) {
     mainLogger.error('Failed to store promise rejection', { error: e });
   }
@@ -130,7 +138,7 @@ window.addEventListener('error', (event) => {
   
   // Log to localStorage for debugging  
   try {
-    const errors = JSON.parse(localStorage.getItem('yurucode_window_errors') || '[]');
+    const errors = JSON.parse(localStorage.getItem(WINDOW_ERRORS_KEY) || '[]');
     errors.push({
       type: 'window_error',
       message: event.message,
@@ -145,7 +153,7 @@ window.addEventListener('error', (event) => {
     if (errors.length > 10) {
       errors.shift();
     }
-    localStorage.setItem('yurucode_window_errors', JSON.stringify(errors));
+    localStorage.setItem(WINDOW_ERRORS_KEY, JSON.stringify(errors));
   } catch (e) {
     mainLogger.error('Failed to store window error', { error: e });
   }
@@ -156,14 +164,14 @@ window.addEventListener('error', (event) => {
 // Clear any persisted sessions from localStorage on startup
 const store = useClaudeCodeStore.getState();
 // Clear all sessions from localStorage to ensure clean start
-localStorage.removeItem('yurucode-sessions');
-localStorage.removeItem('yurucode-sessions-timestamp');
-localStorage.removeItem('yurucode-session-mappings');
+localStorage.removeItem(SESSIONS_KEY);
+localStorage.removeItem(SESSIONS_TIMESTAMP_KEY);
+localStorage.removeItem(SESSION_MAPPINGS_KEY);
 // Clear all session checkpoints  
 const keysToRemove = [];
 for (let i = 0; i < localStorage.length; i++) {
   const key = localStorage.key(i);
-  if (key && key.startsWith('yurucode-checkpoint-')) {
+  if (key && key.startsWith(CHECKPOINT_PREFIX)) {
     keysToRemove.push(key);
   }
 }
@@ -314,14 +322,14 @@ window.addEventListener('beforeunload', () => {
   }
 
   // Clear all sessions from localStorage
-  localStorage.removeItem('yurucode-sessions');
-  localStorage.removeItem('yurucode-sessions-timestamp');
-  localStorage.removeItem('yurucode-session-mappings');
+  localStorage.removeItem(SESSIONS_KEY);
+  localStorage.removeItem(SESSIONS_TIMESTAMP_KEY);
+  localStorage.removeItem(SESSION_MAPPINGS_KEY);
   // Clear all session checkpoints
   const keysToRemove: string[] = [];
   for (let i = 0; i < localStorage.length; i++) {
     const key = localStorage.key(i);
-    if (key && key.startsWith('yurucode-checkpoint-')) {
+    if (key && key.startsWith(CHECKPOINT_PREFIX)) {
       keysToRemove.push(key);
     }
   }
@@ -336,14 +344,14 @@ if (window.electronAPI && window.electronAPI.ipcRenderer) {
       clearInterval(persistenceInterval);
     }
     // Clear all sessions from localStorage
-    localStorage.removeItem('yurucode-sessions');
-    localStorage.removeItem('yurucode-sessions-timestamp');
-    localStorage.removeItem('yurucode-session-mappings');
+    localStorage.removeItem(SESSIONS_KEY);
+    localStorage.removeItem(SESSIONS_TIMESTAMP_KEY);
+    localStorage.removeItem(SESSION_MAPPINGS_KEY);
     // Clear all session checkpoints
     const keysToRemove: string[] = [];
     for (let i = 0; i < localStorage.length; i++) {
       const key = localStorage.key(i);
-      if (key && key.startsWith('yurucode-checkpoint-')) {
+      if (key && key.startsWith(CHECKPOINT_PREFIX)) {
         keysToRemove.push(key);
       }
     }
@@ -522,13 +530,13 @@ const keyboardHandler = (e: KeyboardEvent) => {
             // Save to recent projects
             const name = folder.split(/[/\\]/).pop() || folder;
             const newProject = { path: folder, name, lastOpened: Date.now() };
-            const stored = localStorage.getItem('yurucode-recent-projects');
+            const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
             let recentProjects = [];
             try {
               if (stored) recentProjects = JSON.parse(stored);
             } catch {}
             const updated = [newProject, ...recentProjects.filter((p: any) => p.path !== folder)].slice(0, 10);
-            localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+            localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
 
             await createSession(undefined, folder);
           }

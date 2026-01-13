@@ -56,7 +56,7 @@ console.debug = function(...args) {
 // ============================================
 // DEBUG MODE - Set to false in production
 // ============================================
-const DEBUG = process.env.YURUCODE_DEBUG === 'true';
+const DEBUG = process.env.YUME_DEBUG === 'true';
 
 // In production, disable ALL console.log output to reduce log spam
 // Only errors and warnings are kept for critical issues
@@ -398,7 +398,7 @@ function createWslClaudeCommand(args, workingDir, message) {
     
     // For very long messages, use a temp file to avoid command line length limits
     // Create temp file in WSL /tmp with unique name
-    const tempFileName = `/tmp/yurucode-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`;
+    const tempFileName = `/tmp/yume-msg-${Date.now()}-${Math.random().toString(36).substr(2, 9)}.txt`;
     
     // Write message to temp file, then cat it to Claude, then delete temp file
     // Use base64 encoding to safely pass the message content to WSL
@@ -859,9 +859,9 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
       enhancedEnv.PATH = `${nodeBinDir}:${enhancedEnv.PATH || '/usr/bin:/bin'}`;
     }
     
-    // Use a dedicated yurucode-title-gen directory for title generation
+    // Use a dedicated yume-title-gen directory for title generation
     // This keeps title generation sessions separate from main project sessions
-    const titleGenDir = join(homedir(), '.yurucode-title-gen');
+    const titleGenDir = join(homedir(), '.yume-title-gen');
     
     // Create the directory if it doesn't exist
     try {
@@ -888,7 +888,7 @@ task: reply with ONLY 1-3 words describing what user wants. lowercase only. no p
         }
         
         // For WSL, use a dedicated directory in WSL home with dynamic user
-        const wslTitleGenDir = `/home/${wslUser}/.yurucode-title-gen`;
+        const wslTitleGenDir = `/home/${wslUser}/.yume-title-gen`;
         
         // Create the WSL directory if needed
         try {
@@ -992,7 +992,7 @@ app.get('/health', (req, res) => {
   res.json({
     status: 'ok',
     pid: process.pid,
-    service: 'yurucode-claude',
+    service: 'yume-claude',
     claudeCodeLoaded: true,
     port: PORT,
     sessions: Object.keys(sessions).length
@@ -1081,11 +1081,11 @@ app.use('/vscode', async (req, res, next) => {
     res.send(Buffer.from(buffer));
   } catch (e) {
     // Vite not running, serve 503
-    res.status(503).send('yurucode dev server not running');
+    res.status(503).send('yume dev server not running');
   }
 });
 
-// VSCode UI entry point - serves the actual yurucode app via proxy
+// VSCode UI entry point - serves the actual yume app via proxy
 app.get('/vscode-ui', (req, res) => {
   const cwd = req.query.cwd || '';
   // Redirect to our proxy endpoint which serves the frontend
@@ -1100,7 +1100,7 @@ app.get('/vscode-ui-minimal', (req, res) => {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Yurucode</title>
+  <title>Yume</title>
   <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -1228,7 +1228,7 @@ app.get('/vscode-ui-minimal', (req, res) => {
     <span id="session-info"></span>
   </div>
   <div class="messages" id="messages">
-    <div class="empty">yurucode vscode proxy</div>
+    <div class="empty">yume vscode proxy</div>
   </div>
   <div class="input-area">
     <textarea id="input" placeholder="type a message..." rows="1"></textarea>
@@ -2682,9 +2682,9 @@ app.get('/claude-projects-quick', async (req, res) => {
             const lowerName = projectName.toLowerCase();
             if (lowerName.includes('temp') || 
                 lowerName.includes('tmp') || 
-                lowerName.includes('yurucode-server') ||
-                lowerName.includes('yurucode-title-gen') ||
-                lowerName === '-yurucode-title-gen' ||
+                lowerName.includes('yume-server') ||
+                lowerName.includes('yume-title-gen') ||
+                lowerName === '-yume-title-gen' ||
                 lowerName.includes('appdata') ||
                 lowerName.includes('-mnt-c-users-') && lowerName.includes('-appdata-local-temp')) {
               console.log(`🚫 Filtering out temp/server/title-gen directory: ${projectName}`);
@@ -2864,8 +2864,8 @@ app.get('/claude-recent-conversations', async (req, res) => {
       const lowerName = projectDir.toLowerCase();
       if (lowerName.includes('temp') ||
           lowerName.includes('tmp') ||
-          lowerName.includes('yurucode-server') ||
-          lowerName.includes('yurucode-title-gen')) {
+          lowerName.includes('yume-server') ||
+          lowerName.includes('yume-title-gen')) {
         continue;
       }
 
@@ -3504,9 +3504,9 @@ app.get('/claude-projects', async (req, res) => {
             const lowerName = projectName.toLowerCase();
             if (lowerName.includes('temp') || 
                 lowerName.includes('tmp') || 
-                lowerName.includes('yurucode-server') ||
-                lowerName.includes('yurucode-title-gen') ||
-                lowerName === '-yurucode-title-gen' ||
+                lowerName.includes('yume-server') ||
+                lowerName.includes('yume-title-gen') ||
+                lowerName === '-yume-title-gen' ||
                 lowerName.includes('appdata') ||
                 lowerName.includes('-mnt-c-users-') && lowerName.includes('-appdata-local-temp')) {
               console.log(`🚫 Filtering out temp/server/title-gen directory: ${projectName}`);
@@ -3746,7 +3746,7 @@ app.get('/claude-projects', async (req, res) => {
 // PID file management - use temp directory for production
 // Each server instance gets a unique PID file based on its port
 const pidFilePath = process.env.ELECTRON_RUN_AS_NODE 
-  ? join(homedir(), `.yurucode-server-${PORT}.pid`)
+  ? join(homedir(), `.yume-server-${PORT}.pid`)
   : join(__dirname, `server-${PORT}.pid`);
 
 function writePidFile() {
@@ -3759,7 +3759,7 @@ function writePidFile() {
   
   // CRITICAL: Write port to user-writable location for client discovery
   try {
-    const userPortDir = join(homedir(), '.yurucode');
+    const userPortDir = join(homedir(), '.yume');
     if (!existsSync(userPortDir)) {
       mkdirSync(userPortDir, { recursive: true });
     }
@@ -3805,7 +3805,7 @@ function forceKillAllChildren() {
 
   // Note: We only kill processes we spawned (tracked PIDs above)
   // We do NOT use pkill -f "claude" as that would kill Claude processes
-  // not associated with Yurucode
+  // not associated with Yume
 }
 
 // Helper function to clean up git lock files in tracked working directories
@@ -4064,7 +4064,7 @@ io.on('connection', (socket) => {
             lowerPath.includes('\\tmp\\') ||
             lowerPath.includes('/tmp/') ||
             lowerPath.includes('appdata\\local\\temp') ||
-            lowerPath.includes('yurucode-server')) {
+            lowerPath.includes('yume-server')) {
           console.log(`🚫 Rejecting temp directory as working directory: ${workingDirectory}`);
           workingDirectory = null; // Reset to force using home
         }
@@ -4356,7 +4356,7 @@ io.on('connection', (socket) => {
               lowerPath.includes('\\tmp\\') ||
               lowerPath.includes('/tmp/') ||
               lowerPath.includes('appdata\\local\\temp') ||
-              lowerPath.includes('yurucode-server')) {
+              lowerPath.includes('yume-server')) {
             console.log(`🚫 Session has temp directory, using home instead: ${processWorkingDir}`);
             processWorkingDir = null;
           }
@@ -4383,7 +4383,7 @@ io.on('connection', (socket) => {
         '--verbose',
         '--dangerously-skip-permissions',
         '--disallowed-tools', allDisallowed.join(','),
-        '--append-system-prompt', 'CRITICAL: you are in yurucode ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred. !!FOR COMPLEX TASKS: YOU MUST PLAN FIRST use THINK and TODO as MUCH AS POSSIBLE to break down everything, including planning into multiple steps and do edits in small chunks!!'
+        '--append-system-prompt', 'CRITICAL: you are in yume ui. ALWAYS: use all lowercase (no capitals ever), be extremely concise, never use formal language, no greetings/pleasantries, straight to the point, code/variables keep proper case, one line answers preferred. !!FOR COMPLEX TASKS: YOU MUST PLAN FIRST use THINK and TODO as MUCH AS POSSIBLE to break down everything, including planning into multiple steps and do edits in small chunks!!'
       ];
       
       // Add model flag if specified
@@ -6232,7 +6232,7 @@ io.on('connection', (socket) => {
 // Clean up old PID files on startup
 function cleanupOldPidFiles() {
   try {
-    const pidPattern = /^(\.yurucode-)?server-\d+\.pid$/;
+    const pidPattern = /^(\.yume-)?server-\d+\.pid$/;
     
     // Clean up PID files in home directory
     const homeDir = homedir();
@@ -6276,12 +6276,12 @@ function cleanupOldPidFiles() {
     
     // Clean up PID files in temp directory (for extracted server)
     const tmpDir = process.env.TEMP || process.env.TMP || '/tmp';
-    const yurucodeServerDir = join(tmpDir, 'yurucode-server');
-    if (fs.existsSync(yurucodeServerDir)) {
-      const tmpFiles = fs.readdirSync(yurucodeServerDir);
+    const yumeServerDir = join(tmpDir, 'yume-server');
+    if (fs.existsSync(yumeServerDir)) {
+      const tmpFiles = fs.readdirSync(yumeServerDir);
       tmpFiles.forEach(file => {
         if (pidPattern.test(file)) {
-          const fullPath = join(yurucodeServerDir, file);
+          const fullPath = join(yumeServerDir, file);
           // Don't delete our current PID file
           if (fullPath !== pidFilePath) {
             try {
@@ -6385,7 +6385,7 @@ httpServer.listen(PORT, () => {
   // Start the parent watchdog AFTER server is running
   startParentWatchdog();
 
-  console.log(`🚀 yurucode server running on port ${PORT}`);
+  console.log(`🚀 yume server running on port ${PORT}`);
   console.log(`📂 Working directory: ${process.cwd()}`);
   console.log(`🖥️ Platform: ${platform()}`);
   console.log(`🏠 Home directory: ${homedir()}`);
@@ -6422,10 +6422,10 @@ httpServer.listen(PORT, () => {
 // Handle port already in use error
 httpServer.on('error', (error) => {
   if (error.code === 'EADDRINUSE') {
-    console.error(`❌ Port ${PORT} is already in use (likely another yurucode instance)`);
+    console.error(`❌ Port ${PORT} is already in use (likely another yume instance)`);
     console.error('Exiting - Tauri will retry with a different port');
     // Exit with code 48 (EADDRINUSE) to signal port conflict to Tauri
-    // Do NOT kill other processes - allow multiple yurucode instances to coexist
+    // Do NOT kill other processes - allow multiple yume instances to coexist
     process.exit(48);
   } else {
     console.error('Server error:', error);

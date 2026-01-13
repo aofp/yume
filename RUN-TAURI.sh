@@ -1,11 +1,11 @@
 #!/bin/bash
 
 # ===================================
-# yurucode Tauri - Quick Start Script
+# yume Tauri - Quick Start Script
 # ===================================
 
 echo ""
-echo "🚀 yurucode Tauri Edition"
+echo "🚀 yume Tauri Edition"
 echo "========================="
 echo ""
 echo "Starting the world's fastest Claude Code UI..."
@@ -39,11 +39,11 @@ if [ ! -d "src-tauri/target" ]; then
 fi
 
 echo ""
-echo "✨ Launching yurucode..."
+echo "✨ Launching yume..."
 echo ""
 
 # Run Tauri in development mode
 npm run tauri:dev
 
 echo ""
-echo "👋 yurucode closed. Thanks for using the Tauri edition!"
+echo "👋 yume closed. Thanks for using the Tauri edition!"

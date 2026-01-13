@@ -1,4 +1,4 @@
-# Yurucode Master Documentation Index
+# Yume Master Documentation Index
 
 **Created:** January 3, 2025
 **Updated:** January 12, 2026
@@ -249,7 +249,7 @@
    - Pricing comparison
    - Open source vs commercial analysis
 
-3. **Yurucode's Unique Advantages**
+3. **Yume's Unique Advantages**
    - Desktop-first Claude CLI wrapper
    - Advanced analytics & token tracking
    - Complete plugin ecosystem
@@ -414,9 +414,9 @@ if usage >= 0.65 {
 **Our Solution**: Compile server to platform-specific binaries using @yao-pkg/pkg
 
 Server binaries are stored in `src-tauri/resources/` for each platform:
-- `yurucode-server-macos-arm64` / `yurucode-server-macos-x64` for macOS
-- `yurucode-server-windows-x64.exe` for Windows
-- `yurucode-server-linux-x64` for Linux
+- `yume-server-macos-arm64` / `yume-server-macos-x64` for macOS
+- `yume-server-windows-x64.exe` for Windows
+- `yume-server-linux-x64` for Linux
 
 **Benefits**:
 - No Node.js required for end users
@@ -434,22 +434,22 @@ Server binaries are stored in `src-tauri/resources/` for each platform:
 4. Unsaved work backup
 5. Automatic restoration
 
-#### Yurucode Agents System
+#### Yume Agents System
 
-**5 Built-in Agents** synced to `~/.claude/agents/yurucode-*.md`. All agents automatically use the **currently selected model** (opus or sonnet):
+**5 Built-in Agents** synced to `~/.claude/agents/yume-*.md`. All agents automatically use the **currently selected model** (opus or sonnet):
 
 | Agent | Purpose |
 |-------|---------|
-| `yurucode-architect` | Plans, designs, decomposes tasks |
-| `yurucode-explorer` | Codebase exploration (read-only) |
-| `yurucode-implementer` | Focused code changes |
-| `yurucode-guardian` | Code review and auditing |
-| `yurucode-specialist` | Domain-specific tasks |
+| `yume-architect` | Plans, designs, decomposes tasks |
+| `yume-explorer` | Codebase exploration (read-only) |
+| `yume-implementer` | Focused code changes |
+| `yume-guardian` | Code review and auditing |
+| `yume-specialist` | Domain-specific tasks |
 
 **Sync Mechanism**:
 - PID tracking prevents multi-instance conflicts
 - Agents removed on app exit (only if last instance)
-- Agents re-synced on model change via `sync_yurucode_agents(enabled, model)`
+- Agents re-synced on model change via `sync_yume_agents(enabled, model)`
 
 ---
 
@@ -521,4 +521,4 @@ Server binaries are stored in `src-tauri/resources/` for each platform:
 
 ## Conclusion
 
-This documentation suite covers the core aspects of Yurucode - architecture, features, API reference, deployment, and troubleshooting. For questions or clarifications, refer to the specific guides listed above.
+This documentation suite covers the core aspects of Yume - architecture, features, API reference, deployment, and troubleshooting. For questions or clarifications, refer to the specific guides listed above.

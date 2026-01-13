@@ -1,8 +1,8 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
-  "productName": "yurucode",
+  "productName": "yume",
   "version": "0.1.0",
-  "identifier": "be.yuru.yurucode",
+  "identifier": "be.yuru.yume",
   "build": {
     "frontendDist": "../dist/renderer",
     "devUrl": "http://localhost:50490",
@@ -17,7 +17,7 @@
     },
     "windows": [
       {
-        "title": "yurucode",
+        "title": "yume",
         "titleBarStyle": "Overlay",
         "decorations": false,
         "transparent": true,
@@ -55,9 +55,9 @@
       "icons/icon.ico"
     ],
     "resources": [
-      "resources/yurucode-server-*",
-      "resources/yurucode-plugin",
-      "resources/yurucode-vscode"
+      "resources/yume-server-*",
+      "resources/yume-plugin",
+      "resources/yume-vscode"
     ],
     "macOS": {
       "frameworks": [],

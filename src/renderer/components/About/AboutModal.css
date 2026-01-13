@@ -101,7 +101,7 @@
   color: rgba(255, 255, 255, 0.4);
   text-transform: lowercase;
   margin-bottom: 24px;
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 .about-license {

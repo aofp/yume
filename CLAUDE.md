@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Yurucode is a Tauri 2.x desktop application that provides a minimal GUI for Claude CLI. It consists of:
+Yume is a Tauri 2.x desktop application that provides a minimal GUI for Claude CLI. It consists of:
 - **Frontend**: React 19/TypeScript with Vite 7
 - **Backend**: Rust (Tauri 2.9)
 - **Server**: Compiled Node.js server binaries bundled in `src-tauri/resources/` that handle Claude CLI integration
@@ -143,17 +143,17 @@ npm run minify:servers         # Minify server code
 - `Chat/DiffViewer.tsx` - Code diff rendering
 
 ### Server Binaries (in resources/)
-- `yurucode-server-macos-arm64` / `yurucode-server-macos-x64` - macOS binaries
-- `yurucode-server-windows-x64.exe` - Windows binary
-- `yurucode-server-linux-x64` - Linux binary
+- `yume-server-macos-arm64` / `yume-server-macos-x64` - macOS binaries
+- `yume-server-windows-x64.exe` - Windows binary
+- `yume-server-linux-x64` - Linux binary
 
 ## Important Implementation Details
 
 ### Server Architecture
 The Node.js server is distributed as compiled binaries (using @yao-pkg/pkg):
-- macOS: `yurucode-server-macos-arm64` (Apple Silicon) and `yurucode-server-macos-x64` (Intel)
-- Windows: `yurucode-server-windows-x64.exe`
-- Linux: `yurucode-server-linux-x64`
+- macOS: `yume-server-macos-arm64` (Apple Silicon) and `yume-server-macos-x64` (Intel)
+- Windows: `yume-server-windows-x64.exe`
+- Linux: `yume-server-linux-x64`
 
 **Source files are at root level**, not in resources/:
 - `server-claude-macos.cjs` - macOS server source
@@ -197,46 +197,46 @@ When building on Windows for Windows, ensure:
 
 ### State Persistence
 **macOS:**
-- App data: `~/Library/Application Support/yurucode/`
-- Window state: `~/Library/Application Support/yurucode/window-state.json`
-- Crash recovery: `~/Library/Application Support/yurucode/recovery/`
-- Server logs: `~/Library/Logs/yurucode/server.log`
-- Database: `~/.yurucode/yurucode.db` (note: stored in home dir, not Application Support)
+- App data: `~/Library/Application Support/yume/`
+- Window state: `~/Library/Application Support/yume/window-state.json`
+- Crash recovery: `~/Library/Application Support/yume/recovery/`
+- Server logs: `~/Library/Logs/yume/server.log`
+- Database: `~/.yume/yume.db` (note: stored in home dir, not Application Support)
 
 **Windows:**
-- App data: `%APPDATA%\yurucode\`
-- Window state: `%APPDATA%\yurucode\window-state.json`
-- Crash recovery: `%APPDATA%\yurucode\recovery\`
-- Server logs: `%LOCALAPPDATA%\yurucode\logs\server.log`
-- Database: `%APPDATA%\yurucode\yurucode.db`
+- App data: `%APPDATA%\yume\`
+- Window state: `%APPDATA%\yume\window-state.json`
+- Crash recovery: `%APPDATA%\yume\recovery\`
+- Server logs: `%LOCALAPPDATA%\yume\logs\server.log`
+- Database: `%APPDATA%\yume\yume.db`
 
 **Linux:**
-- App data: `~/.config/yurucode/`
-- Crash recovery: `~/.config/yurucode/recovery/`
-- Server logs: `~/.yurucode/logs/server.log`
-- Database: `~/.yurucode/yurucode.db`
+- App data: `~/.config/yume/`
+- Crash recovery: `~/.config/yume/recovery/`
+- Server logs: `~/.yume/logs/server.log`
+- Database: `~/.yume/yume.db`
 
 **Claude projects:** `~/.claude/projects/` (all platforms)
 **Custom commands:** `~/.claude/commands/*.md` (global) and `.claude/commands/*.md` (project)
 **Agents:** `~/.claude/agents/` (global) and `.claude/agents/` (project)
 
-### Yurucode Core Agents
-5 built-in agents sync to `~/.claude/agents/yurucode-*.md` when enabled. **All agents automatically use the currently selected model** (opus or sonnet) - when you switch models, agents are re-synced with the new model:
-- `yurucode-architect` - Plans, designs, decomposes tasks
-- `yurucode-explorer` - Finds, reads, understands codebase (read-only)
-- `yurucode-implementer` - Codes, edits, builds
-- `yurucode-guardian` - Reviews, audits, verifies
-- `yurucode-specialist` - Domain-specific tasks
+### Yume Core Agents
+5 built-in agents sync to `~/.claude/agents/yume-*.md` when enabled. **All agents automatically use the currently selected model** (opus or sonnet) - when you switch models, agents are re-synced with the new model:
+- `yume-architect` - Plans, designs, decomposes tasks
+- `yume-explorer` - Finds, reads, understands codebase (read-only)
+- `yume-implementer` - Codes, edits, builds
+- `yume-guardian` - Reviews, audits, verifies
+- `yume-specialist` - Domain-specific tasks
 
-Sync commands: `sync_yurucode_agents(enabled, model)`, `are_yurucode_agents_synced`, `cleanup_yurucode_agents_on_exit`
-PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
+Sync commands: `sync_yume_agents(enabled, model)`, `are_yume_agents_synced`, `cleanup_yume_agents_on_exit`
+PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 
 ### License Management System
 **Trial vs Pro**: Trial users limited to 2 tabs and 1 window. Pro license ($21) unlocks 99 tabs and 99 windows.
 
 **Implementation**:
 - Location: `src/renderer/stores/licenseManager.ts` (Zustand store)
-- Server-side validation with 5-minute cache: `https://license.yurucode.com/validate`
+- Server-side validation with 5-minute cache: `https://license.yume.com/validate`
 - Encrypted storage using XOR cipher in localStorage
 - Auto-revalidation every 30 minutes
 
@@ -263,11 +263,11 @@ PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
 - **Skills**: Auto-injected context based on triggers
 - **MCP Servers**: Model Context Protocol server configurations
 
-**Plugin Directory**: `~/.yurucode/plugins/`
+**Plugin Directory**: `~/.yume/plugins/`
 
 **Plugin Structure**:
 ```
-~/.yurucode/plugins/{plugin-id}/
+~/.yume/plugins/{plugin-id}/
   plugin.json         # Metadata (id, name, version, author, components)
   commands/           # Custom commands
   agents/             # Custom agents
@@ -277,7 +277,7 @@ PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
 ```
 
 **Frontend Service**:
-- `initialize()` - Initialize bundled "yurucode" plugin
+- `initialize()` - Initialize bundled "yume" plugin
 - `listPlugins()` - List all installed plugins
 - `installPlugin(sourcePath)` - Install from directory
 - `installPluginFromDialog()` - File picker dialog
@@ -294,7 +294,7 @@ PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
 **Location**: `src/renderer/components/Settings/SkillsTab.tsx`
 
 **Skill Types**:
-- **Custom Skills**: User-created, stored in localStorage (`yurucode_custom_skills`)
+- **Custom Skills**: User-created, stored in localStorage (`yume_custom_skills`)
 - **Plugin Skills**: Sourced from enabled plugins
 
 **Skill Structure**:
@@ -338,7 +338,7 @@ PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
 - `exportMetrics()` - Export as JSON
 - `setEnabled(enabled)` - Toggle monitoring
 
-**Enable**: Set localStorage flag `yurucode_perf_monitor` or access `window.perfMonitor` in dev mode
+**Enable**: Set localStorage flag `yume_perf_monitor` or access `window.perfMonitor` in dev mode
 
 ### CLAUDE.md Editor
 **In-app editor** for project-specific CLAUDE.md files.
@@ -393,7 +393,7 @@ PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
 - Metadata: ID, title, summary, projectPath, messageCount, filePath
 
 **Recent Projects Modal** (`RecentProjectsModal.tsx`):
-- Storage: localStorage `yurucode-recent-projects`
+- Storage: localStorage `yume-recent-projects`
 - Track last opened timestamp and access count
 - Sort by most recent first
 - Remove individual projects or clear all
@@ -545,7 +545,7 @@ my-plugin/
 **Enable Monitoring**:
 ```javascript
 // In browser console or app
-localStorage.setItem('yurucode_perf_monitor', 'true');
+localStorage.setItem('yume_perf_monitor', 'true');
 // Reload app
 
 // Access via window
@@ -609,8 +609,8 @@ window.perfMonitor.exportMetrics();
 - Check server logs at paths listed in State Persistence above
 - Frontend devtools: `Cmd+Option+I` (macOS) / `Ctrl+Shift+I` (Win/Linux)
 - Rust backend logs visible in terminal during `npm run tauri:dev`
-- Enable debug console: `localStorage.setItem('yurucode_debug_mode', 'true')`
-- Enable performance monitoring: `localStorage.setItem('yurucode_perf_monitor', 'true')`
+- Enable debug console: `localStorage.setItem('yume_debug_mode', 'true')`
+- Enable performance monitoring: `localStorage.setItem('yume_perf_monitor', 'true')`
 
 ## Best Practices
 
@@ -729,24 +729,24 @@ window.perfMonitor.exportMetrics();
 
 **Enable Debug Mode**:
 ```javascript
-localStorage.setItem('yurucode_debug_mode', 'true');
+localStorage.setItem('yume_debug_mode', 'true');
 ```
 
 **Enable Performance Monitoring**:
 ```javascript
-localStorage.setItem('yurucode_perf_monitor', 'true');
+localStorage.setItem('yume_perf_monitor', 'true');
 window.perfMonitor.getMetricsSummary();
 ```
 
 **Clear Plugin Cache**:
 ```javascript
-localStorage.removeItem('yurucode_plugins');
+localStorage.removeItem('yume_plugins');
 // Restart app
 ```
 
 **Clear Skill Cache**:
 ```javascript
-localStorage.removeItem('yurucode_custom_skills');
+localStorage.removeItem('yume_custom_skills');
 // Restart app
 ```
 
@@ -762,6 +762,6 @@ After running build commands:
 - macOS ARM64: `src-tauri/target/aarch64-apple-darwin/release/bundle/dmg/`
 - macOS Universal: `src-tauri/target/universal-apple-darwin/release/bundle/dmg/`
 - Windows: `src-tauri/target/x86_64-pc-windows-msvc/release/bundle/`
-  - MSI: `msi/yurucode_[version]_x64_en-US.msi`
-  - NSIS: `nsis/yurucode_[version]_x64-setup.exe`
+  - MSI: `msi/yume_[version]_x64_en-US.msi`
+  - NSIS: `nsis/yume_[version]_x64-setup.exe`
 - Linux: `src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/`

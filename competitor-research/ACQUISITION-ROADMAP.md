@@ -1,4 +1,4 @@
-# yurucode: Path to Anthropic Acquisition
+# yume: Path to Anthropic Acquisition
 
 ## Context: Why This Matters
 
@@ -22,9 +22,9 @@
 3. **UI that showcases Claude's capabilities**
 4. **Speed infrastructure** (they acquired Bun for this)
 
-### yurucode's Opportunity
+### yume's Opportunity
 
-Position yurucode as the **official GUI for Claude Code**:
+Position yume as the **official GUI for Claude Code**:
 - Native Tauri app (fastest possible)
 - Cross-platform (mac/win/linux)
 - Already integrates with Claude Code CLI
@@ -34,11 +34,11 @@ Position yurucode as the **official GUI for Claude Code**:
 
 ## The Acquisition Thesis
 
-### yurucode = "Bun for Claude Code UI"
+### yume = "Bun for Claude Code UI"
 
-Just as Bun is the fastest JS runtime, yurucode should be the fastest Claude Code interface.
+Just as Bun is the fastest JS runtime, yume should be the fastest Claude Code interface.
 
-| Bun | yurucode |
+| Bun | yume |
 |-----|----------|
 | Fastest JS runtime | Fastest Claude GUI |
 | Powers Claude Code backend | Powers Claude Code frontend |
@@ -108,7 +108,7 @@ Just as Bun is the fastest JS runtime, yurucode should be the fastest Claude Cod
 
 ## Phase 3: Differentiating Features
 
-### Goal: Features Only yurucode Has
+### Goal: Features Only yume Has
 
 **Unique Speed Features**
 - [ ] **Ambient Input**: type anywhere to start
@@ -163,7 +163,7 @@ Target: >50% "very disappointed" response
 
 **Alignment with Anthropic**
 
-| Anthropic Priority | yurucode Alignment |
+| Anthropic Priority | yume Alignment |
 |--------------------|-------------------|
 | Developer Experience | ✅ DX-focused |
 | Speed/Performance | ✅ Tauri = fastest |
@@ -180,7 +180,7 @@ Target: >50% "very disappointed" response
 
 **Acquisition Signals**
 - Enterprise interest in managed deployments
-- Volume of Claude Code users on yurucode
+- Volume of Claude Code users on yume
 - Technical compatibility with Anthropic infra
 - Team culture alignment
 
@@ -215,7 +215,7 @@ Target: >50% "very disappointed" response
 
 ## Success Criteria
 
-### yurucode is Acquisition-Ready When:
+### yume is Acquisition-Ready When:
 
 **Technical**
 - [ ] <500ms cold startup
@@ -240,7 +240,7 @@ Target: >50% "very disappointed" response
 ## The Pitch to Anthropic
 
 ### One-Liner
-"yurucode is the Bun of Claude Code UI - the fastest, most native experience for developers using Claude Code."
+"yume is the Bun of Claude Code UI - the fastest, most native experience for developers using Claude Code."
 
 ### Value Proposition
 1. **Speed**: 25x smaller than electron alternatives, <500ms startup
@@ -265,18 +265,18 @@ Target: >50% "very disappointed" response
 
 ## Competitive Moat
 
-### Why Anthropic Buys yurucode vs. Competitors
+### Why Anthropic Buys yume vs. Competitors
 
-| Competitor | Why Not | yurucode Advantage |
+| Competitor | Why Not | yume Advantage |
 |------------|---------|-------------------|
 | sculptor | Docker overhead, slow | Native speed |
 | opcode | AGPL license issue | Commercial flexibility |
 | cursor | Electron bloat, expensive | Lightweight, uses existing sub |
 | windsurf | Own AI, not Claude-focused | Claude-only dedication |
 
-### yurucode's Unique Position
+### yume's Unique Position
 ```
-yurucode is the ONLY:
+yume is the ONLY:
 - Native Tauri app for Claude Code
 - GUI dedicated solely to Claude
 - App with 30+ keyboard shortcuts

@@ -4,7 +4,10 @@
  * Preserves console behavior in development
  */
 
+import { appStorageKey } from '../config/app';
 import { log, LogLevel } from './logger';
+
+const DEBUG_MODE_KEY = appStorageKey('debug_mode', '_');
 
 // Store original console methods
 const originalConsole = {
@@ -33,7 +36,7 @@ export const restoreConsole = () => {
 // Initialize console override
 export const initConsoleOverride = () => {
   const isProduction = import.meta.env.PROD;
-  const debugMode = localStorage.getItem('yurucode_debug_mode') === 'true';
+  const debugMode = localStorage.getItem(DEBUG_MODE_KEY) === 'true';
   
   // In development or debug mode, keep original console
   if (!isProduction || debugMode) {

@@ -13,7 +13,7 @@ The AI coding assistant market in 2025 is dominated by three categories:
 | **IDE-Based** | Cursor, Windsurf, Zed | Full IDE with AI deeply integrated |
 | **CLI/Terminal** | Claude Code CLI, Aider, OpenCode | Terminal-first, command-line workflows |
 | **Extensions** | Copilot, Continue, Cline | IDE plugins/extensions |
-| **Desktop GUIs** | **Yurucode**, Opcode, Claudia, Crystal | Native wrappers for Claude CLI |
+| **Desktop GUIs** | **Yume**, Opcode, Claudia, Crystal | Native wrappers for Claude CLI |
 
 ## Key Stats (2025)
 
@@ -41,7 +41,7 @@ The AI coding assistant market in 2025 is dominated by three categories:
 2. **Cline** - Free/OSS, human-in-loop, MCP support
 3. **Continue** - Free/OSS, privacy-focused, customizable
 
-## Yurucode's Position
+## Yume's Position
 
 **Category**: GUI wrapper for Claude Code CLI
 **Unique Value**: Desktop app that eliminates CLI's TUI rendering issues + superior features
@@ -53,7 +53,7 @@ The AI coding assistant market in 2025 is dominated by three categories:
 - 32+ keyboard shortcuts
 - 30 dark themes
 - 5 built-in agents (architect, explorer, implementer, guardian, specialist)
-- 9 hook events + Yurucode Guard (built-in security)
+- 9 hook events + Yume Guard (built-in security)
 - Checkpoints + Timeline UI
 - Files panel with git status
 - Git panel with +/- line stats
@@ -80,9 +80,9 @@ The AI coding assistant market in 2025 is dominated by three categories:
 
 ### Primary Competitor: Claude Code CLI
 
-**4,711 open issues** as of January 2026. The main problems yurucode solves:
+**4,711 open issues** as of January 2026. The main problems yume solves:
 
-| Issue | Description | Yurucode Solution |
+| Issue | Description | Yume Solution |
 |-------|-------------|-------------------|
 | #1913 (700+ upvotes) | Terminal flickering | Native desktop rendering |
 | #14552 | Extended session input lag | Native performance |
@@ -99,12 +99,12 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 
 ### Strategic (Start Here)
 - [**ROADMAP**](./ROADMAP.md) - **Product roadmap (only 2 items remaining)**
-- [Strategic Recommendations](./strategic-recommendations.md) - Making yurucode 100% best
+- [Strategic Recommendations](./strategic-recommendations.md) - Making yume 100% best
 
 ### Core Analysis
 - [Claude Code CLI Analysis](./claude-code-cli.md) - Primary competitor deep dive (4,711 open issues)
 - [Competitor Deep Dives](./competitors.md) - Cursor, Windsurf, Opcode, Claude Squad, etc.
-- [Yurucode Advantages](./yurucode-advantages.md) - Our competitive edge
+- [Yume Advantages](./yume-advantages.md) - Our competitive edge
 - [Feature Gap Analysis](./feature-gaps.md) - Only 2 gaps remaining
 
 ### Extended Research
@@ -123,14 +123,14 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 - [Executive Summary](./executive-summary.md) - **For Claude Code team**
 - [Claude Code Appreciation](./claude-code-appreciation.md) - Fair acknowledgment of strengths
 
-## Unique Yurucode Features (No Competitor Has)
+## Unique Yume Features (No Competitor Has)
 
 | Feature | Description |
 |---------|-------------|
 | **Plugin system** | Complete extensibility (commands, agents, hooks, skills, MCP) |
 | **Skills system** | Auto-inject context based on triggers (file ext, keywords, regex) |
 | **5h + 7-day limit tracking** | Visual quota bars in context bar |
-| **Yurucode Guard** | Built-in security hook (blocks rm -rf, sudo, etc.) |
+| **Yume Guard** | Built-in security hook (blocks rm -rf, sudo, etc.) |
 | **5 built-in agents** | architect, explorer, implementer, guardian, specialist |
 | **@ mention system** | @r (recent), @m (modified), folder navigation |
 | **Stream timers** | Live thinking/bash/compacting duration |
@@ -144,11 +144,11 @@ See [Claude Code CLI Analysis](./claude-code-cli.md) for details.
 
 ## Direct Competitors Comparison (Desktop GUIs)
 
-| Feature | Yurucode | Opcode | Claudia | Crystal |
+| Feature | Yume | Opcode | Claudia | Crystal |
 |---------|----------|--------|---------|---------|
 | Plugin/Skills System | ✅ | ❌ | ❌ | ❌ |
 | 5h/7d Limit Tracking | ✅ | ❌ | ❌ | ❌ |
-| Yurucode Guard | ✅ | ❌ | ❌ | ❌ |
+| Yume Guard | ✅ | ❌ | ❌ | ❌ |
 | 5 Built-in Agents | ✅ | ❌ | ❌ | ❌ |
 | 30 Themes | ✅ | ❌ | ❌ | ❌ |
 | 9 Hook Events | ✅ | ❌ | ❌ | ❌ |

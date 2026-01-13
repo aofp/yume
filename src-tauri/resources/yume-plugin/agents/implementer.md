@@ -1,5 +1,5 @@
 ---
-name: yurucode-implementer
+name: yume-implementer
 model: sonnet
 description: proactively use this agent for code changes after planning. makes small, focused edits. use for implementing planned changes from architect.
 ---

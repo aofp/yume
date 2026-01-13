@@ -1,6 +1,6 @@
-# yurucode plugin
+# yume plugin
 
-core plugin for yurucode.
+core plugin for yume.
 
 ## commands
 
@@ -16,24 +16,24 @@ quick code review of current changes:
 
 ## agents
 
-### yurucode-architect
+### yume-architect
 plans architecture, decomposes tasks, identifies dependencies and risks.
 
-### yurucode-explorer
+### yume-explorer
 codebase exploration and context gathering. read-only.
 
-### yurucode-implementer
+### yume-implementer
 makes small, focused code edits after planning.
 
-### yurucode-guardian
+### yume-guardian
 reviews for bugs, security issues, performance problems.
 
-### yurucode-specialist
+### yume-specialist
 domain-specific tasks: tests, docs, devops, data processing.
 
 ## hooks
 
-### yurucode guard
+### yume guard
 blocks dangerous operations:
 - destructive commands (rm -rf, dd, format)
 - privilege escalation (sudo, chmod +s)

@@ -2,6 +2,8 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 use tracing::info;
 
+use crate::app::APP_ID;
+
 /// Production configuration settings
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ProductionConfig {
@@ -67,8 +69,8 @@ impl Default for ProductionConfig {
                 enable_tls: true,
                 validate_certificates: true,
                 allowed_domains: vec![
-                    "releases.yurucode.app".to_string(),
-                    "api.yurucode.app".to_string(),
+                    "releases.yume.app".to_string(),
+                    "api.yume.app".to_string(),
                     "github.com".to_string(),
                     "api.github.com".to_string(),
                     "sentry.io".to_string(),
@@ -129,26 +131,26 @@ impl ProductionConfig {
             Ok(PathBuf::from(home)
                 .join("Library")
                 .join("Application Support")
-                .join("yurucode")
+                .join(APP_ID)
                 .join("production.config.json"))
         }
-        
+
         #[cfg(target_os = "windows")]
         {
             let appdata = std::env::var("APPDATA")
                 .map_err(|_| "APPDATA environment variable not set")?;
             Ok(PathBuf::from(appdata)
-                .join("yurucode")
+                .join(APP_ID)
                 .join("production.config.json"))
         }
-        
+
         #[cfg(target_os = "linux")]
         {
             let home = std::env::var("HOME")
                 .map_err(|_| "HOME environment variable not set")?;
             Ok(PathBuf::from(home)
                 .join(".config")
-                .join("yurucode")
+                .join(APP_ID)
                 .join("production.config.json"))
         }
     }

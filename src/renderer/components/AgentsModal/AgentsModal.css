@@ -459,8 +459,8 @@
   border-color: var(--accent-color);
 }
 
-/* Yurucode Agents Toggle */
-.yurucode-toggle {
+/* Yume Agents Toggle */
+.yume-toggle {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -469,7 +469,7 @@
   border-bottom: 1px solid #222;
 }
 
-.yurucode-toggle .toggle-label {
+.yume-toggle .toggle-label {
   color: var(--accent-color);
   font-size: var(--text-base);
   font-weight: 600;
@@ -477,7 +477,7 @@
 }
 
 /* Hide checkbox input */
-.yurucode-toggle .checkbox-input {
+.yume-toggle .checkbox-input {
   position: absolute;
   opacity: 0;
   pointer-events: none;
@@ -485,8 +485,8 @@
   height: 0;
 }
 
-/* Compact Toggle Switch for yurucode agents */
-.yurucode-toggle .toggle-switch.compact {
+/* Compact Toggle Switch for yume agents */
+.yume-toggle .toggle-switch.compact {
   position: relative;
   width: 52px;
   height: 18px;
@@ -500,11 +500,11 @@
   border: 1px solid var(--fg-15);
 }
 
-.yurucode-toggle .toggle-switch.compact:hover {
+.yume-toggle .toggle-switch.compact:hover {
   border-color: rgba(var(--accent-rgb), 0.9);
 }
 
-.yurucode-toggle .toggle-switch.compact .toggle-switch-label {
+.yume-toggle .toggle-switch.compact .toggle-switch-label {
   font-size: var(--text-xs);
   font-weight: bold;
   user-select: none;
@@ -513,25 +513,25 @@
   text-align: center;
 }
 
-.yurucode-toggle .toggle-switch.compact .toggle-switch-label.off {
+.yume-toggle .toggle-switch.compact .toggle-switch-label.off {
   color: var(--fg-80);
   opacity: 1;
 }
 
-.yurucode-toggle .toggle-switch.compact .toggle-switch-label.on {
+.yume-toggle .toggle-switch.compact .toggle-switch-label.on {
   color: rgba(var(--accent-rgb), 1);
   opacity: 0;
 }
 
-.yurucode-toggle .toggle-switch.compact.active .toggle-switch-label.off {
+.yume-toggle .toggle-switch.compact.active .toggle-switch-label.off {
   opacity: 0;
 }
 
-.yurucode-toggle .toggle-switch.compact.active .toggle-switch-label.on {
+.yume-toggle .toggle-switch.compact.active .toggle-switch-label.on {
   opacity: 1;
 }
 
-.yurucode-toggle .toggle-switch.compact .toggle-switch-slider {
+.yume-toggle .toggle-switch.compact .toggle-switch-slider {
   position: absolute;
   top: 0px;
   left: 0px;
@@ -542,21 +542,21 @@
   pointer-events: none;
 }
 
-.yurucode-toggle .toggle-switch.compact.active .toggle-switch-slider {
+.yume-toggle .toggle-switch.compact.active .toggle-switch-slider {
   transform: translateX(25px);
   background: rgba(var(--accent-rgb), 0.4);
 }
 
-.yurucode-toggle .toggle-switch.compact:hover .toggle-switch-slider {
+.yume-toggle .toggle-switch.compact:hover .toggle-switch-slider {
   background: var(--fg-25);
 }
 
-.yurucode-toggle .toggle-switch.compact.active:hover .toggle-switch-slider {
+.yume-toggle .toggle-switch.compact.active:hover .toggle-switch-slider {
   background: rgba(var(--accent-rgb), 0.5);
 }
 
-/* Yurucode model info - inline with toggle */
-.yurucode-model-info {
+/* Yume model info - inline with toggle */
+.yume-model-info {
   font-size: var(--text-sm);
   color: #666;
   margin-left: auto;
@@ -564,8 +564,8 @@
   text-transform: lowercase;
 }
 
-/* Yurucode agent items */
-.yurucode-agent {
+/* Yume agent items */
+.yume-agent {
   cursor: default;
   flex-direction: column;
   align-items: flex-start;
@@ -573,17 +573,17 @@
   pointer-events: none;
 }
 
-.yurucode-agent:hover,
-.yurucode-agent.focused {
+.yume-agent:hover,
+.yume-agent.focused {
   border-color: #222;
   background: transparent;
 }
 
-.yurucode-agent:hover .agent-name {
+.yume-agent:hover .agent-name {
   color: #999;
 }
 
-.yurucode-agent .agent-info {
+.yume-agent .agent-info {
   width: 100%;
 }
 
@@ -597,7 +597,7 @@
   width: 100%;
 }
 
-/* Disabled state for yurucode agents list */
+/* Disabled state for yume agents list */
 .agents-list.agents-disabled {
   opacity: 0.4;
   pointer-events: none;

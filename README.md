@@ -1,10 +1,10 @@
-# Yurucode
+# Yume
 
 The most feature-rich Claude Code desktop GUI. Native performance, 15+ unique features.
 
-![Yurucode Screenshot](public/assets/yurucode.png)
+![Yume Screenshot](public/assets/yume.png)
 
-## Why Yurucode?
+## Why Yume?
 
 | vs Claude CLI | vs Opcode/Claudia | vs Cursor/Windsurf |
 |---------------|-------------------|---------------------|
@@ -18,7 +18,7 @@ The most feature-rich Claude Code desktop GUI. Native performance, 15+ unique fe
 - **Plugin System** - Install custom commands, agents, hooks, skills, MCP
 - **Skills System** - Auto-inject context based on triggers
 - **5h + 7-day Limit Tracking** - Visual Anthropic quota bars
-- **Yurucode Guard** - Built-in security hook (blocks dangerous commands)
+- **Yume Guard** - Built-in security hook (blocks dangerous commands)
 - **5 Built-in Agents** - architect, explorer, implementer, guardian, specialist
 - **@ Mention System** - @r (recent), @m (modified), folder navigation
 - **Stream Timers** - Live thinking/bash/compacting duration

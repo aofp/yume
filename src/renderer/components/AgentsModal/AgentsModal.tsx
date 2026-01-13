@@ -13,7 +13,7 @@ import {
   IconCopy
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
-import { APP_NAME } from '../../config/app';
+import { APP_AGENT_PREFIX, APP_COMMAND_PREFIX, APP_NAME, PLUGIN_ID } from '../../config/app';
 import { TabButton } from '../common/TabButton';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { PluginBadge } from '../common/PluginBadge';
@@ -40,6 +40,8 @@ interface AgentsModalProps {
 }
 
 
+type AgentScope = 'global' | 'project' | string;
+
 export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSelectAgent }) => {
   const { sessions, currentSessionId, selectedModel } = useClaudeCodeStore();
   const [searchQuery, setSearchQuery] = useState('');
@@ -49,11 +51,11 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
   const [focusedIndex, setFocusedIndex] = useState(-1);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const [showSearch, setShowSearch] = useState(false);
-  const [agentScope, setAgentScope] = useState<'yurucode' | 'global' | 'project'>('yurucode');
+  const [agentScope, setAgentScope] = useState<AgentScope>(PLUGIN_ID);
   const [globalAgents, setGlobalAgents] = useState<Agent[]>([]);
   const [projectAgents, setProjectAgents] = useState<Agent[]>([]);
-  const [yurucodeAgents, setYurucodeAgents] = useState<Agent[]>([]);
-  const [yurucodePluginEnabled, setYurucodePluginEnabled] = useState(true);
+  const [yumeAgents, setYumeAgents] = useState<Agent[]>([]);
+  const [yumePluginEnabled, setYumePluginEnabled] = useState(true);
 
   // Get current session's directory
   const currentSession = sessions.find(s => s.id === currentSessionId);
@@ -81,60 +83,60 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
     return selectedModel.includes('opus') ? 'opus' : 'sonnet';
   }, [selectedModel]);
 
-  // Load yurucode plugin agents
+  // Load core plugin agents
   useEffect(() => {
-    const loadYurucodeAgents = async () => {
+    const loadYumeAgents = async () => {
       await pluginService.initialize();
       const plugins = await pluginService.listPlugins();
-      const yurucodePlugin = plugins.find(p => p.id === 'yurucode');
+      const yumePlugin = plugins.find(p => p.id === PLUGIN_ID);
 
-      if (yurucodePlugin) {
-        setYurucodePluginEnabled(yurucodePlugin.enabled);
-        // All yurucode agents use the currently selected model
-        const agents: Agent[] = yurucodePlugin.components.agents.map(a => ({
-          id: `yurucode--${a.name}`,
+      if (yumePlugin) {
+        setYumePluginEnabled(yumePlugin.enabled);
+        // All core agents use the currently selected model
+        const agents: Agent[] = yumePlugin.components.agents.map(a => ({
+          id: `${APP_COMMAND_PREFIX}${a.name}`,
           name: a.name,
           model: currentModelName as 'opus' | 'sonnet' | 'haiku',
           system_prompt: a.description || '',
           created_at: 0,
           updated_at: 0,
-          pluginId: 'yurucode'
+          pluginId: PLUGIN_ID
         }));
-        setYurucodeAgents(agents);
+        setYumeAgents(agents);
       }
     };
 
     if (isOpen) {
-      loadYurucodeAgents();
+      loadYumeAgents();
     }
   }, [isOpen, currentModelName]);
 
   // Get current agents based on scope
   const currentAgents = useMemo(() => {
-    if (agentScope === 'yurucode') return yurucodeAgents;
+    if (agentScope === PLUGIN_ID) return yumeAgents;
     if (agentScope === 'global') {
-      // Filter out plugin agents from global tab (including yurucode agents)
-      return globalAgents.filter(a => !a.pluginId && !a.name.includes('--') && !a.name.startsWith('yurucode-'));
+      // Filter out plugin agents from global tab
+      return globalAgents.filter(a => !a.pluginId && !a.name.includes('--') && !a.name.startsWith(APP_AGENT_PREFIX));
     }
     return projectAgents;
-  }, [agentScope, globalAgents, projectAgents, yurucodeAgents]);
+  }, [agentScope, globalAgents, projectAgents, yumeAgents]);
 
-  // Toggle yurucode plugin enabled/disabled
+  // Toggle core plugin enabled/disabled
   const handleToggleAgents = useCallback(async () => {
-    const newEnabled = !yurucodePluginEnabled;
+    const newEnabled = !yumePluginEnabled;
     try {
       if (newEnabled) {
-        await pluginService.enablePlugin('yurucode');
+        await pluginService.enablePlugin(PLUGIN_ID);
         // Sync agents with the current model
-        await pluginService.syncYurucodeAgents(true, currentModelName);
+        await pluginService.syncYumeAgents(true, currentModelName);
       } else {
-        await pluginService.disablePlugin('yurucode');
+        await pluginService.disablePlugin(PLUGIN_ID);
       }
-      setYurucodePluginEnabled(newEnabled);
+      setYumePluginEnabled(newEnabled);
     } catch (err) {
-      console.error('Failed to toggle yurucode plugin:', err);
+      console.error(`Failed to toggle ${APP_NAME} plugin:`, err);
     }
-  }, [yurucodePluginEnabled, currentModelName]);
+  }, [yumePluginEnabled, currentModelName]);
   
   // Filter agents based on search
   const filteredAgents = useMemo(() => {
@@ -172,7 +174,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
 
   // Save agent (create or update) - not allowed for plugin agents
   const handleSave = useCallback(async () => {
-    if (agentScope === 'yurucode') {
+    if (agentScope === PLUGIN_ID) {
       return; // plugin agents are read-only
     }
 
@@ -434,15 +436,15 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
               <div className="header-tabs">
                 <TabButton
                   label={APP_NAME}
-                  active={agentScope === 'yurucode'}
-                  onClick={() => setAgentScope('yurucode')}
-                  count={yurucodeAgents.length}
+                  active={agentScope === PLUGIN_ID}
+                  onClick={() => setAgentScope(PLUGIN_ID)}
+                  count={yumeAgents.length}
                 />
                 <TabButton
                   label="global"
                   active={agentScope === 'global'}
                   onClick={() => setAgentScope('global')}
-                  count={globalAgents.filter(a => !a.pluginId && !a.name.includes('--') && !a.name.startsWith('yurucode-')).length}
+                  count={globalAgents.filter(a => !a.pluginId && !a.name.includes('--') && !a.name.startsWith(APP_AGENT_PREFIX)).length}
                 />
                 <TabButton
                   label="project"
@@ -478,33 +480,33 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
         <div className="agents-content">
           {!editMode && !createMode ? (
             <>
-              {/* Yurucode agents tab - from plugin, with enable/disable toggle */}
-              {agentScope === 'yurucode' && (
+              {/* Yume agents tab - from plugin, with enable/disable toggle */}
+              {agentScope === PLUGIN_ID && (
                 <>
-                  <div className="yurucode-toggle">
+                  <div className="yume-toggle">
                     <span className="toggle-label">{APP_NAME} agents</span>
                     <input
                       type="checkbox"
-                      id="yurucode-agents-toggle"
+                      id="yume-agents-toggle"
                       className="checkbox-input"
-                      checked={yurucodePluginEnabled}
+                      checked={yumePluginEnabled}
                       onChange={handleToggleAgents}
                     />
-                    <label htmlFor="yurucode-agents-toggle" className={`toggle-switch compact ${yurucodePluginEnabled ? 'active' : ''}`}>
+                    <label htmlFor="yume-agents-toggle" className={`toggle-switch compact ${yumePluginEnabled ? 'active' : ''}`}>
                       <span className="toggle-switch-slider" />
                       <span className="toggle-switch-label off">OFF</span>
                       <span className="toggle-switch-label on">ON</span>
                     </label>
-                    <span className="yurucode-model-info">using: {currentModelName}</span>
+                    <span className="yume-model-info">using: {currentModelName}</span>
                   </div>
-                  {yurucodeAgents.length === 0 ? (
+                  {yumeAgents.length === 0 ? (
                     <div className="agents-empty">loading plugin agents...</div>
                   ) : (
-                    <div className={`agents-list ${!yurucodePluginEnabled ? 'agents-disabled' : ''}`}>
-                      {yurucodeAgents.map((agent, index) => (
+                    <div className={`agents-list ${!yumePluginEnabled ? 'agents-disabled' : ''}`}>
+                      {yumeAgents.map((agent, index) => (
                         <div
                           key={agent.id}
-                          className={`agent-item yurucode-agent ${focusedIndex === index ? 'focused' : ''}`}
+                          className={`agent-item yume-agent ${focusedIndex === index ? 'focused' : ''}`}
                           onMouseEnter={() => setFocusedIndex(index)}
                         >
                           <div className="agent-info">
@@ -522,7 +524,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
               )}
 
               {/* Global and Project tabs - editable agents */}
-              {agentScope !== 'yurucode' && (
+              {agentScope !== PLUGIN_ID && (
                 <>
                   {filteredAgents.length === 0 ? (
                     <div className="agents-empty">

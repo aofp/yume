@@ -3,6 +3,8 @@
  * Used for tool selection modal and session creation
  */
 
+import { appStorageKey } from './app';
+
 export interface ToolDefinition {
   id: string;
   name: string;
@@ -72,7 +74,7 @@ export function getToolsByCategory(): Record<ToolCategory, ToolDefinition[]> {
 }
 
 // localStorage key for tool settings
-export const TOOLS_STORAGE_KEY = 'yurucode-enabled-tools';
+export const TOOLS_STORAGE_KEY = appStorageKey('enabled-tools');
 
 // Load enabled tools from localStorage
 export function loadEnabledTools(): string[] {

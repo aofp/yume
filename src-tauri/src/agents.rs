@@ -42,7 +42,7 @@ pub async fn load_default_agents(app: AppHandle) -> Result<Vec<Agent>, String> {
         fs::read_to_string(&default_agents_path)
             .map_err(|e| format!("Failed to read default agents file: {}", e))?
     } else {
-        // Fallback to hardcoded default agents - The 5 Yurucode Core Agents
+        // Fallback to hardcoded default agents - The 5 Yume Core Agents
         r#"[
   {
     "name": "architect",

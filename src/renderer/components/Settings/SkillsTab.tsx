@@ -18,6 +18,7 @@ import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { PluginBadge } from '../common/PluginBadge';
 import { pluginService } from '../../services/pluginService';
 import { invoke } from '@tauri-apps/api/core';
+import { appStorageKey } from '../../config/app';
 import './SkillsTab.css';
 
 interface Skill {
@@ -34,7 +35,7 @@ interface SkillsTabProps {
   onSkillChange?: () => void;
 }
 
-const CUSTOM_SKILLS_KEY = 'yurucode_custom_skills';
+const CUSTOM_SKILLS_KEY = appStorageKey('custom_skills', '_');
 
 export const SkillsTab: React.FC<SkillsTabProps> = ({ onSkillChange }) => {
   const [skills, setSkills] = useState<Skill[]>([]);

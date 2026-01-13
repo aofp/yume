@@ -5,7 +5,7 @@
 
 ## Overview
 
-Comprehensive documentation review and update identifying **43+ undocumented features** across the Yurucode codebase. All documentation has been updated to reflect actual implementation and provide clear usage guidance.
+Comprehensive documentation review and update identifying **43+ undocumented features** across the Yume codebase. All documentation has been updated to reflect actual implementation and provide clear usage guidance.
 
 ---
 
@@ -25,7 +25,7 @@ Comprehensive documentation review and update identifying **43+ undocumented fea
 #### Plugin System
 - Complete extensibility framework
 - 5 component types (commands, agents, hooks, skills, MCP)
-- Plugin directory structure (`~/.yurucode/plugins/`)
+- Plugin directory structure (`~/.yume/plugins/`)
 - Installation, enabling, disabling workflows
 - Component syncing to active use
 
@@ -159,11 +159,11 @@ Comprehensive documentation review and update identifying **43+ undocumented fea
 - Use cases
 
 **Feature Comparison Matrix**: Updated with new features
-- License system (yurucode only)
-- Plugin system (yurucode only)
-- Skills system (yurucode only)
-- Performance monitoring (yurucode only)
-- Analytics dashboard (yurucode advantage)
+- License system (yume only)
+- Plugin system (yume only)
+- Skills system (yume only)
+- Performance monitoring (yume only)
+- Analytics dashboard (yume advantage)
 
 **Conclusion**: Expanded to highlight new differentiators
 - 6 key differentiators identified
@@ -453,7 +453,7 @@ Comprehensive documentation review and update identifying **43+ undocumented fea
 
 ## Summary
 
-This documentation update represents a **comprehensive audit** of the Yurucode codebase, identifying and documenting **43+ previously undocumented features**. The updates ensure that:
+This documentation update represents a **comprehensive audit** of the Yume codebase, identifying and documenting **43+ previously undocumented features**. The updates ensure that:
 
 1. **All features are discoverable** - Users can find documentation for every feature
 2. **All APIs are documented** - Developers have complete reference material
@@ -461,4 +461,4 @@ This documentation update represents a **comprehensive audit** of the Yurucode c
 4. **Best practices are clear** - Guidelines prevent common mistakes
 5. **Troubleshooting is available** - Users can resolve issues independently
 
-The documentation now accurately reflects the **technically superior** position of Yurucode compared to competitors, with unique features like the plugin system, skills system, and performance monitoring that no other Claude GUI offers.
+The documentation now accurately reflects the **technically superior** position of Yume compared to competitors, with unique features like the plugin system, skills system, and performance monitoring that no other Claude GUI offers.

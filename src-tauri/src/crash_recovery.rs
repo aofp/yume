@@ -5,6 +5,7 @@ use tracing::{error, info, warn};
 use tauri::{AppHandle, Manager, Runtime, Emitter};
 use std::sync::{Arc, Mutex};
 use chrono::{DateTime, Utc};
+use crate::app::APP_ID;
 
 /// Crash recovery state
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -103,10 +104,10 @@ impl CrashRecoveryManager {
             PathBuf::from(home)
                 .join("Library")
                 .join("Application Support")
-                .join("yurucode")
+                .join(APP_ID)
                 .join("recovery")
         }
-        
+
         #[cfg(target_os = "windows")]
         {
             let appdata = std::env::var("APPDATA")
@@ -122,16 +123,16 @@ impl CrashRecoveryManager {
                         .unwrap_or_else(|_| ".".to_string())
                 });
             PathBuf::from(appdata)
-                .join("yurucode")
+                .join(APP_ID)
                 .join("recovery")
         }
-        
+
         #[cfg(target_os = "linux")]
         {
             let home = std::env::var("HOME").unwrap_or_else(|_| ".".to_string());
             PathBuf::from(home)
                 .join(".config")
-                .join("yurucode")
+                .join(APP_ID)
                 .join("recovery")
         }
     }

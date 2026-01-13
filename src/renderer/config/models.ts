@@ -1,5 +1,5 @@
 /**
- * Centralized model configuration for Yurucode
+ * Centralized model configuration for Yume
  *
  * Update this file when new Claude models are released.
  * The app uses these definitions for model selection, CLI arguments, and analytics.

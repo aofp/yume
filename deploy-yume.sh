@@ -1,18 +1,18 @@
 #!/bin/bash
-# Deploy yurucode.com website
+# Deploy yume.com website
 # This script deploys the website files to your server
 
 set -e
 
-echo "yurucode.com Deployment Script"
+echo "yume.com Deployment Script"
 echo "=============================="
 echo ""
 
 # Configuration
-LOCAL_PATH="/Users/yuru/yurucode/yurucode.com"
+LOCAL_PATH="/Users/yuru/yume/yume.com"
 REMOTE_HOST="your-server.com"  # UPDATE THIS
 REMOTE_USER="your-username"     # UPDATE THIS
-REMOTE_PATH="/var/www/yurucode.com"  # UPDATE THIS
+REMOTE_PATH="/var/www/yume.com"  # UPDATE THIS
 
 # Colors for output
 RED='\033[0;31m'
@@ -31,7 +31,7 @@ fi
 # Check if .env.secret exists
 if [ ! -f "$LOCAL_PATH/.env.secret" ]; then
     echo -e "${RED}Error: .env.secret not found${NC}"
-    echo "Please create yurucode.com/.env.secret with your secrets"
+    echo "Please create yume.com/.env.secret with your secrets"
     exit 1
 fi
 
@@ -106,8 +106,8 @@ echo ""
 echo "Post-deployment checklist:"
 echo "1. [ ] Verify .env.secret is uploaded and has correct permissions (600)"
 echo "2. [ ] Verify keygen.php is in the parent directory of the web root"
-echo "3. [ ] Test license generation at https://yurucode.com/license-system.php"
-echo "4. [ ] Test validation API at https://yurucode.com/validate-license-api.php"
+echo "3. [ ] Test license generation at https://yume.com/license-system.php"
+echo "4. [ ] Test validation API at https://yume.com/validate-license-api.php"
 echo "5. [ ] Verify PayPal integration on the website"
 echo "6. [ ] Test purchasing a license"
 echo ""

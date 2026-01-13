@@ -1,4 +1,4 @@
-# Yurucode API Reference
+# Yume API Reference
 
 **Version:** 0.1.0
 **Last Updated:** January 12, 2026
@@ -20,7 +20,7 @@
    - [MCP Operations](#mcp-operations)
    - [Agent Management](#agent-management-in-memory)
    - [Claude Agents](#claude-agents-file-based)
-   - [Yurucode Agents Sync](#yurucode-agents-sync)
+   - [Yume Agents Sync](#yume-agents-sync)
    - [Custom Commands](#custom-commands)
 2. [Tauri Events API](#tauri-events-api)
 3. [Frontend Services API](#frontend-services-api)
@@ -439,7 +439,7 @@ invoke('execute_command', {
 ### Settings Management
 
 #### `save_claude_settings`
-Saves Claude configuration settings to `<config_dir>/yurucode/claude_settings.json`.
+Saves Claude configuration settings to `<config_dir>/yume/claude_settings.json`.
 
 ```typescript
 invoke('save_claude_settings', {
@@ -665,7 +665,7 @@ invoke('get_system_fonts') => Promise<string[]>
 ```
 
 #### `toggle_console_visibility`
-Toggles the YURUCODE_SHOW_CONSOLE environment variable. Changes take effect on next server restart.
+Toggles the YUME_SHOW_CONSOLE environment variable. Changes take effect on next server restart.
 
 ```typescript
 invoke('toggle_console_visibility') => Promise<string>
@@ -681,7 +681,7 @@ invoke('get_server_port') => Promise<number>
 ```
 
 #### `read_port_file`
-Reads the port number from the `~/.yurucode/current-port.txt` file.
+Reads the port number from the `~/.yume/current-port.txt` file.
 
 ```typescript
 invoke('read_port_file') => Promise<number>
@@ -696,9 +696,9 @@ invoke('get_server_logs') => Promise<string>
 
 #### `get_server_log_path`
 Returns the file path where server logs are stored:
-- **macOS**: `~/Library/Logs/yurucode/server.log`
-- **Windows**: `%LOCALAPPDATA%\yurucode\logs\server.log`
-- **Linux**: `~/.yurucode/logs/server.log`
+- **macOS**: `~/Library/Logs/yume/server.log`
+- **Windows**: `%LOCALAPPDATA%\yume\logs\server.log`
+- **Linux**: `~/.yume/logs/server.log`
 
 ```typescript
 invoke('get_server_log_path') => Promise<string>
@@ -908,7 +908,7 @@ invoke('get_hook_events') => Promise<string[]>
 - `error`
 
 #### `get_sample_hooks`
-Gets sample yurucode hook scripts.
+Gets sample yume hook scripts.
 
 ```typescript
 invoke('get_sample_hooks') => Promise<[string, string, string][]>
@@ -1171,7 +1171,7 @@ interface Agent {
 ```
 
 #### `load_default_agents`
-Loads the 5 Yurucode Core Agents from `default-agents.json` resource or hardcoded fallback:
+Loads the 5 Yume Core Agents from `default-agents.json` resource or hardcoded fallback:
 - **architect** - Plans, designs, decomposes tasks
 - **explorer** - Finds, reads, understands codebase
 - **implementer** - Codes, edits, builds
@@ -1205,7 +1205,7 @@ invoke('delete_agent', {
 These commands manage agents stored as `.md` files in the filesystem with YAML frontmatter.
 
 #### `load_claude_agents`
-Loads Claude agents from `~/.claude/agents` directory (global agents). Does NOT include yurucode built-in agents.
+Loads Claude agents from `~/.claude/agents` directory (global agents). Does NOT include yume built-in agents.
 
 ```typescript
 invoke('load_claude_agents') => Promise<ClaudeAgent[]>
@@ -1281,32 +1281,32 @@ invoke('delete_project_agent', {
 }) => Promise<void>
 ```
 
-### Yurucode Agents Sync
+### Yume Agents Sync
 
-These commands manage syncing the 5 Yurucode Core Agents to `~/.claude/agents/` for Claude CLI integration.
+These commands manage syncing the 5 Yume Core Agents to `~/.claude/agents/` for Claude CLI integration.
 
-#### `sync_yurucode_agents`
-Writes or removes yurucode agent files (`yurucode-*.md`) to `~/.claude/agents/` based on enabled state. Uses PID tracking to support multiple instances.
+#### `sync_yume_agents`
+Writes or removes yume agent files (`yume-*.md`) to `~/.claude/agents/` based on enabled state. Uses PID tracking to support multiple instances.
 
 ```typescript
-invoke('sync_yurucode_agents', {
+invoke('sync_yume_agents', {
   enabled: boolean,
   model?: string | null  // Defaults to "opus"
 }) => Promise<void>
 ```
 
-#### `cleanup_yurucode_agents_on_exit`
-Cleans up yurucode agents on app exit. Only removes agent files if no other yurucode instances are running.
+#### `cleanup_yume_agents_on_exit`
+Cleans up yume agents on app exit. Only removes agent files if no other yume instances are running.
 
 ```typescript
-invoke('cleanup_yurucode_agents_on_exit') => Promise<void>
+invoke('cleanup_yume_agents_on_exit') => Promise<void>
 ```
 
-#### `are_yurucode_agents_synced`
-Checks if all 5 yurucode agent files exist in `~/.claude/agents/`.
+#### `are_yume_agents_synced`
+Checks if all 5 yume agent files exist in `~/.claude/agents/`.
 
 ```typescript
-invoke('are_yurucode_agents_synced') => Promise<boolean>
+invoke('are_yume_agents_synced') => Promise<boolean>
 ```
 
 ### Custom Commands
@@ -1403,21 +1403,12 @@ invoke('load_all_commands', {
 }) => Promise<CustomCommand[]>
 ```
 
-#### `migrate_commands_to_filesystem`
-Migrates commands from localStorage cache to `~/.claude/commands`. Only migrates commands with IDs starting with "cached-".
-
-```typescript
-invoke('migrate_commands_to_filesystem', {
-  commands: CustomCommand[]
-}) => Promise<void>
-```
-
 ### Plugin Management
 
-These commands manage the plugin system for extending Yurucode functionality.
+These commands manage the plugin system for extending Yume functionality.
 
 #### `plugin_list`
-Lists all installed plugins from `~/.yurucode/plugins/`.
+Lists all installed plugins from `~/.yume/plugins/`.
 
 ```typescript
 invoke('plugin_list') => Promise<InstalledPlugin[]>
@@ -1444,7 +1435,7 @@ interface InstalledPlugin {
 ```
 
 #### `plugin_get_directory`
-Gets the plugin directory path (`~/.yurucode/plugins/`).
+Gets the plugin directory path (`~/.yume/plugins/`).
 
 ```typescript
 invoke('plugin_get_directory') => Promise<string>
@@ -1472,7 +1463,7 @@ interface PluginManifest {
 ```
 
 #### `plugin_install`
-Installs a plugin by copying from source directory to `~/.yurucode/plugins/{id}/`.
+Installs a plugin by copying from source directory to `~/.yume/plugins/{id}/`.
 
 ```typescript
 invoke('plugin_install', {
@@ -1497,7 +1488,7 @@ invoke('plugin_uninstall', {
 **Notes**:
 - Disables plugin before uninstalling
 - Removes all plugin files
-- Cannot uninstall bundled "yurucode" plugin
+- Cannot uninstall bundled "yume" plugin
 
 #### `plugin_enable`
 Enables a plugin and syncs its components to active use.
@@ -1552,7 +1543,7 @@ invoke('plugin_rescan', {
 **Use Case**: Call after manually adding/removing component files
 
 #### `plugin_init_bundled`
-Initializes the bundled "yurucode" plugin on first launch.
+Initializes the bundled "yume" plugin on first launch.
 
 ```typescript
 invoke('plugin_init_bundled', {
@@ -2015,7 +2006,7 @@ setupConsoleOverride(): void
 restoreConsole(): void
 
 // Debug mode toggle via localStorage
-localStorage.setItem('yurucode_debug_mode', 'true')
+localStorage.setItem('yume_debug_mode', 'true')
 ```
 
 **Features**:
@@ -2846,17 +2837,17 @@ const skill = {
 
 // Save to localStorage
 const existingSkills = JSON.parse(
-  localStorage.getItem('yurucode_custom_skills') || '[]'
+  localStorage.getItem('yume_custom_skills') || '[]'
 );
 existingSkills.push(skill);
 localStorage.setItem(
-  'yurucode_custom_skills',
+  'yume_custom_skills',
   JSON.stringify(existingSkills)
 );
 
 // Load custom skills
 const customSkills = JSON.parse(
-  localStorage.getItem('yurucode_custom_skills') || '[]'
+  localStorage.getItem('yume_custom_skills') || '[]'
 );
 
 // Skills from plugins are loaded automatically when plugin is enabled
@@ -3005,9 +2996,8 @@ For migrating from other Claude GUIs:
 2. **Import sessions** using `db_import_data` command
 3. **Configure hooks** using `execute_hook` and `test_hook` commands
 4. **Set up MCP servers** using `mcp_add` and `mcp_import_claude_desktop`
-5. **Import custom commands** using `migrate_commands_to_filesystem`
-6. **Adjust settings** using `save_settings` and `save_claude_settings`
+5. **Adjust settings** using `save_settings` and `save_claude_settings`
 
 ---
 
-This API reference covers all public Tauri commands in Yurucode. For internal implementation details, refer to the source code in `src-tauri/src/commands/`.
+This API reference covers all public Tauri commands in Yume. For internal implementation details, refer to the source code in `src-tauri/src/commands/`.

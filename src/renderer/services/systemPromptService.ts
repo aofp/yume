@@ -1,5 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
-import { APP_NAME } from '../config/app';
+import { APP_NAME, PLUGIN_ID, appStorageKey } from '../config/app';
 
 export interface SystemPromptSettings {
   enabled: boolean;
@@ -8,7 +8,7 @@ export interface SystemPromptSettings {
   agentsEnabled: boolean;
 }
 
-const STORAGE_KEY = 'system_prompt_settings';
+const STORAGE_KEY = appStorageKey('system_prompt_settings', '_');
 
 const DEFAULT_PROMPT_WITH_AGENTS = `${APP_NAME} orchestrator. lowercase, concise.
 
@@ -131,21 +131,21 @@ class SystemPromptService {
   }
 
   // ============================================================================
-  // YURUCODE AGENTS SYNC - Write/Remove agent files to ~/.claude/agents/
+  // APP AGENTS SYNC - Write/Remove agent files to ~/.claude/agents/
   // ============================================================================
 
   /**
-   * Sync yurucode agents to ~/.claude/agents/ based on enabled state.
-   * Now handled by the plugin system - agents are part of the yurucode plugin.
+   * Sync app agents to ~/.claude/agents/ based on enabled state.
+   * Now handled by the plugin system - agents are part of the core plugin.
    * This is kept for backwards compatibility but is a no-op.
    * @param model - The model to use for all agents (ignored, plugin handles this)
    */
   async syncAgentsToFilesystem(model?: string): Promise<void> {
-    // Sync yurucode agents with the specified model via plugin system
+    // Sync app agents with the specified model via plugin system
     if (model) {
       try {
         const { pluginService } = await import('./pluginService');
-        await pluginService.syncYurucodeAgents(true, model);
+        await pluginService.syncYumeAgents(true, model);
         console.log(`[SystemPrompt] Synced agents with model: ${model}`);
       } catch (error) {
         console.error('[SystemPrompt] Failed to sync agents:', error);
@@ -156,7 +156,7 @@ class SystemPromptService {
   }
 
   /**
-   * Cleanup yurucode agents on app exit.
+   * Cleanup app agents on app exit.
    * Now handled by the plugin system.
    */
   async cleanupAgentsOnExit(): Promise<void> {
@@ -165,15 +165,15 @@ class SystemPromptService {
   }
 
   /**
-   * Check if yurucode agents are currently synced to filesystem.
-   * Now checks via the plugin system - yurucode plugin enabled = agents synced.
+   * Check if app agents are currently synced to filesystem.
+   * Now checks via the plugin system - core plugin enabled = agents synced.
    */
   async areAgentsSynced(): Promise<boolean> {
     try {
       // Import dynamically to avoid circular dependency
       const { pluginService } = await import('./pluginService');
       await pluginService.initialize();
-      const plugin = pluginService.getPlugin('yurucode');
+      const plugin = pluginService.getPlugin(PLUGIN_ID);
       return plugin?.enabled ?? false;
     } catch (error) {
       console.error('[SystemPrompt] Failed to check agents sync status:', error);

@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::Mutex;
 use std::path::PathBuf;
+
+use crate::app::APP_ID;
 use std::fs;
 use chrono::{DateTime, Utc};
 
@@ -94,9 +96,9 @@ impl CompactionManager {
                 tracing::warn!("HOME environment variable not found, using current directory");
                 ".".to_string()
             });
-            PathBuf::from(home).join(".yurucode").join("manifests")
+            PathBuf::from(home).join(format!(".{}", APP_ID)).join("manifests")
         }
-        
+
         #[cfg(target_os = "windows")]
         {
             // Try APPDATA first, then USERPROFILE, then fallback to current directory
@@ -106,16 +108,16 @@ impl CompactionManager {
                     tracing::warn!("APPDATA/USERPROFILE not found, using current directory");
                     ".".to_string()
                 });
-            PathBuf::from(app_data).join("yurucode").join("manifests")
+            PathBuf::from(app_data).join(APP_ID).join("manifests")
         }
-        
+
         #[cfg(target_os = "linux")]
         {
             let home = std::env::var("HOME").unwrap_or_else(|_| {
                 tracing::warn!("HOME environment variable not found, using current directory");
                 ".".to_string()
             });
-            PathBuf::from(home).join(".yurucode").join("manifests")
+            PathBuf::from(home).join(format!(".{}", APP_ID)).join("manifests")
         }
     }
     

@@ -1,4 +1,4 @@
-# Yurucode Complete Troubleshooting Guide
+# Yume Complete Troubleshooting Guide
 
 **Version:** 0.1.0
 **Last Updated:** January 12, 2026
@@ -25,17 +25,17 @@
 
 ### 1.1 macOS Installation Problems
 
-#### Issue: "Yurucode.app is damaged and can't be opened"
+#### Issue: "Yume.app is damaged and can't be opened"
 
 **Cause**: macOS Gatekeeper quarantine flag
 
 **Solutions**:
 ```bash
 # Solution 1: Remove quarantine attribute
-xattr -cr /Applications/Yurucode.app
+xattr -cr /Applications/Yume.app
 
 # Solution 2: Clear quarantine via terminal
-sudo xattr -rd com.apple.quarantine /Applications/Yurucode.app
+sudo xattr -rd com.apple.quarantine /Applications/Yume.app
 
 # Solution 3: Allow in System Preferences
 System Preferences > Security & Privacy > General > "Open Anyway"
@@ -43,7 +43,7 @@ System Preferences > Security & Privacy > General > "Open Anyway"
 
 **Prevention**: Sign and notarize the app properly
 
-#### Issue: "The application 'Yurucode' can't be opened"
+#### Issue: "The application 'Yume' can't be opened"
 
 **Cause**: Wrong architecture (Intel vs Apple Silicon)
 
@@ -53,7 +53,7 @@ System Preferences > Security & Privacy > General > "Open Anyway"
 uname -m  # arm64 = Apple Silicon, x86_64 = Intel
 
 # Check app architecture
-file /Applications/Yurucode.app/Contents/MacOS/Yurucode
+file /Applications/Yume.app/Contents/MacOS/Yume
 ```
 
 **Solution**: Download the universal binary or correct architecture version
@@ -65,10 +65,10 @@ file /Applications/Yurucode.app/Contents/MacOS/Yurucode
 **Check dependencies**:
 ```bash
 # List dynamic libraries
-otool -L /Applications/Yurucode.app/Contents/MacOS/Yurucode
+otool -L /Applications/Yume.app/Contents/MacOS/Yume
 
 # Check for missing libraries
-for lib in $(otool -L /Applications/Yurucode.app/Contents/MacOS/Yurucode | grep -v "/usr/lib" | awk '{print $1}'); do
+for lib in $(otool -L /Applications/Yume.app/Contents/MacOS/Yume | grep -v "/usr/lib" | awk '{print $1}'); do
   if [ ! -f "$lib" ]; then
     echo "Missing: $lib"
   fi
@@ -86,7 +86,7 @@ done
 **Solution 2**: Unblock file
 ```powershell
 # Unblock the installer
-Unblock-File -Path .\yurucode-installer.msi
+Unblock-File -Path .\yume-installer.msi
 
 # Or via Properties
 # Right-click > Properties > Unblock
@@ -119,7 +119,7 @@ winget install Microsoft.VCRedist.2015+.x64
 **Solutions**:
 ```powershell
 # Solution 1: Run as Administrator
-msiexec /i yurucode-1.0.0-x64.msi
+msiexec /i yume-1.0.0-x64.msi
 
 # Solution 2: Take ownership of Temp folder
 takeown /f %TEMP% /r /d y
@@ -133,7 +133,7 @@ icacls %TEMP% /grant %USERNAME%:F /t
 **Solution**:
 ```bash
 # Make executable
-chmod +x Yurucode.AppImage
+chmod +x Yume.AppImage
 
 # If still failing, check FUSE
 sudo apt install fuse libfuse2  # Ubuntu/Debian
@@ -141,7 +141,7 @@ sudo dnf install fuse           # Fedora
 sudo pacman -S fuse2            # Arch
 
 # Extract and run directly if FUSE unavailable
-./Yurucode.AppImage --appimage-extract
+./Yume.AppImage --appimage-extract
 ./squashfs-root/AppRun
 ```
 
@@ -150,7 +150,7 @@ sudo pacman -S fuse2            # Arch
 **Diagnosis**:
 ```bash
 # Check dependencies
-ldd yurucode | grep "not found"
+ldd yume | grep "not found"
 
 # Common missing libraries
 sudo apt install libwebkit2gtk-4.0-37  # WebKit
@@ -169,35 +169,35 @@ sudo apt install libgtk-3-0             # GTK3
 **Step 1: Check logs**
 ```bash
 # macOS server logs
-cat ~/Library/Logs/yurucode/server.log
+cat ~/Library/Logs/yume/server.log
 
 # Windows server logs
-type %LOCALAPPDATA%\yurucode\logs\server.log
+type %LOCALAPPDATA%\yume\logs\server.log
 
 # Linux server logs
-cat ~/.yurucode/logs/server.log
+cat ~/.yume/logs/server.log
 ```
 
 **Step 2: Run with debug mode**
 ```bash
 # Set environment variable
 export RUST_LOG=debug
-export YURUCODE_DEBUG=true
+export YUME_DEBUG=true
 
 # macOS
-/Applications/Yurucode.app/Contents/MacOS/Yurucode
+/Applications/Yume.app/Contents/MacOS/Yume
 
 # Windows
-"C:\Program Files\Yurucode\yurucode.exe"
+"C:\Program Files\Yume\yume.exe"
 
 # Linux
-./yurucode
+./yume
 ```
 
 **Step 3: Check process status**
 ```bash
 # See if process is running
-ps aux | grep yurucode
+ps aux | grep yume
 
 # Check port usage (ports are dynamically allocated in 20000-65000 range)
 netstat -an | grep -E "20[0-9]{3}|[3-6][0-9]{4}"
@@ -214,10 +214,10 @@ lsof -i :20000-65000  # macOS/Linux
 ```bash
 # Reset window position (delete state file)
 # macOS
-rm ~/Library/Application\ Support/yurucode/window-state.json
+rm ~/Library/Application\ Support/yume/window-state.json
 
 # Windows
-del %APPDATA%\yurucode\window-state.json
+del %APPDATA%\yume\window-state.json
 ```
 
 2. **Display configuration issue**
@@ -227,7 +227,7 @@ del %APPDATA%\yurucode\window-state.json
 system_profiler SPDisplaysDataType
 
 # Force window to primary display
-defaults write be.yuru.yurucode NSWindow\ Frame\ MainWindow "0 0 1024 768"
+defaults write be.yuru.yume NSWindow\ Frame\ MainWindow "0 0 1024 768"
 ```
 
 3. **GPU driver issues**
@@ -243,36 +243,36 @@ export WEBKIT_DISABLE_COMPOSITING_MODE=1
 **1. Safe mode start**:
 ```bash
 # Start with minimal configuration
-yurucode --safe-mode --disable-gpu --no-sandbox
+yume --safe-mode --disable-gpu --no-sandbox
 ```
 
 **2. Clear all cache and config**:
 ```bash
 # macOS
-rm -rf ~/Library/Application\ Support/yurucode
-rm -rf ~/Library/Caches/yurucode
+rm -rf ~/Library/Application\ Support/yume
+rm -rf ~/Library/Caches/yume
 
 # Windows
-rmdir /s %APPDATA%\yurucode
-rmdir /s %LOCALAPPDATA%\yurucode
+rmdir /s %APPDATA%\yume
+rmdir /s %LOCALAPPDATA%\yume
 
 # Linux
-rm -rf ~/.config/yurucode
-rm -rf ~/.cache/yurucode
+rm -rf ~/.config/yume
+rm -rf ~/.cache/yume
 ```
 
 **3. Check crash dumps**:
 ```bash
 # macOS crash reports
 open ~/Library/Logs/DiagnosticReports/
-# Look for Yurucode*.crash files
+# Look for Yume*.crash files
 
 # Windows
 eventvwr.msc
 # Check Windows Logs > Application
 
 # Linux
-journalctl -xe | grep yurucode
+journalctl -xe | grep yume
 coredumpctl list
 ```
 
@@ -298,7 +298,7 @@ dir "%LOCALAPPDATA%\Claude\claude.exe"
 
 **Step 2: Manual path configuration**
 ```javascript
-// In Yurucode settings, set custom path:
+// In Yume settings, set custom path:
 {
   "claudeBinaryPath": "/custom/path/to/claude"
 }
@@ -319,7 +319,7 @@ export PATH="$PATH:/path/to/claude/directory"
 claude --version
 
 # Check required version
-cat /Applications/Yurucode.app/Contents/Resources/requirements.txt
+cat /Applications/Yume.app/Contents/Resources/requirements.txt
 ```
 
 #### Solution:
@@ -350,7 +350,7 @@ claude config set api_key sk-ant-...
 claude config get api_key
 ```
 
-3. **Yurucode settings**:
+3. **Yume settings**:
 ```json
 {
   "apiKey": "sk-ant-...",
@@ -380,7 +380,7 @@ wsl
 curl -O https://claude-cli-install.sh
 bash claude-cli-install.sh
 
-# 6. Configure path in Yurucode
+# 6. Configure path in Yume
 {
   "claudeBinaryPath": "wsl",
   "wslCommand": "/home/username/.local/bin/claude"
@@ -404,9 +404,9 @@ console.log('Server port:', store.serverPort);
 ```
 
 **Note:** The server runs as a compiled binary on each platform:
-- macOS: `yurucode-server-macos-arm64` (Apple Silicon) or `yurucode-server-macos-x64` (Intel)
-- Windows: `yurucode-server-windows-x64.exe`
-- Linux: `yurucode-server-linux-x64`
+- macOS: `yume-server-macos-arm64` (Apple Silicon) or `yume-server-macos-x64` (Intel)
+- Windows: `yume-server-windows-x64.exe`
+- Linux: `yume-server-linux-x64`
 
 Fallback .cjs files exist for backwards compatibility when binaries fail.
 
@@ -451,7 +451,7 @@ socket.onAny((event, ...args) => {
 **3. Check for blocking hooks**:
 ```bash
 # Disable all hooks temporarily
-mv ~/.config/yurucode/hooks.json ~/.config/yurucode/hooks.json.bak
+mv ~/.config/yume/hooks.json ~/.config/yume/hooks.json.bak
 ```
 
 ### 4.3 Session Disconnects Randomly
@@ -481,7 +481,7 @@ ulimit -u 2048  # Processes
 **3. Memory pressure**:
 ```bash
 # Monitor memory usage
-watch -n 1 'ps aux | grep yurucode'
+watch -n 1 'ps aux | grep yume'
 
 # Check for OOM killer (Linux)
 dmesg | grep -i "killed process"
@@ -498,7 +498,7 @@ dmesg | grep -i "killed process"
 **1. Enable performance monitoring**:
 ```javascript
 // In DevTools console
-localStorage.setItem('yurucode_perf_monitor', 'true');
+localStorage.setItem('yume_perf_monitor', 'true');
 window.location.reload();
 ```
 
@@ -528,10 +528,10 @@ console.log('Violations:', perfMonitor.checkThresholds());
 ```bash
 # Sample CPU usage
 # macOS
-sample Yurucode 10 -file cpu_sample.txt
+sample Yume 10 -file cpu_sample.txt
 
 # Linux
-perf record -p $(pgrep yurucode) -g
+perf record -p $(pgrep yume) -g
 perf report
 
 # Windows
@@ -624,7 +624,7 @@ Check for 404s, failed loads
 **3. React error boundaries**:
 ```javascript
 // Check if error boundary triggered
-localStorage.getItem('yurucode_errors');
+localStorage.getItem('yume_errors');
 ```
 
 **4. Force refresh**:
@@ -710,10 +710,10 @@ kill -9 $(lsof -t -i :PORT_NUMBER)
 ```bash
 # macOS
 sudo /usr/libexec/ApplicationFirewall/socketfilterfw --listapps
-sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /Applications/Yurucode.app
+sudo /usr/libexec/ApplicationFirewall/socketfilterfw --add /Applications/Yume.app
 
 # Windows
-netsh advfirewall firewall add rule name="Yurucode" dir=in action=allow program="C:\Program Files\Yurucode\yurucode.exe"
+netsh advfirewall firewall add rule name="Yume" dir=in action=allow program="C:\Program Files\Yume\yume.exe"
 
 # Linux (allow dynamic port range)
 sudo ufw allow 20000:65000/tcp
@@ -763,16 +763,16 @@ setInterval(() => {
 ```bash
 # Find database
 # macOS
-cp ~/Library/Application\ Support/yurucode/yurucode.db yurucode.db.corrupt
+cp ~/Library/Application\ Support/yume/yume.db yume.db.corrupt
 
 # Windows
-copy %APPDATA%\yurucode\yurucode.db yurucode.db.corrupt
+copy %APPDATA%\yume\yume.db yume.db.corrupt
 ```
 
 **2. Attempt repair**:
 ```sql
 -- Using sqlite3 command
-sqlite3 yurucode.db
+sqlite3 yume.db
 
 -- Check integrity
 PRAGMA integrity_check;
@@ -784,13 +784,13 @@ PRAGMA integrity_check;
 .quit
 
 -- Create new database
-sqlite3 yurucode_new.db < recovered_data.sql
+sqlite3 yume_new.db < recovered_data.sql
 ```
 
 **3. Reset database**:
 ```bash
 # Last resort - delete and recreate
-rm yurucode.db
+rm yume.db
 # App will recreate on next start
 ```
 
@@ -841,15 +841,15 @@ navigator.storage.persist().then(granted => {
 # Monitor memory usage
 # macOS
 while true; do
-  ps -o pid,vsz,rss,comm -p $(pgrep Yurucode)
+  ps -o pid,vsz,rss,comm -p $(pgrep Yume)
   sleep 1
 done
 
 # Windows
-typeperf "\Process(yurucode)\Working Set" -si 1
+typeperf "\Process(yume)\Working Set" -si 1
 
 # Linux
-watch -n 1 'ps aux | grep yurucode'
+watch -n 1 'ps aux | grep yume'
 ```
 
 **2. Heap dump analysis**:
@@ -916,10 +916,10 @@ ulimit -a
 ```bash
 # Grant full disk access
 System Preferences > Security & Privacy > Privacy > Full Disk Access
-# Add Yurucode.app
+# Add Yume.app
 
 # Reset permissions
-tccutil reset All be.yuru.yurucode
+tccutil reset All be.yuru.yume
 ```
 
 #### Issue: Translucent sidebar not working
@@ -939,7 +939,7 @@ killall Dock
 
 **Solutions**:
 ```xml
-<!-- yurucode.exe.manifest -->
+<!-- yume.exe.manifest -->
 <application>
   <windowsSettings>
     <dpiAware>true/PM</dpiAware>
@@ -951,13 +951,13 @@ killall Dock
 **Registry fix**:
 ```reg
 [HKEY_CURRENT_USER\Software\Microsoft\Windows NT\CurrentVersion\AppCompatFlags\Layers]
-"C:\\Program Files\\Yurucode\\yurucode.exe"="~ HIGHDPIAWARE"
+"C:\\Program Files\\Yume\\yume.exe"="~ HIGHDPIAWARE"
 ```
 
 #### Issue: Antivirus false positives
 
 **Solutions**:
-1. Add exclusion for Yurucode folder
+1. Add exclusion for Yume folder
 2. Submit for analysis to antivirus vendor
 3. Sign with EV certificate
 
@@ -998,12 +998,12 @@ export WEBKIT_DISABLE_COMPOSITING_MODE=1
 # Environment variables
 export RUST_LOG=trace
 export RUST_BACKTRACE=full
-export YURUCODE_DEBUG=true
+export YUME_DEBUG=true
 export NODE_ENV=development
 export DEBUG=*
 
 # Launch with debugging
-yurucode --debug --verbose --log-level=trace
+yume --debug --verbose --log-level=trace
 ```
 
 ### 11.2 Logging Configuration
@@ -1019,7 +1019,7 @@ yurucode --debug --verbose --log-level=trace
       "syslog": false
     },
     "filters": {
-      "yurucode": "trace",
+      "yume": "trace",
       "tauri": "debug",
       "wry": "info"
     },
@@ -1036,7 +1036,7 @@ yurucode --debug --verbose --log-level=trace
 **Enable remote debugging**:
 ```bash
 # Start with remote debugging
-yurucode --remote-debugging-port=9222
+yume --remote-debugging-port=9222
 
 # Connect Chrome DevTools
 chrome://inspect/#devices
@@ -1051,11 +1051,11 @@ ulimit -c unlimited
 sudo sysctl -w kern.corefile=/tmp/core.%P
 
 # Generate core dump on crash
-kill -QUIT $(pgrep yurucode)
+kill -QUIT $(pgrep yume)
 
 # Analyze core dump
-lldb yurucode -c /tmp/core.12345
-gdb yurucode /tmp/core.12345
+lldb yume -c /tmp/core.12345
+gdb yume /tmp/core.12345
 ```
 
 ### 11.5 Strace/DTrace Analysis
@@ -1063,10 +1063,10 @@ gdb yurucode /tmp/core.12345
 **System call tracing**:
 ```bash
 # Linux
-strace -f -e trace=all -p $(pgrep yurucode) 2>&1 | tee strace.log
+strace -f -e trace=all -p $(pgrep yume) 2>&1 | tee strace.log
 
 # macOS
-sudo dtruss -p $(pgrep Yurucode) 2>&1 | tee dtrace.log
+sudo dtruss -p $(pgrep Yume) 2>&1 | tee dtrace.log
 
 # Windows (ProcMon)
 procmon.exe /Quiet /Minimized /BackingFile trace.pml
@@ -1111,31 +1111,31 @@ procmon.exe /Quiet /Minimized /BackingFile trace.pml
 ```bash
 # Full reset (nuclear option)
 # macOS
-rm -rf ~/Library/Application\ Support/yurucode
-rm -rf ~/Library/Caches/yurucode
-rm -rf ~/Library/Logs/yurucode
-rm -rf ~/Library/Preferences/be.yuru.yurucode.plist
+rm -rf ~/Library/Application\ Support/yume
+rm -rf ~/Library/Caches/yume
+rm -rf ~/Library/Logs/yume
+rm -rf ~/Library/Preferences/be.yuru.yume.plist
 
 # Windows
-rmdir /s /q %APPDATA%\yurucode
-rmdir /s /q %LOCALAPPDATA%\yurucode
-reg delete HKCU\Software\yurucode /f
+rmdir /s /q %APPDATA%\yume
+rmdir /s /q %LOCALAPPDATA%\yume
+reg delete HKCU\Software\yume /f
 
 # Linux
-rm -rf ~/.config/yurucode
-rm -rf ~/.cache/yurucode
-rm -rf ~/.local/share/yurucode
-rm -rf ~/.yurucode
+rm -rf ~/.config/yume
+rm -rf ~/.cache/yume
+rm -rf ~/.local/share/yume
+rm -rf ~/.yume
 ```
 
 ### Health Check Script
 
 ```bash
 #!/bin/bash
-echo "=== Yurucode Health Check ==="
+echo "=== Yume Health Check ==="
 
 # Check process
-pgrep yurucode > /dev/null && echo "Process running" || echo "Process not running"
+pgrep yume > /dev/null && echo "Process running" || echo "Process not running"
 
 # Check ports (dynamic allocation in 20000-65000 range)
 lsof -i :20000-65000 > /dev/null 2>&1 && echo "Port(s) open" || echo "No ports open"
@@ -1158,10 +1158,10 @@ echo "=== End Health Check ==="
 
 ### Support Channels
 
-1. **GitHub Issues**: https://github.com/yurucode/yurucode/issues
-2. **Discord Community**: https://discord.gg/yurucode
-3. **Email Support**: support@yurucode.app
-4. **Documentation**: https://docs.yurucode.app
+1. **GitHub Issues**: https://github.com/yume/yume/issues
+2. **Discord Community**: https://discord.gg/yume
+3. **Email Support**: support@yume.app
+4. **Documentation**: https://docs.yume.app
 
 ### Information to Provide
 
@@ -1169,7 +1169,7 @@ When reporting issues, include:
 
 1. **System Information**:
 ```bash
-yurucode --version
+yume --version
 uname -a  # or systeminfo on Windows
 claude --version
 ```
@@ -1185,28 +1185,28 @@ claude --version
 ```bash
 #!/bin/bash
 # Create debug bundle
-mkdir yurucode-debug
-cd yurucode-debug
+mkdir yume-debug
+cd yume-debug
 
 # Collect system info
 uname -a > system.txt
-yurucode --version >> system.txt
+yume --version >> system.txt
 
 # Collect logs (macOS)
-cp ~/Library/Logs/yurucode/server.log . 2>/dev/null
+cp ~/Library/Logs/yume/server.log . 2>/dev/null
 
 # Collect logs (Linux - run this instead on Linux)
-# cp ~/.yurucode/logs/server.log . 2>/dev/null
+# cp ~/.yume/logs/server.log . 2>/dev/null
 
 # Create archive
 cd ..
-tar -czf yurucode-debug.tar.gz yurucode-debug/
-echo "Debug bundle created: yurucode-debug.tar.gz"
+tar -czf yume-debug.tar.gz yume-debug/
+echo "Debug bundle created: yume-debug.tar.gz"
 ```
 
 For Windows, collect logs from:
 ```powershell
-copy %LOCALAPPDATA%\yurucode\logs\server.log yurucode-debug\
+copy %LOCALAPPDATA%\yume\logs\server.log yume-debug\
 ```
 
 ---

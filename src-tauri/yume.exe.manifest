@@ -3,10 +3,10 @@
   <assemblyIdentity
     version="1.0.0.0"
     processorArchitecture="amd64"
-    name="be.yuru.yurucode"
+    name="be.yuru.yume"
     type="win32"
   />
-  <description>yurucode - Minimal UI for Claude CLI</description>
+  <description>yume - Minimal UI for Claude CLI</description>
   
   <!-- Windows 10/11 compatibility -->
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">

@@ -1,5 +1,5 @@
 /**
- * Database Service for yurucode
+ * Database Service for yume
  * Provides frontend interface to SQLite backend via Tauri commands
  */
 

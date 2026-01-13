@@ -1,4 +1,4 @@
-# Yurucode Grade Report
+# Yume Grade Report
 
 *Updated Analysis - January 10, 2026*
 
@@ -6,7 +6,7 @@
 
 **Overall Grade: B+ (81%)**
 
-Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and unique capabilities. Native Rust/Tauri architecture outperforms Electron competitors. Code quality is functional but has accumulated technical debt. Zero tests is the biggest risk.
+Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique capabilities. Native Rust/Tauri architecture outperforms Electron competitors. Code quality is functional but has accumulated technical debt. Zero tests is the biggest risk.
 
 **Recent Market Changes:**
 - Claude Code 2.1.0 (Jan 7, 2026) adds session teleportation, skill hot reload, enhanced hooks
@@ -44,36 +44,36 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ### vs Claude Code CLI 2.1.0
 
-| Aspect | CLI 2.1.0 | Yurucode | Winner |
+| Aspect | CLI 2.1.0 | Yume | Winner |
 |--------|-----------|----------|--------|
-| Flickering/Lag | React Ink issues | Native, smooth | **Yurucode** |
-| IME Support | Broken | Native OS handling | **Yurucode** |
-| Quota Tracking | None | 5h + 7-day bars | **Yurucode** |
-| Stream Timers | None | Live durations | **Yurucode** |
-| File Mentions | Type paths | @ autocomplete | **Yurucode** |
-| Config UX | JSON editing | Visual forms | **Yurucode** |
+| Flickering/Lag | React Ink issues | Native, smooth | **Yume** |
+| IME Support | Broken | Native OS handling | **Yume** |
+| Quota Tracking | None | 5h + 7-day bars | **Yume** |
+| Stream Timers | None | Live durations | **Yume** |
+| File Mentions | Type paths | @ autocomplete | **Yume** |
+| Config UX | JSON editing | Visual forms | **Yume** |
 | Session Teleportation | Yes (/teleport) | No | CLI |
 | Skill Hot Reload | Yes | No | CLI |
 | Agent/Skill Hooks | Enhanced | Via wrapper | CLI |
 | Power Features | Native | Wrapped | CLI |
 | Bleeding Edge | First | Delayed | CLI |
 
-**Grade vs CLI: A-** (core UX wins intact, but CLI 2.1.0 adds power features yurucode doesn't expose)
+**Grade vs CLI: A-** (core UX wins intact, but CLI 2.1.0 adds power features yume doesn't expose)
 
 ---
 
 ### vs Cursor ($20-200/mo)
 
-| Aspect | Cursor | Yurucode | Winner |
+| Aspect | Cursor | Yume | Winner |
 |--------|--------|----------|--------|
 | Market Position | $29B, 50% F500 | Indie | Cursor |
-| Performance | Electron memory issues | Native Rust | **Yurucode** |
+| Performance | Electron memory issues | Native Rust | **Yume** |
 | Tab Completion | 250 tok/s | N/A (different product) | Cursor |
-| Price | $240-2400/yr | $21 one-time | **Yurucode** |
+| Price | $240-2400/yr | $21 one-time | **Yume** |
 | Extensions | VS Code ecosystem | None | Cursor |
 | Multi-Model | GPT, Claude, Gemini | Claude only | Cursor |
-| Themes | ~5 | 30 | **Yurucode** |
-| Quota Tracking | None | 5h + 7-day | **Yurucode** |
+| Themes | ~5 | 30 | **Yume** |
+| Quota Tracking | None | 5h + 7-day | **Yume** |
 | Enterprise | SOC2, SSO | None | Cursor |
 | Debug Mode | Visual debugger | None | Cursor |
 
@@ -83,16 +83,16 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ### vs Windsurf ($15/mo) - Wave 13
 
-| Aspect | Windsurf | Yurucode | Winner |
+| Aspect | Windsurf | Yume | Winner |
 |--------|----------|----------|--------|
 | UX Polish | Excellent | Excellent | Tie |
 | Auto-Context | Best in class | Manual | Windsurf |
-| Performance | Electron | Native Rust | **Yurucode** |
-| Price | $180/yr | $21 one-time | **Yurucode** |
-| Themes | ~3 | 30 | **Yurucode** |
+| Performance | Electron | Native Rust | **Yume** |
+| Price | $180/yr | $21 one-time | **Yume** |
+| Themes | ~3 | 30 | **Yume** |
 | Multi-Agent | Wave 13 git worktrees | 5 built-in agents | Tie |
 | Context Meter | Yes (Wave 13) | Yes | Tie |
-| Quota Tracking | None | 5h + 7-day | **Yurucode** |
+| Quota Tracking | None | 5h + 7-day | **Yume** |
 | Previews | Website preview in IDE | N/A | Windsurf |
 | Memories | Yes | No | Windsurf |
 | Enterprise | SOC2 coming | None | Windsurf |
@@ -103,23 +103,23 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ### vs Opcode (Free, Direct Competitor) - 15K+ Stars
 
-| Aspect | Opcode | Yurucode | Winner |
+| Aspect | Opcode | Yume | Winner |
 |--------|--------|----------|--------|
 | Price | Free | $21 | Opcode |
 | GitHub Stars | 15K+ | Private | Opcode |
 | CLI Feature Parity | Claims yes | Via wrapper | Opcode |
-| 5h/7d Limits | No | Yes | **Yurucode** |
-| Built-in Agents | 0 | 5 | **Yurucode** |
-| Themes | 0 | 30 | **Yurucode** |
-| Hook Events | 0 | 9 | **Yurucode** |
-| Yurucode Guard | No | Yes | **Yurucode** |
-| @ Mentions | No | Yes | **Yurucode** |
-| Stream Timers | No | Yes | **Yurucode** |
-| Ultrathink | No | Yes | **Yurucode** |
-| Crash Recovery | No | Yes | **Yurucode** |
-| Keyboard Shortcuts | Few | 32+ | **Yurucode** |
-| Custom Commands | No | 12 defaults | **Yurucode** |
-| Bash Mode | No | Yes | **Yurucode** |
+| 5h/7d Limits | No | Yes | **Yume** |
+| Built-in Agents | 0 | 5 | **Yume** |
+| Themes | 0 | 30 | **Yume** |
+| Hook Events | 0 | 9 | **Yume** |
+| Yume Guard | No | Yes | **Yume** |
+| @ Mentions | No | Yes | **Yume** |
+| Stream Timers | No | Yes | **Yume** |
+| Ultrathink | No | Yes | **Yume** |
+| Crash Recovery | No | Yes | **Yume** |
+| Keyboard Shortcuts | Few | 32+ | **Yume** |
+| Custom Commands | No | 12 defaults | **Yume** |
+| Bash Mode | No | Yes | **Yume** |
 | CLAUDE.md Editor | Yes | Yes | Tie |
 | Session Forking | Yes | No | Opcode |
 | MCP Support | Yes | Yes | Tie |
@@ -131,17 +131,17 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ### vs Aider (CLI + Browser + VS Code)
 
-| Aspect | Aider | Yurucode | Winner |
+| Aspect | Aider | Yume | Winner |
 |--------|-------|----------|--------|
 | Context Fetching | Best (treesitter+AST) | Via Claude | Aider |
 | Git Integration | Native auto-commit | Via Claude | Aider |
 | Multi-Model | Any LLM (DeepSeek, GPT-5, etc.) | Claude only | Aider |
 | Interface Options | CLI, Browser, VS Code | Desktop app | Aider |
 | Architect/Editor | Yes (SOTA approach) | Via Claude agents | Aider |
-| Learning Curve | Steeper | Easier | **Yurucode** |
-| Visual Polish | Basic | Full GUI with themes | **Yurucode** |
-| Quota Tracking | None | 5h + 7-day | **Yurucode** |
-| Native Desktop | No | Yes (Tauri) | **Yurucode** |
+| Learning Curve | Steeper | Easier | **Yume** |
+| Visual Polish | Basic | Full GUI with themes | **Yume** |
+| Quota Tracking | None | 5h + 7-day | **Yume** |
+| Native Desktop | No | Yes (Tauri) | **Yume** |
 
 **Grade vs Aider: B** (Aider added browser/VS Code modes, but still different philosophies)
 
@@ -149,14 +149,14 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ### vs Cline (VS Code Extension, Free)
 
-| Aspect | Cline | Yurucode | Winner |
+| Aspect | Cline | Yume | Winner |
 |--------|-------|----------|--------|
 | Price | API costs only | $21 + API | Cline |
 | IDE Integration | Full VS Code | Standalone | Cline |
 | Cost Transparency | Per-request | Session totals | Tie |
 | MCP | Can create tools | Uses tools | Cline |
-| Desktop Native | No (extension) | Yes (Tauri) | **Yurucode** |
-| Themes | VS Code themes | 30 custom | **Yurucode** |
+| Desktop Native | No (extension) | Yes (Tauri) | **Yume** |
+| Themes | VS Code themes | 30 custom | **Yume** |
 
 **Grade vs Cline: B** (different integration model)
 
@@ -173,7 +173,7 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
                        |
     -------------------|-------------------
                        |
-         Yurucode ★    |  Opcode
+         Yume ★    |  Opcode
          (unique       |  (free but
           features)    |   basic)
                        |
@@ -190,7 +190,7 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 | Segment | Grade | Notes |
 |---------|-------|-------|
 | vs IDE Tools | B | Different category, can't compete on tab completion |
-| vs Direct Competitors | A- | Opcode improved but yurucode still leads on features |
+| vs Direct Competitors | A- | Opcode improved but yume still leads on features |
 | vs CLI Tools | A- | Best GUI wrapper, but CLI 2.1.0 has power features we don't expose |
 | vs Extensions | B | Standalone vs integrated tradeoffs |
 
@@ -198,8 +198,8 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ## Unique Advantages (No Competitor Has)
 
-1. **5h + 7-day Anthropic limit tracking** - Only yurucode shows actual subscription limits
-2. **Yurucode Guard** - Built-in security hook blocking dangerous commands
+1. **5h + 7-day Anthropic limit tracking** - Only yume shows actual subscription limits
+2. **Yume Guard** - Built-in security hook blocking dangerous commands
 3. **5 built-in agents** - architect, explorer, implementer, guardian, specialist
 4. **@ mention system** - @r, @m, folder navigation with autocomplete
 5. **Stream timers** - Live thinking/bash/compacting durations
@@ -289,7 +289,7 @@ Yurucode is a feature-rich, polished Claude Code GUI with excellent UX and uniqu
 
 ## TL;DR
 
-**Yurucode = technically superior Claude Code GUI with 12+ unique features, held back by internal code quality issues.**
+**Yume = technically superior Claude Code GUI with 12+ unique features, held back by internal code quality issues.**
 
 Ship it, sell it, but refactor before major feature additions. Zero tests is unacceptable for production software.
 

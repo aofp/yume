@@ -190,7 +190,7 @@
   font-family: var(--font-mono);
   font-size: var(--text-base);
   color: rgba(255, 255, 255, 0.8);
-  line-height: 1.6;
+  line-height: var(--leading-normal);
 }
 
 .agent-output::-webkit-scrollbar {

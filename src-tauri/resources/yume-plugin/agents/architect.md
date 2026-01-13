@@ -1,5 +1,5 @@
 ---
-name: yurucode-architect
+name: yume-architect
 model: sonnet
 description: proactively use this agent before implementing complex features. plans architecture, decomposes tasks into steps, identifies dependencies and risks. use this first when task has 3+ steps.
 ---

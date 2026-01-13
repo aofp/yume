@@ -17,6 +17,7 @@ mod claude_binary;  // Claude binary detection and environment setup
 mod claude_session; // Session management and ID extraction
 mod claude_spawner; // Claude process spawning and coordination
 mod stream_parser;  // Stream JSON parsing for Claude output
+mod app;            // App metadata constants derived from package.json
 mod commands;       // Tauri IPC commands exposed to the frontend
 mod process;        // Process registry for tracking and managing Claude processes
 mod state;          // Application state management (sessions, settings, etc.)
@@ -39,16 +40,19 @@ use tracing::{info, error};
 
 use claude::ClaudeManager;
 use state::AppState;
+use app::{APP_ID, APP_IDENTIFIER, APP_NAME};
 
 /// Check if user is licensed by reading the persisted license store
-/// Returns true if licensed, false if trial mode
+/// Returns true if licensed, false if demo mode
 fn is_user_licensed() -> bool {
     // Try to find the license store file
     let app_data_dir = dirs::data_dir()
         .or_else(|| dirs::config_dir())
         .unwrap_or_else(|| PathBuf::from("."));
 
-    let store_path = app_data_dir.join("be.yuru.yurucode").join("yurucode-license-v3.json");
+    let store_path = app_data_dir
+        .join(APP_IDENTIFIER)
+        .join(format!("{}-license-v3.json", APP_ID));
 
     if let Ok(content) = fs::read_to_string(&store_path) {
         // Check if isLicensed is true in the stored data
@@ -62,7 +66,9 @@ fn is_user_licensed() -> bool {
     }
 
     // Also check the tauri store path format
-    let tauri_store_path = app_data_dir.join("be.yuru.yurucode").join(".yurucode-license-v3.dat");
+    let tauri_store_path = app_data_dir
+        .join(APP_IDENTIFIER)
+        .join(format!(".{}-license-v3.dat", APP_ID));
     if let Ok(content) = fs::read_to_string(&tauri_store_path) {
         if content.contains("\"isLicensed\":true") {
             return true;
@@ -98,7 +104,7 @@ pub fn run() {
 
     // Check license status early to determine single-instance behavior
     let is_licensed = is_user_licensed();
-    info!("License status: {}", if is_licensed { "licensed" } else { "trial" });
+    info!("License status: {}", if is_licensed { "licensed" } else { "demo" });
 
     // Build the Tauri application with required plugins
     let mut builder = tauri::Builder::default()
@@ -108,16 +114,22 @@ pub fn run() {
         .plugin(tauri_plugin_store::Builder::new().build()) // Persistent storage for settings/state
         .plugin(tauri_plugin_clipboard_manager::init());    // Clipboard operations for copy/paste
 
-    // Only enforce single-instance for trial users
+    // Only enforce single-instance for demo users
     if !is_licensed {
         builder = builder.plugin(tauri_plugin_single_instance::init(move |app, _argv, _cwd| {
             // This callback is called on the FIRST instance when a second instance tries to launch
             // Focus the existing window and show a notification
             if let Some(window) = app.get_webview_window("main") {
-                let _ = window.set_focus();
+                // CRITICAL: Do NOT call set_focus() on macOS - it disrupts webview's internal focus state
+                // causing the textarea to lose focus randomly. The webview handles focus better without it.
+                // See also: commands/mod.rs:2198 for detailed explanation
+                #[cfg(not(target_os = "macos"))]
+                {
+                    let _ = window.set_focus();
+                }
                 let _ = window.unminimize();
-                // Emit event to frontend to show trial limit message
-                let _ = window.emit("trial-instance-blocked", ());
+                // Emit event to frontend to show demo limit message
+                let _ = window.emit("demo-instance-blocked", ());
                 info!("Trial mode: second instance blocked, focused existing window");
             }
         }));
@@ -126,7 +138,7 @@ pub fn run() {
     builder
         .setup(|app| {
             // Application setup phase - runs once at startup
-            info!("Starting yurucode Tauri app");
+    info!("Starting {} Tauri app", APP_NAME);
 
             // Clean up stale git lock files from previous crashed sessions
             commands::cleanup_stale_git_locks_on_startup();
@@ -195,8 +207,8 @@ pub fn run() {
             // This helps distinguish dev instances from production
             #[cfg(debug_assertions)]
             {
-                let _ = window.set_title("yuru code (dev)");
-                info!("Set window title to: yuru code (dev)");
+                let _ = window.set_title(&format!("{} (dev)", APP_NAME));
+                info!("Set window title to: {} (dev)", APP_NAME);
             }
             
             // Restore previous window size and position from persistent storage
@@ -250,7 +262,15 @@ pub fn run() {
                     // This prevents the brief flash of an improperly positioned window
                     std::thread::sleep(std::time::Duration::from_millis(200));
                     let _ = window_clone.show();
-                    let _ = window_clone.set_focus();
+
+                    // CRITICAL: Do NOT call set_focus() on macOS - it disrupts webview's internal focus state
+                    // causing the textarea to lose focus randomly. The webview handles focus better without it.
+                    // macOS automatically focuses the window when shown, no manual intervention needed.
+                    // See also: commands/mod.rs:2198 for detailed explanation
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        let _ = window_clone.set_focus();
+                    }
                     info!("Window shown and focused after initialization");
 
                     // WORKAROUND: Force a tiny resize to trigger WebView2 transparency
@@ -272,22 +292,22 @@ pub fn run() {
             
             // DevTools configuration for debugging
             // In debug builds, DevTools can be opened with F12
-            // YURUCODE_SHOW_CONSOLE environment variable forces DevTools open
+            // YUME_SHOW_CONSOLE environment variable forces DevTools open
             #[cfg(debug_assertions)]
             {
-                if logged_server::YURUCODE_SHOW_CONSOLE {
+                if logged_server::YUME_SHOW_CONSOLE {
                     window.open_devtools();
-                    info!("DevTools FORCED OPEN (YURUCODE_SHOW_CONSOLE=true)");
+                    info!("DevTools FORCED OPEN (YUME_SHOW_CONSOLE=true)");
                 } else {
                     // DevTools not auto-opened in debug builds anymore
                     // Use F12 to open DevTools when needed
                     info!("DevTools available via F12 (debug build)");
                 }
             }
-            
+
             #[cfg(not(debug_assertions))]
             {
-                if logged_server::YURUCODE_SHOW_CONSOLE {
+                if logged_server::YUME_SHOW_CONSOLE {
                     info!("DevTools would be forced open but not available in release build");
                     info!("To enable DevTools in release, rebuild in debug mode");
                 }
@@ -815,7 +835,7 @@ pub fn run() {
             // Inject critical styles and debugging code into the webview
             // This ensures the OLED black theme is applied immediately
             // Also provides debugging info if React fails to mount
-            window.eval(r#"
+            let transparency_script = r#"
                 console.log('Tauri window.eval executed!');
                 console.log('Current URL:', window.location.href);
                 console.log('Document ready state:', document.readyState);
@@ -823,7 +843,7 @@ pub fn run() {
                 console.log('Root element:', document.getElementById('root'));
 
                 // Get saved opacity from localStorage (default to 97)
-                const savedOpacity = localStorage.getItem('yurucode-bg-opacity');
+                const savedOpacity = localStorage.getItem('__APP_ID__-bg-opacity');
                 const opacityPercent = savedOpacity ? parseInt(savedOpacity, 10) : 97;
                 const alpha = Math.max(0, Math.min(1, opacityPercent / 100));
 
@@ -854,7 +874,7 @@ pub fn run() {
                 }
 
                 const style = document.createElement('style');
-                style.id = 'yurucode-transparency-styles';
+                style.id = '__APP_ID__-transparency-styles';
                 style.textContent = `
                     :root {
                         --bg-color: ` + bgColor + `;
@@ -914,7 +934,8 @@ pub fn run() {
                         }
                     }, 2000);
                 }
-            "#).ok();
+            "#.replace("__APP_ID__-", &format!("{}-", APP_ID));
+            window.eval(&transparency_script).ok();
 
             Ok(())
         })
@@ -1054,7 +1075,6 @@ pub fn run() {
             commands::delete_custom_command,
             commands::delete_project_command,
             commands::load_all_commands,
-            commands::migrate_commands_to_filesystem,
             // Plugin operations
             commands::plugins::plugin_list,
             commands::plugins::plugin_install,
@@ -1067,13 +1087,14 @@ pub fn run() {
             commands::plugins::plugin_rescan,
             commands::plugins::plugin_init_bundled,
             commands::plugins::plugin_cleanup_on_exit,
-            commands::plugins::sync_yurucode_agents,
-            commands::plugins::are_yurucode_agents_synced,
-            commands::plugins::cleanup_yurucode_agents_on_exit,
+            commands::plugins::sync_yume_agents,
+            commands::plugins::are_yume_agents_synced,
+            commands::plugins::cleanup_yume_agents_on_exit,
             // VSCode extension
             commands::plugins::is_vscode_installed,
             commands::plugins::check_vscode_extension_installed,
             commands::plugins::install_vscode_extension,
+            commands::plugins::uninstall_vscode_extension,
             // Rollback conflict detection
             commands::get_file_mtime,
             commands::check_file_conflicts,
@@ -1094,9 +1115,9 @@ pub fn run() {
                     // Note: The destroyed window is already removed from the list
                     if remaining_windows.is_empty() {
                         info!("Last window destroyed, stopping server and cleaning up...");
-                        // Clean up yurucode plugin synced files (commands, agents, skills)
+                        // Clean up core plugin synced files (commands, agents, skills)
                         if let Err(e) = commands::plugins::plugin_cleanup_on_exit() {
-                            error!("Failed to cleanup yurucode plugin: {}", e);
+                            error!("Failed to cleanup core plugin: {}", e);
                         }
                         // Kill all bash processes first
                         commands::kill_all_bash_processes();
@@ -1116,9 +1137,9 @@ pub fn run() {
     // Final cleanup when the app exits normally
     // Ensures all child processes are terminated
     info!("App exiting normally, cleaning up...");
-    // Clean up yurucode plugin synced files (commands, agents, skills)
+    // Clean up core plugin synced files (commands, agents, skills)
     if let Err(e) = commands::plugins::plugin_cleanup_on_exit() {
-        error!("Failed to cleanup yurucode plugin: {}", e);
+        error!("Failed to cleanup core plugin: {}", e);
     }
     commands::kill_all_bash_processes();
     logged_server::stop_logged_server();

@@ -3,7 +3,10 @@
  * Tracks critical performance metrics for production optimization
  */
 
+import { APP_ID, appStorageKey } from '../config/app';
 import { log } from '../utils/logger';
+
+const PERF_MONITOR_KEY = appStorageKey('perf_monitor', '_');
 
 interface PerformanceMetric {
   name: string;
@@ -30,7 +33,7 @@ class PerformanceMonitor {
   private memoryMonitorInterval: ReturnType<typeof setInterval> | null = null;
   private lastFrameTime: number = 0;
   private frameCount: number = 0;
-  private enabled: boolean = !import.meta.env.PROD || localStorage.getItem('yurucode_perf_monitor') === 'true';
+  private enabled: boolean = !import.meta.env.PROD || localStorage.getItem(PERF_MONITOR_KEY) === 'true';
   
   // Performance thresholds
   private thresholds: PerformanceThreshold[] = [
@@ -181,9 +184,9 @@ class PerformanceMonitor {
    */
   public mark(name: string): void {
     if (!this.enabled) return;
-    
+
     this.marks.set(name, performance.now());
-    performance.mark(`yurucode-${name}-start`);
+    performance.mark(`${APP_ID}-${name}-start`);
   }
 
   /**
@@ -212,11 +215,11 @@ class PerformanceMonitor {
 
     // Use Performance API if available
     try {
-      performance.mark(`yurucode-${name}-end`);
+      performance.mark(`${APP_ID}-${name}-end`);
       performance.measure(
-        `yurucode-${name}`,
-        `yurucode-${startMark || name}-start`,
-        `yurucode-${name}-end`
+        `${APP_ID}-${name}`,
+        `${APP_ID}-${startMark || name}-start`,
+        `${APP_ID}-${name}-end`
       );
     } catch (e) {
       // Ignore if marks don't exist
@@ -357,7 +360,7 @@ class PerformanceMonitor {
    */
   public setEnabled(enabled: boolean): void {
     this.enabled = enabled;
-    localStorage.setItem('yurucode_perf_monitor', enabled ? 'true' : 'false');
+    localStorage.setItem(PERF_MONITOR_KEY, enabled ? 'true' : 'false');
     
     if (enabled && !this.observer) {
       this.initializeObserver();

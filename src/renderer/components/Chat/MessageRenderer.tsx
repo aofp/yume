@@ -35,6 +35,7 @@ import {
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { isBashPrefix } from '../../utils/helpers';
+import { APP_AGENT_PREFIX, APP_ID } from '../../config/app';
 import './MessageRenderer.css';
 
 // Selection preservation utilities for streaming messages
@@ -45,6 +46,12 @@ interface SelectionState {
   endOffset: number;
   selectedText: string;
 }
+
+const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const AGENT_TYPE_REGEX = new RegExp(
+  `${escapeRegExp(APP_AGENT_PREFIX)}(\\w+)|subagent_type[=:]\\s*['"]?([^'">\\s,]+)`,
+  'i'
+);
 
 // Get path from root to a node (array of child indices)
 const getNodePath = (root: Node, node: Node): number[] | null => {
@@ -376,8 +383,8 @@ const formatPathWithWorkingDir = (path: string, workingDir?: string): string => 
   // Remove any remaining absolute path prefixes
   if (unixPath.startsWith('/mnt/c/')) {
     const parts = unixPath.split('/');
-    // Find project folder (yurucode or testproject)
-    const projectIdx = parts.findIndex(p => p === 'yurucode' || p === 'testproject');
+    // Find project folder (app root or testproject)
+    const projectIdx = parts.findIndex(p => p === APP_ID || p === 'testproject');
     if (projectIdx !== -1) {
       unixPath = parts.slice(projectIdx + 1).join('/');
     }
@@ -924,7 +931,7 @@ const renderContent = (content: string | ContentBlock[] | undefined, message?: a
           // Render agent launch messages with clean UI
           if (block.text && block.text.includes('Async agent launched successfully')) {
             const agentIdMatch = block.text.match(/agentId:\s*([a-f0-9]+)/);
-            const agentTypeMatch = block.text.match(/yurucode-(\w+)|subagent_type[=:]\s*['"]?([^'">\s,]+)/i);
+            const agentTypeMatch = block.text.match(AGENT_TYPE_REGEX);
             const agentId = agentIdMatch?.[1] || '';
             const agentType = agentTypeMatch?.[1] || agentTypeMatch?.[2] || 'agent';
             return (

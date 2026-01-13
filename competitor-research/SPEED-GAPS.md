@@ -1,6 +1,6 @@
-# Speed Gaps Analysis: yurucode vs Competitors
+# Speed Gaps Analysis: yume vs Competitors
 
-## Current yurucode Speed Advantages
+## Current yume Speed Advantages
 
 ### Already Best-in-Class ⚡
 1. **Keyboard shortcuts** - 30+ shortcuts, most comprehensive of any gui wrapper
@@ -10,7 +10,7 @@
 5. **Tab management** - cmd+t/w/d/1-9, no competitor has this depth
 6. **Ultrathink shortcut** - cmd+k, unique feature
 7. **Bash mode prefixes** - !/$ for instant shell, unique
-8. **Context compaction** - cmd+m, only yurucode has this shortcut
+8. **Context compaction** - cmd+m, only yume has this shortcut
 9. **Duplicate tab** - cmd+d, unique workflow accelerator
 
 ---
@@ -20,7 +20,7 @@
 ### HIGH PRIORITY - Competitors are WAY ahead
 
 #### 1. Parallel Agent Execution (sculptor/cursor/windsurf)
-**gap**: yurucode = single session, competitors = 8 agents simultaneously
+**gap**: yume = single session, competitors = 8 agents simultaneously
 **impact**: 8x productivity loss for complex tasks
 **solution**: implement parallel tab execution with shared context
 
@@ -101,7 +101,7 @@
 
 ## Speed Opportunity: What NO competitor has
 
-### yurucode can be FIRST with:
+### yume can be FIRST with:
 
 1. **Instant tab duplication with context** - cmd+d already exists, enhance with smart context preservation
 2. **Predictive command suggestions** - analyze patterns, suggest before user types
@@ -118,7 +118,7 @@
 
 ## Competitive Speed Summary
 
-| Competitor | Key Speed Advantage | yurucode Must Beat With |
+| Competitor | Key Speed Advantage | yume Must Beat With |
 |------------|---------------------|-------------------------|
 | sculptor | parallel containers | parallel tabs + isolation |
 | opcode | custom agents | agent library + templates |
@@ -138,4 +138,4 @@
 | Shortcut response | ~50ms | <16ms | - |
 | Search results | ~300ms | <100ms | - |
 
-yurucode's path to dominance: **FASTEST NATIVE UI + MOST SHORTCUTS + PARALLEL AGENTS + PREVIEW**
+yume's path to dominance: **FASTEST NATIVE UI + MOST SHORTCUTS + PARALLEL AGENTS + PREVIEW**

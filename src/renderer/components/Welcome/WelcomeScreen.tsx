@@ -4,7 +4,7 @@ import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { invoke } from '@tauri-apps/api/core';
-import { APP_NAME, APP_VERSION } from '../../config/app';
+import { APP_NAME, APP_VERSION, appStorageKey } from '../../config/app';
 import './WelcomeScreen.css';
 import '../Chat/ClaudeChat.css'; // for stats modal styles
 
@@ -33,6 +33,9 @@ interface RecentProject {
   accessCount?: number;
 }
 
+const USAGE_LIMITS_CACHE_KEY = appStorageKey('usage_limits_cache');
+const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
+
 export const WelcomeScreen: React.FC = () => {
   const { createSession, autoCompactEnabled, setAutoCompactEnabled } = useClaudeCodeStore();
   const { isLicensed } = useLicenseStore();
@@ -50,12 +53,11 @@ export const WelcomeScreen: React.FC = () => {
 
   // Fetch usage limits with 10-min cache
   const fetchUsageLimits = useCallback((force = false) => {
-    const CACHE_KEY = 'yurucode_usage_limits_cache';
     const CACHE_DURATION = 10 * 60 * 1000;
 
     if (!force) {
       try {
-        const cached = localStorage.getItem(CACHE_KEY);
+        const cached = localStorage.getItem(USAGE_LIMITS_CACHE_KEY);
         if (cached) {
           const { data, timestamp } = JSON.parse(cached);
           if (Date.now() - timestamp < CACHE_DURATION) {
@@ -73,7 +75,7 @@ export const WelcomeScreen: React.FC = () => {
       .then(data => {
         setUsageLimits(data);
         try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
+          localStorage.setItem(USAGE_LIMITS_CACHE_KEY, JSON.stringify({ data, timestamp: Date.now() }));
         } catch (e) {}
       })
       .catch(err => console.error('Failed to fetch usage limits:', err));
@@ -88,7 +90,7 @@ export const WelcomeScreen: React.FC = () => {
   useEffect(() => {
     // Load recent projects from localStorage
     const loadRecentProjects = () => {
-      const stored = localStorage.getItem('yurucode-recent-projects');
+      const stored = localStorage.getItem(RECENT_PROJECTS_KEY);
       if (stored) {
         try {
           const projects = JSON.parse(stored).map((p: any) => ({
@@ -207,7 +209,7 @@ export const WelcomeScreen: React.FC = () => {
     ].slice(0, 10);
 
     setRecentProjects(updated);
-    localStorage.setItem('yurucode-recent-projects', JSON.stringify(updated));
+    localStorage.setItem(RECENT_PROJECTS_KEY, JSON.stringify(updated));
 
     // Create new session with this folder
     createSession(name, path);
@@ -352,12 +354,12 @@ export const WelcomeScreen: React.FC = () => {
               window.dispatchEvent(new CustomEvent('showAboutModal'));
             } else {
               window.dispatchEvent(new CustomEvent('showUpgradeModal', {
-                detail: { reason: 'trial' }
+                detail: { reason: 'demo' }
               }));
             }
           }}
         >
-          {APP_NAME} {APP_VERSION}{!isLicensed && <> <strong>trial</strong></>}
+          {APP_NAME} {APP_VERSION}{!isLicensed && <> <strong>demo</strong></>}
         </span>
       </div>
 

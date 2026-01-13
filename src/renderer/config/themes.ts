@@ -17,10 +17,10 @@ export type Theme = {
 
 export const BUILT_IN_THEMES: Theme[] = [
   // === SIGNATURE ===
-  // yurucode - the original, kept exactly as-is
+  // yume - the original signature theme
   {
-    id: 'yurucode',
-    name: 'yurucode',
+    id: 'yume',
+    name: 'yume',
     backgroundColor: '#0f0f0f',
     foregroundColor: '#ffffff',
     accentColor: '#c4b5ff',
@@ -186,7 +186,7 @@ export const BUILT_IN_THEMES: Theme[] = [
   }
 ];
 
-// Default theme is the first one (yurucode)
+// Default theme is the first one (yume)
 export const DEFAULT_THEME = BUILT_IN_THEMES[0];
 
 // Helper to get theme by ID

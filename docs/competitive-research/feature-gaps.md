@@ -4,7 +4,7 @@
 
 ## Executive Summary
 
-Yurucode has achieved **complete feature parity and superiority**. We have unique features no competitor offers. Only 2 remaining gaps:
+Yume has achieved **complete feature parity and superiority**. We have unique features no competitor offers. Only 2 remaining gaps:
 1. **Command palette** (Cmd+P or Cmd+Shift+K)
 2. **Light mode**
 
@@ -14,7 +14,7 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 
 ### P0 - Must Have (Competitive Baseline) ✅ COMPLETE
 
-| Feature | Claude Code CLI | Cursor | Yurucode Status |
+| Feature | Claude Code CLI | Cursor | Yume Status |
 |---------|-----------------|--------|-----------------|
 | Smooth input (no lag) | Broken | Yes | ✅ Native rendering |
 | Stable rendering | Broken | Issues v0.45+ | ✅ Best in class |
@@ -27,7 +27,7 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 
 ### P1 - Should Have (Competitive Advantage) ✅ COMPLETE
 
-| Feature | Claude Code CLI | Competitors | Yurucode Status |
+| Feature | Claude Code CLI | Competitors | Yume Status |
 |---------|-----------------|-------------|-----------------|
 | Visual file tree | No | Cursor/Windsurf: Yes | ✅ Full w/ git status |
 | Visual diff preview | No | Cursor: Yes | ✅ DiffViewer component |
@@ -40,7 +40,7 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 
 ### P2 - Nice to Have (Delight Features) ✅ MOSTLY COMPLETE
 
-| Feature | Description | Yurucode Status |
+| Feature | Description | Yume Status |
 |---------|-------------|-----------------|
 | Parallel agents visual | See multiple agents working | ✅ AgentsModal + 5 built-in |
 | Agent activity timeline | Visual history of agent actions | ✅ Enabled |
@@ -65,7 +65,7 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 
 ## Competitive Feature Matrix
 
-| Feature | Claude CLI | Cursor | Windsurf | Opcode | Yurucode |
+| Feature | Claude CLI | Cursor | Windsurf | Opcode | Yume |
 |---------|------------|--------|----------|--------|----------|
 | Smooth UI | No | Yes | Yes | ? | ✅ Yes |
 | File tree | No | Yes | Yes | Yes | ✅ Yes (w/ git) |
@@ -80,7 +80,7 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 | Built-in agents | No | No | No | No | ✅ **5 agents** |
 | Custom commands | No | No | No | No | ✅ **Yes** |
 | Hooks system | Partial | Partial | No | No | ✅ **9 events** |
-| Security guard | No | No | No | No | ✅ **Yurucode Guard** |
+| Security guard | No | No | No | No | ✅ **Yume Guard** |
 | Themes | No | ~5 | ~3 | No | ✅ **30 themes** |
 | Auto-compaction | Yes | No | No | No | ✅ 60%/65% |
 | Crash recovery | No | No | No | No | ✅ **UNIQUE** |
@@ -97,12 +97,12 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 
 ---
 
-## Unique Yurucode Features (No Competitor Has)
+## Unique Yume Features (No Competitor Has)
 
 | Feature | Description |
 |---------|-------------|
 | **5h + 7-day limit tracking** | Visual quota bars in context bar |
-| **Yurucode Guard** | Built-in security hook (blocks rm -rf, sudo, etc.) |
+| **Yume Guard** | Built-in security hook (blocks rm -rf, sudo, etc.) |
 | **5 built-in agents** | architect, explorer, implementer, guardian, specialist |
 | **@ mention system** | @r (recent files), @m (modified files), folder navigation |
 | **Stream timers** | Live thinking/bash/compacting duration |
@@ -159,7 +159,7 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 2. ✅ Visual agent status (AgentsModal + 5 built-in)
 3. ✅ Conversation search
 4. ✅ Custom commands system (/clear, /model, /title, /init, /compact)
-5. ✅ Hooks system (9 events + Yurucode Guard)
+5. ✅ Hooks system (9 events + Yume Guard)
 6. ✅ @ mention system (@r, @m, folders)
 7. ✅ Ultrathink support (Cmd+K + highlighting)
 8. ✅ Git panel with line stats
@@ -190,9 +190,9 @@ Yurucode has achieved **complete feature parity and superiority**. We have uniqu
 - Git panel with +/- stats
 - Window state persistence
 - 30 themes
-- 5 built-in yurucode agents
+- 5 built-in yume agents
 - Custom slash commands
-- 9 hook events + Yurucode Guard
+- 9 hook events + Yume Guard
 - MCP visual manager
 - Checkpoints + Timeline
 - Auto-compaction at 60%/65%

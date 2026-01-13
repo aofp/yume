@@ -189,10 +189,10 @@ The market is consolidating around a few winners:
 
 ---
 
-## Opportunities for Yurucode
+## Opportunities for Yume
 
 ### Competitive Position
-Yurucode occupies a unique niche: **Native desktop GUI for the best AI coding CLI**.
+Yume occupies a unique niche: **Native desktop GUI for the best AI coding CLI**.
 
 This is NOT competing with Cursor/Windsurf (full IDEs). It's solving a specific problem (terminal flicker) for Claude Code users.
 
@@ -213,7 +213,7 @@ This is NOT competing with Cursor/Windsurf (full IDEs). It's solving a specific 
 
 ### ✅ Recently Completed
 
-1. ✅ **Checkpoints enabled** - DONE, visual UI unique to yurucode
+1. ✅ **Checkpoints enabled** - DONE, visual UI unique to yume
 2. ✅ **Timeline navigator** - DONE, unique feature
 3. ✅ **30 themes** - DONE, best in class
 4. ✅ **5 built-in agents** - DONE, unique
@@ -230,7 +230,7 @@ This is NOT competing with Cursor/Windsurf (full IDEs). It's solving a specific 
 
 1. **Memories system** - Persist preferences. Cursor/Windsurf have it.
 
-Note: Tab completion removed - it's an IDE/editor feature. Yurucode is a chat interface, different product category.
+Note: Tab completion removed - it's an IDE/editor feature. Yume is a chat interface, different product category.
 
 ### What NOT to Do
 
@@ -255,8 +255,8 @@ Note: Tab completion removed - it's an IDE/editor feature. Yurucode is a chat in
 - Native performance becomes expected (Electron fatigue)
 - Tab completion becomes commodity
 
-### For Yurucode
-**Current status**: Yurucode IS the best Claude Code GUI with multiple unique features.
+### For Yume
+**Current status**: Yume IS the best Claude Code GUI with multiple unique features.
 **Best case**: Maintain unique feature advantage, grow user base.
 **Risk**: Anthropic releases official desktop app.
 **Mitigation**: Stay complementary with unique features (checkpoints UI, agents, commands, themes) that CLI can't match.

@@ -4,6 +4,8 @@ use std::path::PathBuf;
 use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
+use crate::app::APP_ID;
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct MCPServer {
     pub name: String,
@@ -58,13 +60,13 @@ impl MCPManager {
         // Use dirs crate for cross-platform config directory
         let app_dir = dirs::config_dir()
             .expect("Failed to get config directory")
-            .join("yurucode");
-        
+            .join(APP_ID);
+
         // Ensure directory exists
         if !app_dir.exists() {
             fs::create_dir_all(&app_dir).expect("Failed to create config directory");
         }
-        
+
         app_dir.join("mcp_config.json")
     }
 

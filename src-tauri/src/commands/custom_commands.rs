@@ -249,24 +249,3 @@ pub fn load_all_commands(cached_commands: Option<Vec<CustomCommand>>) -> Result<
     }
 }
 
-/// Migrate commands from localStorage to file system
-/// This is called when we detect commands in localStorage that aren't in the file system
-#[tauri::command]
-pub fn migrate_commands_to_filesystem(commands: Vec<CustomCommand>) -> Result<(), String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-    
-    let commands_dir = home_dir.join(".claude").join("commands");
-    
-    // Save each command to the file system
-    for command in commands {
-        // Skip if it's already from the file system
-        if !command.id.starts_with("cached-") {
-            continue;
-        }
-        
-        save_command_to_directory(&command, &commands_dir)?;
-    }
-    
-    Ok(())
-}

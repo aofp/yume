@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::fs;
 use rand::Rng;
 use tracing::{info, warn, debug};
+use crate::app::APP_ID;
 
 // Store allocated ports to avoid conflicts between multiple servers
 // Note: This is per-process, not shared between app instances
@@ -35,7 +36,7 @@ fn get_port_cache_path() -> Option<PathBuf> {
     } else {
         "last_port.txt"
     };
-    dirs::config_dir().map(|p| p.join("yurucode").join(filename))
+    dirs::config_dir().map(|p| p.join(APP_ID).join(filename))
 }
 
 /// Loads the cached port from disk

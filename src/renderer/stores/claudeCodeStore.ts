@@ -9,7 +9,41 @@ import { invoke } from '@tauri-apps/api/core';
 import { claudeCodeClient } from '../services/claudeCodeClient';
 import { systemPromptService } from '../services/systemPromptService';
 import { isBashPrefix } from '../utils/helpers';
+import { appEventName, appStorageKey } from '../config/app';
 import { loadEnabledTools, DEFAULT_ENABLED_TOOLS, ALL_TOOLS } from '../config/tools';
+
+const SESSIONS_KEY = appStorageKey('sessions');
+const SESSIONS_TIMESTAMP_KEY = appStorageKey('sessions-timestamp');
+const SESSION_MAPPINGS_KEY = appStorageKey('session-mappings');
+const CURRENT_SESSION_KEY = appStorageKey('current-session');
+const WORD_WRAP_KEY = appStorageKey('word-wrap');
+const WORD_WRAP_CODE_KEY = appStorageKey('word-wrap-code');
+const SOUND_ON_COMPLETE_KEY = appStorageKey('sound-on-complete');
+const SHOW_RESULT_STATS_KEY = appStorageKey('show-result-stats');
+const AUTO_COMPACT_ENABLED_KEY = appStorageKey('auto-compact-enabled');
+const MONO_FONT_KEY = appStorageKey('mono-font');
+const SANS_FONT_KEY = appStorageKey('sans-font');
+const FONT_SIZE_KEY = appStorageKey('font-size');
+const LINE_HEIGHT_KEY = appStorageKey('line-height');
+const BG_OPACITY_KEY = appStorageKey('bg-opacity');
+const REMEMBER_TABS_KEY = appStorageKey('remember-tabs');
+const SAVED_TABS_KEY = appStorageKey('saved-tabs');
+const SAVED_TABS_ENHANCED_KEY = appStorageKey('saved-tabs-enhanced');
+const AUTO_GENERATE_TITLE_KEY = appStorageKey('auto-generate-title');
+const SHOW_PROJECTS_MENU_KEY = appStorageKey('show-projects-menu');
+const SHOW_AGENTS_MENU_KEY = appStorageKey('show-agents-menu');
+const SHOW_ANALYTICS_MENU_KEY = appStorageKey('show-analytics-menu');
+const SHOW_COMMANDS_SETTINGS_KEY = appStorageKey('show-commands-settings');
+const SHOW_MCP_SETTINGS_KEY = appStorageKey('show-mcp-settings');
+const SHOW_HOOKS_SETTINGS_KEY = appStorageKey('show-hooks-settings');
+const SHOW_PLUGINS_SETTINGS_KEY = appStorageKey('show-plugins-settings');
+const SHOW_SKILLS_SETTINGS_KEY = appStorageKey('show-skills-settings');
+const VSCODE_EXTENSION_ENABLED_KEY = appStorageKey('vscode-extension-enabled');
+const AGENTS_KEY = appStorageKey('agents');
+const CURRENT_AGENT_KEY = appStorageKey('current-agent');
+
+const RESTORE_INPUT_EVENT = appEventName('restore-input');
+const CHECK_RESUMABLE_EVENT = appEventName('check-resumable');
 
 // Fast message hash for deduplication - much faster than JSON.stringify comparison
 // Uses message id + type + content signature
@@ -370,7 +404,7 @@ interface ClaudeCodeStore {
   sessions: Session[];
   currentSessionId: string | null;
   persistedSessionId: string | null; // Track the sessionId for persistence
-  sessionMappings: Record<string, any>; // Map yurucode sessionIds to Claude sessionIds
+  sessionMappings: Record<string, any>; // Map yume sessionIds to Claude sessionIds
 
   // Model
   selectedModel: string;
@@ -385,8 +419,8 @@ interface ClaudeCodeStore {
   // Font customization
   monoFont: string; // Monospace font for code
   sansFont: string; // Sans-serif font for UI
-  fontSize: number; // Base font size in px (default 11)
-  lineHeight: number; // Line height multiplier (default 1.5)
+  fontSize: number; // Base font size in px (default 12)
+  lineHeight: number; // Line height multiplier (default 1.2)
 
   // Tab persistence
   rememberTabs: boolean; // Whether to remember open tabs
@@ -642,8 +676,8 @@ const persistSessions = (sessions: Session[]) => {
       modifiedFiles: s.modifiedFiles ? Array.from(s.modifiedFiles) : [], // Convert Set to Array for storage
       wasCompacted: s.wasCompacted // Preserve compacted state
     }));
-    localStorage.setItem('yurucode-sessions', JSON.stringify(sessionData));
-    localStorage.setItem('yurucode-sessions-timestamp', Date.now().toString()); // Add timestamp for validation
+    localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessionData));
+    localStorage.setItem(SESSIONS_TIMESTAMP_KEY, Date.now().toString()); // Add timestamp for validation
     console.log('[Store] Persisted', sessions.length, 'sessions to localStorage with',
       sessionData.reduce((acc, s) => acc + s.messages.length, 0), 'total messages');
   } catch (err) {
@@ -654,8 +688,8 @@ const persistSessions = (sessions: Session[]) => {
 // Helper to restore sessions from localStorage
 const restoreSessions = (): Session[] => {
   try {
-    const stored = localStorage.getItem('yurucode-sessions');
-    const timestamp = localStorage.getItem('yurucode-sessions-timestamp');
+    const stored = localStorage.getItem(SESSIONS_KEY);
+    const timestamp = localStorage.getItem(SESSIONS_TIMESTAMP_KEY);
 
     if (stored) {
       // Check if sessions are stale (older than 24 hours)
@@ -663,8 +697,8 @@ const restoreSessions = (): Session[] => {
         const age = Date.now() - parseInt(timestamp);
         if (age > 24 * 60 * 60 * 1000) {
           console.log('[Store] Sessions are older than 24 hours, clearing');
-          localStorage.removeItem('yurucode-sessions');
-          localStorage.removeItem('yurucode-sessions-timestamp');
+          localStorage.removeItem(SESSIONS_KEY);
+          localStorage.removeItem(SESSIONS_TIMESTAMP_KEY);
           return [];
         }
       }
@@ -744,20 +778,20 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       globalWatermarkImage: null,
       monoFont: 'Agave', // Default monospace font
       sansFont: 'Agave', // Default sans-serif font
-      fontSize: 11, // Default base font size in px
-      lineHeight: 1.25, // Default line height multiplier
+      fontSize: 12, // Default base font size in px
+      lineHeight: 1.2, // Default line height multiplier
       rememberTabs: false, // Default to not remembering tabs (disabled by default)
       savedTabs: [], // Empty array of saved tabs
       autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
       wordWrap: (() => {
         // Check both old and new keys for backwards compatibility
-        let stored = localStorage.getItem('yurucode-word-wrap');
+        let stored = localStorage.getItem(WORD_WRAP_KEY);
         if (stored === null) {
           // Migrate from old key if present
-          stored = localStorage.getItem('yurucode-word-wrap-code');
+          stored = localStorage.getItem(WORD_WRAP_CODE_KEY);
           if (stored !== null) {
-            localStorage.setItem('yurucode-word-wrap', stored);
-            localStorage.removeItem('yurucode-word-wrap-code');
+            localStorage.setItem(WORD_WRAP_KEY, stored);
+            localStorage.removeItem(WORD_WRAP_CODE_KEY);
           }
         }
         const enabled = stored !== null ? JSON.parse(stored) : true;
@@ -768,15 +802,15 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         return enabled;
       })(), // Load from localStorage or default to true
       soundOnComplete: (() => {
-        const stored = localStorage.getItem('yurucode-sound-on-complete');
+        const stored = localStorage.getItem(SOUND_ON_COMPLETE_KEY);
         return stored ? JSON.parse(stored) : true;
       })(), // Load from localStorage or default to true
       showResultStats: (() => {
-        const stored = localStorage.getItem('yurucode-show-result-stats');
+        const stored = localStorage.getItem(SHOW_RESULT_STATS_KEY);
         return stored ? JSON.parse(stored) : true;
       })(), // Load from localStorage or default to true
       autoCompactEnabled: (() => {
-        const stored = localStorage.getItem('yurucode-auto-compact-enabled');
+        const stored = localStorage.getItem(AUTO_COMPACT_ENABLED_KEY);
         return stored ? JSON.parse(stored) : true;
       })(), // Load from localStorage or default to true
       showProjectsMenu: false, // Default to hidden
@@ -800,7 +834,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
       setSelectedModel: (modelId: string) => {
         set({ selectedModel: modelId });
-        // Sync yurucode agents with new model
+        // Sync yume agents with new model
         const modelName = modelId.includes('opus') ? 'opus' : 'sonnet';
         systemPromptService.syncAgentsToFilesystem(modelName);
         console.log('Model changed to:', modelId);
@@ -815,12 +849,12 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         console.trace('[Store] Stack trace for createSession');
 
         try {
-          // License check: Enforce tab limit for trial users
+          // License check: Enforce tab limit for demo users
           const currentState = get();
 
           // Check if existingSessionId is a Claude session ID (26 chars, alphanumeric with _/-)
           // Claude session IDs: exactly 26 characters, used for --resume flag
-          // Yurucode session IDs: variable format like 'session-xxx' or 'temp-xxx'
+          // Yume session IDs: variable format like 'session-xxx' or 'temp-xxx'
           const isClaudeSessionId = existingSessionId &&
             existingSessionId.length === 26 &&
             /^[a-zA-Z0-9_-]+$/.test(existingSessionId);
@@ -839,7 +873,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
           // Only enforce for new sessions, not existing ones (direct resume counts as new)
           if (!existingSession && !directResumeClaudeId && currentState.sessions.length >= maxTabs) {
-            console.log('[Store] Tab limit reached for trial mode:', maxTabs);
+            console.log('[Store] Tab limit reached for demo mode:', maxTabs);
             // Dispatch event to show upgrade modal
             window.dispatchEvent(new CustomEvent('showUpgradeModal', {
               detail: { reason: 'tabLimit', currentTabs: currentState.sessions.length, maxTabs }
@@ -979,7 +1013,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
 
             // Create or resume session using Claude Code Client
             // Pass claudeSessionId if:
-            // 1. We're reconnecting an existing yurucode session (not compacted)
+            // 1. We're reconnecting an existing yume session (not compacted)
             // 2. OR we're doing a direct resume from .claude/projects
             const claudeSessionIdToResume = directResumeClaudeId ||
               (actualExistingSessionId && !existingSession?.wasCompacted
@@ -1008,7 +1042,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               model: resolveModelId(selectedModel),
               sessionId: actualExistingSessionId || tempSessionId, // Pass the sessionId for consistency
               claudeSessionId: claudeSessionIdToResume, // Pass claudeSessionId for resuming
-              messages: actualExistingSessionId ? (existingSession?.messages || []) : [] // Pass messages only if resuming yurucode session
+              messages: actualExistingSessionId ? (existingSession?.messages || []) : [] // Pass messages only if resuming yume session
             });
 
             const sessionId = result.sessionId || tempSessionId;
@@ -1076,7 +1110,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                   s.id === tempSessionId ? activeSession : s
                 );
               persistSessions(newSessions); // Persist after update
-              localStorage.setItem('yurucode-current-session', sessionId);
+              localStorage.setItem(CURRENT_SESSION_KEY, sessionId);
 
               // Save tabs if remember tabs is enabled
               const storeState = get();
@@ -2960,7 +2994,7 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         // Simply update the current session ID without making server calls
         // Server reconnection will happen lazily when actually sending a message
         set({ currentSessionId: sessionId });
-        localStorage.setItem('yurucode-current-session', sessionId);
+        localStorage.setItem(CURRENT_SESSION_KEY, sessionId);
       },
 
       sendMessage: async (content: string, bashMode?: boolean) => {
@@ -3267,7 +3301,7 @@ ${content}`;
         // Server reconnection will happen lazily when actually sending a message
         set({ currentSessionId: sessionId });
         set({ persistedSessionId: sessionId });
-        localStorage.setItem('yurucode-current-session', sessionId);
+        localStorage.setItem(CURRENT_SESSION_KEY, sessionId);
 
         // Save tabs if remember tabs is enabled (to track active tab)
         if (state.rememberTabs) {
@@ -3849,9 +3883,9 @@ ${content}`;
           }
 
           if (newCurrentId) {
-            localStorage.setItem('yurucode-current-session', newCurrentId);
+            localStorage.setItem(CURRENT_SESSION_KEY, newCurrentId);
           } else {
-            localStorage.removeItem('yurucode-current-session');
+            localStorage.removeItem(CURRENT_SESSION_KEY);
           }
           return {
             sessions: newSessions,
@@ -3874,13 +3908,13 @@ ${content}`;
           currentSessionId: null,
           streamingMessage: ''
         });
-        localStorage.removeItem('yurucode-sessions');
-        localStorage.removeItem('yurucode-current-session');
+        localStorage.removeItem(SESSIONS_KEY);
+        localStorage.removeItem(CURRENT_SESSION_KEY);
 
         // Clear saved tabs when deleting all sessions
         const storeState = get();
         if (storeState.rememberTabs) {
-          localStorage.removeItem('yurucode-saved-tabs');
+          localStorage.removeItem(SAVED_TABS_KEY);
           set({ savedTabs: [] });
         }
       },
@@ -4001,7 +4035,7 @@ ${content}`;
         if (pendingCompactMessage) {
           console.log(`⛔ [Store] Compaction interrupted - will restore message to input: "${pendingCompactMessage.slice(0, 50)}..."`);
           // Emit event so UI can restore message to input
-          window.dispatchEvent(new CustomEvent('yurucode-restore-input', {
+          window.dispatchEvent(new CustomEvent(RESTORE_INPUT_EVENT, {
             detail: { sessionId: sessionIdToInterrupt, message: pendingCompactMessage }
           }));
           // Also clear from wrapperIntegration to prevent followup being sent
@@ -4212,7 +4246,7 @@ ${content}`;
         });
 
         // Trigger resume button check by dispatching event
-        window.dispatchEvent(new CustomEvent('yurucode-check-resumable'));
+        window.dispatchEvent(new CustomEvent(CHECK_RESUMABLE_EVENT));
 
         // Reset backend compaction flags to prevent stale auto-compact triggers
         invoke('reset_compaction_flags', { sessionId }).catch(error => {
@@ -4294,7 +4328,7 @@ ${content}`;
           ? (sonnetModel?.id || DEFAULT_MODEL_ID)
           : (opusModel?.id || DEFAULT_MODEL_ID);
         set({ selectedModel: newModel });
-        // Sync yurucode agents with new model
+        // Sync yume agents with new model
         const modelName = newModel.includes('opus') ? 'opus' : 'sonnet';
         systemPromptService.syncAgentsToFilesystem(modelName);
         console.log(`🔄 Model toggled to: ${newModel.includes('opus') ? 'Opus' : 'Sonnet'}`);
@@ -4801,7 +4835,7 @@ ${content}`;
         // Apply to CSS variable with proper formatting
         document.documentElement.style.setProperty('--font-mono', `"${font}", monospace`);
         // Save to localStorage
-        localStorage.setItem('yurucode-mono-font', font);
+        localStorage.setItem(MONO_FONT_KEY, font);
         console.log('[Store] Set mono font:', font);
       },
 
@@ -4810,7 +4844,7 @@ ${content}`;
         // Apply to CSS variable with proper formatting
         document.documentElement.style.setProperty('--font-sans', `"${font}", sans-serif`);
         // Save to localStorage
-        localStorage.setItem('yurucode-sans-font', font);
+        localStorage.setItem(SANS_FONT_KEY, font);
         console.log('[Store] Set sans font:', font);
       },
 
@@ -4819,14 +4853,13 @@ ${content}`;
         const clampedSize = Math.max(8, Math.min(18, size));
         set({ fontSize: clampedSize });
 
-        // Calculate all font size variables proportionally
-        // Ratios based on original design (base=14: xs=11, sm=12, lg=16, xl=20, 2xl=24)
-        const xs = Math.round(clampedSize * 0.786);
-        const sm = Math.round(clampedSize * 0.857);
+        // Calculate all font size variables proportionally (more subtle differences)
+        const xs = Math.round(clampedSize * 0.9);
+        const sm = Math.round(clampedSize * 0.95);
         const base = clampedSize;
-        const lg = Math.round(clampedSize * 1.143);
-        const xl = Math.round(clampedSize * 1.429);
-        const xxl = Math.round(clampedSize * 1.714);
+        const lg = Math.round(clampedSize * 1.05);
+        const xl = Math.round(clampedSize * 1.1);
+        const xxl = Math.round(clampedSize * 1.2);
 
         // Apply to CSS variables
         document.documentElement.style.setProperty('--text-xs', `${xs}px`);
@@ -4837,17 +4870,17 @@ ${content}`;
         document.documentElement.style.setProperty('--text-2xl', `${xxl}px`);
 
         // Save to localStorage
-        localStorage.setItem('yurucode-font-size', String(clampedSize));
+        localStorage.setItem(FONT_SIZE_KEY, String(clampedSize));
         console.log('[Store] Set font size:', clampedSize, 'px');
       },
 
       setLineHeight: (height: number) => {
-        // Clamp between 1.0 and 2.0
-        const clampedHeight = Math.max(1.0, Math.min(2.0, height));
+        // Clamp between 0.9 and 2.0
+        const clampedHeight = Math.max(0.9, Math.min(2.0, height));
         set({ lineHeight: clampedHeight });
 
         // Calculate line height variations
-        const tight = Math.max(1.0, clampedHeight - 0.3);
+        const tight = Math.max(0.9, clampedHeight - 0.3);
         const normal = clampedHeight;
         const relaxed = clampedHeight + 0.25;
 
@@ -4857,7 +4890,7 @@ ${content}`;
         document.documentElement.style.setProperty('--leading-relaxed', String(relaxed));
 
         // Save to localStorage
-        localStorage.setItem('yurucode-line-height', String(clampedHeight));
+        localStorage.setItem(LINE_HEIGHT_KEY, String(clampedHeight));
         console.log('[Store] Set line height:', clampedHeight);
       },
 
@@ -4883,14 +4916,14 @@ ${content}`;
         }
 
         // Save to localStorage
-        localStorage.setItem('yurucode-bg-opacity', clampedOpacity.toString());
+        localStorage.setItem(BG_OPACITY_KEY, clampedOpacity.toString());
         console.log('[Store] Set background opacity:', clampedOpacity, 'alpha:', alpha, 'color:', bgColor);
       },
 
       // Tab persistence
       setRememberTabs: (remember: boolean) => {
         set({ rememberTabs: remember });
-        localStorage.setItem('yurucode-remember-tabs', JSON.stringify(remember));
+        localStorage.setItem(REMEMBER_TABS_KEY, JSON.stringify(remember));
 
         if (remember) {
           // Save current tabs immediately when enabled
@@ -4898,7 +4931,7 @@ ${content}`;
           state.saveTabs();
         } else {
           // Clear saved tabs when disabled
-          localStorage.removeItem('yurucode-saved-tabs');
+          localStorage.removeItem(SAVED_TABS_KEY);
           set({ savedTabs: [] });
         }
         console.log('[Store] Remember tabs:', remember);
@@ -4920,8 +4953,8 @@ ${content}`;
         const tabPaths = tabData.map(t => t.path);
         set({ savedTabs: tabPaths });
 
-        localStorage.setItem('yurucode-saved-tabs', JSON.stringify(tabPaths));
-        localStorage.setItem('yurucode-saved-tabs-enhanced', JSON.stringify(tabData));
+        localStorage.setItem(SAVED_TABS_KEY, JSON.stringify(tabPaths));
+        localStorage.setItem(SAVED_TABS_ENHANCED_KEY, JSON.stringify(tabData));
         console.log('[Store] Saved tab paths:', tabPaths);
       },
 
@@ -4930,8 +4963,8 @@ ${content}`;
         if (!state.rememberTabs) return;
 
         // Try to load enhanced format first, fall back to legacy format
-        const enhancedStored = localStorage.getItem('yurucode-saved-tabs-enhanced');
-        const legacyStored = localStorage.getItem('yurucode-saved-tabs');
+        const enhancedStored = localStorage.getItem(SAVED_TABS_ENHANCED_KEY);
+        const legacyStored = localStorage.getItem(SAVED_TABS_KEY);
 
         if (!enhancedStored && !legacyStored) return;
 
@@ -4999,13 +5032,13 @@ ${content}`;
 
       setAutoGenerateTitle: (autoGenerate: boolean) => {
         set({ autoGenerateTitle: autoGenerate });
-        localStorage.setItem('yurucode-auto-generate-title', JSON.stringify(autoGenerate));
+        localStorage.setItem(AUTO_GENERATE_TITLE_KEY, JSON.stringify(autoGenerate));
         console.log('[Store] Auto-generate title:', autoGenerate);
       },
 
       setWordWrap: (wrap: boolean) => {
         set({ wordWrap: wrap });
-        localStorage.setItem('yurucode-word-wrap', JSON.stringify(wrap));
+        localStorage.setItem(WORD_WRAP_KEY, JSON.stringify(wrap));
         // Apply CSS class to document for global content wrapping
         if (wrap) {
           document.documentElement.classList.add('word-wrap');
@@ -5017,7 +5050,7 @@ ${content}`;
 
       setSoundOnComplete: (enabled: boolean) => {
         set({ soundOnComplete: enabled });
-        localStorage.setItem('yurucode-sound-on-complete', JSON.stringify(enabled));
+        localStorage.setItem(SOUND_ON_COMPLETE_KEY, JSON.stringify(enabled));
         console.log('[Store] Sound on complete:', enabled);
       },
 
@@ -5110,59 +5143,59 @@ ${content}`;
 
       setShowResultStats: (show: boolean) => {
         set({ showResultStats: show });
-        localStorage.setItem('yurucode-show-result-stats', JSON.stringify(show));
+        localStorage.setItem(SHOW_RESULT_STATS_KEY, JSON.stringify(show));
         console.log('[Store] Show result stats:', show);
       },
 
       setAutoCompactEnabled: (enabled: boolean) => {
         set({ autoCompactEnabled: enabled });
-        localStorage.setItem('yurucode-auto-compact-enabled', JSON.stringify(enabled));
+        localStorage.setItem(AUTO_COMPACT_ENABLED_KEY, JSON.stringify(enabled));
         console.log('[Store] Auto-compact enabled:', enabled);
       },
 
       setShowProjectsMenu: (show: boolean) => {
         set({ showProjectsMenu: show });
-        localStorage.setItem('yurucode-show-projects-menu', JSON.stringify(show));
+        localStorage.setItem(SHOW_PROJECTS_MENU_KEY, JSON.stringify(show));
       },
 
       setShowAgentsMenu: (show: boolean) => {
         set({ showAgentsMenu: show });
-        localStorage.setItem('yurucode-show-agents-menu', JSON.stringify(show));
+        localStorage.setItem(SHOW_AGENTS_MENU_KEY, JSON.stringify(show));
       },
 
       setShowAnalyticsMenu: (show: boolean) => {
         set({ showAnalyticsMenu: show });
-        localStorage.setItem('yurucode-show-analytics-menu', JSON.stringify(show));
+        localStorage.setItem(SHOW_ANALYTICS_MENU_KEY, JSON.stringify(show));
       },
 
       setShowCommandsSettings: (show: boolean) => {
         set({ showCommandsSettings: show });
-        localStorage.setItem('yurucode-show-commands-settings', JSON.stringify(show));
+        localStorage.setItem(SHOW_COMMANDS_SETTINGS_KEY, JSON.stringify(show));
       },
 
       setShowMcpSettings: (show: boolean) => {
         set({ showMcpSettings: show });
-        localStorage.setItem('yurucode-show-mcp-settings', JSON.stringify(show));
+        localStorage.setItem(SHOW_MCP_SETTINGS_KEY, JSON.stringify(show));
       },
 
       setShowHooksSettings: (show: boolean) => {
         set({ showHooksSettings: show });
-        localStorage.setItem('yurucode-show-hooks-settings', JSON.stringify(show));
+        localStorage.setItem(SHOW_HOOKS_SETTINGS_KEY, JSON.stringify(show));
       },
 
       setShowPluginsSettings: (show: boolean) => {
         set({ showPluginsSettings: show });
-        localStorage.setItem('yurucode-show-plugins-settings', JSON.stringify(show));
+        localStorage.setItem(SHOW_PLUGINS_SETTINGS_KEY, JSON.stringify(show));
       },
 
       setShowSkillsSettings: (show: boolean) => {
         set({ showSkillsSettings: show });
-        localStorage.setItem('yurucode-show-skills-settings', JSON.stringify(show));
+        localStorage.setItem(SHOW_SKILLS_SETTINGS_KEY, JSON.stringify(show));
       },
 
       setVscodeExtensionEnabled: (enabled: boolean) => {
         set({ vscodeExtensionEnabled: enabled });
-        localStorage.setItem('yurucode-vscode-extension-enabled', JSON.stringify(enabled));
+        localStorage.setItem(VSCODE_EXTENSION_ENABLED_KEY, JSON.stringify(enabled));
       },
 
       setVscodeStatus: (connected: boolean, count: number) => {
@@ -5178,7 +5211,7 @@ ${content}`;
         const agents = [...get().agents, agent];
         set({ agents });
         // Persist to localStorage
-        localStorage.setItem('yurucode-agents', JSON.stringify(agents));
+        localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
         console.log('[Store] Added agent:', agent.name);
       },
 
@@ -5188,7 +5221,7 @@ ${content}`;
         );
         set({ agents });
         // Persist to localStorage
-        localStorage.setItem('yurucode-agents', JSON.stringify(agents));
+        localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
         console.log('[Store] Updated agent:', updatedAgent.name);
       },
 
@@ -5200,7 +5233,7 @@ ${content}`;
           set({ currentAgentId: null });
         }
         // Persist to localStorage
-        localStorage.setItem('yurucode-agents', JSON.stringify(agents));
+        localStorage.setItem(AGENTS_KEY, JSON.stringify(agents));
         console.log('[Store] Deleted agent:', agentId);
       },
 
@@ -5208,9 +5241,9 @@ ${content}`;
         set({ currentAgentId: agentId });
         // Persist selection to localStorage
         if (agentId) {
-          localStorage.setItem('yurucode-current-agent', agentId);
+          localStorage.setItem(CURRENT_AGENT_KEY, agentId);
         } else {
-          localStorage.removeItem('yurucode-current-agent');
+          localStorage.removeItem(CURRENT_AGENT_KEY);
         }
         console.log('[Store] Selected agent:', agentId);
       },
@@ -5231,7 +5264,7 @@ ${content}`;
         });
         set({ agents: mergedAgents });
         // Persist to localStorage
-        localStorage.setItem('yurucode-agents', JSON.stringify(mergedAgents));
+        localStorage.setItem(AGENTS_KEY, JSON.stringify(mergedAgents));
         console.log('[Store] Imported', newAgents.length, 'agents');
       },
 
@@ -5252,7 +5285,7 @@ ${content}`;
         set({ sessionMappings: mappings });
 
         // Save to localStorage
-        localStorage.setItem('yurucode-session-mappings', JSON.stringify(mappings));
+        localStorage.setItem(SESSION_MAPPINGS_KEY, JSON.stringify(mappings));
 
         // Update server with the mapping
         claudeClient.updateSessionMetadata(sessionId, {
@@ -5267,7 +5300,7 @@ ${content}`;
 
       loadSessionMappings: () => {
         try {
-          const stored = localStorage.getItem('yurucode-session-mappings');
+          const stored = localStorage.getItem(SESSION_MAPPINGS_KEY);
           if (stored) {
             const mappings = JSON.parse(stored);
             set({ sessionMappings: mappings });
@@ -5280,7 +5313,7 @@ ${content}`;
 
       saveSessionMappings: () => {
         const state = get();
-        localStorage.setItem('yurucode-session-mappings', JSON.stringify(state.sessionMappings));
+        localStorage.setItem(SESSION_MAPPINGS_KEY, JSON.stringify(state.sessionMappings));
         console.log('[Store] Saved session mappings:', Object.keys(state.sessionMappings).length);
       },
 

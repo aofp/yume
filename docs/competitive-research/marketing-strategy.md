@@ -1,6 +1,6 @@
 # Marketing & Positioning Strategy
 
-*How to position yurucode in the AI coding tools market*
+*How to position yume in the AI coding tools market*
 
 ## Market Context
 
@@ -23,14 +23,14 @@
 
 ### Current Landscape
 
-| Position | Occupants | Yurucode Opportunity |
+| Position | Occupants | Yume Opportunity |
 |----------|-----------|---------------------|
 | "AI IDE" | Cursor, Windsurf | Not competing here |
 | "Terminal AI" | Claude Code CLI, Aider | Direct competition |
 | "IDE Plugin" | Copilot, Continue, Cline | Not competing here |
 | "Claude Desktop GUI" | **Nobody** | **Open position** |
 
-### Yurucode's Unique Position
+### Yume's Unique Position
 
 ```
 "Claude Code, without the lag"
@@ -101,7 +101,7 @@ The full power of Claude Code, freed from terminal limitations.
 
 ### vs Claude Code CLI
 
-| Aspect | CLI | Yurucode |
+| Aspect | CLI | Yume |
 |--------|-----|----------|
 | UI | Terminal (laggy) | Desktop (smooth) |
 | Input | 10s delays | <50ms |
@@ -113,7 +113,7 @@ The full power of Claude Code, freed from terminal limitations.
 
 ### vs Cursor
 
-| Aspect | Cursor | Yurucode |
+| Aspect | Cursor | Yume |
 |--------|--------|----------|
 | Type | Full IDE | Claude wrapper |
 | Size | Heavy | Lightweight |
@@ -125,7 +125,7 @@ The full power of Claude Code, freed from terminal limitations.
 
 ### vs Aider
 
-| Aspect | Aider | Yurucode |
+| Aspect | Aider | Yume |
 |--------|-------|----------|
 | Interface | CLI | GUI |
 | Model | Any LLM | Claude |
@@ -177,14 +177,14 @@ The full power of Claude Code, freed from terminal limitations.
 ### Types of Content
 
 1. **Comparison Content**
-   - "Claude Code CLI vs Yurucode"
-   - "Why I switched from CLI to Yurucode"
+   - "Claude Code CLI vs Yume"
+   - "Why I switched from CLI to Yume"
    - Side-by-side performance videos
 
 2. **Tutorial Content**
-   - "Getting started with Yurucode"
+   - "Getting started with Yume"
    - "Migrating from Claude Code CLI"
-   - "Yurucode tips and tricks"
+   - "Yume tips and tricks"
 
 3. **Pain Point Content**
    - "Fixing Claude Code's input lag"
@@ -192,7 +192,7 @@ The full power of Claude Code, freed from terminal limitations.
    - "Session management for power users"
 
 4. **Technical Content**
-   - "How we built Yurucode with Tauri"
+   - "How we built Yume with Tauri"
    - "Why native beats terminal for AI tools"
    - Architecture deep dives
 

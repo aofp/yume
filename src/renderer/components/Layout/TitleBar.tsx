@@ -103,19 +103,19 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
   }, []);
 
   return (
-    <div className={`titlebar-wrapper${isDragging ? ' is-dragging' : ''}`} ref={titlebarRef}>
+    <div
+      className={`titlebar-wrapper${isDragging ? ' is-dragging' : ''}`}
+      ref={titlebarRef}
+      onContextMenu={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+      }}
+    >
       <div className="titlebar">
         <div className="titlebar-content">
           {/* Center the title */}
-          <div 
-            className="titlebar-logo centered" 
-            onContextMenu={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              if (!showAboutModal) {
-                setShowAboutModal(true);
-              }
-            }}
+          <div
+            className="titlebar-logo centered"
           >
             <span className="titlebar-text" style={{ opacity: isWindowActive ? 1 : 0.8 }}>
               y<span style={{ color: isDev ? 'var(--negative-color)' : (isWindowActive ? 'var(--accent-color)' : undefined), opacity: isDev && !isWindowActive ? 0.5 : 1 }}>&gt;</span>
@@ -131,8 +131,8 @@ export const TitleBar: React.FC<TitleBarProps> = ({ onSettingsClick }) => {
           setShowAboutModal(false);
           // Small delay to ensure AboutModal closes before UpgradeModal opens
           setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-              detail: { reason: 'trial' } 
+            window.dispatchEvent(new CustomEvent('showUpgradeModal', {
+              detail: { reason: 'demo' }
             }));
           }, 100);
         }}

@@ -3,6 +3,8 @@ use chrono::{DateTime, Utc};
 use rusqlite::{params, Connection, OptionalExtension};
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
+
+use crate::app::APP_ID;
 use std::sync::Mutex;
 
 // Database connection wrapped in a Mutex for thread safety
@@ -79,14 +81,14 @@ impl Database {
         let base_dir = if cfg!(target_os = "windows") {
             dirs::data_dir()
                 .ok_or_else(|| anyhow::anyhow!("Could not determine data directory"))?
-                .join("yurucode")
+                .join(APP_ID)
         } else {
             dirs::home_dir()
                 .ok_or_else(|| anyhow::anyhow!("Could not determine home directory"))?
-                .join(".yurucode")
+                .join(format!(".{}", APP_ID))
         };
-        
-        Ok(base_dir.join("yurucode.db"))
+
+        Ok(base_dir.join(format!("{}.db", APP_ID)))
     }
     
     /// Initialize database schema

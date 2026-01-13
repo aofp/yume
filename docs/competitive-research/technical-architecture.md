@@ -15,7 +15,7 @@
 | **Market Share** | 35% YoY growth | 60% (declining) |
 | **GPU Rendering** | Via system WebView | Chromium |
 
-### Why Tauri Wins for Yurucode
+### Why Tauri Wins for Yume
 
 1. **Performance**
    - 2x lower memory than Electron
@@ -150,7 +150,7 @@ Best of all worlds, but complex to implement.
 
 ---
 
-## Yurucode Architecture
+## Yume Architecture
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -186,7 +186,7 @@ Best of all worlds, but complex to implement.
 | VS Code | 97ms | Electron, acceptable |
 | Cursor | <100ms | Optimized Electron |
 | Claude Code CLI | 100ms-10s | Degrades with history |
-| **Yurucode Target** | <50ms | Tauri + optimized React |
+| **Yume Target** | <50ms | Tauri + optimized React |
 
 ### Memory Usage
 
@@ -196,7 +196,7 @@ Best of all worlds, but complex to implement.
 | VS Code | ~200 MB | 400+ MB |
 | Cursor | ~250 MB | 500+ MB |
 | Claude Code CLI | ~150 MB | 200-500 MB |
-| **Yurucode Target** | <100 MB | <150 MB |
+| **Yume Target** | <100 MB | <150 MB |
 
 ### Startup Time
 
@@ -205,7 +205,7 @@ Best of all worlds, but complex to implement.
 | Zed | <500ms | <200ms |
 | VS Code | 2-3s | 1s |
 | Cursor | 2-4s | 1-2s |
-| **Yurucode Target** | <500ms | <200ms |
+| **Yume Target** | <500ms | <200ms |
 
 ---
 
@@ -280,7 +280,7 @@ Benefits:
 ```javascript
 // Embed MCP server
 const server = new MCPServer({
-  tools: [/* yurucode-specific tools */],
+  tools: [/* yume-specific tools */],
   resources: [/* file access, etc. */]
 });
 ```

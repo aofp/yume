@@ -78,7 +78,7 @@ Codebase deliberately shrinks with model improvements. They deleted ~50% of the 
 
 ## Things We Won't Compete On
 
-| Capability | Claude Code | Yurucode |
+| Capability | Claude Code | Yume |
 |------------|-------------|----------|
 | Model quality | Industry-leading | Uses same model |
 | Agent architecture | Best-in-class | Uses their code |
@@ -117,7 +117,7 @@ Both approaches are valid. Different users, different needs.
 
 If we did our job right:
 
-> "Yurucode is a nice option for users who prefer desktop interfaces. It doesn't compete with Claude Code—it extends its reach to users who can't tolerate terminal rendering issues."
+> "Yume is a nice option for users who prefer desktop interfaces. It doesn't compete with Claude Code—it extends its reach to users who can't tolerate terminal rendering issues."
 
 ---
 
