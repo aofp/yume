@@ -1683,27 +1683,30 @@ app.get('/claude-analytics', async (req, res) => {
                   let messageCount = 0;
                   let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
-                  // Track cumulative usage by summing all assistant messages
+                  // Track cumulative usage - dedupe by requestId to avoid counting streaming chunks multiple times
                   let totalInputTokens = 0;
                   let totalOutputTokens = 0;
                   let totalCacheCreationTokens = 0;
                   let totalCacheReadTokens = 0;
                   let lastResultCostUSD = null;
+                  const seenRequestIds = new Set();
 
                   for (const line of allLines) {
                     try {
                       const data = JSON.parse(line);
 
                       // Claude CLI uses type: "assistant" for assistant messages
-                      // Usage data is per-turn, so we SUM all turns
+                      // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
+                      // Only count each unique requestId once to avoid 2-3x overcounting
                       if (data.type === 'assistant' && data.message) {
                         messageCount++;
                         // Detect model from message
                         if (data.message.model) {
                           sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                         }
-                        // Sum usage from all assistant messages
-                        if (data.message.usage) {
+                        // Dedupe by requestId - only count each request once
+                        if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
+                          seenRequestIds.add(data.requestId);
                           totalInputTokens += data.message.usage.input_tokens || 0;
                           totalOutputTokens += data.message.usage.output_tokens || 0;
                           totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
@@ -1713,11 +1716,14 @@ app.get('/claude-analytics', async (req, res) => {
 
                       // Also check for standalone result messages (legacy format) - these have costUSD
                       if (data.type === 'result' && data.usage) {
-                        // For result messages, sum usage too (shouldn't double count if both exist)
-                        totalInputTokens += data.usage.input_tokens || 0;
-                        totalOutputTokens += data.usage.output_tokens || 0;
-                        totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
-                        totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
+                        // Dedupe result messages too
+                        if (data.requestId && !seenRequestIds.has(data.requestId)) {
+                          seenRequestIds.add(data.requestId);
+                          totalInputTokens += data.usage.input_tokens || 0;
+                          totalOutputTokens += data.usage.output_tokens || 0;
+                          totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
+                          totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
+                        }
                         if (data.costUSD != null) {
                           lastResultCostUSD = (lastResultCostUSD || 0) + data.costUSD;
                         }
@@ -1753,10 +1759,10 @@ app.get('/claude-analytics', async (req, res) => {
                       sessionCost = lastResultCostUSD;
                     } else {
                       const rates = pricing[sessionModel];
-                      sessionCost = (inputTokens * rates.input) +
-                                   (outputTokens * rates.output) +
-                                   (cacheCreationTokens * rates.cacheCreation) +
-                                   (cacheReadTokens * rates.cacheRead);
+                      sessionCost = (totalInputTokens * rates.input) +
+                                   (totalOutputTokens * rates.output) +
+                                   (totalCacheCreationTokens * rates.cacheCreation) +
+                                   (totalCacheReadTokens * rates.cacheRead);
                     }
                   }
                   
@@ -1880,27 +1886,30 @@ app.get('/claude-analytics', async (req, res) => {
                 let messageCount = 0;
                 let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
-                // Track cumulative usage by summing all assistant messages
+                // Track cumulative usage - dedupe by requestId to avoid counting streaming chunks multiple times
                 let totalInputTokens = 0;
                 let totalOutputTokens = 0;
                 let totalCacheCreationTokens = 0;
                 let totalCacheReadTokens = 0;
                 let lastResultCostUSD = null;
+                const seenRequestIds = new Set();
 
                 for (const line of allLines) {
                   try {
                     const data = JSON.parse(line);
 
                     // Claude CLI uses type: "assistant" for assistant messages
-                    // Usage data is per-turn, so we SUM all turns
+                    // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
+                    // Only count each unique requestId once to avoid 2-3x overcounting
                     if (data.type === 'assistant' && data.message) {
                       messageCount++;
                       // Detect model from message
                       if (data.message.model) {
                         sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                       }
-                      // Sum usage from all assistant messages
-                      if (data.message.usage) {
+                      // Dedupe by requestId - only count each request once
+                      if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
+                        seenRequestIds.add(data.requestId);
                         totalInputTokens += data.message.usage.input_tokens || 0;
                         totalOutputTokens += data.message.usage.output_tokens || 0;
                         totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
@@ -1910,10 +1919,14 @@ app.get('/claude-analytics', async (req, res) => {
 
                     // Also check for standalone result messages (legacy format) - these have costUSD
                     if (data.type === 'result' && data.usage) {
-                      totalInputTokens += data.usage.input_tokens || 0;
-                      totalOutputTokens += data.usage.output_tokens || 0;
-                      totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
-                      totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
+                      // Dedupe result messages too
+                      if (data.requestId && !seenRequestIds.has(data.requestId)) {
+                        seenRequestIds.add(data.requestId);
+                        totalInputTokens += data.usage.input_tokens || 0;
+                        totalOutputTokens += data.usage.output_tokens || 0;
+                        totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
+                        totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
+                      }
                       if (data.costUSD != null) {
                         lastResultCostUSD = (lastResultCostUSD || 0) + data.costUSD;
                       }
@@ -1948,10 +1961,10 @@ app.get('/claude-analytics', async (req, res) => {
                     sessionCost = lastResultCostUSD;
                   } else {
                     const rates = pricing[sessionModel];
-                    sessionCost = (inputTokens * rates.input) +
-                                 (outputTokens * rates.output) +
-                                 (cacheCreationTokens * rates.cacheCreation) +
-                                 (cacheReadTokens * rates.cacheRead);
+                    sessionCost = (totalInputTokens * rates.input) +
+                                 (totalOutputTokens * rates.output) +
+                                 (totalCacheCreationTokens * rates.cacheCreation) +
+                                 (totalCacheReadTokens * rates.cacheRead);
                   }
                 }
 
@@ -2052,27 +2065,30 @@ app.get('/claude-analytics', async (req, res) => {
               let messageCount = 0;
               let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
 
-              // Track cumulative usage by summing all assistant messages
+              // Track cumulative usage - dedupe by requestId to avoid counting streaming chunks multiple times
               let totalInputTokens = 0;
               let totalOutputTokens = 0;
               let totalCacheCreationTokens = 0;
               let totalCacheReadTokens = 0;
               let lastResultCostUSD = null;
+              const seenRequestIds = new Set();
 
               for (const line of lines) {
                 try {
                   const data = JSON.parse(line);
 
                   // Claude CLI uses type: "assistant" for assistant messages
-                  // Usage data is per-turn, so we SUM all turns
+                  // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
+                  // Only count each unique requestId once to avoid 2-3x overcounting
                   if (data.type === 'assistant' && data.message) {
                     messageCount++;
                     // Detect model from message
                     if (data.message.model) {
                       sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
                     }
-                    // Sum usage from all assistant messages
-                    if (data.message.usage) {
+                    // Dedupe by requestId - only count each request once
+                    if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
+                      seenRequestIds.add(data.requestId);
                       totalInputTokens += data.message.usage.input_tokens || 0;
                       totalOutputTokens += data.message.usage.output_tokens || 0;
                       totalCacheCreationTokens += data.message.usage.cache_creation_input_tokens || 0;
@@ -2082,10 +2098,14 @@ app.get('/claude-analytics', async (req, res) => {
 
                   // Also check for standalone result messages (legacy format) - these have costUSD
                   if (data.type === 'result' && data.usage) {
-                    totalInputTokens += data.usage.input_tokens || 0;
-                    totalOutputTokens += data.usage.output_tokens || 0;
-                    totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
-                    totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
+                    // Dedupe result messages too
+                    if (data.requestId && !seenRequestIds.has(data.requestId)) {
+                      seenRequestIds.add(data.requestId);
+                      totalInputTokens += data.usage.input_tokens || 0;
+                      totalOutputTokens += data.usage.output_tokens || 0;
+                      totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
+                      totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
+                    }
                     if (data.costUSD != null) {
                       lastResultCostUSD = (lastResultCostUSD || 0) + data.costUSD;
                     }

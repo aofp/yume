@@ -284,18 +284,21 @@ Key Features:
 
 **Location**: `src-tauri/resources/` (binaries), `src-tauri/src/logged_server.rs` (process management)
 
-The Node.js server is distributed as compiled binaries using @yao-pkg/pkg, with .cjs fallback files for development and backwards compatibility:
+The Node.js server is distributed as compiled binaries using @yao-pkg/pkg:
 
-**Compiled Binaries:**
+**Compiled Binaries (in `src-tauri/resources/`):**
 - `yurucode-server-macos-arm64` - macOS Apple Silicon
 - `yurucode-server-macos-x64` - macOS Intel
 - `yurucode-server-windows-x64.exe` - Windows x64
 - `yurucode-server-linux-x64` - Linux x64
 
-**Fallback .cjs Files:**
-- `server-claude-macos.cjs`
-- `server-claude-windows.cjs`
-- `server-claude-linux.cjs`
+**Source Files (at project root):**
+- `server-claude-macos.cjs` - macOS server source
+- `server-claude-windows.cjs` - Windows server source
+- `server-claude-linux.cjs` - Linux server source
+- `server-claude-direct.cjs` - WSL/direct fallback
+
+**Important**: Both dev and production modes use binaries from `src-tauri/resources/`. After editing source `.cjs` files, run `npm run build:server:<platform>` to recompile.
 
 ```rust
 // Configuration in logged_server.rs

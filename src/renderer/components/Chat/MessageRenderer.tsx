@@ -3380,9 +3380,11 @@ const MessageRendererBase: React.FC<{
         const isReplaceAllEditResult = resultTextNormalized.includes('were successfully replaced with') ||
                                         resultTextNormalized.includes('All occurrences of');
 
-        // Always show compact results, otherwise only show if no assistant message
+        // Always show compact results, otherwise only show if no duplicate content exists
         const isCompactResult = message.wrapper_compact || resultText.includes('Conversation compacted');
-        const showResultText = resultText && (isCompactResult || (!hasAssistantMessage && !hasDuplicateAssistantContent && !isReplaceAllEditResult));
+        // FIXED: Only check hasDuplicateAssistantContent, not hasAssistantMessage
+        // hasAssistantMessage can be true even if the content doesn't match yet (streaming)
+        const showResultText = resultText && (isCompactResult || (!hasDuplicateAssistantContent && !isReplaceAllEditResult));
 
         // Render beautiful compact summary card for compaction results
         if (isCompactResult && message.wrapper_compact) {

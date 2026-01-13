@@ -110,7 +110,7 @@ npm run minify:servers         # Minify server code
 
 ### Critical Frontend Files
 **Stores:**
-- `stores/claudeCodeStore.ts` - Main Zustand store (204KB, central state)
+- `stores/claudeCodeStore.ts` - Main Zustand store (258KB, central state)
 - `stores/licenseManager.ts` - License validation and feature limits
 
 **Services:**
@@ -168,7 +168,7 @@ When editing server code:
 4. **Important**: Dev mode uses binaries from `src-tauri/resources/`, NOT source files directly. You must rebuild after source changes.
 
 ### Token Analytics
-Analytics uses `result` message's cumulative totals (not summing per-turn `assistant` messages which would overcount). The `result` messages in Claude session files contain accurate cumulative `usage` data. If `costUSD` is available, use it directly; otherwise calculate from token breakdowns.
+Analytics deduplicates by `requestId` to avoid overcounting streaming chunks. Multiple `assistant` messages can share the same `requestId` (streaming chunks), so only unique `requestId` values are counted. Both `assistant` and `result` message types are deduplicated. If `costUSD` is available from `result` messages, use it directly; otherwise calculate from token breakdowns using pricing rates.
 
 ### Platform-Specific Paths
 - Windows native: `C:\Users\[username]\.claude\projects`
@@ -415,7 +415,7 @@ PID tracking in `.yurucode-pids/` prevents multi-instance conflicts.
 - Window buttons: Minimize, Maximize, Close (frameless window)
 - Tab drag detection with menu hide
 
-**Voice Dictation** (`ClaudeChat.tsx:1025`):
+**Voice Dictation** (`ClaudeChat.tsx:1041`):
 - Native speech-to-text using Web Speech API
 - Toggle with F5 key or mic button in input bar
 - Continuous recognition mode with real-time transcription

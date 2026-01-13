@@ -3787,39 +3787,50 @@ export const ClaudeChat: React.FC = () => {
     const textarea = e.target;
     const minHeight = 44; // Match CSS min-height exactly
     const maxHeight = 106; // 5 lines * 18px + 16px padding (match CSS max-height)
-    
+
     // Check if we're at bottom before resizing - only scroll if explicitly at bottom
     const container = chatContainerRef.current;
     const wasAtBottom = container && currentSessionId &&
       (isAtBottom[currentSessionId] === true ||
        (container.scrollHeight - container.scrollTop - container.clientHeight < 5));
-    
+
     // Store the current height before resetting
     const currentHeight = textarea.offsetHeight;
-    
-    // Reset height to auto to force recalculation
-    textarea.style.height = 'auto';
-    
-    // Calculate new height based on scrollHeight
     const scrollHeight = textarea.scrollHeight;
-    const newHeight = Math.min(Math.max(scrollHeight, minHeight), maxHeight);
-    
-    // Only update if height actually changed to prevent unnecessary reflows
-    if (newHeight !== currentHeight) {
-      textarea.style.height = newHeight + 'px';
-      // Sync overlay height for ultrathink label positioning
-      setOverlayHeight(newHeight);
-      // Save per-session textarea height
-      if (currentSessionId) {
-        setTextareaHeights(prev => ({ ...prev, [currentSessionId]: newHeight }));
-      }
-    } else {
-      // Restore the original height if no change needed
-      textarea.style.height = currentHeight + 'px';
-    }
 
-    // Show scrollbar only when content exceeds max height
-    textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    // Optimization: skip expensive resize if content fits perfectly
+    // This prevents flickering on every keystroke when line count doesn't change
+    if (scrollHeight === currentHeight && currentHeight >= minHeight && currentHeight <= maxHeight) {
+      // Content fits exactly, just ensure overflow is correct
+      textarea.style.overflow = scrollHeight > maxHeight ? 'auto' : 'hidden';
+      // Skip the rest - no resize needed
+    } else {
+      // Content size changed, need to resize
+
+      // Reset height to auto to force recalculation
+      textarea.style.height = 'auto';
+
+      // Calculate new height based on scrollHeight
+      const newScrollHeight = textarea.scrollHeight;
+      const newHeight = Math.min(Math.max(newScrollHeight, minHeight), maxHeight);
+
+      // Only update if height actually changed to prevent unnecessary reflows
+      if (newHeight !== currentHeight) {
+        textarea.style.height = newHeight + 'px';
+        // Sync overlay height for ultrathink label positioning
+        setOverlayHeight(newHeight);
+        // Save per-session textarea height
+        if (currentSessionId) {
+          setTextareaHeights(prev => ({ ...prev, [currentSessionId]: newHeight }));
+        }
+      } else {
+        // Restore the original height if no change needed
+        textarea.style.height = currentHeight + 'px';
+      }
+
+      // Show scrollbar only when content exceeds max height
+      textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    }
 
     // If we were at bottom, maintain scroll position at bottom
     if (wasAtBottom) {

@@ -364,7 +364,7 @@ function parseMentions(text: string): FileMention[] {
 
 **Description**: Native speech-to-text input for hands-free coding.
 
-**Location**: `src/renderer/components/Chat/ClaudeChat.tsx:1025`
+**Location**: `src/renderer/components/Chat/ClaudeChat.tsx:1041`
 
 **Implementation**:
 - Uses Web Speech API (`webkitSpeechRecognition` / `SpeechRecognition`)
