@@ -1018,3 +1018,171 @@ pub fn cleanup_yurucode_agents_on_exit() -> Result<(), String> {
 
     Ok(())
 }
+
+// ============================================================================
+// VSCode Extension Commands
+// ============================================================================
+
+/// Check if VSCode CLI is available
+fn is_vscode_cli_available() -> bool {
+    // Try 'code --version' first
+    if std::process::Command::new("code")
+        .arg("--version")
+        .output()
+        .map(|o| o.status.success())
+        .unwrap_or(false)
+    {
+        return true;
+    }
+
+    // Fallback: try 'which code' (unix) or 'where code' (windows)
+    #[cfg(not(target_os = "windows"))]
+    {
+        std::process::Command::new("which")
+            .arg("code")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        std::process::Command::new("where")
+            .arg("code")
+            .output()
+            .map(|o| o.status.success())
+            .unwrap_or(false)
+    }
+}
+
+/// Check if VSCode is installed (public command)
+#[tauri::command]
+pub fn is_vscode_installed() -> bool {
+    is_vscode_cli_available()
+}
+
+/// Get VSCode extensions directory
+fn get_vscode_extensions_dir() -> Option<PathBuf> {
+    dirs::home_dir().map(|h| h.join(".vscode").join("extensions"))
+}
+
+/// Check if yurucode VSCode extension is installed
+#[tauri::command]
+pub fn check_vscode_extension_installed() -> Result<bool, String> {
+    // Check if .vscode/extensions/yurucode-* exists
+    if let Some(ext_dir) = get_vscode_extensions_dir() {
+        if ext_dir.exists() {
+            if let Ok(entries) = fs::read_dir(&ext_dir) {
+                for entry in entries.flatten() {
+                    let name = entry.file_name().to_string_lossy().to_string();
+                    if name.starts_with("yurucode.yurucode-") {
+                        return Ok(true);
+                    }
+                }
+            }
+        }
+    }
+
+    // Also check using vscode cli
+    if is_vscode_cli_available() {
+        let output = std::process::Command::new("code")
+            .args(["--list-extensions"])
+            .output();
+
+        if let Ok(out) = output {
+            let extensions = String::from_utf8_lossy(&out.stdout);
+            if extensions.lines().any(|l| l.trim() == "yurucode.yurucode") {
+                return Ok(true);
+            }
+        }
+    }
+
+    Ok(false)
+}
+
+/// Find the vscode extension directory using multiple candidate paths
+fn find_vscode_extension_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    let mut candidate_paths = Vec::new();
+
+    // 1. Try resource_dir (production)
+    if let Ok(resource_dir) = app_handle.path().resource_dir() {
+        // Try nested resources folder first (Tauri 2.x structure)
+        candidate_paths.push(resource_dir.join("resources").join("yurucode-vscode"));
+        // Also try direct path
+        candidate_paths.push(resource_dir.join("yurucode-vscode"));
+    }
+
+    // 2. Try current_dir/src-tauri/resources (dev mode from project root)
+    if let Ok(cwd) = std::env::current_dir() {
+        candidate_paths.push(cwd.join("src-tauri").join("resources").join("yurucode-vscode"));
+        candidate_paths.push(cwd.join("resources").join("yurucode-vscode"));
+    }
+
+    // 3. Try relative to executable
+    if let Ok(exe) = std::env::current_exe() {
+        if let Some(exe_dir) = exe.parent() {
+            candidate_paths.push(exe_dir.join("resources").join("yurucode-vscode"));
+            candidate_paths.push(exe_dir.join("yurucode-vscode"));
+        }
+    }
+
+    for path in &candidate_paths {
+        println!("[vscode] checking candidate path: {}", path.display());
+        if path.exists() {
+            println!("[vscode] found extension at: {}", path.display());
+            return Some(path.clone());
+        }
+    }
+
+    None
+}
+
+/// Install VSCode extension
+/// This command installs the pre-built yurucode vscode extension
+#[tauri::command]
+pub fn install_vscode_extension(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // Check if vscode cli is available
+    if !is_vscode_cli_available() {
+        return Err("vscode cli not found. make sure 'code' command is in PATH".to_string());
+    }
+
+    // Find the extension directory
+    let ext_source = find_vscode_extension_dir(&app_handle)
+        .ok_or_else(|| "vscode extension not found in any expected location".to_string())?;
+
+    println!("[vscode] extension source dir: {:?}", ext_source);
+
+    // Find the pre-built vsix file
+    let vsix_path = ext_source.join("yurucode-0.1.0.vsix");
+
+    let vsix_file = if vsix_path.exists() {
+        vsix_path
+    } else {
+        // Try to find any .vsix file in the extension directory
+        let entries = fs::read_dir(&ext_source)
+            .map_err(|e| format!("failed to read extension dir: {}", e))?;
+
+        entries
+            .filter_map(|e| e.ok())
+            .find(|e| e.path().extension().map(|ext| ext == "vsix").unwrap_or(false))
+            .map(|e| e.path())
+            .ok_or_else(|| format!("vsix file not found in {:?}. the extension may not be bundled properly.", ext_source))?
+    };
+
+    // Install the extension using vscode cli
+    println!("[vscode] installing extension from {:?}", vsix_file);
+
+    let install = std::process::Command::new("code")
+        .args(["--install-extension", &vsix_file.to_string_lossy(), "--force"])
+        .output()
+        .map_err(|e| format!("failed to install extension: {}", e))?;
+
+    if !install.status.success() {
+        let stderr = String::from_utf8_lossy(&install.stderr);
+        let stdout = String::from_utf8_lossy(&install.stdout);
+        return Err(format!("extension installation failed: {} {}", stderr, stdout));
+    }
+
+    println!("[vscode] extension installed successfully");
+    Ok(())
+}

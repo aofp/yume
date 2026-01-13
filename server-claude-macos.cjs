@@ -586,6 +586,62 @@ const io = new Server(httpServer, {
 app.use(cors());
 app.use(express.json());
 
+// Serve built frontend for vscode at /vscode-app
+// In dev: proxy to vite, in prod: serve static files
+// Read vite port from tauri config or use default
+let VITE_DEV_PORT = 50490;
+try {
+  const tauriConfig = JSON.parse(readFileSync(join(__dirname, 'src-tauri', 'tauri.conf.json'), 'utf-8'));
+  const match = tauriConfig?.build?.devUrl?.match(/:(\d+)/);
+  if (match) VITE_DEV_PORT = parseInt(match[1]);
+} catch (e) { /* ignore */ }
+const VITE_DEV_URL = process.env.VITE_DEV_URL || `http://127.0.0.1:${VITE_DEV_PORT}`;
+
+// Helper to proxy requests to vite
+async function proxyToVite(req, res, targetPath) {
+  const targetUrl = VITE_DEV_URL + targetPath;
+  try {
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers: {
+        'Accept': req.headers.accept || '*/*',
+        'Accept-Encoding': 'identity'
+      }
+    });
+
+    if (response.ok) {
+      const contentType = response.headers.get('content-type') || 'application/octet-stream';
+      res.setHeader('Content-Type', contentType);
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      const buffer = Buffer.from(await response.arrayBuffer());
+      return res.send(buffer);
+    }
+    return false;
+  } catch (e) {
+    return false;
+  }
+}
+
+// Proxy vite internal paths (must be before /vscode-app)
+app.use(['/@vite', '/@react-refresh', '/@fs', '/src', '/node_modules', '/public'], async (req, res, next) => {
+  const result = await proxyToVite(req, res, req.originalUrl);
+  if (!result) next();
+});
+
+// Serve frontend for vscode at /vscode-app
+app.use('/vscode-app', async (req, res, next) => {
+  const result = await proxyToVite(req, res, req.url);
+  if (result) return;
+
+  // Fallback: serve from dist/renderer if available
+  const distPath = join(__dirname, 'dist', 'renderer');
+  if (existsSync(distPath)) {
+    return express.static(distPath)(req, res, next);
+  }
+
+  res.status(503).send('Frontend not available');
+});
+
 // ALWAYS use dynamic port - for BOTH development AND production
 const PORT = (() => {
   // First check environment variable (passed from Rust)
@@ -625,6 +681,11 @@ let lastAssistantMessageIds = new Map();  // Map of sessionId -> lastAssistantMe
 let allAssistantMessageIds = new Map();  // Map of sessionId -> Array of all assistant message IDs
 let streamHealthChecks = new Map(); // Map of sessionId -> interval
 let streamTimeouts = new Map(); // Map of sessionId -> timeout
+
+// VSCode extension connection tracking
+let vscodeConnections = new Set(); // Set of socket.id from vscode clients
+let vscodeConnected = false; // Quick flag for vscode connection status
+let cachedSettings = null; // Cached settings from main app to sync to vscode
 
 // Add process spawn mutex to prevent race conditions
 let isSpawningProcess = false;
@@ -928,14 +989,365 @@ const MAX_LINE_BUFFER_SIZE = 50 * 1024 * 1024; // 50MB max buffer for large resp
 
 // Health check endpoint
 app.get('/health', (req, res) => {
-  res.json({ 
-    status: 'ok', 
+  res.json({
+    status: 'ok',
     pid: process.pid,
     service: 'yurucode-claude',
     claudeCodeLoaded: true,
     port: PORT,
     sessions: Object.keys(sessions).length
   });
+});
+
+// Claude usage limits endpoint (for vscode mode - mirrors tauri get_claude_usage_limits)
+app.get('/claude-usage-limits', async (req, res) => {
+  try {
+    // Read credentials from macOS keychain
+    const { execSync } = require('child_process');
+    let credentialsJson;
+    try {
+      credentialsJson = execSync(
+        'security find-generic-password -s "Claude Code-credentials" -w',
+        { encoding: 'utf8', stdio: ['pipe', 'pipe', 'pipe'] }
+      ).trim();
+    } catch (e) {
+      return res.status(401).json({ error: 'No Claude credentials found in keychain' });
+    }
+
+    const credentials = JSON.parse(credentialsJson);
+    const oauth = credentials.claudeAiOauth;
+    if (!oauth || !oauth.accessToken) {
+      return res.status(401).json({ error: 'No OAuth credentials found' });
+    }
+
+    // Call Anthropic usage API
+    const response = await fetch('https://api.anthropic.com/api/oauth/usage', {
+      method: 'GET',
+      headers: {
+        'Accept': 'application/json, text/plain, */*',
+        'Content-Type': 'application/json',
+        'User-Agent': 'claude-code/2.0.76',
+        'Authorization': `Bearer ${oauth.accessToken}`,
+        'anthropic-beta': 'oauth-2025-04-20'
+      }
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      return res.status(response.status).json({ error: `Usage API returned ${response.status}: ${body}` });
+    }
+
+    const apiData = await response.json();
+    res.json({
+      five_hour: apiData.five_hour,
+      seven_day: apiData.seven_day,
+      seven_day_opus: apiData.seven_day_opus,
+      seven_day_sonnet: apiData.seven_day_sonnet,
+      subscription_type: oauth.subscriptionType,
+      rate_limit_tier: oauth.rateLimitTier
+    });
+  } catch (e) {
+    console.error('[UsageLimits] Error:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// VSCode extension status endpoint
+app.get('/vscode-status', (req, res) => {
+  res.json({
+    connected: vscodeConnected,
+    count: vscodeConnections.size
+  });
+});
+
+// VSCode proxy - forwards to vite dev server (uses VITE_DEV_PORT defined earlier)
+app.use('/vscode', async (req, res, next) => {
+  const targetUrl = `http://127.0.0.1:${VITE_DEV_PORT}${req.url}`;
+  try {
+    const response = await fetch(targetUrl, {
+      method: req.method,
+      headers: { ...req.headers, host: `127.0.0.1:${VITE_DEV_PORT}` }
+    });
+
+    // Forward headers
+    response.headers.forEach((value, key) => {
+      if (key.toLowerCase() !== 'transfer-encoding') {
+        res.setHeader(key, value);
+      }
+    });
+
+    res.status(response.status);
+    const buffer = await response.arrayBuffer();
+    res.send(Buffer.from(buffer));
+  } catch (e) {
+    // Vite not running, serve 503
+    res.status(503).send('yurucode dev server not running');
+  }
+});
+
+// VSCode UI entry point - serves the actual yurucode app via proxy
+app.get('/vscode-ui', (req, res) => {
+  const cwd = req.query.cwd || '';
+  // Redirect to our proxy endpoint which serves the frontend
+  res.redirect(`/vscode-app/?vscode=1&cwd=${encodeURIComponent(cwd)}&port=${PORT}`);
+});
+
+// Legacy VSCode proxy UI endpoint - minimal fallback
+app.get('/vscode-ui-minimal', (req, res) => {
+  // Serve a minimal proxy page that connects to the same server
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Yurucode</title>
+  <script src="https://cdn.socket.io/4.7.4/socket.io.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --bg: #000;
+      --fg: #e0e0e0;
+      --fg-dim: #666;
+      --accent: #7dd3fc;
+      --input-bg: #111;
+      --border: #333;
+    }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      font-size: 13px;
+      background: var(--bg);
+      color: var(--fg);
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+    .header {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      font-size: 11px;
+      color: var(--fg-dim);
+    }
+    .status { display: flex; align-items: center; gap: 6px; }
+    .status.connected { color: #4ade80; }
+    .status.disconnected { color: #f87171; }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; }
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .message {
+      padding: 10px 14px;
+      border-radius: 8px;
+      max-width: 90%;
+      white-space: pre-wrap;
+      word-break: break-word;
+      font-family: 'SF Mono', Consolas, monospace;
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .message.user {
+      background: var(--accent);
+      color: #000;
+      align-self: flex-end;
+      border-radius: 8px 8px 2px 8px;
+    }
+    .message.assistant {
+      background: var(--input-bg);
+      border: 1px solid var(--border);
+      align-self: flex-start;
+      border-radius: 8px 8px 8px 2px;
+    }
+    .message.system {
+      background: transparent;
+      color: var(--fg-dim);
+      font-size: 11px;
+      align-self: center;
+      font-style: italic;
+    }
+    .message.tool {
+      background: #1a1a2e;
+      border: 1px solid #2a2a4e;
+      font-size: 11px;
+      color: #a0a0c0;
+    }
+    .input-area {
+      padding: 12px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 8px;
+    }
+    textarea {
+      flex: 1;
+      background: var(--input-bg);
+      color: var(--fg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-family: inherit;
+      font-size: 13px;
+      resize: none;
+      min-height: 44px;
+      max-height: 200px;
+    }
+    textarea:focus { outline: none; border-color: var(--accent); }
+    button {
+      background: var(--accent);
+      color: #000;
+      border: none;
+      border-radius: 6px;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-weight: 500;
+      font-size: 12px;
+    }
+    button:hover { opacity: 0.9; }
+    button:disabled { opacity: 0.4; cursor: not-allowed; }
+    .streaming { opacity: 0.7; }
+    .empty {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--fg-dim);
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="status disconnected" id="status">
+      <span class="dot"></span>
+      <span id="status-text">connecting...</span>
+    </div>
+    <span id="session-info"></span>
+  </div>
+  <div class="messages" id="messages">
+    <div class="empty">yurucode vscode proxy</div>
+  </div>
+  <div class="input-area">
+    <textarea id="input" placeholder="type a message..." rows="1"></textarea>
+    <button id="send" disabled>send</button>
+  </div>
+  <script>
+    const PORT = window.location.port || ${PORT};
+    let socket = null;
+    let sessionId = null;
+    let streaming = false;
+    let streamingContent = '';
+
+    const messagesEl = document.getElementById('messages');
+    const inputEl = document.getElementById('input');
+    const sendBtn = document.getElementById('send');
+    const statusEl = document.getElementById('status');
+    const statusTextEl = document.getElementById('status-text');
+    const sessionInfoEl = document.getElementById('session-info');
+
+    function setStatus(connected, text) {
+      statusEl.className = 'status ' + (connected ? 'connected' : 'disconnected');
+      statusTextEl.textContent = text;
+      sendBtn.disabled = !connected || streaming;
+    }
+
+    function addMessage(role, content, id) {
+      const empty = messagesEl.querySelector('.empty');
+      if (empty) empty.remove();
+
+      let el = id ? document.getElementById('msg-' + id) : null;
+      if (!el) {
+        el = document.createElement('div');
+        el.className = 'message ' + role;
+        if (id) el.id = 'msg-' + id;
+        messagesEl.appendChild(el);
+      }
+      el.textContent = content;
+      el.className = 'message ' + role + (streaming && role === 'assistant' ? ' streaming' : '');
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+      return el;
+    }
+
+    function connect() {
+      socket = io('http://localhost:' + PORT, { transports: ['websocket'], query: { client: 'vscode-ui' } });
+
+      socket.on('connect', () => {
+        setStatus(true, 'connected');
+        socket.emit('vscode:connected');
+
+        // Create session
+        socket.emit('createSession', {
+          workingDirectory: new URLSearchParams(window.location.search).get('cwd') || '~'
+        }, (res) => {
+          if (res?.sessionId) {
+            sessionId = res.sessionId;
+            sessionInfoEl.textContent = sessionId.slice(0, 8);
+            setupMessageHandlers();
+          }
+        });
+      });
+
+      socket.on('disconnect', () => setStatus(false, 'disconnected'));
+      socket.on('connect_error', (e) => setStatus(false, 'error: ' + e.message));
+    }
+
+    function setupMessageHandlers() {
+      socket.on('message:' + sessionId, handleMessage);
+      socket.on('messageBatch:' + sessionId, (batch) => batch.forEach(handleMessage));
+    }
+
+    function handleMessage(data) {
+      const msg = data.message || data;
+      const type = msg.type;
+
+      if (type === 'assistant') {
+        streaming = true;
+        sendBtn.disabled = true;
+        const content = msg.message?.content || msg.content || '';
+        if (typeof content === 'string') {
+          streamingContent = content;
+          addMessage('assistant', content, 'streaming');
+        }
+      } else if (type === 'result' || type === 'streaming_end') {
+        streaming = false;
+        sendBtn.disabled = false;
+        const el = document.getElementById('msg-streaming');
+        if (el) el.id = '';
+        streamingContent = '';
+      } else if (type === 'user') {
+        // already shown
+      } else if (type === 'tool_use' || type === 'tool_result') {
+        const name = msg.message?.name || msg.name || 'tool';
+        addMessage('tool', name + ': ' + (msg.message?.input ? JSON.stringify(msg.message.input).slice(0,100) : '...'));
+      }
+    }
+
+    function send() {
+      const text = inputEl.value.trim();
+      if (!text || !sessionId || streaming) return;
+
+      addMessage('user', text);
+      socket.emit('sendMessage', { sessionId, message: text });
+      inputEl.value = '';
+      inputEl.style.height = 'auto';
+    }
+
+    sendBtn.onclick = send;
+    inputEl.onkeydown = (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+    };
+    inputEl.oninput = () => {
+      inputEl.style.height = 'auto';
+      inputEl.style.height = Math.min(inputEl.scrollHeight, 200) + 'px';
+    };
+
+    connect();
+  </script>
+</body>
+</html>`);
 });
 
 // Delete a project and all its sessions
@@ -3561,6 +3973,49 @@ process.on('unhandledRejection', (reason, promise) => {
 io.on('connection', (socket) => {
   console.log('🔌 Client connected:', socket.id);
 
+  // Check if this is a vscode client (passed in query params)
+  const isVscodeClient = socket.handshake.query?.client === 'vscode';
+  if (isVscodeClient) {
+    console.log('🆚 VSCode extension connected:', socket.id);
+  }
+
+  // VSCode extension connection handlers
+  socket.on('vscode:connected', () => {
+    vscodeConnections.add(socket.id);
+    vscodeConnected = vscodeConnections.size > 0;
+    console.log(`🆚 VSCode client registered: ${socket.id} (total: ${vscodeConnections.size})`);
+    // Broadcast to all clients
+    io.emit('vscode:status', { connected: vscodeConnected, count: vscodeConnections.size });
+    // Send current settings to the vscode client
+    if (cachedSettings) {
+      socket.emit('settings:sync', cachedSettings);
+    }
+  });
+
+  // Settings sync - main app sends settings, server broadcasts to vscode clients
+  socket.on('settings:update', (settings) => {
+    console.log('📦 Settings updated from main app');
+    cachedSettings = settings;
+    // Broadcast to all vscode clients
+    vscodeConnections.forEach(id => {
+      io.to(id).emit('settings:sync', settings);
+    });
+  });
+
+  socket.on('vscode:disconnected', () => {
+    vscodeConnections.delete(socket.id);
+    vscodeConnected = vscodeConnections.size > 0;
+    console.log(`🆚 VSCode client unregistered: ${socket.id} (total: ${vscodeConnections.size})`);
+    io.emit('vscode:status', { connected: vscodeConnected, count: vscodeConnections.size });
+  });
+
+  // Request current vscode status (for clients that join late)
+  socket.on('vscode:getStatus', (callback) => {
+    if (typeof callback === 'function') {
+      callback({ connected: vscodeConnected, count: vscodeConnections.size });
+    }
+  });
+
   socket.on('createSession', async (data, callback) => {
     try {
       // Check if this is loading an existing session
@@ -5724,6 +6179,15 @@ io.on('connection', (socket) => {
 
   socket.on('disconnect', () => {
     console.log('🔌 Client disconnected:', socket.id);
+
+    // Clean up vscode connection if this was a vscode client
+    if (vscodeConnections.has(socket.id)) {
+      vscodeConnections.delete(socket.id);
+      vscodeConnected = vscodeConnections.size > 0;
+      console.log(`🆚 VSCode client disconnected: ${socket.id} (total: ${vscodeConnections.size})`);
+      io.emit('vscode:status', { connected: vscodeConnected, count: vscodeConnections.size });
+    }
+
     // Clean up any processes and intervals associated with this socket
     for (const [sessionId, session] of sessions.entries()) {
       if (session.socketId === socket.id) {

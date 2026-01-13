@@ -10,6 +10,7 @@ import {
 } from '@tabler/icons-react';
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
+import { isVSCode } from '../../services/tauriApi';
 
 interface SessionMessage {
   type: string;
@@ -154,64 +155,73 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
       {/* Center - tools group */}
       <div className="context-center">
-        {/* Files button */}
-        <button
-          className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
-          onClick={() => {
-            setShowFilesPanel(!showFilesPanel);
-            setShowGitPanel(false);
-            setSelectedFile(null);
-            setFileContent('');
-            setFocusedFileIndex(-1);
-            setFocusedGitIndex(-1);
-          }}
-          disabled={!workingDirectory}
-          title={`files (${modKey}+e)`}
-        >
-          <IconFolder size={12} stroke={1.5} />
-        </button>
+        {/* Files button - hidden in vscode mode */}
+        {!isVSCode() && (
+          <button
+            className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
+            onClick={() => {
+              setShowFilesPanel(!showFilesPanel);
+              setShowGitPanel(false);
+              setSelectedFile(null);
+              setFileContent('');
+              setFocusedFileIndex(-1);
+              setFocusedGitIndex(-1);
+            }}
+            disabled={!workingDirectory}
+            title={`files (${modKey}+e)`}
+          >
+            <IconFolder size={12} stroke={1.5} />
+          </button>
+        )}
 
-        {/* Git button */}
-        <button
-          className={`btn-context-icon ${showGitPanel ? 'active' : ''}`}
-          onClick={() => {
-            setShowGitPanel(!showGitPanel);
-            setShowFilesPanel(false);
-            setSelectedGitFile(null);
-            setGitDiff(null);
-            setFocusedFileIndex(-1);
-            setFocusedGitIndex(-1);
-          }}
-          disabled={!workingDirectory || !isGitRepo}
-          title={isGitRepo ? `git (${modKey}+g)` : "not a git repo"}
-        >
-          <IconGitBranch size={12} stroke={1.5} />
-        </button>
+        {/* Git button - hidden in vscode mode */}
+        {!isVSCode() && (
+          <>
+            <button
+              className={`btn-context-icon ${showGitPanel ? 'active' : ''}`}
+              onClick={() => {
+                setShowGitPanel(!showGitPanel);
+                setShowFilesPanel(false);
+                setSelectedGitFile(null);
+                setGitDiff(null);
+                setFocusedFileIndex(-1);
+                setFocusedGitIndex(-1);
+              }}
+              disabled={!workingDirectory || !isGitRepo}
+              title={isGitRepo ? `git (${modKey}+g)` : "not a git repo"}
+            >
+              <IconGitBranch size={12} stroke={1.5} />
+            </button>
 
-        {/* Git total line stats */}
-        {showGitPanel && Object.keys(gitLineStats).length > 0 && (
-          <span className="git-total-stats">
-            <span className="git-total-added">+{totalAdded}</span>
-            <span className="git-total-deleted">-{totalDeleted}</span>
-          </span>
+            {/* Git total line stats */}
+            {showGitPanel && Object.keys(gitLineStats).length > 0 && (
+              <span className="git-total-stats">
+                <span className="git-total-added">+{totalAdded}</span>
+                <span className="git-total-deleted">-{totalDeleted}</span>
+              </span>
+            )}
+          </>
         )}
 
       </div>
 
       {/* Center absolute - dictation + history */}
       <div className="context-center-absolute">
-        <button
-          className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
-          onClick={onToggleDictation}
-          disabled={isReadOnly}
-          title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
-        >
-          {isDictating ? (
-            <IconMicrophone size={12} stroke={1.5} />
-          ) : (
-            <IconMicrophoneOff size={12} stroke={1.5} />
-          )}
-        </button>
+        {/* Dictation button - hidden in vscode mode (no Web Speech API access) */}
+        {!isVSCode() && (
+          <button
+            className={`btn-context-icon ${isDictating ? 'active dictating' : ''}`}
+            onClick={onToggleDictation}
+            disabled={isReadOnly}
+            title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
+          >
+            {isDictating ? (
+              <IconMicrophone size={12} stroke={1.5} />
+            ) : (
+              <IconMicrophoneOff size={12} stroke={1.5} />
+            )}
+          </button>
+        )}
 
         <button
           className={`btn-rollback ${showRollbackPanel ? 'active' : ''}`}
@@ -281,7 +291,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               <span>{percentage}%</span>
             </span>
           </button>
-          {/* 5h limit bar */}
+          {/* 5h/7d limit bars */}
           <div className="btn-stats-limit-bar five-hour">
             <div
               className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
@@ -291,7 +301,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               }}
             />
           </div>
-          {/* 7d limit bar */}
           <div className="btn-stats-limit-bar seven-day">
             <div
               className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}

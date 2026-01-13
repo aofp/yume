@@ -2,6 +2,7 @@ import React from 'react';
 import { IconX, IconMinus, IconSquare, IconSettingsFilled, IconHelp, IconFolders, IconTrendingUp, IconChevronLeft, IconChevronRight, IconRobot } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { isVSCode } from '../../services/tauriApi';
 import './WindowControls.css';
 
 interface WindowControlsProps {
@@ -23,6 +24,7 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   const showProjectsMenu = useClaudeCodeStore(state => state.showProjectsMenu);
   const showAgentsMenu = useClaudeCodeStore(state => state.showAgentsMenu);
   const showAnalyticsMenu = useClaudeCodeStore(state => state.showAnalyticsMenu);
+  const vscodeConnected = useClaudeCodeStore(state => state.vscodeConnected);
   
   // Removed spammy platform detection log
   
@@ -94,6 +96,11 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
     };
   }, [isMac, isDraggingTab]);
   
+  // Hide all controls in VSCode mode - VSCode has its own window chrome
+  if (isVSCode()) {
+    return null;
+  }
+
   // Always show controls for frameless window
   // if (!isWindows) return null;
 
@@ -159,12 +166,17 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
           </button>
         </div>
         {/* Mac: Menu items to the right of title - projects, analytics, settings, keyboard shortcuts */}
-        <div 
+        <div
           className="mac-right-controls"
         >
+          {vscodeConnected && (
+            <span className="vscode-indicator" title="vscode extension connected">
+              [vscode connected]
+            </span>
+          )}
           {!isExpanded ? (
-            <button 
-              className="window-control-toggle" 
+            <button
+              className="window-control-toggle"
               title="expand menu"
             >
               <IconChevronLeft size={10} stroke={2} />
@@ -205,12 +217,17 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
   return (
     <div className="window-controls">
       {/* Windows: Menu items on the left - projects, analytics, settings, keyboard shortcuts */}
-      <div 
+      <div
         className="windows-left-controls"
       >
+        {vscodeConnected && (
+          <span className="vscode-indicator" title="vscode extension connected">
+            [vscode connected]
+          </span>
+        )}
         {!isExpanded ? (
-          <button 
-            className="window-control-toggle" 
+          <button
+            className="window-control-toggle"
             title="expand menu"
           >
             <IconChevronRight size={10} stroke={2} />

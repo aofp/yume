@@ -417,6 +417,11 @@ interface ClaudeCodeStore {
   showPluginsSettings: boolean; // Whether to show plugins tab in settings
   showSkillsSettings: boolean; // Whether to show skills tab in settings
 
+  // VSCode extension
+  vscodeExtensionEnabled: boolean; // Whether vscode extension is enabled (auto-installs when on)
+  vscodeConnected: boolean; // Whether vscode extension is connected
+  vscodeConnectionCount: number; // Number of vscode connections
+
   // UI state
   isDraggingTab: boolean; // Whether a tab is currently being dragged
 
@@ -525,6 +530,10 @@ interface ClaudeCodeStore {
   setShowHooksSettings: (show: boolean) => void;
   setShowPluginsSettings: (show: boolean) => void;
   setShowSkillsSettings: (show: boolean) => void;
+
+  // VSCode extension
+  setVscodeExtensionEnabled: (enabled: boolean) => void;
+  setVscodeStatus: (connected: boolean, count: number) => void;
 
   // UI state
   setIsDraggingTab: (isDragging: boolean) => void;
@@ -778,6 +787,9 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       showHooksSettings: false, // Default to hidden
       showPluginsSettings: false, // Default to hidden
       showSkillsSettings: false, // Default to hidden
+      vscodeExtensionEnabled: false, // Default to disabled
+      vscodeConnected: false, // Not connected initially
+      vscodeConnectionCount: 0, // No connections initially
       isDraggingTab: false, // No tab is being dragged initially
       agents: [], // No agents initially, will load from localStorage
       currentAgentId: null, // No agent selected initially
@@ -842,10 +854,18 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
           const hexId = `${timestamp}-${random1}-${random2}`;
           // ALWAYS use unique session name to prevent duplicate sessions
           const sessionName = `session-${hexId}`;
-          // Use the provided directory, or get home directory from Tauri
+          // Use the provided directory, or get home directory from Tauri/VSCode
           let workingDirectory = directory;
 
-          if (!workingDirectory && window.__TAURI__) {
+          // Check for VSCode mode first - use cwd from URL
+          const urlParams = new URLSearchParams(window.location.search);
+          const vscodeCwd = urlParams.get('cwd');
+          const isVSCodeMode = urlParams.get('vscode') === '1';
+
+          if (!workingDirectory && isVSCodeMode && vscodeCwd) {
+            workingDirectory = vscodeCwd;
+            console.log('[Store] Using working directory from VSCode:', workingDirectory);
+          } else if (!workingDirectory && window.__TAURI__) {
             try {
               const { invoke } = await import('@tauri-apps/api/core');
               // Try to get home directory from Tauri
@@ -5140,6 +5160,15 @@ ${content}`;
         localStorage.setItem('yurucode-show-skills-settings', JSON.stringify(show));
       },
 
+      setVscodeExtensionEnabled: (enabled: boolean) => {
+        set({ vscodeExtensionEnabled: enabled });
+        localStorage.setItem('yurucode-vscode-extension-enabled', JSON.stringify(enabled));
+      },
+
+      setVscodeStatus: (connected: boolean, count: number) => {
+        set({ vscodeConnected: connected, vscodeConnectionCount: count });
+      },
+
       setIsDraggingTab: (isDragging: boolean) => {
         set({ isDraggingTab: isDragging });
       },
@@ -5385,6 +5414,7 @@ ${content}`;
         showHooksSettings: state.showHooksSettings,
         showPluginsSettings: state.showPluginsSettings,
         showSkillsSettings: state.showSkillsSettings,
+        vscodeExtensionEnabled: state.vscodeExtensionEnabled,
         agents: state.agents,
         currentAgentId: state.currentAgentId
         // Do NOT persist sessionId - sessions should not survive app restarts

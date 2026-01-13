@@ -4,7 +4,7 @@
  */
 
 import { io, Socket } from 'socket.io-client';
-import platformAPI, { isTauri } from './tauriApi';
+import platformAPI, { isTauri, isVSCode, getVSCodePort, getVSCodeCwd } from './tauriApi';
 import { hooksService } from './hooksService';
 import { debugLog, isDev } from '../utils/helpers';
 
@@ -23,11 +23,24 @@ export class ClaudeCodeClient {
   constructor() {
     debugLog('[ClaudeCodeClient] Initializing...');
     debugLog('[ClaudeCodeClient] Is Tauri:', isTauri());
+    debugLog('[ClaudeCodeClient] Is VSCode:', isVSCode());
     debugLog('[ClaudeCodeClient] Window location:', window.location.href);
 
-    // In production, use adaptive polling instead of fixed delay
-    // This allows faster connection when server is ready
-    if (isTauri()) {
+    // VSCode mode - use port from URL params
+    if (isVSCode()) {
+      const port = getVSCodePort();
+      debugLog('[ClaudeCodeClient] VSCode mode - port from URL:', port);
+      if (port) {
+        this.serverPort = port;
+        this.connect();
+      } else {
+        debugLog('[ClaudeCodeClient] VSCode mode but no port in URL!');
+        this.connectionStatus = 'error';
+        this.connectionError = 'No port specified in URL';
+      }
+    } else if (isTauri()) {
+      // In production, use adaptive polling instead of fixed delay
+      // This allows faster connection when server is ready
       debugLog('[ClaudeCodeClient] Production mode - using adaptive connection...');
       this.adaptiveConnect();
     } else {
@@ -272,7 +285,38 @@ export class ClaudeCodeClient {
       debugLog('  Transport:', (this.socket as any)?.io?.engine?.transport?.name);
       debugLog('  Server URL:', serverUrl);
       this.connected = true;
+
+      // Request vscode status on connect
+      this.socket?.emit('vscode:getStatus', (status: { connected: boolean; count: number }) => {
+        if (status) {
+          debugLog('[Client] VSCode status:', status);
+          // Import dynamically to avoid circular deps
+          import('../stores/claudeCodeStore').then(({ useClaudeCodeStore }) => {
+            useClaudeCodeStore.getState().setVscodeStatus(status.connected, status.count);
+          });
+        }
+      });
     });
+
+    // Listen for vscode status changes
+    this.socket?.on('vscode:status', (status: { connected: boolean; count: number }) => {
+      debugLog('[Client] VSCode status update:', status);
+      import('../stores/claudeCodeStore').then(({ useClaudeCodeStore }) => {
+        useClaudeCodeStore.getState().setVscodeStatus(status.connected, status.count);
+      });
+    });
+
+    // Settings sync for VSCode mode
+    if (isVSCode()) {
+      // In VSCode mode: listen for settings from main app
+      this.socket?.on('settings:sync', (settings: Record<string, any>) => {
+        debugLog('[Client] Received settings sync from main app:', settings);
+        this.applySettings(settings);
+      });
+    } else {
+      // In main app: send current settings when connected
+      this.sendCurrentSettings();
+    }
 
     // Handle sessionCreated events from server when it auto-creates a session
     this.socket.on('sessionCreated', (data) => {
@@ -911,6 +955,81 @@ export class ClaudeCodeClient {
   // Expose socket for other services (checkpointService, agentExecutionService)
   getSocket(): Socket | null {
     return this.socket;
+  }
+
+  // Settings sync methods
+  private sendCurrentSettings(): void {
+    const settings = this.gatherSettings();
+    debugLog('[Client] Sending current settings to server:', settings);
+    this.socket?.emit('settings:update', settings);
+  }
+
+  private gatherSettings(): Record<string, any> {
+    // Gather all yurucode settings from localStorage
+    const settings: Record<string, any> = {};
+    const keys = [
+      'yurucode-mono-font',
+      'yurucode-sans-font',
+      'yurucode-font-size',
+      'yurucode-line-height',
+      'yurucode-word-wrap',
+      'yurucode-auto-generate-title',
+      'yurucode-sound-on-complete',
+      'yurucode-show-result-stats'
+    ];
+    for (const key of keys) {
+      const value = localStorage.getItem(key);
+      if (value !== null) {
+        settings[key] = value;
+      }
+    }
+    return settings;
+  }
+
+  private applySettings(settings: Record<string, any>): void {
+    // Apply settings to localStorage and trigger UI updates
+    for (const [key, value] of Object.entries(settings)) {
+      localStorage.setItem(key, value);
+    }
+
+    // Apply font settings to CSS
+    if (settings['yurucode-mono-font']) {
+      document.documentElement.style.setProperty('--font-mono', `"${settings['yurucode-mono-font']}", monospace`);
+    }
+    if (settings['yurucode-sans-font']) {
+      document.documentElement.style.setProperty('--font-sans', `"${settings['yurucode-sans-font']}", sans-serif`);
+    }
+    if (settings['yurucode-font-size']) {
+      const size = parseInt(settings['yurucode-font-size']);
+      const xs = Math.round(size * 0.786);
+      const sm = Math.round(size * 0.857);
+      const lg = Math.round(size * 1.143);
+      const xl = Math.round(size * 1.429);
+      const xxl = Math.round(size * 1.714);
+      document.documentElement.style.setProperty('--text-xs', `${xs}px`);
+      document.documentElement.style.setProperty('--text-sm', `${sm}px`);
+      document.documentElement.style.setProperty('--text-base', `${size}px`);
+      document.documentElement.style.setProperty('--text-lg', `${lg}px`);
+      document.documentElement.style.setProperty('--text-xl', `${xl}px`);
+      document.documentElement.style.setProperty('--text-2xl', `${xxl}px`);
+    }
+    if (settings['yurucode-line-height']) {
+      const height = parseFloat(settings['yurucode-line-height']);
+      const tight = Math.max(1.0, height - 0.3);
+      const relaxed = height + 0.25;
+      document.documentElement.style.setProperty('--leading-tight', String(tight));
+      document.documentElement.style.setProperty('--leading-normal', String(height));
+      document.documentElement.style.setProperty('--leading-relaxed', String(relaxed));
+    }
+
+    debugLog('[Client] Applied settings from main app');
+  }
+
+  // Call this when settings change in main app
+  syncSettings(): void {
+    if (!isVSCode() && this.socket?.connected) {
+      this.sendCurrentSettings();
+    }
   }
 }
 

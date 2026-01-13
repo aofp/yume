@@ -31,7 +31,7 @@ const ACCENT_PRESETS = [
   // Row 1: Theme accents (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
   ['#c4b5ff', '#61afef', '#8fb8c8', '#36d7e6', '#9df5bd', '#e4d9bd', '#d57b60', '#e890a0', '#82aaff', '#e9a828'],
   // Row 2: More theme accents + variations (void, grove, similar pastels)
-  ['#a0a0b0', '#83c092', '#a78bfa', '#60a5fa', '#f472b6', '#4ade80', '#22d3ee', '#facc15', '#e879f9', '#fb923c']
+  ['#a0a0b0', '#afff76', '#a78bfa', '#60a5fa', '#f472b6', '#4ade80', '#22d3ee', '#facc15', '#e879f9', '#fb923c']
 ];
 
 // Positive presets (from themes + similar greens/teals)
@@ -39,7 +39,7 @@ const POSITIVE_PRESETS = [
   // Row 1: Theme positives (yurucode, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
   ['#99ff99', '#98c379', '#b4be82', '#72f1b8', '#06b6d4', '#7cc07c', '#8fbc8f', '#56d364', '#addb67', '#87bb26'],
   // Row 2: More theme positives + variations (void, grove, similar greens)
-  ['#e0f5e4', '#74d1d8', '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#a3e635', '#10b981', '#14b8a6', '#84cc16']
+  ['#e0f5e4', '#5affa9', '#4ade80', '#34d399', '#2dd4bf', '#22d3ee', '#a3e635', '#10b981', '#14b8a6', '#84cc16']
 ];
 
 // Negative presets (from themes + similar reds/pinks)

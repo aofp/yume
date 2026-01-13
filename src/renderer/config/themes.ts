@@ -178,9 +178,9 @@ export const BUILT_IN_THEMES: Theme[] = [
     name: 'grove',
     backgroundColor: '#0a0a08',
     foregroundColor: '#bacebe',
-    accentColor: '#83c092',
-    positiveColor: '#74d1d8',
-    negativeColor: '#e67e80',
+    accentColor: '#afff76',
+    positiveColor: '#5affa9',
+    negativeColor: '#e79f62',
     opacity: 1.0,
     isBuiltIn: true
   }

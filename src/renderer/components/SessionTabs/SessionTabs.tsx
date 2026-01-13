@@ -3,6 +3,8 @@ import { IconX, IconPlus, IconFolder, IconFolderOpen, IconBolt, IconTrash, IconC
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { AnalyticsModal } from '../Analytics/AnalyticsModal';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
+import { isVSCode } from '../../services/tauriApi';
+import { APP_NAME } from '../../config/app';
 // RecentProjectsModal removed - handled by ClaudeChat component instead
 import './SessionTabs.css';
 
@@ -30,7 +32,8 @@ export const SessionTabs: React.FC = () => {
     interruptSession,
     forkSession,
     claudeMdTokens,
-    calculateClaudeMdTokens
+    calculateClaudeMdTokens,
+    vscodeConnected
   } = useClaudeCodeStore();
 
   // Platform detection for keyboard shortcuts
@@ -900,23 +903,26 @@ export const SessionTabs: React.FC = () => {
                 <LoadingIndicator size="small" color="red" />
               </div>
             ) : (
-              <button
-                className="tab-close"
-                tabIndex={-1}
-                onClick={async (e) => {
-                  e.stopPropagation();
-                  // If streaming, interrupt first then close
-                  if (session.streaming) {
-                    await interruptSession(session.id);  // Pass explicit session ID
-                  }
-                  deleteSession(session.id);
-                }}
-                onMouseDown={(e) => {
-                  e.stopPropagation(); // Prevent tab drag when clicking close
-                }}
-              >
-                <IconX size={14} stroke={1.5} />
-              </button>
+              // Hide close button in vscode mode
+              !isVSCode() && (
+                <button
+                  className="tab-close"
+                  tabIndex={-1}
+                  onClick={async (e) => {
+                    e.stopPropagation();
+                    // If streaming, interrupt first then close
+                    if (session.streaming) {
+                      await interruptSession(session.id);  // Pass explicit session ID
+                    }
+                    deleteSession(session.id);
+                  }}
+                  onMouseDown={(e) => {
+                    e.stopPropagation(); // Prevent tab drag when clicking close
+                  }}
+                >
+                  <IconX size={14} stroke={1.5} />
+                </button>
+              )
             )}
             {/* Todo progress bar at bottom of tab */}
             {(() => {
@@ -959,10 +965,12 @@ export const SessionTabs: React.FC = () => {
         </div>
 
         {/* Action buttons - always visible outside scroll container */}
+        {/* Hide new tab and recent projects buttons in vscode mode */}
+        {!isVSCode() && (
         <div className={`tabs-actions ${hasOverflow ? 'sticky' : ''} ${sessions.length === 0 ? 'no-tabs' : ''}`}>
           <button
             className={`tab-new ${dragOverNewTab ? 'drag-over-duplicate' : ''}`}
-            onClick={handleOpenFolder} 
+            onClick={handleOpenFolder}
             onMouseDown={(e) => {
               if (e.button === 0) { // Left click only
                 const target = e.currentTarget;
@@ -1161,6 +1169,7 @@ export const SessionTabs: React.FC = () => {
             </button>
           )}
         </div>
+        )}
       </div>
 
       {contextMenu && (

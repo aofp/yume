@@ -56,7 +56,8 @@
     ],
     "resources": [
       "resources/yurucode-server-*",
-      "resources/yurucode-plugin"
+      "resources/yurucode-plugin",
+      "resources/yurucode-vscode"
     ],
     "macOS": {
       "frameworks": [],

@@ -57,7 +57,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<'7d' | '14d' | '30d' | 'all'>('7d');
+  const [timeRange, setTimeRange] = useState<'7d' | '14d' | '30d' | '60d' | '90d' | 'all'>('7d');
   
   // Handle escape key
   useEffect(() => {
@@ -173,12 +173,8 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
     // Apply time range filter (skip for project view since we don't have date-level project data)
     if (timeRange !== 'all' && viewMode !== 'project') {
       const now = Date.now();
-      const sevenDaysAgo = now - (7 * 24 * 60 * 60 * 1000);
-      const fourteenDaysAgo = now - (14 * 24 * 60 * 60 * 1000);
-      const thirtyDaysAgo = now - (30 * 24 * 60 * 60 * 1000);
-      
-      const cutoffTime = timeRange === '7d' ? sevenDaysAgo : 
-                         timeRange === '14d' ? fourteenDaysAgo : thirtyDaysAgo;
+      const days = { '7d': 7, '14d': 14, '30d': 30, '60d': 60, '90d': 90 };
+      const cutoffTime = now - (days[timeRange as keyof typeof days] * 24 * 60 * 60 * 1000);
       const cutoffDate = new Date(cutoffTime).toISOString().split('T')[0];
       
       // Filter by date
@@ -254,7 +250,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const recentDates = filteredAnalytics ?
     Object.entries(filteredAnalytics.byDate)
       .sort((a, b) => new Date(a[0]).getTime() - new Date(b[0]).getTime()) // Sort chronologically
-      .slice(-(timeRange === '7d' ? 7 : timeRange === '14d' ? 14 : timeRange === '30d' ? 30 : 60)) // Take last N days
+      .slice(-(timeRange === 'all' ? 120 : parseInt(timeRange))) // Take last N days
       : [];
 
   // Calculate max tokens for chart scaling
@@ -287,26 +283,12 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
             </div>
             {viewMode === 'all' && (
               <div className="header-tabs">
-                <TabButton
-                  label="7 days"
-                  active={timeRange === '7d'}
-                  onClick={() => setTimeRange('7d')}
-                />
-                <TabButton
-                  label="14 days"
-                  active={timeRange === '14d'}
-                  onClick={() => setTimeRange('14d')}
-                />
-                <TabButton
-                  label="30 days"
-                  active={timeRange === '30d'}
-                  onClick={() => setTimeRange('30d')}
-                />
-                <TabButton
-                  label="all time"
-                  active={timeRange === 'all'}
-                  onClick={() => setTimeRange('all')}
-                />
+                <TabButton label="7d" active={timeRange === '7d'} onClick={() => setTimeRange('7d')} />
+                <TabButton label="14d" active={timeRange === '14d'} onClick={() => setTimeRange('14d')} />
+                <TabButton label="30d" active={timeRange === '30d'} onClick={() => setTimeRange('30d')} />
+                <TabButton label="60d" active={timeRange === '60d'} onClick={() => setTimeRange('60d')} />
+                <TabButton label="90d" active={timeRange === '90d'} onClick={() => setTimeRange('90d')} />
+                <TabButton label="all" active={timeRange === 'all'} onClick={() => setTimeRange('all')} />
               </div>
             )}
           </div>
@@ -466,8 +448,8 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                         </div>
                         {/* Only show label every other day for longer ranges */}
                         <div className="chart-label">
-                          {(timeRange === '7d' || index % 2 === 0 || index === recentDates.length - 1) ? 
-                            (timeRange === 'all' || timeRange === '30d' ? 
+                          {(timeRange === '7d' || index % 2 === 0 || index === recentDates.length - 1) ?
+                            (['30d', '60d', '90d', 'all'].includes(timeRange) ?
                               `${new Date(date).getMonth()+1}/${new Date(date).getDate()}` :
                               new Date(date).toLocaleDateString('en', { month: 'short', day: 'numeric' })
                             ) : ''

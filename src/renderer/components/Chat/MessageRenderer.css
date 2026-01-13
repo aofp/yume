@@ -1349,7 +1349,7 @@ body.platform-win32 .tool-detail {
 .tool-result.read-ouput,
 .tool-result.dir-listing,
 .tool-result.web-search {
-  opacity: 0.8;
+  opacity: 0.95;
 }
 
 .read-content {

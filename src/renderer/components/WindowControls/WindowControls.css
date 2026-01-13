@@ -233,3 +233,30 @@
 .session-tab {
   -webkit-app-region: no-drag;
 }
+
+/* VSCode connection indicator - positive color */
+.vscode-indicator {
+  background: transparent;
+  color: var(--positive-color);
+  font-size: 9px;
+  font-weight: 600;
+  font-family: var(--mono-font);
+  padding: 2px 4px;
+  border-radius: 3px;
+  margin-right: 4px;
+  letter-spacing: -0.5px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  cursor: default;
+  user-select: none;
+}
+
+/* Fixed position variant for vscode mode (top right) */
+.vscode-indicator-fixed {
+  position: fixed;
+  top: 6px;
+  right: 8px;
+  z-index: 1000;
+  margin-right: 0;
+}

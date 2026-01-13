@@ -45,6 +45,7 @@ import { FEATURE_FLAGS } from '../../config/features';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { pluginService } from '../../services/pluginService';
 import { isBashPrefix } from '../../utils/helpers';
+import { isVSCode, getVSCodePort } from '../../services/tauriApi';
 import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
 import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions } from '../../constants/chat';
 import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
@@ -370,8 +371,8 @@ export const ClaudeChat: React.FC = () => {
   const [compactingStartTimes, setCompactingStartTimes] = useState<{ [sessionId: string]: number }>({});
   // Per-session textarea heights for persistence when switching tabs
   const [textareaHeights, setTextareaHeights] = useState<{ [sessionId: string]: number }>({});
-  // Overlay height synced with textarea for ultrathink label positioning
-  const [overlayHeight, setOverlayHeight] = useState(44);
+  // Overlay height synced with textarea - use ref to avoid re-renders on every keystroke
+  const overlayHeightRef = useRef(44);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const inputOverlayRef = useRef<HTMLDivElement>(null);
@@ -494,6 +495,7 @@ export const ClaudeChat: React.FC = () => {
   }, [currentSessionId]);
 
   // Fetch usage limits with smart caching (shorter TTL for null values)
+  // In VSCode mode, tauri invoke isn't available - skip fetching
   const fetchUsageLimits = useCallback((force = false) => {
     const CACHE_KEY = 'yurucode_usage_limits_cache';
     const CACHE_DURATION_VALID = 20 * 60 * 1000; // 20 min for valid data
@@ -539,25 +541,46 @@ export const ClaudeChat: React.FC = () => {
       }
     }
 
-    invoke<{
-      five_hour?: { utilization: number | null; resets_at: string | null };
-      seven_day?: { utilization: number | null; resets_at: string | null };
-      subscription_type?: string;
-      rate_limit_tier?: string;
-    }>('get_claude_usage_limits')
-      .then(data => {
-        console.log('[UsageLimits] API response:', JSON.stringify(data));
-        const filteredData = filterData(data);
-        setUsageLimits(filteredData);
-        // Cache with null flag (determines TTL on next read)
-        const hasNullUsage = !filteredData.five_hour || !filteredData.seven_day;
-        try {
-          localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
-        } catch (e) {
-          // Cache write failed, ignore
-        }
-      })
-      .catch(err => console.error('[UsageLimits] Failed to fetch:', err));
+    // In VSCode mode, use HTTP endpoint; otherwise use Tauri invoke
+    if (isVSCode()) {
+      const port = getVSCodePort();
+      if (!port) {
+        console.log('[UsageLimits] VSCode mode but no port');
+        return;
+      }
+      fetch(`http://127.0.0.1:${port}/claude-usage-limits`)
+        .then(res => res.ok ? res.json() : Promise.reject(res.statusText))
+        .then(data => {
+          console.log('[UsageLimits] HTTP response:', JSON.stringify(data));
+          const filteredData = filterData(data);
+          setUsageLimits(filteredData);
+          const hasNullUsage = !filteredData.five_hour || !filteredData.seven_day;
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
+          } catch (e) { /* ignore */ }
+        })
+        .catch(err => console.error('[UsageLimits] HTTP fetch failed:', err));
+    } else {
+      invoke<{
+        five_hour?: { utilization: number | null; resets_at: string | null };
+        seven_day?: { utilization: number | null; resets_at: string | null };
+        subscription_type?: string;
+        rate_limit_tier?: string;
+      }>('get_claude_usage_limits')
+        .then(data => {
+          console.log('[UsageLimits] API response:', JSON.stringify(data));
+          const filteredData = filterData(data);
+          setUsageLimits(filteredData);
+          // Cache with null flag (determines TTL on next read)
+          const hasNullUsage = !filteredData.five_hour || !filteredData.seven_day;
+          try {
+            localStorage.setItem(CACHE_KEY, JSON.stringify({ data, timestamp: Date.now(), hasNullUsage }));
+          } catch (e) {
+            // Cache write failed, ignore
+          }
+        })
+        .catch(err => console.error('[UsageLimits] Failed to fetch:', err));
+    }
   }, []);
 
   // Fetch usage limits on mount and refresh every 20min
@@ -1522,13 +1545,11 @@ export const ClaudeChat: React.FC = () => {
     });
   }, []);
 
-  // Rollback panel initialization - only select last item once when panel opens
+  // Rollback panel initialization - select first item (latest) when panel opens
   useEffect(() => {
     if (showRollbackPanel && !rollbackInitializedRef.current) {
       const userMessages = getNonBashUserMessages(currentSession?.messages);
-      const maxIndex = userMessages.length - 1;
-      setRollbackSelectedIndex(maxIndex);
-      rollbackListRef.current?.focus();
+      setRollbackSelectedIndex(0); // First item (latest)
       rollbackInitializedRef.current = true;
     } else if (!showRollbackPanel) {
       rollbackInitializedRef.current = false;
@@ -2679,8 +2700,10 @@ export const ClaudeChat: React.FC = () => {
           const newHeight = Math.min(Math.max(scrollHeight, 44), 106);
           inputRef.current.style.height = `${newHeight}px`;
           inputRef.current.style.overflow = scrollHeight > 106 ? 'auto' : 'hidden';
-          setOverlayHeight(newHeight);
-          setTextareaHeights(prev => ({ ...prev, [currentSessionId]: newHeight }));
+          overlayHeightRef.current = newHeight;
+          if (inputOverlayRef.current) {
+            inputOverlayRef.current.style.height = newHeight + 'px';
+          }
         }
       });
     }
@@ -3790,51 +3813,73 @@ export const ClaudeChat: React.FC = () => {
     const minHeight = 44; // Match CSS min-height exactly
     const maxHeight = 106; // 5 lines * 18px + 16px padding (match CSS max-height)
 
-    // Check if we're at bottom before resizing - only scroll if explicitly at bottom
     const container = chatContainerRef.current;
-    const wasAtBottom = container && currentSessionId &&
-      (isAtBottom[currentSessionId] === true ||
-       (container.scrollHeight - container.scrollTop - container.clientHeight < 5));
-
-    // Store the current height before resetting
     const currentHeight = textarea.offsetHeight;
-    const scrollHeight = textarea.scrollHeight;
 
-    // Optimization: skip expensive resize if content fits perfectly
-    // This prevents flickering on every keystroke when line count doesn't change
-    if (scrollHeight === currentHeight && currentHeight >= minHeight && currentHeight <= maxHeight) {
-      // Content fits exactly, just ensure overflow is correct
-      textarea.style.overflow = scrollHeight > maxHeight ? 'auto' : 'hidden';
-      // Skip the rest - no resize needed
-    } else {
-      // Content size changed, need to resize
-      // minimize reflows: reset height, read scrollHeight, then write final height in single batch
-      textarea.style.height = 'auto';
-      const newScrollHeight = textarea.scrollHeight;
-      const newHeight = Math.min(Math.max(newScrollHeight, minHeight), maxHeight);
-
-      // batch all writes together to prevent visible bounce
-      if (newHeight !== currentHeight) {
-        textarea.style.height = newHeight + 'px';
-        textarea.style.overflow = newScrollHeight > maxHeight ? 'auto' : 'hidden';
-        // Sync overlay height for ultrathink label positioning
-        setOverlayHeight(newHeight);
-        // Save per-session textarea height
-        if (currentSessionId) {
-          setTextareaHeights(prev => ({ ...prev, [currentSessionId]: newHeight }));
-        }
-      } else {
-        // Restore the original height if no change needed
-        textarea.style.height = currentHeight + 'px';
-        textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
+    // Measure content height without visual reset by using a hidden clone
+    // This avoids the flicker caused by setting height='auto'
+    const measureHeight = () => {
+      // Create measurement element once and reuse
+      let measurer = document.getElementById('textarea-measurer') as HTMLTextAreaElement;
+      if (!measurer) {
+        measurer = document.createElement('textarea');
+        measurer.id = 'textarea-measurer';
+        measurer.style.cssText = `
+          position: absolute;
+          top: -9999px;
+          left: -9999px;
+          visibility: hidden;
+          height: auto;
+          overflow: hidden;
+          white-space: pre-wrap;
+          word-wrap: break-word;
+        `;
+        document.body.appendChild(measurer);
       }
-    }
+      // Copy styles that affect sizing
+      const computed = window.getComputedStyle(textarea);
+      measurer.style.width = computed.width;
+      measurer.style.padding = computed.padding;
+      measurer.style.fontSize = computed.fontSize;
+      measurer.style.fontFamily = computed.fontFamily;
+      measurer.style.lineHeight = computed.lineHeight;
+      measurer.style.boxSizing = computed.boxSizing;
+      measurer.style.border = computed.border;
+      measurer.value = textarea.value;
+      return measurer.scrollHeight;
+    };
 
-    // If we were at bottom, maintain scroll position at bottom
-    if (wasAtBottom) {
-      requestAnimationFrame(() => {
-        scrollToBottomHelper('auto');
-      });
+    const newScrollHeight = measureHeight();
+    const newHeight = Math.min(Math.max(newScrollHeight, minHeight), maxHeight);
+
+    if (newHeight !== currentHeight) {
+      const heightDiff = newHeight - currentHeight;
+
+      // Capture scroll state before height change
+      const scrollTopBefore = container?.scrollTop || 0;
+      const wasAtBottom = container &&
+        (container.scrollHeight - container.scrollTop - container.clientHeight < 5);
+
+      // Apply height change
+      textarea.style.height = newHeight + 'px';
+      textarea.style.overflow = newScrollHeight > maxHeight ? 'auto' : 'hidden';
+
+      // Immediately adjust scroll to compensate for height change (sync, no rAF)
+      if (container) {
+        if (wasAtBottom) {
+          // Stay at bottom
+          container.scrollTop = container.scrollHeight;
+        } else {
+          // Maintain visual position by adjusting for height diff
+          container.scrollTop = scrollTopBefore;
+        }
+      }
+
+      // Update overlay height ref and sync to DOM directly (no re-render)
+      overlayHeightRef.current = newHeight;
+      if (inputOverlayRef.current) {
+        inputOverlayRef.current.style.height = newHeight + 'px';
+      }
     }
 
     // macOS focus preservation: restore focus if it was lost during height manipulation
@@ -3893,7 +3938,11 @@ export const ClaudeChat: React.FC = () => {
     const textareaObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
         const height = entry.contentRect.height + 8; // Add padding
-        setOverlayHeight(Math.max(44, Math.min(height, 106)));
+        const newHeight = Math.max(44, Math.min(height, 106));
+        overlayHeightRef.current = newHeight;
+        if (inputOverlayRef.current) {
+          inputOverlayRef.current.style.height = newHeight + 'px';
+        }
       }
     });
 
@@ -4274,7 +4323,8 @@ export const ClaudeChat: React.FC = () => {
                         }
                         // Filter out bash commands ($ or ! prefix)
                         return !isBashPrefix(text.trim());
-                      });
+                      })
+                      .reverse(); // Reverse to show latest first
 
                     if (userMessages.length === 0) {
                       return <div className="tool-panel-empty">no messages to rollback</div>;
@@ -4898,7 +4948,8 @@ export const ClaudeChat: React.FC = () => {
             inputRef={inputRef}
             inputOverlayRef={inputOverlayRef}
             inputContainerRef={inputContainerRef}
-            overlayHeight={overlayHeight}
+            overlayHeight={overlayHeightRef.current}
+            textareaHeight={overlayHeightRef.current}
             isTextareaFocused={isTextareaFocused}
             setIsTextareaFocused={setIsTextareaFocused}
             setMentionTrigger={setMentionTrigger}
@@ -5188,6 +5239,7 @@ export const ClaudeChat: React.FC = () => {
                 );
               })()}
             </div>
+            {/* Usage limits footer */}
             <div className="stats-footer">
               {/* Session Limit (5-hour) */}
               <div className="stats-footer-row">

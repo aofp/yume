@@ -173,12 +173,37 @@ class TauriAPIBridge implements TauriAPI {
 // Create singleton instance
 const tauriAPI = new TauriAPIBridge();
 
+// Helper to detect if running in VSCode webview (iframe with ?vscode=1)
+export const isVSCode = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('vscode') === '1';
+};
+
+// Get port from URL when in vscode mode
+export const getVSCodePort = (): number | null => {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const port = params.get('port');
+  return port ? parseInt(port, 10) : null;
+};
+
+// Get cwd from URL when in vscode mode
+export const getVSCodeCwd = (): string | null => {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  return params.get('cwd') || null;
+};
+
 // Helper to detect if running in Tauri
 export const isTauri = (): boolean => {
+  // VSCode mode overrides Tauri detection
+  if (isVSCode()) return false;
+
   const result = typeof window !== 'undefined' && '__TAURI__' in window;
   // Only log once to avoid spam
   if (!window.__tauriCheckLogged) {
-    console.log('isTauri check: window defined:', typeof window !== 'undefined', '__TAURI__ in window:', typeof window !== 'undefined' && '__TAURI__' in window, 'result:', result);
+    console.log('isTauri check: window defined:', typeof window !== 'undefined', '__TAURI__ in window:', typeof window !== 'undefined' && '__TAURI__' in window, 'vscode mode:', isVSCode(), 'result:', result);
     window.__tauriCheckLogged = true;
   }
   return result;

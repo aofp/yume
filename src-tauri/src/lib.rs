@@ -1070,6 +1070,10 @@ pub fn run() {
             commands::plugins::sync_yurucode_agents,
             commands::plugins::are_yurucode_agents_synced,
             commands::plugins::cleanup_yurucode_agents_on_exit,
+            // VSCode extension
+            commands::plugins::is_vscode_installed,
+            commands::plugins::check_vscode_extension_installed,
+            commands::plugins::install_vscode_extension,
             // Rollback conflict detection
             commands::get_file_mtime,
             commands::check_file_conflicts,

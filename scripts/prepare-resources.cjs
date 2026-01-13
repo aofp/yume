@@ -89,6 +89,41 @@ const dirsToRemove = [
   '.originals',
 ];
 
+// Clean up vscode extension - keep only .vsix and out/
+function cleanVscodeExtension() {
+  const vscodeDir = path.join(resourcesDir, 'yurucode-vscode');
+  if (!fs.existsSync(vscodeDir)) return 0;
+
+  let cleanedSize = 0;
+  const filesToRemoveFromVscode = [
+    'node_modules',
+    'src',
+    '.vscodeignore',
+    'package.json',
+    'package-lock.json',
+    'tsconfig.json',
+    'out/extension.js.map',
+  ];
+
+  for (const item of filesToRemoveFromVscode) {
+    const itemPath = path.join(vscodeDir, item);
+    if (fs.existsSync(itemPath)) {
+      const stats = fs.statSync(itemPath);
+      const itemSize = stats.isDirectory() ? getDirSize(itemPath) : stats.size;
+      cleanedSize += itemSize;
+
+      if (stats.isDirectory()) {
+        fs.rmSync(itemPath, { recursive: true });
+      } else {
+        fs.rmSync(itemPath);
+      }
+      console.log(`  ❌ Removed from vscode: ${item} (${formatSize(itemSize)})`);
+    }
+  }
+
+  return cleanedSize;
+}
+
 // Get list of files to keep for this platform
 const filesToKeep = platformFiles[targetPlatform] || [];
 
@@ -135,6 +170,14 @@ for (const dir of dirsToRemove) {
     console.log(`  ❌ Removed: ${dir}/ (${formatSize(dirSize)})`);
     removedCount++;
   }
+}
+
+// Clean up vscode extension
+console.log('\n🧹 Cleaning vscode extension...');
+const vscodeCleanedSize = cleanVscodeExtension();
+if (vscodeCleanedSize > 0) {
+  removedSize += vscodeCleanedSize;
+  console.log(`  Cleaned: ${formatSize(vscodeCleanedSize)} from vscode extension`);
 }
 
 // Verify required files exist

@@ -26,10 +26,11 @@ import { systemPromptService } from './services/systemPromptService';
 import { pluginService } from './services/pluginService';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { APP_NAME } from './config/app';
+import { isVSCode } from './services/tauriApi';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity /* , restoreToMessage */ } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity, vscodeConnected /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -186,8 +187,18 @@ export const App: React.FC = () => {
   // Restore tabs after store is hydrated from persistence
   useEffect(() => {
     // Small delay to ensure store is fully hydrated from persistence
-    const timer = setTimeout(() => {
-      if (rememberTabs) {
+    const timer = setTimeout(async () => {
+      // Check if we're in VSCode mode
+      const urlParams = new URLSearchParams(window.location.search);
+      const isVSCodeMode = urlParams.get('vscode') === '1';
+      const vscodeCwd = urlParams.get('cwd');
+
+      if (isVSCodeMode && vscodeCwd) {
+        // VSCode mode: always create a fresh session with the workspace folder
+        console.log('[App] VSCode mode: creating session for', vscodeCwd);
+        const projectName = vscodeCwd.split('/').pop() || 'vscode';
+        await createSession(projectName, vscodeCwd);
+      } else if (rememberTabs) {
         console.log('[App] Remember tabs is enabled, restoring tabs...');
         restoreTabs();
       }
@@ -865,6 +876,12 @@ export const App: React.FC = () => {
       onDragLeave={handleGlobalDragLeave}
       onContextMenu={handleGlobalContextMenu}
     >
+      {/* VSCode connection indicator - fixed top right in vscode mode */}
+      {isVSCode() && (
+        <span className="vscode-indicator vscode-indicator-fixed" title="vscode extension connected">
+          [{APP_NAME} connected]
+        </span>
+      )}
       <ErrorBoundary name="WindowControls">
         <WindowControls onSettingsClick={() => setShowSettings(true)} onHelpClick={() => setShowHelpModal(true)} onProjectsClick={() => setShowProjectsModal(true)} onAgentsClick={() => setShowAgentsModal(true)} onAnalyticsClick={() => {
           setAnalyticsProject(undefined);

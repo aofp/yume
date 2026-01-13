@@ -1076,13 +1076,14 @@ textarea.context-full {
   border-radius: 4px;
   font-size: var(--text-base);
   line-height: 18px;
+  height: 44px; /* default, JS overrides for auto-resize */
   min-height: 44px;
   max-height: 106px; /* 5 lines: 18px * 5 + 16px padding */
   box-sizing: border-box;
   resize: none;
   font-family: var(--font-sans);
   outline: none;
-  overflow-y: auto;
+  overflow-y: hidden; /* hidden default, JS sets auto when content overflows */
   user-select: text;
   position: relative;
   z-index: 2;
@@ -1582,8 +1583,7 @@ textarea.context-full {
 
 .btn-stats {
   font-family: var(--font-mono);
-  max-width: 90px;
-  width: 90px;
+  min-width: 90px;
   text-align: center;
 }
 

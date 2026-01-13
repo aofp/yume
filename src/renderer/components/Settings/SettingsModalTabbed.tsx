@@ -93,6 +93,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     showHooksSettings, setShowHooksSettings,
     showPluginsSettings, setShowPluginsSettings,
     showSkillsSettings, setShowSkillsSettings,
+    vscodeExtensionEnabled, setVscodeExtensionEnabled,
+    vscodeConnected,
     backgroundOpacity, setBackgroundOpacity
   } = useClaudeCodeStore();
 
@@ -180,6 +182,43 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       };
     }
   }, []);
+
+  // VSCode extension state
+  const [vscodeInstalling, setVscodeInstalling] = useState(false);
+  const [vscodeInstalled, setVscodeInstalled] = useState(true); // default to true, check on mount
+
+  // Check if VSCode is installed on mount
+  useEffect(() => {
+    invoke('is_vscode_installed')
+      .then((installed) => {
+        setVscodeInstalled(installed as boolean);
+        if (!installed) {
+          console.log('VSCode not installed - toggle will be disabled');
+        }
+      })
+      .catch((err) => {
+        console.error('Failed to check VSCode installation:', err);
+        setVscodeInstalled(false);
+      });
+  }, []);
+
+  // Auto-install vscode extension when enabled
+  useEffect(() => {
+    if (vscodeExtensionEnabled && !vscodeConnected && vscodeInstalled) {
+      // Auto-install when enabled
+      setVscodeInstalling(true);
+      invoke('install_vscode_extension')
+        .then(() => {
+          console.log('VSCode extension installed');
+        })
+        .catch((err) => {
+          console.error('Failed to install vscode extension:', err);
+        })
+        .finally(() => {
+          setVscodeInstalling(false);
+        });
+    }
+  }, [vscodeExtensionEnabled, vscodeInstalled]);
 
   // Hooks tab state
   const [hooks, setHooks] = useState<HookScriptConfig[]>([]);
@@ -843,6 +882,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <h4 style={{ marginTop: '16px' }}>menu</h4>
 
                   <div className="checkbox-setting compact">
+                    <span className="checkbox-label">analytics</span>
+                    <div
+                      className={`toggle-switch compact ${showAnalyticsMenu ? 'active' : ''}`}
+                      onClick={() => setShowAnalyticsMenu(!showAnalyticsMenu)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <div className="checkbox-setting compact">
                     <span className="checkbox-label">projects</span>
                     <div
                       className={`toggle-switch compact ${showProjectsMenu ? 'active' : ''}`}
@@ -866,18 +917,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     </div>
                   </div>
 
-                  <div className="checkbox-setting compact">
-                    <span className="checkbox-label">analytics</span>
-                    <div
-                      className={`toggle-switch compact ${showAnalyticsMenu ? 'active' : ''}`}
-                      onClick={() => setShowAnalyticsMenu(!showAnalyticsMenu)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
                 </div>
 
                 {/* Right column: Claude Code + Settings */}
@@ -891,6 +930,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   }} />
 
                   <h4 style={{ marginTop: '16px' }}>settings</h4>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">plugins</span>
+                    <div
+                      className={`toggle-switch compact ${showPluginsSettings ? 'active' : ''}`}
+                      onClick={() => setShowPluginsSettings(!showPluginsSettings)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
 
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">hooks</span>
@@ -933,18 +984,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     <div
                       className={`toggle-switch compact ${showMcpSettings ? 'active' : ''}`}
                       onClick={() => setShowMcpSettings(!showMcpSettings)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
-                  <div className="checkbox-setting compact">
-                    <span className="checkbox-label">plugins</span>
-                    <div
-                      className={`toggle-switch compact ${showPluginsSettings ? 'active' : ''}`}
-                      onClick={() => setShowPluginsSettings(!showPluginsSettings)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -1173,7 +1212,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       <div className="opacity-container">
                         <input
                           type="range"
-                          min="8"
+                          min="9"
                           max="18"
                           step="0.5"
                           value={fontSize}
@@ -1193,7 +1232,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       <div className="opacity-container">
                         <input
                           type="range"
-                          min="1.0"
+                          min="0.9"
                           max="2.0"
                           step="0.05"
                           value={lineHeight}
@@ -1574,6 +1613,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   active={activeTab === 'appearance'}
                   onClick={() => setActiveTab('appearance')}
                 />
+                {showPluginsSettings && (
+                  <TabButton
+                    label="plugins"
+                    active={activeTab === 'plugins'}
+                    onClick={() => setActiveTab('plugins')}
+                  />
+                )}
                 {showHooksSettings && (
                   <TabButton
                     label="hooks"
@@ -1602,13 +1648,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     onClick={() => setActiveTab('mcp')}
                   />
                 )}
-                {showPluginsSettings && (
-                  <TabButton
-                    label="plugins"
-                    active={activeTab === 'plugins'}
-                    onClick={() => setActiveTab('plugins')}
-                  />
-                )}
               </div>
             </div>
             <button className="settings-close" onClick={onClose}>
@@ -1625,6 +1664,30 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
           {(activeTab === 'general' || activeTab === 'appearance') && (
             <div className="settings-bottom-controls">
               <div className="settings-bottom-left">
+                {activeTab === 'general' && (
+                  <div
+                    className="checkbox-setting compact"
+                    style={{
+                      margin: 0,
+                      opacity: vscodeInstalled ? 1 : 0.5,
+                      pointerEvents: vscodeInstalled ? 'auto' : 'none'
+                    }}
+                  >
+                    <span className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      vscode extension
+                      {vscodeConnected && <span style={{ fontSize: '8px', color: 'var(--positive-color)' }}>●</span>}
+                      {vscodeInstalling && <span style={{ fontSize: '8px', color: 'var(--accent-color)' }}>...</span>}
+                    </span>
+                    <div
+                      className={`toggle-switch compact ${vscodeExtensionEnabled ? 'active' : ''}`}
+                      onClick={() => vscodeInstalled && setVscodeExtensionEnabled(!vscodeExtensionEnabled)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+                )}
                 {activeTab === 'appearance' && (
                   <div style={{ display: 'flex', gap: '20px', alignItems: 'flex-start' }}>
                     <div>
