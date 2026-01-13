@@ -18,7 +18,7 @@
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: 3px;
   padding: 4px 8px;
-  font-size: 9px;
+  font-size: var(--text-xs);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -62,7 +62,7 @@
 
 .skills-header h4 {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -79,7 +79,7 @@
   color: var(--fg-60);
   padding: 2px 6px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   cursor: default;
   display: flex;
   align-items: center;
@@ -94,7 +94,7 @@
 /* Description */
 .skills-description {
   color: var(--fg-50);
-  font-size: 10px;
+  font-size: var(--text-sm);
   margin-bottom: 4px;
 }
 
@@ -106,7 +106,7 @@
   gap: 8px;
   padding: 20px;
   color: var(--fg-50);
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .skills-loading .spin {
@@ -127,7 +127,7 @@
   gap: 8px;
   padding: 24px;
   color: var(--fg-50);
-  font-size: 11px;
+  font-size: var(--text-base);
   background: var(--fg-05);
   border: 1px solid var(--fg-15);
   border-radius: 4px;
@@ -136,7 +136,7 @@
 
 .no-skills-hint {
   color: var(--fg-40);
-  font-size: 10px;
+  font-size: var(--text-sm);
   margin: 4px 0 0 0;
 }
 
@@ -159,7 +159,7 @@
   align-items: center;
   gap: 6px;
   color: var(--fg-50);
-  font-size: 9px;
+  font-size: var(--text-xs);
   text-transform: lowercase;
   padding-bottom: 4px;
   border-bottom: 1px solid var(--fg-10);
@@ -210,13 +210,13 @@
 
 .skill-name {
   color: var(--fg-90);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
 }
 
 .skill-description {
   color: var(--fg-60);
-  font-size: 10px;
+  font-size: var(--text-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -231,7 +231,7 @@
 }
 
 .skill-status {
-  font-size: 9px;
+  font-size: var(--text-xs);
   padding: 2px 6px;
   border-radius: 2px;
   background: var(--fg-08);
@@ -293,7 +293,7 @@
 
 .skill-edit-modal h4 {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 12px 0;
   text-transform: lowercase;
@@ -310,7 +310,7 @@
   flex-direction: column;
   gap: 4px;
   color: var(--fg-60);
-  font-size: 10px;
+  font-size: var(--text-sm);
 }
 
 .skill-edit-form input,
@@ -319,7 +319,7 @@
   border: 1px solid var(--fg-20);
   border-radius: 4px;
   color: var(--fg-90);
-  font-size: 11px;
+  font-size: var(--text-base);
   padding: 8px;
   outline: none;
   font-family: inherit;
@@ -346,7 +346,7 @@
 .skill-save-btn {
   padding: 6px 12px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   cursor: default;
 }
 

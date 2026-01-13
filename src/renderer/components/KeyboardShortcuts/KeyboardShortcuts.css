@@ -34,7 +34,7 @@
 
 .help-header h3 {
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -72,7 +72,7 @@
   display: flex;
   align-items: center;
   padding: 2px 0;
-  font-size: 7pt;
+  font-size: var(--text-xs);
   user-select: none;
 }
 
@@ -91,7 +91,7 @@
   padding: 1px 4px;
   border-radius: 3px;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   font-weight: 500;
   border: none;
   user-select: none;
@@ -99,14 +99,14 @@
 
 .key-plus {
   color: var(--fg-30);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   padding: 0 1px;
   user-select: none;
 }
 
 .key-or {
   color: var(--fg-30);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   padding: 0 2px;
   user-select: none;
 }
@@ -126,7 +126,7 @@
   content: '................................................................................................................................................................................................................................................................................................................................................................................................';
   letter-spacing: 1px;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: var(--text-xs);
 }
 
 .shortcut-desc {

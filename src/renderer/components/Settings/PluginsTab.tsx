@@ -21,6 +21,7 @@ import {
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { pluginService } from '../../services/pluginService';
 import { InstalledPlugin } from '../../types/plugin';
+import { APP_NAME } from '../../config/app';
 import './PluginsTab.css';
 
 interface PluginsTabProps {
@@ -289,10 +290,10 @@ export const PluginsTab: React.FC<PluginsTabProps> = ({ onPluginChange }) => {
 
                   <div className="plugin-info">
                     <div className="plugin-name-row">
-                      <span className="plugin-name">{plugin.manifest.name}</span>
+                      <span className="plugin-name">{isYurucode ? APP_NAME : plugin.manifest.name}</span>
                       <span className="plugin-version">v{plugin.manifest.version}</span>
                     </div>
-                    <div className="plugin-description">{plugin.manifest.description}</div>
+                    <div className="plugin-description">{isYurucode ? `commands, agents, and security guard for ${APP_NAME}` : plugin.manifest.description}</div>
                   </div>
 
                   {/* Component counts as small badges */}

@@ -1,4 +1,5 @@
 import { invoke } from '@tauri-apps/api/core';
+import { APP_NAME } from '../config/app';
 
 export interface SystemPromptSettings {
   enabled: boolean;
@@ -9,7 +10,7 @@ export interface SystemPromptSettings {
 
 const STORAGE_KEY = 'system_prompt_settings';
 
-const DEFAULT_PROMPT_WITH_AGENTS = `yurucode orchestrator. lowercase, concise.
+const DEFAULT_PROMPT_WITH_AGENTS = `${APP_NAME} orchestrator. lowercase, concise.
 
 agents available:
 - architect: plan complex tasks (3+ steps), identify risks
@@ -32,7 +33,7 @@ cost awareness:
 
 always: read before edit, small changes, relative paths.`;
 
-const DEFAULT_PROMPT_NO_AGENTS = `yurucode. lowercase, concise. read before edit, small changes, relative paths.`;
+const DEFAULT_PROMPT_NO_AGENTS = `${APP_NAME}. lowercase, concise. read before edit, small changes, relative paths.`;
 
 class SystemPromptService {
   private settings: SystemPromptSettings | null = null;

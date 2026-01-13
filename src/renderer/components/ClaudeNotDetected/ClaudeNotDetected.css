@@ -49,7 +49,7 @@
 
 .claude-not-detected-modal h2 {
   color: #ffffff;
-  font-size: 20px;
+  font-size: var(--text-2xl);
   font-weight: 500;
   margin: 0 0 8px 0;
   font-family: var(--font-sans);
@@ -57,7 +57,7 @@
 
 .claude-not-detected-message {
   color: rgba(255, 255, 255, 0.6);
-  font-size: 13px;
+  font-size: var(--text-lg);
   margin: 0 0 24px 0;
   font-family: var(--font-sans);
 }
@@ -73,7 +73,7 @@
 
 .claude-not-detected-instructions h3 {
   color: rgba(255, 255, 255, 0.8);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 12px 0;
   text-transform: uppercase;
@@ -92,7 +92,7 @@
   align-items: center;
   gap: 8px;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-sans);
 }
 
@@ -102,7 +102,7 @@
   padding: 4px 8px;
   border-radius: 4px;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-base);
   color: #99bbff;
 }
 
@@ -115,14 +115,14 @@
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 50%;
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.5);
   flex-shrink: 0;
 }
 
 .install-note {
   color: rgba(255, 255, 255, 0.4);
-  font-size: 11px;
+  font-size: var(--text-base);
   margin: 8px 0 0 24px;
   font-style: italic;
   font-family: var(--font-sans);
@@ -143,7 +143,7 @@
   border-radius: 4px;
   color: #99bbff;
   text-decoration: none;
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-sans);
 }
 

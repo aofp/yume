@@ -1,7 +1,6 @@
 import React, { useState, useEffect, useRef, DragEvent } from 'react';
 import { IconX, IconPlus, IconFolder, IconFolderOpen, IconBolt, IconTrash, IconChevronDown, IconClock, IconChartBar } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
-import { AboutModal } from '../About/AboutModal';
 import { AnalyticsModal } from '../Analytics/AnalyticsModal';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 // RecentProjectsModal removed - handled by ClaudeChat component instead
@@ -42,7 +41,6 @@ export const SessionTabs: React.FC = () => {
   const [contextMenu, setContextMenu] = useState<{ x: number; y: number; sessionId: string } | null>(null);
   // Recent modal state removed - handled by ClaudeChat component
   const [recentProjects, setRecentProjects] = useState<any[]>([]);
-  const [showAbout, setShowAbout] = useState(false);
   const [showAnalytics, setShowAnalytics] = useState(false);
   const [hasRecentProjects, setHasRecentProjects] = useState(false);
   const [renamingTab, setRenamingTab] = useState<string | null>(null);
@@ -191,15 +189,6 @@ export const SessionTabs: React.FC = () => {
     checkRecentProjects();
   }, [sessions.length]);
 
-  // Listen for showAboutModal event
-  useEffect(() => {
-    const handleShowAbout = () => {
-      setShowAbout(true);
-    };
-    
-    window.addEventListener('showAboutModal', handleShowAbout);
-    return () => window.removeEventListener('showAboutModal', handleShowAbout);
-  }, []);
 
   // Keyboard handling moved to RecentProjectsModal component to avoid conflicts
 
@@ -1379,28 +1368,13 @@ export const SessionTabs: React.FC = () => {
           <div className="separator" />
           
           <button onClick={() => {
-            setShowAbout(true);
+            window.dispatchEvent(new CustomEvent('showAboutModal'));
             setContextMenu(null);
           }}>about</button>
         </div>
       )}
-      
+
       {/* RecentProjectsModal removed - handled by ClaudeChat component */}
-      
-      {showAbout && <AboutModal 
-        isOpen={showAbout} 
-        onClose={() => setShowAbout(false)} 
-        onShowUpgrade={() => {
-          // Close AboutModal first, then show UpgradeModal
-          setShowAbout(false);
-          // Small delay to ensure AboutModal closes before UpgradeModal opens
-          setTimeout(() => {
-            window.dispatchEvent(new CustomEvent('showUpgradeModal', { 
-              detail: { reason: 'trial' } 
-            }));
-          }, 100);
-        }}
-      />}
     </div>
   );
 };

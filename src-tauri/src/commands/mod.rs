@@ -724,12 +724,64 @@ pub fn toggle_console_visibility() -> Result<String, String> {
 
 /// Get available system fonts
 /// Returns a list of font families available on the system
+/// Recursively searches font directories and better parses font names
 #[tauri::command]
 pub fn get_system_fonts() -> Result<Vec<String>, String> {
     use std::collections::HashSet;
-    
+
     let mut fonts = HashSet::new();
-    
+
+    // Helper function to recursively scan directory for fonts
+    fn scan_font_dir(dir: &str, fonts: &mut HashSet<String>) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    // Recursively scan subdirectories
+                    if let Some(path_str) = path.to_str() {
+                        scan_font_dir(path_str, fonts);
+                    }
+                } else if let Some(name) = entry.file_name().to_str() {
+                    if name.ends_with(".ttf") || name.ends_with(".otf") || name.ends_with(".ttc")
+                       || name.ends_with(".TTF") || name.ends_with(".OTF") || name.ends_with(".TTC") {
+                        // Extract font name from filename with better parsing
+                        let mut font_name = name
+                            .replace(".ttf", "")
+                            .replace(".TTF", "")
+                            .replace(".otf", "")
+                            .replace(".OTF", "")
+                            .replace(".ttc", "")
+                            .replace(".TTC", "");
+
+                        // Remove common weight/style suffixes
+                        let suffixes = ["Bold", "Italic", "Regular", "Light", "Medium", "Semibold",
+                                      "Black", "Thin", "Heavy", "Book", "Roman", "Oblique"];
+                        for suffix in &suffixes {
+                            if font_name.ends_with(suffix) {
+                                font_name = font_name[..font_name.len() - suffix.len()].to_string();
+                            }
+                        }
+
+                        // Clean up the name
+                        font_name = font_name.trim().trim_matches('-').trim_matches('_').to_string();
+
+                        // Replace separators with spaces
+                        font_name = font_name.replace("-", " ").replace("_", " ");
+
+                        // Remove double spaces
+                        while font_name.contains("  ") {
+                            font_name = font_name.replace("  ", " ");
+                        }
+
+                        if !font_name.is_empty() {
+                            fonts.insert(font_name);
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     // Platform-specific font directories
     #[cfg(target_os = "macos")]
     {
@@ -739,41 +791,17 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
             "/Library/Fonts",
             home_fonts.as_str(),
         ];
-        
+
         for dir in font_dirs {
-            if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    if let Some(name) = entry.file_name().to_str() {
-                        if name.ends_with(".ttf") || name.ends_with(".otf") || name.ends_with(".ttc") {
-                            // Extract font name from filename (simplified)
-                            let font_name = name.replace(".ttf", "")
-                                .replace(".otf", "")
-                                .replace(".ttc", "")
-                                .replace("-", " ");
-                            fonts.insert(font_name);
-                        }
-                    }
-                }
-            }
+            scan_font_dir(dir, &mut fonts);
         }
     }
-    
+
     #[cfg(target_os = "windows")]
     {
-        if let Ok(entries) = std::fs::read_dir("C:\\Windows\\Fonts") {
-            for entry in entries.flatten() {
-                if let Some(name) = entry.file_name().to_str() {
-                    if name.ends_with(".ttf") || name.ends_with(".otf") {
-                        let font_name = name.replace(".ttf", "")
-                            .replace(".otf", "")
-                            .replace("-", " ");
-                        fonts.insert(font_name);
-                    }
-                }
-            }
-        }
+        scan_font_dir("C:\\Windows\\Fonts", &mut fonts);
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         let home_fonts = format!("{}/.fonts", std::env::var("HOME").unwrap_or_default());
@@ -784,27 +812,16 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
             home_fonts.as_str(),
             home_local_fonts.as_str(),
         ];
-        
+
         for dir in font_dirs {
-            if let Ok(entries) = std::fs::read_dir(dir) {
-                for entry in entries.flatten() {
-                    if let Some(name) = entry.file_name().to_str() {
-                        if name.ends_with(".ttf") || name.ends_with(".otf") {
-                            let font_name = name.replace(".ttf", "")
-                                .replace(".otf", "")
-                                .replace("-", " ");
-                            fonts.insert(font_name);
-                        }
-                    }
-                }
-            }
+            scan_font_dir(dir, &mut fonts);
         }
     }
-    
+
     // Convert to sorted vector
     let mut font_list: Vec<String> = fonts.into_iter().collect();
     font_list.sort();
-    
+
     Ok(font_list)
 }
 

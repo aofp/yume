@@ -25,10 +25,11 @@ import { claudeCodeClient } from './services/claudeCodeClient';
 import { systemPromptService } from './services/systemPromptService';
 import { pluginService } from './services/pluginService';
 import ErrorBoundary from './components/common/ErrorBoundary';
+import { APP_NAME } from './config/app';
 import './App.minimal.css';
 
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity /* , restoreToMessage */ } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -112,15 +113,7 @@ export const App: React.FC = () => {
 
     // Start connection checking after a brief initial delay
     const initialCheck = setTimeout(checkConnection, 50);
-    
-    // Apply saved fonts from store (store loads from localStorage)
-    if (monoFont) {
-      document.documentElement.style.setProperty('--font-mono', `"${monoFont}", monospace`);
-    }
-    if (sansFont) {
-      document.documentElement.style.setProperty('--font-sans', `"${sansFont}", sans-serif`);
-    }
-    
+
     // Apply saved background opacity and signal app is loaded
     const savedOpacity = localStorage.getItem('yurucode-bg-opacity');
     if (savedOpacity) {
@@ -143,9 +136,36 @@ export const App: React.FC = () => {
     const targetOpacity = (window as any).__YURUCODE_TARGET_OPACITY__ || 0.8;
     document.documentElement.style.opacity = String(targetOpacity);
     console.log('[App] Loaded - applied target opacity:', targetOpacity);
-    
+
     return () => clearTimeout(initialCheck);
-  }, [loadSessionMappings, monoFont, sansFont, setBackgroundOpacity]);
+  }, [loadSessionMappings, setBackgroundOpacity]);
+
+  // Apply fonts when they change (separate from initial load to avoid opacity reset)
+  useEffect(() => {
+    if (monoFont) {
+      document.documentElement.style.setProperty('--font-mono', `"${monoFont}", monospace`);
+    }
+    if (sansFont) {
+      document.documentElement.style.setProperty('--font-sans', `"${sansFont}", sans-serif`);
+    }
+  }, [monoFont, sansFont]);
+
+  // Apply font size and line height (load from localStorage or use defaults)
+  useEffect(() => {
+    // Load font size from localStorage or use default
+    const savedFontSize = localStorage.getItem('yurucode-font-size');
+    const sizeToApply = savedFontSize ? Number(savedFontSize) : 11;
+    if (!isNaN(sizeToApply)) {
+      setFontSize(sizeToApply);
+    }
+
+    // Load line height from localStorage or use default
+    const savedLineHeight = localStorage.getItem('yurucode-line-height');
+    const heightToApply = savedLineHeight ? Number(savedLineHeight) : 1.25;
+    if (!isNaN(heightToApply)) {
+      setLineHeight(heightToApply);
+    }
+  }, []); // Only run once on mount
 
   // Cleanup yurucode agents from ~/.claude/agents/ on app exit
   // Only removes files if no other yurucode instances are running
@@ -388,11 +408,14 @@ export const App: React.FC = () => {
     };
   }, []);
 
+  // Set window title from build config
+  useEffect(() => {
+    document.title = APP_NAME;
+  }, []);
+
   useEffect(() => {
     console.log('App useEffect running');
-    // Set page title
-    document.title = 'yurucode';
-    
+
     // Setup Tauri file drop handler
     let unlistenDragDrop: (() => void) | undefined;
     

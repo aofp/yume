@@ -79,6 +79,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const {
     globalWatermarkImage, setGlobalWatermark,
     monoFont, sansFont, setMonoFont, setSansFont,
+    fontSize, lineHeight, setFontSize, setLineHeight,
     rememberTabs, setRememberTabs,
     autoGenerateTitle, setAutoGenerateTitle,
     wordWrap, setWordWrap,
@@ -105,11 +106,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     const tabVisibility: Record<SettingsTab, boolean> = {
       general: true,
       appearance: true,
-      plugins: showPluginsSettings,
-      commands: showCommandsSettings,
       hooks: showHooksSettings,
+      commands: showCommandsSettings,
       skills: showSkillsSettings,
       mcp: showMcpSettings,
+      plugins: showPluginsSettings,
     };
     if (!tabVisibility[activeTab]) {
       setActiveTab('general');
@@ -587,7 +588,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
   // Get default yurucode font (fonts are independent of themes)
   const getThemeFontDefault = (fontType: 'mono' | 'sans'): string => {
-    return fontType === 'mono' ? 'Comic Mono' : 'Comic Neue';
+    return 'Agave';
   };
 
   const handleWatermarkUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -842,10 +843,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <h4 style={{ marginTop: '16px' }}>menu</h4>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">analytics</span>
+                    <span className="checkbox-label">projects</span>
                     <div
-                      className={`toggle-switch compact ${showAnalyticsMenu ? 'active' : ''}`}
-                      onClick={() => setShowAnalyticsMenu(!showAnalyticsMenu)}
+                      className={`toggle-switch compact ${showProjectsMenu ? 'active' : ''}`}
+                      onClick={() => setShowProjectsMenu(!showProjectsMenu)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -866,10 +867,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   </div>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">projects</span>
+                    <span className="checkbox-label">analytics</span>
                     <div
-                      className={`toggle-switch compact ${showProjectsMenu ? 'active' : ''}`}
-                      onClick={() => setShowProjectsMenu(!showProjectsMenu)}
+                      className={`toggle-switch compact ${showAnalyticsMenu ? 'active' : ''}`}
+                      onClick={() => setShowAnalyticsMenu(!showAnalyticsMenu)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -892,10 +893,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <h4 style={{ marginTop: '16px' }}>settings</h4>
 
                   <div className="checkbox-setting compact">
-                    <span className="checkbox-label">plugins</span>
+                    <span className="checkbox-label">hooks</span>
                     <div
-                      className={`toggle-switch compact ${showPluginsSettings ? 'active' : ''}`}
-                      onClick={() => setShowPluginsSettings(!showPluginsSettings)}
+                      className={`toggle-switch compact ${showHooksSettings ? 'active' : ''}`}
+                      onClick={() => setShowHooksSettings(!showHooksSettings)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -908,18 +909,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     <div
                       className={`toggle-switch compact ${showCommandsSettings ? 'active' : ''}`}
                       onClick={() => setShowCommandsSettings(!showCommandsSettings)}
-                    >
-                      <span className="toggle-switch-label off">off</span>
-                      <span className="toggle-switch-label on">on</span>
-                      <div className="toggle-switch-slider" />
-                    </div>
-                  </div>
-
-                  <div className="checkbox-setting compact">
-                    <span className="checkbox-label">hooks</span>
-                    <div
-                      className={`toggle-switch compact ${showHooksSettings ? 'active' : ''}`}
-                      onClick={() => setShowHooksSettings(!showHooksSettings)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -944,6 +933,18 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     <div
                       className={`toggle-switch compact ${showMcpSettings ? 'active' : ''}`}
                       onClick={() => setShowMcpSettings(!showMcpSettings)}
+                    >
+                      <span className="toggle-switch-label off">off</span>
+                      <span className="toggle-switch-label on">on</span>
+                      <div className="toggle-switch-slider" />
+                    </div>
+                  </div>
+
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">plugins</span>
+                    <div
+                      className={`toggle-switch compact ${showPluginsSettings ? 'active' : ''}`}
+                      onClick={() => setShowPluginsSettings(!showPluginsSettings)}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -1141,7 +1142,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                       <div
                         className="font-input"
                         onClick={() => setShowFontPicker('monospace')}
-                        style={{ fontFamily: monoFont || getThemeFontDefault('mono'), fontSize: '9.5px' }}
+                        style={{ fontFamily: monoFont || getThemeFontDefault('mono') }}
                       >
                         {monoFont || getThemeFontDefault('mono')}
                       </div>
@@ -1159,6 +1160,46 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                         style={{ fontFamily: sansFont || getThemeFontDefault('sans') }}
                       >
                         {sansFont || getThemeFontDefault('sans')}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">size</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => setFontSize(11)} disabled={fontSize === 11}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <span className="opacity-value">{fontSize}px</span>
+                      <div className="opacity-container">
+                        <input
+                          type="range"
+                          min="8"
+                          max="18"
+                          step="0.5"
+                          value={fontSize}
+                          onChange={(e) => setFontSize(Number(e.target.value))}
+                          className="opacity-slider"
+                        />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="checkbox-setting compact">
+                    <span className="checkbox-label">line height</span>
+                    <div className="theme-controls-bg">
+                      <button className="color-reset" onClick={() => setLineHeight(1.25)} disabled={lineHeight === 1.25}>
+                        <IconRotateClockwise size={10} />
+                      </button>
+                      <span className="opacity-value">{lineHeight.toFixed(2)}</span>
+                      <div className="opacity-container">
+                        <input
+                          type="range"
+                          min="1.0"
+                          max="2.0"
+                          step="0.05"
+                          value={lineHeight}
+                          onChange={(e) => setLineHeight(Number(e.target.value))}
+                          className="opacity-slider"
+                        />
                       </div>
                     </div>
                   </div>
@@ -1533,11 +1574,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   active={activeTab === 'appearance'}
                   onClick={() => setActiveTab('appearance')}
                 />
-                {showPluginsSettings && (
+                {showHooksSettings && (
                   <TabButton
-                    label="plugins"
-                    active={activeTab === 'plugins'}
-                    onClick={() => setActiveTab('plugins')}
+                    label="hooks"
+                    active={activeTab === 'hooks'}
+                    onClick={() => setActiveTab('hooks')}
                   />
                 )}
                 {showCommandsSettings && (
@@ -1545,13 +1586,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     label="commands"
                     active={activeTab === 'commands'}
                     onClick={() => setActiveTab('commands')}
-                  />
-                )}
-                {showHooksSettings && (
-                  <TabButton
-                    label="hooks"
-                    active={activeTab === 'hooks'}
-                    onClick={() => setActiveTab('hooks')}
                   />
                 )}
                 {showSkillsSettings && (
@@ -1566,6 +1600,13 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     label="mcp"
                     active={activeTab === 'mcp'}
                     onClick={() => setActiveTab('mcp')}
+                  />
+                )}
+                {showPluginsSettings && (
+                  <TabButton
+                    label="plugins"
+                    active={activeTab === 'plugins'}
+                    onClick={() => setActiveTab('plugins')}
                   />
                 )}
               </div>

@@ -62,7 +62,7 @@
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   color: var(--accent-color);
   text-transform: lowercase;
@@ -97,7 +97,7 @@
 
 .confirm-modal-body p {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--text-base);
   line-height: 1.5;
 }
 
@@ -112,7 +112,7 @@
 .confirm-modal-btn {
   padding: 4px 10px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   cursor: default;
   border: none;
@@ -161,6 +161,6 @@
 /* Key hint styling */
 .confirm-modal-key-hint {
   opacity: 0.5;
-  font-size: 9px;
+  font-size: var(--text-xs);
   margin-left: 3px;
 }

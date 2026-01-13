@@ -2525,7 +2525,9 @@ export const ClaudeChat: React.FC = () => {
       // Skip if inside a modal or dialog (DOM check as fallback)
       if (activeEl?.closest('[role="dialog"]') || activeEl?.closest('.modal') ||
           activeEl?.closest('.stats-modal-overlay') || activeEl?.closest('.resume-modal') ||
-          activeEl?.closest('.mt-modal-overlay')) return;
+          activeEl?.closest('.mt-modal-overlay') || activeEl?.closest('.settings-modal-overlay') ||
+          activeEl?.closest('.analytics-modal') || activeEl?.closest('.agents-modal') ||
+          activeEl?.closest('.commands-modal')) return;
 
       // Skip if in a tool panel (file preview, git panel, etc.) - allow text selection there
       if (activeEl?.closest('.tool-panel') || activeEl?.closest('.tool-panel-preview-content')) return;
@@ -3806,17 +3808,15 @@ export const ClaudeChat: React.FC = () => {
       // Skip the rest - no resize needed
     } else {
       // Content size changed, need to resize
-
-      // Reset height to auto to force recalculation
+      // minimize reflows: reset height, read scrollHeight, then write final height in single batch
       textarea.style.height = 'auto';
-
-      // Calculate new height based on scrollHeight
       const newScrollHeight = textarea.scrollHeight;
       const newHeight = Math.min(Math.max(newScrollHeight, minHeight), maxHeight);
 
-      // Only update if height actually changed to prevent unnecessary reflows
+      // batch all writes together to prevent visible bounce
       if (newHeight !== currentHeight) {
         textarea.style.height = newHeight + 'px';
+        textarea.style.overflow = newScrollHeight > maxHeight ? 'auto' : 'hidden';
         // Sync overlay height for ultrathink label positioning
         setOverlayHeight(newHeight);
         // Save per-session textarea height
@@ -3826,10 +3826,8 @@ export const ClaudeChat: React.FC = () => {
       } else {
         // Restore the original height if no change needed
         textarea.style.height = currentHeight + 'px';
+        textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
       }
-
-      // Show scrollbar only when content exceeds max height
-      textarea.style.overflow = textarea.scrollHeight > maxHeight ? 'auto' : 'hidden';
     }
 
     // If we were at bottom, maintain scroll position at bottom

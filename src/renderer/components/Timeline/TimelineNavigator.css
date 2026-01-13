@@ -36,13 +36,13 @@
   align-items: center;
   gap: 8px;
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
 }
 
 .timeline-count {
   color: rgba(255, 255, 255, 0.4);
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .timeline-controls {
@@ -71,7 +71,7 @@
 .timeline-error {
   padding: 8px 12px;
   color: rgba(255, 100, 100, 0.9);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   background: rgba(255, 0, 0, 0.05);
   border-bottom: 1px solid rgba(255, 0, 0, 0.1);
@@ -81,13 +81,13 @@
   padding: 30px 20px;
   text-align: center;
   color: rgba(255, 255, 255, 0.3);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
 }
 
 .timeline-empty p {
   margin: 8px 0 0 0;
-  font-size: 11px;
+  font-size: var(--text-base);
   color: rgba(255, 255, 255, 0.1);
 }
 
@@ -189,7 +189,7 @@
 
 .timeline-tooltip-header {
   color: rgba(255, 255, 255, 0.9);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin-bottom: 8px;
   font-family: var(--font-mono);
@@ -199,7 +199,7 @@
   display: flex;
   flex-direction: column;
   gap: 4px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.5);
   font-family: var(--font-mono);
   margin-bottom: 8px;
@@ -232,7 +232,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
 }
 
@@ -258,7 +258,7 @@
 
 .timeline-details h4 {
   color: rgba(0, 255, 255, 0.8);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 8px 0;
   font-family: var(--font-mono);
@@ -268,7 +268,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.4);
   font-family: var(--font-mono);
 }
@@ -284,7 +284,7 @@
   align-items: center;
   justify-content: center;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   animation: fadeIn 0.15s ease;
 }
@@ -306,7 +306,7 @@
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   box-shadow: 0 2px 8px rgba(255, 0, 255, 0.1);
 }
@@ -322,5 +322,5 @@
   background: rgba(255, 0, 255, 0.2);
   padding: 2px 6px;
   border-radius: 10px;
-  font-size: 10px;
+  font-size: var(--text-sm);
 }

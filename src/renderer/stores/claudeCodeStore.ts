@@ -385,6 +385,8 @@ interface ClaudeCodeStore {
   // Font customization
   monoFont: string; // Monospace font for code
   sansFont: string; // Sans-serif font for UI
+  fontSize: number; // Base font size in px (default 11)
+  lineHeight: number; // Line height multiplier (default 1.5)
 
   // Tab persistence
   rememberTabs: boolean; // Whether to remember open tabs
@@ -486,6 +488,8 @@ interface ClaudeCodeStore {
   // Font customization
   setMonoFont: (font: string) => void;
   setSansFont: (font: string) => void;
+  setFontSize: (size: number) => void;
+  setLineHeight: (height: number) => void;
 
   // Background transparency
   backgroundOpacity: number;
@@ -729,8 +733,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       enabledTools: loadEnabledTools(), // Load from localStorage or use defaults
       claudeMdTokens: 0, // Will be calculated on first use
       globalWatermarkImage: null,
-      monoFont: 'Comic Mono', // Default monospace font
-      sansFont: 'Comic Neue', // Default sans-serif font
+      monoFont: 'Agave', // Default monospace font
+      sansFont: 'Agave', // Default sans-serif font
+      fontSize: 11, // Default base font size in px
+      lineHeight: 1.25, // Default line height multiplier
       rememberTabs: false, // Default to not remembering tabs (disabled by default)
       savedTabs: [], // Empty array of saved tabs
       autoGenerateTitle: false, // Default to not auto-generating titles (disabled by default)
@@ -4788,6 +4794,53 @@ ${content}`;
         console.log('[Store] Set sans font:', font);
       },
 
+      setFontSize: (size: number) => {
+        // Clamp size between 8 and 18
+        const clampedSize = Math.max(8, Math.min(18, size));
+        set({ fontSize: clampedSize });
+
+        // Calculate all font size variables proportionally
+        // Ratios based on original design (base=14: xs=11, sm=12, lg=16, xl=20, 2xl=24)
+        const xs = Math.round(clampedSize * 0.786);
+        const sm = Math.round(clampedSize * 0.857);
+        const base = clampedSize;
+        const lg = Math.round(clampedSize * 1.143);
+        const xl = Math.round(clampedSize * 1.429);
+        const xxl = Math.round(clampedSize * 1.714);
+
+        // Apply to CSS variables
+        document.documentElement.style.setProperty('--text-xs', `${xs}px`);
+        document.documentElement.style.setProperty('--text-sm', `${sm}px`);
+        document.documentElement.style.setProperty('--text-base', `${base}px`);
+        document.documentElement.style.setProperty('--text-lg', `${lg}px`);
+        document.documentElement.style.setProperty('--text-xl', `${xl}px`);
+        document.documentElement.style.setProperty('--text-2xl', `${xxl}px`);
+
+        // Save to localStorage
+        localStorage.setItem('yurucode-font-size', String(clampedSize));
+        console.log('[Store] Set font size:', clampedSize, 'px');
+      },
+
+      setLineHeight: (height: number) => {
+        // Clamp between 1.0 and 2.0
+        const clampedHeight = Math.max(1.0, Math.min(2.0, height));
+        set({ lineHeight: clampedHeight });
+
+        // Calculate line height variations
+        const tight = Math.max(1.0, clampedHeight - 0.3);
+        const normal = clampedHeight;
+        const relaxed = clampedHeight + 0.25;
+
+        // Apply to CSS variables
+        document.documentElement.style.setProperty('--leading-tight', String(tight));
+        document.documentElement.style.setProperty('--leading-normal', String(normal));
+        document.documentElement.style.setProperty('--leading-relaxed', String(relaxed));
+
+        // Save to localStorage
+        localStorage.setItem('yurucode-line-height', String(clampedHeight));
+        console.log('[Store] Set line height:', clampedHeight);
+      },
+
       setBackgroundOpacity: (opacity: number) => {
         // Clamp opacity between 50 and 100
         const clampedOpacity = Math.max(50, Math.min(100, opacity));
@@ -5316,6 +5369,8 @@ ${content}`;
         globalWatermarkImage: state.globalWatermarkImage,
         monoFont: state.monoFont,
         sansFont: state.sansFont,
+        fontSize: state.fontSize,
+        lineHeight: state.lineHeight,
         rememberTabs: state.rememberTabs,
         autoGenerateTitle: state.autoGenerateTitle,
         wordWrap: state.wordWrap,

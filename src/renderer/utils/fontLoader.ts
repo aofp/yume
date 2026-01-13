@@ -16,41 +16,23 @@ export function loadFonts() {
 
   let fontFaceRules = '';
 
-  // Add Comic Neue font-face rules (sans-serif default) - Regular and Bold only
-  const comicNeueWeights = [
+  // Add Agave font-face rules - Regular and Bold
+  const agaveWeights = [
     { weight: 400, file: 'Regular' },
     { weight: 700, file: 'Bold' }
   ];
 
-  comicNeueWeights.forEach(({ weight, file }) => {
+  agaveWeights.forEach(({ weight, file }) => {
     fontFaceRules += `
       @font-face {
-        font-family: 'Comic Neue';
+        font-family: 'Agave';
         font-style: normal;
         font-weight: ${weight};
         font-display: swap;
-        src: url('${basePath}/woff2/ComicNeue-${file}.woff2') format('woff2');
+        src: url('${basePath}/Agave-${file}.ttf') format('truetype');
       }
     `;
   });
-
-  // Add Comic Mono font-face rules (monospace default) - Regular and Bold only
-  fontFaceRules += `
-    @font-face {
-      font-family: 'Comic Mono';
-      font-style: normal;
-      font-weight: 400;
-      font-display: swap;
-      src: url('${basePath}/ComicMono.ttf') format('truetype');
-    }
-    @font-face {
-      font-family: 'Comic Mono';
-      font-style: normal;
-      font-weight: 700;
-      font-display: swap;
-      src: url('${basePath}/ComicMono-Bold.ttf') format('truetype');
-    }
-  `;
 
   // Apply the font face rules
   styleElement.textContent = fontFaceRules;
@@ -64,7 +46,7 @@ export function loadFonts() {
   // Add to head
   document.head.appendChild(styleElement);
 
-  console.log('[Font Loader] Comic fonts loaded dynamically');
+  console.log('[Font Loader] Agave fonts loaded dynamically');
 }
 
 // Auto-load fonts on module import

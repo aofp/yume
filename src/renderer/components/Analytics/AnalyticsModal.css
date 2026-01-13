@@ -51,7 +51,7 @@
   align-items: center;
   gap: 6px;
   color: var(--accent-color);
-  font-size: 13px;
+  font-size: var(--text-lg);
   user-select: none;
 }
 
@@ -63,7 +63,7 @@
   background: none;
   border: none;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+  font-size: var(--text-base);
   cursor: default;
   margin: 0;
   margin-right: 8px;
@@ -155,14 +155,14 @@
 }
 
 .stat-value {
-  font-size: 18px;
+  font-size: var(--text-xl);
   color: #fff;
   font-weight: 300;
   letter-spacing: 0.5px;
 }
 
 .stat-label {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: #666;
   text-transform: lowercase;
   letter-spacing: 0.3px;
@@ -174,7 +174,7 @@
 }
 
 .analytics-section h3 {
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--accent-color);
   margin: 0 0 8px 0;
   font-weight: 400;
@@ -190,7 +190,7 @@
 .token-breakdown-table table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .token-breakdown-table th {
@@ -229,7 +229,7 @@
 }
 
 .model-name {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: #999;
   margin-bottom: 4px;
   letter-spacing: 0.3px;
@@ -247,7 +247,7 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: #ccc;
   margin-bottom: 6px;
 }
@@ -369,7 +369,7 @@
 
 .analytics-project-name {
   text-align: left;
-  font-size: 11px;
+  font-size: var(--text-base);
   color: #ccc;
   letter-spacing: 0.2px;
   overflow: hidden;
@@ -380,7 +380,7 @@
 .analytics-project-stats {
   display: flex;
   gap: 10px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: #666;
   margin-left: auto;
   flex-shrink: 0;

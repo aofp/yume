@@ -34,7 +34,7 @@
   align-items: center;
   gap: 6px;
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   text-transform: lowercase;
 }
@@ -44,7 +44,7 @@
 }
 
 .claude-md-new-badge {
-  font-size: 10px;
+  font-size: var(--text-sm);
   padding: 2px 6px;
   background: rgba(var(--positive-rgb), 0.2);
   color: var(--positive-color);
@@ -52,7 +52,7 @@
 }
 
 .claude-md-modified-badge {
-  font-size: 10px;
+  font-size: var(--text-sm);
   padding: 2px 6px;
   background: rgba(var(--warning-rgb), 0.2);
   color: var(--warning-color);
@@ -104,7 +104,7 @@
   gap: 8px;
   height: 100%;
   color: var(--fg-30);
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .claude-md-error {
@@ -113,7 +113,7 @@
   justify-content: center;
   height: 100%;
   color: var(--negative-color);
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .claude-md-editor {
@@ -125,7 +125,7 @@
   outline: none;
   resize: none;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-base);
   line-height: 1.6;
   color: #999;
   caret-color: var(--accent-color);
@@ -141,7 +141,7 @@
 }
 
 .claude-md-path {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--fg-30);
   overflow: hidden;
   text-overflow: ellipsis;
@@ -175,7 +175,7 @@
   padding: 3px 9px;
   background: #000;
   color: var(--positive-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   border-radius: 2px;
   border: 1px solid var(--positive-color);

@@ -96,7 +96,7 @@ body {
 }
 
 .drag-text {
-  font-size: 18px;
+  font-size: var(--text-xl);
   color: var(--accent-color);
   font-weight: 300;
   letter-spacing: 0.5px;
@@ -200,7 +200,7 @@ ul {
   background: transparent;
   border: none;
   color: var(--fg-70);
-  font-size: 11px;
+  font-size: var(--text-base);
   cursor: default;
   border-radius: 4px;
   text-transform: lowercase;
@@ -238,7 +238,7 @@ ul {
   border-radius: 8px;
   padding: 12px 20px;
   color: var(--foreground-color);
-  font-size: 13px;
+  font-size: var(--text-lg);
   box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   backdrop-filter: blur(10px);
 }

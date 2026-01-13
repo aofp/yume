@@ -255,7 +255,7 @@
 }
 
 .tab-folder {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--accent-color);
   white-space: nowrap;
   font-weight: 600;
@@ -273,7 +273,7 @@
 }
 
 .tab-title {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: rgba(255, 255, 255, 0.8);
   white-space: nowrap;
   overflow: hidden;
@@ -295,7 +295,7 @@
   border-radius: 0;
   color: var(--text-secondary);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   padding: 0;
   margin: 0;
   outline: none;
@@ -531,7 +531,7 @@
   background: transparent;
   border: none;
   color: rgba(255, 255, 255, 0.7);
-  font-size: 11px;
+  font-size: var(--text-base);
   cursor: default;
   border-radius: 4px;
   text-transform: lowercase;
@@ -557,7 +557,7 @@
 }
 
 .yuru-logo {
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 300;
   color: var(--accent-color);
   letter-spacing: 0.5px;
@@ -575,7 +575,7 @@
   color: rgba(255, 255, 255, 0.6);
   padding: 4px 8px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   text-transform: lowercase;
   cursor: default;
   user-select: none;
@@ -596,7 +596,7 @@
 /* Recent projects modal styles */
 .recent-item-number {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.3);
   min-width: 12px;
   text-align: center;

@@ -33,7 +33,7 @@
   align-items: center;
   gap: 6px;
   color: var(--accent-color);
-  font-size: 13px;
+  font-size: var(--text-lg);
   pointer-events: none;
   user-select: none;
 }
@@ -85,7 +85,7 @@
   background: none;
   border: none;
   color: #fff;
-  font-size: 13px;
+  font-size: var(--text-lg);
   outline: none;
   font-family: inherit;
 }
@@ -107,21 +107,21 @@
   gap: 8px;
   color: #666;
   padding: 20px;
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .projects-error {
   color: #ff6666;
   text-align: center;
   padding: 12px;
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .projects-empty {
   color: #666;
   text-align: center;
   padding: 20px;
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .projects-list {
@@ -169,7 +169,7 @@
   align-items: center;
   gap: 6px;
   color: #999;
-  font-size: 12px;
+  font-size: var(--text-base);
   flex: 1;
 }
 
@@ -186,7 +186,7 @@
 }
 
 .project-full-path {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: #555;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -212,7 +212,7 @@
   flex-direction: column;
   gap: 2px;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   margin-left: auto;
   margin-right: 4px;
   padding-left: 12px;
@@ -241,7 +241,7 @@
   background: none;
   border: none;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+  font-size: var(--text-base);
   cursor: default;
   margin: 0;
   margin-right: 8px;
@@ -261,7 +261,7 @@
 .header-separator {
   color: rgba(255, 255, 255, 0.1);
   margin: 0 8px;
-  font-size: 12px;
+  font-size: var(--text-base);
   pointer-events: none;
 }
 
@@ -270,7 +270,7 @@
   align-items: center;
   gap: 6px;
   color: var(--accent-color);
-  font-size: 13px;
+  font-size: var(--text-lg);
   padding-bottom: 6px;
   border-bottom: 1px solid #222;
 }
@@ -316,12 +316,12 @@
   color: #666;
   font-weight: normal;
   min-width: 16px;
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .session-summary {
   color: #999;
-  font-size: 12px;
+  font-size: var(--text-base);
   flex: 1;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -333,7 +333,7 @@
   flex-direction: column;
   gap: 2px;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 10px;
+  font-size: var(--text-sm);
   margin-left: auto;
   margin-right: 4px;
   padding-left: 12px;
@@ -381,7 +381,7 @@
   gap: 8px;
   padding: 12px;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 12px;
+  font-size: var(--text-base);
   border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
@@ -399,7 +399,7 @@
   gap: 8px;
   padding: 12px;
   color: rgba(255, 255, 255, 0.5);
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .load-more-hint {
@@ -411,7 +411,7 @@
 .sessions-count-info {
   padding: 6px 12px;
   color: rgba(255, 255, 255, 0.4);
-  font-size: 10px;
+  font-size: var(--text-sm);
   text-align: right;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
 }

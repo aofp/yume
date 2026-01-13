@@ -9,6 +9,9 @@ import crypto from 'crypto';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
+// Read package.json for app metadata
+const packageJson = JSON.parse(readFileSync(resolve(__dirname, 'package.json'), 'utf8'));
+
 // Write PID file for cleanup
 const VITE_PID_FILE = resolve(__dirname, '.vite.pid');
 
@@ -161,5 +164,8 @@ export default defineConfig({
   define: {
     // Remove all console statements in production
     'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'development'),
+    // Inject app metadata from package.json
+    'import.meta.env.VITE_APP_NAME': JSON.stringify(packageJson.name),
+    'import.meta.env.VITE_APP_VERSION': JSON.stringify(packageJson.version),
   },
 });

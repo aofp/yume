@@ -1,5 +1,6 @@
 import React from 'react';
 import { IconAlertTriangle, IconDownload, IconCommand } from '@tabler/icons-react';
+import { APP_NAME } from '../../config/app';
 import './ClaudeNotDetected.css';
 
 export const ClaudeNotDetected: React.FC = () => {
@@ -13,18 +14,18 @@ export const ClaudeNotDetected: React.FC = () => {
         <h2>Claude CLI Not Found</h2>
         
         <p className="claude-not-detected-message">
-          Claude CLI must be installed to use yurucode
+          Claude CLI must be installed to use {APP_NAME}
         </p>
 
         <div className="claude-not-detected-instructions">
           <h3>Installation Instructions:</h3>
-          
+
           <div className="install-steps">
             <div className="install-step">
               <IconCommand size={16} />
               <code>npm install -g @anthropic-ai/claude-code</code>
             </div>
-            <p className="install-note">Requires Node.js 18+. After installation, restart yurucode.</p>
+            <p className="install-note">Requires Node.js 18+. After installation, restart {APP_NAME}.</p>
           </div>
         </div>
 

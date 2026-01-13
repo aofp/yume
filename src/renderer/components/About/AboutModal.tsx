@@ -2,15 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { IconX } from '@tabler/icons-react';
 import { useLicenseStore } from '../../services/licenseManager';
 import { UpgradeModal } from '../Upgrade/UpgradeModal';
+import { APP_NAME, APP_VERSION, APP_AUTHOR, APP_WEBSITE } from '../../config/app';
 import './AboutModal.css';
-
-// Version info - manually update this when version changes
-// Or use a build script to inject it
-const versionInfo = {
-  version: '0.1.0',
-  author: 'yurufrog',
-  website: 'yuru.be'
-};
 
 interface AboutModalProps {
   isOpen: boolean;
@@ -20,7 +13,7 @@ interface AboutModalProps {
 
 export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowUpgrade }) => {
   const { isLicensed, clearLicense } = useLicenseStore();
-  
+
   // Handle Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -55,11 +48,11 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
           <div className="about-logo" style={{ fontFamily: "'Comic Mono', monospace" }}>
             <span className="yuru">y</span><span className="code">&gt;</span>
           </div>
-          
-          <div className="about-name">yurucode</div>
-          
+
+          <div className="about-name">{APP_NAME}</div>
+
           <div className="about-version">
-            {versionInfo.version}<br />
+            {APP_VERSION}<br />
             <span
               style={{
                 color: 'var(--accent-color)',
@@ -90,27 +83,28 @@ export const AboutModal: React.FC<AboutModalProps> = ({ isOpen, onClose, onShowU
           
           <div className="about-credits">
             <div className="about-site">
-              <a 
-                href="https://yuru.be" 
+              <a
+                href={`https://${APP_WEBSITE}`}
                 onClick={async (e) => {
                   e.preventDefault();
+                  const url = `https://${APP_WEBSITE}`;
                   // Open in default browser
                   if (window.__TAURI__) {
                     const { invoke } = await import('@tauri-apps/api/core');
                     // Use our custom command to open URL in default browser
-                    await invoke('open_external', { url: 'https://yuru.be' }).catch(() => {
+                    await invoke('open_external', { url }).catch(() => {
                       // Fallback to window.open if command fails
-                      window.open('https://yuru.be', '_blank');
+                      window.open(url, '_blank');
                     });
                   } else if (window.electronAPI?.openExternal) {
-                    window.electronAPI.openExternal('https://yuru.be');
+                    window.electronAPI.openExternal(url);
                   } else {
-                    window.open('https://yuru.be', '_blank');
+                    window.open(url, '_blank');
                   }
                 }}
                 style={{ textDecoration: 'none' }}
               >
-                yuru.be
+                {APP_WEBSITE}
               </a>
             </div>
           </div>

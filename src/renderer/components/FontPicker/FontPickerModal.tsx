@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IconX, IconSearch } from '@tabler/icons-react';
+import { APP_NAME } from '../../config/app';
 import './FontPickerModal.css';
 
 // Access Tauri API if available
@@ -18,8 +19,7 @@ interface FontPickerModalProps {
 }
 
 // Yurucode bundled fonts - always available (downloaded with app)
-const YURUCODE_MONOSPACE_FONTS = ['Comic Mono'];
-const YURUCODE_SANS_FONTS = ['Comic Neue'];
+const YURUCODE_FONTS = ['Agave'];
 
 export const FontPickerModal: React.FC<FontPickerModalProps> = ({
   isOpen,
@@ -55,30 +55,23 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
   
   // Get yurucode bundled fonts
   const getYurucodeFonts = () => {
-    return fontType === 'monospace' ? YURUCODE_MONOSPACE_FONTS : YURUCODE_SANS_FONTS;
+    return YURUCODE_FONTS;
   };
 
   // Get system-detected fonts (excluding yurucode bundled fonts)
   const getDetectedSystemFonts = () => {
     if (systemFonts.length === 0) return [];
 
-    const monoKeywords = ['mono', 'code', 'courier', 'consolas', 'menlo', 'monaco', 'hack', 'inconsolata', 'jetbrains', 'fira'];
-    const yurucodeFontNames = [...YURUCODE_MONOSPACE_FONTS, ...YURUCODE_SANS_FONTS].map(f => f.toLowerCase());
+    const yurucodeFontNames = YURUCODE_FONTS.map(f => f.toLowerCase());
 
-    // Filter by type and exclude yurucode bundled fonts
+    // Show all fonts, no type filtering - exclude yurucode bundled fonts
     const filtered = systemFonts.filter(font => {
       const lower = font.toLowerCase();
       // Skip if it's a yurucode bundled font
-      if (yurucodeFontNames.some(yf => lower.includes(yf.toLowerCase()))) return false;
-
-      if (fontType === 'monospace') {
-        return monoKeywords.some(keyword => lower.includes(keyword));
-      } else {
-        return !monoKeywords.some(keyword => lower.includes(keyword));
-      }
+      return !yurucodeFontNames.some(yf => lower.includes(yf.toLowerCase()));
     });
 
-    return filtered;
+    return filtered.sort();
   };
 
   const yurucodeFonts = getYurucodeFonts();
@@ -129,7 +122,7 @@ export const FontPickerModal: React.FC<FontPickerModalProps> = ({
         <div className="font-picker-list">
           {filteredYurucodeFonts.length > 0 && (
             <>
-              <div className="font-section-header">yurucode</div>
+              <div className="font-section-header">{APP_NAME}</div>
               {filteredYurucodeFonts.map(font => (
                 <button
                   key={font}

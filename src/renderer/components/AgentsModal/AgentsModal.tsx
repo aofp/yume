@@ -13,6 +13,7 @@ import {
   IconCopy
 } from '@tabler/icons-react';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { APP_NAME } from '../../config/app';
 import { TabButton } from '../common/TabButton';
 import { ConfirmModal } from '../ConfirmModal/ConfirmModal';
 import { PluginBadge } from '../common/PluginBadge';
@@ -432,7 +433,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
             {!editMode && !createMode && (
               <div className="header-tabs">
                 <TabButton
-                  label="yurucode"
+                  label={APP_NAME}
                   active={agentScope === 'yurucode'}
                   onClick={() => setAgentScope('yurucode')}
                   count={yurucodeAgents.length}
@@ -481,7 +482,7 @@ export const AgentsModal: React.FC<AgentsModalProps> = ({ isOpen, onClose, onSel
               {agentScope === 'yurucode' && (
                 <>
                   <div className="yurucode-toggle">
-                    <span className="toggle-label">yurucode agents</span>
+                    <span className="toggle-label">{APP_NAME} agents</span>
                     <input
                       type="checkbox"
                       id="yurucode-agents-toggle"

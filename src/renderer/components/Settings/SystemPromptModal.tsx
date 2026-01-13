@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IconX, IconRotateClockwise, IconCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { SystemPromptSettings } from '../../services/systemPromptService';
+import { APP_NAME } from '../../config/app';
 import './SystemPromptModal.css';
 
 interface SystemPromptModalProps {
@@ -9,7 +10,7 @@ interface SystemPromptModalProps {
   onClose: () => void;
 }
 
-const DEFAULT_PROMPT = `yurucode coding agent. lowercase, concise. read before edit. plan with think/todo, break into small steps, incremental edits.`;
+const DEFAULT_PROMPT = `${APP_NAME} coding agent. lowercase, concise. read before edit. plan with think/todo, break into small steps, incremental edits.`;
 
 export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({ 
   settings, 
@@ -92,7 +93,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
                 className={`mode-button ${localSettings.mode === 'default' && localSettings.enabled ? 'active' : ''}`}
                 onClick={() => handleModeChange('default')}
               >
-                yurucode
+                {APP_NAME}
               </button>
               <button
                 className={`mode-button ${localSettings.mode === 'custom' ? 'active' : ''}`}

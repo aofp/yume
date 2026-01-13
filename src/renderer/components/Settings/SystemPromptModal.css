@@ -40,7 +40,7 @@
 
 .system-prompt-header h3 {
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -106,7 +106,7 @@
   background: var(--fg-03);
   border: 1px solid var(--fg-10);
   color: var(--fg-40);
-  font-size: 10px;
+  font-size: var(--text-sm);
   cursor: default;
   border-radius: 2px;
   text-transform: lowercase;
@@ -138,13 +138,13 @@
 }
 
 .editor-label {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--fg-40);
   text-transform: lowercase;
 }
 
 .char-count {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--fg-25);
   font-family: var(--mono-font);
 }
@@ -159,7 +159,7 @@
   border-radius: 2px;
   color: var(--fg-90);
   padding: 12px;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--mono-font);
   min-height: 80px;
   max-height: 120px;
@@ -184,7 +184,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--negative-color);
   margin-top: 2px;
 }
@@ -208,7 +208,7 @@
   background: transparent;
   border: 1px solid var(--fg-10);
   color: var(--fg-40);
-  font-size: 9px;
+  font-size: var(--text-xs);
   cursor: default;
   border-radius: 2px;
 }
@@ -227,7 +227,7 @@
 .cancel-button,
 .save-button {
   padding: 4px 10px;
-  font-size: 9px;
+  font-size: var(--text-xs);
   cursor: default;
   border-radius: 2px;
   display: flex;

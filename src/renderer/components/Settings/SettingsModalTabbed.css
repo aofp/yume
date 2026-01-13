@@ -21,7 +21,7 @@
   border: none;
   color: rgba(255, 255, 255, 0.4);
   cursor: default;
-  font-size: 11px;
+  font-size: var(--text-base);
   text-transform: lowercase;
   font-family: var(--font-sans);
   position: relative;
@@ -62,7 +62,7 @@
 
 .hook-item label {
   color: #999;
-  font-size: 10px;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 600;
@@ -74,7 +74,7 @@
   border-radius: 4px;
   color: rgba(255, 255, 255, 0.9);
   padding: 8px;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--mono-font);
   outline: none;
   resize: vertical;
@@ -99,7 +99,7 @@
   border-radius: 2px;
   color: rgba(255, 255, 255, 0.9);
   padding: 6px 8px;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--mono-font);
   outline: none;
 }
@@ -138,14 +138,14 @@
 
 .stat-item label {
   color: #666;
-  font-size: 10px;
+  font-size: var(--text-sm);
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
 .stat-item span {
   color: var(--accent-color);
-  font-size: 13px;
+  font-size: var(--text-lg);
   font-weight: 500;
 }
 
@@ -161,7 +161,7 @@
   background: transparent;
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #999;
-  font-size: 11px;
+  font-size: var(--text-base);
   cursor: default;
   border-radius: 2px;
   display: flex;
@@ -216,7 +216,7 @@
 .info-text {
   margin: 0;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 10px;
+  font-size: var(--text-sm);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -245,7 +245,7 @@
 
 .advanced-item label {
   color: #999;
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .advanced-item input[type="checkbox"] {
@@ -265,7 +265,7 @@
 /* Loading state */
 .loading {
   color: #666;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-style: italic;
   text-align: center;
   padding: 20px;
@@ -274,7 +274,7 @@
 /* Placeholder text */
 .settings-placeholder {
   color: #444;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-style: italic;
   margin-bottom: 12px;
   padding: 8px;

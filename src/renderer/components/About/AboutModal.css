@@ -38,7 +38,7 @@
 
 .about-header h3 {
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -66,7 +66,7 @@
 }
 
 .about-logo {
-  font-size: 24px;
+  font-size: var(--text-2xl);
   font-weight: bold;
   letter-spacing: 0.1em;
   margin-bottom: 12px;
@@ -81,7 +81,7 @@
 }
 
 .about-name {
-  font-size: 12px;
+  font-size: var(--text-base);
   color: rgba(255, 255, 255, 0.6);
   text-transform: lowercase;
   font-family: var(--font-mono);
@@ -89,7 +89,7 @@
 }
 
 .about-version {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: rgba(255, 255, 255, 0.5);
   text-transform: lowercase;
   margin-bottom: 16px;
@@ -97,7 +97,7 @@
 }
 
 .about-description {
-  font-size: 11px;
+  font-size: var(--text-base);
   color: rgba(255, 255, 255, 0.4);
   text-transform: lowercase;
   margin-bottom: 24px;
@@ -114,7 +114,7 @@
   border: 1px solid var(--accent-color);
   color: var(--accent-color);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   text-transform: lowercase;
   cursor: default;
@@ -126,7 +126,7 @@
 }
 
 .about-author {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.4);
   text-transform: lowercase;
   margin-bottom: 4px;
@@ -143,7 +143,7 @@
 }
 
 .about-site {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: rgba(255, 255, 255, 0.4);
   text-transform: lowercase;
 }

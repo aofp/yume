@@ -4,6 +4,7 @@ import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
 import { invoke } from '@tauri-apps/api/core';
+import { APP_NAME, APP_VERSION } from '../../config/app';
 import './WelcomeScreen.css';
 import '../Chat/ClaudeChat.css'; // for stats modal styles
 
@@ -356,7 +357,7 @@ export const WelcomeScreen: React.FC = () => {
             }
           }}
         >
-          yurucode 0.1.0{!isLicensed && <> <strong>trial</strong></>}
+          {APP_NAME} {APP_VERSION}{!isLicensed && <> <strong>trial</strong></>}
         </span>
       </div>
 

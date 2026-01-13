@@ -31,21 +31,21 @@
 .error-boundary-content h2 {
   color: var(--text-color);
   margin: 0 0 16px 0;
-  font-size: 24px;
+  font-size: var(--text-2xl);
   font-weight: 600;
 }
 
 .error-message {
   color: var(--text-secondary);
   margin: 0 0 16px 0;
-  font-size: 14px;
+  font-size: var(--text-lg);
   line-height: 1.5;
 }
 
 .error-location {
   color: var(--text-secondary);
   margin: 0 0 8px 0;
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .error-location code {
@@ -58,7 +58,7 @@
 .error-count {
   color: var(--warning-color, #ff9800);
   margin: 0 0 20px 0;
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .error-actions {
@@ -76,7 +76,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.02);
   color: var(--text-color);
-  font-size: 13px;
+  font-size: var(--text-lg);
   font-weight: 500;
   cursor: default;
 }

@@ -27,7 +27,7 @@
   color: var(--color-magenta);
   padding: 4px;
   background: transparent;
-  font-size: 10px;
+  font-size: var(--text-sm);
   display: flex;
   align-items: center;
   gap: 6px;
@@ -53,7 +53,7 @@
   padding: 0;
   margin: 0;
   background: transparent;
-  font-size: 8pt;
+  font-size: var(--text-sm);
   display: flex;
   align-items: center;
   gap: 4px;
@@ -115,7 +115,7 @@
   gap: 4px;
   padding: 6px 0;
   color: rgba(var(--foreground-rgb), 0.6);
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .init-icon {
@@ -154,7 +154,7 @@
   font-family: var(--font-mono);
   color: var(--fg-40);
   opacity: 0.5;
-  font-size: 10px;
+  font-size: var(--text-sm);
   margin-left: 4px;
 }
 
@@ -174,7 +174,7 @@
   padding: 8px 12px;
   border-radius: 12px 12px 4px 12px;
   min-width: 60px;
-  font-size: 11.5px;
+  font-size: var(--text-base);
   line-height: 1.4;
   max-width: 100%;
   width: auto;
@@ -190,7 +190,7 @@
 .message.user .message-bubble.bash-mode {
   background: rgba(var(--negative-rgb), 0.15);
   color: rgba(var(--foreground-rgb), 0.9);
-  font-size: 10px;
+  font-size: var(--text-sm);
 }
 
 .message.user .message-bubble.command-mode {
@@ -206,7 +206,7 @@
   border-radius: 12px 12px 12px 4px;
   min-width: 60px;
   max-width: 100%;
-  font-size: 11.5px;
+  font-size: var(--text-base);
   line-height: 1.4;
   box-shadow: none;
   width: auto;
@@ -286,7 +286,7 @@
 .content-text,
 .markdown-content {
   color: var(--fg-100);
-  font-size: 11px;
+  font-size: var(--text-base);
   line-height: 1.5;
   padding-left: 0;
   max-width: 100%;
@@ -311,7 +311,7 @@
   color: var(--code-color);
   padding: 0;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   max-width: 100%;
   display: inline-block;
@@ -345,7 +345,7 @@
   max-width: 100%;
   display: block;
   overflow-x: auto;
-  font-size: 10px;
+  font-size: var(--text-sm);
   scrollbar-width: thin;
 }
 
@@ -374,7 +374,7 @@
 
 .code-block-pre code {
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-base);
   color: #dcdcdc;
   white-space: pre;
   display: block;
@@ -391,7 +391,7 @@
 
 .code-language {
   color: var(--fg-50);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   text-transform: lowercase;
   padding-left: 2px;
@@ -406,7 +406,7 @@
   color: rgba(var(--foreground-rgb), 0.4);
   padding: 2px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--text-base);
   cursor: default;
 }
 
@@ -505,7 +505,7 @@ ol {
   gap: 6px;
   padding: 8px 12px;
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   animation: fadeIn 0.3s ease;
   font-weight: bold;
 }
@@ -525,14 +525,14 @@ ol {
   padding: 8px 12px;
   margin-top: 8px;
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-style: italic;
   font-weight: bold;
 }
 
 .thinking-text {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   line-height: 1.4;
   white-space: pre-wrap;
   word-break: break-word;
@@ -568,7 +568,7 @@ ol {
 
 /* Simple thinking block - always fully visible */
 .thinking-block {
-  font-size: 11px;
+  font-size: var(--text-base);
   color: rgba(var(--foreground-rgb), 0.95);
 }
 
@@ -580,7 +580,7 @@ ol {
   align-items: center;
   gap: 8px;
   color: var(--color-magenta);
-  font-size: 11px;
+  font-size: var(--text-base);
   text-transform: lowercase;
   opacity: 0.9;
 }
@@ -596,7 +596,7 @@ ol {
 }
 
 .thinking-stats {
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -608,7 +608,7 @@ ol {
 
 .thinking-text {
   font-family: var(--font-sans);
-  font-size: 10px;
+  font-size: var(--text-sm);
   line-height: 1.2;
   white-space: pre-wrap;
   word-break: break-word;
@@ -631,7 +631,7 @@ ol {
 /* Markdown styling for thinking blocks */
 .thinking-markdown {
   font-family: var(--font-sans);
-  font-size: 11px;
+  font-size: var(--text-base);
   line-height: 1.3;
   margin-right: 8px;
   color: rgba(var(--foreground-rgb), 0.8);
@@ -675,12 +675,12 @@ ol {
   color: rgba(var(--foreground-rgb), 0.85);
 }
 
-.thinking-markdown h1 { font-size: 14px; }
-.thinking-markdown h2 { font-size: 13px; }
-.thinking-markdown h3 { font-size: 12px; }
+.thinking-markdown h1 { font-size: var(--text-lg); }
+.thinking-markdown h2 { font-size: var(--text-lg); }
+.thinking-markdown h3 { font-size: var(--text-base); }
 .thinking-markdown h4,
 .thinking-markdown h5,
-.thinking-markdown h6 { font-size: 11px; }
+.thinking-markdown h6 { font-size: var(--text-base); }
 
 .thinking-markdown blockquote {
   margin: 8px 0;
@@ -716,7 +716,7 @@ ol {
 /* Thinking block code formatting (legacy - keep for compatibility) */
 .thinking-text-container {
   font-family: var(--font-sans);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   line-height: 1.5;
   color: rgba(var(--foreground-rgb), 0.8);
   white-space: pre-wrap;
@@ -726,7 +726,7 @@ ol {
 /* Inline code in thinking blocks */
 .thinking-inline-code {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   padding: 1px 4px;
   color: var(--code-color);
 }
@@ -742,7 +742,7 @@ ol {
 
 .thinking-code-lang {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   background: rgba(0, 0, 0, 0.08);
   text-transform: lowercase;
@@ -762,7 +762,7 @@ ol {
 
 .thinking-code {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   line-height: 1.2;
   color: var(--foreground-color);
   white-space: pre;
@@ -820,7 +820,7 @@ ol {
   background: transparent !important;
   border: none;
   border-radius: 16px;
-  font-size: 11px;
+  font-size: var(--text-base);
   margin: 4px 4px 4px 0;
   /* animation removed - transform conflicts with virtualizer */
 }
@@ -853,7 +853,7 @@ ol {
 .subagent-indicator {
   color: var(--accent-color) !important;
   opacity: .8;
-  font-size: 10px;
+  font-size: var(--text-sm);
   margin-right: 2px;
 }
 
@@ -882,7 +882,7 @@ ol {
   margin: 0 0 2px 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.8);
   white-space: pre;
   max-height: 400px;
@@ -893,7 +893,7 @@ ol {
 
 /* Write tool output */
 .tool-result.standalone.write-output .result-content {
-  font-size: 9px;
+  font-size: var(--text-xs);
 }
 
 .tool-result.standalone.file-diff .result-content {
@@ -925,7 +925,7 @@ ol {
 .diff-file-path {
   color: rgba(var(--foreground-rgb), 0.7);
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   line-height: 1.4;
   font-weight: 400;
 }
@@ -935,7 +935,7 @@ ol {
   margin: 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   background: transparent;
   overflow-x: auto;
   white-space: pre;
@@ -955,7 +955,7 @@ ol {
   color: rgba(var(--foreground-rgb), 0.3);
   text-align: right;
   flex-shrink: 0;
-  font-size: 8pt;
+  font-size: var(--text-sm);
 }
 
 .diff-line .line-content {
@@ -983,7 +983,7 @@ ol {
 
 .diff-summary {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.5);
   margin: 2px 0;
   padding-left: 20px;
@@ -1009,7 +1009,7 @@ ol {
   gap: 6px;
   margin-bottom: 0;
   color: var(--fg-40);
-  font-size: 10px;
+  font-size: var(--text-sm);
 }
 
 /* Edit fallback display - matches DiffViewer font size */
@@ -1018,7 +1018,7 @@ ol {
   margin: 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   line-height: 16px;
   background: transparent;
   overflow-x: auto;
@@ -1035,7 +1035,7 @@ ol {
   color: rgba(var(--foreground-rgb), 0.3);
   padding-right: 8px;
   user-select: none;
-  font-size: 8px;
+  font-size: var(--text-xs);
 }
 
 .edit-line .line-marker {
@@ -1059,28 +1059,28 @@ ol {
 /* Edit output fallback */
 .tool-result.edit-output .result-content {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   line-height: 16px;
 }
 
 .edit-action {
   color: var(--accent-color);
   font-weight: 500;
-  font-size: 8pt;
+  font-size: var(--text-sm);
   margin-right: 8px;
 }
 
 .edit-file {
   color: rgba(var(--foreground-rgb), 0.9);
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   display: block;
   margin-top: 4px;
 }
 
 .edit-diff {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   margin: 0;
   margin-bottom: 2px;
   padding: 0;
@@ -1089,7 +1089,7 @@ ol {
 .edit-diff pre,
 pre.edit-diff {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   margin: 0;
   padding: 4px 8px;
   white-space: pre;
@@ -1123,7 +1123,7 @@ pre.edit-diff {
   flex-shrink: 0;
   text-align: right;
   color: rgba(var(--foreground-rgb), 0.3);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
 }
 
@@ -1190,7 +1190,7 @@ pre.edit-diff {
 
 .diff-separator {
   color: rgba(var(--foreground-rgb), 0.5);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   margin: 8px 0 4px 0;
   padding: 2px 0;
@@ -1237,7 +1237,7 @@ pre.edit-diff {
 .tool-action {
   color: var(--accent-color);
   font-weight: 500;
-  font-size: 10px;
+  font-size: var(--text-sm);
 }
 
 .tool-detail {
@@ -1266,7 +1266,7 @@ body.platform-win32 .tool-detail {
 .tool-line-info {
   color: rgba(var(--foreground-rgb), 0.4);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   margin-left: 6px;
   opacity: 0.8;
 }
@@ -1278,7 +1278,7 @@ body.platform-win32 .tool-detail {
   gap: 6px;
   padding: 0;
   border-radius: 0;
-  font-size: 9px;
+  font-size: var(--text-xs);
   margin: 0;
   /* animation removed - conflicts with virtualizer */
 }
@@ -1295,7 +1295,7 @@ body.platform-win32 .tool-detail {
 
 .elapsed-time {
   color: var(--fg-40);
-  font-size: 8px;
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
   padding: 2px 0 !important;
   margin: 0 0 4px 0 !important;
@@ -1329,7 +1329,7 @@ body.platform-win32 .tool-detail {
   background: transparent;
   color: var(--fg-40);
   opacity: 0.6;
-  font-size: 8pt;
+  font-size: var(--text-sm);
   padding: 0;
 }
 
@@ -1355,7 +1355,7 @@ body.platform-win32 .tool-detail {
 .read-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.6);
   white-space: pre;
   overflow-x: auto;
@@ -1378,7 +1378,7 @@ body.platform-win32 .tool-detail {
   padding-right: 8px;
   color: rgba(var(--foreground-rgb), 0.3);
   flex-shrink: 0;
-  font-size: 8pt;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
 }
 
@@ -1405,7 +1405,7 @@ pre.bash-content,
   border-radius: 0;
   padding: 0;
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: color-mix(in srgb, var(--foreground-color) 50%, var(--negative-color) 50%);
   white-space: pre;
   max-height: 400px;
@@ -1421,7 +1421,7 @@ pre.bash-content,
 .bash-more {
   display: block;
   margin-top: 2px;
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(128, 128, 128, 0.6);
   font-family: var(--font-mono);
   cursor: default;
@@ -1441,7 +1441,7 @@ pre.bash-content,
 .search-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.6);
   white-space: pre;
   overflow-x: auto;
@@ -1457,7 +1457,7 @@ pre.bash-content,
 .bash-more {
   display: block;
   margin-top: 4px;
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.5);
   font-family: var(--font-mono);
 }
@@ -1473,7 +1473,7 @@ pre.bash-content,
 .read-more, .search-more, .result-more {
   display: block;
   margin-top: 4px;
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   font-family: var(--font-mono);
   cursor: default;
@@ -1519,7 +1519,7 @@ pre.bash-content,
 
 .tool-result.collapsible .collapsible-summary {
   font-family: var(--font-mono);
-  font-size: 7.5px;
+  font-size: var(--text-xs);
   color: rgba(var(--positive-rgb), 0.8);
 }
 
@@ -1547,7 +1547,7 @@ hr {
 .tool-result.read-output .read-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.6);
   white-space: pre;
   overflow-x: auto;
@@ -1561,7 +1561,7 @@ hr {
 }
 
 .result-icon {
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .result-icon.success {
@@ -1570,7 +1570,7 @@ hr {
 
 .result-text {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.7);
 }
 
@@ -1590,13 +1590,13 @@ hr {
 
 .write-path {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: var(--positive-color);
 }
 
 .write-info {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1604,7 +1604,7 @@ hr {
 .write-preview {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   background: rgba(var(--positive-rgb), 0.05);
   padding: 4px 8px;
   border-radius: 4px;
@@ -1638,19 +1638,19 @@ hr {
 .bash-prompt {
   color: var(--negative-color);
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-weight: 600;
 }
 
 .bash-cmd {
   color: rgba(var(--foreground-rgb), 0.8);
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
 }
 
 .bash-line {
   color: rgba(var(--foreground-rgb), 0.7);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   line-height: 1.4;
 }
 
@@ -1665,20 +1665,20 @@ hr {
 
 .search-pattern {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: var(--accent-color);
 }
 
 .tool-result .search-count {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
 
 .search-line {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
@@ -1698,13 +1698,13 @@ hr {
 
 .file-pattern {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: var(--accent-color);
 }
 
 .tool-result .file-count {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1712,7 +1712,7 @@ hr {
 .file-list-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
 }
 
 .file-item {
@@ -1735,13 +1735,13 @@ hr {
 
 .dir-path {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: var(--accent-color);
 }
 
 .tool-result .dir-count {
   font-family: var(--font-mono);
-  font-size: 8px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1749,7 +1749,7 @@ hr {
 .dir-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
 }
 
 .dir-item {
@@ -1772,14 +1772,14 @@ hr {
 
 .web-query {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: var(--accent-color);
 }
 
 .web-search-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
 }
 
 .web-result-line {
@@ -1802,14 +1802,14 @@ hr {
 
 .web-url {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: var(--accent-color);
 }
 
 .web-fetch-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
 }
 
 .web-line {
@@ -1832,13 +1832,13 @@ hr {
 
 .task-desc {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: var(--accent-color);
 }
 
 .task-type {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.4);
   padding: 1px 6px;
   background: rgba(var(--foreground-rgb), 0.05);
@@ -1849,7 +1849,7 @@ hr {
 .task-content {
   margin: 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
 }
 
 .task-line {
@@ -1867,14 +1867,14 @@ hr {
 }
 
 .tool-result.task-result.background-agent .agent-id {
-  font-size: 7pt;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: 4px;
 }
 
 .task-status {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   color: var(--color-blue);
   opacity: 0.8;
 }
@@ -1886,7 +1886,7 @@ hr {
   gap: 6px;
   padding: 2px 0;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.5);
 }
 
@@ -1901,7 +1901,7 @@ hr {
 
 .agent-launch-id {
   color: rgba(var(--foreground-rgb), 0.4);
-  font-size: 7pt;
+  font-size: var(--text-xs);
 }
 
 .agent-launch-status {
@@ -1945,13 +1945,13 @@ hr {
 
 .taskoutput-status {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.5);
 }
 
 .taskoutput-id {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   margin-left: auto;
 }
@@ -1965,7 +1965,7 @@ hr {
 
 .taskoutput-hidden {
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.3);
   padding: 2px 0;
 }
@@ -1975,7 +1975,7 @@ hr {
   align-items: center;
   gap: 6px;
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.5);
 }
 
@@ -2006,7 +2006,7 @@ hr {
 /* Generic Output - Clean without line numbers */
 .tool-result.generic-output .result-line {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.7);
   line-height: 1.4;
 }
@@ -2019,14 +2019,14 @@ hr {
   gap: 4px;
   padding: 12px 0;
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   border-top: 1px solid rgba(var(--accent-rgb), 0.1);
   margin-top: 12px;
 }
 
 .result-text-content {
   color: rgba(var(--foreground-rgb), 0.9);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   margin-bottom: 4px;
 }
@@ -2040,7 +2040,7 @@ hr {
   border: none;
   border-radius: 8px;
   color: var(--color-magenta);
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .error-icon {
@@ -2053,7 +2053,7 @@ hr {
   padding: 8px 12px;
   background: rgba(255, 153, 204, 0.05);
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--text-base);
   line-height: 1.5;
 }
 
@@ -2076,7 +2076,7 @@ hr {
 
 .permission-text {
   color: var(--color-magenta);
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 /* Tool Approval */
@@ -2085,7 +2085,7 @@ hr {
   align-items: center;
   gap: 6px;
   padding: 4px 8px;
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-60);
   opacity: 0.7;
 }
@@ -2174,7 +2174,7 @@ hr {
 
 .diff-content {
   font-family: var(--font-mono);
-  font-size: 8pt;
+  font-size: var(--text-sm);
   line-height: 1.4;
   color: var(--fg-60);
   white-space: pre;
@@ -2227,7 +2227,7 @@ hr {
   gap: 8px;
   padding: 0;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--text-base);
   color: var(--fg-80);
 }
 
@@ -2281,14 +2281,14 @@ hr {
 
 .tool-use.todo-write .tool-action {
   color: var(--accent-color);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: 500;
 }
 
 .tool-use.todo-write .tool-detail {
   color: rgba(var(--foreground-rgb), 0.8);
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-sm);
   opacity: 1;
 }
 
@@ -2333,7 +2333,7 @@ code *::-moz-selection {
   gap: 6px;
   padding: 4px 8px;
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-60);
   background: rgba(var(--foreground-rgb), 0.03);
   border: 1px solid rgba(var(--foreground-rgb), 0.05);
@@ -2346,7 +2346,7 @@ code *::-moz-selection {
 }
 
 .compact-icon {
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .rate-limit-message {
@@ -2372,7 +2372,7 @@ code *::-moz-selection {
 
 .markdown-table {
   border-collapse: collapse;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   white-space: nowrap;
 }
@@ -2510,7 +2510,7 @@ pre::-webkit-scrollbar-thumb:hover {
 pre code,
 .thinking-code-block,
 .thinking-code-block code {
-  font-size: 9px;
+  font-size: var(--text-xs);
 }
 
 /* Line numbers - 8px */
@@ -2581,7 +2581,7 @@ pre code,
 }
 
 .compact-summary-title {
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: 400;
   color: rgba(var(--foreground-rgb), 0.6);
   text-transform: lowercase;
@@ -2604,7 +2604,7 @@ pre code,
 }
 
 .compact-stat-value {
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 400;
   color: rgba(var(--foreground-rgb), 0.7);
   font-family: var(--font-mono);
@@ -2615,7 +2615,7 @@ pre code,
 }
 
 .compact-stat-label {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   text-transform: lowercase;
 }
@@ -2626,7 +2626,7 @@ pre code,
 }
 
 .compact-summary-label {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.4);
   text-transform: lowercase;
   margin-bottom: 4px;
@@ -2636,7 +2636,7 @@ pre code,
 }
 
 .compact-summary-text {
-  font-size: 11px;
+  font-size: var(--text-base);
   line-height: 1.5;
   color: rgba(var(--foreground-rgb), 0.6);
   white-space: pre-wrap;
@@ -2669,7 +2669,7 @@ pre code,
 .compact-summary-text code {
   background: rgba(var(--foreground-rgb), 0.05);
   padding: 1px 3px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   color: var(--code-color);
 }
@@ -2689,7 +2689,7 @@ pre code,
 }
 
 .compact-summary-simple-text {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.5);
 }
 

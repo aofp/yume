@@ -40,7 +40,7 @@
 
 .font-picker-header h3 {
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -76,7 +76,7 @@
   background: transparent;
   border: none;
   color: #ffffff;
-  font-size: 11px;
+  font-size: var(--text-base);
   outline: none;
   text-transform: lowercase;
 }
@@ -94,7 +94,7 @@
 }
 
 .font-section-header {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--accent-color);
   text-transform: lowercase;
   padding: 6px 10px 4px;
@@ -132,14 +132,14 @@
 }
 
 .font-name {
-  font-size: 11px;
+  font-size: var(--text-base);
   text-transform: none;
   min-width: 120px;
   text-align: left;
 }
 
 .font-preview {
-  font-size: 11px;
+  font-size: var(--text-base);
   color: rgba(255, 255, 255, 0.6);
   text-transform: none;
 }
@@ -162,7 +162,7 @@
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: #ffffff;
-  font-size: 11px;
+  font-size: var(--text-base);
   padding: 5px 8px;
   outline: none;
   text-transform: none;
@@ -179,7 +179,7 @@
   border: 1px solid rgba(var(--accent-rgb), 0.3);
   border-radius: 4px;
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   cursor: default;
   text-transform: lowercase;
 }

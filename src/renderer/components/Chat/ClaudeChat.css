@@ -59,7 +59,7 @@
   background: transparent;
   border: none;
   color: var(--fg-80);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   outline: none;
   width: 160px; /* Fixed width */
@@ -83,7 +83,7 @@
 }
 
 .search-count {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--fg-40);
   font-family: var(--font-mono);
   margin-right: 4px;
@@ -154,7 +154,7 @@
 }
 
 .empty-content h2 {
-  font-size: 28px;
+  font-size: var(--text-2xl);
   font-weight: 200;
   color: var(--accent-color);
   margin-bottom: 6px;
@@ -166,7 +166,7 @@
 .empty-content p {
   color: var(--fg-30);
   margin-bottom: 12px;
-  font-size: 12px;
+  font-size: var(--text-base);
   text-transform: lowercase;
   user-select: none;
 }
@@ -186,7 +186,7 @@
   color: var(--accent-color);
   padding: 8px 16px;
   border-radius: 8px;
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
 
   text-transform: lowercase;
@@ -205,12 +205,12 @@
   padding: 8px 24px;
   background: var(--background-color);
   border-bottom: none;
-  font-size: 11px;
+  font-size: var(--text-base);
   text-transform: lowercase;
 }
 
 .header-icon {
-  font-size: 14px;
+  font-size: var(--text-lg);
 }
 
 .header-path {
@@ -228,7 +228,7 @@
   color: rgba(var(--accent-rgb), 0.5);
   padding: 4px 12px;
   border-radius: 6px;
-  font-size: 10px;
+  font-size: var(--text-sm);
 
   text-transform: lowercase;
 }
@@ -240,7 +240,7 @@
 
 /* Messages Area */
 .chat-messages {
-  flex: 1 1 0;
+  flex: 1 1 auto;
   overflow-y: auto;
   overflow-x: hidden;
   margin-top: 60px;
@@ -255,6 +255,7 @@
   flex-direction: column;
   /* isolate from external layout changes */
   contain: layout style;
+  /* stable flex-basis prevents bounce when textarea height changes */
 }
 
 /* When virtualized list is present, disable scroll on parent to prevent nested scrolling */
@@ -320,7 +321,7 @@
   color: var(--fg-80);
   padding: 2px 6px;
   border-radius: 3px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
 }
 
@@ -347,9 +348,9 @@
   font-weight: 500;
 }
 
-.message-text h1 { font-size: 20px; }
-.message-text h2 { font-size: 18px; }
-.message-text h3 { font-size: 16px; }
+.message-text h1 { font-size: var(--text-2xl); }
+.message-text h2 { font-size: var(--text-xl); }
+.message-text h3 { font-size: var(--text-xl); }
 
 .message-text ul,
 .message-text ol {
@@ -426,14 +427,14 @@
   background: rgba(255, 153, 204, 0.05);
   border: none;
   border-radius: 12px;
-  font-size: 7pt;
+  font-size: var(--text-xs);
   margin: 4px 4px 4px 0;
   /* animations removed - transform conflicts with virtualizer */
 }
 
 /* Multi-edit label styling */
 .multi-edit-label {
-  font-size: 8pt;
+  font-size: var(--text-sm);
   border-left: none;
   border-right: none;
   border-top: none;
@@ -446,7 +447,7 @@
 }
 
 .tool-icon {
-  font-size: 14px;
+  font-size: var(--text-lg);
   animation: iconRotate 0.5s ease;
 }
 
@@ -475,7 +476,7 @@
 .tool-success,
 .tool-todos {
   color: var(--accent-color);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   padding: 2px 0;
   animation: successPulse 0.4s ease;
 }
@@ -487,7 +488,7 @@
 
 .tool-error {
   color: var(--negative-color);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   padding: 2px 0;
 }
 
@@ -497,7 +498,7 @@
   color: var(--accent-color);
   animation: breathing 1.5s ease-in-out infinite;
   margin-left: 4px;
-  font-size: 16px;
+  font-size: var(--text-xl);
   vertical-align: middle;
 }
 
@@ -515,7 +516,7 @@
 /* System and result messages */
 .message.system {
   color: var(--fg-40);
-  font-size: 11px;
+  font-size: var(--text-base);
   padding: 8px 0;
   opacity: 0.6;
   animation: fadeIn 0.5s ease;
@@ -523,7 +524,7 @@
 
 .message.result {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   padding: 12px 0;
   opacity: 0.8;
   animation: resultSlide 0.4s cubic-bezier(0.4, 0, 0.2, 1);
@@ -542,7 +543,7 @@
 
 .message.error {
   color: var(--negative-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   padding: 8px 0;
 }
 
@@ -553,7 +554,7 @@
   gap: 6px;
   padding: 0;
   color: var(--fg-80);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: bold;
   font-family: var(--font-sans);
 }
@@ -568,7 +569,7 @@
   opacity: 1;
   color: var(--accent-color);
   font-weight: bold;
-  font-size: 10px;
+  font-size: var(--text-sm);
   display: inline;
 }
 
@@ -596,7 +597,7 @@
 .thinking-indicator-bottom .thinking-timer {
   color: var(--accent-color);
   font-weight: bold;
-  font-size: 8px;
+  font-size: var(--text-xs);
   opacity: 0.9;
   position: relative;
   top: 1px;
@@ -624,7 +625,7 @@
   gap: 6px;
   padding: 0;
   color: var(--fg-80);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-sans);
 }
 
@@ -638,7 +639,7 @@
   opacity: 1;
   color: var(--positive-color);
   font-weight: bold;
-  font-size: 10px;
+  font-size: var(--text-sm);
   display: inline;
 }
 
@@ -652,7 +653,7 @@
 .compacting-indicator-bottom .compacting-timer {
   color: var(--positive-color);
   font-weight: bold;
-  font-size: 8px;
+  font-size: var(--text-xs);
   opacity: 0.9;
   font-family: var(--font-mono);
 }
@@ -682,13 +683,13 @@
 
 .compacting-indicator-bottom .compacting-followup-label {
   color: var(--fg-50);
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .compacting-indicator-bottom .compacting-followup-message {
   color: var(--fg-40);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-base);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -702,7 +703,7 @@
   gap: 6px;
   padding: 0;
   color: var(--fg-80);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight:bold;
   font-family: var(--font-sans);
 }
@@ -717,7 +718,7 @@
   opacity: 1;
   color: var(--negative-color);
   font-weight: bold;
-  font-size: 10px;
+  font-size: var(--text-sm);
   display: inline;
 }
 
@@ -732,7 +733,7 @@
 .bash-indicator-bottom .bash-timer {
   color: var(--negative-color);
   font-weight: bold;
-  font-size: 8px;
+  font-size: var(--text-xs);
   opacity: 0.9;
   font-family: var(--font-mono);
 }
@@ -832,7 +833,7 @@
   align-items: center;
   gap: 6px;
   padding: 0;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-sans);
 }
 
@@ -848,7 +849,7 @@
 .inline-activity-indicator.bash .bash-timer {
   color: var(--negative-color);
   font-weight: bold;
-  font-size: 8px;
+  font-size: var(--text-xs);
   opacity: 0.9;
   font-family: var(--font-mono);
 }
@@ -865,7 +866,7 @@
 .inline-activity-indicator.compacting .compacting-timer {
   color: var(--positive-color);
   font-weight: bold;
-  font-size: 8px;
+  font-size: var(--text-xs);
   opacity: 0.9;
   font-family: var(--font-mono);
 }
@@ -881,13 +882,13 @@
 
 .inline-activity-indicator.compacting .compacting-followup-label {
   color: var(--fg-50);
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .inline-activity-indicator.compacting .compacting-followup-message {
   color: var(--fg-40);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-base);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -906,7 +907,7 @@
 .inline-activity-indicator.followup .activity-preview {
   color: var(--fg-40);
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-base);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -923,6 +924,8 @@
   max-height: 40vh;
   overflow-y: auto;
   position: relative;
+  /* isolate height changes to prevent parent reflow */
+  contain: layout style;
 }
 
 /* macOS-specific padding */
@@ -963,7 +966,7 @@
 }
 
 .context-full-message {
-  font-size: 10pt;
+  font-size: var(--text-sm);
   color: var(--accent-color);
   text-transform: lowercase;
   letter-spacing: 0.3px;
@@ -985,7 +988,7 @@
   border: 1px solid var(--fg-20);
   border-radius: 4px;
   color: var(--fg-30);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   text-transform: lowercase;
   cursor: default;
@@ -1057,7 +1060,7 @@ textarea.context-full {
   left: 50%;
   transform: translate(-50%, -50%);
   color: rgba(255, 153, 204, 0.4);
-  font-size: 11px;
+  font-size: var(--text-base);
   text-transform: lowercase;
   pointer-events: none;
 }
@@ -1071,7 +1074,7 @@ textarea.context-full {
   padding: 4px;
   margin-bottom: 0;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--text-base);
   line-height: 18px;
   min-height: 44px;
   max-height: 106px; /* 5 lines: 18px * 5 + 16px padding */
@@ -1134,7 +1137,7 @@ textarea.context-full {
   left: 1px;
   right: 1px;
   padding: 4px;
-  font-size: 12px;
+  font-size: var(--text-base);
   line-height: 18px;
   font-family: var(--font-sans);
   color: transparent;
@@ -1339,7 +1342,7 @@ textarea.context-full {
   right: 0;
   background: rgba(0, 0, 0, 0.8);
   padding: 2px 4px;
-  font-size: 7pt;
+  font-size: var(--text-xs);
   color: var(--fg-50);
   text-transform: lowercase;
 }
@@ -1387,7 +1390,7 @@ textarea.context-full {
 
 .chat-input.bash-mode {
   padding-left: 4px;
-  font-size: 11.5px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   border-color: rgba(var(--negative-rgb), 0.6);
 }
@@ -1434,7 +1437,7 @@ textarea.context-full {
   display: flex;
   gap: 2px;
   align-items: center;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   color: var(--fg-30);
   text-transform: lowercase;
@@ -1454,7 +1457,7 @@ textarea.context-full {
   color: var(--fg-60);
   padding: 3px 8px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   text-transform: lowercase;
   cursor: default;
@@ -1593,7 +1596,7 @@ textarea.context-full {
 }
 
 .btn-stats-auto {
-  font-size: 9px;
+  font-size: var(--text-xs);
   opacity: 0.7;
 }
 
@@ -1754,7 +1757,7 @@ textarea.context-full {
 
 
 .attachment-text {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--fg-70);
   font-family: var(--font-mono);
   opacity: 1;
@@ -1770,7 +1773,7 @@ textarea.context-full {
   justify-content: center;
   cursor: default;
   opacity: 1;
-  font-size: 10px;
+  font-size: var(--text-sm);
 }
 
 .attachment-remove:hover {
@@ -1787,13 +1790,13 @@ textarea.context-full {
   background: transparent;
   border: 1px solid var(--fg-15);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-70);
   font-family: var(--font-mono);
 }
 
 .message-attachment-preview .attachment-text {
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-70);
   opacity: 1;
 }
@@ -1847,7 +1850,7 @@ textarea.context-full {
 
 .help-header h3 {
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -1881,7 +1884,7 @@ textarea.context-full {
 
 .help-section h4 {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 6px 0;
   text-transform: lowercase;
@@ -1891,7 +1894,7 @@ textarea.context-full {
   display: flex;
   align-items: center;
   padding: 2px 0;
-  font-size: 7pt;
+  font-size: var(--text-xs);
   user-select: none;
 }
 
@@ -1910,7 +1913,7 @@ textarea.context-full {
   padding: 1px 4px;
   border-radius: 3px;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   font-weight: 500;
   border: none;
   user-select: none;
@@ -1918,7 +1921,7 @@ textarea.context-full {
 
 .key-plus {
   color: var(--fg-30);
-  font-size: 7pt;
+  font-size: var(--text-xs);
   padding: 0 1px;
   user-select: none;
 }
@@ -1938,7 +1941,7 @@ textarea.context-full {
   content: '................................................................................................................................................................................................................................................................................................................................................................................................';
   letter-spacing: 1px;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: var(--text-xs);
 }
 
 .shortcut-desc {
@@ -1987,7 +1990,7 @@ textarea.context-full {
 
 .stats-header h3 {
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -2020,7 +2023,7 @@ textarea.context-full {
 }
 
 .stats-toggle-label {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-40);
   text-transform: lowercase;
 }
@@ -2045,7 +2048,7 @@ textarea.context-full {
 }
 
 .toggle-switch.compact .toggle-switch-label {
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-weight: bold;
   user-select: none;
   z-index: 1;
@@ -2113,7 +2116,7 @@ textarea.context-full {
 
 .stats-usage-graph h4 {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 6px 0;
   text-transform: lowercase;
@@ -2136,7 +2139,7 @@ textarea.context-full {
 
 .stats-section h4 {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 6px 0;
   text-transform: lowercase;
@@ -2146,7 +2149,7 @@ textarea.context-full {
   display: flex;
   align-items: center;
   padding: 3px 0;
-  font-size: 10px;
+  font-size: var(--text-sm);
 }
 
 .stat-row.opus-stat-row {
@@ -2167,7 +2170,7 @@ textarea.context-full {
 
 .stat-name {
   color: var(--fg-70);
-  font-size: 10px;
+  font-size: var(--text-sm);
   text-transform: lowercase;
 }
 
@@ -2185,7 +2188,7 @@ textarea.context-full {
   content: '................................................................................................................................................................................................................................................................................................................................................................................................';
   letter-spacing: 1px;
   font-family: var(--font-mono);
-  font-size: 7pt;
+  font-size: var(--text-xs);
 }
 
 .stat-desc {
@@ -2195,7 +2198,7 @@ textarea.context-full {
   flex-shrink: 0;
   padding-left: 2px;
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-sm);
 }
 
 .breakdown-bar {
@@ -2244,7 +2247,7 @@ textarea.context-full {
 .usage-bar-label {
   display: flex;
   justify-content: space-between;
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-60);
   font-family: var(--font-mono);
 }
@@ -2322,7 +2325,7 @@ textarea.context-full {
 }
 
 .stats-footer-label {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-60);
   font-family: var(--font-sans);
   text-transform: lowercase;
@@ -2338,7 +2341,7 @@ textarea.context-full {
 }
 
 .stats-footer-value {
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   font-weight: 600;
   color: var(--accent-color);
@@ -2439,7 +2442,7 @@ textarea.context-full {
 }
 
 .modal-title {
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   color: var(--accent-color);
   text-transform: lowercase;
@@ -2522,7 +2525,7 @@ textarea.context-full {
   padding: 20px;
   text-align: center;
   color: var(--fg-30);
-  font-size: 12px;
+  font-size: var(--text-base);
   text-transform: lowercase;
 }
 
@@ -2581,7 +2584,7 @@ textarea.context-full {
 }
 
 .recent-item-title {
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 700;
   color: var(--fg-80);
   white-space: nowrap;
@@ -2590,7 +2593,7 @@ textarea.context-full {
 }
 
 .recent-item-time {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--fg-40);
   white-space: nowrap;
   margin-left: 4px;
@@ -2630,7 +2633,7 @@ textarea.context-full {
 }
 
 .recent-item-number {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-30);
   width: 18px;
   text-align: right;
@@ -2757,7 +2760,7 @@ textarea.context-full {
   background: transparent;
   border: 1px solid var(--fg-10, var(--fg-10));
   color: var(--fg-40, var(--fg-40));
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   padding: 8px 12px;
   border-radius: 6px;
@@ -2802,7 +2805,7 @@ textarea.context-full {
 }
 
 .tool-panel-title {
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   color: var(--accent-color);
   text-transform: lowercase;
@@ -2812,13 +2815,13 @@ textarea.context-full {
 }
 
 .tool-panel-hint {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--fg-30);
   margin-left: 8px;
 }
 
 .git-ahead-count {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--positive-color, #99ffcc);
   margin-left: 4px;
 }
@@ -2852,7 +2855,7 @@ textarea.context-full {
   border: 1px solid #333;
   border-radius: 2px;
   color: #666;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: inherit;
   cursor: default;
 }
@@ -2873,7 +2876,7 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 .tool-panel-toggle:hover {
@@ -2903,7 +2906,7 @@ textarea.context-full {
   overflow-x: hidden;
   padding: 0;
   background: var(--bg-overlay);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   flex-shrink: 0;
 }
@@ -2930,7 +2933,7 @@ textarea.context-full {
   align-items: center;
   justify-content: space-between;
   padding: 6px 12px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   color: var(--fg-40);
   background: rgba(0, 0, 0, 0.2);
@@ -2950,7 +2953,7 @@ textarea.context-full {
 }
 
 .preview-diff-indicator {
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--warning-color, #ffbb99);
   background: rgba(var(--warning-rgb, 255, 187, 153), 0.15);
   padding: 1px 4px;
@@ -2982,7 +2985,7 @@ textarea.context-full {
   overflow: auto;
   padding: 8px 12px;
   margin: 0;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   color: var(--fg-60);
   white-space: pre-wrap;
@@ -3020,7 +3023,7 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   color: var(--fg-30);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
 }
 
@@ -3028,14 +3031,14 @@ textarea.context-full {
   color: var(--fg-30);
   padding: 20px;
   text-align: center;
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .tool-panel-empty {
   color: var(--fg-30);
   text-align: center;
   padding: 40px 20px;
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 /* File tree styles */
@@ -3050,7 +3053,7 @@ textarea.context-full {
   padding: 2px 4px;
   cursor: default;
   color: var(--fg-50);
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .file-tree-item:hover {
@@ -3094,7 +3097,7 @@ textarea.context-full {
   padding: 2px 4px;
   padding-right: 8px;
   cursor: default;
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .git-file-item:hover {
@@ -3112,7 +3115,7 @@ textarea.context-full {
 
 .git-file-name {
   color: var(--fg-50);
-  font-size: 10px;
+  font-size: var(--text-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -3123,7 +3126,7 @@ textarea.context-full {
 }
 
 .git-status {
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: 600;
   width: 14px;
   text-align: center;
@@ -3142,7 +3145,7 @@ textarea.context-full {
 /* Line stats for git files */
 .git-line-stats {
   margin-left: auto;
-  font-size: 9px;
+  font-size: var(--text-xs);
   display: flex;
   gap: 4px;
   flex-shrink: 0;
@@ -3158,7 +3161,7 @@ textarea.context-full {
 
 /* Total git line stats next to git button */
 .git-total-stats {
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
   opacity: 1;
   display: flex;
@@ -3178,7 +3181,7 @@ textarea.context-full {
 
 /* File tree git status indicators */
 .file-git-status {
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-weight: 600;
   margin-left: auto;
   padding: 0 4px;
@@ -3200,7 +3203,7 @@ textarea.context-full {
 
 .file-git-status.folder-changed {
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
 }
 
 /* Color file/folder names based on git status */
@@ -3221,7 +3224,7 @@ textarea.context-full {
   position: fixed;
   bottom: 70px;
   right: 12px;
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
   color: var(--fg-40);
   opacity: 0.7;
@@ -3244,7 +3247,7 @@ textarea.context-full {
   border: 1px solid var(--warning-color, #f59e0b);
   border-radius: 4px;
   padding: 6px 12px;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   color: var(--fg-80);
   z-index: 200;
@@ -3312,7 +3315,7 @@ textarea.context-full {
 
 .btn-rollback-count {
   margin-left: 4px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   opacity: 0.8;
   position: relative;
@@ -3348,7 +3351,7 @@ textarea.context-full {
   padding: 6px 8px;
   border-radius: 4px;
   cursor: default;
-  font-size: 11px;
+  font-size: var(--text-base);
   background: transparent;
 }
 
@@ -3369,7 +3372,7 @@ textarea.context-full {
 }
 
 .rollback-item-number {
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: 500;
   color: var(--fg-40);
   font-family: var(--font-mono);
@@ -3384,7 +3387,7 @@ textarea.context-full {
 .rollback-item-text {
   flex: 1;
   color: var(--fg-60);
-  font-size: 10px;
+  font-size: var(--text-sm);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;

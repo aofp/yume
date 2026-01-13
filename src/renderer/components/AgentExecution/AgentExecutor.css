@@ -52,7 +52,7 @@
   align-items: center;
   gap: 10px;
   color: var(--accent-color);
-  font-size: 16px;
+  font-size: var(--text-xl);
   font-weight: 500;
   font-family: var(--font-mono);
 }
@@ -95,7 +95,7 @@
 .agent-advanced label {
   display: block;
   color: rgba(255, 255, 255, 0.6);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   margin-bottom: 6px;
 }
@@ -107,7 +107,7 @@
   color: rgba(255, 255, 255, 0.9);
   padding: 10px;
   border-radius: 4px;
-  font-size: 13px;
+  font-size: var(--text-lg);
   font-family: var(--font-mono);
   outline: none;
   cursor: default;
@@ -131,7 +131,7 @@
   color: rgba(255, 255, 255, 0.9);
   padding: 10px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   outline: none;
   resize: vertical;
@@ -155,7 +155,7 @@
   color: rgba(255, 255, 255, 0.5);
   padding: 8px 12px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   cursor: default;
   display: flex;
@@ -188,7 +188,7 @@
   padding: 16px;
   overflow-y: auto;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-base);
   color: rgba(255, 255, 255, 0.8);
   line-height: 1.6;
 }
@@ -228,7 +228,7 @@
   padding: 12px 20px;
   background: rgba(255, 255, 255, 0.02);
   border-top: 1px solid rgba(255, 255, 255, 0.05);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
   color: rgba(255, 255, 255, 0.5);
 }
@@ -248,7 +248,7 @@
   background: rgba(var(--negative-rgb), 0.05);
   border-top: 1px solid rgba(var(--negative-rgb), 0.1);
   color: var(--negative-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-family: var(--font-mono);
 }
 
@@ -263,7 +263,7 @@
 .agent-stop-btn {
   padding: 10px 24px;
   border-radius: 6px;
-  font-size: 13px;
+  font-size: var(--text-lg);
   font-family: var(--font-mono);
   cursor: default;
   display: flex;

@@ -10,7 +10,7 @@
   display: flex;
   flex-direction: column;
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 .command-list {
@@ -29,7 +29,7 @@
 .command-category {
   padding: 4px 10px;
   color: #555;
-  font-size: 7pt;
+  font-size: var(--text-xs);
   text-transform: lowercase;
   letter-spacing: 0.5px;
 }
@@ -89,7 +89,7 @@
 .command-name {
   color: #fff;
   font-weight: 500;
-  font-size: 10px;
+  font-size: var(--text-sm);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -97,7 +97,7 @@
 
 .command-description {
   color: #666;
-  font-size: 7pt;
+  font-size: var(--text-xs);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -110,7 +110,7 @@
   padding: 5px 10px;
   border-top: 1px solid #222;
   background: #000;
-  font-size: 7pt;
+  font-size: var(--text-xs);
   justify-content: flex-start;
   align-items: center;
 }

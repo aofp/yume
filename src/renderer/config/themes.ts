@@ -124,7 +124,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     foregroundColor: '#c9d1d9',
     accentColor: '#e890a0',
     positiveColor: '#56d364',
-    negativeColor: '#f47676',
+    negativeColor: '#df2d53',
     opacity: 1.0,
     isBuiltIn: true
   },
@@ -149,9 +149,9 @@ export const BUILT_IN_THEMES: Theme[] = [
     id: 'ochre',
     name: 'ochre',
     backgroundColor: '#0a0908',
-    foregroundColor: '#ebdbb2',
+    foregroundColor: '#faf0d6',
     accentColor: '#e9a828',
-    positiveColor: '#b8bb26',
+    positiveColor: '#87bb26',
     negativeColor: '#cc241d',
     opacity: 1.0,
     isBuiltIn: true

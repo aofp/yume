@@ -103,7 +103,7 @@
 
 .settings-header h3 {
   color: var(--accent-color);
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -140,7 +140,7 @@
 
 .settings-section h4 {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 4px 0;
   text-transform: lowercase;
@@ -194,7 +194,7 @@
   min-width: 80px;
   text-align: center;
   font-family: var(--font-mono);
-  font-size: 14px;
+  font-size: var(--text-lg);
   font-weight: 500;
   color: var(--fg-60);
   user-select: none;
@@ -203,7 +203,7 @@
 
 .zoom-level.compact {
   min-width: 50px;
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 /* Color Settings Grid */
@@ -224,7 +224,7 @@
 
 
 .color-label {
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-60);
   position: relative;
   white-space: nowrap;
@@ -288,7 +288,7 @@
 }
 
 .opacity-value {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-50);
   min-width: 28px;
   text-align: right;
@@ -368,7 +368,7 @@
   border: 1px solid var(--fg-15);
   border-radius: 3px;
   color: var(--accent-color);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: bold;
   padding: 0 4px;
   cursor: default;
@@ -406,7 +406,7 @@
   border: 1px solid var(--fg-15);
   border-radius: 3px;
   color: var(--accent-color);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: bold;
   font-family: var(--font-sans);
   padding: 0 4px;
@@ -434,7 +434,7 @@
 
 .preset-dropdown-item {
   padding: 1px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-sans);
   color: var(--foreground-color);
   cursor: default;
@@ -477,7 +477,7 @@
 
 .color-preview .color-value {
   font-family: var(--font-mono);
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-70);
   text-transform: lowercase;
   font-weight: 500;
@@ -518,7 +518,7 @@
 
 .color-picker-header h4 {
   color: var(--fg-50);
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: 500;
   margin: 0;
   text-transform: lowercase;
@@ -543,7 +543,7 @@
 
 .color-preview-indicator .preview-hex {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-60);
   text-transform: lowercase;
 }
@@ -609,7 +609,7 @@
   color: var(--fg-80);
   padding: 2px 6px;
   border-radius: 3px;
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
   white-space: nowrap;
   z-index: 100;
@@ -628,7 +628,7 @@
   left: 50%;
   transform: translate(-50%, -50%);
   color: #000;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-weight: bold;
 }
 
@@ -655,7 +655,7 @@
 
 .color-picker-enhanced .color-picker-header h4 {
   margin: 0;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   color: var(--fg-60);
   text-transform: lowercase;
@@ -678,7 +678,7 @@
 
 .color-picker-header-preview .preview-hex {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-50);
   text-transform: uppercase;
 }
@@ -788,7 +788,7 @@
   border-radius: 4px;
   padding: 6px 10px;
   font-family: var(--font-mono);
-  font-size: 12px;
+  font-size: var(--text-base);
   color: var(--fg-80);
   text-transform: uppercase;
   outline: none;
@@ -808,7 +808,7 @@
   border: none;
   border-radius: 4px;
   padding: 6px 16px;
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   color: #000;
   cursor: pointer;
@@ -878,7 +878,7 @@
   border: 1px solid var(--fg-10);
   border-radius: 4px;
   color: var(--fg-60);
-  font-size: 12px;
+  font-size: var(--text-base);
   cursor: default;
 }
 
@@ -929,7 +929,7 @@
 .settings-bottom-left h4,
 .settings-bottom-right h4 {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 4px 0;
   text-transform: lowercase;
@@ -954,7 +954,7 @@
   border: 1px solid rgba(var(--accent-rgb), 0.3);
   border-radius: 4px;
   color: var(--accent-color);
-  font-size: 10px;
+  font-size: var(--text-sm);
   cursor: default;
   text-transform: lowercase;
   width: 100%;
@@ -1007,7 +1007,7 @@
   background: var(--fg-02);
   border: 1px solid var(--fg-08);
   border-radius: 4px;
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-60);
 }
 
@@ -1026,7 +1026,7 @@
   padding: 2px 6px;
   background: rgba(var(--accent-rgb), 0.1);
   border-radius: 2px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   text-transform: lowercase;
 }
 
@@ -1039,7 +1039,7 @@
   border: 1px solid rgba(var(--accent-rgb), 0.2);
   border-radius: 4px;
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   cursor: default;
 }
 
@@ -1076,7 +1076,7 @@
 
 .font-label {
   color: var(--fg-60);
-  font-size: 11px;
+  font-size: var(--text-base);
   text-transform: lowercase;
   position: relative;
   white-space: nowrap;
@@ -1090,7 +1090,7 @@
   border: 1px solid var(--fg-15);
   border-radius: 3px;
   color: var(--foreground-color);
-  font-size: 10px;
+  font-size: var(--text-sm);
   padding: 2px 6px;
   text-transform: none;
   cursor: default;
@@ -1168,7 +1168,7 @@ input[type="checkbox"].checkbox-input {
 
 /* Toggle labels */
 .toggle-switch-label {
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: bold;
   user-select: none;
   z-index: 1;
@@ -1240,7 +1240,7 @@ input[type="checkbox"].checkbox-input {
 }
 
 .toggle-switch.compact .toggle-switch-label {
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-weight: bold;
   user-select: none;
   z-index: 1;
@@ -1296,7 +1296,7 @@ input[type="checkbox"].checkbox-input {
 }
 
 .checkbox-setting.compact .checkbox-label {
-  font-size: 11px;
+  font-size: var(--text-base);
 }
 
 /* Two-column layout for settings groups */
@@ -1313,7 +1313,7 @@ input[type="checkbox"].checkbox-input {
 
 .settings-columns .settings-column h4 {
   color: var(--accent-color);
-  font-size: 11px;
+  font-size: var(--text-base);
   font-weight: 500;
   margin: 0 0 4px 0;
   text-transform: lowercase;
@@ -1321,7 +1321,7 @@ input[type="checkbox"].checkbox-input {
 
 .checkbox-label {
   color: var(--fg-60);
-  font-size: 11px;
+  font-size: var(--text-base);
   text-transform: lowercase;
   user-select: none;
   position: relative;
@@ -1357,7 +1357,7 @@ input[type="checkbox"].checkbox-input {
 }
 
 .color-var-desc {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-50);
   margin-bottom: 6px;
   text-transform: lowercase;
@@ -1371,7 +1371,7 @@ input[type="checkbox"].checkbox-input {
 
 .color-var-list code {
   font-family: var(--font-mono);
-  font-size: 9px;
+  font-size: var(--text-xs);
   color: var(--accent-color);
   background: var(--fg-05);
   padding: 2px 4px;

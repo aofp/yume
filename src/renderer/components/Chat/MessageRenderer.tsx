@@ -156,12 +156,12 @@ const ERROR_MESSAGE_STYLE: React.CSSProperties = {
   borderRadius: '8px',
   border: '1px solid rgba(255, 107, 107, 0.2)',
   fontFamily: 'monospace',
-  fontSize: '12px',
+  fontSize: 'var(--text-base)',
   whiteSpace: 'pre-wrap'
 };
 const FLEX_ROW_STYLE: React.CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: '8px' };
 const FLEX_1_STYLE: React.CSSProperties = { flex: 1 };
-const ICON_STYLE: React.CSSProperties = { fontSize: '14px' };
+const ICON_STYLE: React.CSSProperties = { fontSize: 'var(--text-lg)' };
 const BOLD_MARGIN_STYLE: React.CSSProperties = { marginBottom: '8px', fontWeight: 'bold' };
 
 // Complete Claude Code SDK message types
@@ -552,8 +552,11 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
 
     setIsCollapsed(prev => {
       const newState = !prev;
-      // Always scroll header into view after toggle (both expand and collapse)
-      // Use setTimeout to allow DOM to update and virtualizer to remeasure
+
+      // When expanding, need to wait longer for virtualizer to remeasure
+      // When collapsing, can scroll immediately
+      const scrollDelay = newState ? 0 : 150; // expanding (newState=false) needs more time
+
       setTimeout(() => {
         if (headerRef.current) {
           // Get the scroll container (virtualized message list)
@@ -575,11 +578,11 @@ const CollapsibleToolResult: React.FC<CollapsibleToolResultProps> = ({
           }
         }
 
-        // Resume auto-scrolling immediately (scroll is instant now)
+        // Resume auto-scrolling after scroll completes
         setTimeout(() => {
           window.dispatchEvent(new CustomEvent('collapsible-toggle-end'));
-        }, 0);
-      }, 50); // Wait for DOM update and virtualizer remeasurement
+        }, 10);
+      }, scrollDelay);
 
       return newState;
     });
@@ -1519,10 +1522,12 @@ const MessageRendererBase: React.FC<{
   // Get showResultStats with subscription so it updates when setting changes
   const showResultStats = useClaudeCodeStore(state => state.showResultStats);
 
-  // Get the current session to access previous messages for context
-  const store = useClaudeCodeStore.getState();
-  const currentSession = store.sessions.find(s => s.id === store.currentSessionId);
-  const sessionMessages = currentSession?.messages || [];
+  // Get the current session messages reactively - this is critical for detecting
+  // when assistant messages arrive after result messages (race condition fix)
+  const sessionMessages = useClaudeCodeStore(state => {
+    const session = state.sessions.find(s => s.id === state.currentSessionId);
+    return session?.messages || [];
+  });
 
   // Ref for selection preservation during streaming
   const containerRef = useRef<HTMLDivElement>(null);
@@ -3382,9 +3387,9 @@ const MessageRendererBase: React.FC<{
 
         // Always show compact results, otherwise only show if no duplicate content exists
         const isCompactResult = message.wrapper_compact || resultText.includes('Conversation compacted');
-        // FIXED: Only check hasDuplicateAssistantContent, not hasAssistantMessage
-        // hasAssistantMessage can be true even if the content doesn't match yet (streaming)
-        const showResultText = resultText && (isCompactResult || (!hasDuplicateAssistantContent && !isReplaceAllEditResult));
+        // Hide result text if there's an assistant message with text content (to avoid duplicate display)
+        // The assistant message bubble is the primary display, result message just shows stats
+        const showResultText = resultText && (isCompactResult || (!hasAssistantMessage && !hasDuplicateAssistantContent && !isReplaceAllEditResult));
 
         // Render beautiful compact summary card for compaction results
         if (isCompactResult && message.wrapper_compact) {

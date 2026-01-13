@@ -23,7 +23,7 @@
 }
 
 .plugin-badge.medium {
-  font-size: 10px;
+  font-size: var(--text-sm);
   padding: 2px 6px;
 }
 

@@ -137,7 +137,7 @@
   border: none;
   border-radius: 6px;
   color: var(--fg-50);
-  font-size: 12px;
+  font-size: var(--text-base);
   cursor: default;
   text-transform: lowercase;
   position: relative;
@@ -256,7 +256,7 @@
 }
 
 .modal-title {
-  font-size: 12px;
+  font-size: var(--text-base);
   font-weight: 500;
   color: var(--accent-color);
   text-transform: lowercase;
@@ -334,7 +334,7 @@
 }
 
 .modal-hint {
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-30);
 }
 
@@ -375,7 +375,7 @@
 
 .recent-item-number {
   font-family: var(--font-mono);
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-30);
   min-width: 12px;
   text-align: center;
@@ -410,7 +410,7 @@
 }
 
 .recent-item-name {
-  font-size: 12px;
+  font-size: var(--text-base);
   color: var(--fg-80);
   text-transform: lowercase;
   font-weight: 500;
@@ -432,7 +432,7 @@
 
 .no-recent {
   padding: 20px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   color: var(--fg-30);
   text-align: center;
   text-transform: lowercase;
@@ -467,7 +467,7 @@
 }
 
 .recent-projects h2 {
-  font-size: 14px;
+  font-size: var(--text-lg);
   font-weight: 400;
   color: var(--fg-50);
   margin-bottom: 24px;
@@ -525,7 +525,7 @@
 }
 
 .project-name {
-  font-size: 14px;
+  font-size: var(--text-lg);
   font-weight: 500;
   color: var(--foreground-color);
   margin-bottom: 4px;
@@ -536,7 +536,7 @@
 }
 
 .project-path {
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-30);
   margin-bottom: 8px;
   white-space: nowrap;
@@ -549,7 +549,7 @@
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 11px;
+  font-size: var(--text-base);
   color: var(--fg-40);
 }
 
@@ -573,7 +573,7 @@
   color: var(--fg-40);
   padding: 3px 8px;
   border-radius: 4px;
-  font-size: 10px;
+  font-size: var(--text-sm);
   font-family: var(--font-mono);
   text-transform: lowercase;
   cursor: default;
@@ -634,7 +634,7 @@
 
 /* Quick nav link to recent projects */
 .welcome-quick-nav {
-  font-size: 9px;
+  font-size: var(--text-xs);
   font-family: var(--font-mono);
   color: var(--fg-50);
   cursor: default;

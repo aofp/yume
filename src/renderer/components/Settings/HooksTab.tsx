@@ -15,6 +15,7 @@ import { pluginService } from '../../services/pluginService';
 import { PluginBadge } from '../common/PluginBadge';
 import { invoke } from '@tauri-apps/api/core';
 import { YURUCODE_HOOKS } from './hooks-data';
+import { APP_NAME } from '../../config/app';
 
 interface HooksTabProps {
   selectedHooks: any;
@@ -217,7 +218,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
     setConfirmModal({
       isOpen: true,
       title: 'Reset Hooks to Defaults',
-      message: 'This will reset all yurucode hooks to their default scripts. Your custom hooks and modifications will be lost. Are you sure?',
+      message: `This will reset all ${APP_NAME} hooks to their default scripts. Your custom hooks and modifications will be lost. Are you sure?`,
       isDangerous: true,
       onConfirm: () => {
         // Reset all hooks to defaults
@@ -265,7 +266,7 @@ export const HooksTab: React.FC<HooksTabProps> = ({
       {YURUCODE_HOOKS.length > 0 && (
       <div className="settings-section">
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-          <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>yurucode hooks</h4>
+          <h4 style={{ fontSize: '11px', color: 'var(--accent-color)', margin: 0, fontWeight: 500, textTransform: 'lowercase' }}>{APP_NAME} hooks</h4>
           <button
             onClick={resetAllToDefaults}
             className="reset-defaults-btn"
