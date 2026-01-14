@@ -234,6 +234,14 @@ After building, binaries are placed in `src-tauri/resources/`:
 - Windows: `yume-server-windows-x64.exe`
 - Linux: `yume-server-linux-x64`
 
+#### Future Multi-Provider Packaging (Planned)
+When `yume-cli` is introduced, bundle per-platform shim binaries alongside the server binaries:
+- `yume-cli-macos-arm64`, `yume-cli-macos-x64`
+- `yume-cli-windows-x64.exe`
+- `yume-cli-linux-x64`
+
+Ensure they are code-signed and included in the installer manifest.
+
 #### Fallback .cjs Files
 For backwards compatibility, .cjs fallback files exist:
 - `server-claude-macos.cjs`

@@ -90,6 +90,19 @@ Yume is not just another Claude GUI - it's the **only** application that automat
 
 ---
 
+## 🔮 Multi-Provider Expansion (Planned)
+
+Yume is currently optimized for Claude CLI, but the roadmap adds Gemini and OpenAI/Codex via a translation layer that preserves the existing stream-json protocol.
+
+- **Universal Shim:** `yume-cli` emits Claude-compatible stream-json for every provider.
+- **Gemini Support:** Uses gcloud-based auth and REST streaming.
+- **OpenAI/Codex Support:** Uses OpenAI-compatible endpoints with tool-call buffering.
+- **Cross-Platform Compliance:** Golden transcript tests on macOS, Windows, Linux.
+
+See the detailed plan in `docs/expansion-plan/ROADMAP.md`.
+
+---
+
 ## 🚀 Installation
 
 ### System Requirements
@@ -97,7 +110,7 @@ Yume is not just another Claude GUI - it's the **only** application that automat
 - **OS**: macOS 10.15+, Windows 10+, Linux (Ubuntu 20.04+)
 - **RAM**: 4GB minimum, 8GB recommended
 - **Disk**: 500MB free space
-- **Claude CLI**: Installed and configured
+- **Claude CLI**: Installed and configured (Gemini/Codex planned)
 
 ### Quick Install
 

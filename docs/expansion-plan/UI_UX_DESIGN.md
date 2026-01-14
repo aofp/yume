@@ -27,7 +27,7 @@ Instead of a complex setup wizard on the welcome screen, we introduce a **Contex
 If a user selects an unconfigured provider (e.g., Gemini):
 1.  Do not fail.
 2.  Open a minimal "Quick Setup" modal specific to that provider.
-3.  Ask only for essentials: `Binary Path` (if custom) or `API Key`.
+3.  Ask only for essentials: `Binary Path` (if custom) and show auth instructions (CLI login or env vars).
 
 ## 2. Settings Modal: "Providers" Tab
 
@@ -46,11 +46,17 @@ A list of cards for each provider.
 - **Toggle:** On/Off switch.
 - **Model Selection:** Dropdown for default model (e.g., `gemini-1.5-pro`).
 - **Configuration Fields (Collapsible):**
-  - **Binary Source:** [Native CLI] | [WSL Path] | [Custom Path]
-  - **Auth Status:** Indicator showing if the CLI is authenticated (via a check command like `gemini whoami` or similar).
+  - **Binary Source:** [Bundled `yume-cli`] | [Native CLI] | [WSL Path] | [Custom Path]
+  - **Auth Status:** Indicator showing if the provider is authenticated (e.g., `gcloud auth print-access-token`, `gh auth status`, or presence of env vars).
   - **Custom Flags:** Text input for specific CLI flags (e.g., `--profile work`).
 
 *Note:* Users are responsible for authenticating via their terminal. Yume will provide a "Open Terminal" shortcut to facilitate this.
+
+### Provider Status States (UI)
+- **Missing Binary:** `yume-cli` not found or custom path invalid.
+- **Unauthenticated:** CLI present but token fetch fails.
+- **Unsupported Model:** Model not in allowed list.
+- **Degraded Mode:** Provider lacks tool calls; tool features disabled with a banner.
 
 ## 3. Analytics & Token Tracking
 

@@ -119,6 +119,7 @@ Align Windows and macOS server flows to ensure identical functionality while mai
 - [ ] Equal performance metrics (±10%)
 - [ ] Unified debugging experience
 - [ ] No platform-specific frontend code
+- [ ] Shim binaries (`yume-cli`) are discoverable and runnable on all platforms
 
 ## Risk Mitigation
 1. **Backwards Compatibility**: Keep embedded server as fallback
@@ -126,6 +127,11 @@ Align Windows and macOS server flows to ensure identical functionality while mai
 3. **Performance**: Cache WSL operations aggressively
 4. **Security**: Maintain process isolation
 5. **Updates**: Version lock server dependencies
+
+## Multi-Provider Considerations (Planned)
+- Ensure `yume-cli` is bundled and resolved the same way as the Claude server binaries.
+- Normalize path handling for tool execution across macOS, Windows, and Linux.
+- Keep stream-json output identical across platforms to avoid parser regressions.
 
 ## Timeline
 - Phase 1: 2 hours (externalize server)

@@ -1,88 +1,68 @@
-# Gemini CLI Integration Specification
+# Gemini Integration Plan
 
 ## Objective
-Enable Yume to drive Google's Gemini models (Gemini 1.5 Pro/Flash) via a standardized CLI interface, achieving feature parity with the existing Claude integration.
+Enable Yume to drive Google's Gemini models via a CLI-compatible shim while preserving Claude-compatible stream-json so the existing UI and parser remain unchanged.
 
-## Architecture: The Universal Shim (`yume-cli`)
+## Integration Strategy (Shim-First)
+1. **Primary Path:** `yume-cli --provider gemini` (emits Claude-compatible stream-json).
+2. **Optional Path:** Wrap a stable Gemini CLI *only if* it can be normalized without screen scraping.
+3. **No SDKs in Server:** Any REST/SDK usage lives inside `yume-cli`, not the Rust core.
 
-Instead of building a custom adapter for every model provider inside the Rust core, we utilize **`yume-cli`**, a Node.js executable that standardizes the input/output protocol.
+## Authentication
+Yume does **not** store API keys. Auth is sourced from the host machine:
+- **Preferred:** `gcloud auth print-access-token`
+- **Fallback:** Application Default Credentials (`GOOGLE_APPLICATION_CREDENTIALS`)
+- **Optional:** `GOOGLE_API_KEY` (env var only; not stored)
 
-```mermaid
-graph TD
-    A[Yume Rust Core] -->|Spawns| B(yume-cli)
-    B -->|Provider: Gemini| C[Google Gen AI API]
-    B -->|Stdio Stream| A
-```
+### Auth Research Checklist (All Platforms)
+- Verify token acquisition on macOS, Windows, and Linux.
+- Confirm token refresh behavior and how to detect expiration.
+- Confirm minimal permissions required for Gemini API access.
 
-### 1. Rust Implementation (`src-tauri/src/gemini_spawner.rs`)
+## Protocol Mapping
+All Gemini output must be normalized to the Claude-compatible stream-json format described in:
+`docs/expansion-plan/PROTOCOL_NORMALIZATION.md`.
 
-We will implement a `GeminiSpawner` struct analogous to `ClaudeSpawner`.
+### Required Emissions
+- `system` init message with `session_id`, `model`, `cwd`, `permissionMode`, `tools`.
+- `text` for streamed content chunks.
+- `tool_use` / `tool_result` for function calls and local tool execution.
+- `usage` and terminal `result` for token tracking and UI completion.
 
-*   **Responsibility:**
-    *   Detect if `yume-cli` is installed/available (bundled resource).
-    *   Spawn `yume-cli` with `--provider gemini`.
-    *   Manage the child process lifecycle.
-    *   Stream `stdout` (JSON-L) to the frontend via the existing event loop.
+## Tool Support
+Gemini function calling should be mapped to Yume's standard tools:
+- `Read`, `Write`, `Edit`, `MultiEdit`, `Glob`, `Grep`, `LS`, `Bash`
 
-```rust
-pub struct GeminiSpawner {
-    // Path to yume-cli executable (node or binary)
-    cli_path: PathBuf, 
-    working_directory: PathBuf,
-    // Google Cloud Project / API Key info
-    environment: HashMap<String, String>,
-}
+If Gemini returns partial function arguments, buffer until valid JSON before emitting `tool_use`.
+Use `docs/expansion-plan/TOOL_SCHEMA_REFERENCE.md` for input field expectations (e.g., `file_path`).
 
-impl GeminiSpawner {
-    pub fn spawn(&self) -> Command {
-        let mut cmd = Command::new("node");
-        cmd.arg(&self.cli_path)
-           .arg("start")
-           .arg("--provider").arg("gemini")
-           .arg("--model").arg("gemini-1.5-pro");
-        // ...
-        cmd
-    }
-}
-```
+## Context Management
+Gemini models may have large context windows.
+- **Plan:** Allow per-provider auto-compaction settings.
+- **Requirement:** Still emit `usage` so Yume's context bar remains accurate.
 
-### 2. The Shim Layer (`yume-cli`)
+## Error Handling & Recovery
+- **Auth failure:** Emit `system` with `subtype: "error"` and halt session creation.
+- **Quota exceeded:** Emit `error` and `result` with `is_error: true`.
+- **Stream disconnect:** Retry once with the same session id, then fail cleanly.
+- **Tool schema mismatch:** Emit `tool_result` with `is_error: true`; log details to stderr only.
 
-*   **Location:** `packages/yume-cli/` (or embedded in `server-*.cjs` for now).
-*   **Gemini Provider Strategy:**
-    *   **Auth:** Uses `gcloud auth print-access-token` to get a Bearer token. This assumes the user has the Google Cloud SDK installed and authenticated (`gcloud auth login`).
-    *   **Fallback Auth:** Checks `GOOGLE_API_KEY` environment variable.
-    *   **API Client:** Uses `@google/generative-ai` or direct REST calls.
+## Yume Integration Points
+- **Rust/Tauri:** Add a Gemini spawner or adapter that launches `yume-cli --provider gemini` with `--model`, `--cwd`, and `--session-id`.
+- **Server Adapter:** If using the Node server path, add a shim adapter that spawns `yume-cli` and forwards stdout to the existing stream parser.
+- **Settings:** Allow model selection and optional `gcloud` path override.
+- **Event Flow:** Reuse `claude-message:{sessionId}` events to avoid frontend refactors.
 
-### 3. Protocol Normalization
+## Research Checklist
+- Confirm streaming payload shape (delta vs full content chunks).
+- Confirm function calling format and required fields.
+- Validate usage metadata and token units.
+- Validate stable model identifiers for analytics.
+- Validate rate limit headers and retry semantics.
+- Confirm safety settings defaults and override options.
 
-The `yume-cli` must emit the exact JSON-L events Yume expects (the "Claude Code Protocol"):
-
-| Event | Gemini Equivalent | Shim Action |
-|-------|-------------------|-------------|
-| `text` | `GenerateContentResponse.text()` | Emit `{"type": "assistant", "message": { "content": "..." }}` |
-| `tool_use` | `FunctionCall` | Emit `{"type": "tool_use", "message": { "name": "...", "input": ... }}` |
-| `tool_result` | `FunctionResponse` | Read result, send to API, stream back to Yume. |
-
-## Feature Specifications
-
-### Authentication
-Yume will **NOT** implement a custom Google Login flow.
-1.  **Check 1:** Is `gcloud` installed?
-2.  **Check 2:** Run `gcloud auth print-access-token`.
-3.  **Result:** If successful, start session. If fail, show error: "Please run `gcloud auth login` or set `GOOGLE_API_KEY`."
-
-### Context Window
-Gemini 1.5 Pro supports 1M+ tokens.
-*   **Compaction:** Disable the aggressive auto-compaction used for Claude (200k limit).
-*   **Config:** Add `contextWindowSize` to the Session configuration, defaulting to 1M for Gemini.
-
-### Tooling
-Gemini supports Function Calling. `yume-cli` will declare the standard Yume toolset (`Edit`, `grep`, `ls`, etc.) as function declarations in the Gemini API call.
-
-## Implementation Plan
-
-1.  **Core:** Build `yume-cli` (Node.js) with `GeminiProvider`.
-2.  **Backend:** Create `src-tauri/src/gemini_spawner.rs` to spawn the CLI.
-3.  **Frontend:** Add "Gemini" to the Model Selector dropdown.
-4.  **Verify:** Test `Edit` tool performance with Gemini 1.5 Pro.
+## Implementation Steps
+1. Implement `GeminiStrategy` inside `yume-cli` using REST streaming.
+2. Normalize output to Claude-compatible stream-json.
+3. Wire `adapters/shim.js` to spawn `yume-cli --provider gemini`.
+4. Run golden transcript tests on macOS, Windows, Linux.

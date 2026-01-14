@@ -1581,6 +1581,9 @@ Events are namespaced by session ID for multiplexing multiple sessions.
 #### `claude-message:{sessionId}`
 Emitted for each message from Claude. Payload is raw JSON string that needs parsing.
 
+**Compatibility Note:** For planned multi-provider support, non-Claude providers will emit the same Claude-compatible stream-json payloads on this event name (or an `agent-message` alias during migration).
+See `docs/expansion-plan/STREAM_JSON_REFERENCE.md` for the canonical message shapes.
+
 ```typescript
 import { listen } from '@tauri-apps/api/event';
 

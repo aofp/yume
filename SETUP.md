@@ -106,6 +106,7 @@ npm run tauri:dev
 - This is separate from your claude.ai subscription
 - API usage will be billed to your Anthropic account
 - Check usage at https://console.anthropic.com/settings/usage
+- Multi-provider support (Gemini/OpenAI) is planned and will rely on CLI/env auth (no keys stored in Yume). See `docs/expansion-plan/ROADMAP.md`.
 
 ## architecture overview
 

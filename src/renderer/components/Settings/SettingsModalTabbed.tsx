@@ -1135,10 +1135,10 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">opacity</span>
                     <div className="theme-controls-bg">
+                      <span className="opacity-value">{Math.round(htmlOpacity * 100)}%</span>
                       <button className="color-reset" onClick={() => handleHtmlOpacityChange(1.0)} disabled={Math.abs(htmlOpacity - 1.0) < 0.01}>
                         <IconRotateClockwise size={10} />
                       </button>
-                      <span className="opacity-value">{Math.round(htmlOpacity * 100)}%</span>
                       <div className="opacity-container">
                         <input
                           type="range"

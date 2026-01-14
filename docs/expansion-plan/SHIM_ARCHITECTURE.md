@@ -20,6 +20,13 @@ A lightweight Node.js binary bundled with Yume. It is **NOT** an SDK, but a stan
 ## Protocol Contract (Non-Negotiable)
 Yume's backend already parses Claude stream-json. The shim must **match that protocol** so the rest of the stack stays unchanged. See `docs/expansion-plan/PROTOCOL_NORMALIZATION.md` for the canonical schema and message examples.
 
+## Tool Execution & Approval Flow
+- Current sessions use `permissionMode: "default"`.
+- `permissionMode` governs whether tools run automatically or require approval (planned for shim).
+- In interactive mode, the shim must pause tool execution until the UI approves.
+- If a tool is denied, emit `tool_result` with `is_error: true` and a clear message.
+- Tool names should align with UI expectations (see `src/renderer/config/tools.ts` and `src/renderer/components/Chat/MessageRenderer.tsx`).
+
 ## Architecture
 
 ```
@@ -37,7 +44,8 @@ Yume's backend already parses Claude stream-json. The shim must **match that pro
     |
     +--- [ 2. Tool Strategy ]
     |      |
-    |      +--- Defines standard tools: `Edit`, `Bash`, `Glob`
+    |      +--- Core tools: `Read`, `Write`, `Edit`, `MultiEdit`, `Glob`, `Grep`, `LS`, `Bash`
+    |      +--- Optional: `WebFetch`, `WebSearch`, `NotebookEdit`, `Task`, `TaskOutput`, `TodoWrite`, `Skill`, `LSP`, `KillShell`
     |      +--- Executes them locally (fs.*, child_process)
     |
     +--- [ 3. Model Strategy ] (Pluggable)
@@ -53,7 +61,7 @@ Yume's backend already parses Claude stream-json. The shim must **match that pro
 1.  **Input:** User prompts "Refactor app.tsx".
 2.  **Prompt Engineering:** `yume-cli` constructs a system prompt defining tools (`<tool_definition>...`).
 3.  **Loop:**
-    *   **Call 1:** Model returns `{"tool": "Edit", "path": "app.tsx"}`.
+    *   **Call 1:** Model returns `{"tool": "Edit", "input": {"file_path": "app.tsx", "old_string": "foo", "new_string": "bar"}}`.
     *   **Shim:**
         1.  Emits `tool_use` event to GUI.
         2.  Executes file write.

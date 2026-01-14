@@ -1453,3 +1453,5 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
 6. **Timeline & Checkpoints** - Visual conversation state management and restoration
 
 The combination of advanced features with a focus on performance, privacy, and extensibility makes Yume the most capable Claude GUI available.
+
+**Planned Expansion:** Multi-provider support (Gemini/OpenAI) will be added via a Claude-compatible stream-json shim. See `docs/expansion-plan/ROADMAP.md`.

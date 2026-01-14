@@ -18,6 +18,7 @@
 10. [Platform-Specific Issues](#10-platform-specific-issues)
 11. [Advanced Debugging](#11-advanced-debugging)
 12. [Error Codes Reference](#12-error-codes-reference)
+13. [Multi-Provider (Planned)](#13-multi-provider-planned)
 
 ---
 
@@ -1211,4 +1212,42 @@ copy %LOCALAPPDATA%\yume\logs\server.log yume-debug\
 
 ---
 
-This comprehensive troubleshooting guide covers all common issues and their solutions. For issues not covered here, please contact support with detailed information about your problem.
+## 13. Multi-Provider (Planned)
+
+These items apply once Gemini/OpenAI providers are enabled via `yume-cli`.
+
+### 13.1 `yume-cli` not found
+**Symptoms**: "Provider binary missing" or no output when starting a session  
+**Fix**:
+- Verify `yume-cli` is bundled and on PATH.
+- Check provider settings for a custom binary path.
+- Reinstall if the bundled binary is missing or corrupted.
+
+### 13.2 Gemini auth fails
+**Symptoms**: "Auth failed" or "gcloud token unavailable"  
+**Fix**:
+- Run `gcloud auth login`.
+- Verify `gcloud auth print-access-token` succeeds.
+- For headless setups, configure `GOOGLE_APPLICATION_CREDENTIALS`.
+
+### 13.3 OpenAI/Codex auth fails
+**Symptoms**: "OPENAI_API_KEY not set"  
+**Fix**:
+- Export `OPENAI_API_KEY` in the environment used to launch Yume.
+- If using a compatible endpoint, set `OPENAI_BASE_URL`.
+
+### 13.4 Tool calls never execute
+**Symptoms**: `tool_use` shown but no results  
+**Fix**:
+- Confirm permission mode is `interactive` or `auto`.
+- Check Yume Guard or hook rules that may be blocking tool execution.
+
+### 13.5 Streaming stops mid-response
+**Symptoms**: UI stuck in "thinking" without completion  
+**Fix**:
+- Retry the session; the shim should emit a terminal `result` even on error.
+- Check network connectivity and provider rate limits.
+
+---
+
+This troubleshooting guide covers common issues and known future-provider scenarios. For issues not covered here, please contact support with detailed information about your problem.

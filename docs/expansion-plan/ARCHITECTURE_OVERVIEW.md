@@ -35,7 +35,7 @@ class CliAdapter {
   /**
    * Parses a line of output from the CLI's stdout.
    * @param {string} line - Raw output line.
-   * @returns {object|null} - Normalized message object (type: 'assistant', 'tool', etc.) or null if ignored.
+   * @returns {object|null} - Claude-compatible stream-json message (type: 'text', 'tool_use', etc.) or null if ignored.
    */
   parseOutput(line) {}
 
@@ -48,6 +48,13 @@ class CliAdapter {
 
 ### Protocol Contract
 Adapters must output **Claude-compatible stream-json** (line-delimited JSON objects with `type` fields) so existing parsing and UI logic stays intact. See `docs/expansion-plan/PROTOCOL_NORMALIZATION.md` for the canonical schema.
+For the recommended architecture and tool support tiers, see `docs/expansion-plan/TECHNICAL_APPROACH.md`.
+For field-level message shapes and tool inputs, see `docs/expansion-plan/STREAM_JSON_REFERENCE.md` and `docs/expansion-plan/TOOL_SCHEMA_REFERENCE.md`.
+
+### Event Naming Compatibility
+Today the frontend listens to Tauri events like `claude-message:{sessionId}`. To avoid a large refactor:
+- Keep emitting the same event names for all providers (compatibility mode), or
+- Add new `agent-message:{sessionId}` events and emit both during migration.
 
 ## Supported Providers
 
@@ -56,12 +63,12 @@ Adapters must output **Claude-compatible stream-json** (line-delimited JSON obje
 - **Protocol:** JSON stream (`--output-format stream-json`)
 - **Status:** Implemented (needs refactoring into adapter).
 
-### 2. Gemini CLI
+### 2. Gemini (Shim)
 - **Binary:** `yume-cli --provider gemini` (shim)
 - **Protocol:** Claude-compatible stream-json (emitted by shim).
 - **Key Differences:** Function-calling format, usage metadata, massive context window.
 
-### 3. Codex CLI (GitHub Copilot CLI)
+### 3. OpenAI/Codex (Shim)
 - **Primary:** `yume-cli --provider openai` (OpenAI/Codex API)
 - **Fallback:** `gh copilot` via PTY if no API access is available.
 - **Protocol:** Claude-compatible stream-json emitted by shim or adapter.

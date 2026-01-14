@@ -71,8 +71,17 @@ Yume employs a sophisticated three-process architecture that ensures separation 
 2. **Dynamic Port Allocation**: Prevents conflicts by allocating ports dynamically (20000-65000 range)
 3. **Process Isolation**: Each process runs independently with clear boundaries
 4. **Lazy Reconnection**: Sessions reconnect only when accessed, saving resources
-5. **Bounded Buffers**: 10MB limit on message buffers prevents memory leaks
+5. **Bounded Buffers**: 100KB stream parser buffer (Rust) and 10MB line buffer (server) prevent memory leaks
 6. **Atomic Operations**: Thread-safe operations using Rust's atomic types
+
+### 1.3 Multi-Provider Expansion (Planned)
+To support Gemini and OpenAI/Codex without rewriting the UI, Yume will introduce a **translation layer** (`yume-cli`) that emits Claude-compatible stream-json.
+
+- **Shim Strategy:** `yume-cli` implements the agent loop and normalizes provider streams.
+- **Protocol Contract:** Output must match the current stream parser (`src-tauri/src/stream_parser.rs`).
+- **Adapters:** Server-side adapters spawn the shim with provider flags.
+
+See `docs/expansion-plan/ARCHITECTURE_OVERVIEW.md` and `docs/expansion-plan/PROTOCOL_NORMALIZATION.md`.
 
 ## 2. Core Components Deep Dive
 
@@ -650,30 +659,35 @@ Server → Client:
 - `error`: Error occurred
 - `compact-triggered`: Auto-compact started
 
+**Note:** WebSocket streaming is retained for compatibility, but newer flows use direct Tauri events where available.
+
 ### 5.3 Stream Processing
 
 **Location**: `src-tauri/src/stream_parser.rs`
 
 ```rust
-pub fn parse_stream_chunk(chunk: &str) -> Vec<StreamEvent> {
-    chunk.lines()
-        .filter_map(|line| {
-            if line.starts_with("data: ") {
-                serde_json::from_str(&line[6..]).ok()
-            } else {
-                None
-            }
-        })
-        .collect()
+pub fn process_line(&mut self, line: &str) -> Result<Option<ClaudeStreamMessage>> {
+    if line.trim() == "$" {
+        return Ok(Some(ClaudeStreamMessage::MessageStop));
+    }
+
+    if let Ok(json) = serde_json::from_str::<Value>(line) {
+        return self.parse_json_to_message(json);
+    }
+
+    // Buffer multi-line JSON until complete (bounded to avoid memory issues)
+    self.buffer.push_str(line);
+    self.buffer.push('\n');
+    if self.is_complete_json() {
+        // parse buffered JSON...
+    }
+    Ok(None)
 }
 ```
 
-Stream Event Types:
-- `message_start`: Begin streaming
-- `content_block`: Text chunk
-- `message_complete`: End streaming
-- `token_stats`: Usage update
-- `error`: Stream error
+Primary Message Types:
+- `system`, `text`, `tool_use`, `tool_result`, `usage`, `result`
+- `message_stop`, `thinking`, `error`, `interrupt`
 
 ## 6. Data Flow and State Management
 

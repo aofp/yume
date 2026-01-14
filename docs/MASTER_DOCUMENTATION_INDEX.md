@@ -2,8 +2,8 @@
 
 **Created:** January 3, 2025
 **Updated:** January 12, 2026
-**Total Documentation:** 7 comprehensive guides
-**Coverage:** Core codebase + competitive analysis documented
+**Total Documentation:** 8 core guides + expansion plan suite
+**Coverage:** Core codebase + competitive analysis + multi-provider expansion documented
 
 ---
 
@@ -296,9 +296,13 @@
 - [**Shim Architecture**](expansion-plan/SHIM_ARCHITECTURE.md): The "Yume Agent" design for stateless providers.
 - [**Yume CLI Spec**](expansion-plan/YUME_CLI_SPEC.md): Technical specification for the `yume-cli` binary.
 - [**Protocol Normalization**](expansion-plan/PROTOCOL_NORMALIZATION.md): Canonical mapping into Claude-compatible stream-json.
-- [**Gemini Integration**](expansion-plan/GEMINI_INTEGRATION.md): Strategy for Google Gemini CLI.
-- [**Codex Integration**](expansion-plan/CODEX_INTEGRATION.md): Strategy for GitHub Copilot / OpenAI.
-- [**Roadmap**](expansion-plan/ROADMAP.md): 8-week execution plan.
+- [**Stream JSON Reference**](expansion-plan/STREAM_JSON_REFERENCE.md): Field-level message shapes for shims/adapters.
+- [**Tool Schema Reference**](expansion-plan/TOOL_SCHEMA_REFERENCE.md): UI-required tool input fields.
+- [**Edge Cases & Compatibility**](expansion-plan/EDGE_CASES_AND_COMPATIBILITY.md): Scenario coverage and cross-platform constraints.
+- [**Technical Approach**](expansion-plan/TECHNICAL_APPROACH.md): Recommended architecture and best practices.
+- [**Gemini Integration**](expansion-plan/GEMINI_INTEGRATION.md): Strategy for Gemini via shim.
+- [**Codex Integration**](expansion-plan/CODEX_INTEGRATION.md): Strategy for OpenAI/Codex via shim.
+- [**Roadmap**](expansion-plan/ROADMAP.md): Multi-provider execution plan.
 
 ---
 
