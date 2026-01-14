@@ -291,7 +291,8 @@
 .opacity-value {
   font-size: var(--text-sm);
   color: var(--fg-50);
-  min-width: 28px;
+  min-width: 30px;
+  margin-right: 2px;
   text-align: right;
 }
 

@@ -22,7 +22,7 @@
   border: 1px solid var(--fg-10);
   border-radius: 8px;
   width: 90%;
-  max-width: 320px;
+  max-width: 314px;
   overflow-y: auto;
   user-select: none;
   -webkit-user-select: none;
