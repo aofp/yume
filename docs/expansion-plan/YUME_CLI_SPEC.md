@@ -5,6 +5,78 @@
 
 The **non-negotiable contract**: `yume-cli` must emit line-delimited JSON objects that match the current Claude stream protocol parsed by Yume (`src-tauri/src/stream_parser.rs`).
 
+## Implementation Stack
+
+### Language & Runtime
+- **Language:** TypeScript (Node.js 20+)
+- **Compiler:** `@yao-pkg/pkg` for cross-platform binaries
+- **Source Location:** `src-yume-cli/` at project root
+
+### Directory Structure
+```
+src-yume-cli/
+├── index.ts              # Entry point, CLI parsing
+├── core/
+│   ├── agent-loop.ts     # Think → Act → Observe loop
+│   ├── session.ts        # Session state management
+│   └── emit.ts           # Stdout JSON emission
+├── providers/
+│   ├── base.ts           # Provider interface
+│   ├── gemini.ts         # Gemini REST adapter
+│   ├── openai.ts         # OpenAI/Codex adapter
+│   └── anthropic.ts      # Fallback Anthropic adapter
+├── tools/
+│   ├── index.ts          # Tool registry
+│   ├── file.ts           # Read, Write, Edit, MultiEdit
+│   ├── search.ts         # Glob, Grep, LS
+│   ├── bash.ts           # Shell execution
+│   └── web.ts            # WebFetch, WebSearch
+├── auth/
+│   ├── gcloud.ts         # Gemini token caching
+│   └── env.ts            # Environment variable auth
+├── utils/
+│   ├── tokenizer.ts      # Fallback token estimation
+│   ├── secrets.ts        # Secret redaction
+│   └── paths.ts          # Cross-platform path handling
+└── types.ts              # Shared type definitions
+```
+
+### Dependencies
+```json
+{
+  "dependencies": {
+    "tiktoken": "^1.0.0"
+  },
+  "devDependencies": {
+    "@yao-pkg/pkg": "^5.0.0",
+    "typescript": "^5.0.0",
+    "@types/node": "^20.0.0"
+  }
+}
+```
+
+**Note:** No provider SDKs - use native `fetch` for all HTTP calls to minimize binary size.
+
+### Build Commands
+```bash
+# Development
+npx ts-node src-yume-cli/index.ts --provider gemini --model gemini-1.5-pro
+
+# Production build
+npm run build:yume-cli:macos    # -> src-tauri/resources/yume-cli-macos-arm64
+npm run build:yume-cli:windows  # -> src-tauri/resources/yume-cli-windows-x64.exe
+npm run build:yume-cli:linux    # -> src-tauri/resources/yume-cli-linux-x64
+npm run build:yume-cli:all      # All platforms
+```
+
+### Binary Targets
+| Platform | Binary Name | Architecture |
+|----------|-------------|--------------|
+| macOS | `yume-cli-macos-arm64` | Apple Silicon |
+| macOS | `yume-cli-macos-x64` | Intel |
+| Windows | `yume-cli-windows-x64.exe` | x64 |
+| Linux | `yume-cli-linux-x64` | x64 |
+
 ## Architecture
 
 ### 1. Core Loop (Think → Act → Observe)
@@ -68,13 +140,112 @@ Yume currently spawns the Claude CLI per turn. To minimize server changes, `yume
 
 ### 4. Session + State Handling
 - Maintain a **local session id** that is stable across retries.
-- Store conversation history in memory with optional persistence to `~/.yume/sessions/<id>.json` (plan).
+- Store conversation history in memory with optional persistence (see Session Persistence below).
 - Emit `system` init once per session:
   - `subtype: "init"`
   - `session_id`, `model`, `cwd`, `permissionMode`, `tools`
 - Default `permissionMode` should be `"default"` unless the UI explicitly requests another value.
 - On interrupts, emit `interrupt` then a terminal `result` with `is_error: true`.
 - Emit `system` with `subtype: "session_id"` if the session id changes (compaction or migration).
+
+## Session Persistence
+
+### Storage Location
+Provider sessions are stored separately from Claude's native sessions:
+
+```
+~/.yume/sessions/
+├── gemini/
+│   ├── sess-abc123.json
+│   └── sess-def456.json
+├── openai/
+│   └── sess-ghi789.json
+└── index.json  # Session index for quick lookup
+```
+
+**Note:** Claude native sessions remain in `~/.claude/projects/`. These are not duplicated.
+
+### Session File Schema
+```json
+{
+  "id": "sess-abc123",
+  "provider": "gemini",
+  "model": "gemini-1.5-pro",
+  "cwd": "/Users/yuru/project",
+  "created": "2025-01-14T00:00:00Z",
+  "updated": "2025-01-14T01:30:00Z",
+  "history": [
+    {
+      "role": "user",
+      "content": "Refactor the login component"
+    },
+    {
+      "role": "assistant",
+      "content": "I'll help you refactor...",
+      "tool_calls": [
+        { "id": "call_1", "name": "Read", "input": { "file_path": "/src/Login.tsx" } }
+      ]
+    },
+    {
+      "role": "tool",
+      "tool_call_id": "call_1",
+      "content": "// Login.tsx contents..."
+    }
+  ],
+  "usage": {
+    "total_input_tokens": 5000,
+    "total_output_tokens": 1200,
+    "total_cost_usd": 0.0234
+  },
+  "metadata": {
+    "title": "Login Refactor",
+    "compaction_count": 0
+  }
+}
+```
+
+### Session Index Schema
+```json
+{
+  "sessions": [
+    {
+      "id": "sess-abc123",
+      "provider": "gemini",
+      "model": "gemini-1.5-pro",
+      "cwd": "/Users/yuru/project",
+      "title": "Login Refactor",
+      "updated": "2025-01-14T01:30:00Z",
+      "message_count": 24
+    }
+  ]
+}
+```
+
+### Cross-Provider Compatibility
+Sessions are **NOT portable** between providers:
+- Switching providers starts a fresh session
+- History format differs between providers
+- Tool call IDs are provider-specific
+
+### Session Resume Flow
+```typescript
+async function resumeSession(sessionId: string): Promise<Session> {
+  const sessionPath = path.join(SESSIONS_DIR, provider, `${sessionId}.json`);
+
+  if (!await fs.exists(sessionPath)) {
+    throw new Error(`Session not found: ${sessionId}`);
+  }
+
+  const session = JSON.parse(await fs.readFile(sessionPath, 'utf-8'));
+
+  // Validate provider matches
+  if (session.provider !== currentProvider) {
+    throw new Error(`Cannot resume ${session.provider} session with ${currentProvider}`);
+  }
+
+  return session;
+}
+```
 
 ## Tool Definitions (Claude-Compatible)
 Yume's UI expects Claude-style tool names and payloads. Implement the same names and schema, and only advertise tools that the shim can execute.
@@ -195,3 +366,70 @@ yume-cli start \
 - Respect `permissionMode` for all tool execution.
 - Deny or sandbox commands that escape the working directory when configured.
 - Avoid echoing secrets into `tool_result` payloads (redact when possible).
+
+### Secret Detection & Redaction
+
+Before emitting any `tool_result`, scan content for sensitive patterns:
+
+```typescript
+const SECRET_PATTERNS = [
+  // API keys and tokens
+  /(?:api[_-]?key|secret|password|token|auth)\s*[:=]\s*['"]?[\w\-]{20,}/gi,
+
+  // Provider-specific patterns
+  /ghp_[a-zA-Z0-9]{36}/g,           // GitHub PAT
+  /github_pat_[a-zA-Z0-9_]{22,}/g,  // GitHub fine-grained PAT
+  /sk-[a-zA-Z0-9]{48}/g,            // OpenAI API key
+  /sk-proj-[a-zA-Z0-9\-_]{80,}/g,   // OpenAI project key
+  /AIza[a-zA-Z0-9_\-]{35}/g,        // Google API key
+  /ya29\.[a-zA-Z0-9_\-]+/g,         // Google OAuth token
+  /AKIA[A-Z0-9]{16}/g,              // AWS Access Key ID
+  /npm_[a-zA-Z0-9]{36}/g,           // NPM token
+
+  // Private keys
+  /-----BEGIN (?:RSA |EC |OPENSSH )?PRIVATE KEY-----/g,
+
+  // Connection strings
+  /(?:mongodb|postgres|mysql|redis):\/\/[^\s]+/gi,
+
+  // Bearer tokens in headers
+  /Bearer\s+[a-zA-Z0-9\-_\.]+/gi,
+];
+
+function redactSecrets(content: string): { redacted: string; count: number } {
+  let count = 0;
+
+  const redacted = SECRET_PATTERNS.reduce((text, pattern) => {
+    return text.replace(pattern, (match) => {
+      count++;
+      // Preserve pattern type for debugging
+      const prefix = match.slice(0, 4);
+      return `[REDACTED:${prefix}...]`;
+    });
+  }, content);
+
+  return { redacted, count };
+}
+
+// Usage in tool execution
+function emitToolResult(toolId: string, content: string): void {
+  const { redacted, count } = redactSecrets(content);
+
+  if (count > 0) {
+    console.error(`[yume-cli] Warning: Redacted ${count} potential secret(s) from tool output`);
+  }
+
+  emit({
+    type: 'tool_result',
+    tool_use_id: toolId,
+    content: redacted,
+  });
+}
+```
+
+### Additional Security Measures
+
+1. **Path Validation:** Reject paths outside `cwd` unless explicitly allowed
+2. **Command Filtering:** Warn on dangerous commands (`rm -rf /`, `sudo`, etc.)
+3. **Output Size Limits:** Truncate tool output over 100KB to prevent memory issues
+4. **Timeout Enforcement:** Kill long-running commands after configurable timeout (default: 120s)

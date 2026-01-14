@@ -113,3 +113,233 @@ tokens: {
 ## 5. Compatibility Check
 - **Persistence:** Ensure `providerConfigs` are saved to `localStorage` (exclude API keys if possible, or encrypt them like we do for license keys).
 - **Graceful Fallback:** If a user opens an old session created with "Claude", the UI should respect that session's historical provider, even if the global setting changed.
+
+## 6. Session Migration & Provider Switching
+
+### Switching Providers Mid-Session
+
+When a user attempts to switch providers during an active session:
+
+```
+┌─────────────────────────────────────────────────┐
+│  Switch to Gemini?                              │
+│                                                 │
+│  Your current session uses Claude. Switching    │
+│  providers will start a new session.            │
+│                                                 │
+│  Current session will be saved and accessible   │
+│  in the Recent Conversations list.              │
+│                                                 │
+│  [Cancel]                    [Start New Session]│
+└─────────────────────────────────────────────────┘
+```
+
+### Implementation
+
+```typescript
+// In claudeCodeStore.ts
+async function switchProvider(newProvider: Provider): Promise<void> {
+  const currentSession = get().activeSession;
+
+  if (currentSession && currentSession.messages.length > 0) {
+    // Show confirmation modal
+    const confirmed = await modalService.confirm({
+      title: `Switch to ${newProvider.displayName}?`,
+      message: `Your current session uses ${currentSession.provider}. Switching providers will start a new session.`,
+      confirmText: 'Start New Session',
+      cancelText: 'Cancel',
+    });
+
+    if (!confirmed) return;
+
+    // Save current session to history
+    await saveSessionToHistory(currentSession);
+  }
+
+  // Update provider and create new session
+  set({
+    selectedProvider: newProvider.id,
+    activeSession: createNewSession(newProvider),
+  });
+}
+```
+
+### Session History UX
+
+The Recent Conversations modal should show provider badges:
+
+```
+┌─────────────────────────────────────────────────┐
+│  Recent Conversations                           │
+├─────────────────────────────────────────────────┤
+│  [Claude] Refactor authentication module        │
+│  2 hours ago · 24 messages                      │
+├─────────────────────────────────────────────────┤
+│  [Gemini] Analyze performance bottlenecks       │
+│  Yesterday · 12 messages                        │
+├─────────────────────────────────────────────────┤
+│  [OpenAI] Generate test fixtures                │
+│  2 days ago · 8 messages                        │
+└─────────────────────────────────────────────────┘
+```
+
+### Cross-Provider Limitations
+
+When resuming a session:
+- Sessions can only be resumed with their original provider
+- Show tooltip: "This session was created with Claude and must be continued with Claude"
+- Disable "Resume" button if provider is not available
+
+```typescript
+function canResumeSession(session: Session): { canResume: boolean; reason?: string } {
+  const providerConfig = getProviderConfig(session.provider);
+
+  if (!providerConfig.enabled) {
+    return {
+      canResume: false,
+      reason: `${session.provider} is not enabled. Enable it in Settings → Providers.`,
+    };
+  }
+
+  if (!providerConfig.isAuthenticated) {
+    return {
+      canResume: false,
+      reason: `${session.provider} requires authentication.`,
+    };
+  }
+
+  return { canResume: true };
+}
+```
+
+## 7. Provider Status Indicators
+
+### Tab Bar Integration
+
+Each tab should show a subtle provider indicator:
+
+```
+┌──────────────┬──────────────┬──────────────┐
+│ 🟣 Project A │ 🔵 Analysis  │ 🟢 Tests     │
+└──────────────┴──────────────┴──────────────┘
+  Claude         Gemini         OpenAI
+```
+
+Color Legend:
+- 🟣 Purple: Claude (Anthropic)
+- 🔵 Blue: Gemini (Google)
+- 🟢 Green: OpenAI
+
+### Context Bar Provider Badge
+
+The context bar (above the input) should show the active provider:
+
+```
+┌─────────────────────────────────────────────────┐
+│  [Claude Sonnet 4] │ 42K / 200K tokens │ $0.12  │
+└─────────────────────────────────────────────────┘
+```
+
+Clicking the badge opens a quick-switch menu (same as Welcome Screen switcher).
+
+## 8. Error States & Degradation
+
+### Provider Unavailable
+
+When a provider becomes unavailable mid-session:
+
+```
+┌─────────────────────────────────────────────────┐
+│  ⚠️ Gemini Unavailable                          │
+│                                                 │
+│  Could not connect to Gemini API.               │
+│  Error: Rate limit exceeded (429)               │
+│                                                 │
+│  [Retry]  [Switch to Claude]  [View Details]    │
+└─────────────────────────────────────────────────┘
+```
+
+### Degraded Mode Banner
+
+When a provider lacks feature support:
+
+```
+┌─────────────────────────────────────────────────┐
+│  ℹ️ Limited features with OpenAI                 │
+│  MCP and prompt caching are not available.      │
+│  [Learn More]                          [Dismiss]│
+└─────────────────────────────────────────────────┘
+```
+
+## 9. Keyboard Shortcuts
+
+| Shortcut | Action |
+|----------|--------|
+| `Cmd+Shift+P` | Open provider switcher |
+| `Cmd+Shift+1` | Switch to Claude |
+| `Cmd+Shift+2` | Switch to Gemini |
+| `Cmd+Shift+3` | Switch to OpenAI |
+
+## 10. Settings: Providers Tab Layout
+
+```
+┌─────────────────────────────────────────────────┐
+│  Providers                                      │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  ┌─────────────────────────────────────────┐   │
+│  │ 🟣 Claude                    [Enabled ✓] │   │
+│  │ Status: Connected                        │   │
+│  │ Model: claude-sonnet-4-20250514         │   │
+│  │ [Configure]                              │   │
+│  └─────────────────────────────────────────┘   │
+│                                                 │
+│  ┌─────────────────────────────────────────┐   │
+│  │ 🔵 Gemini                    [Disabled]  │   │
+│  │ Status: Not configured                   │   │
+│  │ [Enable]                                 │   │
+│  └─────────────────────────────────────────┘   │
+│                                                 │
+│  ┌─────────────────────────────────────────┐   │
+│  │ 🟢 OpenAI                    [Disabled]  │   │
+│  │ Status: API key not set                  │   │
+│  │ [Enable]                                 │   │
+│  └─────────────────────────────────────────┘   │
+│                                                 │
+│  ───────────────────────────────────────────   │
+│                                                 │
+│  Default Provider: [Claude ▼]                   │
+│                                                 │
+└─────────────────────────────────────────────────┘
+```
+
+### Provider Configuration Modal
+
+When clicking "Configure" or "Enable":
+
+```
+┌─────────────────────────────────────────────────┐
+│  Configure Gemini                               │
+├─────────────────────────────────────────────────┤
+│                                                 │
+│  Authentication                                 │
+│  ○ gcloud CLI (recommended)                     │
+│    Status: ✓ Authenticated as user@gmail.com    │
+│    [Re-authenticate]                            │
+│                                                 │
+│  ○ API Key                                      │
+│    Set GOOGLE_API_KEY environment variable      │
+│                                                 │
+│  ─────────────────────────────────────────────  │
+│                                                 │
+│  Default Model                                  │
+│  [gemini-1.5-pro ▼]                            │
+│                                                 │
+│  Context Compaction Threshold                   │
+│  [80%] (800K tokens for 1M context)            │
+│                                                 │
+│  ─────────────────────────────────────────────  │
+│                                                 │
+│  [Test Connection]              [Save] [Cancel] │
+└─────────────────────────────────────────────────┘
+```
