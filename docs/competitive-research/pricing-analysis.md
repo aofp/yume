@@ -1,5 +1,7 @@
 # Pricing Analysis
 
+*Last Updated: January 14, 2026*
+
 *Detailed breakdown of AI coding tool pricing models*
 
 ## Pricing Model Types
@@ -90,7 +92,7 @@
 - Free tiers expanded significantly
 
 ### Notable Changes
-- Gemini: 6K daily free requests (unprecedented)
+- Gemini: 6K daily free requests (unprecedented) - **Yume integration in progress**
 - Poe: $5/mo entry tier
 - Copilot: $10/mo individual
 - Devin: $500 → $20/mo drop

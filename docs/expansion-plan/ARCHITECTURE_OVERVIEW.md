@@ -61,11 +61,12 @@ Today the frontend listens to Tauri events like `claude-message:{sessionId}`. To
 ### 1. Claude (Current)
 - **Binary:** `claude`
 - **Protocol:** JSON stream (`--output-format stream-json`)
-- **Status:** Implemented (needs refactoring into adapter).
+- **Status:** Implemented (refactoring into adapter in progress).
 
 ### 2. Gemini (Shim)
 - **Binary:** `yume-cli --provider gemini` (shim)
 - **Protocol:** Claude-compatible stream-json (emitted by shim).
+- **Status:** Active integration.
 - **Key Differences:** Function-calling format, usage metadata, massive context window.
 
 ### 3. OpenAI/Codex (Shim)
@@ -81,8 +82,8 @@ Today the frontend listens to Tauri events like `claude-message:{sessionId}`. To
 
 ## Roadmap
 
-1.  **Refactor Server:** Extract Claude logic from `server-claude-direct.cjs` into `adapters/claude.js`.
+1.  **Refactor Server:** Extract Claude logic from `server-claude-direct.cjs` into `adapters/claude.js`. (In Progress)
 2.  **Generic Server:** Create `server-core.js` that loads the correct adapter based on initialization params.
-3.  **Gemini Prototype:** Build a minimal `adapters/gemini.js` (shim-backed) and test connection.
+3.  **Gemini Prototype:** Build a minimal `adapters/gemini.js` (shim-backed) and test connection. (Active Integration)
 4.  **Codex Prototype:** Build a minimal `adapters/codex.js` (OpenAI-backed) and test connection.
 5.  **Frontend Integration:** expose switching logic.

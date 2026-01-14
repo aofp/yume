@@ -76,7 +76,7 @@ $21 one-time. All features included. No subscriptions.
 
 We are actively working on expanding Yume to be the universal GUI for agentic CLIs.
 - **Translation Layer:** `yume-cli` shim that emits Claude-compatible stream-json for all providers.
-- **Gemini Support:** Drive Gemini models via the shim with gcloud-based auth.
+- **Gemini Support (Active):** Drive Gemini models via the shim with gcloud-based auth.
 - **Codex/OpenAI Support:** Use GPT-4o and O1 models via OpenAI-compatible endpoints.
 - **Cross-Platform Compliance:** Golden transcript tests on macOS, Windows, Linux.
 - **See the full plan:** [docs/expansion-plan/ROADMAP.md](docs/expansion-plan/ROADMAP.md)

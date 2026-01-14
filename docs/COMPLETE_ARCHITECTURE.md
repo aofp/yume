@@ -1,7 +1,7 @@
 # Yume Complete Architecture Documentation
 
 **Version:** 0.1.0
-**Last Updated:** January 12, 2026
+**Last Updated:** January 14, 2026
 **Status:** Beta - Approaching Production
 
 ## Table of Contents
@@ -74,8 +74,8 @@ Yume employs a sophisticated three-process architecture that ensures separation 
 5. **Bounded Buffers**: 100KB stream parser buffer (Rust) and 10MB line buffer (server) prevent memory leaks
 6. **Atomic Operations**: Thread-safe operations using Rust's atomic types
 
-### 1.3 Multi-Provider Expansion (Planned)
-To support Gemini and OpenAI/Codex without rewriting the UI, Yume will introduce a **translation layer** (`yume-cli`) that emits Claude-compatible stream-json.
+### 1.3 Multi-Provider Expansion (Active)
+To support Gemini and OpenAI/Codex without rewriting the UI, Yume is introducing a **translation layer** (`yume-cli`) that emits Claude-compatible stream-json. Gemini integration is currently the primary focus.
 
 - **Shim Strategy:** `yume-cli` implements the agent loop and normalizes provider streams.
 - **Protocol Contract:** Output must match the current stream parser (`src-tauri/src/stream_parser.rs`).

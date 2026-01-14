@@ -3,10 +3,10 @@
 This roadmap focuses on making Yume provider-agnostic while preserving the existing Claude-compatible stream-json pipeline.
 
 ## Phase 0: Protocol Contract (Week 0-1)
-- [ ] **Canonical Protocol:** Document Claude-compatible stream-json requirements (match `src-tauri/src/stream_parser.rs`).
-- [ ] **Golden Transcript Tests:** Replayable fixtures for text, tool use, errors, and interrupts.
-- [ ] **Edge-Case Matrix:** Enumerate cross-platform/provider failure modes.
-- [ ] **Technical Approach Doc:** Finalize best-practice architecture and tool support tiers.
+- [x] **Canonical Protocol:** Document Claude-compatible stream-json requirements (match `src-tauri/src/stream_parser.rs`).
+- [x] **Golden Transcript Tests:** Replayable fixtures for text, tool use, errors, and interrupts.
+- [x] **Edge-Case Matrix:** Enumerate cross-platform/provider failure modes.
+- [x] **Technical Approach Doc:** Finalize best-practice architecture and tool support tiers.
 
 ## Phase 1: Foundation (Week 1-2)
 - [x] **Claude CLI Integration**: Native support for Claude 3.5 Sonnet/Opus.
@@ -14,6 +14,7 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
 - [x] **Core Tooling**: Read, Write, Edit, Glob, Grep, Bash tool definitions.
 - [ ] **Server Refactor:** Extract CLI logic into adapters (Claude + Shim).
 - [ ] **Event Compatibility:** Decide whether to keep `claude-message` events or add `agent-message`.
+- [ ] **Gemini Proto-Integration:** Initial shim implementation for Gemini REST streaming.
 
 ## Phase 2: Translation Layer (Week 3-4)
 - [ ] **Build `yume-cli`:** Standalone shim emitting Claude-compatible stream-json.

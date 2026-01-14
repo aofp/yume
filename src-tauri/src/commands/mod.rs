@@ -33,6 +33,8 @@ use once_cell::sync::Lazy;
 
 use crate::state::AppState;
 use crate::logged_server;
+// APP_IDENTIFIER is only used on Windows for WebView2 paths
+#[cfg_attr(not(target_os = "windows"), allow(unused_imports))]
 use crate::app::{APP_ID, APP_IDENTIFIER, APP_NAME};
 
 // Global store for running bash processes

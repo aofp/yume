@@ -2180,9 +2180,8 @@ app.get('/claude-analytics', async (req, res) => {
                   let totalCacheCreationTokens = 0;
                   let totalCacheReadTokens = 0;
                   let lastResultUsage = null;
-                  let totalCostUSD = 0;
-                  let sawCostUSD = false;
                   const seenRequestIds = new Set();
+                  const countedAssistantRequestIds = new Set();
 
                   for (const line of allLines) {
                     try {
@@ -2192,10 +2191,17 @@ app.get('/claude-analytics', async (req, res) => {
                       // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
                       // Only count each unique requestId once to avoid 2-3x overcounting
                       if (data.type === 'assistant' && data.message) {
-                        messageCount++;
                         // Detect model from message
                         if (data.message.model) {
                           sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                        }
+                        if (data.requestId) {
+                          if (!countedAssistantRequestIds.has(data.requestId)) {
+                            countedAssistantRequestIds.add(data.requestId);
+                            messageCount++;
+                          }
+                        } else {
+                          messageCount++;
                         }
                         // Dedupe by requestId - only count each request once
                         if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
@@ -2207,7 +2213,7 @@ app.get('/claude-analytics', async (req, res) => {
                         }
                       }
 
-                      // Also check for standalone result messages (legacy format) - these have costUSD
+                      // Also check for standalone result messages (legacy format)
                       if (data.type === 'result' && data.usage) {
                         lastResultUsage = data.usage;
                         // Dedupe result messages too
@@ -2217,10 +2223,6 @@ app.get('/claude-analytics', async (req, res) => {
                           totalOutputTokens += data.usage.output_tokens || 0;
                           totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
                           totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
-                        }
-                        if (data.costUSD != null) {
-                          totalCostUSD += data.costUSD;
-                          sawCostUSD = true;
                         }
                       }
 
@@ -2257,16 +2259,12 @@ app.get('/claude-analytics', async (req, res) => {
                       cacheRead: totalCacheReadTokens
                     };
 
-                    // Use costUSD if available, otherwise calculate from tokens
-                    if (sawCostUSD) {
-                      sessionCost = totalCostUSD;
-                    } else {
-                      const rates = pricing[sessionModel];
-                      sessionCost = (totalInputTokens * rates.input) +
-                                   (totalOutputTokens * rates.output) +
-                                   (totalCacheCreationTokens * rates.cacheCreation) +
-                                   (totalCacheReadTokens * rates.cacheRead);
-                    }
+                    // Calculate cost from token totals
+                    const rates = pricing[sessionModel];
+                    sessionCost = (totalInputTokens * rates.input) +
+                                 (totalOutputTokens * rates.output) +
+                                 (totalCacheCreationTokens * rates.cacheCreation) +
+                                 (totalCacheReadTokens * rates.cacheRead);
                   }
                   
                   console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
@@ -2386,9 +2384,8 @@ app.get('/claude-analytics', async (req, res) => {
                 let totalCacheCreationTokens = 0;
                 let totalCacheReadTokens = 0;
                 let lastResultUsage = null;
-                let totalCostUSD = 0;
-                let sawCostUSD = false;
                 const seenRequestIds = new Set();
+                const countedAssistantRequestIds = new Set();
 
                 for (const line of allLines) {
                   try {
@@ -2398,10 +2395,17 @@ app.get('/claude-analytics', async (req, res) => {
                     // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
                     // Only count each unique requestId once to avoid 2-3x overcounting
                     if (data.type === 'assistant' && data.message) {
-                      messageCount++;
                       // Detect model from message
                       if (data.message.model) {
                         sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                      }
+                      if (data.requestId) {
+                        if (!countedAssistantRequestIds.has(data.requestId)) {
+                          countedAssistantRequestIds.add(data.requestId);
+                          messageCount++;
+                        }
+                      } else {
+                        messageCount++;
                       }
                       // Dedupe by requestId - only count each request once
                       if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
@@ -2413,7 +2417,7 @@ app.get('/claude-analytics', async (req, res) => {
                       }
                     }
 
-                    // Also check for standalone result messages (legacy format) - these have costUSD
+                    // Also check for standalone result messages (legacy format)
                     if (data.type === 'result' && data.usage) {
                       lastResultUsage = data.usage;
                       // Dedupe result messages too
@@ -2423,10 +2427,6 @@ app.get('/claude-analytics', async (req, res) => {
                         totalOutputTokens += data.usage.output_tokens || 0;
                         totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
                         totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
-                      }
-                      if (data.costUSD != null) {
-                        totalCostUSD += data.costUSD;
-                        sawCostUSD = true;
                       }
                     }
 
@@ -2462,16 +2462,12 @@ app.get('/claude-analytics', async (req, res) => {
                     cacheRead: totalCacheReadTokens
                   };
 
-                  // Use costUSD if available, otherwise calculate from tokens
-                  if (sawCostUSD) {
-                    sessionCost = totalCostUSD;
-                  } else {
-                    const rates = pricing[sessionModel];
-                    sessionCost = (totalInputTokens * rates.input) +
-                                 (totalOutputTokens * rates.output) +
-                                 (totalCacheCreationTokens * rates.cacheCreation) +
-                                 (totalCacheReadTokens * rates.cacheRead);
-                  }
+                  // Calculate cost from token totals
+                  const rates = pricing[sessionModel];
+                  sessionCost = (totalInputTokens * rates.input) +
+                               (totalOutputTokens * rates.output) +
+                               (totalCacheCreationTokens * rates.cacheCreation) +
+                               (totalCacheReadTokens * rates.cacheRead);
                 }
 
                 console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
@@ -2551,6 +2547,7 @@ app.get('/claude-analytics', async (req, res) => {
           for (const sessionFile of jsonlFiles) {
             try {
               const sessionPath = join(projectPath, sessionFile);
+              const fileStats = await stat(sessionPath);
               const content = await readFile(sessionPath, 'utf8');
               
               // Parse JSONL file - Claude CLI format
@@ -2558,17 +2555,18 @@ app.get('/claude-analytics', async (req, res) => {
               let sessionTokens = 0;
               let sessionCost = 0;
               let sessionModel = 'sonnet';
-              let sessionDate = new Date().toISOString().split('T')[0];
+              let sessionDate = formatDateKey(new Date());
               let messageCount = 0;
-              let sessionTokenBreakdown = { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 };
+              let sessionTokenBreakdown = createTokenBreakdown();
 
               // Track cumulative usage - dedupe by requestId to avoid counting streaming chunks multiple times
               let totalInputTokens = 0;
               let totalOutputTokens = 0;
               let totalCacheCreationTokens = 0;
               let totalCacheReadTokens = 0;
-              let lastResultCostUSD = null;
+              let lastResultUsage = null;
               const seenRequestIds = new Set();
+              const countedAssistantRequestIds = new Set();
 
               for (const line of lines) {
                 try {
@@ -2578,10 +2576,17 @@ app.get('/claude-analytics', async (req, res) => {
                   // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
                   // Only count each unique requestId once to avoid 2-3x overcounting
                   if (data.type === 'assistant' && data.message) {
-                    messageCount++;
                     // Detect model from message
                     if (data.message.model) {
                       sessionModel = data.message.model.includes('opus') ? 'opus' : 'sonnet';
+                    }
+                    if (data.requestId) {
+                      if (!countedAssistantRequestIds.has(data.requestId)) {
+                        countedAssistantRequestIds.add(data.requestId);
+                        messageCount++;
+                      }
+                    } else {
+                      messageCount++;
                     }
                     // Dedupe by requestId - only count each request once
                     if (data.message.usage && data.requestId && !seenRequestIds.has(data.requestId)) {
@@ -2593,8 +2598,9 @@ app.get('/claude-analytics', async (req, res) => {
                     }
                   }
 
-                  // Also check for standalone result messages (legacy format) - these have costUSD
+                  // Also check for standalone result messages (legacy format)
                   if (data.type === 'result' && data.usage) {
+                    lastResultUsage = data.usage;
                     // Dedupe result messages too
                     if (data.requestId && !seenRequestIds.has(data.requestId)) {
                       seenRequestIds.add(data.requestId);
@@ -2602,9 +2608,6 @@ app.get('/claude-analytics', async (req, res) => {
                       totalOutputTokens += data.usage.output_tokens || 0;
                       totalCacheCreationTokens += data.usage.cache_creation_input_tokens || 0;
                       totalCacheReadTokens += data.usage.cache_read_input_tokens || 0;
-                    }
-                    if (data.costUSD != null) {
-                      lastResultCostUSD = (lastResultCostUSD || 0) + data.costUSD;
                     }
                   }
 
@@ -2615,11 +2618,19 @@ app.get('/claude-analytics', async (req, res) => {
 
                   // Get timestamp from any message
                   if (data.timestamp) {
-                    sessionDate = new Date(data.timestamp).toISOString().split('T')[0];
+                    sessionDate = formatDateKey(new Date(data.timestamp));
                   }
                 } catch (e) {
                   // Skip invalid lines
                 }
+              }
+
+              const hasTokenTotals = totalInputTokens > 0 || totalOutputTokens > 0 || totalCacheCreationTokens > 0 || totalCacheReadTokens > 0;
+              if (!hasTokenTotals && lastResultUsage) {
+                totalInputTokens = lastResultUsage.input_tokens || 0;
+                totalOutputTokens = lastResultUsage.output_tokens || 0;
+                totalCacheCreationTokens = lastResultUsage.cache_creation_input_tokens || 0;
+                totalCacheReadTokens = lastResultUsage.cache_read_input_tokens || 0;
               }
 
               // Calculate from summed totals
@@ -2632,71 +2643,55 @@ app.get('/claude-analytics', async (req, res) => {
                   cacheRead: totalCacheReadTokens
                 };
 
-                // Use costUSD if available, otherwise calculate from tokens
-                if (lastResultCostUSD != null) {
-                  sessionCost = lastResultCostUSD;
-                } else {
-                  const rates = pricing[sessionModel];
-                  sessionCost = (totalInputTokens * rates.input) +
-                               (totalOutputTokens * rates.output) +
-                               (totalCacheCreationTokens * rates.cacheCreation) +
-                               (totalCacheReadTokens * rates.cacheRead);
-                }
+                // Calculate cost from token totals
+                const rates = pricing[sessionModel];
+                sessionCost = (totalInputTokens * rates.input) +
+                             (totalOutputTokens * rates.output) +
+                             (totalCacheCreationTokens * rates.cacheCreation) +
+                             (totalCacheReadTokens * rates.cacheRead);
               }
 
               // Update analytics
-              if (sessionTokens > 0 || messageCount > 0) {
+              if (sessionTokens > 0) {
+                const modelKey = sessionModel === 'opus' ? 'opus' : 'sonnet';
+                const sessionLastUsed = fileStats.mtime.getTime();
+
                 analytics.totalSessions++;
                 analytics.totalMessages += messageCount;
                 analytics.totalTokens += sessionTokens;
                 analytics.totalCost += sessionCost;
 
-                // Update global token breakdown
-                analytics.tokenBreakdown.input += sessionTokenBreakdown.input;
-                analytics.tokenBreakdown.output += sessionTokenBreakdown.output;
-                analytics.tokenBreakdown.cacheCreation += sessionTokenBreakdown.cacheCreation;
-                analytics.tokenBreakdown.cacheRead += sessionTokenBreakdown.cacheRead;
+                addTokenBreakdown(analytics.tokenBreakdown, sessionTokenBreakdown);
 
-                // Update model breakdown
-                if (sessionModel === 'opus') {
-                  analytics.byModel.opus.sessions++;
-                  analytics.byModel.opus.tokens += sessionTokens;
-                  analytics.byModel.opus.cost += sessionCost;
-                  analytics.byModel.opus.tokenBreakdown.input += sessionTokenBreakdown.input;
-                  analytics.byModel.opus.tokenBreakdown.output += sessionTokenBreakdown.output;
-                  analytics.byModel.opus.tokenBreakdown.cacheCreation += sessionTokenBreakdown.cacheCreation;
-                  analytics.byModel.opus.tokenBreakdown.cacheRead += sessionTokenBreakdown.cacheRead;
-                } else {
-                  analytics.byModel.sonnet.sessions++;
-                  analytics.byModel.sonnet.tokens += sessionTokens;
-                  analytics.byModel.sonnet.cost += sessionCost;
-                  analytics.byModel.sonnet.tokenBreakdown.input += sessionTokenBreakdown.input;
-                  analytics.byModel.sonnet.tokenBreakdown.output += sessionTokenBreakdown.output;
-                  analytics.byModel.sonnet.tokenBreakdown.cacheCreation += sessionTokenBreakdown.cacheCreation;
-                  analytics.byModel.sonnet.tokenBreakdown.cacheRead += sessionTokenBreakdown.cacheRead;
-                }
+                const modelStats = analytics.byModel[modelKey];
+                modelStats.sessions++;
+                modelStats.tokens += sessionTokens;
+                modelStats.cost += sessionCost;
+                addTokenBreakdown(modelStats.tokenBreakdown, sessionTokenBreakdown);
 
-                // Update date breakdown
-                if (!analytics.byDate[sessionDate]) {
-                  analytics.byDate[sessionDate] = { sessions: 0, messages: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } };
-                }
-                analytics.byDate[sessionDate].sessions++;
-                analytics.byDate[sessionDate].messages += lines.length * 2;
-                analytics.byDate[sessionDate].tokens += sessionTokens;
-                analytics.byDate[sessionDate].cost += sessionCost;
-                analytics.byDate[sessionDate].tokenBreakdown.input += sessionTokenBreakdown.input;
-                analytics.byDate[sessionDate].tokenBreakdown.output += sessionTokenBreakdown.output;
-                analytics.byDate[sessionDate].tokenBreakdown.cacheCreation += sessionTokenBreakdown.cacheCreation;
-                analytics.byDate[sessionDate].tokenBreakdown.cacheRead += sessionTokenBreakdown.cacheRead;
+                const dateStats = ensureDateStats(sessionDate);
+                dateStats.sessions++;
+                dateStats.messages += messageCount;
+                dateStats.tokens += sessionTokens;
+                dateStats.cost += sessionCost;
+                addTokenBreakdown(dateStats.tokenBreakdown, sessionTokenBreakdown);
+                const dateModelStats = dateStats.byModel[modelKey];
+                dateModelStats.sessions++;
+                dateModelStats.tokens += sessionTokens;
+                dateModelStats.cost += sessionCost;
 
-                // Update project breakdown
-                if (!analytics.byProject[projectName]) {
-                  analytics.byProject[projectName] = { sessions: 0, messages: 0, tokens: 0, cost: 0, lastUsed: Date.now() };
-                }
-                analytics.byProject[projectName].sessions++;
-                analytics.byProject[projectName].messages += messageCount;
-                analytics.byProject[projectName].tokens += sessionTokens;
-                analytics.byProject[projectName].cost += sessionCost;
+                const cleanProjectName = projectName.replace(/-/g, '/');
+                const projectStats = ensureProjectStats(cleanProjectName, sessionLastUsed);
+                projectStats.sessions++;
+                projectStats.messages += messageCount;
+                projectStats.tokens += sessionTokens;
+                projectStats.cost += sessionCost;
+                const projectDateStats = ensureProjectDateStats(projectStats, sessionDate);
+                projectDateStats.sessions++;
+                projectDateStats.messages += messageCount;
+                projectDateStats.tokens += sessionTokens;
+                projectDateStats.cost += sessionCost;
+                addTokenBreakdown(projectDateStats.tokenBreakdown, sessionTokenBreakdown);
               }
             } catch (e) {
               console.error(`Error processing session ${sessionFile}:`, e.message);

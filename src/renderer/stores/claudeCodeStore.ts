@@ -2752,38 +2752,38 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                               console.log('📊 [INTERRUPT] Processing wrapper tokens:', wrapperTokens);
 
                               // Initialize analytics if not present (early interrupt on new conversation)
-                              if (!updatedAnalytics) {
-                                updatedAnalytics = {
-                                  tokens: { input: 0, output: 0, total: 0, cacheSize: 0, cacheCreation: 0, byModel: { opus: { input: 0, output: 0, total: 0 }, sonnet: { input: 0, output: 0, total: 0 } } },
-                                  cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
-                                  timing: { avgResponseTime: 0, totalTime: 0 },
-                                  contextWindow: { used: 0, limit: 200000, percentage: 0, remaining: 200000 },
-                                  requestCount: 0,
-                                  thinkingTime: 0
-                                };
-                              }
-
-                              updatedAnalytics = {
-                                ...updatedAnalytics,
-                                tokens: {
-                                  ...updatedAnalytics.tokens,
-                                  total: wrapperTokens.total ?? updatedAnalytics.tokens.total,
-                                  input: wrapperTokens.input ?? updatedAnalytics.tokens.input,
-                                  output: wrapperTokens.output ?? updatedAnalytics.tokens.output,
-                                  cacheSize: wrapperTokens.cache_read ?? updatedAnalytics.tokens.cacheSize ?? 0,
-                                  cacheCreation: wrapperTokens.cache_creation ?? updatedAnalytics.tokens.cacheCreation ?? 0
-                                }
+                              const baseAnalytics: SessionAnalytics = updatedAnalytics || {
+                                totalMessages: 0,
+                                userMessages: 0,
+                                assistantMessages: 0,
+                                toolUses: 0,
+                                tokens: { input: 0, output: 0, total: 0, cacheSize: 0, cacheCreation: 0, byModel: { opus: { input: 0, output: 0, total: 0 }, sonnet: { input: 0, output: 0, total: 0 } } },
+                                cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+                                duration: 0,
+                                lastActivity: new Date(),
+                                contextWindow: { used: 0, limit: 200000, percentage: 0, remaining: 200000 },
+                                thinkingTime: 0
                               };
 
-                              // Update context window percentage
-                              const limit = updatedAnalytics.contextWindow?.limit || 200000;
+                              const limit = baseAnalytics.contextWindow?.limit || 200000;
                               const used = wrapperTokens.total || 0;
-                              updatedAnalytics.contextWindow = {
-                                ...updatedAnalytics.contextWindow,
-                                used,
-                                limit,
-                                percentage: limit > 0 ? Math.round((used / limit) * 100) : 0,
-                                remaining: limit - used
+
+                              updatedAnalytics = {
+                                ...baseAnalytics,
+                                tokens: {
+                                  ...baseAnalytics.tokens,
+                                  total: wrapperTokens.total ?? baseAnalytics.tokens.total,
+                                  input: wrapperTokens.input ?? baseAnalytics.tokens.input,
+                                  output: wrapperTokens.output ?? baseAnalytics.tokens.output,
+                                  cacheSize: wrapperTokens.cache_read ?? baseAnalytics.tokens.cacheSize ?? 0,
+                                  cacheCreation: wrapperTokens.cache_creation ?? baseAnalytics.tokens.cacheCreation ?? 0
+                                },
+                                contextWindow: {
+                                  used,
+                                  limit,
+                                  percentage: limit > 0 ? Math.round((used / limit) * 100) : 0,
+                                  remaining: limit - used
+                                }
                               };
                               console.log('📊 [INTERRUPT] Updated context:', updatedAnalytics.contextWindow);
                             }
@@ -3246,9 +3246,7 @@ ${content}`;
               sessionToUse,
               content,
               selectedModel,
-              autoGenerateTitle,
-              sessionForSend?.claudeSessionId,
-              sessionForSend?.workingDirectory
+              autoGenerateTitle
             );
             console.log('[Store] claudeClient.sendMessage completed successfully');
           } catch (sendError) {
@@ -4001,7 +3999,7 @@ ${content}`;
         // Update the new session with copied messages and metadata
         set(state => ({
           sessions: state.sessions.map(s => {
-            if (s.id === newSessionId) {
+            if (s.id === newSessionId && s.analytics) {
               const forkedTitle = sourceSession.claudeTitle
                 ? `${sourceSession.claudeTitle} (fork)`
                 : 'forked session';
@@ -4014,8 +4012,9 @@ ${content}`;
                   totalMessages: messagesToCopy.length,
                   userMessages: messagesToCopy.filter(m => m.type === 'user').length,
                   assistantMessages: messagesToCopy.filter(m => m.type === 'assistant').length,
+                  toolUses: s.analytics.toolUses || 0,
                   // Copy token analytics so context % is preserved
-                  tokens: { ...sourceSession.analytics.tokens }
+                  tokens: sourceSession.analytics?.tokens ? { ...sourceSession.analytics.tokens } : s.analytics.tokens
                 }
               };
             }

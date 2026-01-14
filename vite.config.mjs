@@ -129,7 +129,7 @@ export default defineConfig({
       },
     },
     reportCompressedSize: false, // Faster builds
-    chunkSizeWarningLimit: 500,
+    chunkSizeWarningLimit: 700, // Higher limit for desktop apps (loaded from disk, not network)
     // Copy fonts to dist folder
     copyPublicDir: true,
     rollupOptions: {
@@ -138,10 +138,11 @@ export default defineConfig({
       },
       output: {
         manualChunks: {
-          vendor: ['react', 'react-dom'],
-          markdown: ['react-markdown'],
+          vendor: ['react', 'react-dom', 'zustand'],
+          markdown: ['react-markdown', 'remark-gfm'],
           icons: ['@tabler/icons-react'],
           socket: ['socket.io-client'],
+          tauri: ['@tauri-apps/api', '@tauri-apps/plugin-dialog'],
         },
         compact: true,
       },

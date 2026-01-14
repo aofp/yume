@@ -355,7 +355,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
             {models.map((model, index) => (
               <button
                 key={model.id}
-                ref={el => modelRefs.current[index] = el}
+                ref={el => { modelRefs.current[index] = el; }}
                 className={`mt-model-btn ${selectedModel === model.id ? 'selected' : ''} ${focusedModelIndex === index ? 'focused' : ''}`}
                 onClick={() => onModelChange(model.id)}
                 onKeyDown={(e) => handleModelKeyDown(e, index)}
@@ -392,7 +392,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                     {toolsByCategory['file-read'].map(tool => (
                       <button
                         key={tool.id}
-                        ref={el => toolRefs.current.set(tool.id, el)}
+                        ref={el => { toolRefs.current.set(tool.id, el); }}
                         className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
                         onClick={() => toggleTool(tool.id)}
                         onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
@@ -412,7 +412,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                     {toolsByCategory['file-write'].map(tool => (
                       <button
                         key={tool.id}
-                        ref={el => toolRefs.current.set(tool.id, el)}
+                        ref={el => { toolRefs.current.set(tool.id, el); }}
                         className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
                         onClick={() => toggleTool(tool.id)}
                         onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
@@ -436,7 +436,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                     {toolsByCategory.web.map(tool => (
                       <button
                         key={tool.id}
-                        ref={el => toolRefs.current.set(tool.id, el)}
+                        ref={el => { toolRefs.current.set(tool.id, el); }}
                         className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
                         onClick={() => toggleTool(tool.id)}
                         onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
@@ -456,7 +456,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                     {toolsByCategory.terminal.map(tool => (
                       <button
                         key={tool.id}
-                        ref={el => toolRefs.current.set(tool.id, el)}
+                        ref={el => { toolRefs.current.set(tool.id, el); }}
                         className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
                         onClick={() => toggleTool(tool.id)}
                         onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
@@ -480,7 +480,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                     {toolsByCategory.other.map(tool => (
                       <button
                         key={tool.id}
-                        ref={el => toolRefs.current.set(tool.id, el)}
+                        ref={el => { toolRefs.current.set(tool.id, el); }}
                         className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
                         onClick={() => toggleTool(tool.id)}
                         onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
@@ -500,7 +500,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                     {toolsByCategory.agents.map(tool => (
                       <button
                         key={tool.id}
-                        ref={el => toolRefs.current.set(tool.id, el)}
+                        ref={el => { toolRefs.current.set(tool.id, el); }}
                         className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
                         onClick={() => toggleTool(tool.id)}
                         onKeyDown={(e) => handleToolKeyDown(e, tool.id)}

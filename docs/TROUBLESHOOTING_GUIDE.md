@@ -1,7 +1,7 @@
 # Yume Complete Troubleshooting Guide
 
 **Version:** 0.1.0
-**Last Updated:** January 12, 2026
+**Last Updated:** January 14, 2026
 **Platforms:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -18,7 +18,7 @@
 10. [Platform-Specific Issues](#10-platform-specific-issues)
 11. [Advanced Debugging](#11-advanced-debugging)
 12. [Error Codes Reference](#12-error-codes-reference)
-13. [Multi-Provider (Planned)](#13-multi-provider-planned)
+13. [Multi-Provider (Active)](#13-multi-provider-active)
 
 ---
 
@@ -1212,7 +1212,7 @@ copy %LOCALAPPDATA%\yume\logs\server.log yume-debug\
 
 ---
 
-## 13. Multi-Provider (Planned)
+## 13. Multi-Provider (Active)
 
 These items apply once Gemini/OpenAI providers are enabled via `yume-cli`.
 

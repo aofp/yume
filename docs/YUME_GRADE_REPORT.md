@@ -1,12 +1,12 @@
 # Yume Grade Report
 
-*Updated Analysis - January 10, 2026*
+*Updated Analysis - January 14, 2026*
 
 ## Executive Summary
 
-**Overall Grade: B+ (81%)**
+**Overall Grade: B+ (82%)**
 
-Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique capabilities. Native Rust/Tauri architecture outperforms Electron competitors. Code quality is functional but has accumulated technical debt. Zero tests is the biggest risk.
+Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique capabilities. Native Rust/Tauri architecture outperforms Electron competitors. Gemini integration is actively being worked on via a translation layer (`yume-cli`). Code quality is functional but has accumulated technical debt. Zero tests is the biggest risk.
 
 **Recent Market Changes:**
 - Claude Code 2.1.0 (Jan 7, 2026) adds session teleportation, skill hot reload, enhanced hooks
@@ -71,7 +71,7 @@ Yume is a feature-rich, polished Claude Code GUI with excellent UX and unique ca
 | Tab Completion | 250 tok/s | N/A (different product) | Cursor |
 | Price | $240-2400/yr | $21 one-time | **Yume** |
 | Extensions | VS Code ecosystem | None | Cursor |
-| Multi-Model | GPT, Claude, Gemini | Claude only | Cursor |
+| Multi-Model | GPT, Claude, Gemini | Claude (Gemini in progress) | Cursor |
 | Themes | ~5 | 30 | **Yume** |
 | Quota Tracking | None | 5h + 7-day | **Yume** |
 | Enterprise | SOC2, SSO | None | Cursor |

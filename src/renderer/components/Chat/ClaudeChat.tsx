@@ -463,18 +463,20 @@ export const ClaudeChat: React.FC = () => {
   });
 
   // Helper to reset hover states after modal interactions (Tauri webview workaround)
+  // SKIP on macOS: pointer-events manipulation causes textarea focus loss on WKWebView
   const resetHoverStates = useCallback(() => {
+    if (isMac) return; // macOS handles hover states fine, but loses focus with this workaround
     requestAnimationFrame(() => {
       document.body.style.pointerEvents = 'none';
       requestAnimationFrame(() => {
         document.body.style.pointerEvents = '';
       });
     });
-  }, []);
+  }, [isMac]);
 
   // Per-session rollback selected index (null = no selection)
   const rollbackSelectedIndex = currentSessionId ? (rollbackSelectedIndexes[currentSessionId] ?? null) : null;
-  const setRollbackSelectedIndex = useCallback((value: number | ((prev: number | null) => number | null)) => {
+  const setRollbackSelectedIndex = useCallback((value: number | null | ((prev: number | null) => number | null)) => {
     if (!currentSessionId) return;
     setRollbackSelectedIndexes(prev => ({
       ...prev,
@@ -518,13 +520,19 @@ export const ClaudeChat: React.FC = () => {
     const CACHE_DURATION_NULL = 2 * 60 * 1000;   // 2 min for null data (retry sooner)
 
     // Helper to filter raw API data
+    type UsageLimitsData = {
+      five_hour?: { utilization: number; resets_at: string };
+      seven_day?: { utilization: number; resets_at: string };
+      subscription_type?: string;
+      rate_limit_tier?: string;
+    };
     const filterData = (data: {
       five_hour?: { utilization: number | null; resets_at: string | null };
       seven_day?: { utilization: number | null; resets_at: string | null };
       subscription_type?: string;
       rate_limit_tier?: string;
-    }): typeof usageLimits => {
-      const filtered: typeof usageLimits = {
+    }): UsageLimitsData => {
+      const filtered: UsageLimitsData = {
         subscription_type: data.subscription_type,
         rate_limit_tier: data.rate_limit_tier,
       };

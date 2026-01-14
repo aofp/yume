@@ -529,7 +529,6 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     );
     setCustomThemes(updatedThemes);
     localStorage.setItem('customThemes', JSON.stringify(updatedThemes));
-    setEditingThemeName(null);
   };
 
   // Delete a custom theme

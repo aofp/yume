@@ -58,16 +58,19 @@ import('@tauri-apps/api/core').then(m => {
 
 // Import Tauri event listener for reliable window focus detection
 import('@tauri-apps/api/event').then(({ listen }) => {
+  const isMac = navigator.platform.toLowerCase().includes('mac');
   // Listen for native window focus changes from Tauri
   // This is more reliable than web 'focus' event on macOS
   listen<boolean>('window-focus-change', (event) => {
     if (event.payload) {
       // Window gained focus - force hover state re-evaluation
-      // macOS webview doesn't reliably update CSS :hover states on focus change
-      document.body.style.pointerEvents = 'none';
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = '';
-      });
+      // SKIP on macOS: pointer-events manipulation causes textarea focus loss on WKWebView
+      if (!isMac) {
+        document.body.style.pointerEvents = 'none';
+        requestAnimationFrame(() => {
+          document.body.style.pointerEvents = '';
+        });
+      }
     }
   });
 }).catch(() => {

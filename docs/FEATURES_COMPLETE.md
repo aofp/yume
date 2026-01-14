@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
 **Version:** 0.1.0
-**Last Updated:** January 12, 2026
+**Last Updated:** January 14, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -1454,4 +1454,4 @@ Yume offers a comprehensive feature set that surpasses competitors (including YC
 
 The combination of advanced features with a focus on performance, privacy, and extensibility makes Yume the most capable Claude GUI available.
 
-**Planned Expansion:** Multi-provider support (Gemini/OpenAI) will be added via a Claude-compatible stream-json shim. See `docs/expansion-plan/ROADMAP.md`.
+**Planned Expansion:** Multi-provider support (Gemini/OpenAI) is actively being integrated via a Claude-compatible stream-json shim. Gemini integration is currently the primary focus. See `docs/expansion-plan/ROADMAP.md`.

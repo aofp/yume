@@ -26,6 +26,13 @@ Yume is a Tauri 2.x desktop application that provides a minimal GUI for Claude C
 - Crash recovery for sessions
 - OLED black theme with pastel accents
 
+### Gemini Integration Plan (Active)
+Enable Yume to drive Google's Gemini models via a CLI-compatible shim (`yume-cli`) while preserving Claude-compatible stream-json.
+- **Strategy:** REST streaming + function calling normalization.
+- **Auth:** Host-based auth (gcloud tokens or API keys).
+- **Shim:** Standalone binary bundled in `src-tauri/resources/`.
+- **Status:** Phase 1 in progress. See `docs/expansion-plan/ROADMAP.md`.
+
 ## Essential Commands
 
 ### Development

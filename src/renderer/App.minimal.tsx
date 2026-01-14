@@ -58,17 +58,20 @@ export const App: React.FC = () => {
 
   // Helper function to reset hover states after modal closes
   // Focus restoration is minimal - typing auto-focuses via handleGlobalTyping
+  const isMac = React.useMemo(() => navigator.platform.toLowerCase().includes('mac'), []);
   const restoreFocusToChat = React.useCallback(() => {
     // Use RAF to ensure modal is fully unmounted
     requestAnimationFrame(() => {
       // WORKAROUND: Reset hover states by toggling pointer-events
-      // Tauri webview (especially on macOS) can get stuck hover states after modal interactions
-      document.body.style.pointerEvents = 'none';
-      requestAnimationFrame(() => {
-        document.body.style.pointerEvents = '';
-      });
+      // SKIP on macOS: pointer-events manipulation causes textarea focus loss on WKWebView
+      if (!isMac) {
+        document.body.style.pointerEvents = 'none';
+        requestAnimationFrame(() => {
+          document.body.style.pointerEvents = '';
+        });
+      }
     });
-  }, []);
+  }, [isMac]);
 
   // Load session mappings and initialize fonts on startup
   useEffect(() => {
@@ -1353,14 +1356,17 @@ export const App: React.FC = () => {
               // Copy messages to the new session
               useClaudeCodeStore.setState(state => ({
                 sessions: state.sessions.map(s => {
-                  if (s.id === newSessionId) {
+                  if (s.id === newSessionId && s.analytics) {
                     return {
                       ...s,
                       messages: data.messages,
                       claudeTitle: `${data.title || 'session'} (fork)`,
                       analytics: {
                         ...s.analytics,
-                        totalMessages: data.messages.length
+                        totalMessages: data.messages.length,
+                        userMessages: s.analytics.userMessages || 0,
+                        assistantMessages: s.analytics.assistantMessages || 0,
+                        toolUses: s.analytics.toolUses || 0
                       }
                     };
                   }
