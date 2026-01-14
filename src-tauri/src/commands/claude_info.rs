@@ -236,11 +236,22 @@ pub async fn get_claude_usage_limits() -> Result<ClaudeUsageLimits, String> {
     info!("get_claude_usage_limits command called");
 
     // Get credentials based on platform
-    let (access_token, subscription_type, rate_limit_tier) = get_claude_credentials()?;
+    info!("get_claude_usage_limits: fetching credentials...");
+    let (access_token, subscription_type, rate_limit_tier) = match get_claude_credentials() {
+        Ok(creds) => {
+            info!("get_claude_usage_limits: credentials obtained successfully");
+            creds
+        }
+        Err(e) => {
+            info!("get_claude_usage_limits: credentials error: {}", e);
+            return Err(e);
+        }
+    };
 
     // Make API request
+    info!("get_claude_usage_limits: making API request...");
     let client = reqwest::Client::new();
-    let response = client
+    let response = match client
         .get("https://api.anthropic.com/api/oauth/usage")
         .header("Accept", "application/json, text/plain, */*")
         .header("Content-Type", "application/json")
@@ -248,8 +259,16 @@ pub async fn get_claude_usage_limits() -> Result<ClaudeUsageLimits, String> {
         .header("Authorization", format!("Bearer {}", access_token))
         .header("anthropic-beta", "oauth-2025-04-20")
         .send()
-        .await
-        .map_err(|e| format!("Failed to call usage API: {}", e))?;
+        .await {
+            Ok(resp) => {
+                info!("get_claude_usage_limits: got response with status {}", resp.status());
+                resp
+            }
+            Err(e) => {
+                info!("get_claude_usage_limits: request error: {}", e);
+                return Err(format!("Failed to call usage API: {}", e));
+            }
+        };
 
     if !response.status().is_success() {
         let status = response.status();
