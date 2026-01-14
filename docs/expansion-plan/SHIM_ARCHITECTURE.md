@@ -10,9 +10,15 @@ We have evaluated existing CLI agents (`aider`, `open-interpreter`, `gh copilot`
 A lightweight Node.js binary bundled with Yume. It is **NOT** an SDK, but a standalone CLI that drives other models.
 
 ### Core Responsibilities
-1.  **Protocol Compliance:** Outputs the exact `stream-json` format Yume expects (Assistant, ToolUse, ToolResult, Result).
+1.  **Protocol Compliance:** Outputs the exact Claude stream-json format Yume expects (`system`, `text`, `tool_use`, `tool_result`, `usage`, `result`).
 2.  **The "Agent Loop":** Implements the *Think → Act → Observe* loop that stateless CLIs (`gcloud`) lack.
 3.  **Authentication Bridge:** Uses system CLIs for auth (e.g., `gcloud auth print-access-token`), ensuring no API keys are stored in Yume.
+4.  **Translation Layer:** Normalizes provider output into Claude-compatible stream-json (line-delimited JSON objects with a `type` field).
+    - Required types: `system`, `text`, `tool_use`, `tool_result`, `usage`, `result`.
+    - Output to stdout only; debug logs to stderr.
+
+## Protocol Contract (Non-Negotiable)
+Yume's backend already parses Claude stream-json. The shim must **match that protocol** so the rest of the stack stays unchanged. See `docs/expansion-plan/PROTOCOL_NORMALIZATION.md` for the canonical schema and message examples.
 
 ## Architecture
 
@@ -54,7 +60,7 @@ A lightweight Node.js binary bundled with Yume. It is **NOT** an SDK, but a stan
         3.  Emits `tool_result` event to GUI.
         4.  Sends result back to Model.
     *   **Call 2:** Model returns "Refactor complete."
-    *   **Shim:** Emits `assistant` text event.
+    *   **Shim:** Emits `text` event chunks.
 
 ## "Type B" Implementation (Copilot/Closed Sources)
 **The Fallback.** Used only when raw API access is impossible (e.g., `gh copilot` CLI features not in API).
@@ -65,3 +71,9 @@ A lightweight Node.js binary bundled with Yume. It is **NOT** an SDK, but a stan
 1.  **Stability:** We own the "Agent Loop." We aren't relying on `gcloud`'s beta agent features changing.
 2.  **Speed:** No PTY overhead. Direct HTTP/stdio streaming.
 3.  **Security:** We respect the "No API Key" rule by leveraging the user's authenticated environment.
+4.  **Compatibility:** Claude-compatible stream-json keeps Tauri + frontend code intact across providers.
+
+## Cross-Platform Notes
+- Use native path separators when executing tools.
+- Avoid shell-specific quoting; pass argv arrays when possible.
+- Emit UTF-8 JSON only (sanitize invalid bytes).

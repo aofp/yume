@@ -10,6 +10,7 @@ Yume acts as a GUI layer over **existing CLI tools**.
 - **NO Direct SDKs:** We do not use `@google/generative-ai` or `openai` libraries in the production server.
 - **NO API Keys:** Yume does not store or manage API keys. Authentication is handled entirely by the user through the respective CLI (e.g., `claude login`, `gcloud auth login`).
 - **Binary Integration:** Yume interacts with these tools via `stdin`/`stdout`, just as it does with the Claude CLI.
+- **Shim Allowed:** For providers without a strict CLI protocol, we use `yume-cli` as a shim that still behaves like a CLI and emits Claude-compatible stream-json.
 
 ## Core Abstraction: `CliAdapter`
 
@@ -45,6 +46,9 @@ class CliAdapter {
 }
 ```
 
+### Protocol Contract
+Adapters must output **Claude-compatible stream-json** (line-delimited JSON objects with `type` fields) so existing parsing and UI logic stays intact. See `docs/expansion-plan/PROTOCOL_NORMALIZATION.md` for the canonical schema.
+
 ## Supported Providers
 
 ### 1. Claude (Current)
@@ -53,13 +57,14 @@ class CliAdapter {
 - **Status:** Implemented (needs refactoring into adapter).
 
 ### 2. Gemini CLI
-- **Binary:** `gemini` (or custom wrapper)
-- **Protocol:** Needs investigation. Likely JSON or structured text.
-- **Key Differences:** Parameter names, context handling, output format.
+- **Binary:** `yume-cli --provider gemini` (shim)
+- **Protocol:** Claude-compatible stream-json (emitted by shim).
+- **Key Differences:** Function-calling format, usage metadata, massive context window.
 
 ### 3. Codex CLI (GitHub Copilot CLI)
-- **Binary:** `gh copilot` / `copilot`
-- **Protocol:** Text/Interactive. May require a `pty` wrapper if it doesn't support structured JSON output natively.
+- **Primary:** `yume-cli --provider openai` (OpenAI/Codex API)
+- **Fallback:** `gh copilot` via PTY if no API access is available.
+- **Protocol:** Claude-compatible stream-json emitted by shim or adapter.
 
 ## Frontend Changes
 
@@ -71,6 +76,6 @@ class CliAdapter {
 
 1.  **Refactor Server:** Extract Claude logic from `server-claude-direct.cjs` into `adapters/claude.js`.
 2.  **Generic Server:** Create `server-core.js` that loads the correct adapter based on initialization params.
-3.  **Gemini Prototype:** Build a minimal `adapters/gemini.js` and test connection.
-4.  **Codex Prototype:** Build a minimal `adapters/codex.js`.
+3.  **Gemini Prototype:** Build a minimal `adapters/gemini.js` (shim-backed) and test connection.
+4.  **Codex Prototype:** Build a minimal `adapters/codex.js` (OpenAI-backed) and test connection.
 5.  **Frontend Integration:** expose switching logic.
