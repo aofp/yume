@@ -36,7 +36,7 @@ const VSCODE_EXTENSION_KEY = appStorageKey('vscode-extension-enabled');
 const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
 const TRIGGER_RESUME_EVENT = appEventName('trigger-resume');
 export const App: React.FC = () => {
-  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity, vscodeConnected /* , restoreToMessage */ } = useClaudeCodeStore();
+  const { currentSessionId, sessions, createSession, setCurrentSession, loadSessionMappings, monoFont, sansFont, fontSize, lineHeight, setFontSize, setLineHeight, rememberTabs, restoreTabs, backgroundOpacity, setBackgroundOpacity, vscodeConnected, checkVscodeInstallation, fetchClaudeVersion /* , restoreToMessage */ } = useClaudeCodeStore();
   const [showSettings, setShowSettings] = useState(false);
   const [showAbout, setShowAbout] = useState(false);
   const [showHelpModal, setShowHelpModal] = useState(false);
@@ -73,6 +73,12 @@ export const App: React.FC = () => {
   // Load session mappings and initialize fonts on startup
   useEffect(() => {
     loadSessionMappings();
+    
+    // Check VSCode installation once on startup
+    checkVscodeInstallation();
+    
+    // Check Claude version once on startup
+    fetchClaudeVersion();
 
     // Sync yume agents to ~/.claude/agents/ based on settings
     systemPromptService.syncAgentsToFilesystem();
@@ -180,11 +186,13 @@ export const App: React.FC = () => {
     const handleBeforeUnload = () => {
       // Fire and forget - we can't await in beforeunload
       systemPromptService.cleanupAgentsOnExit();
-      // Uninstall vscode extension if it was enabled
+      // Uninstall vscode extension logic DISABLED to prevent focus stealing/window reloading
+      /*
       const vscodeEnabled = localStorage.getItem(VSCODE_EXTENSION_KEY);
       if (vscodeEnabled === 'true') {
         invoke('uninstall_vscode_extension').catch(() => {});
       }
+      */
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
@@ -192,10 +200,12 @@ export const App: React.FC = () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       // Also call cleanup when component unmounts
       systemPromptService.cleanupAgentsOnExit();
+      /*
       const vscodeEnabled = localStorage.getItem(VSCODE_EXTENSION_KEY);
       if (vscodeEnabled === 'true') {
         invoke('uninstall_vscode_extension').catch(() => {});
       }
+      */
     };
   }, []);
 

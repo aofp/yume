@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { IconX, IconCheck, IconAlertTriangle } from '@tabler/icons-react';
 import { ClaudeDetectionResult } from '../../services/claudeDetector';
+import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { invoke } from '@tauri-apps/api/core';
 import './ClaudeSelectorModal.css';
 
@@ -20,15 +21,19 @@ export const ClaudeSelectorModal: React.FC<ClaudeSelectorModalProps> = ({
   onClose,
   isLoading = false,
 }) => {
-  const [claudeVersion, setClaudeVersion] = useState<string>('checking...');
+  const { claudeVersion: cachedVersion } = useClaudeCodeStore();
+  const [claudeVersion, setClaudeVersion] = useState<string>(cachedVersion || 'checking...');
   const [claudePath, setClaudePath] = useState<string>('');
   const isWindows = navigator.platform.toLowerCase().includes('win');
   const isMac = navigator.platform.toLowerCase().includes('mac');
 
   useEffect(() => {
     // Get Claude CLI version and path
+    if (cachedVersion) {
+      setClaudeVersion(cachedVersion);
+    }
     getClaudeInfo();
-  }, []);
+  }, [cachedVersion]);
   
   // Handle escape key
   useEffect(() => {
@@ -44,16 +49,20 @@ export const ClaudeSelectorModal: React.FC<ClaudeSelectorModalProps> = ({
 
   const getClaudeInfo = async () => {
     try {
-      // Get version by running claude --version
-      const version = await invoke<string>('get_claude_version');
-      setClaudeVersion(version || 'unknown');
-      
-      // Get binary path
+      // Get binary path (still fetch dynamically as it's not cached in store)
       const path = await invoke<string>('get_claude_path');
       setClaudePath(path || '/usr/local/bin/claude');
+      
+      // If not cached, fallback to fetching
+      if (!cachedVersion) {
+        const version = await invoke<string>('get_claude_version');
+        setClaudeVersion(version || 'unknown');
+      }
     } catch (error) {
       console.error('Failed to get Claude info:', error);
-      setClaudeVersion('unknown');
+      if (!cachedVersion) {
+        setClaudeVersion('unknown');
+      }
       setClaudePath('/usr/local/bin/claude');
     }
   };

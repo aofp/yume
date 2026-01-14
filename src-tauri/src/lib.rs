@@ -93,6 +93,27 @@ pub fn run() {
         .with_max_level(tracing::Level::INFO)
         .init();
 
+    // Set process name for macOS debug builds VERY EARLY
+    // This attempts to update the Dock/Menu bar name before the UI loop starts
+    #[cfg(all(debug_assertions, target_os = "macos"))]
+    {
+        unsafe {
+            use cocoa::foundation::NSString;
+            use cocoa::base::{id, nil};
+            
+            // Get NSProcessInfo
+            let process_info: id = msg_send![class!(NSProcessInfo), processInfo];
+            
+            // Create new name string
+            let dev_name = format!("{} (dev)", APP_NAME);
+            let ns_name = NSString::alloc(nil).init_str(&dev_name);
+            
+            // Set process name
+            let _: () = msg_send![process_info, setProcessName: ns_name];
+            info!("Early setup: Set macOS process name to: {}", dev_name);
+        }
+    }
+
     // CRITICAL: Set WebView2 transparent background via environment variable
     // This MUST be set BEFORE WebView2 initializes to prevent white flash
     // "00000000" = AARRGGBB format with Alpha=0 for full transparency

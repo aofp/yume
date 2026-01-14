@@ -96,7 +96,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     showPluginsSettings, setShowPluginsSettings,
     showSkillsSettings, setShowSkillsSettings,
     vscodeExtensionEnabled, setVscodeExtensionEnabled,
-    vscodeConnected,
+    vscodeConnected, isVscodeInstalled,
     backgroundOpacity, setBackgroundOpacity
   } = useClaudeCodeStore();
 
@@ -187,49 +187,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
   // VSCode extension state
   const [vscodeInstalling, setVscodeInstalling] = useState(false);
-  const [vscodeInstalled, setVscodeInstalled] = useState(true); // default to true, check on mount
 
-  // Check if VSCode is installed on mount
-  useEffect(() => {
-    invoke('is_vscode_installed')
-      .then((installed) => {
-        setVscodeInstalled(installed as boolean);
-        if (!installed) {
-          console.log('VSCode not installed - toggle will be disabled');
-        }
-      })
-      .catch((err) => {
-        console.error('Failed to check VSCode installation:', err);
-        setVscodeInstalled(false);
-      });
-  }, []);
-
-  // Auto-install/uninstall vscode extension when toggled
-  useEffect(() => {
-    if (vscodeExtensionEnabled && !vscodeConnected && vscodeInstalled) {
-      // Auto-install when enabled
-      setVscodeInstalling(true);
-      invoke('install_vscode_extension')
-        .then(() => {
-          console.log('VSCode extension installed');
-        })
-        .catch((err) => {
-          console.error('Failed to install vscode extension:', err);
-        })
-        .finally(() => {
-          setVscodeInstalling(false);
-        });
-    } else if (!vscodeExtensionEnabled && vscodeInstalled) {
-      // Auto-uninstall when disabled
-      invoke('uninstall_vscode_extension')
-        .then(() => {
-          console.log('VSCode extension uninstalled');
-        })
-        .catch((err) => {
-          console.error('Failed to uninstall vscode extension:', err);
-        });
-    }
-  }, [vscodeExtensionEnabled, vscodeInstalled]);
+  // Auto-install/uninstall vscode extension logic moved to toggle handler
 
   // Hooks tab state
   const [hooks, setHooks] = useState<HookScriptConfig[]>([]);
@@ -1691,8 +1650,8 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   <div
                     style={{
                       margin: 0,
-                      opacity: vscodeInstalled ? 1 : 0.5,
-                      pointerEvents: vscodeInstalled ? 'auto' : 'none'
+                      opacity: isVscodeInstalled ? 1 : 0.5,
+                      pointerEvents: isVscodeInstalled ? 'auto' : 'none'
                     }}
                   >
                     <span className="checkbox-label" style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
@@ -1702,7 +1661,27 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                     </span>
                     <div
                       className={`toggle-switch compact ${vscodeExtensionEnabled ? 'active' : ''}`}
-                      onClick={() => vscodeInstalled && setVscodeExtensionEnabled(!vscodeExtensionEnabled)}
+                      onClick={() => {
+                        if (!isVscodeInstalled) return;
+                        
+                        const newEnabled = !vscodeExtensionEnabled;
+                        setVscodeExtensionEnabled(newEnabled);
+                        
+                        // Handle install/uninstall manually
+                        if (newEnabled) {
+                          if (!vscodeConnected) {
+                            setVscodeInstalling(true);
+                            invoke('install_vscode_extension')
+                              .then(() => console.log('VSCode extension installed'))
+                              .catch((err) => console.error('Failed to install vscode extension:', err))
+                              .finally(() => setVscodeInstalling(false));
+                          }
+                        } else {
+                          invoke('uninstall_vscode_extension')
+                            .then(() => console.log('VSCode extension uninstalled'))
+                            .catch((err) => console.error('Failed to uninstall vscode extension:', err));
+                        }
+                      }}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>

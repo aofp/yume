@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { claudeDetector, ClaudeDetectionResult, ClaudeSettings } from '../../services/claudeDetector';
 import { ClaudeSelectorModal } from './ClaudeSelectorModal';
-import { invoke } from '@tauri-apps/api/core';
+import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './ClaudeSelector.css';
 
 interface ClaudeSelectorProps {
@@ -9,13 +9,14 @@ interface ClaudeSelectorProps {
 }
 
 export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange }) => {
+  const { claudeVersion: cachedVersion, fetchClaudeVersion } = useClaudeCodeStore();
   const [showModal, setShowModal] = useState(false);
   const [detection, setDetection] = useState<ClaudeDetectionResult | null>(null);
   const [isDetecting, setIsDetecting] = useState(false);
-  const [claudeVersion, setClaudeVersion] = useState<string>(() => {
-    // Initialize with cached version for instant display
-    return claudeDetector.getCachedVersion() || '';
-  });
+  
+  // Use cached version from store, or fallback to detector cache
+  const claudeVersion = cachedVersion || claudeDetector.getCachedVersion() || '';
+  
   const [settings, setSettings] = useState<ClaudeSettings>(() => {
     const saved = claudeDetector.loadSettings();
     // Default to native-windows if not set
@@ -29,33 +30,14 @@ export const ClaudeSelector: React.FC<ClaudeSelectorProps> = ({ onSettingsChange
   // Track if detection has been done this session
   const hasDetectedRef = useRef(false);
 
-  // Lazy version fetch - only if not cached and modal is open
+  // Refresh version if not available when modal opens
   useEffect(() => {
     if (showModal && !claudeVersion) {
       fetchClaudeVersion();
     }
-  }, [showModal, claudeVersion]);
+  }, [showModal, claudeVersion, fetchClaudeVersion]);
 
-  const fetchClaudeVersion = async () => {
-    try {
-      const version = await invoke<string>('get_claude_version');
-      // Extract just the version number if it includes "claude" prefix
-      const versionMatch = version.match(/(\d+\.\d+\.\d+)/);
-      let extractedVersion = '';
-      if (versionMatch) {
-        extractedVersion = versionMatch[1];
-      } else if (version && version !== 'unknown') {
-        extractedVersion = version.replace('claude', '').trim();
-      }
-      if (extractedVersion) {
-        setClaudeVersion(extractedVersion);
-        // Cache the version for future instant access
-        claudeDetector.setCachedVersion(extractedVersion);
-      }
-    } catch (error) {
-      console.error('Failed to get Claude version:', error);
-    }
-  };
+  // Removed local fetchClaudeVersion implementation as it's now in the store
 
   const detectInstallations = useCallback(async (force = false) => {
     // Avoid redundant detection within same session unless forced

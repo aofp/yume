@@ -1309,10 +1309,12 @@ pub fn uninstall_vscode_extension() -> Result<(), String> {
 
     println!("[vscode] extension uninstalled successfully");
 
-    // Reload vscode window to remove the extension
+    // Reload vscode window to remove the extension - DISABLED as it steals focus
+    /*
     let _ = std::process::Command::new(&code_cli)
         .args(["--command", "workbench.action.reloadWindow"])
         .spawn();
+    */
 
     Ok(())
 }

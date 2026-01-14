@@ -285,6 +285,23 @@
 
 ---
 
+## 🔮 Future Expansion Plans (Yume 2.0)
+
+### 9. [Expansion Plan](expansion-plan/ARCHITECTURE_OVERVIEW.md)
+**Status:** In Planning
+**Goal:** Abstract backend to support Gemini, Codex, and generic OpenAI agents.
+
+#### Key Documents:
+- [**Architecture Overview**](expansion-plan/ARCHITECTURE_OVERVIEW.md): Adapter pattern design.
+- [**Shim Architecture**](expansion-plan/SHIM_ARCHITECTURE.md): The "Yume Agent" design for stateless providers.
+- [**Yume CLI Spec**](expansion-plan/YUME_CLI_SPEC.md): Technical specification for the `yume-cli` binary.
+- [**Protocol Normalization**](expansion-plan/PROTOCOL_NORMALIZATION.md): Universal "Rosetta Stone" for mapping Gemini/OpenAI events to Yume.
+- [**Gemini Integration**](expansion-plan/GEMINI_INTEGRATION.md): Strategy for Google Gemini CLI.
+- [**Codex Integration**](expansion-plan/CODEX_INTEGRATION.md): Strategy for GitHub Copilot / OpenAI.
+- [**Roadmap**](expansion-plan/ROADMAP.md): 8-week execution plan.
+
+---
+
 ## Documentation Overview
 
 ### Core Components Documented

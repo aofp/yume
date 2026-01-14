@@ -71,3 +71,10 @@ MIT License
 ---
 
 $21 one-time. All features included. No subscriptions.
+
+## 🔮 Future Roadmap (Yume 2.0)
+
+We are actively working on expanding Yume to be the universal GUI for agentic CLIs.
+- **Gemini CLI Support:** Drive Google's Gemini agents with Yume's interface.
+- **Codex / OpenAI Support:** Use GPT-4o and O1 models via a standardized CLI adapter.
+- **See the full plan:** [docs/expansion-plan/ROADMAP.md](docs/expansion-plan/ROADMAP.md)

@@ -455,6 +455,8 @@ interface ClaudeCodeStore {
   vscodeExtensionEnabled: boolean; // Whether vscode extension is enabled (auto-installs when on)
   vscodeConnected: boolean; // Whether vscode extension is connected
   vscodeConnectionCount: number; // Number of vscode connections
+  isVscodeInstalled: boolean; // Whether VSCode is installed on the system
+  claudeVersion: string | null; // Cached Claude CLI version
 
   // UI state
   isDraggingTab: boolean; // Whether a tab is currently being dragged
@@ -568,6 +570,8 @@ interface ClaudeCodeStore {
   // VSCode extension
   setVscodeExtensionEnabled: (enabled: boolean) => void;
   setVscodeStatus: (connected: boolean, count: number) => void;
+  checkVscodeInstallation: () => Promise<void>;
+  fetchClaudeVersion: () => Promise<void>;
 
   // UI state
   setIsDraggingTab: (isDragging: boolean) => void;
@@ -824,6 +828,8 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
       vscodeExtensionEnabled: false, // Default to disabled
       vscodeConnected: false, // Not connected initially
       vscodeConnectionCount: 0, // No connections initially
+      isVscodeInstalled: false, // Assume not installed until checked
+      claudeVersion: null, // Not checked initially
       isDraggingTab: false, // No tab is being dragged initially
       agents: [], // No agents initially, will load from localStorage
       currentAgentId: null, // No agent selected initially
@@ -5200,6 +5206,40 @@ ${content}`;
 
       setVscodeStatus: (connected: boolean, count: number) => {
         set({ vscodeConnected: connected, vscodeConnectionCount: count });
+      },
+
+      checkVscodeInstallation: async () => {
+        try {
+          const installed = await invoke<boolean>('is_vscode_installed');
+          set({ isVscodeInstalled: installed });
+          console.log('[Store] VSCode installation check:', installed);
+        } catch (err) {
+          console.error('[Store] Failed to check VSCode installation:', err);
+          set({ isVscodeInstalled: false });
+        }
+      },
+
+      fetchClaudeVersion: async () => {
+        try {
+          // Use get_claude_version command which is exported in commands/mod.rs
+          // It's defined in commands/mod.rs but might call claude_binary functions
+          const version = await invoke<string>('get_claude_version');
+          
+          // Clean up version string
+          let cleanVersion = version;
+          const versionMatch = version.match(/(\d+\.\d+\.\d+)/);
+          if (versionMatch) {
+            cleanVersion = versionMatch[1];
+          } else if (version && version !== 'unknown') {
+            cleanVersion = version.replace('claude', '').trim();
+          }
+          
+          set({ claudeVersion: cleanVersion });
+          console.log('[Store] Claude version check:', cleanVersion);
+        } catch (err) {
+          console.error('[Store] Failed to check Claude version:', err);
+          set({ claudeVersion: null });
+        }
       },
 
       setIsDraggingTab: (isDragging: boolean) => {
