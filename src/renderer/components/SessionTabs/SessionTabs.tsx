@@ -8,14 +8,13 @@ import { APP_NAME, appStorageKey } from '../../config/app';
 // RecentProjectsModal removed - handled by ClaudeChat component instead
 import './SessionTabs.css';
 
-// Format streaming time for tab display
-const formatTabTime = (seconds: number): { line1: string; line2?: string } => {
+// Format streaming time for tab display - single line only
+const formatTabTime = (seconds: number): string => {
   if (seconds < 60) {
-    return { line1: `${seconds}s` };
+    return `${seconds}s`;
   }
   const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return { line1: `${mins}m`, line2: `${secs}s` };
+  return `${mins}m`;
 };
 
 export const SessionTabs: React.FC = () => {
@@ -888,15 +887,7 @@ export const SessionTabs: React.FC = () => {
             </div>
             {/* Streaming timer - fixed width, only shows text when streaming */}
             <div className={`tab-streaming-timer ${renamingTab === session.id ? 'renaming' : ''}`}>
-              {session.streaming && streamingTimes[session.id] !== undefined && (() => {
-                const time = formatTabTime(streamingTimes[session.id]);
-                return (
-                  <>
-                    <span>{time.line1}</span>
-                    {time.line2 && <span className="timer-seconds">{time.line2}</span>}
-                  </>
-                );
-              })()}
+              {session.streaming && streamingTimes[session.id] !== undefined && formatTabTime(streamingTimes[session.id])}
             </div>
             {/* Show loading icon for pending sessions, streaming, or bash running */}
             {(session.status === 'pending' || session.streaming || (session as any).runningBash || (session as any).userBashRunning) ? (

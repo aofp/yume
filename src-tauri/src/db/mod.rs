@@ -54,28 +54,28 @@ impl Database {
     /// Create a new database connection
     pub fn new() -> Result<Self> {
         let db_path = Self::get_db_path()?;
-        
+
         // Ensure parent directory exists
         if let Some(parent) = db_path.parent() {
             std::fs::create_dir_all(parent)?;
         }
-        
+
         let conn = Connection::open(db_path)?;
-        
+
         // Enable WAL mode for better concurrency
         conn.execute("PRAGMA journal_mode = WAL", [])?;
         conn.execute("PRAGMA synchronous = NORMAL", [])?;
         conn.execute("PRAGMA cache_size = -10000", [])?; // 10MB cache
         conn.execute("PRAGMA temp_store = MEMORY", [])?;
-        
+
         let db = Database {
             conn: Mutex::new(conn),
         };
-        
+
         db.initialize_schema()?;
         Ok(db)
     }
-    
+
     /// Get the database path based on platform
     fn get_db_path() -> Result<PathBuf> {
         let base_dir = if cfg!(target_os = "windows") {
@@ -90,11 +90,11 @@ impl Database {
 
         Ok(base_dir.join(format!("{}.db", APP_ID)))
     }
-    
+
     /// Initialize database schema
     fn initialize_schema(&self) -> Result<()> {
         let conn = self.conn.lock().unwrap();
-        
+
         // Sessions table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS sessions (
@@ -111,7 +111,7 @@ impl Database {
             )",
             [],
         )?;
-        
+
         // Messages table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS messages (
@@ -127,7 +127,7 @@ impl Database {
             )",
             [],
         )?;
-        
+
         // Analytics table
         conn.execute(
             "CREATE TABLE IF NOT EXISTS analytics (
@@ -143,7 +143,7 @@ impl Database {
             )",
             [],
         )?;
-        
+
         // Create indexes
         conn.execute(
             "CREATE INDEX IF NOT EXISTS idx_sessions_updated ON sessions(updated_at)",
@@ -157,12 +157,12 @@ impl Database {
             "CREATE INDEX IF NOT EXISTS idx_analytics_session ON analytics(session_id)",
             [],
         )?;
-        
+
         Ok(())
     }
-    
+
     // Session operations
-    
+
     pub fn create_session(&self, session: &Session) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -184,7 +184,7 @@ impl Database {
         )?;
         Ok(())
     }
-    
+
     pub fn update_session(&self, session: &Session) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -205,7 +205,7 @@ impl Database {
         )?;
         Ok(())
     }
-    
+
     pub fn get_session(&self, id: &str) -> Result<Option<Session>> {
         let conn = self.conn.lock().unwrap();
         let result = conn
@@ -236,7 +236,7 @@ impl Database {
             .optional()?;
         Ok(result)
     }
-    
+
     pub fn get_all_sessions(&self) -> Result<Vec<Session>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
@@ -244,7 +244,7 @@ impl Database {
              claude_title, user_renamed, created_at, updated_at, metadata 
              FROM sessions ORDER BY updated_at DESC",
         )?;
-        
+
         let sessions = stmt
             .query_map([], |row| {
                 Ok(Session {
@@ -265,18 +265,18 @@ impl Database {
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
-        
+
         Ok(sessions)
     }
-    
+
     pub fn delete_session(&self, id: &str) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM sessions WHERE id = ?1", params![id])?;
         Ok(())
     }
-    
+
     // Message operations
-    
+
     pub fn save_message(&self, message: &Message) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -296,14 +296,14 @@ impl Database {
         )?;
         Ok(())
     }
-    
+
     pub fn get_session_messages(&self, session_id: &str) -> Result<Vec<Message>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
             "SELECT id, session_id, message_type, role, content, tool_uses, usage, timestamp 
              FROM messages WHERE session_id = ?1 ORDER BY timestamp ASC",
         )?;
-        
+
         let messages = stmt
             .query_map(params![session_id], |row| {
                 Ok(Message {
@@ -320,12 +320,12 @@ impl Database {
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
-        
+
         Ok(messages)
     }
-    
+
     // Analytics operations
-    
+
     pub fn save_analytics(&self, analytics: &Analytics) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute(
@@ -344,7 +344,7 @@ impl Database {
         )?;
         Ok(())
     }
-    
+
     pub fn get_session_analytics(&self, session_id: &str) -> Result<Vec<Analytics>> {
         let conn = self.conn.lock().unwrap();
         let mut stmt = conn.prepare(
@@ -352,7 +352,7 @@ impl Database {
              cost_usd, model, timestamp 
              FROM analytics WHERE session_id = ?1 ORDER BY timestamp ASC",
         )?;
-        
+
         let analytics = stmt
             .query_map(params![session_id], |row| {
                 Ok(Analytics {
@@ -369,12 +369,12 @@ impl Database {
                 })
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
-        
+
         Ok(analytics)
     }
-    
+
     // Database maintenance
-    
+
     pub fn clear_all_data(&self) -> Result<()> {
         let conn = self.conn.lock().unwrap();
         conn.execute("DELETE FROM messages", [])?;
@@ -383,27 +383,30 @@ impl Database {
         conn.execute("VACUUM", [])?;
         Ok(())
     }
-    
+
     pub fn get_database_size(&self) -> Result<u64> {
         let db_path = Self::get_db_path()?;
         let metadata = std::fs::metadata(db_path)?;
         Ok(metadata.len())
     }
-    
+
     pub fn get_statistics(&self) -> Result<serde_json::Value> {
         let conn = self.conn.lock().unwrap();
-        
-        let session_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))?;
-        
-        let message_count: i64 = conn
-            .query_row("SELECT COUNT(*) FROM messages", [], |row| row.get(0))?;
-        
-        let total_cost: f64 = conn
-            .query_row("SELECT COALESCE(SUM(cost_usd), 0) FROM analytics", [], |row| row.get(0))?;
-        
+
+        let session_count: i64 =
+            conn.query_row("SELECT COUNT(*) FROM sessions", [], |row| row.get(0))?;
+
+        let message_count: i64 =
+            conn.query_row("SELECT COUNT(*) FROM messages", [], |row| row.get(0))?;
+
+        let total_cost: f64 = conn.query_row(
+            "SELECT COALESCE(SUM(cost_usd), 0) FROM analytics",
+            [],
+            |row| row.get(0),
+        )?;
+
         let db_size = self.get_database_size()?;
-        
+
         Ok(serde_json::json!({
             "sessions": session_count,
             "messages": message_count,

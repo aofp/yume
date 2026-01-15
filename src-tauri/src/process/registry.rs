@@ -4,7 +4,7 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::process::{Child, ChildStdin};
 use tokio::sync::Mutex as AsyncMutex;
-use tracing::{info, warn, error};
+use tracing::{error, info, warn};
 
 /// Maximum size for live output buffer (1MB)
 const MAX_LIVE_OUTPUT_SIZE: usize = 1_000_000;
@@ -12,9 +12,7 @@ const MAX_LIVE_OUTPUT_SIZE: usize = 1_000_000;
 /// Type of process being tracked
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ProcessType {
-    ClaudeSession {
-        session_id: String,
-    },
+    ClaudeSession { session_id: String },
 }
 
 /// Information about a running Claude process
@@ -46,7 +44,10 @@ impl Drop for ProcessHandle {
                 // Try to kill the process
                 match child.start_kill() {
                     Ok(_) => {
-                        info!("Killed process {} (PID: {}) on drop", self.info.run_id, self.info.pid);
+                        info!(
+                            "Killed process {} (PID: {}) on drop",
+                            self.info.run_id, self.info.pid
+                        );
                     }
                     Err(e) => {
                         // Process might already be dead, which is fine
@@ -70,7 +71,7 @@ impl Drop for ProcessHandle {
 /// NEVER hold sync locks across `.await` points - clone the Arc first.
 pub struct ProcessRegistry {
     processes: Arc<Mutex<HashMap<i64, ProcessHandle>>>, // run_id -> ProcessHandle
-    next_id: Arc<Mutex<i64>>, // Auto-incrementing ID for processes
+    next_id: Arc<Mutex<i64>>,                           // Auto-incrementing ID for processes
 }
 
 impl ProcessRegistry {
@@ -100,10 +101,12 @@ impl ProcessRegistry {
         model: String,
     ) -> Result<i64, String> {
         let run_id = self.generate_id()?;
-        
+
         let process_info = ProcessInfo {
             run_id,
-            process_type: ProcessType::ClaudeSession { session_id: session_id.clone() },
+            process_type: ProcessType::ClaudeSession {
+                session_id: session_id.clone(),
+            },
             pid,
             started_at: Utc::now(),
             project_path,
@@ -113,7 +116,7 @@ impl ProcessRegistry {
 
         // Register without child - Claude sessions will have process added later
         let mut processes = self.processes.lock().map_err(|e| e.to_string())?;
-        
+
         let process_handle = ProcessHandle {
             info: process_info,
             child: Arc::new(Mutex::new(None)), // No child handle initially
@@ -122,7 +125,10 @@ impl ProcessRegistry {
         };
 
         processes.insert(run_id, process_handle);
-        info!("Registered Claude session {} with run_id {}", session_id, run_id);
+        info!(
+            "Registered Claude session {} with run_id {}",
+            session_id, run_id
+        );
         Ok(run_id)
     }
 
@@ -138,10 +144,12 @@ impl ProcessRegistry {
         mut child: Child,
     ) -> Result<i64, String> {
         let run_id = self.generate_id()?;
-        
+
         let process_info = ProcessInfo {
             run_id,
-            process_type: ProcessType::ClaudeSession { session_id: session_id.clone() },
+            process_type: ProcessType::ClaudeSession {
+                session_id: session_id.clone(),
+            },
             pid,
             started_at: Utc::now(),
             project_path,
@@ -153,7 +161,7 @@ impl ProcessRegistry {
         let stdin = child.stdin.take();
 
         let mut processes = self.processes.lock().map_err(|e| e.to_string())?;
-        
+
         let process_handle = ProcessHandle {
             info: process_info,
             child: Arc::new(Mutex::new(Some(child))),
@@ -162,7 +170,10 @@ impl ProcessRegistry {
         };
 
         processes.insert(run_id, process_handle);
-        info!("Registered Claude process {} (PID: {}) with run_id {}", session_id, pid, run_id);
+        info!(
+            "Registered Claude process {} (PID: {}) with run_id {}",
+            session_id, pid, run_id
+        );
         Ok(run_id)
     }
 
@@ -215,23 +226,22 @@ impl ProcessRegistry {
         let processes = self.processes.lock().map_err(|e| e.to_string())?;
         Ok(processes
             .values()
-            .filter_map(|handle| {
-                match &handle.info.process_type {
-                    ProcessType::ClaudeSession { .. } => Some(handle.info.clone()),
-                }
+            .filter_map(|handle| match &handle.info.process_type {
+                ProcessType::ClaudeSession { .. } => Some(handle.info.clone()),
             })
             .collect())
     }
 
     /// Get a specific Claude session by session ID
-    pub fn get_claude_session_by_id(&self, session_id: &str) -> Result<Option<ProcessInfo>, String> {
+    pub fn get_claude_session_by_id(
+        &self,
+        session_id: &str,
+    ) -> Result<Option<ProcessInfo>, String> {
         let processes = self.processes.lock().map_err(|e| e.to_string())?;
         Ok(processes
             .values()
-            .find(|handle| {
-                match &handle.info.process_type {
-                    ProcessType::ClaudeSession { session_id: sid } => sid == session_id,
-                }
+            .find(|handle| match &handle.info.process_type {
+                ProcessType::ClaudeSession { session_id: sid } => sid == session_id,
             })
             .map(|handle| handle.info.clone()))
     }
@@ -270,7 +280,10 @@ impl ProcessRegistry {
             }
         };
 
-        info!("Attempting graceful shutdown of process {} (PID: {})", run_id, pid);
+        info!(
+            "Attempting graceful shutdown of process {} (PID: {})",
+            run_id, pid
+        );
 
         // Send kill signal to the process
         let kill_sent = {
@@ -287,17 +300,26 @@ impl ProcessRegistry {
                     }
                 }
             } else {
-                warn!("No child handle available for process {} (PID: {}), attempting system kill", run_id, pid);
+                warn!(
+                    "No child handle available for process {} (PID: {}), attempting system kill",
+                    run_id, pid
+                );
                 false
             }
         };
 
         // If direct kill didn't work, try system command as fallback
         if !kill_sent {
-            info!("Attempting fallback kill for process {} (PID: {})", run_id, pid);
+            info!(
+                "Attempting fallback kill for process {} (PID: {})",
+                run_id, pid
+            );
             match self.kill_process_by_pid(run_id, pid) {
                 Ok(true) => return Ok(true),
-                Ok(false) => warn!("Fallback kill also failed for process {} (PID: {})", run_id, pid),
+                Ok(false) => warn!(
+                    "Fallback kill also failed for process {} (PID: {})",
+                    run_id, pid
+                ),
                 Err(e) => error!("Error during fallback kill: {}", e),
             }
         }
@@ -405,7 +427,10 @@ impl ProcessRegistry {
                     if let Ok(output) = check_result {
                         if output.status.success() {
                             // Still running, send SIGKILL
-                            warn!("Process {} still running after SIGTERM, sending SIGKILL", pid);
+                            warn!(
+                                "Process {} still running after SIGTERM, sending SIGKILL",
+                                pid
+                            );
                             std::process::Command::new("kill")
                                 .args(["-KILL", &pid.to_string()])
                                 .output()
@@ -537,11 +562,17 @@ impl ProcessRegistry {
         let mut stdin_guard = stdin_arc.lock().await;
 
         if let Some(ref mut stdin) = *stdin_guard {
-            stdin.write_all(data.as_bytes()).await
+            stdin
+                .write_all(data.as_bytes())
+                .await
                 .map_err(|e| format!("Failed to write to stdin: {}", e))?;
-            stdin.write_all(b"\n").await
+            stdin
+                .write_all(b"\n")
+                .await
                 .map_err(|e| format!("Failed to write newline: {}", e))?;
-            stdin.flush().await
+            stdin
+                .flush()
+                .await
                 .map_err(|e| format!("Failed to flush stdin: {}", e))?;
             info!("Wrote {} bytes to stdin of process {}", data.len(), run_id);
             Ok(())
@@ -588,7 +619,7 @@ impl ProcessRegistry {
         };
 
         info!("Killing {} processes on shutdown", run_ids.len());
-        
+
         for run_id in run_ids {
             match self.kill_process(run_id).await {
                 Ok(_) => info!("Killed process {}", run_id),

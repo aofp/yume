@@ -1,0 +1,23 @@
+{
+  "name": "yume-cli",
+  "version": "1.0.0",
+  "description": "Universal agent shim for Yume - supports Gemini and OpenAI providers",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "yume-cli": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

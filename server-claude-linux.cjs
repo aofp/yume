@@ -1846,6 +1846,122 @@ app.get('/claude-session/:projectPath/:sessionId', async (req, res) => {
   }
 });
 
+// Load a yume-cli session (gemini/openai) - these are stored as JSON in ~/.yume/sessions/
+app.get('/yume-session/:provider/:sessionId', async (req, res) => {
+  try {
+    const { provider, sessionId } = req.params;
+
+    console.log('Loading yume-cli session:');
+    console.log('  - Provider:', provider);
+    console.log('  - SessionId:', sessionId);
+
+    // Validate provider - SECURITY: also check for path separators
+    if (!['gemini', 'openai'].includes(provider) || provider.includes('/') || provider.includes('\\')) {
+      return res.status(400).json({ error: 'Invalid provider. Must be gemini or openai' });
+    }
+
+    // SECURITY: Validate sessionId - only allow safe characters (alphanumeric, hyphens, underscores)
+    if (!/^[a-zA-Z0-9_-]+$/.test(sessionId)) {
+      console.error('Invalid session ID format (potential path traversal):', sessionId);
+      return res.status(400).json({ error: 'Invalid session ID format' });
+    }
+
+    // SECURITY: Use basename as additional safety and verify path stays in expected directory
+    const safeSessionId = require('path').basename(sessionId);
+    const expectedDir = join(homedir(), '.yume', 'sessions', provider);
+    const sessionPath = join(expectedDir, `${safeSessionId}.json`);
+
+    // SECURITY: Verify resolved path is within expected directory
+    if (!sessionPath.startsWith(expectedDir + require('path').sep)) {
+      console.error('Path traversal attempt detected:', sessionPath);
+      return res.status(400).json({ error: 'Invalid session path' });
+    }
+    console.log('  - Full path:', sessionPath);
+
+    if (!existsSync(sessionPath)) {
+      console.error('Yume session not found:', sessionPath);
+      return res.status(404).json({ error: 'session not found' });
+    }
+
+    // Read the session file
+    const { readFile } = fs.promises;
+
+    try {
+      const content = await readFile(sessionPath, 'utf8');
+      const sessionData = JSON.parse(content);
+
+      console.log('  - Loaded session with', sessionData.history?.length || 0, 'messages');
+
+      // Transform yume-cli format to Yume internal format
+      const messages = [];
+
+      if (sessionData.history && Array.isArray(sessionData.history)) {
+        for (const msg of sessionData.history) {
+          // Convert history items to Yume message format
+          if (msg.role === 'user') {
+            messages.push({
+              type: 'user',
+              timestamp: new Date().toISOString(),
+              message: {
+                content: msg.content
+              }
+            });
+          } else if (msg.role === 'assistant' || msg.role === 'model') {
+            messages.push({
+              type: 'assistant',
+              timestamp: new Date().toISOString(),
+              message: {
+                content: [{ type: 'text', text: msg.content }],
+                model: sessionData.model
+              }
+            });
+          }
+        }
+      }
+
+      // Extract title from first user message if available
+      let title = sessionData.title || 'Untitled session';
+      if (!sessionData.title && messages.length > 0) {
+        const firstUserMsg = messages.find(m => m.type === 'user');
+        if (firstUserMsg && firstUserMsg.message?.content) {
+          const contentText = typeof firstUserMsg.message.content === 'string'
+            ? firstUserMsg.message.content
+            : firstUserMsg.message.content;
+          if (contentText) {
+            title = contentText.substring(0, 100);
+          }
+        }
+      }
+
+      // Return in the same format as claude-session endpoint
+      res.json({
+        sessionId: sessionData.id,
+        projectPath: sessionData.cwd || '/',
+        messages: messages,
+        sessionCount: messages.length,
+        title: title,
+        provider: sessionData.provider,
+        model: sessionData.model,
+        usage: {
+          inputTokens: sessionData.usage?.inputTokens || 0,
+          outputTokens: sessionData.usage?.outputTokens || 0,
+          cacheReadTokens: sessionData.usage?.cacheReadTokens || 0,
+          cacheCreationTokens: sessionData.usage?.cacheCreationTokens || 0,
+          totalContextTokens: (sessionData.usage?.inputTokens || 0) +
+                              (sessionData.usage?.cacheReadTokens || 0) +
+                              (sessionData.usage?.cacheCreationTokens || 0)
+        }
+      });
+    } catch (readError) {
+      console.error('Error reading yume session file:', readError);
+      res.status(500).json({ error: 'Failed to read session', details: readError.message });
+    }
+  } catch (error) {
+    console.error('Error loading yume session:', error);
+    res.status(500).json({ error: 'Failed to load session', details: error.message });
+  }
+});
+
 // Analytics endpoint - reads all Claude sessions and extracts token usage
 app.get('/claude-analytics', async (req, res) => {
   console.log('📊 Loading analytics from all Claude sessions...');
@@ -1866,6 +1982,11 @@ app.get('/claude-analytics', async (req, res) => {
         opus: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
         sonnet: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } }
       },
+      byProvider: {
+        claude: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
+        gemini: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
+        openai: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } }
+      },
       byDate: {},
       byProject: {}
     };
@@ -1882,6 +2003,123 @@ app.get('/claude-analytics', async (req, res) => {
       tokens: 0,
       cost: 0
     });
+
+    // Scan yume-cli sessions for analytics
+    const scanYumeCliAnalytics = async (provider, analytics, pricing) => {
+      const { readdir, readFile, stat } = fs.promises;
+      const sessionsDir = join(homedir(), '.yume', 'sessions', provider);
+
+      if (!existsSync(sessionsDir)) {
+        console.log(`📊 No ${provider} sessions directory found at ${sessionsDir}`);
+        return;
+      }
+
+      try {
+        const files = await readdir(sessionsDir);
+        const jsonFiles = files.filter(f => f.endsWith('.json'));
+
+        console.log(`📊 Scanning ${jsonFiles.length} ${provider} session files...`);
+
+        for (const file of jsonFiles) {
+          try {
+            const filePath = join(sessionsDir, file);
+            const content = await readFile(filePath, 'utf8');
+            const session = JSON.parse(content);
+
+            // Get usage from session
+            const usage = session.usage || {};
+            const inputTokens = usage.inputTokens || 0;
+            const outputTokens = usage.outputTokens || 0;
+            const cacheReadTokens = usage.cacheReadTokens || 0;
+            const cacheCreationTokens = usage.cacheCreationTokens || 0;
+
+            // Skip sessions with no usage data
+            if (inputTokens === 0 && outputTokens === 0 && cacheReadTokens === 0 && cacheCreationTokens === 0) {
+              continue;
+            }
+
+            // Calculate cost using provider pricing
+            const providerPricing = pricing[provider];
+            const cost = (inputTokens * providerPricing.input) +
+                         (outputTokens * providerPricing.output) +
+                         (cacheReadTokens * providerPricing.cacheRead) +
+                         (cacheCreationTokens * providerPricing.cacheCreation);
+
+            // Update provider stats
+            analytics.byProvider[provider].sessions++;
+            analytics.byProvider[provider].tokens += inputTokens + outputTokens;
+            analytics.byProvider[provider].cost += cost;
+            analytics.byProvider[provider].tokenBreakdown.input += inputTokens;
+            analytics.byProvider[provider].tokenBreakdown.output += outputTokens;
+            analytics.byProvider[provider].tokenBreakdown.cacheRead += cacheReadTokens;
+            analytics.byProvider[provider].tokenBreakdown.cacheCreation += cacheCreationTokens;
+
+            // Update totals
+            analytics.totalSessions++;
+            analytics.totalTokens += inputTokens + outputTokens;
+            analytics.totalCost += cost;
+            analytics.tokenBreakdown.input += inputTokens;
+            analytics.tokenBreakdown.output += outputTokens;
+            analytics.tokenBreakdown.cacheRead += cacheReadTokens;
+            analytics.tokenBreakdown.cacheCreation += cacheCreationTokens;
+
+            // Update byDate
+            const sessionDate = new Date(session.updated || session.created || Date.now());
+            const dateKey = formatDateKey(sessionDate);
+            if (!analytics.byDate[dateKey]) {
+              analytics.byDate[dateKey] = createDateStats();
+            }
+            analytics.byDate[dateKey].sessions++;
+            analytics.byDate[dateKey].tokens += inputTokens + outputTokens;
+            analytics.byDate[dateKey].cost += cost;
+            analytics.byDate[dateKey].tokenBreakdown.input += inputTokens;
+            analytics.byDate[dateKey].tokenBreakdown.output += outputTokens;
+            analytics.byDate[dateKey].tokenBreakdown.cacheRead += cacheReadTokens;
+            analytics.byDate[dateKey].tokenBreakdown.cacheCreation += cacheCreationTokens;
+
+            // Update byProject using session.cwd
+            if (session.cwd) {
+              const projectName = session.cwd.split('/').pop() || session.cwd;
+              if (!analytics.byProject[projectName]) {
+                analytics.byProject[projectName] = {
+                  sessions: 0,
+                  messages: 0,
+                  tokens: 0,
+                  cost: 0,
+                  lastUsed: 0,
+                  byDate: {}
+                };
+              }
+              analytics.byProject[projectName].sessions++;
+              analytics.byProject[projectName].tokens += inputTokens + outputTokens;
+              analytics.byProject[projectName].cost += cost;
+              analytics.byProject[projectName].lastUsed = Math.max(
+                analytics.byProject[projectName].lastUsed,
+                sessionDate.getTime()
+              );
+            }
+
+            // Count messages
+            const messageCount = (session.history || []).filter(
+              m => m.role === 'user' || m.role === 'assistant'
+            ).length;
+            analytics.totalMessages += messageCount;
+            if (session.cwd) {
+              const projectName = session.cwd.split('/').pop() || session.cwd;
+              if (analytics.byProject[projectName]) {
+                analytics.byProject[projectName].messages += messageCount;
+              }
+            }
+          } catch (err) {
+            console.log(`Could not parse ${provider} analytics session ${file}:`, err.message);
+          }
+        }
+
+        console.log(`📊 ${provider} sessions: ${analytics.byProvider[provider].sessions} sessions, ${analytics.byProvider[provider].tokens} tokens`);
+      } catch (err) {
+        console.error(`Error scanning ${provider} sessions:`, err.message);
+      }
+    };
 
     const createDateStats = () => ({
       sessions: 0,
@@ -1948,7 +2186,39 @@ app.get('/claude-analytics', async (req, res) => {
       }
       return projectStats.byDate[dateKey];
     };
-    
+
+    // Pricing per token (matching ccusage methodology)
+    // Claude Sonnet: $3/M input, $15/M output, $3.75/M cache_creation, $0.30/M cache_read
+    // Claude Opus: $15/M input, $75/M output, $18.75/M cache_creation, $1.50/M cache_read
+    // Gemini Flash: $0.075/1K = $0.75/M input, $0.30/1K = $3/M output
+    // GPT-4o: $2.50/M input, $10/M output
+    const pricing = {
+      sonnet: {
+        input: 3e-6,
+        output: 15e-6,
+        cacheCreation: 3.75e-6,
+        cacheRead: 0.30e-6
+      },
+      opus: {
+        input: 15e-6,
+        output: 75e-6,
+        cacheCreation: 18.75e-6,
+        cacheRead: 1.50e-6
+      },
+      gemini: {
+        input: 0.075e-6,      // $0.075/1K = $0.75/M (Gemini 1.5 Flash)
+        output: 0.30e-6,      // $0.30/1K = $3/M
+        cacheCreation: 0.038e-6,
+        cacheRead: 0.019e-6
+      },
+      openai: {
+        input: 2.5e-6,        // $2.50/M (GPT-4o)
+        output: 10e-6,        // $10/M
+        cacheCreation: 0,
+        cacheRead: 0
+      }
+    };
+
     // Determine the Claude projects directory based on platform
     let projectsDir;
     if (isWindows) {
@@ -2118,16 +2388,12 @@ app.get('/claude-analytics', async (req, res) => {
                       cacheRead: totalCacheReadTokens
                     };
 
-                    const isOpus = sessionModel === 'opus';
-                    const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
-                    const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
-                    const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
-                    const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
-
-                    sessionCost = totalInputTokens * inputRate +
-                                 totalOutputTokens * outputRate +
-                                 totalCacheCreationTokens * cacheWriteRate +
-                                 totalCacheReadTokens * cacheReadRate;
+                    // Calculate cost from token totals
+                    const rates = pricing[sessionModel];
+                    sessionCost = (totalInputTokens * rates.input) +
+                                 (totalOutputTokens * rates.output) +
+                                 (totalCacheCreationTokens * rates.cacheCreation) +
+                                 (totalCacheReadTokens * rates.cacheRead);
                   }
 
                   console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
@@ -2151,6 +2417,13 @@ app.get('/claude-analytics', async (req, res) => {
                     modelStats.tokens += sessionTokens;
                     modelStats.cost += sessionCost;
                     addTokenBreakdown(modelStats.tokenBreakdown, sessionTokenBreakdown);
+
+                    // Track provider breakdown - Claude sessions
+                    const providerStats = analytics.byProvider.claude;
+                    providerStats.sessions++;
+                    providerStats.tokens += sessionTokens;
+                    providerStats.cost += sessionCost;
+                    addTokenBreakdown(providerStats.tokenBreakdown, sessionTokenBreakdown);
 
                     const dateStats = ensureDateStats(sessionDate);
                     dateStats.sessions++;
@@ -2320,16 +2593,12 @@ app.get('/claude-analytics', async (req, res) => {
                     cacheRead: totalCacheReadTokens
                   };
 
-                  const isOpus = sessionModel === 'opus';
-                  const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
-                  const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
-                  const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
-                  const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
-
-                  sessionCost = totalInputTokens * inputRate +
-                               totalOutputTokens * outputRate +
-                               totalCacheCreationTokens * cacheWriteRate +
-                               totalCacheReadTokens * cacheReadRate;
+                  // Calculate cost from token totals
+                  const rates = pricing[sessionModel];
+                  sessionCost = (totalInputTokens * rates.input) +
+                               (totalOutputTokens * rates.output) +
+                               (totalCacheCreationTokens * rates.cacheCreation) +
+                               (totalCacheReadTokens * rates.cacheRead);
                 }
 
                 console.log(`    Parsed: ${messageCount} messages, ${sessionTokens} tokens`);
@@ -2337,7 +2606,7 @@ app.get('/claude-analytics', async (req, res) => {
                 // Update analytics
                 if (sessionTokens > 0) {
                   console.log(`    Session: ${sessionTokens} tokens, $${sessionCost.toFixed(4)}`);
-                  
+
                   const modelKey = sessionModel === 'opus' ? 'opus' : 'sonnet';
                   const sessionLastUsed = fileStats.mtime.getTime();
 
@@ -2353,6 +2622,13 @@ app.get('/claude-analytics', async (req, res) => {
                   modelStats.tokens += sessionTokens;
                   modelStats.cost += sessionCost;
                   addTokenBreakdown(modelStats.tokenBreakdown, sessionTokenBreakdown);
+
+                  // Track provider breakdown - Claude sessions
+                  const providerStats = analytics.byProvider.claude;
+                  providerStats.sessions++;
+                  providerStats.tokens += sessionTokens;
+                  providerStats.cost += sessionCost;
+                  addTokenBreakdown(providerStats.tokenBreakdown, sessionTokenBreakdown);
 
                   const dateStats = ensureDateStats(sessionDate);
                   dateStats.sessions++;
@@ -2500,16 +2776,12 @@ app.get('/claude-analytics', async (req, res) => {
                   cacheRead: totalCacheReadTokens
                 };
 
-                const isOpus = sessionModel === 'opus';
-                const inputRate = isOpus ? 15.0 / 1_000_000 : 3.0 / 1_000_000;
-                const outputRate = isOpus ? 75.0 / 1_000_000 : 15.0 / 1_000_000;
-                const cacheWriteRate = isOpus ? 18.75 / 1_000_000 : 3.75 / 1_000_000;
-                const cacheReadRate = isOpus ? 1.50 / 1_000_000 : 0.30 / 1_000_000;
-
-                sessionCost = totalInputTokens * inputRate +
-                             totalOutputTokens * outputRate +
-                             totalCacheCreationTokens * cacheWriteRate +
-                             totalCacheReadTokens * cacheReadRate;
+                // Calculate cost from token totals
+                const rates = pricing[sessionModel];
+                sessionCost = (totalInputTokens * rates.input) +
+                             (totalOutputTokens * rates.output) +
+                             (totalCacheCreationTokens * rates.cacheCreation) +
+                             (totalCacheReadTokens * rates.cacheRead);
               }
 
               // Update analytics
@@ -2529,6 +2801,13 @@ app.get('/claude-analytics', async (req, res) => {
                 modelStats.tokens += sessionTokens;
                 modelStats.cost += sessionCost;
                 addTokenBreakdown(modelStats.tokenBreakdown, sessionTokenBreakdown);
+
+                // Track provider breakdown - Claude sessions
+                const providerStats = analytics.byProvider.claude;
+                providerStats.sessions++;
+                providerStats.tokens += sessionTokens;
+                providerStats.cost += sessionCost;
+                addTokenBreakdown(providerStats.tokenBreakdown, sessionTokenBreakdown);
 
                 const dateStats = ensureDateStats(sessionDate);
                 dateStats.sessions++;
@@ -2563,8 +2842,13 @@ app.get('/claude-analytics', async (req, res) => {
         console.error('Error reading projects directory:', e);
       }
     }
-    
+
+    // Scan yume-cli sessions (Gemini and OpenAI)
+    await scanYumeCliAnalytics('gemini', analytics, pricing);
+    await scanYumeCliAnalytics('openai', analytics, pricing);
+
     console.log(`📊 Analytics loaded: ${analytics.totalSessions} sessions, ${analytics.totalTokens} tokens`);
+    console.log(`📊 Provider breakdown - Claude: ${analytics.byProvider.claude.sessions}, Gemini: ${analytics.byProvider.gemini.sessions}, OpenAI: ${analytics.byProvider.openai.sessions}`);
     res.json(analytics);
   } catch (error) {
     console.error('Error loading analytics:', error);

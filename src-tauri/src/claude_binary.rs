@@ -66,7 +66,7 @@ pub fn find_claude_binary() -> Result<String, String> {
         } else {
             best
         };
-        
+
         info!(
             "Selected Claude installation: path={}, version={:?}, source={}",
             selected.path, selected.version, selected.source
@@ -215,7 +215,8 @@ fn try_which_command() -> Option<ClaudeInstallation> {
                 }
 
                 // Parse aliased output: "claude: aliased to /path/to/claude"
-                let path = if output_str.starts_with("claude:") && output_str.contains("aliased to") {
+                let path = if output_str.starts_with("claude:") && output_str.contains("aliased to")
+                {
                     output_str
                         .split("aliased to")
                         .nth(1)
@@ -358,15 +359,29 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
         if let Ok(localappdata) = std::env::var("LOCALAPPDATA") {
             let local = PathBuf::from(&localappdata);
             paths_to_check.push((
-                local.join("Claude").join("claude.exe").to_string_lossy().to_string(),
+                local
+                    .join("Claude")
+                    .join("claude.exe")
+                    .to_string_lossy()
+                    .to_string(),
                 "windows-local".to_string(),
             ));
             paths_to_check.push((
-                local.join("Programs").join("claude").join("claude.exe").to_string_lossy().to_string(),
+                local
+                    .join("Programs")
+                    .join("claude")
+                    .join("claude.exe")
+                    .to_string_lossy()
+                    .to_string(),
                 "windows-local".to_string(),
             ));
             paths_to_check.push((
-                local.join("Programs").join("Claude").join("claude.exe").to_string_lossy().to_string(),
+                local
+                    .join("Programs")
+                    .join("Claude")
+                    .join("claude.exe")
+                    .to_string_lossy()
+                    .to_string(),
                 "windows-local".to_string(),
             ));
         }
@@ -376,20 +391,38 @@ fn find_standard_installations() -> Vec<ClaudeInstallation> {
             let user = PathBuf::from(&userprofile);
             // .claude local installation
             paths_to_check.push((
-                user.join(".claude").join("local").join("claude.exe").to_string_lossy().to_string(),
+                user.join(".claude")
+                    .join("local")
+                    .join("claude.exe")
+                    .to_string_lossy()
+                    .to_string(),
                 "claude-local".to_string(),
             ));
             // Scoop installations
             paths_to_check.push((
-                user.join("scoop").join("apps").join("claude").join("current").join("claude.exe").to_string_lossy().to_string(),
+                user.join("scoop")
+                    .join("apps")
+                    .join("claude")
+                    .join("current")
+                    .join("claude.exe")
+                    .to_string_lossy()
+                    .to_string(),
                 "scoop".to_string(),
             ));
             paths_to_check.push((
-                user.join("scoop").join("shims").join("claude.exe").to_string_lossy().to_string(),
+                user.join("scoop")
+                    .join("shims")
+                    .join("claude.exe")
+                    .to_string_lossy()
+                    .to_string(),
                 "scoop".to_string(),
             ));
             paths_to_check.push((
-                user.join("scoop").join("shims").join("claude.cmd").to_string_lossy().to_string(),
+                user.join("scoop")
+                    .join("shims")
+                    .join("claude.cmd")
+                    .to_string_lossy()
+                    .to_string(),
                 "scoop".to_string(),
             ));
         }
@@ -501,9 +534,9 @@ fn get_claude_version(path: &str) -> Result<Option<String>, String> {
 /// Extract version string from command output
 fn extract_version_from_output(stdout: &[u8]) -> Option<String> {
     let output_str = String::from_utf8_lossy(stdout);
-    
+
     debug!("Raw version output: {:?}", output_str);
-    
+
     // Use regex to directly extract version pattern (e.g., "1.0.41")
     // This pattern matches:
     // - One or more digits, followed by
@@ -512,8 +545,9 @@ fn extract_version_from_output(stdout: &[u8]) -> Option<String> {
     // - A dot, followed by
     // - One or more digits
     // - Optionally followed by pre-release/build metadata
-    let version_regex = regex::Regex::new(r"(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?)").ok()?;
-    
+    let version_regex =
+        regex::Regex::new(r"(\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?(?:\+[a-zA-Z0-9.-]+)?)").ok()?;
+
     if let Some(captures) = version_regex.captures(&output_str) {
         if let Some(version_match) = captures.get(1) {
             let version = version_match.as_str().to_string();
@@ -521,7 +555,7 @@ fn extract_version_from_output(stdout: &[u8]) -> Option<String> {
             return Some(version);
         }
     }
-    
+
     debug!("No version found in output");
     None
 }
@@ -625,12 +659,21 @@ pub fn create_command_with_env(program: &str) -> Command {
             || key == "HTTPS_PROXY"
             || key == "NO_PROXY"
             || key == "ALL_PROXY"
+            // Google/Gemini authentication
+            || key == "GOOGLE_API_KEY"
+            || key == "GOOGLE_APPLICATION_CREDENTIALS"
+            || key.starts_with("GCLOUD_")
+            || key.starts_with("CLOUDSDK_")
+            // OpenAI authentication
+            || key == "OPENAI_API_KEY"
+            || key == "OPENAI_ORG_ID"
+            || key == "OPENAI_BASE_URL"
         {
             debug!("Inheriting env var: {}={}", key, value);
             cmd.env(&key, &value);
         }
     }
-    
+
     // Log proxy-related environment variables for debugging
     info!("Command will use proxy settings:");
     if let Ok(http_proxy) = std::env::var("HTTP_PROXY") {
@@ -653,7 +696,7 @@ pub fn create_command_with_env(program: &str) -> Command {
             }
         }
     }
-    
+
     // Add Homebrew support if the program is in a Homebrew directory
     if program.contains("/homebrew/") || program.contains("/opt/homebrew/") {
         if let Some(program_dir) = std::path::Path::new(program).parent() {
@@ -662,7 +705,10 @@ pub fn create_command_with_env(program: &str) -> Command {
             let homebrew_bin_str = program_dir.to_string_lossy();
             if !current_path.contains(&homebrew_bin_str.as_ref()) {
                 let new_path = format!("{}:{}", homebrew_bin_str, current_path);
-                debug!("Adding Homebrew bin directory to PATH: {}", homebrew_bin_str);
+                debug!(
+                    "Adding Homebrew bin directory to PATH: {}",
+                    homebrew_bin_str
+                );
                 cmd.env("PATH", new_path);
             }
         }

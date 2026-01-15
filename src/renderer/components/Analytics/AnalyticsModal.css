@@ -32,18 +32,110 @@
 .analytics-header-left {
   display: flex;
   align-items: center;
-  justify-content: space-between;
   gap: 8px;
-  flex: 1;
   min-width: 0;
   -webkit-app-region: drag;
 }
 
+.analytics-header-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  -webkit-app-region: no-drag;
+}
+
 .analytics-modal .header-tabs {
   display: flex;
-  gap: 0;
+  gap: 2px;
   margin-right: 10px;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
   -webkit-app-region: no-drag;
+}
+
+.analytics-modal .header-tabs .tab-btn {
+  padding: 4px 6px;
+  font-size: 11px;
+}
+
+/* Provider Filter Pills */
+.provider-filter {
+  display: flex;
+  gap: 6px;
+  margin-left: auto;
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+  justify-content: flex-end;
+  -webkit-app-region: no-drag;
+}
+
+.provider-pill {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 2px;
+  color: #666;
+  font-size: 10px;
+  padding: 3px 8px;
+  cursor: default;
+  text-transform: lowercase;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.provider-pill:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.provider-pill.active {
+  background: rgba(var(--accent-rgb), 0.05);
+  border-color: rgba(var(--accent-rgb), 0.8);
+  color: var(--accent-color);
+}
+
+.provider-pill.active:hover {
+  border-color: var(--accent-color);
+}
+
+/* Tab Navigation (Overview | Projects) */
+.analytics-tabs {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #222;
+  padding: 8px 12px;
+  min-height: 40px;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+}
+
+.analytics-days-filter {
+  display: flex;
+  gap: 4px;
+}
+
+.analytics-tab {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: var(--text-base);
+  padding: 10px 16px;
+  cursor: default;
+  text-transform: lowercase;
+  font-family: inherit;
+  border-bottom: 2px solid transparent;
+  transition: all 0.2s;
+}
+
+.analytics-tab:hover {
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.analytics-tab.active {
+  color: var(--accent-color);
+  border-bottom-color: var(--accent-color);
 }
 
 .analytics-title {
@@ -132,7 +224,51 @@
   background: var(--fg-20);
 }
 
-/* Overview Stats */
+/* Compact Stats Row */
+.analytics-stats-row {
+  display: flex;
+  gap: 20px;
+  padding: 10px 0;
+  margin-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+.stat-item {
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+}
+
+.stat-item .stat-value {
+  font-size: var(--text-lg);
+  color: #fff;
+  font-weight: 400;
+}
+
+.stat-item .stat-label {
+  font-size: var(--text-sm);
+  color: #666;
+  text-transform: lowercase;
+}
+
+/* Breakdown Grid */
+.analytics-breakdown-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-bottom: 12px;
+}
+
+.breakdown-section h3 {
+  font-size: 11px;
+  color: var(--accent-color);
+  margin: 0 0 8px 0;
+  font-weight: 400;
+  text-transform: lowercase;
+  opacity: 0.7;
+}
+
+/* Legacy stat-card support */
 .analytics-overview {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
@@ -217,32 +353,72 @@
   color: var(--accent-color);
 }
 
-/* Model Breakdown */
+/* Model Breakdown - Compact */
 .model-breakdown {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 10px;
+}
+
+.model-breakdown.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
 .model-stat {
   background: var(--fg-5);
   padding: 12px;
   border: 1px solid rgba(255, 255, 255, 0.04);
+  border-left: 3px solid var(--accent-color);
+}
+
+.model-stat.compact {
+  background: none;
+  padding: 0;
+  border: none;
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.model-stat.compact .model-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
+.model-stat.compact .model-name {
+  font-size: 11px;
+  color: #ccc;
+  margin: 0;
+}
+
+.model-stat.compact .model-cost {
+  font-size: 10px;
+  color: var(--accent-color);
+  opacity: 0.7;
+}
+
+.model-stat.compact .model-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+}
+
+.model-stat.compact .model-tokens {
+  font-size: 10px;
+  color: #666;
+  text-align: right;
 }
 
 .model-name {
   font-size: var(--text-sm);
-  color: #999;
   margin-bottom: 4px;
   letter-spacing: 0.3px;
-}
-
-.model-stat.opus .model-name {
-  color: var(--accent-color);
-}
-
-.model-stat.sonnet .model-name {
-  color: #999;
+  text-transform: lowercase;
 }
 
 .model-metrics {
@@ -269,23 +445,131 @@
   height: 100%;
   background: var(--accent-color);
   opacity: 0.6;
+  border-radius: 2px;
 }
 
-.model-stat.sonnet .model-bar-fill {
-  background: #666;
+/* Provider Breakdown - Compact */
+.provider-breakdown.compact {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
 }
 
-/* Daily Usage Heatmap */
+.provider-stat.compact {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  align-items: center;
+}
+
+.provider-stat.compact .provider-info {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  grid-column: 1 / -1;
+}
+
+.provider-stat.compact .provider-name {
+  font-size: 11px;
+  color: #ccc;
+  text-transform: capitalize;
+}
+
+.provider-stat.compact .provider-cost {
+  font-size: 10px;
+  color: var(--accent-color);
+  opacity: 0.7;
+}
+
+.provider-stat.compact .provider-bar {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.provider-stat.compact .provider-bar-fill {
+  height: 100%;
+  background: var(--accent-color);
+  opacity: 0.6;
+  border-radius: 2px;
+}
+
+.provider-stat.compact .provider-tokens {
+  font-size: 10px;
+  color: #666;
+  text-align: right;
+}
+
+/* Token Details Collapsible */
+.token-details {
+  margin-top: 12px;
+}
+
+.token-details summary {
+  font-size: 11px;
+  color: #666;
+  cursor: default;
+  padding: 6px 0;
+  user-select: none;
+}
+
+.token-details summary:hover {
+  color: var(--accent-color);
+}
+
+.token-breakdown-compact {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px 16px;
+  padding: 8px 0;
+}
+
+.token-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #888;
+}
+
+.token-row span:last-child {
+  color: #ccc;
+}
+
+/* Daily Usage Heatmap - Interactive */
+.heatmap-section {
+  margin-bottom: 12px;
+}
+
 .usage-heatmap-container {
   background: var(--fg-5);
-  padding: 12px;
+  padding: 14px;
   border: 1px solid rgba(255, 255, 255, 0.04);
+  border-radius: 4px;
+}
+
+.heatmap-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.heatmap-title {
+  font-size: 12px;
+  color: var(--accent-color);
+  font-weight: 400;
+}
+
+.heatmap-summary {
+  font-size: 10px;
+  color: #666;
 }
 
 .usage-heatmap {
   display: grid;
-  gap: 2px;
-  justify-content: flex-start;
+  gap: 4px;
+  justify-content: center;
 }
 
 .usage-heatmap.daily {
@@ -294,16 +578,39 @@
   grid-template-rows: repeat(7, 1fr);
 }
 
-.usage-heatmap.monthly {
-  grid-auto-flow: row;
-  grid-template-columns: repeat(12, 1fr);
+.heatmap-cell {
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 3px;
+  cursor: default;
+  transition: transform 0.1s, box-shadow 0.1s;
+  position: relative;
 }
 
-.heatmap-cell {
-  width: 11px;
-  height: 11px;
-  background: #1a1a1a;
-  border-radius: 2px;
+.heatmap-cell:not(.empty):hover {
+  transform: scale(1.2);
+  z-index: 10;
+}
+
+.usage-heatmap .heatmap-cell:not(.empty):hover::after {
+  content: attr(data-date) ' · ' attr(data-tokens) ' · ' attr(data-cost);
+  white-space: nowrap;
+  position: absolute;
+  bottom: calc(100% + 4px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #111;
+  padding: 3px 6px;
+  border-radius: 3px;
+  font-size: 9px;
+  color: #aaa;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.heatmap-legend-scale .heatmap-cell {
+  pointer-events: none;
 }
 
 .heatmap-cell.empty {
@@ -311,28 +618,30 @@
 }
 
 .heatmap-cell.level-0 {
-  background: #1a1a1a;
-  opacity: 0.6;
+  background: rgba(255, 255, 255, 0.04);
 }
 
 .heatmap-cell.level-1 {
-  background: var(--accent-color);
-  opacity: 0.25;
+  background: color-mix(in srgb, var(--accent-color) 35%, transparent);
 }
 
 .heatmap-cell.level-2 {
-  background: var(--accent-color);
-  opacity: 0.45;
+  background: color-mix(in srgb, var(--accent-color) 55%, transparent);
 }
 
 .heatmap-cell.level-3 {
-  background: var(--accent-color);
-  opacity: 0.65;
+  background: color-mix(in srgb, var(--accent-color) 75%, transparent);
 }
 
 .heatmap-cell.level-4 {
   background: var(--accent-color);
-  opacity: 0.85;
+}
+
+.usage-heatmap-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 10px;
 }
 
 .usage-heatmap-legend {
@@ -341,7 +650,11 @@
   gap: 6px;
   font-size: 10px;
   color: #666;
-  margin-top: 8px;
+}
+
+.heatmap-peak {
+  font-size: 10px;
+  color: #666;
 }
 
 .usage-heatmap-months {
@@ -456,6 +769,38 @@
   opacity: 0.7;
 }
 
+.analytics-project-stats .sessions {
+  color: #666;
+}
+
+/* Provider Breakdown */
+.provider-breakdown {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
+}
+
+/* Empty/No Data States */
+.analytics-empty-message {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 20px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 11px;
+}
+
+.analytics-no-data {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  padding: 60px 20px;
+  color: rgba(255, 255, 255, 0.3);
+  font-size: 12px;
+  gap: 20px;
+}
+
 @media (max-width: 900px) {
   .analytics-content {
     padding: 10px;
@@ -469,7 +814,16 @@
     grid-template-columns: 1fr;
   }
 
+  .provider-breakdown {
+    grid-template-columns: 1fr;
+  }
+
   .analytics-modal .header-tabs {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+
+  .provider-filter {
     flex-wrap: wrap;
     gap: 4px;
   }

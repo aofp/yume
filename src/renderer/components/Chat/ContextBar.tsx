@@ -1,7 +1,6 @@
 import React from 'react';
 import {
   IconFolder,
-  IconGitBranch,
   IconHistory,
   IconCancel,
   IconArrowsMinimize,
@@ -11,6 +10,7 @@ import {
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
 import { isVSCode } from '../../services/tauriApi';
+import { getModelById } from '../../config/models';
 
 interface SessionMessage {
   type: string;
@@ -26,10 +26,8 @@ interface ContextBarProps {
 
   // Panel states
   showFilesPanel: boolean;
-  showGitPanel: boolean;
   showRollbackPanel: boolean;
   setShowFilesPanel: (show: boolean) => void;
-  setShowGitPanel: (show: boolean) => void;
   setShowRollbackPanel: (show: boolean) => void;
 
   // Panel state setters for clearing other state
@@ -39,10 +37,6 @@ interface ContextBarProps {
   setGitDiff: (diff: any) => void;
   setFocusedFileIndex: (index: number) => void;
   setFocusedGitIndex: (index: number) => void;
-
-  // Git stats
-  isGitRepo: boolean;
-  gitLineStats: { [file: string]: { added: number; deleted: number } };
 
   // Session state
   workingDirectory: string | undefined;
@@ -82,10 +76,8 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   enabledToolsCount,
   onOpenModelModal,
   showFilesPanel,
-  showGitPanel,
   showRollbackPanel,
   setShowFilesPanel,
-  setShowGitPanel,
   setShowRollbackPanel,
   setSelectedFile,
   setFileContent,
@@ -93,8 +85,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   setGitDiff,
   setFocusedFileIndex,
   setFocusedGitIndex,
-  isGitRepo,
-  gitLineStats,
   workingDirectory,
   isReadOnly,
   isStreaming,
@@ -112,7 +102,10 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   onToggleDictation,
   modKey,
 }) => {
-  const contextWindowTokens = 200000;
+  // Get context window from selected model
+  const currentModel = getModelById(selectedModel);
+  const contextWindowTokens = currentModel?.contextWindow || 200000;
+
   const rawPercentage = (totalContextTokens / contextWindowTokens * 100);
   const percentageNum = rawPercentage;
   const percentage = isTokensPending ? '?' : percentageNum.toFixed(2);
@@ -140,10 +133,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
     return !isBashPrefix(text.trim());
   }).length;
 
-  // Git total line stats
-  const totalAdded = Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0);
-  const totalDeleted = Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0);
-
   return (
     <div className="context-bar">
       <ModelSelector
@@ -155,15 +144,16 @@ export const ContextBar: React.FC<ContextBarProps> = ({
 
       {/* Center - tools group */}
       <div className="context-center">
-        {/* Files button - hidden in vscode mode */}
+        {/* Files button - opens files panel (with files/git tabs inside) - hidden in vscode mode */}
         {!isVSCode() && (
           <button
             className={`btn-context-icon ${showFilesPanel ? 'active' : ''}`}
             onClick={() => {
               setShowFilesPanel(!showFilesPanel);
-              setShowGitPanel(false);
               setSelectedFile(null);
               setFileContent('');
+              setSelectedGitFile(null);
+              setGitDiff(null);
               setFocusedFileIndex(-1);
               setFocusedGitIndex(-1);
             }}
@@ -174,35 +164,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           </button>
         )}
 
-        {/* Git button - hidden in vscode mode */}
-        {!isVSCode() && (
-          <>
-            <button
-              className={`btn-context-icon ${showGitPanel ? 'active' : ''}`}
-              onClick={() => {
-                setShowGitPanel(!showGitPanel);
-                setShowFilesPanel(false);
-                setSelectedGitFile(null);
-                setGitDiff(null);
-                setFocusedFileIndex(-1);
-                setFocusedGitIndex(-1);
-              }}
-              disabled={!workingDirectory || !isGitRepo}
-              title={isGitRepo ? `git (${modKey}+g)` : "not a git repo"}
-            >
-              <IconGitBranch size={12} stroke={1.5} />
-            </button>
-
-            {/* Git total line stats */}
-            {showGitPanel && Object.keys(gitLineStats).length > 0 && (
-              <span className="git-total-stats">
-                <span className="git-total-added">+{totalAdded}</span>
-                <span className="git-total-deleted">-{totalDeleted}</span>
-              </span>
-            )}
-          </>
-        )}
-
         {/* History button - shown in center for vscode mode (replaces files/git) */}
         {isVSCode() && (
           <button
@@ -210,7 +171,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             onClick={() => {
               setShowRollbackPanel(!showRollbackPanel);
               setShowFilesPanel(false);
-              setShowGitPanel(false);
               setSelectedFile(null);
               setFileContent('');
               setSelectedGitFile(null);
@@ -251,7 +211,6 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             onClick={() => {
               setShowRollbackPanel(!showRollbackPanel);
               setShowFilesPanel(false);
-              setShowGitPanel(false);
               setSelectedFile(null);
               setFileContent('');
               setSelectedGitFile(null);

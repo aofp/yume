@@ -1,10 +1,9 @@
+use crate::claude_binary::{discover_claude_installations, ClaudeInstallation};
 /// Claude binary information command
 /// Provides info about Claude installations for display in settings
-
-use serde::{Serialize, Deserialize};
-use tracing::info;
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
-use crate::claude_binary::{discover_claude_installations, ClaudeInstallation};
+use tracing::info;
 
 /// Response structure for Claude binary information
 #[derive(Debug, Serialize)]
@@ -19,13 +18,13 @@ pub struct ClaudeBinaryInfo {
 #[tauri::command]
 pub async fn get_claude_binary_info() -> Result<ClaudeBinaryInfo, String> {
     info!("get_claude_binary_info command called");
-    
+
     // Find all Claude installations
     let installations = discover_claude_installations();
-    
+
     // Get the selected one (first one is selected by default)
     let selected = installations.first().cloned();
-    
+
     // Determine platform
     let platform = if cfg!(target_os = "windows") {
         "windows".to_string()
@@ -34,7 +33,7 @@ pub async fn get_claude_binary_info() -> Result<ClaudeBinaryInfo, String> {
     } else {
         "linux".to_string()
     };
-    
+
     // Check WSL availability (only on Windows)
     let wsl_available = if cfg!(target_os = "windows") {
         // Check if WSL is available by trying to run wsl --version
@@ -50,11 +49,13 @@ pub async fn get_claude_binary_info() -> Result<ClaudeBinaryInfo, String> {
                 .unwrap_or(false)
         }
         #[cfg(not(target_os = "windows"))]
-        { false }
+        {
+            false
+        }
     } else {
         false
     };
-    
+
     Ok(ClaudeBinaryInfo {
         installations,
         selected,
@@ -117,8 +118,7 @@ pub async fn get_claude_weekly_usage() -> Result<WeeklyUsageSummary, String> {
     info!("get_claude_weekly_usage command called");
 
     // Get home directory
-    let home = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
+    let home = dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
 
     // Path to stats-cache.json
     let stats_path = home.join(".claude").join("stats-cache.json");
@@ -259,16 +259,20 @@ pub async fn get_claude_usage_limits() -> Result<ClaudeUsageLimits, String> {
         .header("Authorization", format!("Bearer {}", access_token))
         .header("anthropic-beta", "oauth-2025-04-20")
         .send()
-        .await {
-            Ok(resp) => {
-                info!("get_claude_usage_limits: got response with status {}", resp.status());
-                resp
-            }
-            Err(e) => {
-                info!("get_claude_usage_limits: request error: {}", e);
-                return Err(format!("Failed to call usage API: {}", e));
-            }
-        };
+        .await
+    {
+        Ok(resp) => {
+            info!(
+                "get_claude_usage_limits: got response with status {}",
+                resp.status()
+            );
+            resp
+        }
+        Err(e) => {
+            info!("get_claude_usage_limits: request error: {}", e);
+            return Err(format!("Failed to call usage API: {}", e));
+        }
+    };
 
     if !response.status().is_success() {
         let status = response.status();
@@ -277,12 +281,18 @@ pub async fn get_claude_usage_limits() -> Result<ClaudeUsageLimits, String> {
     }
 
     // Get raw text first to log it
-    let raw_body = response.text().await
+    let raw_body = response
+        .text()
+        .await
         .map_err(|e| format!("Failed to read usage API response: {}", e))?;
     info!("Usage API raw response: {}", raw_body);
 
-    let api_response: UsageApiResponse = serde_json::from_str(&raw_body)
-        .map_err(|e| format!("Failed to parse usage API response: {} - raw: {}", e, raw_body))?;
+    let api_response: UsageApiResponse = serde_json::from_str(&raw_body).map_err(|e| {
+        format!(
+            "Failed to parse usage API response: {} - raw: {}",
+            e, raw_body
+        )
+    })?;
 
     let result = ClaudeUsageLimits {
         five_hour: api_response.five_hour,
@@ -334,7 +344,8 @@ fn get_credentials_linux() -> Result<(String, Option<String>, Option<String>), S
             let creds: ClaudeCredentials = serde_json::from_str(&json_str)
                 .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
 
-            let oauth = creds.claude_ai_oauth
+            let oauth = creds
+                .claude_ai_oauth
                 .ok_or_else(|| "No OAuth credentials found".to_string())?;
 
             return Ok((
@@ -362,7 +373,8 @@ fn get_credentials_linux() -> Result<(String, Option<String>, Option<String>), S
             let creds: ClaudeCredentials = serde_json::from_str(&json_str)
                 .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
 
-            let oauth = creds.claude_ai_oauth
+            let oauth = creds
+                .claude_ai_oauth
                 .ok_or_else(|| "No OAuth credentials found".to_string())?;
 
             return Ok((
@@ -383,7 +395,12 @@ fn get_credentials_macos() -> Result<(String, Option<String>, Option<String>), S
 
     // Use explicit Stdio to prevent any focus stealing
     let output = Command::new("security")
-        .args(["find-generic-password", "-s", "Claude Code-credentials", "-w"])
+        .args([
+            "find-generic-password",
+            "-s",
+            "Claude Code-credentials",
+            "-w",
+        ])
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -400,7 +417,8 @@ fn get_credentials_macos() -> Result<(String, Option<String>, Option<String>), S
     let creds: ClaudeCredentials = serde_json::from_str(&json_str)
         .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
 
-    let oauth = creds.claude_ai_oauth
+    let oauth = creds
+        .claude_ai_oauth
         .ok_or_else(|| "No OAuth credentials found".to_string())?;
 
     Ok((
@@ -417,8 +435,7 @@ fn get_credentials_windows() -> Result<(String, Option<String>, Option<String>),
 
     info!("Reading Claude credentials from ~/.claude/.credentials.json");
 
-    let home = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
+    let home = dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
 
     let creds_path = home.join(".claude").join(".credentials.json");
 
@@ -437,10 +454,14 @@ fn get_credentials_windows() -> Result<(String, Option<String>, Option<String>),
     let creds: ClaudeCredentials = serde_json::from_str(&content)
         .map_err(|e| format!("Failed to parse credentials JSON: {}", e))?;
 
-    let oauth = creds.claude_ai_oauth
+    let oauth = creds
+        .claude_ai_oauth
         .ok_or_else(|| "No OAuth credentials found in file".to_string())?;
 
-    info!("Successfully loaded credentials from file (subscription: {:?})", oauth.subscription_type);
+    info!(
+        "Successfully loaded credentials from file (subscription: {:?})",
+        oauth.subscription_type
+    );
 
     Ok((
         oauth.access_token,

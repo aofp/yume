@@ -17,8 +17,7 @@ import { HooksTab } from './HooksTab';
 import { MCPTab } from './MCPTab';
 import { PluginsTab } from './PluginsTab';
 import { SkillsTab } from './SkillsTab';
-import { ClaudeSelector } from './ClaudeSelector';
-import { SystemPromptSelector } from './SystemPromptSelector';
+import { ProvidersTab } from './ProvidersTab';
 import { invoke } from '@tauri-apps/api/core';
 import { hooksService, HookScriptConfig } from '../../services/hooksService';
 import { TabButton } from '../common/TabButton';
@@ -35,7 +34,7 @@ interface SettingsModalProps {
 }
 
 // Tab type definition
-type SettingsTab = 'general' | 'appearance' | 'hooks' | 'commands' | 'mcp' | 'plugins' | 'skills';
+type SettingsTab = 'general' | 'appearance' | 'providers' | 'hooks' | 'commands' | 'mcp' | 'plugins' | 'skills';
 
 // Theme system - imported from shared config
 import { BUILT_IN_THEMES, DEFAULT_THEME, DEFAULT_COLORS, type Theme } from '../../config/themes';
@@ -46,7 +45,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
   const { isLicensed } = useLicenseStore();
   const [activeTab, setActiveTab] = useState<SettingsTab>(() => {
     const saved = localStorage.getItem(SETTINGS_TAB_STORAGE_KEY);
-    if (saved && ['general', 'appearance', 'hooks', 'commands', 'mcp', 'plugins', 'skills'].includes(saved)) {
+    if (saved && ['general', 'appearance', 'providers', 'hooks', 'commands', 'mcp', 'plugins', 'skills'].includes(saved)) {
       return saved as SettingsTab;
     }
     return 'general';
@@ -110,6 +109,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
     const tabVisibility: Record<SettingsTab, boolean> = {
       general: true,
       appearance: true,
+      providers: true,
       hooks: showHooksSettings,
       commands: showCommandsSettings,
       skills: showSkillsSettings,
@@ -897,17 +897,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
 
                 </div>
 
-                {/* Right column: Claude Code + Settings */}
+                {/* Right column: Settings */}
                 <div className="settings-column">
-                  <h4>claude code</h4>
-                  <ClaudeSelector onSettingsChange={(settings) => {
-                    console.log('Claude settings updated:', settings);
-                  }} />
-                  <SystemPromptSelector onSettingsChange={(settings) => {
-                    console.log('System prompt settings updated:', settings);
-                  }} />
-
-                  <h4 style={{ marginTop: '16px' }}>settings</h4>
+                  <h4>settings</h4>
 
                   <div className="checkbox-setting compact">
                     <span className="checkbox-label">plugins</span>
@@ -1570,6 +1562,9 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
       case 'skills':
         return <SkillsTab />;
 
+      case 'providers':
+        return <ProvidersTab />;
+
       default:
         return null;
     }
@@ -1593,6 +1588,11 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                   label="appearance"
                   active={activeTab === 'appearance'}
                   onClick={() => setActiveTab('appearance')}
+                />
+                <TabButton
+                  label="providers"
+                  active={activeTab === 'providers'}
+                  onClick={() => setActiveTab('providers')}
                 />
                 {showPluginsSettings && (
                   <TabButton

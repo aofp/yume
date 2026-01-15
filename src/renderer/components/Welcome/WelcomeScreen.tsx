@@ -3,6 +3,8 @@ import { IconFolderOpen, IconPlus, IconX, IconTrash, IconChevronDown, IconChartD
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import { useLicenseStore } from '../../services/licenseManager';
 import { KeyboardShortcuts } from '../KeyboardShortcuts/KeyboardShortcuts';
+import { ModelSelector } from '../ModelSelector/ModelSelector';
+import { ModelToolsModal } from '../ModelSelector/ModelToolsModal';
 import { invoke } from '@tauri-apps/api/core';
 import { APP_NAME, APP_VERSION, appStorageKey } from '../../config/app';
 import './WelcomeScreen.css';
@@ -37,11 +39,12 @@ const USAGE_LIMITS_CACHE_KEY = appStorageKey('usage_limits_cache');
 const RECENT_PROJECTS_KEY = appStorageKey('recent-projects');
 
 export const WelcomeScreen: React.FC = () => {
-  const { createSession, autoCompactEnabled, setAutoCompactEnabled } = useClaudeCodeStore();
+  const { createSession, autoCompactEnabled, setAutoCompactEnabled, selectedModel, setSelectedModel, enabledTools } = useClaudeCodeStore();
   const { isLicensed } = useLicenseStore();
   const [recentProjects, setRecentProjects] = useState<RecentProject[]>([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [showStatsModal, setShowStatsModal] = useState(false);
+  const [showModelModal, setShowModelModal] = useState(false);
   const [usageLimits, setUsageLimits] = useState<{
     five_hour?: { utilization: number; resets_at: string };
     seven_day?: { utilization: number; resets_at: string };
@@ -343,24 +346,39 @@ export const WelcomeScreen: React.FC = () => {
             ))}
           </div>
         )}
+        {/* Version indicator - below quick nav */}
+        <div className="welcome-version-inline">
+          <span
+            className="welcome-version-badge"
+            onClick={() => {
+              if (isLicensed) {
+                window.dispatchEvent(new CustomEvent('showAboutModal'));
+              } else {
+                window.dispatchEvent(new CustomEvent('showUpgradeModal', {
+                  detail: { reason: 'demo' }
+                }));
+              }
+            }}
+          >
+            {APP_NAME}&nbsp;
+            {APP_VERSION}&nbsp;
+            {!isLicensed &&
+              <>
+              <strong>demo</strong>
+              </>
+            }
+          </span>
+        </div>
       </div>
 
-      {/* Version indicator - bottom left */}
-      <div className="welcome-version-container">
-        <span
-          className="welcome-version-badge"
-          onClick={() => {
-            if (isLicensed) {
-              window.dispatchEvent(new CustomEvent('showAboutModal'));
-            } else {
-              window.dispatchEvent(new CustomEvent('showUpgradeModal', {
-                detail: { reason: 'demo' }
-              }));
-            }
-          }}
-        >
-          {APP_NAME} {APP_VERSION}{!isLicensed && <> <strong>demo</strong></>}
-        </span>
+      {/* Model selector - bottom left like chat */}
+      <div className="model-selector-container">
+        <ModelSelector
+          value={selectedModel}
+          onChange={setSelectedModel}
+          toolCount={enabledTools.length}
+          onOpenModal={() => setShowModelModal(true)}
+        />
       </div>
 
       {/* Usage limit bars - bottom right like chat */}
@@ -569,6 +587,18 @@ export const WelcomeScreen: React.FC = () => {
 
       {/* Help Modal - using shared component */}
       {showHelpModal && <KeyboardShortcuts onClose={() => setShowHelpModal(false)} />}
+
+      {/* Model Tools Modal */}
+      {showModelModal && (
+        <ModelToolsModal
+          isOpen={showModelModal}
+          onClose={() => setShowModelModal(false)}
+          selectedModel={selectedModel}
+          onModelChange={setSelectedModel}
+          enabledTools={enabledTools}
+          onToolsChange={(tools) => useClaudeCodeStore.getState().setEnabledTools(tools)}
+        />
+      )}
     </div>
   );
 };

@@ -1,133 +1,148 @@
 # Gemini Integration Plan
 
-## Objective
-Enable Yume to drive Google's Gemini models via a CLI-compatible shim while preserving Claude-compatible stream-json so the existing UI and parser remain unchanged.
+> **Last Updated:** 2026-01-14
+> **Implementation Status:** ~65% complete
 
-## Integration Strategy (Shim-First)
-1. **Primary Path:** `yume-cli --provider gemini` (emits Claude-compatible stream-json).
-2. **Optional Path:** Wrap a stable Gemini CLI *only if* it can be normalized without screen scraping.
-3. **No SDKs in Server:** Any REST/SDK usage lives inside `yume-cli`, not the Rust core.
+## Implementation Summary
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Provider Definition | ✅ Complete | `models.ts` with Gemini 2.5 Flash/Pro |
+| Provider Service | ✅ Complete | Enable/disable Gemini provider |
+| Provider UI | ✅ Complete | Settings tab, selector, no-provider modal |
+| CLI Detection | ✅ Complete | `check_cli_installed('gemini')` |
+| Backend Spawner | ✅ Complete | `yume_cli_spawner.rs` with Gemini enum |
+| yume-cli Provider | 🔄 50% | `src-yume-cli/src/providers/gemini.ts` |
+| Stream Translation | ❌ Pending | Gemini → Claude format |
+| Auth Verification | ❌ Pending | `gemini auth status` check |
+
+## Objective
+Enable Yume to drive Google's Gemini models via the official `gemini` CLI from the `@google/gemini-cli` npm package. A thin `yume-cli` shim spawns the official CLI and translates its stream-json output to Claude-compatible format.
+
+## Integration Strategy (Official CLI + Shim)
+1. **Primary Path:** `yume-cli --provider gemini` spawns the official `gemini` CLI binary.
+2. **Translation Layer:** `yume-cli` parses the Gemini stream-json output and translates it to Claude-compatible format.
+3. **No Direct API Calls:** `yume-cli` does not make REST calls to Gemini API - it delegates to the official CLI.
+4. **No SDKs in Server:** No `@google/generative-ai` or other SDK usage in Yume's server or Rust core.
 
 ## Authentication
-Yume does **not** store API keys. Auth is sourced from the host machine:
-- **Preferred:** `gcloud auth print-access-token`
-- **Fallback:** Application Default Credentials (`GOOGLE_APPLICATION_CREDENTIALS`)
-- **Optional:** `GOOGLE_API_KEY` (env var only; not stored)
+Authentication is handled entirely by the official `gemini` CLI. Yume does **not** manage API keys or tokens.
 
-### Auth Research Checklist (All Platforms)
-- Verify token acquisition on macOS, Windows, and Linux.
-- Confirm token refresh behavior and how to detect expiration.
-- Confirm minimal permissions required for Gemini API access.
+### User Setup (One-Time)
+```bash
+# Install the official Gemini CLI
+npm install -g @google/gemini-cli
 
-### Token Caching
-
-`gcloud auth print-access-token` is slow (~500ms). Cache tokens in memory:
-
-```typescript
-class GcloudAuthCache {
-  private token: string | null = null;
-  private expiresAt: number = 0;
-  private refreshPromise: Promise<string> | null = null;
-
-  async getToken(): Promise<string> {
-    const now = Date.now();
-
-    // Return cached token if still valid (5 min buffer)
-    if (this.token && now < this.expiresAt - 300_000) {
-      return this.token;
-    }
-
-    // Deduplicate concurrent refresh requests
-    if (this.refreshPromise) {
-      return this.refreshPromise;
-    }
-
-    this.refreshPromise = this.refresh();
-    try {
-      return await this.refreshPromise;
-    } finally {
-      this.refreshPromise = null;
-    }
-  }
-
-  private async refresh(): Promise<string> {
-    try {
-      const { stdout } = await execAsync('gcloud auth print-access-token', {
-        timeout: 10_000,
-      });
-
-      this.token = stdout.trim();
-      // Google tokens expire in 1 hour, cache for 55 minutes
-      this.expiresAt = Date.now() + 55 * 60 * 1000;
-
-      return this.token;
-    } catch (error) {
-      throw new Error(`Failed to get gcloud token: ${error.message}`);
-    }
-  }
-
-  invalidate(): void {
-    this.token = null;
-    this.expiresAt = 0;
-  }
-}
-
-// Singleton instance
-export const gcloudAuth = new GcloudAuthCache();
+# Authenticate (user runs this separately)
+gemini auth login
 ```
 
-### Auth Fallback Chain
-
+### Auth Verification in yume-cli
 ```typescript
-async function getGeminiAuth(): Promise<{ type: 'bearer' | 'api-key'; value: string }> {
-  // 1. Try gcloud CLI (preferred)
+// Check if gemini CLI is installed and authenticated
+async function verifyGeminiCLI(): Promise<{ installed: boolean; authenticated: boolean }> {
   try {
-    const token = await gcloudAuth.getToken();
-    return { type: 'bearer', value: token };
-  } catch {
-    // gcloud not available or not logged in
-  }
-
-  // 2. Try ADC file
-  const adcPath = process.env.GOOGLE_APPLICATION_CREDENTIALS;
-  if (adcPath && await fileExists(adcPath)) {
-    try {
-      const token = await getTokenFromADC(adcPath);
-      return { type: 'bearer', value: token };
-    } catch {
-      // ADC file invalid
+    // Check if binary exists
+    const { exitCode } = await execAsync('gemini --version');
+    if (exitCode !== 0) {
+      return { installed: false, authenticated: false };
     }
-  }
 
-  // 3. Try API key (least preferred - no user identity)
-  const apiKey = process.env.GOOGLE_API_KEY;
-  if (apiKey) {
-    return { type: 'api-key', value: apiKey };
-  }
+    // Check auth status (example command - adjust based on actual CLI)
+    const { stdout, exitCode: authExitCode } = await execAsync('gemini auth status');
+    const authenticated = authExitCode === 0 && !stdout.includes('not authenticated');
 
-  throw new Error(
-    'No Gemini authentication found. Run `gcloud auth login` or set GOOGLE_API_KEY.'
-  );
+    return { installed: true, authenticated };
+  } catch (error) {
+    return { installed: false, authenticated: false };
+  }
 }
 ```
 
-### 401 Handling
+### Auth Status Display in UI
+Yume's settings should show:
+- Whether `gemini` CLI is installed
+- Whether the user is authenticated
+- Prompt to run `gemini auth login` if not authenticated
 
-On 401 response, invalidate cache and retry once:
+## CLI Spawning
 
+### Basic Usage
 ```typescript
-async function callGeminiWithRetry(request: GeminiRequest): Promise<Response> {
-  const auth = await getGeminiAuth();
-  let response = await callGemini(request, auth);
+// Spawn the official gemini CLI
+async function spawnGeminiCLI(options: {
+  model: string;
+  prompt: string;
+  sessionId?: string;
+  cwd: string;
+}): Promise<ChildProcess> {
+  // Construct arguments for official gemini CLI
+  const args = [
+    '--model', options.model,
+    '--output-format', 'stream-json',  // If supported
+    '--prompt', options.prompt,
+  ];
 
-  if (response.status === 401 && auth.type === 'bearer') {
-    // Token may have expired, force refresh
-    gcloudAuth.invalidate();
-    const newAuth = await getGeminiAuth();
-    response = await callGemini(request, newAuth);
+  if (options.sessionId) {
+    args.push('--session-id', options.sessionId);
   }
 
-  return response;
+  const process = spawn('gemini', args, {
+    cwd: options.cwd,
+    stdio: ['pipe', 'pipe', 'pipe'],
+  });
+
+  return process;
+}
+```
+
+### Stream Translation
+The official `gemini` CLI emits its own stream-json format. `yume-cli` must translate this to Claude-compatible format:
+
+```typescript
+interface GeminiStreamMessage {
+  type: 'text' | 'function_call' | 'function_result' | 'usage' | 'done';
+  content?: string;
+  // ... Gemini-specific fields
+}
+
+interface ClaudeStreamMessage {
+  type: 'text' | 'tool_use' | 'tool_result' | 'usage' | 'result';
+  content?: string;
+  // ... Claude-specific fields
+}
+
+function translateGeminiToClaudeMessage(geminiMsg: GeminiStreamMessage): ClaudeStreamMessage | null {
+  switch (geminiMsg.type) {
+    case 'text':
+      return { type: 'text', content: geminiMsg.content };
+
+    case 'function_call':
+      // Translate function_call to tool_use
+      return {
+        type: 'tool_use',
+        id: generateToolUseId(),
+        name: geminiMsg.functionName,
+        input: geminiMsg.arguments,
+      };
+
+    case 'function_result':
+      // Translate to tool_result
+      return {
+        type: 'tool_result',
+        tool_use_id: geminiMsg.callId,
+        content: geminiMsg.result,
+      };
+
+    case 'usage':
+      return normalizeGeminiUsage(geminiMsg);
+
+    case 'done':
+      return { type: 'result', is_error: false };
+
+    default:
+      return null;
+  }
 }
 ```
 
@@ -204,8 +219,13 @@ function normalizeGeminiUsage(usage: GeminiUsage): TokenUsage {
 
 ## Yume Integration Points
 - **Rust/Tauri:** Add a Gemini spawner or adapter that launches `yume-cli --provider gemini` with `--model`, `--cwd`, and `--session-id`.
-- **Server Adapter:** If using the Node server path, add a shim adapter that spawns `yume-cli` and forwards stdout to the existing stream parser.
-- **Settings:** Allow model selection and optional `gcloud` path override.
+- **yume-cli Shim:** The shim spawns the official `gemini` CLI binary and translates its stream-json output.
+- **Server Adapter:** Node server spawns `yume-cli --provider gemini` and forwards translated stdout to the existing stream parser.
+- **Settings:**
+  - CLI detection: Check if `gemini` CLI is installed
+  - Auth status: Check if user is authenticated
+  - Model selection dropdown
+  - Link to installation instructions (`npm install -g @google/gemini-cli`)
 - **Event Flow:** Reuse `claude-message:{sessionId}` events to avoid frontend refactors.
 
 ## Research Checklist
@@ -217,7 +237,28 @@ function normalizeGeminiUsage(usage: GeminiUsage): TokenUsage {
 - Confirm safety settings defaults and override options.
 
 ## Implementation Steps
-1. Implement `GeminiStrategy` inside `yume-cli` using REST streaming.
-2. Normalize output to Claude-compatible stream-json.
-3. Wire `adapters/shim.js` to spawn `yume-cli --provider gemini`.
-4. Run golden transcript tests on macOS, Windows, Linux.
+1. Install and test the official `@google/gemini-cli` package to understand its stream-json format.
+2. Implement CLI spawner in `yume-cli` that launches `gemini` binary with appropriate args.
+3. Build stream-json translation layer to convert Gemini messages to Claude-compatible format.
+4. Implement CLI detection and auth verification commands.
+5. Wire `yume-cli --provider gemini` into Yume's server adapter.
+6. Add UI for CLI installation status and auth verification.
+7. Run golden transcript tests on macOS, Windows, Linux.
+
+## User Documentation
+
+Users will need to:
+1. Install the Gemini CLI globally:
+   ```bash
+   npm install -g @google/gemini-cli
+   ```
+
+2. Authenticate with their Google account:
+   ```bash
+   gemini auth login
+   ```
+
+3. Select Gemini as their provider in Yume's settings
+4. Choose a Gemini model (2.0 Flash, 2.0 Thinking, 1.5 Pro, 1.5 Flash)
+
+Yume will verify the CLI is installed and authenticated before allowing Gemini sessions to start.

@@ -38,6 +38,10 @@
     "build:server:linux": "node scripts/build-server-binary.cjs --platform=linux",
     "build:server:windows": "node scripts/build-server-binary.cjs --platform=windows",
     "build:server:all": "node scripts/build-server-binary.cjs",
+    "build:yume-cli": "cd src-yume-cli && npm run build",
+    "build:yume-cli:binary:macos": "cd src-yume-cli && npx pkg dist/index.js --targets node18-macos-arm64 --output ../src-tauri/resources/yume-cli-macos-arm64 && npx pkg dist/index.js --targets node18-macos-x64 --output ../src-tauri/resources/yume-cli-macos-x64",
+    "build:yume-cli:binary:win": "cd src-yume-cli && npx pkg dist/index.js --targets node18-win-x64 --output ../src-tauri/resources/yume-cli-windows-x64.exe",
+    "build:yume-cli:binary:linux": "cd src-yume-cli && npx pkg dist/index.js --targets node18-linux-x64 --output ../src-tauri/resources/yume-cli-linux-x64",
     "test:session-loading": "node test-session-loading.js"
   },
   "keywords": [

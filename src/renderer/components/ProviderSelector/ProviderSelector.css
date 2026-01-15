@@ -1,0 +1,103 @@
+.provider-selector {
+  position: relative;
+  display: inline-flex;
+}
+
+.provider-selector.disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.provider-selector-trigger {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: var(--bg-tertiary, rgba(255, 255, 255, 0.05));
+  border: 1px solid var(--border-primary, rgba(255, 255, 255, 0.1));
+  border-radius: 6px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.7));
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.provider-selector-trigger:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.08));
+  border-color: var(--border-hover, rgba(255, 255, 255, 0.15));
+}
+
+.provider-selector-trigger:focus {
+  outline: none;
+  border-color: var(--accent-primary, #8b5cf6);
+}
+
+.provider-icon {
+  font-size: 14px;
+  color: var(--accent-primary, #8b5cf6);
+}
+
+.provider-name {
+  text-transform: lowercase;
+}
+
+.provider-chevron {
+  font-size: 8px;
+  opacity: 0.5;
+}
+
+.provider-dropdown {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 180px;
+  background: var(--bg-secondary, #1a1a1a);
+  border: 1px solid var(--border-primary, rgba(255, 255, 255, 0.1));
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  overflow: hidden;
+}
+
+.provider-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+  color: var(--text-primary, #fff);
+  cursor: pointer;
+  transition: background 0.1s ease;
+  text-align: left;
+}
+
+.provider-option:hover {
+  background: var(--bg-hover, rgba(255, 255, 255, 0.05));
+}
+
+.provider-option.selected {
+  background: var(--accent-primary-alpha, rgba(139, 92, 246, 0.15));
+}
+
+.provider-option.selected .provider-icon {
+  color: var(--accent-primary, #8b5cf6);
+}
+
+.provider-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.provider-option-name {
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.provider-option-desc {
+  font-size: 11px;
+  color: var(--text-secondary, rgba(255, 255, 255, 0.5));
+}

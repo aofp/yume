@@ -1,17 +1,17 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::path::PathBuf;
 use std::sync::Arc;
 use tokio::sync::Mutex;
-use std::path::PathBuf;
 
 use crate::app::APP_ID;
-use std::fs;
 use chrono::{DateTime, Utc};
+use std::fs;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct CompactionConfig {
-    pub auto_threshold: f32,     // 60% default (like Claude Code ~38% buffer)
-    pub force_threshold: f32,    // 65% default
+    pub auto_threshold: f32,  // 60% default (like Claude Code ~38% buffer)
+    pub force_threshold: f32, // 65% default
     pub preserve_context: bool,
     pub generate_manifest: bool,
 }
@@ -19,7 +19,7 @@ pub struct CompactionConfig {
 impl Default for CompactionConfig {
     fn default() -> Self {
         Self {
-            auto_threshold: 0.60,  // 60% - conservative auto-compact (38-40% buffer like Claude Code)
+            auto_threshold: 0.60, // 60% - conservative auto-compact (38-40% buffer like Claude Code)
             force_threshold: 0.65, // 65% - force compact
             preserve_context: true,
             generate_manifest: true,
@@ -73,22 +73,26 @@ pub struct CompactionManager {
 impl CompactionManager {
     pub fn new() -> Self {
         let manifest_dir = Self::get_manifest_dir();
-        
+
         // Create directory with proper error handling
         if let Err(e) = fs::create_dir_all(&manifest_dir) {
-            tracing::warn!("Failed to create manifest directory at {:?}: {}", manifest_dir, e);
+            tracing::warn!(
+                "Failed to create manifest directory at {:?}: {}",
+                manifest_dir,
+                e
+            );
             // Continue anyway - operations will fail later if directory can't be created
         } else {
             tracing::info!("Manifest directory ready at {:?}", manifest_dir);
         }
-        
+
         Self {
             config: Arc::new(Mutex::new(CompactionConfig::default())),
             states: Arc::new(Mutex::new(HashMap::new())),
             manifest_dir,
         }
     }
-    
+
     fn get_manifest_dir() -> PathBuf {
         #[cfg(target_os = "macos")]
         {
@@ -96,14 +100,18 @@ impl CompactionManager {
                 tracing::warn!("HOME environment variable not found, using current directory");
                 ".".to_string()
             });
-            PathBuf::from(home).join(format!(".{}", APP_ID)).join("manifests")
+            PathBuf::from(home)
+                .join(format!(".{}", APP_ID))
+                .join("manifests")
         }
 
         #[cfg(target_os = "windows")]
         {
             // Try APPDATA first, then USERPROFILE, then fallback to current directory
             let app_data = std::env::var("APPDATA")
-                .or_else(|_| std::env::var("USERPROFILE").map(|p| format!("{}\\AppData\\Roaming", p)))
+                .or_else(|_| {
+                    std::env::var("USERPROFILE").map(|p| format!("{}\\AppData\\Roaming", p))
+                })
                 .unwrap_or_else(|_| {
                     tracing::warn!("APPDATA/USERPROFILE not found, using current directory");
                     ".".to_string()
@@ -117,24 +125,26 @@ impl CompactionManager {
                 tracing::warn!("HOME environment variable not found, using current directory");
                 ".".to_string()
             });
-            PathBuf::from(home).join(format!(".{}", APP_ID)).join("manifests")
+            PathBuf::from(home)
+                .join(format!(".{}", APP_ID))
+                .join("manifests")
         }
     }
-    
+
     pub async fn update_context_usage(&self, session_id: String, usage: f32) -> CompactionAction {
         let config = self.config.lock().await;
         let mut states = self.states.lock().await;
 
-        let state = states.entry(session_id.clone()).or_insert_with(|| {
-            CompactionState {
+        let state = states
+            .entry(session_id.clone())
+            .or_insert_with(|| CompactionState {
                 session_id: session_id.clone(),
                 context_usage: usage,
                 last_compaction: None,
                 auto_triggered: false,
                 force_triggered: false,
                 manifest_saved: false,
-            }
-        });
+            });
 
         state.context_usage = usage;
 
@@ -165,58 +175,61 @@ impl CompactionManager {
             tracing::info!("Reset compaction flags for session {}", session_id);
         }
     }
-    
-    pub async fn save_manifest(&self, session_id: &str, manifest: ContextManifest) -> Result<String, String> {
+
+    pub async fn save_manifest(
+        &self,
+        session_id: &str,
+        manifest: ContextManifest,
+    ) -> Result<String, String> {
         let mut states = self.states.lock().await;
-        
+
         // Ensure directory exists (in case it was deleted)
         fs::create_dir_all(&self.manifest_dir)
             .map_err(|e| format!("Failed to create manifest directory: {}", e))?;
-        
+
         // Create manifest file path
         let manifest_file = self.manifest_dir.join(format!("{}.json", session_id));
-        
+
         // Serialize manifest
         let manifest_json = serde_json::to_string_pretty(&manifest)
             .map_err(|e| format!("Failed to serialize manifest: {}", e))?;
-        
+
         // Save to file
         fs::write(&manifest_file, manifest_json)
             .map_err(|e| format!("Failed to write manifest: {}", e))?;
-        
+
         // Update state
         if let Some(state) = states.get_mut(session_id) {
             state.manifest_saved = true;
         }
-        
+
         Ok(manifest_file.to_string_lossy().to_string())
     }
-    
+
     pub async fn load_manifest(&self, session_id: &str) -> Result<ContextManifest, String> {
         let manifest_file = self.manifest_dir.join(format!("{}.json", session_id));
-        
+
         let manifest_json = fs::read_to_string(&manifest_file)
             .map_err(|e| format!("Failed to read manifest: {}", e))?;
-        
-        serde_json::from_str(&manifest_json)
-            .map_err(|e| format!("Failed to parse manifest: {}", e))
+
+        serde_json::from_str(&manifest_json).map_err(|e| format!("Failed to parse manifest: {}", e))
     }
-    
+
     pub async fn reset_session(&self, session_id: &str) {
         let mut states = self.states.lock().await;
         states.remove(session_id);
     }
-    
+
     pub async fn get_state(&self, session_id: &str) -> Option<CompactionState> {
         let states = self.states.lock().await;
         states.get(session_id).cloned()
     }
-    
+
     pub async fn update_config(&self, config: CompactionConfig) {
         let mut current_config = self.config.lock().await;
         *current_config = config;
     }
-    
+
     pub async fn get_config(&self) -> CompactionConfig {
         let config = self.config.lock().await;
         config.clone()
@@ -226,10 +239,10 @@ impl CompactionManager {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum CompactionAction {
     None,
-    Notice,       // deprecated
-    Warning,      // 55%+
-    AutoTrigger,  // 60%+ (38% buffer like Claude Code)
-    Force,        // 65%+
+    Notice,      // deprecated
+    Warning,     // 55%+
+    AutoTrigger, // 60%+ (38% buffer like Claude Code)
+    Force,       // 65%+
 }
 
 impl CompactionAction {
@@ -237,13 +250,23 @@ impl CompactionAction {
         match self {
             CompactionAction::None => None,
             CompactionAction::Notice => None, // deprecated
-            CompactionAction::Warning => Some("Context usage at 55%. Auto-compact will trigger at 60%.".to_string()),
-            CompactionAction::AutoTrigger => Some("Context usage at 60%. Auto-compacting (38% buffer reserved like Claude Code).".to_string()),
-            CompactionAction::Force => Some("Context usage at 65%. Force-compacting to prevent context overflow.".to_string()),
+            CompactionAction::Warning => {
+                Some("Context usage at 55%. Auto-compact will trigger at 60%.".to_string())
+            }
+            CompactionAction::AutoTrigger => Some(
+                "Context usage at 60%. Auto-compacting (38% buffer reserved like Claude Code)."
+                    .to_string(),
+            ),
+            CompactionAction::Force => Some(
+                "Context usage at 65%. Force-compacting to prevent context overflow.".to_string(),
+            ),
         }
     }
-    
+
     pub fn should_trigger_compact(&self) -> bool {
-        matches!(self, CompactionAction::AutoTrigger | CompactionAction::Force)
+        matches!(
+            self,
+            CompactionAction::AutoTrigger | CompactionAction::Force
+        )
     }
 }

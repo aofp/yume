@@ -1,8 +1,8 @@
-use serde::{Deserialize, Serialize};
 use crate::app::APP_ID;
+use serde::{Deserialize, Serialize};
+use std::io::Write;
 use std::process::{Command, Stdio};
 use std::time::Duration;
-use std::io::Write;
 use tokio::time::timeout;
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -90,7 +90,8 @@ impl HookExecutor {
 
         // Write input to stdin
         if let Some(mut stdin) = child.stdin.take() {
-            stdin.write_all(input_json.as_bytes())
+            stdin
+                .write_all(input_json.as_bytes())
                 .map_err(|e| format!("Failed to write to stdin: {}", e))?;
         }
 
@@ -149,7 +150,7 @@ impl HookExecutor {
             "node" | "javascript" => "js",
             _ => "sh",
         };
-        
+
         let script_path = temp_dir.join(format!(
             "{}_hook_{}.{}",
             APP_ID,
@@ -174,11 +175,8 @@ impl HookExecutor {
         }
 
         // Execute the script
-        let result = Self::execute(
-            script_path.to_str().unwrap_or_default(),
-            input,
-            timeout_ms,
-        ).await;
+        let result =
+            Self::execute(script_path.to_str().unwrap_or_default(), input, timeout_ms).await;
 
         // Clean up temp file
         let _ = std::fs::remove_file(script_path);
@@ -253,7 +251,7 @@ exit 0
 
         let result = HookExecutor::execute_inline(script, &input, 5000, "bash").await;
         assert!(result.is_ok());
-        
+
         let response = result.unwrap();
         assert_eq!(response.action, "continue");
         assert_eq!(response.exit_code, 0);
@@ -262,8 +260,17 @@ exit 0
     #[test]
     fn test_matches_tool() {
         assert!(HookExecutor::matches_tool("Edit", &None));
-        assert!(HookExecutor::matches_tool("Edit", &Some("Edit".to_string())));
-        assert!(HookExecutor::matches_tool("Edit", &Some("Edit|Write".to_string())));
-        assert!(!HookExecutor::matches_tool("Edit", &Some("Write".to_string())));
+        assert!(HookExecutor::matches_tool(
+            "Edit",
+            &Some("Edit".to_string())
+        ));
+        assert!(HookExecutor::matches_tool(
+            "Edit",
+            &Some("Edit|Write".to_string())
+        ));
+        assert!(!HookExecutor::matches_tool(
+            "Edit",
+            &Some("Write".to_string())
+        ));
     }
 }

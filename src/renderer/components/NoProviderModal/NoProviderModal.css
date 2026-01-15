@@ -1,0 +1,130 @@
+/* No Provider Modal - unclosable, minimal */
+
+.no-provider-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.85);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100010;
+  animation: fadeIn 0.2s ease;
+  cursor: default;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.no-provider-modal {
+  background: var(--background-color);
+  border: 1px solid var(--fg-15);
+  border-radius: 8px;
+  width: 90%;
+  max-width: 200px;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.no-provider-header {
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--fg-10);
+}
+
+.no-provider-header h3 {
+  color: var(--accent-color);
+  font-size: var(--text-sm);
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+  text-align: center;
+}
+
+.no-provider-content {
+  padding: 10px;
+}
+
+.no-provider-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+/* btn-stats style buttons */
+.no-provider-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 3px 8px;
+  background: transparent;
+  border: 1px solid var(--fg-20);
+  color: var(--fg-60);
+  border-radius: 4px;
+  font-size: var(--text-sm);
+  font-family: var(--font-mono);
+  text-transform: lowercase;
+  cursor: default;
+  line-height: 9pt;
+}
+
+.no-provider-card:hover:not(.disabled-state) {
+  background: var(--fg-05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 1);
+}
+
+.no-provider-card.enabled {
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: rgba(var(--accent-rgb), 0.5);
+  color: var(--accent-color);
+}
+
+.no-provider-card.disabled-state {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.no-provider-card-name {
+  font-size: var(--text-sm);
+}
+
+.no-provider-card-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.no-provider-status.installed {
+  color: var(--positive-color);
+  display: flex;
+  align-items: center;
+}
+
+.no-provider-refresh {
+  background: transparent;
+  border: none;
+  color: var(--fg-30);
+  padding: 2px;
+  cursor: default;
+  display: flex;
+  align-items: center;
+}
+
+.no-provider-refresh:hover {
+  color: var(--accent-color);
+}
+
+.no-provider-refresh.spinning svg {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}

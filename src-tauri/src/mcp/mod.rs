@@ -1,7 +1,7 @@
+use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::fs;
 use std::path::PathBuf;
-use serde::{Deserialize, Serialize};
 use tauri::AppHandle;
 
 use crate::app::APP_ID;
@@ -81,18 +81,16 @@ impl MCPManager {
 
         let content = fs::read_to_string(&self.config_path)
             .map_err(|e| format!("Failed to read config: {}", e))?;
-        
-        serde_json::from_str(&content)
-            .map_err(|e| format!("Failed to parse config: {}", e))
+
+        serde_json::from_str(&content).map_err(|e| format!("Failed to parse config: {}", e))
     }
 
     fn save_config(&self, config: &MCPConfig) -> Result<(), String> {
         let json = serde_json::to_string_pretty(config)
             .map_err(|e| format!("Failed to serialize config: {}", e))?;
-        
-        fs::write(&self.config_path, json)
-            .map_err(|e| format!("Failed to write config: {}", e))?;
-        
+
+        fs::write(&self.config_path, json).map_err(|e| format!("Failed to write config: {}", e))?;
+
         Ok(())
     }
 
@@ -103,7 +101,7 @@ impl MCPManager {
 
     pub fn add_server(&self, server: MCPServer) -> Result<AddServerResult, String> {
         let mut config = self.load_config()?;
-        
+
         // Check if server with same name already exists
         if config.servers.iter().any(|s| s.name == server.name) {
             return Ok(AddServerResult {
@@ -112,7 +110,7 @@ impl MCPManager {
                 error: Some(format!("Server '{}' already exists", server.name)),
             });
         }
-        
+
         // Validate based on transport type
         match server.transport.as_str() {
             "stdio" => {
@@ -141,10 +139,10 @@ impl MCPManager {
                 });
             }
         }
-        
+
         config.servers.push(server);
         self.save_config(&config)?;
-        
+
         Ok(AddServerResult {
             success: true,
             message: Some("Server added successfully".to_string()),
@@ -154,25 +152,27 @@ impl MCPManager {
 
     pub fn remove_server(&self, name: &str) -> Result<String, String> {
         let mut config = self.load_config()?;
-        
+
         let initial_count = config.servers.len();
         config.servers.retain(|s| s.name != name);
-        
+
         if config.servers.len() == initial_count {
             return Err(format!("Server '{}' not found", name));
         }
-        
+
         self.save_config(&config)?;
         Ok(format!("Server '{}' removed successfully", name))
     }
 
     pub fn test_connection(&self, name: &str) -> Result<String, String> {
         let config = self.load_config()?;
-        
-        let server = config.servers.iter()
+
+        let server = config
+            .servers
+            .iter()
             .find(|s| s.name == name)
             .ok_or_else(|| format!("Server '{}' not found", name))?;
-        
+
         match server.transport.as_str() {
             "stdio" => {
                 // Test stdio connection by checking if command exists
@@ -184,7 +184,7 @@ impl MCPManager {
                     } else {
                         parts[0]
                     };
-                    
+
                     // Check if command exists in PATH
                     #[cfg(target_os = "windows")]
                     let which_result = {
@@ -201,9 +201,10 @@ impl MCPManager {
                         .output();
 
                     match which_result {
-                        Ok(output) if output.status.success() => {
-                            Ok(format!("Connection test successful: '{}' command found", base_command))
-                        }
+                        Ok(output) if output.status.success() => Ok(format!(
+                            "Connection test successful: '{}' command found",
+                            base_command
+                        )),
                         _ => {
                             // Try to run the command with --version or --help to test
                             #[cfg(target_os = "windows")]
@@ -221,8 +222,13 @@ impl MCPManager {
                                 .output();
 
                             match version_result {
-                                Ok(_) => Ok(format!("Connection test successful: '{}' is available", base_command)),
-                                Err(e) => Err(format!("Command '{}' not found: {}", base_command, e))
+                                Ok(_) => Ok(format!(
+                                    "Connection test successful: '{}' is available",
+                                    base_command
+                                )),
+                                Err(e) => {
+                                    Err(format!("Command '{}' not found: {}", base_command, e))
+                                }
                             }
                         }
                     }
@@ -235,7 +241,10 @@ impl MCPManager {
                 if let Some(ref url) = server.url {
                     // For now, just validate the URL format
                     if url.starts_with("http://") || url.starts_with("https://") {
-                        Ok(format!("SSE endpoint '{}' appears valid (actual connection test pending)", url))
+                        Ok(format!(
+                            "SSE endpoint '{}' appears valid (actual connection test pending)",
+                            url
+                        ))
                     } else {
                         Err(format!("Invalid URL format: {}", url))
                     }
@@ -243,13 +252,13 @@ impl MCPManager {
                     Err("No URL specified for SSE transport".to_string())
                 }
             }
-            _ => Err(format!("Unknown transport type: {}", server.transport))
+            _ => Err(format!("Unknown transport type: {}", server.transport)),
         }
     }
 
     pub fn import_from_claude_desktop(&self) -> Result<ImportResult, String> {
         let claude_config_path = Self::get_claude_desktop_config_path()?;
-        
+
         if !claude_config_path.exists() {
             return Ok(ImportResult {
                 imported: 0,
@@ -260,14 +269,14 @@ impl MCPManager {
 
         let content = fs::read_to_string(&claude_config_path)
             .map_err(|e| format!("Failed to read Claude Desktop config: {}", e))?;
-        
+
         let claude_config: serde_json::Value = serde_json::from_str(&content)
             .map_err(|e| format!("Failed to parse Claude Desktop config: {}", e))?;
-        
+
         let mut imported = 0;
         let mut failed = 0;
         let mut errors = Vec::new();
-        
+
         // Claude Desktop config has "mcpServers" key
         if let Some(mcp_servers) = claude_config.get("mcpServers").and_then(|v| v.as_object()) {
             for (name, server_config) in mcp_servers {
@@ -280,7 +289,7 @@ impl MCPManager {
                         continue;
                     }
                 };
-                
+
                 // Try to add the server
                 match self.add_server(server) {
                     Ok(result) if result.success => imported += 1,
@@ -297,24 +306,33 @@ impl MCPManager {
                 }
             }
         }
-        
+
         Ok(ImportResult {
             imported,
             failed,
-            errors: if errors.is_empty() { None } else { Some(errors) },
+            errors: if errors.is_empty() {
+                None
+            } else {
+                Some(errors)
+            },
         })
     }
 
-    fn convert_claude_server(name: String, config: &serde_json::Value) -> Result<MCPServer, String> {
+    fn convert_claude_server(
+        name: String,
+        config: &serde_json::Value,
+    ) -> Result<MCPServer, String> {
         // Claude Desktop format typically has:
         // { "command": "...", "args": [...], "env": {...} }
-        
-        let command = config.get("command")
+
+        let command = config
+            .get("command")
             .and_then(|v| v.as_str())
             .ok_or("Missing command")?
             .to_string();
-        
-        let args = config.get("args")
+
+        let args = config
+            .get("args")
             .and_then(|v| v.as_array())
             .map(|arr| {
                 arr.iter()
@@ -322,18 +340,17 @@ impl MCPManager {
                     .collect()
             })
             .unwrap_or_default();
-        
-        let env = config.get("env")
+
+        let env = config
+            .get("env")
             .and_then(|v| v.as_object())
             .map(|obj| {
                 obj.iter()
-                    .filter_map(|(k, v)| {
-                        v.as_str().map(|s| (k.clone(), s.to_string()))
-                    })
+                    .filter_map(|(k, v)| v.as_str().map(|s| (k.clone(), s.to_string())))
                     .collect()
             })
             .unwrap_or_default();
-        
+
         Ok(MCPServer {
             name,
             transport: "stdio".to_string(), // Claude Desktop only supports stdio
@@ -364,7 +381,7 @@ impl MCPManager {
                     return Ok(standard_path);
                 }
             }
-            
+
             // Try LOCALAPPDATA for Windows Store version
             if let Ok(localappdata) = std::env::var("LOCALAPPDATA") {
                 let store_path = PathBuf::from(localappdata)
@@ -374,30 +391,28 @@ impl MCPManager {
                     return Ok(store_path);
                 }
             }
-            
+
             // Return the standard path even if not found (for error message)
-            let appdata = std::env::var("APPDATA")
-                .map_err(|_| "Failed to get APPDATA directory")?;
+            let appdata =
+                std::env::var("APPDATA").map_err(|_| "Failed to get APPDATA directory")?;
             Ok(PathBuf::from(appdata)
                 .join("Claude")
                 .join("claude_desktop_config.json"))
         }
-        
+
         #[cfg(target_os = "macos")]
         {
-            let home = std::env::var("HOME")
-                .map_err(|_| "Failed to get HOME directory")?;
+            let home = std::env::var("HOME").map_err(|_| "Failed to get HOME directory")?;
             Ok(PathBuf::from(home)
                 .join("Library")
                 .join("Application Support")
                 .join("Claude")
                 .join("claude_desktop_config.json"))
         }
-        
+
         #[cfg(not(any(target_os = "windows", target_os = "macos")))]
         {
-            let home = std::env::var("HOME")
-                .map_err(|_| "Failed to get HOME directory")?;
+            let home = std::env::var("HOME").map_err(|_| "Failed to get HOME directory")?;
             Ok(PathBuf::from(home)
                 .join(".config")
                 .join("Claude")

@@ -20,23 +20,24 @@ pub async fn execute_hook(
     let timeout = timeout_ms.unwrap_or(5000);
 
     // Determine script type from content
-    let script_type = if script.contains("#!/usr/bin/env python") || script.contains("#!/usr/bin/python") {
-        "python"
-    } else if script.contains("#!/usr/bin/env node") || script.starts_with("const ") || script.starts_with("let ") {
-        "node"
-    } else {
-        "bash"
-    };
+    let script_type =
+        if script.contains("#!/usr/bin/env python") || script.contains("#!/usr/bin/python") {
+            "python"
+        } else if script.contains("#!/usr/bin/env node")
+            || script.starts_with("const ")
+            || script.starts_with("let ")
+        {
+            "node"
+        } else {
+            "bash"
+        };
 
     HookExecutor::execute_inline(&script, &input, timeout, script_type).await
 }
 
 /// Test a hook script with sample data
 #[tauri::command]
-pub async fn test_hook(
-    script: String,
-    event: String,
-) -> Result<String, String> {
+pub async fn test_hook(script: String, event: String) -> Result<String, String> {
     // Create sample input based on event type
     let sample_data = match event.as_str() {
         "pre_tool_use" => serde_json::json!({
@@ -90,14 +91,12 @@ pub async fn test_hook(
     };
 
     match HookExecutor::execute_inline(&script, &input, 5000, script_type).await {
-        Ok(response) => {
-            Ok(format!(
-                "Hook executed successfully!\n\nAction: {}\nMessage: {}\nExit Code: {}",
-                response.action,
-                response.message.unwrap_or_else(|| "No message".to_string()),
-                response.exit_code
-            ))
-        }
+        Ok(response) => Ok(format!(
+            "Hook executed successfully!\n\nAction: {}\nMessage: {}\nExit Code: {}",
+            response.action,
+            response.message.unwrap_or_else(|| "No message".to_string()),
+            response.exit_code
+        )),
         Err(e) => Err(format!("Hook execution failed: {}", e)),
     }
 }

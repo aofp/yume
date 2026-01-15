@@ -251,7 +251,7 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
           <div
             key={cmd.name}
             className={`command-item ${index === selectedIndex ? 'selected' : ''}`}
-            onClick={() => handleSelect(cmd)}
+            onClick={() => handleSelect(cmd, true)}
             onMouseEnter={() => setSelectedIndex(index)}
           >
             <span className="command-icon">{cmd.icon}</span>

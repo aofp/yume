@@ -188,7 +188,7 @@
 .activate-button:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
-  background: rgba(var(--accent-rgb), 0.05);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 @keyframes fadeIn {

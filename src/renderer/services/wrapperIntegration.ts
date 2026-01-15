@@ -235,21 +235,22 @@ function isCompactResult(message: any): boolean {
   // Compact result is detected by:
   // 1. type === 'result'
   // 2. Zero usage tokens (both input and output are 0) - THE definitive indicator
+  // 3. OR wrapper_compact flag is already set (from server)
   // Note: Claude may return non-empty result with its own summary, so don't check result === ''
   if (message.type !== 'result') return false;
 
+  // Check if server already marked this as compact
+  if (message.wrapper_compact) return true;
+
   // Primary check: zero usage tokens - the definitive indicator of compact
   // Compact results have 0 input and 0 output tokens because the context was reset
+  // NOTE: Do NOT use num_turns or cache_read as secondary indicators - providers like
+  // Gemini legitimately return num_turns=1 and cache_read=0 for normal messages
   const hasZeroUsage = message.usage &&
     message.usage.input_tokens === 0 &&
     message.usage.output_tokens === 0;
 
-  // Secondary check: num_turns field combined with zero/missing cache tokens
-  // This catches edge cases where usage might not be present
-  const hasNumTurnsWithNoCache = message.num_turns !== undefined &&
-    (!message.usage?.cache_read_input_tokens || message.usage.cache_read_input_tokens === 0);
-
-  return hasZeroUsage || hasNumTurnsWithNoCache;
+  return hasZeroUsage;
 }
 
 function generateCompactSummary(session: SessionState, savedTokens: number, claudeResult?: string): string {

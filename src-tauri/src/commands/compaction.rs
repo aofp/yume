@@ -1,8 +1,10 @@
-use crate::compaction::{CompactionConfig, CompactionState, ContextManifest, ContextInfo, Decision};
+use crate::compaction::{
+    CompactionConfig, CompactionState, ContextInfo, ContextManifest, Decision,
+};
 use crate::state::AppState;
+use chrono::Utc;
 use serde_json::Value;
 use tauri::State;
-use chrono::Utc;
 
 #[tauri::command]
 pub async fn update_context_usage(
@@ -11,8 +13,10 @@ pub async fn update_context_usage(
     usage: f32,
 ) -> Result<String, String> {
     let compaction_manager = state.compaction_manager.lock().await;
-    let action = compaction_manager.update_context_usage(session_id.clone(), usage).await;
-    
+    let action = compaction_manager
+        .update_context_usage(session_id.clone(), usage)
+        .await;
+
     // If auto-trigger or force, return action for frontend to handle
     Ok(serde_json::to_string(&action).unwrap_or_else(|_| "null".to_string()))
 }
@@ -24,12 +28,14 @@ pub async fn save_context_manifest(
     manifest_data: Value,
 ) -> Result<String, String> {
     let compaction_manager = state.compaction_manager.lock().await;
-    
+
     // Parse manifest from JSON value
     let manifest: ContextManifest = serde_json::from_value(manifest_data)
         .map_err(|e| format!("Failed to parse manifest: {}", e))?;
-    
-    compaction_manager.save_manifest(&session_id, manifest).await
+
+    compaction_manager
+        .save_manifest(&session_id, manifest)
+        .await
 }
 
 #[tauri::command]
@@ -81,9 +87,7 @@ pub async fn update_compaction_config(
 }
 
 #[tauri::command]
-pub async fn get_compaction_config(
-    state: State<'_, AppState>,
-) -> Result<CompactionConfig, String> {
+pub async fn get_compaction_config(state: State<'_, AppState>) -> Result<CompactionConfig, String> {
     let compaction_manager = state.compaction_manager.lock().await;
     Ok(compaction_manager.get_config().await)
 }
@@ -102,13 +106,15 @@ pub async fn generate_context_manifest(
     // Parse decisions from JSON values
     let parsed_decisions: Vec<Decision> = decisions
         .into_iter()
-        .map(|d| serde_json::from_value(d).unwrap_or_else(|_| Decision {
-            decision: "Unknown".to_string(),
-            rationale: "Unknown".to_string(),
-            timestamp: Utc::now(),
-        }))
+        .map(|d| {
+            serde_json::from_value(d).unwrap_or_else(|_| Decision {
+                decision: "Unknown".to_string(),
+                rationale: "Unknown".to_string(),
+                timestamp: Utc::now(),
+            })
+        })
         .collect();
-    
+
     // Create manifest
     let manifest = ContextManifest {
         version: "1.0".to_string(),
@@ -125,10 +131,12 @@ pub async fn generate_context_manifest(
         entry_points: vec![],
         test_files: vec![],
     };
-    
+
     // Save it
     let compaction_manager = state.compaction_manager.lock().await;
-    compaction_manager.save_manifest(&session_id, manifest.clone()).await?;
-    
+    compaction_manager
+        .save_manifest(&session_id, manifest.clone())
+        .await?;
+
     Ok(manifest)
 }

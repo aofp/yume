@@ -1,3 +1,7 @@
+use std::collections::VecDeque;
+use std::fs::{self, OpenOptions};
+use std::io::Write;
+use std::path::PathBuf;
 /// Node.js server process management module
 /// This module handles spawning and managing the Node.js backend server that bridges
 /// between Tauri and the Claude CLI. The server:
@@ -6,21 +10,16 @@
 /// - Communicates with the frontend via Socket.IO WebSocket
 /// - Manages multiple concurrent Claude sessions
 /// - Handles platform-specific requirements (WSL on Windows, etc.)
-
-use std::process::{Command, Child, Stdio};
-use std::sync::{Arc, Mutex};
-use std::fs::{self, OpenOptions};
-use std::io::Write;
-use std::path::PathBuf;
-use tracing::info;
+use std::process::{Child, Command, Stdio};
 use std::sync::atomic::{AtomicBool, Ordering};
-use std::collections::VecDeque;
+use std::sync::{Arc, Mutex};
+use tracing::info;
 
 use crate::app::{APP_ID, APP_NAME, SERVER_BINARY_PREFIX};
 
 // SIMPLE FLAG TO CONTROL CONSOLE VISIBILITY AND DEVTOOLS
 // Set to true during development to see server console output and force DevTools open
-pub const YUME_SHOW_CONSOLE: bool = false;  // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
+pub const YUME_SHOW_CONSOLE: bool = false; // SET TO TRUE TO SEE CONSOLE AND FORCE DEVTOOLS
 
 // Global handle to the server process and port
 // We use Arc<Mutex<>> for thread-safe access to the child process
@@ -53,7 +52,7 @@ impl ServerProcessGuard {
             shutdown_flag: AtomicBool::new(false),
         }
     }
-    
+
     fn kill(&self) -> std::io::Result<()> {
         self.shutdown_flag.store(true, Ordering::Relaxed);
         if let Ok(mut child) = self.child.lock() {
@@ -88,7 +87,10 @@ impl ServerProcessGuard {
             }
 
             // Step 3: Process didn't exit gracefully, force kill
-            info!("Process {} didn't exit gracefully, sending SIGKILL", self.pid);
+            info!(
+                "Process {} didn't exit gracefully, sending SIGKILL",
+                self.pid
+            );
             match child.kill() {
                 Ok(()) => {
                     info!("Process killed with SIGKILL");
@@ -102,7 +104,10 @@ impl ServerProcessGuard {
                 }
             }
         } else {
-            Err(std::io::Error::new(std::io::ErrorKind::Other, "Failed to lock child process"))
+            Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to lock child process",
+            ))
         }
     }
 
@@ -119,7 +124,7 @@ impl ServerProcessGuard {
             .args(&["-15", &pid.to_string()]) // -15 = SIGTERM
             .output();
     }
-    
+
     #[cfg(target_os = "windows")]
     fn force_kill(pid: u32) {
         info!("Force killing Windows process PID: {}", pid);
@@ -130,7 +135,7 @@ impl ServerProcessGuard {
             .creation_flags(CREATE_NO_WINDOW)
             .output();
     }
-    
+
     #[cfg(not(target_os = "windows"))]
     fn force_kill(pid: u32) {
         info!("Force killing Unix process PID: {}", pid);
@@ -138,7 +143,7 @@ impl ServerProcessGuard {
             .args(&["-9", &pid.to_string()])
             .output();
     }
-    
+
     fn add_stdout_line(&self, line: String) {
         if let Ok(mut buffer) = self.stdout_buffer.lock() {
             // Limit buffer size
@@ -148,7 +153,7 @@ impl ServerProcessGuard {
             buffer.push_back(line);
         }
     }
-    
+
     fn add_stderr_line(&self, line: String) {
         if let Ok(mut buffer) = self.stderr_buffer.lock() {
             // Limit buffer size
@@ -325,7 +330,13 @@ fn kill_servers_from_same_install() {
             // Use WMIC to find processes by path
             let path_escaped = path.replace("\\", "\\\\");
             if let Ok(output) = Command::new("wmic")
-                .args(&["process", "where", &format!("ExecutablePath like '%{}%'", path_escaped), "get", "ProcessId"])
+                .args(&[
+                    "process",
+                    "where",
+                    &format!("ExecutablePath like '%{}%'", path_escaped),
+                    "get",
+                    "ProcessId",
+                ])
                 .creation_flags(CREATE_NO_WINDOW)
                 .output()
             {
@@ -336,7 +347,10 @@ fn kill_servers_from_same_install() {
                             .args(&["/F", "/PID", &pid.to_string()])
                             .creation_flags(CREATE_NO_WINDOW)
                             .output();
-                        info!("Killed zombie server process PID: {} from same install", pid);
+                        info!(
+                            "Killed zombie server process PID: {} from same install",
+                            pid
+                        );
                     }
                 }
             }
@@ -349,10 +363,7 @@ fn kill_servers_from_same_install() {
             // Use pkill with exact path pattern to only kill servers from our install
             // This allows dev and production to coexist
             let escaped_path = path.replace("/", "\\/");
-            if let Ok(output) = Command::new("pgrep")
-                .args(&["-f", &escaped_path])
-                .output()
-            {
+            if let Ok(output) = Command::new("pgrep").args(&["-f", &escaped_path]).output() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 for line in stdout.lines() {
                     if let Ok(pid) = line.trim().parse::<u32>() {
@@ -370,10 +381,7 @@ fn kill_servers_from_same_install() {
     {
         if let Some(path) = our_server_path {
             let escaped_path = path.replace("/", "\\/");
-            if let Ok(output) = Command::new("pgrep")
-                .args(&["-f", &escaped_path])
-                .output()
-            {
+            if let Ok(output) = Command::new("pgrep").args(&["-f", &escaped_path]).output() {
                 let stdout = String::from_utf8_lossy(&output.stdout);
                 for line in stdout.lines() {
                     if let Ok(pid) = line.trim().parse::<u32>() {
@@ -394,20 +402,34 @@ fn get_our_server_path() -> Option<String> {
 
     #[cfg(target_os = "macos")]
     {
-        let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
+        let arch = if cfg!(target_arch = "aarch64") {
+            "arm64"
+        } else {
+            "x64"
+        };
         let binary_name = format!("{}-macos-{}", SERVER_BINARY_PREFIX, arch);
 
         if cfg!(debug_assertions) {
             // Dev mode - server is in project's src-tauri/resources/
-            exe_path.parent()?.parent()?.parent()?.parent()
+            exe_path
+                .parent()?
+                .parent()?
+                .parent()?
+                .parent()
                 .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         } else {
             // Production - server is in .app bundle
             let macos_dir = exe_path.parent()?;
             let contents_dir = macos_dir.parent()?;
-            Some(contents_dir.join("Resources").join("resources").join(&binary_name)
-                .to_string_lossy().to_string())
+            Some(
+                contents_dir
+                    .join("Resources")
+                    .join("resources")
+                    .join(&binary_name)
+                    .to_string_lossy()
+                    .to_string(),
+            )
         }
     }
 
@@ -415,11 +437,16 @@ fn get_our_server_path() -> Option<String> {
     {
         let binary_name = format!("{}-windows-x64.exe", SERVER_BINARY_PREFIX);
         if cfg!(debug_assertions) {
-            exe_path.parent()?.parent()?.parent()?.parent()
+            exe_path
+                .parent()?
+                .parent()?
+                .parent()?
+                .parent()
                 .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         } else {
-            exe_path.parent()
+            exe_path
+                .parent()
                 .map(|p| p.join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         }
@@ -429,11 +456,16 @@ fn get_our_server_path() -> Option<String> {
     {
         let binary_name = format!("{}-linux-x64", SERVER_BINARY_PREFIX);
         if cfg!(debug_assertions) {
-            exe_path.parent()?.parent()?.parent()?.parent()
+            exe_path
+                .parent()?
+                .parent()?
+                .parent()?
+                .parent()
                 .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         } else {
-            exe_path.parent()
+            exe_path
+                .parent()
                 .map(|p| p.join("resources").join(&binary_name))
                 .map(|p| p.to_string_lossy().to_string())
         }
@@ -523,8 +555,7 @@ fn kill_server_processes_by_name() {
         // Use pkill to kill by process name pattern
         let mac_pattern = format!(
             "{}-macos-arm64|{}-macos-x64|server-claude-macos",
-            SERVER_BINARY_PREFIX,
-            SERVER_BINARY_PREFIX
+            SERVER_BINARY_PREFIX, SERVER_BINARY_PREFIX
         );
         let _ = Command::new("pkill")
             .args(&["-9", "-f", &mac_pattern])
@@ -565,7 +596,11 @@ pub fn clear_log() {
         .open(get_log_path())
     {
         let timestamp = chrono::Local::now().format("%Y-%m-%d %H:%M:%S%.3f");
-        let _ = writeln!(file, "=== {} server log started at {} ===", APP_NAME, timestamp);
+        let _ = writeln!(
+            file,
+            "=== {} server log started at {} ===",
+            APP_NAME, timestamp
+        );
     }
 }
 
@@ -588,12 +623,12 @@ pub fn get_server_logs() -> String {
             );
         }
     }
-    
+
     match fs::read_to_string(get_log_path()) {
         Ok(contents) => {
             let lines: Vec<&str> = contents.lines().collect();
             const MAX_LINES: usize = 800;
-            
+
             if lines.len() > MAX_LINES {
                 let start_index = lines.len() - MAX_LINES;
                 let mut result = format!("... (showing last {} lines)\n", MAX_LINES);
@@ -603,14 +638,14 @@ pub fn get_server_logs() -> String {
                 contents
             }
         }
-        Err(e) => format!("Failed to read logs: {}", e)
+        Err(e) => format!("Failed to read logs: {}", e),
     }
 }
 
 // Embedded server removed - all platforms now use external files
 // macOS: server-claude-macos.cjs
 // Windows: server-claude-windows.cjs
-// Linux: server-claude-linux.cjs  
+// Linux: server-claude-linux.cjs
 
 /// Stops the Node.js server process for this specific Tauri instance
 /// This is instance-specific to support multiple app windows
@@ -649,7 +684,6 @@ pub fn stop_logged_server() {
     // Note: Claude processes spawned by Yume are cleaned up via ProcessRegistry's
     // Drop trait, which only kills processes we spawned (not external Claude instances)
 }
-
 
 /// Starts the Node.js backend server with a held port (TOCTOU-safe)
 /// The held port is released right before spawning the server process
@@ -717,14 +751,14 @@ fn start_server_internal(port: u16) {
         start_macos_server(port);
         return;
     }
-    
+
     // Windows-specific server logic
     #[cfg(target_os = "windows")]
     {
         start_windows_server(port);
         return;
     }
-    
+
     // Linux/other platforms use external server file
     #[cfg(not(any(target_os = "macos", target_os = "windows")))]
     {
@@ -747,7 +781,11 @@ fn start_macos_server(port: u16) {
     write_log(&format!("Executable path: {:?}", exe_path));
 
     // Detect architecture
-    let arch = if cfg!(target_arch = "aarch64") { "arm64" } else { "x64" };
+    let arch = if cfg!(target_arch = "aarch64") {
+        "arm64"
+    } else {
+        "x64"
+    };
     let binary_name = format!("{}-macos-{}", SERVER_BINARY_PREFIX, arch);
     write_log(&format!("Architecture: {}, binary: {}", arch, binary_name));
 
@@ -758,38 +796,42 @@ fn start_macos_server(port: u16) {
         write_log("Development mode - looking for binary in project root");
         std::env::current_exe()
             .ok()
-            .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
+            .and_then(|p| {
+                p.parent()?
+                    .parent()?
+                    .parent()?
+                    .parent()
+                    .map(|p| p.to_path_buf())
+            })
             .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
     } else {
         // In production, look in .app bundle
         info!("Production mode - looking for binary in .app bundle");
         write_log("Production mode - looking for binary in .app bundle");
 
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| {
-                write_log(&format!("Exe: {:?}", p));
-                let macos_dir = p.parent()?;
-                let contents_dir = macos_dir.parent()?;
-                let resources_dir = contents_dir.join("Resources").join("resources");
-                write_log(&format!("Resources dir: {:?}", resources_dir));
+        std::env::current_exe().ok().and_then(|p| {
+            write_log(&format!("Exe: {:?}", p));
+            let macos_dir = p.parent()?;
+            let contents_dir = macos_dir.parent()?;
+            let resources_dir = contents_dir.join("Resources").join("resources");
+            write_log(&format!("Resources dir: {:?}", resources_dir));
 
-                let binary_path = resources_dir.join(&binary_name);
-                if binary_path.exists() {
-                    write_log(&format!("Found binary at: {:?}", binary_path));
-                    return Some(binary_path);
-                }
+            let binary_path = resources_dir.join(&binary_name);
+            if binary_path.exists() {
+                write_log(&format!("Found binary at: {:?}", binary_path));
+                return Some(binary_path);
+            }
 
-                // Fallback to .cjs file for backwards compatibility
-                let cjs_path = resources_dir.join("server-claude-macos.cjs");
-                if cjs_path.exists() {
-                    write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
-                    return Some(cjs_path);
-                }
+            // Fallback to .cjs file for backwards compatibility
+            let cjs_path = resources_dir.join("server-claude-macos.cjs");
+            if cjs_path.exists() {
+                write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
+                return Some(cjs_path);
+            }
 
-                write_log("No server binary or .cjs found");
-                None
-            })
+            write_log("No server binary or .cjs found");
+            None
+        })
     };
 
     if let Some(server_file) = server_path {
@@ -803,7 +845,9 @@ fn start_macos_server(port: u16) {
         write_log(&format!("Using server: {:?}", server_file));
 
         // Check if this is a binary or .cjs file
-        let is_binary = !server_file.extension().map_or(false, |e| e == "cjs" || e == "js");
+        let is_binary = !server_file
+            .extension()
+            .map_or(false, |e| e == "cjs" || e == "js");
 
         let mut cmd = if is_binary {
             // Direct binary execution
@@ -818,10 +862,10 @@ fn start_macos_server(port: u16) {
         };
 
         cmd.env_clear()
-           .envs(std::env::vars())
-           .env("PORT", port.to_string())
-           .stdout(Stdio::piped())
-           .stderr(Stdio::piped());
+            .envs(std::env::vars())
+            .env("PORT", port.to_string())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
 
         if let Some(working_dir) = server_file.parent() {
             cmd.current_dir(working_dir);
@@ -933,36 +977,40 @@ fn start_windows_server(port: u16) {
         write_log("Development mode - looking for binary in project root");
         std::env::current_exe()
             .ok()
-            .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
+            .and_then(|p| {
+                p.parent()?
+                    .parent()?
+                    .parent()?
+                    .parent()
+                    .map(|p| p.to_path_buf())
+            })
             .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
     } else {
         // In production, look in resources directory
         info!("Production mode - looking for binary in resources");
         write_log("Production mode - looking for binary in resources");
 
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| {
-                let parent = p.parent()?;
-                let resources_dir = parent.join("resources");
-                write_log(&format!("Resources dir: {:?}", resources_dir));
+        std::env::current_exe().ok().and_then(|p| {
+            let parent = p.parent()?;
+            let resources_dir = parent.join("resources");
+            write_log(&format!("Resources dir: {:?}", resources_dir));
 
-                let binary_path = resources_dir.join(&binary_name);
-                if binary_path.exists() {
-                    write_log(&format!("Found binary at: {:?}", binary_path));
-                    return Some(binary_path);
-                }
+            let binary_path = resources_dir.join(&binary_name);
+            if binary_path.exists() {
+                write_log(&format!("Found binary at: {:?}", binary_path));
+                return Some(binary_path);
+            }
 
-                // Fallback to .cjs file for backwards compatibility
-                let cjs_path = resources_dir.join("server-claude-windows.cjs");
-                if cjs_path.exists() {
-                    write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
-                    return Some(cjs_path);
-                }
+            // Fallback to .cjs file for backwards compatibility
+            let cjs_path = resources_dir.join("server-claude-windows.cjs");
+            if cjs_path.exists() {
+                write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
+                return Some(cjs_path);
+            }
 
-                write_log("No server binary or .cjs found");
-                None
-            })
+            write_log("No server binary or .cjs found");
+            None
+        })
     };
 
     if let Some(server_file) = server_path {
@@ -992,8 +1040,8 @@ fn start_windows_server(port: u16) {
         };
 
         cmd.env_clear()
-           .envs(std::env::vars())
-           .env("PORT", port.to_string());
+            .envs(std::env::vars())
+            .env("PORT", port.to_string());
 
         // Windows-specific process flags
         use std::os::windows::process::CommandExt;
@@ -1010,8 +1058,7 @@ fn start_windows_server(port: u16) {
         };
 
         cmd.creation_flags(flags);
-        cmd.stdout(Stdio::piped())
-           .stderr(Stdio::piped());
+        cmd.stdout(Stdio::piped()).stderr(Stdio::piped());
 
         if let Some(working_dir) = server_file.parent() {
             cmd.current_dir(working_dir);
@@ -1131,36 +1178,40 @@ fn start_linux_server(port: u16) {
         write_log("Development mode - looking for binary in project root");
         std::env::current_exe()
             .ok()
-            .and_then(|p| p.parent()?.parent()?.parent()?.parent().map(|p| p.to_path_buf()))
+            .and_then(|p| {
+                p.parent()?
+                    .parent()?
+                    .parent()?
+                    .parent()
+                    .map(|p| p.to_path_buf())
+            })
             .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
     } else {
         // In production, look in resources directory
         info!("Production mode - looking for binary in resources");
         write_log("Production mode - looking for binary in resources");
 
-        std::env::current_exe()
-            .ok()
-            .and_then(|p| {
-                let parent = p.parent()?;
-                let resources_dir = parent.join("resources");
-                write_log(&format!("Resources dir: {:?}", resources_dir));
+        std::env::current_exe().ok().and_then(|p| {
+            let parent = p.parent()?;
+            let resources_dir = parent.join("resources");
+            write_log(&format!("Resources dir: {:?}", resources_dir));
 
-                let binary_path = resources_dir.join(&binary_name);
-                if binary_path.exists() {
-                    write_log(&format!("Found binary at: {:?}", binary_path));
-                    return Some(binary_path);
-                }
+            let binary_path = resources_dir.join(&binary_name);
+            if binary_path.exists() {
+                write_log(&format!("Found binary at: {:?}", binary_path));
+                return Some(binary_path);
+            }
 
-                // Fallback to .cjs file for backwards compatibility
-                let cjs_path = resources_dir.join("server-claude-linux.cjs");
-                if cjs_path.exists() {
-                    write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
-                    return Some(cjs_path);
-                }
+            // Fallback to .cjs file for backwards compatibility
+            let cjs_path = resources_dir.join("server-claude-linux.cjs");
+            if cjs_path.exists() {
+                write_log(&format!("Fallback to .cjs at: {:?}", cjs_path));
+                return Some(cjs_path);
+            }
 
-                write_log("No server binary or .cjs found");
-                None
-            })
+            write_log("No server binary or .cjs found");
+            None
+        })
     };
 
     if let Some(server_file) = server_path {
@@ -1174,7 +1225,9 @@ fn start_linux_server(port: u16) {
         write_log(&format!("Using server: {:?}", server_file));
 
         // Check if this is a binary or .cjs file
-        let is_binary = !server_file.extension().map_or(false, |e| e == "cjs" || e == "js");
+        let is_binary = !server_file
+            .extension()
+            .map_or(false, |e| e == "cjs" || e == "js");
 
         let mut cmd = if is_binary {
             // Direct binary execution
@@ -1189,10 +1242,10 @@ fn start_linux_server(port: u16) {
         };
 
         cmd.env_clear()
-           .envs(std::env::vars())
-           .env("PORT", port.to_string())
-           .stdout(Stdio::piped())
-           .stderr(Stdio::piped());
+            .envs(std::env::vars())
+            .env("PORT", port.to_string())
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped());
 
         if let Some(working_dir) = server_file.parent() {
             cmd.current_dir(working_dir);
@@ -1288,5 +1341,8 @@ fn start_embedded_windows_server(port: u16) {
     write_log("Please ensure the server file is in the correct location:");
     write_log("- Development: project root directory");
     write_log("- Production: resources directory next to executable");
-    info!("Cannot start server on port {} - external file missing", port);
+    info!(
+        "Cannot start server on port {} - external file missing",
+        port
+    );
 }

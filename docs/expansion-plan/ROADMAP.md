@@ -2,50 +2,125 @@
 
 This roadmap focuses on making Yume provider-agnostic while preserving the existing Claude-compatible stream-json pipeline.
 
-## Phase 0: Protocol Contract ✅
+> **Last Updated:** 2026-01-14
+> **Overall Progress:** ~70% complete
+
+> **Key Documents:**
+> - [PROVIDER_REFERENCE.md](./PROVIDER_REFERENCE.md) - Single source of truth for models, pricing, features
+> - [CONVERSATION_PORTABILITY.md](./CONVERSATION_PORTABILITY.md) - Mid-conversation provider switching
+> - [PROTOCOL_NORMALIZATION.md](./PROTOCOL_NORMALIZATION.md) - Stream-JSON contract
+> - [UNIVERSAL_SESSION_ARCHITECTURE.md](./UNIVERSAL_SESSION_ARCHITECTURE.md) - Session storage architecture
+
+## Phase 0: Protocol Contract ✅ COMPLETE
 - [x] **Canonical Protocol:** Document Claude-compatible stream-json requirements (match `src-tauri/src/stream_parser.rs`).
 - [x] **Golden Transcript Tests:** Replayable fixtures for text, tool use, errors, and interrupts.
 - [x] **Edge-Case Matrix:** Enumerate cross-platform/provider failure modes.
 - [x] **Technical Approach Doc:** Finalize best-practice architecture and tool support tiers.
 
-## Phase 1: Foundation (In Progress)
-- [x] **Claude CLI Integration**: Native support for Claude Sonnet 4 / Opus 4.5.
+## Phase 1: Foundation ✅ COMPLETE
+- [x] **Claude CLI Integration**: Native support for Claude Sonnet 4.5 / Opus 4.5.
 - [x] **Multi-Session Architecture**: Tabbed interface with independent contexts.
 - [x] **Core Tooling**: Read, Write, Edit, Glob, Grep, Bash tool definitions.
-- [ ] **Server Refactor:** Extract CLI logic into adapters (Claude + Shim).
-- [ ] **Event Compatibility:** Keep `claude-message` events for backward compatibility.
-- [ ] **yume-cli Scaffolding:** Create `src-yume-cli/` directory structure.
+- [x] **Provider Service:** `providersService.ts` for enabling/disabling providers.
+- [x] **Provider Selector:** `ProviderSelector.tsx` component with keyboard nav.
+- [x] **Providers Tab:** `ProvidersTab.tsx` with CLI status, toggles, per-provider options.
+- [x] **yume-cli Scaffolding:** Full `src-yume-cli/` directory with TypeScript implementation.
+- [x] **Event Compatibility:** Existing `claude-message` events work for all providers.
+- [x] **Model Registry:** `models.ts` with all providers (Claude, Gemini, OpenAI/Codex).
 
-## Phase 2: Translation Layer
-- [ ] **Build `yume-cli`:** Standalone shim emitting Claude-compatible stream-json.
-  - [ ] Core agent loop (Think → Act → Observe)
-  - [ ] Session persistence to `~/.yume/sessions/`
-  - [ ] Secret redaction in tool outputs
-- [ ] **Gemini Strategy:**
-  - [ ] REST streaming implementation
-  - [ ] Function calling normalization
-  - [ ] Token caching for gcloud auth
-- [ ] **OpenAI Strategy:**
-  - [ ] Streaming tool-call buffering
-  - [ ] Rate limit retry logic
-  - [ ] Usage mapping
+## Phase 2: Translation Layer 🔄 IN PROGRESS (~60%)
+- [x] **yume-cli Structure:** Complete TypeScript implementation in `src-yume-cli/`.
+  - [x] CLI argument parsing (`index.ts`)
+  - [x] Provider base interface (`providers/base.ts`)
+  - [x] Provider factory (`providers/index.ts`)
+  - [x] Agent loop (`core/agent-loop.ts`)
+  - [x] Session management (`core/session.ts`)
+  - [x] Stream emission (`core/emit.ts`)
+- [x] **Tool Executors:** Full local tool implementations.
+  - [x] `glob.ts` - File pattern matching
+  - [x] `grep.ts` - Content search
+  - [x] `ls.ts` - Directory listing
+  - [x] `bash.ts` - Command execution
+  - [x] `file.ts` - File reading
+  - [x] `edit.ts` - File editing
+  - [x] `write.ts` - File writing
+- [ ] **CLI Spawning:** Spawn official `gemini` and `codex` CLIs.
+  - [ ] Gemini CLI spawner
+  - [ ] Codex CLI spawner
+- [ ] **Stream Translation:** Translate provider stream-json to Claude format.
+  - [ ] Gemini → Claude translation
+  - [ ] Codex → Claude translation
 - [ ] **Compliance:** Pass golden transcript tests on macOS, Windows, Linux.
 
-## Phase 3: Provider Expansion
-- [ ] **Gemini Provider:** Wire `yume-cli --provider gemini` into Yume.
-- [ ] **OpenAI Provider:** Wire `yume-cli --provider openai` into Yume.
-- [ ] **Local LLM Provider:** OpenAI-compatible endpoints (Ollama, LM Studio, etc.).
-- [ ] **Provider Analytics:** Cost/token tracking by `{provider}:{model}` key.
+## Phase 3: Provider Expansion 🔄 IN PROGRESS (~70%)
+- [x] **Backend Spawner:** `yume_cli_spawner.rs` - Full Rust implementation.
+  - [x] Provider enum (Gemini, OpenAI)
+  - [x] Binary location logic (dev, bundled, env var)
+  - [x] Spawn options (provider, model, prompt, resume, history)
+  - [x] Stream handling and session ID extraction
+  - [x] Multi-channel event emission
+- [x] **CLI Detection:** `check_cli_installed` command in `claude_detector.rs`.
+- [x] **Provider Detection:** `detect_provider_support` command for yume-cli availability.
+- [x] **Dynamic Context Bar:** `ContextBar.tsx` uses model-specific limits from `models.ts`.
+- [x] **Provider Analytics:** Analytics now supports dynamic models (not just opus/sonnet).
+  - [x] `normalizeModelName()` detects all model types
+  - [x] `ensureModelStats()` creates entries on demand
+  - [x] Supports gemini-pro, gemini-flash, gpt-codex, gpt-codex-mini, etc.
+- [ ] **Auth Status:** Check authentication status before spawning sessions.
 
-## Phase 4: UI/UX & Settings
-- [ ] **Provider Switcher:** UI for selecting provider per session.
-- [ ] **Providers Tab:** Auth status, model selection, binary paths.
-- [ ] **Graceful Fallbacks:** Degraded mode when tool calls are unavailable.
-- [ ] **Migration UX:** Clear messaging when switching providers mid-session.
+## Phase 4: UI/UX & Settings ✅ COMPLETE
+- [x] **Enhanced Provider Switcher:** `ProviderSelector.tsx` with icons (◉ ◈ ◎).
+- [x] **Enhanced Providers Tab:** `ProvidersTab.tsx` with full features.
+  - [x] CLI installation status indicators
+  - [x] Enable/disable toggles (disabled if CLI not installed)
+  - [x] Per-provider CLI settings (`ProviderCliModal.tsx`)
+  - [x] Per-provider system prompts (`ProviderSystemPromptSelector.tsx`)
+- [x] **No Provider Modal:** `NoProviderModal.tsx` blocks app when no providers enabled.
+- [x] **Provider Hooks:** `useEnabledProviders.ts` for reactive state.
+- [x] **Model Tools Modal:** `ModelToolsModal.tsx` shows models from enabled providers.
+  - [x] Provider locking when session has messages
+  - [x] Keyboard navigation
 
-## Phase 5: Optional Extensions
+## Phase 5: Conversation Portability 🔄 IN PROGRESS (~50%)
+> See [CONVERSATION_PORTABILITY.md](./CONVERSATION_PORTABILITY.md) for detailed specification.
+
+- [x] **Unified Conversation Format (UCF):** Schema defined and implemented.
+  - [x] TypeScript interfaces in `src/renderer/types/ucf.ts`
+  - [x] `UnifiedConversation`, `UnifiedMessage`, `UnifiedContent` types
+  - [x] `ProviderSwitch`, `ProviderState`, `SwitchAnalysis` types
+  - [x] `CORE_TOOLS`, `CLAUDE_ONLY_TOOLS`, `MCP_TOOL_PREFIXES` constants
+- [x] **Conversation Store:** `conversationStore.ts` implemented.
+  - [x] Save/load conversations in UCF format
+  - [x] Metadata extraction for quick listing
+  - [x] Automatic backup management (5 backups)
+  - [x] Claude JSONL import capability
+- [x] **Translation Layer:** `conversationTranslator.ts` service.
+  - [x] Claude adapter (import from JSONL, export to Claude format)
+  - [ ] Gemini adapter (import/export) - planned
+  - [ ] OpenAI adapter (import/export) - planned
+- [x] **Thinking/Reasoning Handling:** Strategy defined in translator.
+  - [x] Preserve for Claude and Gemini 2.0-thinking
+  - [x] Drop or convert for unsupported models
+  - [x] Translation strategies: `drop`, `convert`, `ask`
+- [x] **Switch Analysis:** `analyzeSwitch()` function implemented.
+  - [x] Feature parity detection
+  - [x] Context window validation
+  - [x] Lossy conversion warnings
+- [ ] **Hot-Swap UI:**
+  - [ ] `SwitchWarningModal.tsx` component
+  - [ ] Provider badges on messages
+  - [ ] Visual switch dividers
+- [x] **MCP/Artifact Handling:** Strategy in translator.
+  - [x] MCP tool detection via prefixes
+  - [x] Artifact inlining for non-Claude providers
+- [ ] **Context Summarization:**
+  - [ ] Auto-summarize when switching to smaller context
+  - [ ] User control over summarization strategy
+
+## Phase 6: Optional Extensions ❌ NOT STARTED
 - [ ] **IDE Integration:** VSCode/JetBrains deep linking.
 - [ ] **Team Collaboration:** Shared sessions and encrypted sync.
+- [ ] **Checkpoint Integration:** Restore checkpoints across providers.
 
 ## Success Metrics
 - User can switch between Claude, Gemini, and OpenAI in one app.

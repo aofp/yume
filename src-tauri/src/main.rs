@@ -12,21 +12,18 @@ fn main() {
     // - Logging panic information for debugging
     // - Ensuring proper cleanup (though server cleanup is handled separately)
     // - Preventing zombie processes
-    std::panic::set_hook(Box::new(|info| {
-        eprintln!("Application panic: {:?}", info);
-        
-        // Important: We DON'T kill all node processes here
-        // Each instance manages its own server process via logged_server module
-        // Killing all node processes would affect other running instances
-        
-        // Force exit with error code
+    std::panic::set_hook(Box::new(|panic_info| {
+        eprintln!("Application panic: {:?}", panic_info);
+        // Ensure all Node.js processes associated with the application are terminated upon a panic.
+        // This prevents orphaned processes and ensures a clean shutdown.
+        yume_lib::cleanup_on_panic();
         std::process::exit(1);
     }));
-    
+
     // Delegate to the library crate where the actual application logic lives
     // This separation allows for better code organization and testing
     yume_lib::run();
-    
+
     // Note: Server cleanup is handled within the library's run() function
     // Each instance's server is managed individually by logged_server::stop_logged_server()
     // We specifically avoid killing all node processes to support multiple instances

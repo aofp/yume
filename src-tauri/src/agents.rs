@@ -18,8 +18,8 @@ pub struct Agent {
 struct DefaultAgents(Vec<Agent>);
 
 // In-memory storage for agents (for simplicity)
-use std::sync::Mutex;
 use once_cell::sync::Lazy;
+use std::sync::Mutex;
 
 static AGENTS: Lazy<Mutex<Vec<Agent>>> = Lazy::new(|| Mutex::new(Vec::new()));
 
@@ -31,12 +31,13 @@ pub async fn list_agents() -> Result<Vec<Agent>, String> {
 #[tauri::command]
 pub async fn load_default_agents(app: AppHandle) -> Result<Vec<Agent>, String> {
     // Try to load from default-agents.json in the app's resource directory
-    let resource_path = app.path()
+    let resource_path = app
+        .path()
         .resource_dir()
         .map_err(|e| format!("Failed to get resource directory: {}", e))?;
-    
+
     let default_agents_path = resource_path.join("default-agents.json");
-    
+
     // If resource file doesn't exist, try project root
     let agents_json = if default_agents_path.exists() {
         fs::read_to_string(&default_agents_path)
@@ -91,32 +92,32 @@ pub async fn load_default_agents(app: AppHandle) -> Result<Vec<Agent>, String> {
   }
 ]"#.to_string()
     };
-    
+
     let mut loaded_agents: Vec<Agent> = serde_json::from_str(&agents_json)
         .map_err(|e| format!("Failed to parse agents JSON: {}", e))?;
-    
+
     // Assign IDs
     for (i, agent) in loaded_agents.iter_mut().enumerate() {
         agent.id = Some((i + 1) as i32);
     }
-    
+
     // Store in memory
     *AGENTS.lock().unwrap() = loaded_agents.clone();
-    
+
     Ok(loaded_agents)
 }
 
 #[tauri::command]
 pub async fn create_agent(agent: Agent) -> Result<Agent, String> {
     let mut agents = AGENTS.lock().unwrap();
-    
+
     // Assign new ID
     let new_id = agents.len() as i32 + 1;
     let mut new_agent = agent;
     new_agent.id = Some(new_id);
-    
+
     agents.push(new_agent.clone());
-    
+
     Ok(new_agent)
 }
 

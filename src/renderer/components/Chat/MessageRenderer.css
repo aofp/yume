@@ -1345,15 +1345,6 @@ body.platform-win32 .tool-detail {
   opacity: 0.8;
 }
 
-/* Read-only tool outputs - same reduced opacity as read */
-.tool-result.search-output,
-.tool-result.file-list,
-.tool-result.read-ouput,
-.tool-result.dir-listing,
-.tool-result.web-search {
-  opacity: 0.95;
-}
-
 .read-content {
   margin: 0;
   font-family: var(--font-mono);

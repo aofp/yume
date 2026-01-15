@@ -7,44 +7,43 @@
 /// - Git integration
 /// - Server communication
 /// - Claude CLI direct spawning and management
-
 pub mod claude_commands;
-pub mod claude_info;
 pub mod claude_detector;
+pub mod claude_info;
+pub mod compaction;
+pub mod custom_commands;
 pub mod database;
 pub mod hooks;
-pub mod compaction;
 pub mod mcp;
-pub mod custom_commands;
 pub mod plugins;
 
 // Re-export custom commands directly so they're available at commands:: level
 pub use custom_commands::*;
 
-use serde::{Deserialize, Serialize};
-use tauri::{State, Window, Emitter};
-use std::path::{Path, PathBuf};
-use std::fs;
-use std::time::SystemTime;
-use std::sync::{Arc, Mutex};
-use std::collections::HashMap;
-use std::process::{Child, Stdio};
 use once_cell::sync::Lazy;
+use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+use std::process::{Child, Stdio};
+use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+use tauri::{Emitter, State, Window};
 
-use crate::state::AppState;
 use crate::logged_server;
+use crate::state::AppState;
 // APP_IDENTIFIER is only used on Windows for WebView2 paths
 #[cfg_attr(not(target_os = "windows"), allow(unused_imports))]
 use crate::app::{APP_ID, APP_IDENTIFIER, APP_NAME};
 
 // Global store for running bash processes
-static BASH_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Child>>>> = Lazy::new(|| {
-    Arc::new(Mutex::new(HashMap::new()))
-});
+static BASH_PROCESSES: Lazy<Arc<Mutex<HashMap<String, Child>>>> =
+    Lazy::new(|| Arc::new(Mutex::new(HashMap::new())));
 
 // Global mutex to serialize git operations and prevent lock conflicts
 // Uses tokio::sync::Mutex because guards need to be held across await points
-static GIT_OPERATION_MUTEX: Lazy<tokio::sync::Mutex<()>> = Lazy::new(|| tokio::sync::Mutex::new(()));
+static GIT_OPERATION_MUTEX: Lazy<tokio::sync::Mutex<()>> =
+    Lazy::new(|| tokio::sync::Mutex::new(()));
 
 /// Represents a folder selection from the native file dialog
 #[derive(Debug, Serialize, Deserialize)]
@@ -57,7 +56,7 @@ pub struct FolderSelection {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct FileSearchResult {
     #[serde(rename = "type")]
-    pub file_type: String,  // "file" or "directory"
+    pub file_type: String, // "file" or "directory"
     pub path: String,
     pub name: String,
     #[serde(rename = "relativePath")]
@@ -156,7 +155,10 @@ pub fn clear_webview2_permissions() -> Result<String, String> {
                         // Write back the modified preferences
                         if let Ok(modified_content) = serde_json::to_string_pretty(&json) {
                             if std::fs::write(&preferences_path, modified_content).is_ok() {
-                                return Ok("Cleared WebView2 microphone permissions. Please restart Yume.".to_string());
+                                return Ok(
+                                    "Cleared WebView2 microphone permissions. Please restart Yume."
+                                        .to_string(),
+                                );
                             }
                         }
                     }
@@ -208,8 +210,61 @@ pub fn write_file_content(path: String, content: String) -> Result<(), String> {
             .map_err(|e| format!("Failed to create parent directories: {}", e))?;
     }
 
-    fs::write(file_path, content)
-        .map_err(|e| format!("Failed to write file: {}", e))
+    fs::write(file_path, content).map_err(|e| format!("Failed to write file: {}", e))
+}
+
+/// Represents whether supplemental providers have the yume-cli shim available
+#[derive(Debug, Serialize)]
+pub struct ProviderSupportStatus {
+    pub gemini: bool,
+    pub openai: bool,
+}
+
+/// Detect whether yume-cli is available for Gemini/OpenAI sessions
+#[tauri::command]
+pub fn detect_provider_support() -> Result<ProviderSupportStatus, String> {
+    use crate::yume_cli_spawner::locate_yume_cli_binary;
+
+    let available = locate_yume_cli_binary().is_ok();
+    Ok(ProviderSupportStatus {
+        gemini: available,
+        openai: available,
+    })
+}
+
+/// Locates the yume-cli binary and returns its path if found.
+/// This allows the frontend to verify the binary's presence and get its path.
+#[tauri::command]
+pub fn locate_yume_cli_binary_command() -> Result<String, String> {
+    use crate::yume_cli_spawner::locate_yume_cli_binary;
+    locate_yume_cli_binary().map_err(|e| format!("Failed to locate yume-cli binary: {}", e))
+}
+
+/// List directory contents (used for conversation store)
+/// Returns list of file names (not full paths) in the directory
+#[tauri::command]
+pub fn list_directory(path: String) -> Result<Vec<String>, String> {
+    let dir_path = Path::new(&path);
+
+    if !dir_path.exists() {
+        return Ok(Vec::new());
+    }
+
+    if !dir_path.is_dir() {
+        return Err(format!("Path is not a directory: {}", path));
+    }
+
+    let entries = fs::read_dir(dir_path).map_err(|e| format!("Failed to read directory: {}", e))?;
+
+    let files: Vec<String> = entries
+        .filter_map(|entry| {
+            entry
+                .ok()
+                .and_then(|e| e.file_name().to_str().map(|s| s.to_string()))
+        })
+        .collect();
+
+    Ok(files)
 }
 
 /// Delete a file (used by rollback to remove files created by Claude)
@@ -221,8 +276,7 @@ pub fn delete_file(path: String) -> Result<(), String> {
     let file_path = Path::new(&path);
 
     if file_path.exists() {
-        fs::remove_file(file_path)
-            .map_err(|e| format!("Failed to delete file: {}", e))
+        fs::remove_file(file_path).map_err(|e| format!("Failed to delete file: {}", e))
     } else {
         // File doesn't exist, nothing to delete
         Ok(())
@@ -242,8 +296,8 @@ pub fn read_file_content(path: String) -> Result<Option<String>, String> {
     }
 
     // Check if file is too large (>10MB) - skip backup for huge files
-    let metadata = fs::metadata(file_path)
-        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    let metadata =
+        fs::metadata(file_path).map_err(|e| format!("Failed to get file metadata: {}", e))?;
 
     if metadata.len() > 10 * 1024 * 1024 {
         return Err("File too large to backup (>10MB)".to_string());
@@ -277,8 +331,7 @@ pub fn write_skill_file(name: String, content: String) -> Result<(), String> {
 
     let file_path = skills_dir.join(format!("{}.md", name));
 
-    fs::write(&file_path, content)
-        .map_err(|e| format!("Failed to write skill file: {}", e))?;
+    fs::write(&file_path, content).map_err(|e| format!("Failed to write skill file: {}", e))?;
 
     println!("[skills] wrote skill file: {}", file_path.display());
     Ok(())
@@ -290,11 +343,13 @@ pub fn remove_skill_file(name: String) -> Result<(), String> {
     use std::fs;
 
     let home = dirs::home_dir().ok_or("Could not find home directory")?;
-    let file_path = home.join(".claude").join("skills").join(format!("{}.md", name));
+    let file_path = home
+        .join(".claude")
+        .join("skills")
+        .join(format!("{}.md", name));
 
     if file_path.exists() {
-        fs::remove_file(&file_path)
-            .map_err(|e| format!("Failed to remove skill file: {}", e))?;
+        fs::remove_file(&file_path).map_err(|e| format!("Failed to remove skill file: {}", e))?;
         println!("[skills] removed skill file: {}", file_path.display());
     }
 
@@ -304,10 +359,7 @@ pub fn remove_skill_file(name: String) -> Result<(), String> {
 /// Atomic file restore with backup - restores a file and returns the previous content
 /// This allows undo if something goes wrong
 #[tauri::command]
-pub fn atomic_file_restore(
-    path: String,
-    new_content: String
-) -> Result<Option<String>, String> {
+pub fn atomic_file_restore(path: String, new_content: String) -> Result<Option<String>, String> {
     use std::fs;
     use std::path::Path;
 
@@ -315,8 +367,8 @@ pub fn atomic_file_restore(
 
     // Read current content for backup
     let previous_content = if file_path.exists() {
-        let metadata = fs::metadata(file_path)
-            .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+        let metadata =
+            fs::metadata(file_path).map_err(|e| format!("Failed to get file metadata: {}", e))?;
 
         // Skip backup for huge files
         if metadata.len() > 10 * 1024 * 1024 {
@@ -335,8 +387,7 @@ pub fn atomic_file_restore(
     }
 
     // Write new content
-    fs::write(file_path, new_content)
-        .map_err(|e| format!("Failed to write file: {}", e))?;
+    fs::write(file_path, new_content).map_err(|e| format!("Failed to write file: {}", e))?;
 
     Ok(previous_content)
 }
@@ -354,8 +405,8 @@ pub fn atomic_file_delete(path: String) -> Result<Option<String>, String> {
     }
 
     // Read current content for backup
-    let metadata = fs::metadata(file_path)
-        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    let metadata =
+        fs::metadata(file_path).map_err(|e| format!("Failed to get file metadata: {}", e))?;
 
     let previous_content = if metadata.len() > 10 * 1024 * 1024 {
         None // Skip backup for huge files
@@ -364,8 +415,7 @@ pub fn atomic_file_delete(path: String) -> Result<Option<String>, String> {
     };
 
     // Delete the file
-    fs::remove_file(file_path)
-        .map_err(|e| format!("Failed to delete file: {}", e))?;
+    fs::remove_file(file_path).map_err(|e| format!("Failed to delete file: {}", e))?;
 
     Ok(previous_content)
 }
@@ -376,7 +426,7 @@ pub fn atomic_file_delete(path: String) -> Result<Option<String>, String> {
 #[tauri::command]
 pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
     println!("DevTools toggle requested via F12");
-    
+
     // DevTools methods are only available in debug builds
     #[cfg(debug_assertions)]
     {
@@ -388,13 +438,13 @@ pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
             println!("DevTools opened");
         }
     }
-    
+
     #[cfg(not(debug_assertions))]
     {
         let _ = window; // Suppress unused warning
         println!("DevTools not available in release builds");
     }
-    
+
     Ok(())
 }
 
@@ -404,16 +454,16 @@ pub fn toggle_devtools(window: tauri::WebviewWindow) -> Result<(), String> {
 #[tauri::command]
 pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, String> {
     println!("select_folder command called");
-    
+
     use tauri_plugin_dialog::DialogExt;
     use tokio::sync::oneshot;
-    
+
     // Create a channel to receive the result
     let (tx, rx) = oneshot::channel();
-    
+
     // Get the dialog builder
     let dialog = app.dialog().file();
-    
+
     // Configure and show the dialog with callback
     dialog
         .set_title("Select a folder")
@@ -432,7 +482,7 @@ pub async fn select_folder(app: tauri::AppHandle) -> Result<Option<String>, Stri
             // Send the result through the channel
             let _ = tx.send(result);
         });
-    
+
     // Wait for the result
     match rx.await {
         Ok(result) => Ok(result),
@@ -456,25 +506,27 @@ pub async fn get_server_port(state: State<'_, AppState>) -> Result<u16, String> 
 pub async fn read_port_file() -> Result<u16, String> {
     use std::fs;
     use std::path::PathBuf;
-    
+
     let home = std::env::var("HOME")
         .or_else(|_| std::env::var("USERPROFILE"))
         .map_err(|_| "Could not find home directory")?;
-    
+
     let port_file = PathBuf::from(home)
         .join(format!(".{}", APP_ID))
         .join("current-port.txt");
-    
+
     if !port_file.exists() {
         return Err(format!("Port file does not exist: {:?}", port_file));
     }
-    
-    let content = fs::read_to_string(&port_file)
-        .map_err(|e| format!("Failed to read port file: {}", e))?;
-    
-    let port = content.trim().parse::<u16>()
+
+    let content =
+        fs::read_to_string(&port_file).map_err(|e| format!("Failed to read port file: {}", e))?;
+
+    let port = content
+        .trim()
+        .parse::<u16>()
         .map_err(|e| format!("Invalid port number in file: {}", e))?;
-    
+
     Ok(port)
 }
 
@@ -488,11 +540,11 @@ pub async fn new_window(app: tauri::AppHandle) -> Result<(), String> {
     } else {
         APP_NAME.to_string()
     };
-    
+
     let _window = tauri::WebviewWindowBuilder::new(
         &app,
         format!("main-{}", uuid::Uuid::new_v4()), // Unique window label
-        tauri::WebviewUrl::App("index.html".into())
+        tauri::WebviewUrl::App("index.html".into()),
     )
     .title(title)
     .inner_size(516.0, 509.0)
@@ -506,7 +558,7 @@ pub async fn new_window(app: tauri::AppHandle) -> Result<(), String> {
     .accept_first_mouse(true)
     .build()
     .map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
 
@@ -527,10 +579,7 @@ pub fn send_message(
 /// Interrupts an active Claude session (Ctrl+C equivalent)
 /// Currently a placeholder - actual implementation handled by WebSocket server
 #[tauri::command]
-pub fn interrupt_session(
-    _state: State<'_, AppState>,
-    _session_id: String,
-) -> Result<(), String> {
+pub fn interrupt_session(_state: State<'_, AppState>, _session_id: String) -> Result<(), String> {
     // For now, just return OK - will implement async version later
     Ok(())
 }
@@ -538,10 +587,7 @@ pub fn interrupt_session(
 /// Clears the context for a Claude session
 /// Currently a placeholder - actual implementation handled by WebSocket server
 #[tauri::command]
-pub fn clear_session(
-    _state: State<'_, AppState>,
-    _session_id: String,
-) -> Result<(), String> {
+pub fn clear_session(_state: State<'_, AppState>, _session_id: String) -> Result<(), String> {
     // For now, just return OK - will implement async version later
     Ok(())
 }
@@ -592,10 +638,8 @@ pub async fn set_window_opacity(window: Window, opacity: f64) -> Result<(), Stri
 
     #[cfg(target_os = "windows")]
     {
-        use windows::Win32::Foundation::{HWND, COLORREF};
-        use windows::Win32::UI::WindowsAndMessaging::{
-            SetLayeredWindowAttributes, LWA_ALPHA
-        };
+        use windows::Win32::Foundation::{COLORREF, HWND};
+        use windows::Win32::UI::WindowsAndMessaging::{SetLayeredWindowAttributes, LWA_ALPHA};
 
         if let Ok(hwnd) = window.hwnd() {
             unsafe {
@@ -606,7 +650,11 @@ pub async fn set_window_opacity(window: Window, opacity: f64) -> Result<(), Stri
                 if let Err(e) = SetLayeredWindowAttributes(hwnd, COLORREF(0), alpha, LWA_ALPHA) {
                     return Err(format!("Failed to set window opacity: {:?}", e));
                 }
-                info!("Windows opacity set to alpha={} ({}%)", alpha, (clamped * 100.0) as i32);
+                info!(
+                    "Windows opacity set to alpha={} ({}%)",
+                    alpha,
+                    (clamped * 100.0) as i32
+                );
             }
         }
     }
@@ -627,14 +675,14 @@ pub async fn set_window_opacity(window: Window, opacity: f64) -> Result<(), Stri
 #[tauri::command]
 pub async fn close_window(window: Window) -> Result<(), String> {
     use tracing::info;
-    
+
     info!("Close window command received");
-    
+
     // Just close this specific window
     // DON'T kill all node processes - that affects other instances!
     // The app-level handler will stop the server when the last window closes
     window.close().map_err(|e| e.to_string())?;
-    
+
     Ok(())
 }
 
@@ -682,10 +730,7 @@ pub async fn get_recent_projects(state: State<'_, AppState>) -> Result<Vec<Strin
 /// Adds a project directory to the recent projects list
 /// Automatically manages list size and deduplication
 #[tauri::command]
-pub async fn add_recent_project(
-    state: State<'_, AppState>,
-    path: String,
-) -> Result<(), String> {
+pub async fn add_recent_project(state: State<'_, AppState>, path: String) -> Result<(), String> {
     state.add_recent_project(path);
     Ok(())
 }
@@ -694,11 +739,11 @@ pub async fn add_recent_project(
 /// Used for session management and tab display
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SessionInfo {
-    pub id: String,              // Unique session identifier
-    pub working_dir: String,     // Current working directory for the session
-    pub model: String,           // Claude model being used (opus/sonnet)
-    pub message_count: usize,    // Number of messages in the conversation
-    pub token_count: usize,      // Total tokens used in the session
+    pub id: String,           // Unique session identifier
+    pub working_dir: String,  // Current working directory for the session
+    pub model: String,        // Claude model being used (opus/sonnet)
+    pub message_count: usize, // Number of messages in the conversation
+    pub token_count: usize,   // Total tokens used in the session
 }
 
 /// Checks if a given path is a directory
@@ -718,7 +763,7 @@ pub fn toggle_console_visibility() -> Result<String, String> {
     let current = std::env::var("YUME_SHOW_CONSOLE").unwrap_or_default();
     let new_value = if current == "1" { "0" } else { "1" };
     std::env::set_var("YUME_SHOW_CONSOLE", &new_value);
-    
+
     // Return status message
     if new_value == "1" {
         Ok("Console will be visible on next server restart".to_string())
@@ -747,8 +792,13 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
                         scan_font_dir(path_str, fonts);
                     }
                 } else if let Some(name) = entry.file_name().to_str() {
-                    if name.ends_with(".ttf") || name.ends_with(".otf") || name.ends_with(".ttc")
-                       || name.ends_with(".TTF") || name.ends_with(".OTF") || name.ends_with(".TTC") {
+                    if name.ends_with(".ttf")
+                        || name.ends_with(".otf")
+                        || name.ends_with(".ttc")
+                        || name.ends_with(".TTF")
+                        || name.ends_with(".OTF")
+                        || name.ends_with(".TTC")
+                    {
                         // Extract font name from filename with better parsing
                         let mut font_name = name
                             .replace(".ttf", "")
@@ -759,8 +809,10 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
                             .replace(".TTC", "");
 
                         // Remove common weight/style suffixes
-                        let suffixes = ["Bold", "Italic", "Regular", "Light", "Medium", "Semibold",
-                                      "Black", "Thin", "Heavy", "Book", "Roman", "Oblique"];
+                        let suffixes = [
+                            "Bold", "Italic", "Regular", "Light", "Medium", "Semibold", "Black",
+                            "Thin", "Heavy", "Book", "Roman", "Oblique",
+                        ];
                         for suffix in &suffixes {
                             if font_name.ends_with(suffix) {
                                 font_name = font_name[..font_name.len() - suffix.len()].to_string();
@@ -768,7 +820,11 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
                         }
 
                         // Clean up the name
-                        font_name = font_name.trim().trim_matches('-').trim_matches('_').to_string();
+                        font_name = font_name
+                            .trim()
+                            .trim_matches('-')
+                            .trim_matches('_')
+                            .to_string();
 
                         // Replace separators with spaces
                         font_name = font_name.replace("-", " ").replace("_", " ");
@@ -790,7 +846,10 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
     // Platform-specific font directories
     #[cfg(target_os = "macos")]
     {
-        let home_fonts = format!("{}/Library/Fonts", std::env::var("HOME").unwrap_or_default());
+        let home_fonts = format!(
+            "{}/Library/Fonts",
+            std::env::var("HOME").unwrap_or_default()
+        );
         let font_dirs = vec![
             "/System/Library/Fonts",
             "/Library/Fonts",
@@ -810,7 +869,10 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
     #[cfg(target_os = "linux")]
     {
         let home_fonts = format!("{}/.fonts", std::env::var("HOME").unwrap_or_default());
-        let home_local_fonts = format!("{}/.local/share/fonts", std::env::var("HOME").unwrap_or_default());
+        let home_local_fonts = format!(
+            "{}/.local/share/fonts",
+            std::env::var("HOME").unwrap_or_default()
+        );
         let font_dirs = vec![
             "/usr/share/fonts",
             "/usr/local/share/fonts",
@@ -837,7 +899,7 @@ pub fn get_system_fonts() -> Result<Vec<String>, String> {
 pub async fn execute_bash(command: String, working_dir: Option<String>) -> Result<String, String> {
     use std::process::Command;
     use tokio::time::{timeout, Duration};
-    
+
     // Use provided working directory or home directory as fallback
     let cwd = working_dir.unwrap_or_else(|| {
         dirs::home_dir()
@@ -891,10 +953,10 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
                         .output()
                 })
                 .map_err(|e| format!("Failed to execute command: {}", e))?;
-            
+
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
-            
+
             // Check if the command failed based on exit status
             if !output.status.success() {
                 // Special case: git commit with nothing to commit returns exit code 1
@@ -903,7 +965,7 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
                     // This is not really an error, return the message as success
                     return Ok(stdout.to_string());
                 }
-                
+
                 // Return error with both stderr and stdout for debugging
                 let error_msg = if !stderr.is_empty() {
                     stderr.to_string()
@@ -914,7 +976,7 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
                 };
                 return Err(error_msg);
             }
-            
+
             // Command succeeded, return output
             if !stderr.is_empty() {
                 Ok(format!("{}\n{}", stdout, stderr))
@@ -922,7 +984,7 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
                 Ok(stdout.to_string())
             }
         }
-        
+
         #[cfg(not(target_os = "windows"))]
         {
             let output = Command::new("bash")
@@ -930,10 +992,10 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
                 .args(&["-c", &command])
                 .output()
                 .map_err(|e| format!("Failed to execute command: {}", e))?;
-            
+
             let stdout = String::from_utf8_lossy(&output.stdout);
             let stderr = String::from_utf8_lossy(&output.stderr);
-            
+
             // Check if the command failed based on exit status
             if !output.status.success() {
                 // Special case: git commit with nothing to commit returns exit code 1
@@ -942,7 +1004,7 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
                     // This is not really an error, return the message as success
                     return Ok(stdout.to_string());
                 }
-                
+
                 // Return error with both stderr and stdout for debugging
                 let error_msg = if !stderr.is_empty() {
                     stderr.to_string()
@@ -953,7 +1015,7 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
                 };
                 return Err(error_msg);
             }
-            
+
             // Command succeeded, return output
             if !stderr.is_empty() {
                 Ok(format!("{}\n{}", stdout, stderr))
@@ -962,7 +1024,7 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
             }
         }
     });
-    
+
     // Wait for the task with a timeout (30 seconds for long-running commands)
     match timeout(Duration::from_secs(30), handle).await {
         Ok(Ok(result)) => result,
@@ -975,28 +1037,28 @@ pub async fn execute_bash(command: String, working_dir: Option<String>) -> Resul
 #[tauri::command]
 pub async fn spawn_bash(
     window: Window,
-    command: String, 
-    working_dir: Option<String>
+    command: String,
+    working_dir: Option<String>,
 ) -> Result<String, String> {
+    use std::io::{BufRead, BufReader as StdBufReader};
     use std::process::Command;
     use std::thread;
-    use std::io::{BufRead, BufReader as StdBufReader};
-    
+
     // Generate unique process ID
     let process_id = format!("bash-{}", uuid::Uuid::new_v4());
     let pid_clone = process_id.clone();
-    
+
     tracing::info!("Spawning bash command: {} with ID: {}", command, process_id);
-    
+
     // Use provided working directory or home directory as fallback
     let cwd = working_dir.unwrap_or_else(|| {
         dirs::home_dir()
             .map(|p| p.to_string_lossy().to_string())
             .unwrap_or_else(|| String::from("/"))
     });
-    
+
     tracing::info!("Working directory: {}", cwd);
-    
+
     // Spawn the process
     #[cfg(target_os = "windows")]
     let mut child = {
@@ -1005,10 +1067,10 @@ pub async fn spawn_bash(
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         const DETACHED_PROCESS: u32 = 0x00000008;
         const CREATE_NEW_PROCESS_GROUP: u32 = 0x00000200;
-        
+
         // Use combined flags to prevent focus loss
         let creation_flags = CREATE_NO_WINDOW | DETACHED_PROCESS | CREATE_NEW_PROCESS_GROUP;
-        
+
         // Use PowerShell first (most reliable on Windows), then Git Bash, then cmd
         Command::new("powershell")
             .current_dir(&cwd)
@@ -1040,7 +1102,7 @@ pub async fn spawn_bash(
             })
             .map_err(|e| format!("Failed to spawn command: {}", e))?
     };
-    
+
     #[cfg(not(target_os = "windows"))]
     let mut child = Command::new("bash")
         .current_dir(&cwd)
@@ -1049,17 +1111,17 @@ pub async fn spawn_bash(
         .stderr(Stdio::piped())
         .spawn()
         .map_err(|e| format!("Failed to spawn command: {}", e))?;
-    
+
     // Take stdout and stderr for streaming
     let stdout = child.stdout.take().ok_or("Failed to capture stdout")?;
     let stderr = child.stderr.take().ok_or("Failed to capture stderr")?;
-    
+
     // Store process for potential cancellation
     {
         let mut processes = BASH_PROCESSES.lock().unwrap();
         processes.insert(process_id.clone(), child);
     }
-    
+
     // Spawn threads to stream stdout and stderr
     let window_clone = window.clone();
     let pid_stdout = process_id.clone();
@@ -1073,7 +1135,7 @@ pub async fn spawn_bash(
         }
         tracing::info!("Bash stdout reader finished for {}", pid_stdout);
     });
-    
+
     let window_clone = window.clone();
     let pid_stderr = process_id.clone();
     thread::spawn(move || {
@@ -1086,21 +1148,26 @@ pub async fn spawn_bash(
         }
         tracing::info!("Bash stderr reader finished for {}", pid_stderr);
     });
-    
+
     // Spawn task to wait for completion and clean up
     let processes_clone = BASH_PROCESSES.clone();
-    let window_for_async = window.clone();  // Clone for async closure
+    let window_for_async = window.clone(); // Clone for async closure
     tokio::spawn(async move {
         tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
-        
+
         loop {
             let should_break = {
                 let mut processes = processes_clone.lock().unwrap();
                 if let Some(mut child) = processes.remove(&pid_clone) {
                     match child.try_wait() {
                         Ok(Some(status)) => {
-                            tracing::info!("Bash process {} completed with status: {:?}", pid_clone, status.code());
-                            let _ = window_for_async.emit(&format!("bash-complete-{}", pid_clone), &status.code());
+                            tracing::info!(
+                                "Bash process {} completed with status: {:?}",
+                                pid_clone,
+                                status.code()
+                            );
+                            let _ = window_for_async
+                                .emit(&format!("bash-complete-{}", pid_clone), &status.code());
                             true
                         }
                         Ok(None) => {
@@ -1118,15 +1185,15 @@ pub async fn spawn_bash(
                     true
                 }
             };
-            
+
             if should_break {
                 break;
             }
-            
+
             tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
         }
     });
-    
+
     Ok(process_id)
 }
 
@@ -1180,14 +1247,14 @@ pub fn open_external(url: String) -> Result<(), String> {
     {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        
+
         std::process::Command::new("cmd")
             .args(&["/C", "start", "", &url])
             .creation_flags(CREATE_NO_WINDOW)
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         std::process::Command::new("open")
@@ -1195,7 +1262,7 @@ pub fn open_external(url: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
-    
+
     #[cfg(target_os = "linux")]
     {
         std::process::Command::new("xdg-open")
@@ -1203,7 +1270,7 @@ pub fn open_external(url: String) -> Result<(), String> {
             .spawn()
             .map_err(|e| format!("Failed to open URL: {}", e))?;
     }
-    
+
     Ok(())
 }
 
@@ -1233,8 +1300,8 @@ pub fn clear_server_logs() -> Result<(), String> {
 /// Does NOT include yume built-in agents
 #[tauri::command]
 pub fn load_claude_agents() -> Result<Vec<ClaudeAgent>, String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
 
     let agents_dir = home_dir.join(".claude").join("agents");
 
@@ -1245,52 +1312,57 @@ pub fn load_claude_agents() -> Result<Vec<ClaudeAgent>, String> {
 #[tauri::command]
 pub fn load_project_agents(directory: String) -> Result<Vec<ClaudeAgent>, String> {
     use std::path::PathBuf;
-    
+
     let project_dir = PathBuf::from(directory);
     let agents_dir = project_dir.join(".claude").join("agents");
-    
+
     load_agents_from_directory(&agents_dir)
 }
 
 // Helper function to load agents from a specific directory
 fn load_agents_from_directory(agents_dir: &std::path::Path) -> Result<Vec<ClaudeAgent>, String> {
     use std::fs;
-    
+
     if !agents_dir.exists() {
         return Ok(Vec::new());
     }
-    
+
     let mut agents = Vec::new();
-    
+
     // Read all .md files in the agents directory
-    for entry in fs::read_dir(&agents_dir).map_err(|e| format!("Failed to read agents directory: {}", e))? {
+    for entry in
+        fs::read_dir(&agents_dir).map_err(|e| format!("Failed to read agents directory: {}", e))?
+    {
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
         let path = entry.path();
-        
+
         if path.extension().and_then(|s| s.to_str()) == Some("md") {
             // Read the file
             let content = fs::read_to_string(&path)
                 .map_err(|e| format!("Failed to read agent file: {}", e))?;
-            
+
             // Parse the frontmatter
             if let Some((frontmatter, body)) = parse_frontmatter(&content) {
                 // Extract name and model from frontmatter
                 let name = extract_yaml_field(&frontmatter, "name").unwrap_or_default();
-                let model = extract_yaml_field(&frontmatter, "model").unwrap_or_else(|| "opus".to_string());
-                
+                let model =
+                    extract_yaml_field(&frontmatter, "model").unwrap_or_else(|| "opus".to_string());
+
                 if !name.is_empty() && !body.trim().is_empty() {
                     let file_metadata = fs::metadata(&path).ok();
-                    let created_at = file_metadata.as_ref()
+                    let created_at = file_metadata
+                        .as_ref()
                         .and_then(|m| m.created().ok())
                         .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
                         .map(|d| d.as_secs())
                         .unwrap_or(0);
-                    let updated_at = file_metadata.as_ref()
+                    let updated_at = file_metadata
+                        .as_ref()
                         .and_then(|m| m.modified().ok())
                         .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
                         .map(|d| d.as_secs())
                         .unwrap_or(0);
-                    
+
                     agents.push(ClaudeAgent {
                         id: format!("claude-agent-{}", name),
                         name,
@@ -1303,7 +1375,7 @@ fn load_agents_from_directory(agents_dir: &std::path::Path) -> Result<Vec<Claude
             }
         }
     }
-    
+
     Ok(agents)
 }
 
@@ -1334,9 +1406,9 @@ fn extract_yaml_field(yaml: &str, field: &str) -> Option<String> {
 /// Save a Claude agent to the global agents directory (~/.claude/agents)
 #[tauri::command]
 pub fn save_global_agent(agent: ClaudeAgent) -> Result<(), String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-    
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+
     let agents_dir = home_dir.join(".claude").join("agents");
     save_agent_to_directory(&agent, &agents_dir)
 }
@@ -1345,52 +1417,52 @@ pub fn save_global_agent(agent: ClaudeAgent) -> Result<(), String> {
 #[tauri::command]
 pub fn save_project_agent(agent: ClaudeAgent, directory: String) -> Result<(), String> {
     use std::path::PathBuf;
-    
+
     let project_dir = PathBuf::from(directory);
     let agents_dir = project_dir.join(".claude").join("agents");
     save_agent_to_directory(&agent, &agents_dir)
 }
 
 // Helper function to save an agent to a specific directory
-fn save_agent_to_directory(agent: &ClaudeAgent, agents_dir: &std::path::Path) -> Result<(), String> {
+fn save_agent_to_directory(
+    agent: &ClaudeAgent,
+    agents_dir: &std::path::Path,
+) -> Result<(), String> {
     use std::fs;
-    
+
     // Create directory if it doesn't exist
     if !agents_dir.exists() {
         fs::create_dir_all(agents_dir)
             .map_err(|e| format!("Failed to create agents directory: {}", e))?;
     }
-    
+
     // Create the markdown content with YAML frontmatter
     let content = format!(
         "---\nname: {}\nmodel: {}\n---\n\n{}",
-        agent.name,
-        agent.model,
-        agent.system_prompt
+        agent.name, agent.model, agent.system_prompt
     );
-    
+
     // Write to file (name.md)
     let file_path = agents_dir.join(format!("{}.md", agent.name));
-    fs::write(&file_path, content)
-        .map_err(|e| format!("Failed to write agent file: {}", e))?;
-    
+    fs::write(&file_path, content).map_err(|e| format!("Failed to write agent file: {}", e))?;
+
     Ok(())
 }
 
 /// Delete a Claude agent from the global agents directory
 #[tauri::command]
 pub fn delete_global_agent(agent_name: String) -> Result<(), String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-    
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+
     let agents_dir = home_dir.join(".claude").join("agents");
     let file_path = agents_dir.join(format!("{}.md", agent_name));
-    
+
     if file_path.exists() {
         std::fs::remove_file(&file_path)
             .map_err(|e| format!("Failed to delete agent file: {}", e))?;
     }
-    
+
     Ok(())
 }
 
@@ -1398,16 +1470,16 @@ pub fn delete_global_agent(agent_name: String) -> Result<(), String> {
 #[tauri::command]
 pub fn delete_project_agent(agent_name: String, directory: String) -> Result<(), String> {
     use std::path::PathBuf;
-    
+
     let project_dir = PathBuf::from(directory);
     let agents_dir = project_dir.join(".claude").join("agents");
     let file_path = agents_dir.join(format!("{}.md", agent_name));
-    
+
     if file_path.exists() {
         std::fs::remove_file(&file_path)
             .map_err(|e| format!("Failed to delete agent file: {}", e))?;
     }
-    
+
     Ok(())
 }
 
@@ -1424,58 +1496,64 @@ pub async fn search_files(
     max_results: usize,
 ) -> Result<Vec<FileSearchResult>, String> {
     use walkdir::WalkDir;
-    
+
     let dir_path = PathBuf::from(&directory);
     if !dir_path.exists() {
         return Err(format!("Directory does not exist: {}", directory));
     }
-    
+
     let mut results = Vec::new();
     let query_lower = query.to_lowercase();
-    
+
     // Walk through directory
     for entry in WalkDir::new(&dir_path)
-        .max_depth(5)  // Limit depth for performance
+        .max_depth(5) // Limit depth for performance
         .into_iter()
         .filter_map(|e| e.ok())
     {
         if results.len() >= max_results {
             break;
         }
-        
+
         let path = entry.path();
-        let name = path.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
-        
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
         // Skip hidden files unless requested
         if !include_hidden && name.starts_with('.') {
             continue;
         }
-        
+
         // Skip common ignore patterns
         if name == "node_modules" || name == ".git" || name == "target" || name == "dist" {
             continue;
         }
-        
+
         // Check if name matches query (fuzzy match)
         let name_lower = name.to_lowercase();
-        if query.is_empty() || name_lower.contains(&query_lower) || fuzzy_match(&query_lower, &name_lower) {
+        if query.is_empty()
+            || name_lower.contains(&query_lower)
+            || fuzzy_match(&query_lower, &name_lower)
+        {
             // Convert to Unix-style paths for consistency across platforms
-            let relative_path = path.strip_prefix(&dir_path)
+            let relative_path = path
+                .strip_prefix(&dir_path)
                 .unwrap_or(path)
                 .to_string_lossy()
                 .replace('\\', "/");
-            
+
             // Get last modified time
             let last_modified = fs::metadata(path)
                 .ok()
                 .and_then(|m| m.modified().ok())
                 .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
                 .map(|d| d.as_secs());
-            
+
             results.push(FileSearchResult {
-                file_type: if path.is_dir() { "directory".to_string() } else { "file".to_string() },
+                file_type: if path.is_dir() {
+                    "directory".to_string()
+                } else {
+                    "file".to_string()
+                },
                 path: path.to_string_lossy().to_string(),
                 name: name.to_string(),
                 relative_path,
@@ -1483,25 +1561,33 @@ pub async fn search_files(
             });
         }
     }
-    
+
     // Sort by relevance
     results.sort_by(|a, b| {
         // Exact matches first
         let a_exact = a.name.to_lowercase() == query_lower;
         let b_exact = b.name.to_lowercase() == query_lower;
-        if a_exact && !b_exact { return std::cmp::Ordering::Less; }
-        if !a_exact && b_exact { return std::cmp::Ordering::Greater; }
-        
+        if a_exact && !b_exact {
+            return std::cmp::Ordering::Less;
+        }
+        if !a_exact && b_exact {
+            return std::cmp::Ordering::Greater;
+        }
+
         // Then by whether name starts with query
         let a_starts = a.name.to_lowercase().starts_with(&query_lower);
         let b_starts = b.name.to_lowercase().starts_with(&query_lower);
-        if a_starts && !b_starts { return std::cmp::Ordering::Less; }
-        if !a_starts && b_starts { return std::cmp::Ordering::Greater; }
-        
+        if a_starts && !b_starts {
+            return std::cmp::Ordering::Less;
+        }
+        if !a_starts && b_starts {
+            return std::cmp::Ordering::Greater;
+        }
+
         // Finally by path length
         a.relative_path.len().cmp(&b.relative_path.len())
     });
-    
+
     Ok(results)
 }
 
@@ -1514,14 +1600,14 @@ pub async fn get_recent_files(
     limit: usize,
 ) -> Result<Vec<FileSearchResult>, String> {
     use walkdir::WalkDir;
-    
+
     let dir_path = PathBuf::from(&directory);
     if !dir_path.exists() {
         return Err(format!("Directory does not exist: {}", directory));
     }
-    
+
     let mut files: Vec<FileSearchResult> = Vec::new();
-    
+
     // Walk through directory
     for entry in WalkDir::new(&dir_path)
         .max_depth(5)
@@ -1529,39 +1615,39 @@ pub async fn get_recent_files(
         .filter_map(|e| e.ok())
     {
         let path = entry.path();
-        
+
         // Skip directories and hidden files
         if path.is_dir() {
             continue;
         }
-        
-        let name = path.file_name()
-            .and_then(|n| n.to_str())
-            .unwrap_or("");
-        
+
+        let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+
         if name.starts_with('.') {
             continue;
         }
-        
+
         // Skip common ignore patterns
         let path_str = path.to_string_lossy();
-        if path_str.contains("node_modules") || 
-           path_str.contains(".git") || 
-           path_str.contains("target") || 
-           path_str.contains("dist") {
+        if path_str.contains("node_modules")
+            || path_str.contains(".git")
+            || path_str.contains("target")
+            || path_str.contains("dist")
+        {
             continue;
         }
-        
+
         // Get last modified time
         if let Ok(metadata) = fs::metadata(path) {
             if let Ok(modified) = metadata.modified() {
                 if let Ok(duration) = modified.duration_since(SystemTime::UNIX_EPOCH) {
                     // Convert to Unix-style paths for consistency across platforms
-                    let relative_path = path.strip_prefix(&dir_path)
+                    let relative_path = path
+                        .strip_prefix(&dir_path)
                         .unwrap_or(path)
                         .to_string_lossy()
                         .replace('\\', "/");
-                    
+
                     files.push(FileSearchResult {
                         file_type: "file".to_string(),
                         path: path.to_string_lossy().to_string(),
@@ -1573,15 +1659,17 @@ pub async fn get_recent_files(
             }
         }
     }
-    
+
     // Sort by last modified time (most recent first)
     files.sort_by(|a, b| {
-        b.last_modified.unwrap_or(0).cmp(&a.last_modified.unwrap_or(0))
+        b.last_modified
+            .unwrap_or(0)
+            .cmp(&a.last_modified.unwrap_or(0))
     });
-    
+
     // Take only the requested limit
     files.truncate(limit);
-    
+
     Ok(files)
 }
 
@@ -1594,14 +1682,14 @@ pub async fn get_folder_contents(
     max_results: usize,
 ) -> Result<Vec<FileSearchResult>, String> {
     use std::fs;
-    
+
     let dir_path = PathBuf::from(&folder_path);
     if !dir_path.exists() {
         return Err(format!("Directory does not exist: {}", folder_path));
     }
-    
+
     let mut results = Vec::new();
-    
+
     // Read directory contents
     match fs::read_dir(&dir_path) {
         Ok(entries) => {
@@ -1609,18 +1697,19 @@ pub async fn get_folder_contents(
                 if results.len() >= max_results {
                     break;
                 }
-                
+
                 let path = entry.path();
-                let name = path.file_name()
+                let name = path
+                    .file_name()
                     .and_then(|n| n.to_str())
                     .unwrap_or("")
                     .to_string();
-                
+
                 // Skip hidden files
                 if name.starts_with('.') {
                     continue;
                 }
-                
+
                 // Get metadata
                 let metadata = entry.metadata().ok();
                 let is_dir = metadata.as_ref().map(|m| m.is_dir()).unwrap_or(false);
@@ -1628,22 +1717,27 @@ pub async fn get_folder_contents(
                     .and_then(|m| m.modified().ok())
                     .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
                     .map(|d| d.as_secs());
-                
+
                 // Create relative path
-                let relative_path = path.strip_prefix(&dir_path)
+                let relative_path = path
+                    .strip_prefix(&dir_path)
                     .unwrap_or(&path)
                     .to_string_lossy()
                     .replace('\\', "/");
-                
+
                 results.push(FileSearchResult {
-                    file_type: if is_dir { "directory".to_string() } else { "file".to_string() },
+                    file_type: if is_dir {
+                        "directory".to_string()
+                    } else {
+                        "file".to_string()
+                    },
                     path: path.to_string_lossy().to_string(),
                     name,
                     relative_path,
                     last_modified,
                 });
             }
-            
+
             // Sort by type (directories first), then configs, then by name
             results.sort_by(|a, b| {
                 // Directories first
@@ -1652,40 +1746,40 @@ pub async fn get_folder_contents(
                     ("file", "directory") => return std::cmp::Ordering::Greater,
                     _ => {}
                 }
-                
+
                 // If both are files, check if they're config files
                 if a.file_type == "file" && b.file_type == "file" {
-                    let a_is_config = a.name.contains("config") || 
-                                     a.name.ends_with(".json") || 
-                                     a.name.ends_with(".yml") || 
-                                     a.name.ends_with(".yaml") ||
-                                     a.name.ends_with(".toml") ||
-                                     a.name == "package.json" ||
-                                     a.name == "tsconfig.json" ||
-                                     a.name == ".env";
-                    let b_is_config = b.name.contains("config") || 
-                                     b.name.ends_with(".json") || 
-                                     b.name.ends_with(".yml") || 
-                                     b.name.ends_with(".yaml") ||
-                                     b.name.ends_with(".toml") ||
-                                     b.name == "package.json" ||
-                                     b.name == "tsconfig.json" ||
-                                     b.name == ".env";
-                    
+                    let a_is_config = a.name.contains("config")
+                        || a.name.ends_with(".json")
+                        || a.name.ends_with(".yml")
+                        || a.name.ends_with(".yaml")
+                        || a.name.ends_with(".toml")
+                        || a.name == "package.json"
+                        || a.name == "tsconfig.json"
+                        || a.name == ".env";
+                    let b_is_config = b.name.contains("config")
+                        || b.name.ends_with(".json")
+                        || b.name.ends_with(".yml")
+                        || b.name.ends_with(".yaml")
+                        || b.name.ends_with(".toml")
+                        || b.name == "package.json"
+                        || b.name == "tsconfig.json"
+                        || b.name == ".env";
+
                     match (a_is_config, b_is_config) {
                         (true, false) => return std::cmp::Ordering::Less,
                         (false, true) => return std::cmp::Ordering::Greater,
                         _ => {}
                     }
                 }
-                
+
                 // Finally alphabetical
                 a.name.to_lowercase().cmp(&b.name.to_lowercase())
             });
-            
+
             Ok(results)
         }
-        Err(e) => Err(format!("Failed to read directory: {}", e))
+        Err(e) => Err(format!("Failed to read directory: {}", e)),
     }
 }
 
@@ -1724,7 +1818,10 @@ fn wait_for_git_lock(dir_path: &PathBuf) -> bool {
                 if elapsed.as_secs() >= 2 {
                     // Lock is old - remove it immediately
                     if std::fs::remove_file(&lock_path).is_ok() {
-                        eprintln!("Removed stale git lock file (older than 2s): {:?}", lock_path);
+                        eprintln!(
+                            "Removed stale git lock file (older than 2s): {:?}",
+                            lock_path
+                        );
                         return true;
                     }
                 }
@@ -1736,7 +1833,10 @@ fn wait_for_git_lock(dir_path: &PathBuf) -> bool {
     if !is_git_process_running() {
         // No git process running, this is a stale lock from a crash
         if std::fs::remove_file(&lock_path).is_ok() {
-            eprintln!("Removed stale git lock file (no git process running): {:?}", lock_path);
+            eprintln!(
+                "Removed stale git lock file (no git process running): {:?}",
+                lock_path
+            );
             return true;
         }
     }
@@ -1784,7 +1884,7 @@ fn is_git_process_running() -> bool {
         // Use pgrep to find actual git processes (not our own grep/pgrep)
         // Look for /usr/bin/git or similar git binaries, excluding claude/yume processes
         if let Ok(output) = Command::new("pgrep")
-            .args(&["-x", "git"])  // -x for exact match on process name
+            .args(&["-x", "git"]) // -x for exact match on process name
             .output()
         {
             if output.status.success() {
@@ -1793,7 +1893,7 @@ fn is_git_process_running() -> bool {
         }
         // Also check for git subprocesses like git-remote-https
         if let Ok(output) = Command::new("pgrep")
-            .args(&["-f", "^/.*git-"])  // Match git-* subprocesses with full path
+            .args(&["-f", "^/.*git-"]) // Match git-* subprocesses with full path
             .output()
         {
             if output.status.success() {
@@ -1830,7 +1930,7 @@ pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
     let output = {
         use std::os::windows::process::CommandExt;
         const CREATE_NO_WINDOW: u32 = 0x08000000;
-        
+
         Command::new("git")
             .args(&["status", "--porcelain", "-uall"])
             .current_dir(&dir_path)
@@ -1838,41 +1938,41 @@ pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
             .output()
             .map_err(|e| format!("Failed to run git: {}", e))?
     };
-    
+
     #[cfg(not(target_os = "windows"))]
     let output = Command::new("git")
         .args(&["status", "--porcelain", "-uall"])
         .current_dir(&dir_path)
         .output()
         .map_err(|e| format!("Failed to run git: {}", e))?;
-    
+
     if !output.status.success() {
         return Err("Not a git repository".to_string());
     }
-    
+
     let mut status = GitStatus {
         modified: Vec::new(),
         added: Vec::new(),
         deleted: Vec::new(),
         renamed: Vec::new(),
     };
-    
+
     let output_str = String::from_utf8_lossy(&output.stdout);
-    
+
     for line in output_str.lines() {
         if line.len() < 3 {
             continue;
         }
-        
+
         let status_code = &line[..2];
         let file_path = line[3..].trim();
-        
+
         match status_code {
             " M" | "M " | "MM" => status.modified.push(file_path.to_string()),
             "A " | "AM" => status.added.push(file_path.to_string()),
             "D " | " D" => status.deleted.push(file_path.to_string()),
             "R " => status.renamed.push(file_path.to_string()),
-            "??" => {}, // Untracked files - ignore for now
+            "??" => {} // Untracked files - ignore for now
             _ => {
                 // Modified files can have various status codes
                 if status_code.contains('M') {
@@ -1881,7 +1981,7 @@ pub async fn get_git_status(directory: String) -> Result<GitStatus, String> {
             }
         }
     }
-    
+
     Ok(status)
 }
 
@@ -2122,7 +2222,9 @@ pub async fn get_git_ahead_count(directory: String) -> Result<i32, String> {
     }
 
     let count_str = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    count_str.parse::<i32>().map_err(|_| "Failed to parse ahead count".to_string())
+    count_str
+        .parse::<i32>()
+        .map_err(|_| "Failed to parse ahead count".to_string())
 }
 
 /// Helper function for fuzzy matching
@@ -2131,7 +2233,7 @@ pub async fn get_git_ahead_count(directory: String) -> Result<i32, String> {
 fn fuzzy_match(query: &str, text: &str) -> bool {
     let mut query_chars = query.chars();
     let mut current_char = query_chars.next();
-    
+
     for text_char in text.chars() {
         if let Some(qc) = current_char {
             if qc == text_char {
@@ -2141,7 +2243,7 @@ fn fuzzy_match(query: &str, text: &str) -> bool {
             return true; // All query chars found
         }
     }
-    
+
     current_char.is_none() // True if all query chars were found
 }
 
@@ -2152,52 +2254,49 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
     #[cfg(target_os = "windows")]
     {
         use windows::Win32::Foundation::HWND;
+        use windows::Win32::System::Threading::{AttachThreadInput, GetCurrentThreadId};
+        use windows::Win32::UI::Input::KeyboardAndMouse::{SetActiveWindow, SetFocus};
         use windows::Win32::UI::WindowsAndMessaging::{
-            SetForegroundWindow,
-            ShowWindow, SW_RESTORE, BringWindowToTop,
-            GetForegroundWindow, GetWindowThreadProcessId
+            BringWindowToTop, GetForegroundWindow, GetWindowThreadProcessId, SetForegroundWindow,
+            ShowWindow, SW_RESTORE,
         };
-        use windows::Win32::UI::Input::KeyboardAndMouse::{
-            SetActiveWindow, SetFocus
-        };
-        use windows::Win32::System::Threading::{
-            GetCurrentThreadId, AttachThreadInput
-        };
-        
-        let hwnd = window.hwnd().map_err(|e| format!("Failed to get window handle: {}", e))?;
+
+        let hwnd = window
+            .hwnd()
+            .map_err(|e| format!("Failed to get window handle: {}", e))?;
         unsafe {
             let hwnd = HWND(hwnd.0);
-            
+
             // Get the thread of the foreground window
             let foreground = GetForegroundWindow();
             let mut foreground_thread = 0u32;
             if !foreground.0.is_null() {
                 foreground_thread = GetWindowThreadProcessId(foreground, None);
             }
-            
+
             let current_thread = GetCurrentThreadId();
-            
+
             // Attach our thread to the foreground thread temporarily
             // This allows us to bring our window to the foreground more reliably
             let mut attached = false;
             if foreground_thread != 0 && foreground_thread != current_thread {
                 attached = AttachThreadInput(current_thread, foreground_thread, true).as_bool();
             }
-            
+
             // Multiple attempts to ensure window gets focus
             let _ = BringWindowToTop(hwnd);
             let _ = ShowWindow(hwnd, SW_RESTORE);
             let _ = SetActiveWindow(hwnd);
             let _ = SetForegroundWindow(hwnd);
             let _ = SetFocus(Some(hwnd));
-            
+
             // Detach the thread input if we attached it
             if attached {
                 let _ = AttachThreadInput(current_thread, foreground_thread, false);
             }
         }
     }
-    
+
     #[cfg(target_os = "macos")]
     {
         // On macOS, do NOT call window.set_focus() - it disrupts webview's internal focus state
@@ -2236,7 +2335,7 @@ pub async fn get_claude_version() -> Result<String, String> {
         .arg("--version")
         .output()
         .map_err(|e| format!("Failed to run claude --version: {}", e))?;
-    
+
     if output.status.success() {
         // Normalize CRLF to LF for Windows compatibility, then trim
         let version = String::from_utf8_lossy(&output.stdout)
@@ -2253,7 +2352,7 @@ pub async fn get_claude_version() -> Result<String, String> {
 #[tauri::command]
 pub async fn get_claude_path() -> Result<String, String> {
     use std::process::Command;
-    
+
     // Try to find Claude binary path using which
     #[cfg(not(target_os = "windows"))]
     {
@@ -2261,7 +2360,7 @@ pub async fn get_claude_path() -> Result<String, String> {
             .arg("claude")
             .output()
             .map_err(|e| format!("Failed to run which claude: {}", e))?;
-        
+
         if output.status.success() {
             // Normalize CRLF to LF for Windows compatibility, then trim
             let path = String::from_utf8_lossy(&output.stdout)
@@ -2316,8 +2415,8 @@ pub fn get_file_mtime(path: String) -> Result<Option<f64>, String> {
         return Ok(None);
     }
 
-    let metadata = fs::metadata(file_path)
-        .map_err(|e| format!("Failed to get file metadata: {}", e))?;
+    let metadata =
+        fs::metadata(file_path).map_err(|e| format!("Failed to get file metadata: {}", e))?;
 
     let mtime = metadata
         .modified()
@@ -2345,7 +2444,7 @@ pub struct FileConflict {
 /// Takes a list of (path, expected_mtime, is_new_file) tuples
 #[tauri::command]
 pub fn check_file_conflicts(
-    files: Vec<(String, Option<f64>, bool)>
+    files: Vec<(String, Option<f64>, bool)>,
 ) -> Result<Vec<FileConflict>, String> {
     use std::fs;
     use std::path::Path;
@@ -2530,7 +2629,7 @@ pub fn register_file_edit(
     path: String,
     session_id: String,
     timestamp: f64,
-    operation: String
+    operation: String,
 ) -> Result<(), String> {
     use std::fs;
 
@@ -2608,7 +2707,7 @@ fn normalize_path_for_comparison(path: &str) -> String {
 pub fn get_conflicting_edits(
     paths: Vec<String>,
     current_session_id: String,
-    after_timestamp: f64
+    after_timestamp: f64,
 ) -> Result<Vec<FileEditRecord>, String> {
     use std::fs;
 
@@ -2621,11 +2720,11 @@ pub fn get_conflicting_edits(
     let content = fs::read_to_string(&registry_path)
         .map_err(|e| format!("Failed to read registry: {}", e))?;
 
-    let records: Vec<FileEditRecord> = serde_json::from_str(&content)
-        .unwrap_or_default();
+    let records: Vec<FileEditRecord> = serde_json::from_str(&content).unwrap_or_default();
 
     // Normalize paths for comparison
-    let normalized_paths: Vec<String> = paths.iter()
+    let normalized_paths: Vec<String> = paths
+        .iter()
         .map(|p| normalize_path_for_comparison(p))
         .collect();
 
@@ -2663,8 +2762,7 @@ pub fn clear_session_edits(session_id: String) -> Result<(), String> {
         let content = fs::read_to_string(&registry_path)
             .map_err(|e| format!("Failed to read registry: {}", e))?;
 
-        let mut records: Vec<FileEditRecord> = serde_json::from_str(&content)
-            .unwrap_or_default();
+        let mut records: Vec<FileEditRecord> = serde_json::from_str(&content).unwrap_or_default();
 
         // Remove all records for this session
         records.retain(|r| r.session_id != session_id);

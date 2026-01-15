@@ -11,6 +11,8 @@ interface RecentConversation {
   timestamp: number;
   messageCount: number;
   filePath: string;
+  provider?: 'claude' | 'gemini' | 'openai';
+  totalContextTokens?: number; // Context usage from last result
 }
 
 interface RecentConversationsModalProps {
@@ -251,7 +253,36 @@ export const RecentConversationsModal: React.FC<RecentConversationsModalProps> =
                 <div className="recent-item-info">
                   <div className="recent-item-name">
                     <span className="recent-item-title">{conv.title}</span>
-                    <span className="recent-item-time">{formatTimestamp(conv.timestamp)} · {conv.messageCount} msgs</span>
+                    <span className="recent-item-time">
+                      {formatTimestamp(conv.timestamp)} · {conv.provider === 'gemini' ? 'gemini' : conv.provider === 'openai' ? 'codex' : 'claude'} · {conv.messageCount} msgs
+                      {conv.totalContextTokens !== undefined && conv.totalContextTokens > 0 && (() => {
+                        // Gemini has 1M context, others 200k
+                        const contextWindow = conv.provider === 'gemini' ? 1000000 : 200000;
+                        const percentage = Math.min((conv.totalContextTokens / contextWindow) * 100, 100);
+                        return (
+                          <span
+                            className="context-indicator"
+                            style={{
+                              marginLeft: '6px',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: '4px'
+                            }}
+                          >
+                            <span
+                              style={{
+                                width: '32px',
+                                height: '4px',
+                                borderRadius: '2px',
+                                background: `linear-gradient(to right, var(--accent-color) ${percentage}%, var(--text-secondary) ${percentage}%)`,
+                                opacity: 0.6
+                              }}
+                            />
+                            <span style={{ fontSize: '9px', opacity: 0.7 }}>{percentage.toFixed(0)}%</span>
+                          </span>
+                        );
+                      })()}
+                    </span>
                   </div>
                 </div>
               </button>

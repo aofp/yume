@@ -37,8 +37,10 @@ pub enum SessionIdResult {
 /// Validates a Claude session ID format
 /// Claude session IDs are 26 characters, alphanumeric with underscores
 pub fn validate_session_id(session_id: &str) -> bool {
-    session_id.len() == 26 && 
-    session_id.chars().all(|c| c.is_alphanumeric() || c == '_' || c == '-')
+    session_id.len() == 26
+        && session_id
+            .chars()
+            .all(|c| c.is_alphanumeric() || c == '_' || c == '-')
 }
 
 /// Generates a synthetic session ID as fallback
@@ -52,7 +54,9 @@ pub fn generate_synthetic_session_id() -> String {
 /// Uses a 3-second timeout to handle slow Claude startup
 /// Logs warnings at 1s and 2s if still waiting
 pub async fn extract_session_id_from_child(child: &mut Child) -> Result<SessionIdResult> {
-    let stdout = child.stdout.take()
+    let stdout = child
+        .stdout
+        .take()
         .ok_or_else(|| anyhow!("No stdout available from child process"))?;
 
     let reader = BufReader::new(stdout);
@@ -84,7 +88,10 @@ pub async fn extract_session_id_from_child(child: &mut Child) -> Result<SessionI
                 if json["type"] == "system" && json["subtype"] == "init" {
                     if let Some(session_id) = json["session_id"].as_str() {
                         let elapsed = start.elapsed().as_millis();
-                        info!("Extracted Claude session ID: {} (took {}ms)", session_id, elapsed);
+                        info!(
+                            "Extracted Claude session ID: {} (took {}ms)",
+                            session_id, elapsed
+                        );
 
                         // Validate the session ID
                         if validate_session_id(session_id) {
@@ -102,10 +109,18 @@ pub async fn extract_session_id_from_child(child: &mut Child) -> Result<SessionI
     };
 
     // Apply 3-second timeout (increased from 500ms)
-    match timeout(Duration::from_millis(EXTRACTION_TIMEOUT_MS), extraction_future).await {
+    match timeout(
+        Duration::from_millis(EXTRACTION_TIMEOUT_MS),
+        extraction_future,
+    )
+    .await
+    {
         Ok(result) => result,
         Err(_) => {
-            error!("Session ID extraction timed out after {}ms - Claude may be very slow to start", EXTRACTION_TIMEOUT_MS);
+            error!(
+                "Session ID extraction timed out after {}ms - Claude may be very slow to start",
+                EXTRACTION_TIMEOUT_MS
+            );
             warn!("Falling back to synthetic session ID - --resume may not work correctly");
             Ok(SessionIdResult::Timeout)
         }
@@ -114,8 +129,7 @@ pub async fn extract_session_id_from_child(child: &mut Child) -> Result<SessionI
 
 /// Gets the path to the ~/.claude directory
 pub fn get_claude_home_dir() -> Result<PathBuf> {
-    let home = dirs::home_dir()
-        .ok_or_else(|| anyhow!("Could not determine home directory"))?;
+    let home = dirs::home_dir().ok_or_else(|| anyhow!("Could not determine home directory"))?;
     Ok(home.join(".claude"))
 }
 
@@ -123,7 +137,7 @@ pub fn get_claude_home_dir() -> Result<PathBuf> {
 pub fn get_session_file_path(session_id: &str) -> Result<PathBuf> {
     let claude_dir = get_claude_home_dir()?;
     let projects_dir = claude_dir.join("projects");
-    
+
     // Note: In the actual Claude implementation, session files are stored
     // under encoded project paths. For now, we'll use a simplified structure
     Ok(projects_dir.join(format!("{}.jsonl", session_id)))
@@ -132,12 +146,12 @@ pub fn get_session_file_path(session_id: &str) -> Result<PathBuf> {
 /// Checks if a session file exists and is valid
 pub async fn validate_session_file(session_id: &str) -> Result<bool> {
     let session_path = get_session_file_path(session_id)?;
-    
+
     if !session_path.exists() {
         debug!("Session file does not exist: {:?}", session_path);
         return Ok(false);
     }
-    
+
     // Check if file is readable and not empty
     match tokio::fs::metadata(&session_path).await {
         Ok(metadata) => {
@@ -145,7 +159,11 @@ pub async fn validate_session_file(session_id: &str) -> Result<bool> {
                 warn!("Session file is empty: {:?}", session_path);
                 Ok(false)
             } else {
-                debug!("Valid session file found: {:?} ({} bytes)", session_path, metadata.len());
+                debug!(
+                    "Valid session file found: {:?} ({} bytes)",
+                    session_path,
+                    metadata.len()
+                );
                 Ok(true)
             }
         }
@@ -159,8 +177,10 @@ pub async fn validate_session_file(session_id: &str) -> Result<bool> {
 /// Checks if a session is locked by another process
 pub async fn is_session_locked(session_id: &str) -> Result<bool> {
     let claude_dir = get_claude_home_dir()?;
-    let lock_file = claude_dir.join("locks").join(format!("{}.lock", session_id));
-    
+    let lock_file = claude_dir
+        .join("locks")
+        .join(format!("{}.lock", session_id));
+
     Ok(lock_file.exists())
 }
 
@@ -173,10 +193,12 @@ pub struct SessionManager {
 impl SessionManager {
     pub fn new() -> Self {
         Self {
-            sessions: std::sync::Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+            sessions: std::sync::Arc::new(tokio::sync::RwLock::new(
+                std::collections::HashMap::new(),
+            )),
         }
     }
-    
+
     /// Registers a new session
     pub async fn register_session(&self, session_info: SessionInfo) -> Result<()> {
         let mut sessions = self.sessions.write().await;
@@ -185,13 +207,13 @@ impl SessionManager {
         info!("Registered session: {}", session_id);
         Ok(())
     }
-    
+
     /// Gets session info by ID
     pub async fn get_session(&self, session_id: &str) -> Option<SessionInfo> {
         let sessions = self.sessions.read().await;
         sessions.get(session_id).cloned()
     }
-    
+
     /// Updates session streaming state
     pub async fn set_streaming(&self, session_id: &str, streaming: bool) -> Result<()> {
         let mut sessions = self.sessions.write().await;
@@ -203,7 +225,7 @@ impl SessionManager {
             Err(anyhow!("Session not found: {}", session_id))
         }
     }
-    
+
     /// Updates session run ID
     pub async fn set_run_id(&self, session_id: &str, run_id: i64) -> Result<()> {
         let mut sessions = self.sessions.write().await;
@@ -215,7 +237,7 @@ impl SessionManager {
             Err(anyhow!("Session not found: {}", session_id))
         }
     }
-    
+
     /// Removes a session
     pub async fn remove_session(&self, session_id: &str) -> Option<SessionInfo> {
         let mut sessions = self.sessions.write().await;
@@ -225,19 +247,19 @@ impl SessionManager {
         }
         removed
     }
-    
+
     /// Lists all active sessions
     pub async fn list_sessions(&self) -> Vec<SessionInfo> {
         let sessions = self.sessions.read().await;
         sessions.values().cloned().collect()
     }
-    
+
     /// Gets the count of active sessions
     pub async fn session_count(&self) -> usize {
         let sessions = self.sessions.read().await;
         sessions.len()
     }
-    
+
     /// Updates the session ID for a session (when real ID is extracted from Claude)
     pub async fn update_session_id(&self, old_id: &str, new_id: &str) -> Result<()> {
         let mut sessions = self.sessions.write().await;
@@ -259,20 +281,22 @@ impl Default for SessionManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    
+
     #[test]
     fn test_validate_session_id() {
         // Valid session IDs
         assert!(validate_session_id("01234567890123456789012345"));
         assert!(validate_session_id("abcdef_123456_ABCDEF_12345"));
         assert!(validate_session_id("test-session-id-26-chars-x"));
-        
+
         // Invalid session IDs
         assert!(!validate_session_id("too_short"));
-        assert!(!validate_session_id("this_is_way_too_long_for_a_session_id"));
+        assert!(!validate_session_id(
+            "this_is_way_too_long_for_a_session_id"
+        ));
         assert!(!validate_session_id("invalid@characters#here!!"));
     }
-    
+
     #[test]
     fn test_generate_synthetic_session_id() {
         let id = generate_synthetic_session_id();
@@ -280,11 +304,11 @@ mod tests {
         assert!(id.starts_with("syn_"));
         assert!(validate_session_id(&id));
     }
-    
+
     #[tokio::test]
     async fn test_session_manager() {
         let manager = SessionManager::new();
-        
+
         let session = SessionInfo {
             session_id: "test_session_123456789012".to_string(),
             project_path: "/test/path".to_string(),
@@ -292,25 +316,31 @@ mod tests {
             streaming: false,
             run_id: None,
         };
-        
+
         // Register session
         manager.register_session(session.clone()).await.unwrap();
         assert_eq!(manager.session_count().await, 1);
-        
+
         // Get session
         let retrieved = manager.get_session(&session.session_id).await.unwrap();
         assert_eq!(retrieved.session_id, session.session_id);
-        
+
         // Update streaming
-        manager.set_streaming(&session.session_id, true).await.unwrap();
+        manager
+            .set_streaming(&session.session_id, true)
+            .await
+            .unwrap();
         let updated = manager.get_session(&session.session_id).await.unwrap();
         assert!(updated.streaming);
-        
+
         // Update run ID
-        manager.set_run_id(&session.session_id, 12345).await.unwrap();
+        manager
+            .set_run_id(&session.session_id, 12345)
+            .await
+            .unwrap();
         let updated = manager.get_session(&session.session_id).await.unwrap();
         assert_eq!(updated.run_id, Some(12345));
-        
+
         // Remove session
         let removed = manager.remove_session(&session.session_id).await.unwrap();
         assert_eq!(removed.session_id, session.session_id);

@@ -1,0 +1,262 @@
+/* Provider System Prompt Modal - Matches SystemPromptModal styling */
+.provider-prompt-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.98);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+}
+
+.provider-prompt-modal {
+  background: var(--background-color);
+  border: none;
+  border-radius: 0;
+  width: 100vw;
+  height: 100vh;
+  max-width: 100vw;
+  max-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  position: fixed;
+  top: 0;
+  left: 0;
+}
+
+.provider-prompt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--fg-10);
+  flex-shrink: 0;
+  background: var(--background-color);
+  -webkit-app-region: drag;
+}
+
+.provider-prompt-header h3 {
+  color: var(--accent-color);
+  font-size: var(--text-base);
+  font-weight: 500;
+  margin: 0;
+  text-transform: lowercase;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+.provider-prompt-header .close-button {
+  background: transparent;
+  border: none;
+  color: var(--fg-40);
+  cursor: default;
+  padding: 2px;
+  -webkit-app-region: no-drag;
+}
+
+.provider-prompt-header .close-button:hover {
+  color: var(--negative-color);
+}
+
+.provider-prompt-content {
+  padding: 8px;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  overflow-x: hidden;
+  min-height: 0;
+  max-width: 800px;
+  margin: 0 auto;
+  width: 100%;
+}
+
+.provider-prompt-content::-webkit-scrollbar {
+  width: 3px;
+}
+
+.provider-prompt-content::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.provider-prompt-content::-webkit-scrollbar-thumb {
+  background: var(--fg-10);
+  border-radius: 4px;
+}
+
+.provider-prompt-content::-webkit-scrollbar-thumb:hover {
+  background: var(--fg-20);
+}
+
+/* Mode Selection */
+.provider-prompt-content .prompt-mode-section {
+  margin-bottom: 12px;
+}
+
+.provider-prompt-content .mode-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.provider-prompt-content .mode-button {
+  flex: 1;
+  padding: 5px 10px;
+  background: var(--fg-03);
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
+  font-size: var(--text-sm);
+  cursor: default;
+  border-radius: 2px;
+  text-transform: lowercase;
+}
+
+.provider-prompt-content .mode-button:hover {
+  background: var(--fg-05);
+  color: var(--fg-60);
+}
+
+.provider-prompt-content .mode-button.active {
+  background: rgba(var(--accent-rgb), 0.1);
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+}
+
+/* Prompt Editor */
+.provider-prompt-content .prompt-editor-section {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.provider-prompt-content .editor-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+}
+
+.provider-prompt-content .editor-label {
+  font-size: var(--text-xs);
+  color: var(--fg-40);
+  text-transform: lowercase;
+}
+
+.provider-prompt-content .char-count {
+  font-size: var(--text-xs);
+  color: var(--fg-25);
+  font-family: var(--mono-font);
+}
+
+.provider-prompt-content .char-count.over-limit {
+  color: var(--negative-color);
+}
+
+.provider-prompt-content .prompt-editor {
+  background: var(--fg-03);
+  border: 1px solid var(--fg-10);
+  border-radius: 2px;
+  color: var(--fg-90);
+  padding: 12px;
+  font-size: var(--text-base);
+  font-family: var(--mono-font);
+  min-height: 80px;
+  max-height: 120px;
+  resize: vertical;
+  outline: none;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+  overflow-wrap: break-word;
+}
+
+.provider-prompt-content .prompt-editor:focus {
+  background: var(--fg-05);
+  border-color: var(--accent-color);
+}
+
+.provider-prompt-content .prompt-editor[readonly] {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.provider-prompt-content .warning-message {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: var(--text-xs);
+  color: var(--negative-color);
+  margin-top: 2px;
+}
+
+/* Footer */
+.provider-prompt-footer {
+  padding: 8px 12px;
+  border-top: 1px solid var(--fg-10);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-shrink: 0;
+  background: var(--background-color);
+}
+
+.provider-prompt-footer .reset-button {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  padding: 4px 8px;
+  background: transparent;
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
+  font-size: var(--text-xs);
+  cursor: default;
+  border-radius: 2px;
+}
+
+.provider-prompt-footer .reset-button:hover {
+  background: var(--fg-05);
+  border-color: var(--fg-10);
+  color: var(--fg-60);
+}
+
+.provider-prompt-footer .action-buttons {
+  display: flex;
+  gap: 6px;
+}
+
+.provider-prompt-footer .cancel-button,
+.provider-prompt-footer .save-button {
+  padding: 4px 10px;
+  font-size: var(--text-xs);
+  cursor: default;
+  border-radius: 2px;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+}
+
+.provider-prompt-footer .cancel-button {
+  background: transparent;
+  border: 1px solid var(--fg-10);
+  color: var(--fg-40);
+}
+
+.provider-prompt-footer .cancel-button:hover {
+  background: var(--fg-05);
+  border-color: var(--fg-10);
+  color: var(--fg-60);
+}
+
+.provider-prompt-footer .save-button {
+  background: rgba(var(--accent-rgb), 0.1);
+  border: 1px solid var(--accent-color);
+  color: var(--accent-color);
+}
+
+.provider-prompt-footer .save-button:hover {
+  background: rgba(var(--accent-rgb), 0.2);
+}
+
+.provider-prompt-footer .save-button:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}

@@ -1,9 +1,53 @@
 # Yume CLI (`yume-cli`) Technical Specification
 
+> **Last Updated:** 2026-01-14
+> **Implementation Status:** ~60% complete (structure done, translation pending)
+
+## Implementation Summary
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Directory Structure | ✅ Complete | `src-yume-cli/` |
+| Entry Point | ✅ Complete | `src-yume-cli/src/index.ts` |
+| CLI Argument Parsing | ✅ Complete | `src-yume-cli/src/index.ts` |
+| Provider Interface | ✅ Complete | `src-yume-cli/src/providers/base.ts` |
+| Provider Factory | ✅ Complete | `src-yume-cli/src/providers/index.ts` |
+| Gemini Provider Stub | ✅ Complete | `src-yume-cli/src/providers/gemini.ts` |
+| OpenAI Provider Stub | ✅ Complete | `src-yume-cli/src/providers/openai.ts` |
+| Agent Loop | ✅ Complete | `src-yume-cli/src/core/agent-loop.ts` |
+| Session Management | ✅ Complete | `src-yume-cli/src/core/session.ts` |
+| Stream Emission | ✅ Complete | `src-yume-cli/src/core/emit.ts` |
+| Path Security | ✅ Complete | `src-yume-cli/src/core/pathSecurity.ts` |
+| Tool: Glob | ✅ Complete | `src-yume-cli/src/tools/glob.ts` |
+| Tool: Grep | ✅ Complete | `src-yume-cli/src/tools/grep.ts` |
+| Tool: LS | ✅ Complete | `src-yume-cli/src/tools/ls.ts` |
+| Tool: Bash | ✅ Complete | `src-yume-cli/src/tools/bash.ts` |
+| Tool: File (Read) | ✅ Complete | `src-yume-cli/src/tools/file.ts` |
+| Tool: Edit | ✅ Complete | `src-yume-cli/src/tools/edit.ts` |
+| Tool: Write | ✅ Complete | `src-yume-cli/src/tools/write.ts` |
+| CLI Spawning | ❌ Pending | Gemini/Codex binary spawning |
+| Stream Translation | ❌ Pending | Provider → Claude format |
+| Build Scripts | ❌ Pending | `build:yume-cli:*` commands |
+
 ## Overview
-`yume-cli` is a standalone Node.js executable that acts as a **universal agent shim**. It bridges the gap between Yume's GUI (which expects Claude-compatible stream-json) and providers that lack a stateful CLI agent (Gemini, OpenAI/Codex, local endpoints).
+`yume-cli` is a standalone Node.js executable that acts as a **thin translation shim**. It spawns official CLI binaries (`gemini` from @google/gemini-cli, `codex` for OpenAI) and translates their stream-json output to Claude-compatible format.
 
 The **non-negotiable contract**: `yume-cli` must emit line-delimited JSON objects that match the current Claude stream protocol parsed by Yume (`src-tauri/src/stream_parser.rs`).
+
+## Key Architecture Shift
+**Previous approach:** `yume-cli` would implement the full agent loop (Think → Act → Observe) and make REST API calls directly.
+
+**New approach:** `yume-cli` is a thin shim that:
+1. Spawns the official CLI for the selected provider (`gemini`, `codex`)
+2. Reads the CLI's stdout stream-json
+3. Translates messages to Claude-compatible format
+4. Emits translated messages to its own stdout
+
+This approach:
+- Delegates authentication to official CLIs (no API key management)
+- Reduces maintenance burden (official CLIs handle updates)
+- Leverages official tool implementations
+- Simplifies the codebase significantly
 
 ## Implementation Stack
 
@@ -17,36 +61,32 @@ The **non-negotiable contract**: `yume-cli` must emit line-delimited JSON object
 src-yume-cli/
 ├── index.ts              # Entry point, CLI parsing
 ├── core/
-│   ├── agent-loop.ts     # Think → Act → Observe loop
-│   ├── session.ts        # Session state management
+│   ├── spawner.ts        # CLI process spawning
+│   ├── translator.ts     # Stream-json translation
 │   └── emit.ts           # Stdout JSON emission
 ├── providers/
 │   ├── base.ts           # Provider interface
-│   ├── gemini.ts         # Gemini REST adapter
-│   ├── openai.ts         # OpenAI/Codex adapter
-│   └── anthropic.ts      # Fallback Anthropic adapter
-├── tools/
-│   ├── index.ts          # Tool registry
-│   ├── file.ts           # Read, Write, Edit, MultiEdit
-│   ├── search.ts         # Glob, Grep, LS
-│   ├── bash.ts           # Shell execution
-│   └── web.ts            # WebFetch, WebSearch
-├── auth/
-│   ├── gcloud.ts         # Gemini token caching
-│   └── env.ts            # Environment variable auth
+│   ├── gemini.ts         # Gemini CLI spawner + translator
+│   ├── openai.ts         # Codex CLI spawner + translator
+│   └── claude.ts         # Claude CLI spawner (passthrough)
+├── translators/
+│   ├── gemini-to-claude.ts   # Gemini → Claude message translation
+│   ├── codex-to-claude.ts    # Codex → Claude message translation
+│   └── types.ts              # Stream message type definitions
+├── detection/
+│   ├── cli-detector.ts   # Detect installed CLIs
+│   └── auth-checker.ts   # Check authentication status
 ├── utils/
-│   ├── tokenizer.ts      # Fallback token estimation
-│   ├── secrets.ts        # Secret redaction
-│   └── paths.ts          # Cross-platform path handling
+│   ├── process.ts        # Process management utilities
+│   ├── paths.ts          # Cross-platform path handling
+│   └── logger.ts         # Debug logging to stderr
 └── types.ts              # Shared type definitions
 ```
 
 ### Dependencies
 ```json
 {
-  "dependencies": {
-    "tiktoken": "^1.0.0"
-  },
+  "dependencies": {},
   "devDependencies": {
     "@yao-pkg/pkg": "^5.0.0",
     "typescript": "^5.0.0",
@@ -55,7 +95,7 @@ src-yume-cli/
 }
 ```
 
-**Note:** No provider SDKs - use native `fetch` for all HTTP calls to minimize binary size.
+**Note:** Zero runtime dependencies. Everything uses Node.js built-in APIs (child_process, fs, path, etc.). No provider SDKs, no tiktoken, no HTTP libraries.
 
 ### Build Commands
 ```bash
@@ -79,33 +119,46 @@ npm run build:yume-cli:all      # All platforms
 
 ## Architecture
 
-### 1. Core Loop (Think → Act → Observe)
-The CLI runs a continuous loop until the model signals completion.
+### 1. CLI Spawner + Stream Translator
+The shim spawns the official CLI and translates its output in real-time.
 
 ```typescript
-while (true) {
-  // 1) THINK: Send history + tools to the provider
-  const response = await provider.generate(history, tools);
+async function runYumeCLI(provider: string, options: CLIOptions): Promise<void> {
+  // 1) Spawn the official CLI for the provider
+  const cliProcess = spawnProviderCLI(provider, options);
 
-  // 2) PARSE: Emit canonical stream-json messages to stdout
-  //    - text chunks -> { type: "text", content: "..." }
-  //    - tool calls -> { type: "tool_use", id, name, input }
+  // 2) Read stdout line-by-line
+  const reader = readline.createInterface({
+    input: cliProcess.stdout,
+    crlfDelay: Infinity,
+  });
 
-  if (response.isText) {
-    history.push({ role: "assistant", content: response.text });
-    break;
+  // 3) Translate each message and emit to our stdout
+  for await (const line of reader) {
+    try {
+      const providerMessage = JSON.parse(line);
+      const claudeMessage = translateMessage(provider, providerMessage);
+
+      if (claudeMessage) {
+        // Emit translated message to our stdout
+        console.log(JSON.stringify(claudeMessage));
+      }
+    } catch (error) {
+      // Log parse errors to stderr
+      console.error(`[yume-cli] Failed to parse message: ${error.message}`);
+    }
   }
 
-  if (response.isToolCall) {
-    // 3) ACT: Execute tool locally
-    const result = await tools.execute(response.toolName, response.args);
+  // 4) Wait for process to complete
+  const exitCode = await waitForExit(cliProcess);
 
-    // 4) OBSERVE: Emit tool_result to stdout
-    emit("tool_result", result);
-
-    // 5) UPDATE: Add tool call + tool result to history
-    history.push({ role: "assistant", tool_calls: response.toolCalls });
-    history.push({ role: "tool", content: result });
+  if (exitCode !== 0) {
+    // Emit error result
+    console.log(JSON.stringify({
+      type: 'result',
+      is_error: true,
+      error: `CLI exited with code ${exitCode}`
+    }));
   }
 }
 ```
@@ -317,22 +370,27 @@ See `docs/expansion-plan/TOOL_SCHEMA_REFERENCE.md` for UI-required input fields.
 If a tool is not implemented, do **not** list it in the `system.tools` array.
 
 ## Provider Strategies
-The CLI accepts `--provider` to select a strategy. Each strategy **must** normalize output to the canonical stream-json schema.
+The CLI accepts `--provider` to select which official CLI to spawn. Each strategy spawns the official binary and translates its output.
 
 ### Gemini Strategy
-- **Auth:** `gcloud auth print-access-token` (or ADC fallback).
-- **API:** Gemini REST streaming.
-- **Quirks:** Function calls may not include IDs; generate deterministic IDs.
+- **Binary:** `gemini` (from @google/gemini-cli npm package)
+- **Auth:** Handled by `gemini auth login` (user runs separately)
+- **Translation:** Gemini stream-json → Claude stream-json
+- **Detection:** Check for `gemini --version` to verify installation
+- **Auth Check:** Run `gemini auth status` to verify authentication
 
 ### OpenAI / Codex Strategy
-- **Auth:** `OPENAI_API_KEY` (and optional `OPENAI_BASE_URL` for compatible endpoints).
-- **API:** Streaming responses with tool calls.
-- **Quirks:** Buffer partial tool call JSON until valid before emitting `tool_use`.
+- **Binary:** `codex` (official OpenAI Codex CLI)
+- **Auth:** Handled by `codex auth login` (user runs separately)
+- **Translation:** Codex stream-json → Claude stream-json
+- **Detection:** Check for `codex --version` to verify installation
+- **Auth Check:** Run `codex auth status` to verify authentication
 
-### Copilot (Fallback Only)
-- **Auth:** `gh auth token`
-- **API:** PTY wrapper around `gh copilot` (only if API access is unavailable).
-- **Quirks:** Heuristic parsing and fragile; prefer OpenAI-compatible endpoints.
+### Claude Strategy (Passthrough)
+- **Binary:** `claude` (official Claude CLI)
+- **Auth:** Handled by Claude CLI (auto on first run)
+- **Translation:** None needed (already Claude-compatible)
+- **Purpose:** Allows Yume to use a single spawner interface for all providers
 
 ## CLI Interface
 

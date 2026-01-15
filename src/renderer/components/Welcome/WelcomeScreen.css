@@ -588,14 +588,14 @@
 /* Model Selector - exact same positioning as chat */
 .model-selector-container {
   position: fixed;
-  bottom: 4px;
+  bottom: 5px;
   left: 3px;
   z-index: 100;
 }
 
 /* macOS-specific adjustment for welcome screen */
 .platform-darwin .model-selector-container {
-  bottom: 2px; /* 1px down from default 3px */
+  bottom: 3px;
 }
 
 /* Usage limit bars container - fixed bottom right */
@@ -647,12 +647,11 @@
   color: var(--accent-color);
 }
 
-/* Version indicator - bottom left */
-.welcome-version-container {
+/* Version indicator - inline below quick nav */
+.welcome-version-inline {
   position: fixed;
-  bottom: 2px;
-  left: 4px;
-  z-index: 100;
+  bottom: 5px;
+  text-align: center;
 }
 
 .welcome-version-badge {
@@ -671,7 +670,7 @@
 .welcome-version-badge strong {
   color: var(--accent-color);
   font-weight: 600;
-  opacity: 0.7;
+  opacity: 0.6;
 }
 
 .welcome-version-badge:hover strong {

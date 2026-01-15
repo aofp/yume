@@ -1,3 +1,6 @@
+use crate::app::APP_ID;
+use rand::Rng;
+use std::fs;
 /// Dynamic port allocation module
 /// Manages port allocation for the Node.js backend server to avoid conflicts
 /// when running multiple instances of the application
@@ -12,14 +15,10 @@
 /// - Provides find_and_hold_port() that returns a held listener
 /// - Caller can hold listener until server is ready to bind
 /// - Minimizes window between check and use
-
-use std::net::{TcpListener, SocketAddr};
-use std::sync::Mutex;
+use std::net::{SocketAddr, TcpListener};
 use std::path::PathBuf;
-use std::fs;
-use rand::Rng;
-use tracing::{info, warn, debug};
-use crate::app::APP_ID;
+use std::sync::Mutex;
+use tracing::{debug, info, warn};
 
 // Store allocated ports to avoid conflicts between multiple servers
 // Note: This is per-process, not shared between app instances
@@ -129,7 +128,10 @@ pub fn find_and_hold_port() -> Option<HeldPort> {
         }
     }
 
-    warn!("Could not find an available port to hold after {} attempts", attempts);
+    warn!(
+        "Could not find an available port to hold after {} attempts",
+        attempts
+    );
     None
 }
 
@@ -199,8 +201,11 @@ pub fn find_available_port() -> Option<u16> {
             break;
         }
     }
-    
-    warn!("Could not find an available port in range 20000-65000 after {} attempts", attempts);
+
+    warn!(
+        "Could not find an available port in range 20000-65000 after {} attempts",
+        attempts
+    );
     None
 }
 
@@ -248,7 +253,7 @@ pub fn clear_allocated_ports() {
 pub fn get_fallback_port() -> u16 {
     // Try a few fallback ports in case dynamic allocation fails
     let fallbacks = vec![30001, 30002, 30003, 40001, 50001, 3001];
-    
+
     for port in fallbacks {
         if is_port_available(port) {
             info!("Using fallback port: {}", port);

@@ -2,13 +2,12 @@
 /// This module provides a pure Rust WebSocket implementation for client-server communication
 /// Currently not actively used - the application uses the Node.js Socket.IO server instead
 /// Kept as a potential future alternative to eliminate Node.js dependency
-/// 
+///
 /// Features:
 /// - Native WebSocket server using tokio-tungstenite
 /// - Direct integration with ClaudeManager
 /// - Async message handling with tokio channels
 /// - WSL path conversion for Windows compatibility
-
 use anyhow::Result;
 use futures_util::{SinkExt, StreamExt};
 use serde::{Deserialize, Serialize};
@@ -52,8 +51,8 @@ pub enum SocketMessage {
 /// WebSocket server for handling real-time communication with the frontend
 /// Manages WebSocket connections and routes messages to ClaudeManager
 pub struct WebSocketServer {
-    port: u16,                           // Port to listen on
-    claude_manager: Arc<ClaudeManager>,   // Reference to Claude session manager
+    port: u16,                          // Port to listen on
+    claude_manager: Arc<ClaudeManager>, // Reference to Claude session manager
 }
 
 impl WebSocketServer {
@@ -117,9 +116,7 @@ async fn handle_connection(
         }
     });
 
-    let _ = tx.send(SocketMessage::Connected {
-        port: addr.port(),
-    });
+    let _ = tx.send(SocketMessage::Connected { port: addr.port() });
 
     while let Some(Ok(msg)) = ws_receiver.next().await {
         match msg {
@@ -155,9 +152,12 @@ async fn handle_socket_message(
             model,
         } => {
             let working_dir = std::path::PathBuf::from(convert_wsl_path(&working_dir));
-            
+
             let session_id = if session_id.is_empty() {
-                match claude_manager.create_session(working_dir.clone(), model.clone()).await {
+                match claude_manager
+                    .create_session(working_dir.clone(), model.clone())
+                    .await
+                {
                     Ok(id) => id,
                     Err(e) => {
                         let _ = tx.send(SocketMessage::ClaudeError {
@@ -171,7 +171,7 @@ async fn handle_socket_message(
             };
 
             let (msg_tx, mut msg_rx) = mpsc::unbounded_channel::<ClaudeMessage>();
-            
+
             let tx_clone = tx.clone();
             tokio::spawn(async move {
                 while let Some(claude_msg) = msg_rx.recv().await {

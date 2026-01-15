@@ -1,21 +1,48 @@
-# Shim Architecture: The "Yume Agent" (`yume-cli`)
+# Shim Architecture: The "Yume CLI Translation Layer" (`yume-cli`)
 
-## Strategic Decision: Build vs. Buy
-We have evaluated existing CLI agents (`aider`, `open-interpreter`, `gh copilot`) as potential backends.
-*   **Existing Tools:** Great for standalone use, but lack a strict, machine-readable streaming protocol. Wrapping them leads to "screen scraping" fragility (breaking on UI updates).
-*   **Decision:** We will build a **Custom Universal Shim (`yume-cli`)**.
-*   **Inspiration:** We borrow the *architecture* of `open-interpreter` (local tool loop) but implement the *protocol* of `claude-code`.
+> **Last Updated:** 2026-01-14
+> **Implementation Status:** ~60% complete
 
-## The Yume Agent (`yume-cli`)
-A lightweight Node.js binary bundled with Yume. It is **NOT** an SDK, but a standalone CLI that drives other models.
+## Implementation Summary
+
+| Component | Status | Notes |
+|-----------|--------|-------|
+| Architecture Design | ✅ Complete | Official CLI spawning strategy finalized |
+| Backend Spawner | ✅ Complete | `yume_cli_spawner.rs` with full Rust implementation |
+| yume-cli Structure | ✅ Complete | TypeScript implementation in `src-yume-cli/` |
+| Tool Executors | ✅ Complete | All core tools (Read, Write, Edit, Glob, Grep, Bash, LS) |
+| CLI Spawning Logic | ❌ Pending | Need to spawn `gemini`/`codex` binaries |
+| Translation Layers | ❌ Pending | Gemini→Claude, Codex→Claude translation |
+| Binary Distribution | ❌ Pending | Build scripts for cross-platform binaries |
+
+## Strategic Decision: Leverage Official CLIs
+We have evaluated different approaches for multi-provider support:
+*   **Option 1: Direct REST integration** - Would require API key management, tool execution, and full agent loop implementation.
+*   **Option 2: Wrap existing CLIs** - Screen scraping is fragile and breaks on updates.
+*   **Decision:** **Spawn official CLIs and translate their output** (`@google/gemini-cli`, `codex` CLI).
+
+This approach:
+- Delegates authentication to official CLIs (no API key storage)
+- Leverages official tool implementations
+- Reduces maintenance burden (providers handle updates)
+- Simplifies our codebase to pure translation logic
+
+## The Yume CLI Shim (`yume-cli`)
+A lightweight Node.js binary bundled with Yume. It is **NOT** a full agent implementation, but a **thin translation layer**.
 
 ### Core Responsibilities
-1.  **Protocol Compliance:** Outputs the exact Claude stream-json format Yume expects (`system`, `text`, `tool_use`, `tool_result`, `usage`, `result`).
-2.  **The "Agent Loop":** Implements the *Think → Act → Observe* loop that stateless CLIs (`gcloud`) lack.
-3.  **Authentication Bridge:** Uses system CLIs for auth (e.g., `gcloud auth print-access-token`), ensuring no API keys are stored in Yume.
-4.  **Translation Layer:** Normalizes provider output into Claude-compatible stream-json (line-delimited JSON objects with a `type` field).
-    - Required types: `system`, `text`, `tool_use`, `tool_result`, `usage`, `result`.
-    - Output to stdout only; debug logs to stderr.
+1.  **CLI Spawning:** Launches the official CLI binary for the selected provider (`gemini`, `codex`, `claude`).
+2.  **Stream Reading:** Reads line-delimited JSON from the CLI's stdout.
+3.  **Protocol Translation:** Converts provider-specific stream-json to Claude-compatible format.
+4.  **Output Emission:** Emits translated messages to its own stdout in Claude format.
+5.  **Error Handling:** Captures CLI errors and translates them to Claude-compatible error messages.
+
+### What yume-cli Does NOT Do
+- Does not make REST API calls to providers
+- Does not implement the agent loop (Think → Act → Observe) - official CLIs do this
+- Does not execute tools locally - official CLIs handle tool execution
+- Does not manage authentication - users authenticate with official CLIs separately
+- Does not cache tokens - official CLIs handle auth token management
 
 ## Protocol Contract (Non-Negotiable)
 Yume's backend already parses Claude stream-json. The shim must **match that protocol** so the rest of the stack stays unchanged. See `docs/expansion-plan/PROTOCOL_NORMALIZATION.md` for the canonical schema and message examples.
@@ -32,54 +59,78 @@ Yume's backend already parses Claude stream-json. The shim must **match that pro
 ```
 [ Yume GUI ]
     ^
-    | (JSON Stream via stdout)
+    | (Claude-compatible stream-json via stdout)
     v
-[ Yume Agent (yume-cli) ]
+[ Yume Server (Node.js) ]
+    ^
+    | (spawns yume-cli)
+    v
+[ yume-cli Translation Shim ]
+    ^
+    | (spawns official CLI and reads stdout)
+    v
+[ Official Provider CLI ]
     |
-    +--- [ 1. Auth Strategy ]
-    |      |
-    |      +--- Gemini: exec(`gcloud auth print-access-token`)
-    |      +--- OpenAI: env($OPENAI_API_KEY)
-    |      +--- Copilot: exec(`gh auth token`)
+    +--- [ gemini ] (from @google/gemini-cli)
+    |      - Auth: `gemini auth login` (user runs separately)
+    |      - Tools: Executed by gemini CLI
+    |      - Output: Gemini-specific stream-json
     |
-    +--- [ 2. Tool Strategy ]
-    |      |
-    |      +--- Core tools: `Read`, `Write`, `Edit`, `MultiEdit`, `Glob`, `Grep`, `LS`, `Bash`
-    |      +--- Optional: `WebFetch`, `WebSearch`, `NotebookEdit`, `Task`, `TaskOutput`, `TodoWrite`, `Skill`, `LSP`, `KillShell`
-    |      +--- Executes them locally (fs.*, child_process)
+    +--- [ codex ] (official OpenAI Codex CLI)
+    |      - Auth: `codex auth login` (user runs separately)
+    |      - Tools: Executed by codex CLI
+    |      - Output: Codex-specific stream-json
     |
-    +--- [ 3. Model Strategy ] (Pluggable)
-           |
-           +--- Gemini Adapter (Rest API)
-           +--- OpenAI Adapter (Rest API)
-           +--- Anthropic Adapter (Rest API - fallback if native CLI missing)
+    +--- [ claude ] (official Claude CLI)
+           - Auth: Handled automatically on first run
+           - Tools: Executed by claude CLI
+           - Output: Claude stream-json (passthrough)
 ```
 
-## "Type A" Implementation (Gemini/OpenAI)
-**The Gold Standard.** We treat the provider as a raw intelligence engine. `yume-cli` handles the body.
+## Implementation Approach: Official CLI Translation
 
-1.  **Input:** User prompts "Refactor app.tsx".
-2.  **Prompt Engineering:** `yume-cli` constructs a system prompt defining tools (`<tool_definition>...`).
-3.  **Loop:**
-    *   **Call 1:** Model returns `{"tool": "Edit", "input": {"file_path": "app.tsx", "old_string": "foo", "new_string": "bar"}}`.
-    *   **Shim:**
-        1.  Emits `tool_use` event to GUI.
-        2.  Executes file write.
-        3.  Emits `tool_result` event to GUI.
-        4.  Sends result back to Model.
-    *   **Call 2:** Model returns "Refactor complete."
-    *   **Shim:** Emits `text` event chunks.
+**The Approach:** Spawn official CLIs and translate their output. No direct REST calls.
 
-## "Type B" Implementation (Copilot/Closed Sources)
-**The Fallback.** Used only when raw API access is impossible (e.g., `gh copilot` CLI features not in API).
-*   We will **avoid** this if possible due to fragility.
-*   *Correction:* Recent research suggests `gh copilot` is too limited (no file editing). We will likely prioritize a "Type A" integration using generic OpenAI/Azure endpoints if available, or omit Copilot "Agent" features in favor of a generic "OpenAI" provider that users can point to any compatible endpoint (including local LLMs).
+### Example Flow: Gemini Provider
+
+1.  **User Input:** "Refactor app.tsx"
+2.  **Yume spawns:** `yume-cli --provider gemini --model gemini-2.0-flash --prompt "Refactor app.tsx"`
+3.  **yume-cli spawns:** `gemini --model gemini-2.0-flash --output-format stream-json --prompt "Refactor app.tsx"`
+4.  **gemini CLI output:** (Gemini-specific stream-json)
+    ```json
+    {"type": "text", "content": "I'll refactor app.tsx for you."}
+    {"type": "function_call", "name": "ReadFile", "args": {"path": "app.tsx"}}
+    {"type": "function_result", "call_id": "fc_1", "result": "...file contents..."}
+    {"type": "function_call", "name": "WriteFile", "args": {"path": "app.tsx", "content": "...new content..."}}
+    {"type": "function_result", "call_id": "fc_2", "result": "Success"}
+    {"type": "done"}
+    ```
+5.  **yume-cli translates:** (Claude-compatible stream-json)
+    ```json
+    {"type": "text", "content": "I'll refactor app.tsx for you."}
+    {"type": "tool_use", "id": "toolu_1", "name": "Read", "input": {"file_path": "app.tsx"}}
+    {"type": "tool_result", "tool_use_id": "toolu_1", "content": "...file contents..."}
+    {"type": "tool_use", "id": "toolu_2", "name": "Write", "input": {"file_path": "app.tsx", "content": "...new content..."}}
+    {"type": "tool_result", "tool_use_id": "toolu_2", "content": "Success"}
+    {"type": "result", "is_error": false}
+    ```
+6.  **Yume GUI:** Receives Claude-compatible messages and renders them normally.
+
+### Example Flow: OpenAI Provider
+
+Same flow, but:
+- `yume-cli` spawns `codex` instead of `gemini`
+- Translation logic converts Codex stream-json to Claude format
+- User must have run `codex auth login` separately
 
 ## Why this is the Best Approach
-1.  **Stability:** We own the "Agent Loop." We aren't relying on `gcloud`'s beta agent features changing.
-2.  **Speed:** No PTY overhead. Direct HTTP/stdio streaming.
-3.  **Security:** We respect the "No API Key" rule by leveraging the user's authenticated environment.
-4.  **Compatibility:** Claude-compatible stream-json keeps Tauri + frontend code intact across providers.
+1.  **No Auth Management:** Official CLIs handle authentication - we never touch API keys.
+2.  **Official Tool Support:** CLIs implement tools natively - we don't need to reimplement Read/Write/Edit/etc.
+3.  **Reduced Maintenance:** Provider updates are handled by official CLIs, not our codebase.
+4.  **Simpler Code:** Pure translation logic is much simpler than full agent loop + REST integration.
+5.  **Speed:** No PTY overhead. Direct stdio streaming.
+6.  **Compatibility:** Claude-compatible stream-json keeps Tauri + frontend code intact across providers.
+7.  **User Control:** Users authenticate with official CLIs using standard methods (OAuth, API keys, etc.).
 
 ## Cross-Platform Notes
 - Use native path separators when executing tools.

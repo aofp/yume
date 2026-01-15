@@ -6,14 +6,25 @@
 import { invoke } from '@tauri-apps/api/core';
 import { listen, type UnlistenFn, type Event } from '@tauri-apps/api/event';
 import { processWrapperMessage, mapSessionIds } from './wrapperIntegration';
-import { resolveModelId, DEFAULT_MODEL_ID } from '../config/models';
+import { resolveModelId, DEFAULT_MODEL_ID, getProviderForModel, getModelById, type ProviderType } from '../config/models';
 import { isDev } from '../utils/helpers';
+
+/**
+ * Check if a provider uses yume-cli (non-Claude providers)
+ */
+function isYumeCliProvider(provider: ProviderType): boolean {
+  return provider === 'gemini' || provider === 'openai';
+}
 
 // Keep track of active listeners for cleanup
 const activeListeners = new Map<string, UnlistenFn>();
 
 // Keep track of ALL assistant message IDs during streaming for each session
 const streamingAssistantMessages = new Map<string, Set<string>>();
+
+// Track the current streaming assistant message per session for text aggregation
+// Maps sessionId -> { id: messageId, content: accumulated text }
+const currentStreamingMessage = new Map<string, { id: string; content: string }>();
 
 // Module-level session store for tracking pending spawns (replaces window global)
 const claudeSessionStore = new Map<string, {
@@ -22,6 +33,7 @@ const claudeSessionStore = new Map<string, {
   model: string;
   pendingSpawn: boolean;
   claudeSessionId?: string;
+  historyFilePath?: string;
 }>();
 
 // Clean up all listeners for a session prefix
@@ -37,6 +49,7 @@ function cleanupSessionListeners(sessionId: string) {
     }
   });
   streamingAssistantMessages.delete(sessionId);
+  currentStreamingMessage.delete(sessionId);
 }
 
 export class TauriClaudeClient {
@@ -81,7 +94,8 @@ export class TauriClaudeClient {
           sessionId: tempSessionId,
           workingDirectory: workingDirectory,
           model: mappedModel,
-          pendingSpawn: true
+          pendingSpawn: true,
+          historyFilePath: options?.historyFilePath
         });
         
         return {
@@ -94,7 +108,39 @@ export class TauriClaudeClient {
         };
       }
 
-      // Prepare request for Tauri command
+      // Detect provider from model
+      const provider = getProviderForModel(mappedModel);
+      const useYumeCli = isYumeCliProvider(provider);
+
+      if (useYumeCli) {
+        // Use yume-cli for Gemini/OpenAI providers
+        const modelDef = getModelById(mappedModel);
+        const request = {
+          provider: provider, // 'gemini' or 'openai'
+          project_path: workingDirectory,
+          model: mappedModel,
+          prompt: options?.prompt || '',
+          resume_session_id: options?.claudeSessionId || null,
+          reasoning_effort: modelDef?.reasoningEffort || null,
+          history_file_path: options?.historyFilePath || null,
+          // CRITICAL: Pass the frontend temp session ID so backend emits on the channel we're listening on
+          frontend_session_id: options?.sessionId || null,
+        };
+
+        if (isDev) console.log('[TauriClient] Spawning yume-cli session:', request);
+        const response = await invoke('spawn_yume_cli_session', { request });
+
+        const sessionId = (response as any).session_id || options?.sessionId || `session-${Date.now()}`;
+        return {
+          sessionId: sessionId,
+          messages: [],
+          workingDirectory: workingDirectory,
+          claudeSessionId: (response as any).session_id,
+          provider: provider
+        };
+      }
+
+      // Prepare request for Tauri command (Claude)
       const request = {
         project_path: workingDirectory,
         model: mappedModel,
@@ -189,16 +235,39 @@ export class TauriClaudeClient {
           claudeSessionId: sessionData.claudeSessionId
         });
 
-        // Spawn Claude with the first message as the prompt
-        // If resuming, pass the claudeSessionId as resume_session_id
-        const spawnRequest = {
-          project_path: sessionData.workingDirectory,
-          model: mappedModel,
-          prompt: content, // Pass the message as the initial prompt
-          resume_session_id: isResuming ? sessionData.claudeSessionId : null
-        };
+        // Detect provider from model
+        const provider = getProviderForModel(mappedModel);
+        const useYumeCli = isYumeCliProvider(provider);
 
-        const response = await invoke('spawn_claude_session', { request: spawnRequest });
+        let response: any;
+
+        if (useYumeCli) {
+          // Spawn yume-cli with the first message as the prompt
+          const modelDef = getModelById(mappedModel);
+          const spawnRequest = {
+            provider: provider,
+            project_path: sessionData.workingDirectory,
+            model: mappedModel,
+            prompt: content,
+            resume_session_id: isResuming ? sessionData.claudeSessionId : null,
+            reasoning_effort: modelDef?.reasoningEffort || null,
+            history_file_path: sessionData.historyFilePath || null
+          };
+
+          if (isDev) console.log('[TauriClient] Spawning yume-cli session:', spawnRequest);
+          response = await invoke('spawn_yume_cli_session', { request: spawnRequest });
+        } else {
+          // Spawn Claude with the first message as the prompt
+          // If resuming, pass the claudeSessionId as resume_session_id
+          const spawnRequest = {
+            project_path: sessionData.workingDirectory,
+            model: mappedModel,
+            prompt: content, // Pass the message as the initial prompt
+            resume_session_id: isResuming ? sessionData.claudeSessionId : null
+          };
+
+          response = await invoke('spawn_claude_session', { request: spawnRequest });
+        }
 
         // Update session store with the real Claude session ID
         const realSessionId = (response as any).session_id;
@@ -296,21 +365,158 @@ export class TauriClaudeClient {
       let transformedMessage: any = null;
       
       // Handle different message types from Claude's stream-json output
-      if (message.type === 'text') {
-        // Text content from Claude - streaming assistant message
-        const messageId = `assistant-${Date.now()}-stream`;
-        
-        // Track this streaming message
+      // Also handle Codex (OpenAI) event types
+
+      // === CODEX EVENT HANDLERS ===
+      if (message.type === 'thread.started') {
+        // Codex session init - emit system init
+        transformedMessage = {
+          type: 'system',
+          subtype: 'init',
+          session_id: message.thread_id,
+          streaming: true
+        };
+      } else if (message.type === 'turn.started') {
+        // Codex turn start - emit thinking state
+        transformedMessage = {
+          type: 'thinking',
+          is_thinking: true,
+          thought: '',
+          streaming: true
+        };
+      } else if (message.type === 'turn.completed') {
+        // Codex turn complete - emit result with usage
+        const usage = message.usage || {};
+
+        // Clear streaming state
+        streamingAssistantMessages.delete(sessionId);
+
+        // Send streaming_end first
+        queueMicrotask(() => {
+          handler({
+            type: 'streaming_end',
+            sessionId: sessionId
+          });
+        });
+
+        transformedMessage = {
+          type: 'result',
+          subtype: 'success',
+          status: 'success',
+          usage: {
+            input_tokens: usage.input_tokens || 0,
+            output_tokens: usage.output_tokens || 0,
+            cache_creation_input_tokens: 0,
+            cache_read_input_tokens: usage.cached_input_tokens || 0
+          }
+        };
+      } else if (message.type === 'turn.failed') {
+        // Codex turn failed - emit error
+        streamingAssistantMessages.delete(sessionId);
+
+        queueMicrotask(() => {
+          handler({
+            type: 'streaming_end',
+            sessionId: sessionId
+          });
+        });
+
+        transformedMessage = {
+          type: 'error',
+          message: message.error?.message || 'Turn failed'
+        };
+      } else if (message.type === 'item.started' && message.item?.type === 'command_execution') {
+        // Codex command start - emit as tool_use
+        const item = message.item;
+        transformedMessage = {
+          type: 'tool_use',
+          id: item.id || `tool-${Date.now()}`,
+          message: {
+            name: 'Bash',
+            input: { command: item.command },
+            id: item.id
+          }
+        };
+      } else if (message.type === 'item.completed' && message.item?.type === 'command_execution') {
+        // Codex command complete - emit as tool_result
+        const item = message.item;
+        transformedMessage = {
+          type: 'tool_result',
+          tool_use_id: item.id,
+          message: {
+            content: item.aggregated_output || '',
+            is_error: item.exit_code !== 0
+          }
+        };
+      } else if (message.type === 'item.completed' && message.item?.type === 'reasoning') {
+        // Codex reasoning - emit as thinking
+        const item = message.item;
+        transformedMessage = {
+          type: 'thinking',
+          is_thinking: false,
+          thought: item.text || '',
+          streaming: false
+        };
+      } else if (message.type === 'item.completed' && message.item?.type === 'agent_message') {
+        // Codex agent message - emit as assistant
+        const item = message.item;
+        const messageId = `assistant-${Date.now()}-codex`;
+
         if (!streamingAssistantMessages.has(sessionId)) {
           streamingAssistantMessages.set(sessionId, new Set());
         }
         streamingAssistantMessages.get(sessionId)?.add(messageId);
-        
+
         transformedMessage = {
           id: messageId,
           type: 'assistant',
-          message: { 
-            content: message.content || '',
+          message: {
+            content: item.text || '',
+            role: 'assistant'
+          },
+          streaming: false  // Codex sends complete messages, not streaming chunks
+        };
+      } else if (message.type === 'error') {
+        // Codex error
+        transformedMessage = {
+          type: 'error',
+          message: message.message || 'Unknown error'
+        };
+      }
+      // === END CODEX EVENT HANDLERS ===
+
+      // === CLAUDE/GEMINI EVENT HANDLERS ===
+      else if (message.type === 'text') {
+        // Text content from Claude/Gemini - streaming assistant message
+        // Aggregate text chunks into a single message per session
+        let current = currentStreamingMessage.get(sessionId);
+        if (!current) {
+          // Create new streaming message
+          const messageId = `assistant-${Date.now()}-stream`;
+          current = { id: messageId, content: '' };
+          currentStreamingMessage.set(sessionId, current);
+
+          // Track this streaming message
+          if (!streamingAssistantMessages.has(sessionId)) {
+            streamingAssistantMessages.set(sessionId, new Set());
+          }
+          streamingAssistantMessages.get(sessionId)?.add(messageId);
+        }
+
+        // Append new content
+        current.content += message.content || '';
+
+        console.log('[TauriClient] TEXT message aggregated:', {
+          totalLength: current.content.length,
+          chunkLength: (message.content || '').length,
+          messageId: current.id
+        });
+
+        transformedMessage = {
+          id: current.id,
+          type: 'assistant',
+          message: {
+            content: current.content,
             role: 'assistant'
           },
           streaming: true
@@ -319,46 +525,125 @@ export class TauriClaudeClient {
         // Message complete - but DON'T clear streaming yet! Wait for result
         // Don't send any update here
       } else if (message.type === 'usage') {
-        // Token usage information - transformed to partial result
-        // CRITICAL: Use deterministic ID so this merges with the final result message
-        // The final result will have a real ID, but we use a temp ID here that
-        // will be replaced by the ID-based dedup logic in addMessageToSession
-        transformedMessage = {
-          type: 'result',
-          id: `usage-${sessionId || 'temp'}-${Date.now()}`,
-          usage: {
-            input_tokens: message.input_tokens,
-            output_tokens: message.output_tokens,
-            cache_creation_input_tokens: message.cache_creation_input_tokens || 0,
-            cache_read_input_tokens: message.cache_read_input_tokens || 0
-          },
-          // Mark as partial so we know this is just usage data, not final result
-          _partial: true
-        };
-      } else if (message.type === 'error') {
-        transformedMessage = {
-          type: 'error',
-          message: message.message
-        };
+        // Token usage information
+        // For yume-cli providers (gemini/openai), skip creating partial result here
+        // because the actual 'result' message that follows has all the data including duration_ms.
+        // Creating a partial result causes two result messages with different IDs,
+        // which breaks elapsed time display until re-render.
+        // The result message handler below will create the proper result with all fields.
+        // Just skip this - don't emit anything for standalone usage messages from yume-cli.
+        // (Claude's usage comes embedded in result messages anyway)
+        transformedMessage = null;
       } else if (message.type === 'tool_use') {
-        // Standalone tool_use message (shouldn't happen with Claude's current output)
+        // Standalone tool_use message
+        // Support both Claude format (name, input) and Gemini format (tool_name, parameters)
+        // Clear streaming text buffer when tool use starts (text message complete)
+        currentStreamingMessage.delete(sessionId);
+
         transformedMessage = {
           type: 'tool_use',
-          id: message.id,
+          id: message.id || message.tool_id || `tool-${Date.now()}`,
           message: {
-            name: message.name,
-            input: message.input
+            name: message.name || message.tool_name,
+            input: message.input || message.parameters,
+            id: message.id || message.tool_id
           }
         };
       } else if (message.type === 'tool_result') {
         // Tool result
+        // Support both Claude format (tool_use_id, content) and Gemini format (tool_id, output)
         transformedMessage = {
           type: 'tool_result',
-          tool_use_id: message.tool_use_id,
+          tool_use_id: message.tool_use_id || message.tool_id,
           message: {
-            content: message.content,
-            is_error: message.is_error
+            content: message.content || message.output,
+            is_error: message.is_error || message.status === 'error'
           }
+        };
+      } else if (message.type === 'message' && message.role === 'assistant') {
+        // Gemini format: {"type":"message","role":"assistant","content":"...","delta":true}
+        const messageId = `assistant-${Date.now()}-${Math.random()}`;
+
+        if (!streamingAssistantMessages.has(sessionId)) {
+          streamingAssistantMessages.set(sessionId, new Set());
+        }
+        streamingAssistantMessages.get(sessionId)?.add(messageId);
+
+        transformedMessage = {
+          id: messageId,
+          type: 'assistant',
+          message: {
+            content: message.content || '',
+            role: 'assistant'
+          },
+          streaming: message.delta === true
+        };
+      } else if (message.type === 'result') {
+        // Result message - unified handler for both yume-cli (gemini/openai) and Claude
+        // Supports: yume-cli format (top-level fields), legacy gemini format (nested in stats), Claude format
+        // Clear streaming text buffer on result (turn complete)
+        currentStreamingMessage.delete(sessionId);
+
+        // CRITICAL: Emit streaming_end BEFORE result so UI clears streaming state
+        queueMicrotask(() => {
+          handler({
+            type: 'streaming_end',
+            sessionId: sessionId
+          });
+        });
+
+        // Clear tracking
+        streamingAssistantMessages.delete(sessionId);
+
+        // DEBUG: Log raw result message to see what fields we're getting
+        console.log('[TauriClient] RAW RESULT MESSAGE:', {
+          type: message.type,
+          subtype: message.subtype,
+          duration_ms: message.duration_ms,
+          total_cost_usd: message.total_cost_usd,
+          usage: message.usage,
+          modelUsage: message.modelUsage,
+          is_error: message.is_error,
+          allKeys: Object.keys(message)
+        });
+
+        // Extract model - Claude uses modelUsage object, yume-cli uses direct model field
+        let model: string | undefined = message.model;
+        if (!model && message.modelUsage && typeof message.modelUsage === 'object') {
+          const modelKeys = Object.keys(message.modelUsage);
+          if (modelKeys.length > 0) {
+            model = modelKeys[0];
+          }
+        }
+
+        // Usage can come from: message.usage (yume-cli/claude), message.stats (legacy gemini)
+        const stats = message.stats || {};
+        const usage = message.usage || stats;
+
+        transformedMessage = {
+          type: 'result',
+          id: `result-${sessionId || 'temp'}-${Date.now()}`,
+          subtype: message.subtype || 'success',
+          is_error: message.is_error || false,
+          status: message.status || (message.subtype === 'success' ? 'success' : 'error'),
+          error: message.error || (message.is_error ? message.result : null),
+          result: message.result,
+          usage: {
+            input_tokens: usage.input_tokens || stats.input || 0,
+            output_tokens: usage.output_tokens || 0,
+            cache_creation_input_tokens: usage.cache_creation_input_tokens || 0,
+            cache_read_input_tokens: usage.cache_read_input_tokens || stats.cached || 0
+          },
+          total_cost_usd: message.total_cost_usd,
+          duration_ms: message.duration_ms || stats.duration_ms,
+          num_turns: message.num_turns,
+          model: model,
+          session_id: message.session_id,
+          // CRITICAL: Preserve wrapper metadata from processWrapperMessage
+          wrapper: message.wrapper,
+          wrapper_tokens: message.wrapper_tokens,
+          wrapper_auto_compact: message.wrapper_auto_compact,
+          wrapper_compact: message.wrapper_compact
         };
       } else if (message.type === 'thinking') {
         // Thinking indicator
@@ -487,64 +772,8 @@ export class TauriClaudeClient {
         transformedMessage = {
           type: 'interrupt'
         };
-      } else if (message.type === 'result') {
-        // Result message (completion) - THIS is when we clear streaming
-        // CRITICAL: Use queueMicrotask to ensure pending tool_use messages are processed first
-        // This fixes a race condition where streaming_end is processed before tool_use
-        // due to Zustand/React state update batching
-        queueMicrotask(() => {
-          handler({
-            type: 'streaming_end',
-            sessionId: sessionId
-          });
-        });
-
-        // Clear tracking
-        streamingAssistantMessages.delete(sessionId);
-
-        // DEBUG: Log raw result message to see what fields we're getting
-        console.log('[TauriClient] RAW RESULT MESSAGE:', {
-          type: message.type,
-          subtype: message.subtype,
-          duration_ms: message.duration_ms,
-          total_cost_usd: message.total_cost_usd,
-          usage: message.usage,
-          modelUsage: message.modelUsage,
-          is_error: message.is_error,
-          allKeys: Object.keys(message)
-        });
-
-        // Extract model from modelUsage keys (e.g., "claude-opus-4-5-20251101" or "claude-sonnet-4-5-20241022")
-        let model: string | undefined;
-        if (message.modelUsage && typeof message.modelUsage === 'object') {
-          const modelKeys = Object.keys(message.modelUsage);
-          if (modelKeys.length > 0) {
-            // Use the first (usually only) model key
-            model = modelKeys[0];
-          }
-        }
-
-        transformedMessage = {
-          type: 'result',
-          subtype: message.subtype,
-          status: message.status || (message.subtype === 'success' ? 'success' : 'error'),
-          error: message.error || (message.is_error ? message.result : null),
-          result: message.result,
-          usage: message.usage,
-          total_cost_usd: message.total_cost_usd,
-          duration_ms: message.duration_ms,
-          model: model,
-          // CRITICAL: Include fields needed for compact detection
-          num_turns: message.num_turns,
-          session_id: message.session_id,
-          is_error: message.is_error,
-          // CRITICAL: Preserve wrapper metadata from processWrapperMessage
-          wrapper: message.wrapper,
-          wrapper_tokens: message.wrapper_tokens,
-          wrapper_auto_compact: message.wrapper_auto_compact,
-          wrapper_compact: message.wrapper_compact
-        };
       }
+      // NOTE: 'result' type is handled above (unified handler for yume-cli and Claude)
       
       if (transformedMessage) {
         // ALWAYS preserve wrapper metadata if present
@@ -586,6 +815,20 @@ export class TauriClaudeClient {
 
       currentSessionId = new_session_id; // Update the current session ID for wrapper
 
+      // CRITICAL: Update claudeSessionStore with the real session ID
+      // This is needed so subsequent messages use the real ID for --resume
+      const existingData = claudeSessionStore.get(sessionId);
+      if (existingData) {
+        console.log('[TauriClient] Updating claudeSessionStore with real session ID:', {
+          oldId: old_session_id,
+          newId: new_session_id
+        });
+        claudeSessionStore.set(sessionId, {
+          ...existingData,
+          claudeSessionId: new_session_id
+        });
+      }
+
       // Set up new listener before cleaning up old one
       const newUnlisten = await listen(channel, messageHandler);
       currentUnlisten = newUnlisten;
@@ -621,6 +864,189 @@ export class TauriClaudeClient {
       });
 
       // Clear assistant message ID tracking
+      streamingAssistantMessages.delete(sessionId);
+    };
+  }
+
+  /**
+   * Async version of onMessage that awaits listener setup before returning.
+   * Use this when you need to ensure the listener is ready before spawning a process.
+   */
+  async onMessageAsync(sessionId: string, handler: (message: any) => void): Promise<() => void> {
+    const channel = `claude-message:${sessionId}`;
+    const updateChannel = `claude-session-id-update:${sessionId}`;
+    let currentChannel = channel;
+    let currentSessionId = sessionId;
+
+    // Wrap handler with streaming state management (same as onMessage)
+    const messageHandler = (event: Event<any>) => {
+      const payload = event.payload;
+
+      let message: any;
+      try {
+        message = typeof payload === 'string' ? JSON.parse(payload) : payload;
+      } catch (e) {
+        console.error(`[TauriClient] Failed to parse message:`, { payload: String(payload).substring(0, 200), error: e });
+        handler({
+          type: 'error',
+          message: `Failed to parse message: ${e instanceof Error ? e.message : String(e)}`
+        });
+        return;
+      }
+
+      message = processWrapperMessage(message, currentSessionId);
+
+      // Transform message based on type (simplified version - use onMessage for full handling)
+      let transformedMessage: any = null;
+
+      if (message.type === 'text') {
+        const messageId = `assistant-${Date.now()}-stream`;
+        if (!streamingAssistantMessages.has(sessionId)) {
+          streamingAssistantMessages.set(sessionId, new Set());
+        }
+        streamingAssistantMessages.get(sessionId)?.add(messageId);
+        transformedMessage = {
+          id: messageId,
+          type: 'assistant',
+          message: { content: message.content || '', role: 'assistant' },
+          streaming: true
+        };
+      } else if (message.type === 'message' && message.role === 'assistant') {
+        // Gemini format
+        const messageId = `assistant-${Date.now()}-${Math.random()}`;
+        if (!streamingAssistantMessages.has(sessionId)) {
+          streamingAssistantMessages.set(sessionId, new Set());
+        }
+        streamingAssistantMessages.get(sessionId)?.add(messageId);
+        transformedMessage = {
+          id: messageId,
+          type: 'assistant',
+          message: { content: message.content || '', role: 'assistant' },
+          streaming: message.delta === true
+        };
+      } else if (message.type === 'result') {
+        // Result message - unified handler matching onMessage
+        // CRITICAL: Emit streaming_end BEFORE result
+        queueMicrotask(() => {
+          handler({
+            type: 'streaming_end',
+            sessionId: sessionId
+          });
+        });
+
+        streamingAssistantMessages.delete(sessionId);
+
+        // Extract model
+        let model: string | undefined = message.model;
+        if (!model && message.modelUsage && typeof message.modelUsage === 'object') {
+          const modelKeys = Object.keys(message.modelUsage);
+          if (modelKeys.length > 0) {
+            model = modelKeys[0];
+          }
+        }
+
+        const stats = message.stats || {};
+        const usage = message.usage || stats;
+
+        transformedMessage = {
+          type: 'result',
+          id: `result-${sessionId || 'temp'}-${Date.now()}`,
+          subtype: message.subtype || 'success',
+          is_error: message.is_error || false,
+          status: message.status || (message.subtype === 'success' ? 'success' : 'error'),
+          error: message.error || (message.is_error ? message.result : null),
+          result: message.result,
+          usage: {
+            input_tokens: usage.input_tokens || stats.input || 0,
+            output_tokens: usage.output_tokens || 0,
+            cache_creation_input_tokens: usage.cache_creation_input_tokens || 0,
+            cache_read_input_tokens: usage.cache_read_input_tokens || stats.cached || 0
+          },
+          total_cost_usd: message.total_cost_usd,
+          duration_ms: message.duration_ms || stats.duration_ms,
+          num_turns: message.num_turns,
+          model: model,
+          session_id: message.session_id,
+          wrapper: message.wrapper,
+          wrapper_tokens: message.wrapper_tokens,
+          wrapper_auto_compact: message.wrapper_auto_compact,
+          wrapper_compact: message.wrapper_compact
+        };
+      } else if (message.type === 'tool_use') {
+        transformedMessage = {
+          type: 'tool_use',
+          id: message.id || message.tool_id,
+          message: {
+            name: message.name || message.tool_name,
+            input: message.input || message.parameters,
+            id: message.id || message.tool_id
+          }
+        };
+      } else if (message.type === 'tool_result') {
+        transformedMessage = {
+          type: 'tool_result',
+          tool_use_id: message.tool_use_id || message.tool_id,
+          message: {
+            content: message.content || message.output,
+            is_error: message.is_error || message.status === 'error'
+          }
+        };
+      }
+
+      if (transformedMessage) {
+        if (message.wrapper) transformedMessage.wrapper = message.wrapper;
+        if (message.wrapper_tokens) transformedMessage.wrapper_tokens = message.wrapper_tokens;
+        handler(transformedMessage);
+      }
+    };
+
+    // Await listener setup - this is the key difference from onMessage
+    const unlisten = await listen(channel, messageHandler);
+    activeListeners.set(channel, unlisten);
+
+    // Also listen for session ID updates
+    const updateUnlisten = await listen(updateChannel, async (event: Event<any>) => {
+      const { old_session_id, new_session_id } = event.payload;
+      const oldChannel = currentChannel;
+      const oldUnlisten = activeListeners.get(oldChannel);
+
+      currentChannel = `claude-message:${new_session_id}`;
+      currentSessionId = new_session_id;
+      mapSessionIds(old_session_id, new_session_id);
+
+      // CRITICAL: Update claudeSessionStore with the real session ID
+      // This is needed so subsequent messages use the real ID for --resume
+      const existingData = claudeSessionStore.get(sessionId);
+      if (existingData) {
+        console.log('[TauriClient] Updating claudeSessionStore with real session ID:', {
+          oldId: old_session_id,
+          newId: new_session_id
+        });
+        claudeSessionStore.set(sessionId, {
+          ...existingData,
+          claudeSessionId: new_session_id
+        });
+      }
+
+      const newUnlisten = await listen(currentChannel, messageHandler);
+      activeListeners.set(currentChannel, newUnlisten);
+
+      if (oldUnlisten) {
+        oldUnlisten();
+        activeListeners.delete(oldChannel);
+      }
+    });
+    activeListeners.set(updateChannel, updateUnlisten);
+
+    // Return cleanup function
+    return () => {
+      [currentChannel, updateChannel].forEach(ch => {
+        const unlistenFn = activeListeners.get(ch);
+        if (unlistenFn) {
+          unlistenFn();
+          activeListeners.delete(ch);
+        }
+      });
       streamingAssistantMessages.delete(sessionId);
     };
   }

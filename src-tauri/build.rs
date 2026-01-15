@@ -3,7 +3,6 @@
 /// - Injects app metadata from package.json into Rust code
 /// - Generates platform-specific resources
 /// - Processes tauri.conf.json configuration
-
 use std::fs;
 use std::path::PathBuf;
 
@@ -15,17 +14,18 @@ fn main() {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     let package_json_path = manifest_dir.parent().unwrap().join("package.json");
 
-    let package_json_content = fs::read_to_string(&package_json_path)
-        .expect("Failed to read package.json");
+    let package_json_content =
+        fs::read_to_string(&package_json_path).expect("Failed to read package.json");
 
     // Extract name and version (simple JSON parsing to avoid dependencies)
-    let name = extract_json_field(&package_json_content, "name")
-        .unwrap_or_else(|| "yume".to_string());
-    let version = extract_json_field(&package_json_content, "version")
-        .unwrap_or_else(|| "0.1.0".to_string());
+    let name =
+        extract_json_field(&package_json_content, "name").unwrap_or_else(|| "yume".to_string());
+    let version =
+        extract_json_field(&package_json_content, "version").unwrap_or_else(|| "0.1.0".to_string());
 
     // Normalize name for file system use (lowercase, alphanumeric + hyphens only)
-    let app_id = name.to_lowercase()
+    let app_id = name
+        .to_lowercase()
         .chars()
         .filter(|c| c.is_alphanumeric() || *c == '-')
         .collect::<String>();
@@ -35,7 +35,10 @@ fn main() {
     println!("cargo:rustc-env=APP_VERSION={}", version);
     println!("cargo:rustc-env=APP_ID={}", app_id);
 
-    println!("cargo:warning=Building {} v{} (id: {})", name, version, app_id);
+    println!(
+        "cargo:warning=Building {} v{} (id: {})",
+        name, version, app_id
+    );
 
     tauri_build::build()
 }

@@ -171,6 +171,25 @@ const FLEX_1_STYLE: React.CSSProperties = { flex: 1 };
 const ICON_STYLE: React.CSSProperties = { fontSize: 'var(--text-lg)' };
 const BOLD_MARGIN_STYLE: React.CSSProperties = { marginBottom: '8px', fontWeight: 'bold' };
 
+// Helper to format model name for display
+const formatModelName = (model: string | undefined): string => {
+  if (!model) return '';
+  // Claude models
+  if (model.includes('opus')) return 'opus 4.5';
+  if (model.includes('sonnet')) return 'sonnet 4.5';
+  // Gemini models
+  if (model.includes('gemini-2.5-pro')) return 'gemini 2.5 pro';
+  if (model.includes('gemini-2.5-flash')) return 'gemini 2.5 flash';
+  if (model.includes('gemini-2.0-flash')) return 'gemini 2.0 flash';
+  if (model.includes('gemini')) return model.replace('gemini-', 'gemini ');
+  // OpenAI/Codex models
+  if (model.includes('gpt-5.2-codex')) return 'gpt-5.2 codex';
+  if (model.includes('gpt-5.1-codex-mini')) return 'gpt-5.1 codex mini';
+  if (model.includes('codex')) return model;
+  if (model.includes('gpt-')) return model;
+  return model;
+};
+
 // Complete Claude Code SDK message types
 export interface ClaudeMessage {
   type: 'system' | 'user' | 'assistant' | 'result' | 'error' | 'permission' | 'tool_approval' | 'tool_use' | 'tool_result';
@@ -3447,9 +3466,7 @@ const MessageRendererBase: React.FC<{
               <div className="elapsed-time">
                 {elapsedSeconds}s
                 {showResultStats && message.model && ` • ${
-                  message.model.includes('opus') ? 'opus 4.5' :
-                  message.model.includes('sonnet') ? 'sonnet 4.5' :
-                  message.model
+                  formatModelName(message.model)
                 }`}
               </div>
             </div>
@@ -3680,6 +3697,15 @@ export const MessageRenderer = memo(MessageRendererBase, (prevProps, nextProps) 
   const isStreamingEqual = prevProps.isStreaming === nextProps.isStreaming;
   const contentsEqual = areContentsEqual(prevProps.message.message?.content, nextProps.message.message?.content);
 
+  // For result messages, also check duration_ms and usage changes
+  // This ensures the elapsed time and token stats display updates
+  const isResultMessage = nextProps.message.type === 'result';
+  const resultFieldsEqual = !isResultMessage || (
+    prevProps.message.duration_ms === nextProps.message.duration_ms &&
+    prevProps.message.usage?.input_tokens === nextProps.message.usage?.input_tokens &&
+    prevProps.message.usage?.output_tokens === nextProps.message.usage?.output_tokens
+  );
+
   // Debug bash messages
   if (nextProps.message.id?.startsWith('bash-')) {
     console.log('[MEMO] Bash message comparison:', {
@@ -3690,14 +3716,15 @@ export const MessageRenderer = memo(MessageRendererBase, (prevProps, nextProps) 
       contentsEqual,
       prevContent: JSON.stringify(prevProps.message.message?.content)?.substring(0, 50),
       nextContent: JSON.stringify(nextProps.message.message?.content)?.substring(0, 50),
-      willSkipRender: idEqual && streamingEqual && isStreamingEqual && contentsEqual
+      willSkipRender: idEqual && streamingEqual && isStreamingEqual && contentsEqual && resultFieldsEqual
     });
   }
 
   return (
     idEqual &&
     streamingEqual &&
-    prevProps.isStreaming === nextProps.isStreaming &&
-    areContentsEqual(prevProps.message.message?.content, nextProps.message.message?.content)
+    isStreamingEqual &&
+    contentsEqual &&
+    resultFieldsEqual
   );
 });

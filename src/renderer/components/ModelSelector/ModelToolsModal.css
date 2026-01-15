@@ -58,7 +58,47 @@
   padding: 10px;
 }
 
-/* Model selection - 2 column buttons */
+/* Provider tabs */
+.mt-provider-tabs {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 8px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid var(--fg-10);
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.mt-provider-tab {
+  background: transparent;
+  border: 1px solid var(--fg-15);
+  color: var(--fg-40);
+  font-size: var(--text-xs);
+  padding: 4px 8px;
+  border-radius: 4px;
+  cursor: default;
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+  white-space: nowrap;
+}
+
+.mt-provider-tab:hover {
+  border-color: var(--accent-color);
+  color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.1);
+}
+
+.mt-provider-tab.active {
+  background: rgba(var(--accent-rgb), 0.05);
+  color: var(--accent-color);
+  border-color: rgba(var(--accent-rgb), 0.8);
+}
+
+.mt-provider-tab.active:hover {
+  border-color: var(--accent-color);
+}
+
+/* Model selection - 2 column buttons, 3 rows for 6 models */
 .mt-models-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -71,21 +111,38 @@
   border: 1px solid var(--fg-15);
   color: var(--fg-50);
   font-size: var(--text-sm);
-  padding: 6px 10px;
+  padding: 5px 8px;
   border-radius: 4px;
   cursor: default;
   text-transform: lowercase;
   font-family: var(--font-mono);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.mt-model-icon {
+  font-size: var(--text-xs);
+  opacity: 0.6;
+}
+
+.mt-model-btn.selected .mt-model-icon {
+  opacity: 1;
+}
+
+.mt-model-name {
+  flex: 1;
 }
 
 .mt-model-btn:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .mt-model-btn.selected {
-  background: rgba(var(--accent-rgb), 0.1);
-  border-color: rgba(var(--accent-rgb), 0.5);
+  background: rgba(var(--accent-rgb), 0.05);
+  border-color: rgba(var(--accent-rgb), 0.8);
   color: var(--accent-color);
 }
 
@@ -160,6 +217,7 @@
 .mt-toggle-all:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .mt-category {
@@ -212,10 +270,12 @@
 .mt-tool:hover {
   border-color: var(--accent-color);
   color: var(--accent-color);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
 .mt-tool.enabled {
-  border-color: rgba(var(--accent-rgb), 0.35);
+  background: rgba(var(--accent-rgb), 0.05);
+  border-color: rgba(var(--accent-rgb), 0.8);
   color: var(--accent-color);
 }
 

@@ -34,8 +34,6 @@ interface InputAreaProps {
   inputRef: React.RefObject<HTMLTextAreaElement | null>;
   inputOverlayRef: React.RefObject<HTMLDivElement | null>;
   inputContainerRef: React.RefObject<HTMLDivElement | null>;
-  overlayHeight: number;
-  textareaHeight: number;
   isTextareaFocused: boolean;
   setIsTextareaFocused: (focused: boolean) => void;
   setMentionTrigger: (trigger: string | null) => void;
@@ -69,8 +67,6 @@ export const InputArea = memo(function InputArea({
   inputRef,
   inputOverlayRef,
   inputContainerRef,
-  overlayHeight,
-  textareaHeight,
   isTextareaFocused,
   setIsTextareaFocused,
   setMentionTrigger,
@@ -146,11 +142,6 @@ export const InputArea = memo(function InputArea({
               <div
                 ref={inputOverlayRef}
                 className="input-text-overlay"
-                style={{
-                  height: `${overlayHeight}px`,
-                  minHeight: '44px',
-                  maxHeight: '106px'
-                }}
               >
                 {renderStyledText(input)}
               </div>
@@ -170,7 +161,7 @@ export const InputArea = memo(function InputArea({
                 }
               }}
               style={{
-                paddingRight: isStreaming ? '48px' : undefined
+                marginRight: isStreaming ? '46px' : undefined
               }}
               disabled={isReadOnly || isContextFull}
               spellCheck={false}

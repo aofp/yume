@@ -1,15 +1,14 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo } from 'react';
 import { IconX, IconTool } from '@tabler/icons-react';
-import { getModelsForSelector } from '../../config/models';
+import { ALL_MODELS } from '../../config/models';
 import {
   ALL_TOOLS,
   getToolsByCategory,
   saveEnabledTools,
   ToolDefinition
 } from '../../config/tools';
+import { useEnabledProviders } from '../../hooks/useEnabledProviders';
 import './ModelToolsModal.css';
-
-const models = getModelsForSelector();
 
 interface ModelToolsModalProps {
   isOpen: boolean;
@@ -19,6 +18,7 @@ interface ModelToolsModalProps {
   enabledTools: string[];
   onToolsChange: (tools: string[]) => void;
   openedViaKeyboard?: boolean;
+  lockedProvider?: 'claude' | 'gemini' | 'openai' | null; // Lock to provider when session has messages
 }
 
 export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
@@ -29,6 +29,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   enabledTools,
   onToolsChange,
   openedViaKeyboard = false,
+  lockedProvider = null,
 }) => {
   const toolsByCategory = getToolsByCategory();
   const modelRefs = useRef<(HTMLButtonElement | null)[]>([]);
@@ -37,13 +38,23 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   const [focusedModelIndex, setFocusedModelIndex] = useState(-1);
   const [focusedToggleAll, setFocusedToggleAll] = useState(false);
   const [focusedToolId, setFocusedToolId] = useState<string | null>(null);
-  const [isKeyboardNav, setIsKeyboardNav] = useState(true); // start true since we auto-focus
+  const [isKeyboardNav, setIsKeyboardNav] = useState(true);
+  const enabledProviders = useEnabledProviders();
+
+  // All models displayed at once (filtered by lockedProvider if set, or by enabled providers)
+  const displayModels = useMemo(() => {
+    let models = lockedProvider
+      ? ALL_MODELS.filter(m => m.provider === lockedProvider)
+      : ALL_MODELS.filter(m => enabledProviders[m.provider]);
+    return models.map(m => ({
+      id: m.id,
+      name: m.displayName,
+      description: m.description,
+      provider: m.provider
+    }));
+  }, [lockedProvider, enabledProviders]);
 
   // Build flat tool list matching visual layout order
-  // Layout: 3 rows, 2 columns each
-  // Row 1: file-read (left) | file-write (right)
-  // Row 2: web (left) | terminal (right)
-  // Row 3: other (left) | agents (right)
   const flatToolList = useMemo(() => {
     const list: ToolDefinition[] = [];
     list.push(...toolsByCategory['file-read']);
@@ -73,7 +84,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   // Focus the selected model on open (only if opened via keyboard)
   useEffect(() => {
     if (isOpen) {
-      const selectedIndex = models.findIndex(m => m.id === selectedModel);
+      const selectedIndex = displayModels.findIndex(m => m.id === selectedModel);
       setFocusedModelIndex(selectedIndex >= 0 ? selectedIndex : 0);
       setFocusedToggleAll(false);
       setFocusedToolId(null);
@@ -85,7 +96,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
         }, 10);
       }
     }
-  }, [isOpen, selectedModel, openedViaKeyboard]);
+  }, [isOpen, selectedModel, openedViaKeyboard, displayModels]);
 
   // Track keyboard vs mouse navigation
   const handleMouseDown = useCallback(() => {
@@ -101,12 +112,12 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Tab'].includes(e.key)) {
       if (focusedModelIndex === -1 && !focusedToggleAll && !focusedToolId) {
         e.preventDefault();
-        const selectedIndex = models.findIndex(m => m.id === selectedModel);
+        const selectedIndex = displayModels.findIndex(m => m.id === selectedModel);
         setFocusedModelIndex(selectedIndex >= 0 ? selectedIndex : 0);
         modelRefs.current[selectedIndex >= 0 ? selectedIndex : 0]?.focus();
       }
     }
-  }, [isKeyboardNav, focusedModelIndex, focusedToggleAll, focusedToolId, selectedModel]);
+  }, [isKeyboardNav, focusedModelIndex, focusedToggleAll, focusedToolId, selectedModel, displayModels]);
 
   useEffect(() => {
     if (!isOpen) return;
@@ -130,7 +141,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
         e.preventDefault();
         e.stopPropagation();
         setIsKeyboardNav(true);
-        const selectedIndex = models.findIndex(m => m.id === selectedModel);
+        const selectedIndex = displayModels.findIndex(m => m.id === selectedModel);
         const targetIndex = selectedIndex >= 0 ? selectedIndex : 0;
         setFocusedModelIndex(targetIndex);
         setFocusedToggleAll(false);
@@ -140,20 +151,20 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown, true);
     return () => window.removeEventListener('keydown', handleKeyDown, true);
-  }, [isOpen, onClose, selectedModel]);
+  }, [isOpen, onClose, selectedModel, displayModels]);
 
   // Handle keyboard navigation for models
   const handleModelKeyDown = useCallback((e: React.KeyboardEvent, index: number) => {
     if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') {
       e.preventDefault();
       const newIndex = e.key === 'ArrowLeft'
-        ? (index - 1 + models.length) % models.length
-        : (index + 1) % models.length;
+        ? (index - 1 + displayModels.length) % displayModels.length
+        : (index + 1) % displayModels.length;
       setFocusedModelIndex(newIndex);
       modelRefs.current[newIndex]?.focus();
     } else if (e.key === 'Enter') {
       e.preventDefault();
-      onModelChange(models[index].id);
+      onModelChange(displayModels[index].id);
       onClose();
     } else if (e.key === 'ArrowDown' || e.key === 'Tab') {
       // Move to toggle-all button
@@ -162,7 +173,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
       setFocusedToggleAll(true);
       toggleAllRef.current?.focus();
     }
-  }, [onModelChange, onClose]);
+  }, [onModelChange, onClose, displayModels]);
 
   const toggleAll = useCallback(() => {
     const allToolIds = ALL_TOOLS.map(t => t.id);
@@ -176,7 +187,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
     if (e.key === 'ArrowUp' || (e.key === 'Tab' && e.shiftKey)) {
       // Go back to models
       e.preventDefault();
-      const modelIdx = models.findIndex(m => m.id === selectedModel);
+      const modelIdx = displayModels.findIndex(m => m.id === selectedModel);
       setFocusedToggleAll(false);
       setFocusedModelIndex(modelIdx >= 0 ? modelIdx : 0);
       modelRefs.current[modelIdx >= 0 ? modelIdx : 0]?.focus();
@@ -192,7 +203,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
       e.preventDefault();
       toggleAll();
     }
-  }, [selectedModel, flatToolList, toggleAll]);
+  }, [selectedModel, flatToolList, toggleAll, displayModels]);
 
   // Handle keyboard navigation for tools
   const handleToolKeyDown = useCallback((e: React.KeyboardEvent, toolId: string) => {
@@ -302,7 +313,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
       onToolsChange(newTools);
       saveEnabledTools(newTools);
     }
-  }, [flatToolList, rowInfo, selectedModel, enabledTools, onToolsChange]);
+  }, [flatToolList, rowInfo, selectedModel, enabledTools, onToolsChange, displayModels]);
 
   const toggleTool = useCallback((toolId: string) => {
     const newTools = enabledTools.includes(toolId)
@@ -350,14 +361,17 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
         </div>
 
         <div className="mt-content">
-          {/* Models - 2 column buttons */}
+          {/* Models - all 6 in 2-column grid */}
           <div className="mt-models-row" role="group" aria-label="Model selection">
-            {models.map((model, index) => (
+            {displayModels.map((model, index) => (
               <button
                 key={model.id}
                 ref={el => { modelRefs.current[index] = el; }}
                 className={`mt-model-btn ${selectedModel === model.id ? 'selected' : ''} ${focusedModelIndex === index ? 'focused' : ''}`}
-                onClick={() => onModelChange(model.id)}
+                onClick={() => {
+                  onModelChange(model.id);
+                  onClose();
+                }}
                 onKeyDown={(e) => handleModelKeyDown(e, index)}
                 tabIndex={focusedModelIndex === index ? 0 : -1}
               >

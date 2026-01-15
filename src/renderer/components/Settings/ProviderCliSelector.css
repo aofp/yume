@@ -1,0 +1,58 @@
+/* Provider CLI Selector Button - Matches ClaudeSelector style */
+.provider-cli-setting {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  cursor: default;
+  padding: 3px 0;
+  position: relative;
+  overflow: hidden;
+}
+
+.provider-cli-label {
+  color: var(--fg-60);
+  font-size: var(--text-base);
+  text-transform: lowercase;
+  user-select: none;
+  position: relative;
+  white-space: nowrap;
+}
+
+.provider-cli-button-container {
+  position: relative;
+  z-index: 1;
+  background: var(--background-color);
+  padding: 0 4px;
+  margin: 0 -4px;
+}
+
+.provider-cli-selector-button {
+  min-width: 52px;
+  width: auto;
+  max-width: 120px;
+  height: 18px;
+  background: var(--background-color);
+  border: 1px solid var(--fg-15);
+  border-radius: 3px;
+  padding: 0 6px;
+  font-size: var(--text-xs);
+  font-family: var(--font-mono);
+  cursor: default;
+  text-align: center;
+  color: var(--fg-80);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  position: relative;
+  z-index: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.provider-cli-selector-button:hover {
+  background: var(--background-color);
+  color: var(--foreground-color);
+  border-color: rgba(var(--accent-rgb), 0.9);
+}

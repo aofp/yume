@@ -1,0 +1,106 @@
+/* ProvidersTab.css - Compact provider selector UI */
+
+.providers-tab {
+  padding: 0;
+}
+
+.providers-description {
+  font-size: 10px;
+  color: var(--fg-40);
+  margin: 0 0 12px 0;
+}
+
+.providers-grid {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+/* Provider Card - Compact */
+.provider-card {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.provider-card.enabled {
+  background: rgba(var(--accent-rgb), 0.05);
+  border-color: rgba(var(--accent-rgb), 0.15);
+}
+
+.provider-card.disabled-state {
+  opacity: 0.5;
+  pointer-events: none;
+  cursor: default;
+}
+
+.provider-card-left {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.provider-card-icon {
+  font-size: 14px;
+  color: var(--fg-30);
+}
+
+.provider-card.enabled .provider-card-icon {
+  color: var(--accent-color);
+}
+
+.provider-card-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--fg-50);
+}
+
+.provider-card.enabled .provider-card-name {
+  color: var(--fg-80);
+}
+
+.provider-card-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* Status indicator */
+.provider-status {
+  font-size: 9px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.provider-status.installed {
+  color: var(--positive-color);
+}
+
+.provider-status.not-installed {
+  color: var(--fg-30);
+}
+
+/* Toggle disabled state */
+.providers-tab .toggle-switch.compact.disabled {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+/* Provider options placeholder */
+.provider-options-placeholder {
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 4px;
+}
+
+.provider-options-note {
+  font-size: 10px;
+  color: var(--fg-40);
+  font-style: italic;
+}

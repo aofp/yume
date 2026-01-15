@@ -1,8 +1,27 @@
 # Multi-Model CLI Architecture Expansion
 
+> **Last Updated:** 2026-01-14
+> **Implementation Status:** ~75% complete
+
+## Implementation Summary
+
+| Component | Status | Location |
+|-----------|--------|----------|
+| Provider Service | ✅ Complete | `src/renderer/services/providersService.ts` |
+| Provider Selector UI | ✅ Complete | `src/renderer/components/ProviderSelector/` |
+| Providers Tab | ✅ Complete | `src/renderer/components/Settings/ProvidersTab.tsx` |
+| Model Registry | ✅ Complete | `src/renderer/config/models.ts` |
+| yume-cli Shim | 🔄 60% | `src-yume-cli/` |
+| Backend Spawner | ✅ Complete | `src-tauri/src/yume_cli_spawner.rs` |
+| CLI Detection | ✅ Complete | `src-tauri/src/commands/claude_detector.rs` |
+| Analytics Multi-Model | ✅ Complete | `server-claude-*.cjs` |
+| UCF Types | ✅ Complete | `src/renderer/types/ucf.ts` |
+| Conversation Store | ✅ Complete | `src/renderer/services/conversationStore.ts` |
+| Translation Layer | 🔄 50% | `src/renderer/services/conversationTranslator.ts` |
+
 ## Overview
 
-Currently, Yume is tightly coupled to the `claude` CLI. To support Gemini and Codex (and potentially others), we must abstract the underlying CLI interaction into a plugin-based or adapter-based architecture.
+Yume supports multiple AI providers (Claude, Gemini, OpenAI/Codex) through a CLI-first architecture. The underlying CLI interaction is abstracted via adapters and a translation shim.
 
 ## Core Philosophy: CLI-First
 
@@ -63,16 +82,20 @@ Today the frontend listens to Tauri events like `claude-message:{sessionId}`. To
 - **Protocol:** JSON stream (`--output-format stream-json`)
 - **Status:** Implemented (refactoring into adapter in progress).
 
-### 2. Gemini (Shim)
-- **Binary:** `yume-cli --provider gemini` (shim)
-- **Protocol:** Claude-compatible stream-json (emitted by shim).
-- **Status:** Active integration.
-- **Key Differences:** Function-calling format, usage metadata, massive context window.
+### 2. Gemini (Official CLI via Shim)
+- **Binary:** `yume-cli --provider gemini` spawns official `gemini` CLI from @google/gemini-cli
+- **Protocol:** Gemini stream-json → translated to Claude-compatible by yume-cli
+- **Authentication:** User runs `gemini auth login` separately
+- **Installation:** `npm install -g @google/gemini-cli`
+- **Status:** Active integration
+- **Key Differences:** Function-calling format, usage metadata, massive context window
 
-### 3. OpenAI/Codex (Shim)
-- **Primary:** `yume-cli --provider openai` (OpenAI/Codex API)
-- **Fallback:** `gh copilot` via PTY if no API access is available.
-- **Protocol:** Claude-compatible stream-json emitted by shim or adapter.
+### 3. OpenAI/Codex (Official CLI via Shim)
+- **Binary:** `yume-cli --provider openai` spawns official `codex` CLI
+- **Protocol:** Codex stream-json → translated to Claude-compatible by yume-cli
+- **Authentication:** User runs `codex auth login` separately
+- **Installation:** `npm install -g codex-cli`
+- **Status:** Planned
 
 ## Frontend Changes
 

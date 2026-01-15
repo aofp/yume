@@ -1,8 +1,9 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { IconX, IconChartBar, IconCoin, IconClock, IconBrain, IconMessage, IconArrowLeft, IconFolder } from '@tabler/icons-react';
+import { IconX, IconChartBar, IconCoin, IconClock, IconBrain, IconMessage, IconFolder } from '@tabler/icons-react';
 import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { TabButton } from '../common/TabButton';
+import { ALL_MODELS, PROVIDERS, type ProviderType } from '../../config/models';
 import './AnalyticsModal.css';
 
 interface AnalyticsModalProps {
@@ -24,16 +25,20 @@ interface ModelStats {
   cost: number;
 }
 
+interface ProviderStats {
+  sessions: number;
+  tokens: number;
+  cost: number;
+  tokenBreakdown?: TokenBreakdown;
+}
+
 interface DateStats {
   sessions: number;
   messages: number;
   tokens: number;
   cost: number;
   tokenBreakdown?: TokenBreakdown;
-  byModel?: {
-    opus: ModelStats;
-    sonnet: ModelStats;
-  };
+  byModel?: Record<string, ModelStats>;
 }
 
 interface ProjectStats {
@@ -62,8 +67,7 @@ const rangeDays = {
   '7d': 7,
   '14d': 14,
   '30d': 30,
-  '60d': 60,
-  '90d': 90
+  '90d': 90,
 } as const;
 
 const monthLabels = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
@@ -80,6 +84,34 @@ const emptyModelStats = (): ModelStats => ({
   tokens: 0,
   cost: 0
 });
+
+const computeTotalsFromDates = (byDate: Record<string, DateStats>) => {
+  const totals = { sessions: 0, messages: 0, tokens: 0, cost: 0 };
+  const tokenBreakdown = emptyTokenBreakdown();
+  const byModelTotals: Record<string, ModelStats> = {};
+
+  Object.values(byDate).forEach((data) => {
+    totals.sessions += data.sessions || 0;
+    totals.messages += data.messages || 0;
+    totals.tokens += data.tokens || 0;
+    totals.cost += data.cost || 0;
+
+    if (data.tokenBreakdown) {
+      addTokenBreakdown(tokenBreakdown, data.tokenBreakdown);
+    }
+
+    if (data.byModel) {
+      Object.entries(data.byModel).forEach(([modelKey, modelStats]) => {
+        if (!byModelTotals[modelKey]) {
+          byModelTotals[modelKey] = emptyModelStats();
+        }
+        addModelStats(byModelTotals[modelKey], modelStats);
+      });
+    }
+  });
+
+  return { totals, tokenBreakdown, byModelTotals };
+};
 
 const addTokenBreakdown = (target: TokenBreakdown, delta?: TokenBreakdown) => {
   if (!delta) return;
@@ -111,9 +143,11 @@ interface Analytics {
   totalTokens: number;
   totalCost: number;
   tokenBreakdown?: TokenBreakdown;
-  byModel: {
-    opus: ModelStats;
-    sonnet: ModelStats;
+  byModel: Record<string, ModelStats>;
+  byProvider?: {
+    claude: ProviderStats;
+    gemini: ProviderStats;
+    openai: ProviderStats;
   };
   byDate: {
     [date: string]: DateStats;
@@ -127,8 +161,32 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [timeRange, setTimeRange] = useState<'7d' | '14d' | '30d' | '60d' | '90d' | 'all'>('7d');
-  
+  const [timeRange, setTimeRange] = useState<'7d' | '14d' | '30d' | '90d'>('7d');
+
+  // Provider filter - default all providers selected (to show all models used)
+  const [selectedProviders, setSelectedProviders] = useState<Set<ProviderType>>(
+    new Set(PROVIDERS.map(p => p.id))
+  );
+
+  // Tab state for Overview vs Projects
+  const [activeTab, setActiveTab] = useState<'overview' | 'projects'>('overview');
+  const [projectsDataLoaded, setProjectsDataLoaded] = useState(false);
+
+  // Provider toggle helpers
+  const toggleProvider = (provider: ProviderType) => {
+    setSelectedProviders(prev => {
+      const next = new Set(prev);
+      if (next.has(provider)) {
+        if (next.size > 1) next.delete(provider); // prevent deselecting all
+      } else {
+        next.add(provider);
+      }
+      return next;
+    });
+  };
+
+  const isProviderSelected = (provider: ProviderType) => selectedProviders.has(provider);
+
   // Handle escape key
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -136,23 +194,14 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
         onClose();
       }
     };
-    
+
     document.addEventListener('keydown', handleEscape);
     return () => document.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
-  const [selectedProject, setSelectedProject] = useState<string | null>(initialProject || null);
-  const [viewMode, setViewMode] = useState<'all' | 'project'>(initialProject ? 'project' : 'all');
 
-  // Handle initial project prop changes
-  useEffect(() => {
-    if (initialProject) {
-      setSelectedProject(initialProject);
-      setViewMode('project');
-    } else {
-      setSelectedProject(null);
-      setViewMode('all');
-    }
-  }, [initialProject]);
+  // Legacy: support initialProject prop for direct project view
+  const [selectedProject] = useState<string | null>(initialProject || null);
+  const viewMode = initialProject ? 'project' : 'all';
 
   // Load analytics from server
   useEffect(() => {
@@ -202,56 +251,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const buildHeatmapGrid = (byDate: Record<string, DateStats>) => {
     const dateKeys = Object.keys(byDate);
     if (dateKeys.length === 0) {
-      return { mode: timeRange === 'all' ? 'monthly' as const : 'daily' as const, items: [] as HeatmapCell[], cells: [] as Array<HeatmapCell | null>, label: null };
-    }
-
-    if (timeRange === 'all') {
-      const monthlyTotals: Record<string, { tokens: number; cost: number; messages: number; sessions: number }> = {};
-      dateKeys.forEach((dateKey) => {
-        const monthKey = dateKey.slice(0, 7);
-        if (!monthlyTotals[monthKey]) {
-          monthlyTotals[monthKey] = { tokens: 0, cost: 0, messages: 0, sessions: 0 };
-        }
-        const data = byDate[dateKey];
-        monthlyTotals[monthKey].tokens += data.tokens || 0;
-        monthlyTotals[monthKey].cost += data.cost || 0;
-        monthlyTotals[monthKey].messages += data.messages || 0;
-        monthlyTotals[monthKey].sessions += data.sessions || 0;
-      });
-
-      const sortedKeys = dateKeys.sort();
-      const earliestDate = fromDateKey(sortedKeys[0]);
-      const latestDate = fromDateKey(sortedKeys[sortedKeys.length - 1]);
-      const startMonth = new Date(earliestDate.getFullYear(), earliestDate.getMonth(), 1);
-      const endMonth = new Date(latestDate.getFullYear(), latestDate.getMonth(), 1);
-
-      const items: HeatmapCell[] = [];
-      const cursor = new Date(startMonth);
-      while (cursor <= endMonth) {
-        const monthKey = `${cursor.getFullYear()}-${String(cursor.getMonth() + 1).padStart(2, '0')}`;
-        const totals = monthlyTotals[monthKey] || { tokens: 0, cost: 0, messages: 0, sessions: 0 };
-        items.push({
-          key: monthKey,
-          date: new Date(cursor),
-          tokens: totals.tokens,
-          cost: totals.cost,
-          messages: totals.messages,
-          sessions: totals.sessions,
-          granularity: 'month'
-        });
-        cursor.setMonth(cursor.getMonth() + 1);
-      }
-
-      const startPad = startMonth.getMonth();
-      const endPad = 11 - endMonth.getMonth();
-      const cells: Array<HeatmapCell | null> = [
-        ...Array(startPad).fill(null),
-        ...items,
-        ...Array(endPad).fill(null)
-      ];
-      const rangeLabel = `${startMonth.toLocaleDateString('en', { month: 'short', year: 'numeric' })} - ${endMonth.toLocaleDateString('en', { month: 'short', year: 'numeric' })}`;
-
-      return { mode: 'monthly' as const, items, cells, label: rangeLabel };
+      return { mode: 'daily' as const, items: [] as HeatmapCell[], cells: [] as Array<HeatmapCell | null>, label: null };
     }
 
     const today = new Date();
@@ -287,13 +287,14 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const getHeatmapLevel = (tokens: number, maxTokens: number): number => {
     if (tokens <= 0 || maxTokens <= 0) return 0;
     const ratio = tokens / maxTokens;
-    if (ratio >= 0.8) return 4;
-    if (ratio >= 0.6) return 3;
-    if (ratio >= 0.35) return 2;
-    return 1;
+    if (ratio >= 0.75) return 4;
+    if (ratio >= 0.5) return 3;
+    if (ratio >= 0.25) return 2;
+    if (ratio >= 0.01) return 1;
+    return 0;
   };
 
-  // Filter analytics by time range and project
+  // Filter analytics by time range, provider filter, and project
   const filteredAnalytics = useMemo(() => {
     if (!analytics) return null;
 
@@ -305,7 +306,8 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
         totalTokens: 0,
         totalCost: 0,
         tokenBreakdown: emptyTokenBreakdown(),
-        byModel: { opus: emptyModelStats(), sonnet: emptyModelStats() },
+        byModel: {} as Record<string, ModelStats>,
+        byProvider: analytics.byProvider,
         byDate: {},
         byProject: {
           [selectedProject]: {
@@ -322,41 +324,16 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
       ? projectData?.byDate || {}
       : analytics.byDate;
 
-    const cutoffDate = timeRange === 'all'
-      ? null
-      : toDateKey(new Date(Date.now() - (rangeDays[timeRange] - 1) * 24 * 60 * 60 * 1000));
+    const cutoffDate = toDateKey(new Date(Date.now() - (rangeDays[timeRange] - 1) * 24 * 60 * 60 * 1000));
 
-    const inRange = (dateKey: string) => !cutoffDate || dateKey >= cutoffDate;
+    const inRange = (dateKey: string) => dateKey >= cutoffDate;
     const filteredByDate = Object.fromEntries(
       Object.entries(sourceByDate).filter(([date]) => inRange(date))
     ) as Record<string, DateStats>;
 
-    const computeTotalsFromDates = (byDate: Record<string, DateStats>) => {
-      const totals = { sessions: 0, messages: 0, tokens: 0, cost: 0 };
-      const tokenBreakdown = emptyTokenBreakdown();
-      const byModelTotals = { opus: emptyModelStats(), sonnet: emptyModelStats() };
-
-      Object.values(byDate).forEach((data) => {
-        totals.sessions += data.sessions || 0;
-        totals.messages += data.messages || 0;
-        totals.tokens += data.tokens || 0;
-        totals.cost += data.cost || 0;
-
-        if (data.tokenBreakdown) {
-          addTokenBreakdown(tokenBreakdown, data.tokenBreakdown);
-        }
-
-        if (data.byModel) {
-          addModelStats(byModelTotals.opus, data.byModel.opus);
-          addModelStats(byModelTotals.sonnet, data.byModel.sonnet);
-        }
-      });
-
-      return { totals, tokenBreakdown, byModelTotals };
-    };
-
-    const hasSourceByDate = Object.keys(sourceByDate).length > 0;
-    const dateTotals = hasSourceByDate ? computeTotalsFromDates(filteredByDate) : null;
+    const dateTotals = Object.keys(filteredByDate).length > 0
+      ? computeTotalsFromDates(filteredByDate)
+      : null;
 
     const fallbackTotals = viewMode === 'project' && projectData
       ? {
@@ -374,18 +351,41 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
           tokenBreakdown: analytics.tokenBreakdown
         };
 
-    const totalSessions = dateTotals ? dateTotals.totals.sessions : fallbackTotals.sessions;
-    const totalMessages = dateTotals ? dateTotals.totals.messages : fallbackTotals.messages;
-    const totalTokens = dateTotals ? dateTotals.totals.tokens : fallbackTotals.tokens;
-    const totalCost = dateTotals ? dateTotals.totals.cost : fallbackTotals.cost;
-    const tokenBreakdown = dateTotals ? dateTotals.tokenBreakdown : fallbackTotals.tokenBreakdown;
+    const totalSessions = dateTotals?.totals.sessions ?? fallbackTotals.sessions;
+    const totalMessages = dateTotals?.totals.messages ?? fallbackTotals.messages;
+    const totalTokens = dateTotals?.totals.tokens ?? fallbackTotals.tokens;
+    const totalCost = dateTotals?.totals.cost ?? fallbackTotals.cost;
+    const tokenBreakdown = dateTotals?.tokenBreakdown ?? fallbackTotals.tokenBreakdown ?? emptyTokenBreakdown();
 
-    const byModel = dateTotals
-      ? dateTotals.byModelTotals
-      : (viewMode === 'project' ? { opus: emptyModelStats(), sonnet: emptyModelStats() } : analytics.byModel);
+    // Get byModel - either from date totals or original data
+    const rawByModel = dateTotals?.byModelTotals ?? (viewMode === 'project' ? {} : analytics.byModel);
+
+    // Filter byModel based on selected providers
+    const byModel = Object.fromEntries(
+      Object.entries(rawByModel).filter(([modelKey]) => {
+        // Find which provider this model belongs to
+        const model = ALL_MODELS.find(m => m.family === modelKey || m.shortName === modelKey || m.id === modelKey);
+        if (!model) {
+          // Infer provider from model key pattern
+          const keyLower = modelKey.toLowerCase();
+          if (keyLower.includes('opus') || keyLower.includes('sonnet') || keyLower.includes('haiku') || keyLower.includes('claude')) {
+            return selectedProviders.has('claude');
+          }
+          if (keyLower.includes('gemini')) {
+            return selectedProviders.has('gemini');
+          }
+          if (keyLower.includes('codex') || keyLower.includes('gpt') || keyLower.includes('openai')) {
+            return selectedProviders.has('openai');
+          }
+          // Unknown model - show if any provider selected
+          return true;
+        }
+        return selectedProviders.has(model.provider);
+      })
+    ) as Record<string, ModelStats>;
 
     let byProject: Analytics['byProject'] = analytics.byProject;
-    if (viewMode === 'all' && timeRange !== 'all') {
+    if (viewMode === 'all') {
       byProject = Object.entries(analytics.byProject).reduce((acc, [name, data]) => {
         if (!data.byDate || Object.keys(data.byDate).length === 0) {
           acc[name] = data;
@@ -408,9 +408,9 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
       }, {} as Analytics['byProject']);
     } else if (viewMode === 'project' && projectData && selectedProject) {
       const projectByDate = projectData.byDate || {};
-      const filteredProjectByDate = timeRange === 'all'
-        ? projectByDate
-        : Object.fromEntries(Object.entries(projectByDate).filter(([date]) => inRange(date))) as Record<string, DateStats>;
+      const filteredProjectByDate = Object.fromEntries(
+        Object.entries(projectByDate).filter(([date]) => inRange(date))
+      ) as Record<string, DateStats>;
       const projectTotals = Object.keys(projectByDate).length > 0
         ? computeTotalsFromDates(filteredProjectByDate)
         : null;
@@ -434,10 +434,11 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
       totalCost,
       tokenBreakdown,
       byModel,
+      byProvider: analytics.byProvider,
       byDate: filteredByDate,
       byProject
     };
-  }, [analytics, timeRange, viewMode, selectedProject]);
+  }, [analytics, timeRange, viewMode, selectedProject, selectedProviders]);
 
 
   // Format large numbers
@@ -453,39 +454,27 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
     return `$${cost.toFixed(2)}`;
   };
 
-  // Navigate to project analytics
-  const handleProjectClick = (projectName: string) => {
-    setSelectedProject(projectName);
-    setViewMode('project');
-  };
-
-  // Navigate back to all analytics
-  const handleBackClick = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    setSelectedProject(null);
-    setViewMode('all');
-  };
-
   if (!isOpen) return null;
 
-  // Get sorted projects by tokens
-  const topProjects = filteredAnalytics ? 
-    Object.entries(filteredAnalytics.byProject)
-      .filter(([, data]) => data.tokens > 0 || data.messages > 0)
-      .sort((a, b) => b[1].tokens - a[1].tokens)
-      .slice(0, 5) : [];
+  // Get sorted projects by tokens (all projects for projects tab)
+  const allProjects = filteredAnalytics
+    ? Object.entries(filteredAnalytics.byProject)
+        .filter(([, data]) => data.tokens > 0 || data.messages > 0)
+        .sort((a, b) => b[1].tokens - a[1].tokens)
+    : [];
+
+  // Top 5 projects for overview tab
+  const topProjects = allProjects.slice(0, 5);
 
   const heatmapGrid = filteredAnalytics ? buildHeatmapGrid(filteredAnalytics.byDate) : {
-    mode: timeRange === 'all' ? 'monthly' as const : 'daily' as const,
+    mode: 'daily' as const,
     items: [] as HeatmapCell[],
     cells: [] as Array<HeatmapCell | null>,
     label: null as string | null
   };
   const heatmapItems = heatmapGrid.items;
   const heatmapCells = heatmapGrid.cells;
-  const heatmapMode = heatmapGrid.mode;
-  const heatmapRangeLabel = heatmapGrid.label;
-  const heatmapTitle = heatmapMode === 'monthly' ? 'monthly usage' : 'daily usage';
+  const heatmapTitle = 'daily usage';
   const heatmapMaxTokens = Math.max(...heatmapItems.map((day) => day.tokens), 1);
   const heatmapActiveCount = heatmapItems.filter((day) => day.tokens > 0).length;
   const heatmapTotalTokens = heatmapItems.reduce((sum, day) => sum + day.tokens, 0);
@@ -500,37 +489,41 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
         <div className="analytics-header" data-tauri-drag-region onContextMenu={(e) => e.preventDefault()}>
           <div className="analytics-header-left" data-tauri-drag-region>
             <div className="analytics-title" data-tauri-drag-region>
-              {viewMode === 'project' ? (
-                <>
-                  <button className="analytics-back-button" onClick={handleBackClick} title="back to all analytics">
-                    <IconArrowLeft size={14} />
-                    <span>back</span>
-                  </button>
-                  <IconFolder size={16} stroke={1.5} />
-                  <span>{selectedProject}</span>
-                  <span style={{ color: 'rgba(255, 255, 255, 0.5)', fontSize: '11px', marginLeft: '8px' }}>
-                    analytics
-                  </span>
-                </>
-              ) : (
-                <>
-                  <IconChartBar size={16} stroke={1.5} />
-                  <span>analytics</span>
-                </>
-              )}
-            </div>
-            <div className="header-tabs">
-              <TabButton label="7d" active={timeRange === '7d'} onClick={() => setTimeRange('7d')} />
-              <TabButton label="14d" active={timeRange === '14d'} onClick={() => setTimeRange('14d')} />
-              <TabButton label="30d" active={timeRange === '30d'} onClick={() => setTimeRange('30d')} />
-              <TabButton label="60d" active={timeRange === '60d'} onClick={() => setTimeRange('60d')} />
-              <TabButton label="90d" active={timeRange === '90d'} onClick={() => setTimeRange('90d')} />
-              <TabButton label="all" active={timeRange === 'all'} onClick={() => setTimeRange('all')} />
+              <IconChartBar size={16} stroke={1.5} />
+              <span>analytics</span>
             </div>
           </div>
-          <button className="analytics-close" onClick={onClose} title="close (esc)">
-            <IconX size={16} stroke={1.5} />
-          </button>
+          <div className="analytics-header-right">
+            <div className="header-tabs">
+              <TabButton label="overview" active={activeTab === 'overview'} onClick={() => setActiveTab('overview')} />
+              <TabButton label="projects" active={activeTab === 'projects'} onClick={() => { setActiveTab('projects'); setProjectsDataLoaded(true); }} />
+            </div>
+            <button className="analytics-close" onClick={onClose} title="close (esc)">
+              <IconX size={16} stroke={1.5} />
+            </button>
+          </div>
+        </div>
+
+        {/* Days filter + Provider filter */}
+        <div className="analytics-tabs">
+          <div className="analytics-days-filter">
+            <TabButton label="7d" active={timeRange === '7d'} onClick={() => setTimeRange('7d')} />
+            <TabButton label="14d" active={timeRange === '14d'} onClick={() => setTimeRange('14d')} />
+            <TabButton label="30d" active={timeRange === '30d'} onClick={() => setTimeRange('30d')} />
+            <TabButton label="90d" active={timeRange === '90d'} onClick={() => setTimeRange('90d')} />
+          </div>
+          <div className="provider-filter">
+            {PROVIDERS.map(provider => (
+              <button
+                key={provider.id}
+                className={`provider-pill ${isProviderSelected(provider.id) ? 'active' : ''}`}
+                onClick={() => toggleProvider(provider.id)}
+                title={`${isProviderSelected(provider.id) ? 'hide' : 'show'} ${provider.name} data`}
+              >
+                {provider.name.toLowerCase()}
+              </button>
+            ))}
+          </div>
         </div>
 
         <div className="analytics-content">
@@ -548,236 +541,214 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
           
           {!loading && (filteredAnalytics ? (
             <>
-              {/* Overview Stats */}
-              <div className="analytics-overview">
-                <div className="stat-card">
-                  <div className="stat-icon">
-                    <IconMessage size={14} stroke={1.5} />
-                  </div>
-                  <div className="stat-value">{formatNumber(filteredAnalytics.totalMessages)}</div>
-                  <div className="stat-label">messages</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon">
-                    <IconBrain size={14} stroke={1.5} />
-                  </div>
-                  <div className="stat-value">{formatNumber(filteredAnalytics.totalTokens)}</div>
-                  <div className="stat-label">tokens</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon">
-                    <IconCoin size={14} stroke={1.5} />
-                  </div>
-                  <div className="stat-value">{formatCost(filteredAnalytics.totalCost)}</div>
-                  <div className="stat-label">total cost</div>
-                </div>
-                <div className="stat-card">
-                  <div className="stat-icon">
-                    <IconClock size={14} stroke={1.5} />
-                  </div>
-                  <div className="stat-value">{filteredAnalytics.totalSessions}</div>
-                  <div className="stat-label">sessions</div>
-                </div>
-              </div>
-
-              {/* Token Breakdown Table - show in both views */}
-              {filteredAnalytics.tokenBreakdown && (
-                <div className="analytics-section">
-                  <h3>token breakdown</h3>
-                  <div className="token-breakdown-table">
-                    <table>
-                      <thead>
-                        <tr>
-                          <th>Type</th>
-                          <th>Actual</th>
-                          <th>Cache Read</th>
-                          <th>Cache New</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        <tr>
-                          <td>Input</td>
-                          <td>{formatNumber(filteredAnalytics.tokenBreakdown.input)}</td>
-                          <td>-</td>
-                          <td>-</td>
-                        </tr>
-                        <tr>
-                          <td>Output</td>
-                          <td>{formatNumber(filteredAnalytics.tokenBreakdown.output)}</td>
-                          <td>-</td>
-                          <td>-</td>
-                        </tr>
-                        <tr>
-                          <td>Context</td>
-                          <td>-</td>
-                          <td>{formatNumber(filteredAnalytics.tokenBreakdown.cacheRead)}</td>
-                          <td>{formatNumber(filteredAnalytics.tokenBreakdown.cacheCreation)}</td>
-                        </tr>
-                        <tr className="total-row">
-                          <td>Total</td>
-                          <td colSpan={3} style={{ textAlign: 'center' }}>
-                            {formatNumber(filteredAnalytics.totalTokens)}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              )}
-
-              {/* Model Breakdown - only show in all view */}
-              {viewMode === 'all' && (
-                <div className="analytics-section">
-                  <h3>model usage</h3>
-                <div className="model-breakdown">
-                  <div className="model-stat opus">
-                    <div className="model-name">opus</div>
-                    <div className="model-metrics">
-                      <span>{formatNumber(filteredAnalytics.byModel.opus.tokens)} tokens</span>
-                      <span className="cost">{formatCost(filteredAnalytics.byModel.opus.cost)}</span>
-                    </div>
-                    <div className="model-bar">
-                      <div 
-                        className="model-bar-fill"
-                        style={{ 
-                          width: `${filteredAnalytics.totalTokens > 0 ? 
-                            (filteredAnalytics.byModel.opus.tokens / filteredAnalytics.totalTokens * 100) : 0}%` 
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className="model-stat sonnet">
-                    <div className="model-name">sonnet</div>
-                    <div className="model-metrics">
-                      <span>{formatNumber(filteredAnalytics.byModel.sonnet.tokens)} tokens</span>
-                      <span className="cost">{formatCost(filteredAnalytics.byModel.sonnet.cost)}</span>
-                    </div>
-                    <div className="model-bar">
-                      <div 
-                        className="model-bar-fill"
-                        style={{ 
-                          width: `${filteredAnalytics.totalTokens > 0 ? 
-                            (filteredAnalytics.byModel.sonnet.tokens / filteredAnalytics.totalTokens * 100) : 0}%` 
-                        }}
-                      />
-                    </div>
-                  </div>
-                </div>
-              </div>
-              )}
-
-              <div className="analytics-section">
-                <h3>{heatmapTitle}</h3>
-                <div className="usage-heatmap-container">
-                  {heatmapItems.length > 0 ? (
-                    <>
-                      {heatmapMode === 'monthly' && (
-                        <div className="usage-heatmap-months">
-                          {monthLabels.map((label) => (
-                            <span key={label}>{label}</span>
-                          ))}
-                        </div>
-                      )}
-                      <div className={`usage-heatmap ${heatmapMode}`}>
-                        {heatmapCells.map((day, index) => {
-                          if (!day) {
-                            return <div key={`empty-${index}`} className="heatmap-cell empty" />;
-                          }
-                          const level = getHeatmapLevel(day.tokens, heatmapMaxTokens);
-                          const dateLabel = day.granularity === 'month'
-                            ? day.date.toLocaleDateString('en', { month: 'short', year: 'numeric' })
-                            : day.date.toLocaleDateString('en', { month: 'short', day: 'numeric', year: 'numeric' });
-                          const costLabel = day.cost > 0 ? formatCost(day.cost) : '$0.00';
-                          const tooltip = `${dateLabel} | ${day.tokens.toLocaleString()} tokens | ${day.sessions} sessions | ${day.messages} messages | ${costLabel}`;
-                          return (
-                            <div
-                              key={day.key}
-                              className={`heatmap-cell level-${level}`}
-                              title={tooltip}
-                            />
-                          );
-                        })}
-                      </div>
-                      <div className="usage-heatmap-legend">
-                        <span>less</span>
-                        <div className="heatmap-legend-scale">
-                          <span className="heatmap-cell level-0" />
-                          <span className="heatmap-cell level-1" />
-                          <span className="heatmap-cell level-2" />
-                          <span className="heatmap-cell level-3" />
-                          <span className="heatmap-cell level-4" />
-                        </div>
-                        <span>more</span>
-                      </div>
-                      {heatmapRangeLabel && (
-                        <div className="usage-heatmap-note">monthly view {heatmapRangeLabel}</div>
-                      )}
-                      <div className="usage-heatmap-meta">
-                        <span>active {heatmapMode === 'monthly' ? 'months' : 'days'} {heatmapActiveCount}/{heatmapItems.length}</span>
-                        <span>avg/{heatmapMode === 'monthly' ? 'month' : 'day'} {formatNumber(Math.round(heatmapAverageTokens))} tokens</span>
-                        {heatmapPeakCell && (
-                          <span>
-                            peak {heatmapPeakCell.date.toLocaleDateString('en', heatmapMode === 'monthly' ? { month: 'short', year: 'numeric' } : { month: 'short', day: 'numeric' })} - {formatNumber(heatmapPeakCell.tokens)} tokens
-                          </span>
-                        )}
-                      </div>
-                    </>
-                  ) : (
-                    <div className="usage-heatmap-empty">no data for selected period</div>
-                  )}
-                </div>
-              </div>
-
-              {/* Top Projects - only show in all view */}
-              {viewMode === 'all' && (
-                <div className="analytics-section">
-                  <h3>top projects</h3>
-                  <div className="projects-list">
-                    {topProjects.length > 0 ? (
-                      topProjects.map(([name, data]) => (
-                        <div 
-                          key={name} 
-                          className="analytics-project-item clickable" 
-                          onClick={() => handleProjectClick(name)}
-                          title="view project analytics"
-                        >
-                          <div className="analytics-project-info">
-                            <IconFolder size={12} stroke={1.5} />
-                            <span className="analytics-project-name">{name}</span>
+              {/* OVERVIEW TAB */}
+              {activeTab === 'overview' && (
+                <>
+                  {/* Daily Usage Heatmap - at top */}
+                  <div className="analytics-section heatmap-section">
+                    <div className="usage-heatmap-container">
+                      {heatmapItems.length > 0 ? (
+                        <>
+                          <div className="heatmap-header">
+                            <span className="heatmap-title">{heatmapTitle}</span>
+                            <span className="heatmap-summary">
+                              {heatmapActiveCount} active days · {formatNumber(heatmapTotalTokens)} tokens · {formatCost(filteredAnalytics.totalCost)}
+                            </span>
                           </div>
-                          <div className="analytics-project-stats">
-                            <span>{formatNumber(data.tokens)} tokens</span>
-                            <span className="cost">{formatCost(data.cost)}</span>
+                          <div className="usage-heatmap daily">
+                            {heatmapCells.map((day, index) => {
+                              if (!day) {
+                                return <div key={`empty-${index}`} className="heatmap-cell empty" />;
+                              }
+                              const level = getHeatmapLevel(day.tokens, heatmapMaxTokens);
+                              return (
+                                <div
+                                  key={day.key}
+                                  className={`heatmap-cell level-${level}`}
+                                  data-date={day.date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                  data-tokens={day.tokens.toLocaleString()}
+                                  data-sessions={day.sessions}
+                                  data-messages={day.messages}
+                                  data-cost={day.cost > 0 ? formatCost(day.cost) : '$0.00'}
+                                />
+                              );
+                            })}
                           </div>
+                          <div className="usage-heatmap-footer">
+                            <div className="usage-heatmap-legend">
+                              <span>less</span>
+                              <div className="heatmap-legend-scale">
+                                <span className="heatmap-cell level-0" />
+                                <span className="heatmap-cell level-1" />
+                                <span className="heatmap-cell level-2" />
+                                <span className="heatmap-cell level-3" />
+                                <span className="heatmap-cell level-4" />
+                              </div>
+                              <span>more</span>
+                            </div>
+                            {heatmapPeakCell && (
+                              <span className="heatmap-peak">
+                                peak: {heatmapPeakCell.date.toLocaleDateString('en', { month: 'short', day: 'numeric' })} ({formatNumber(heatmapPeakCell.tokens)})
+                              </span>
+                            )}
+                          </div>
+                        </>
+                      ) : (
+                        <div className="usage-heatmap-empty">no data for selected period</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Compact Stats Row */}
+                  <div className="analytics-stats-row">
+                    <div className="stat-item">
+                      <span className="stat-value">{formatNumber(filteredAnalytics.totalMessages)}</span>
+                      <span className="stat-label">messages</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-value">{formatNumber(filteredAnalytics.totalTokens)}</span>
+                      <span className="stat-label">tokens</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-value">{formatCost(filteredAnalytics.totalCost)}</span>
+                      <span className="stat-label">cost</span>
+                    </div>
+                    <div className="stat-item">
+                      <span className="stat-value">{filteredAnalytics.totalSessions}</span>
+                      <span className="stat-label">sessions</span>
+                    </div>
+                  </div>
+
+                  {/* Model + Provider in compact grid */}
+                  <div className="analytics-breakdown-grid">
+                    {/* Model Usage */}
+                    {Object.keys(filteredAnalytics.byModel).length > 0 && (
+                      <div className="breakdown-section">
+                        <h3>models</h3>
+                        <div className="model-breakdown compact">
+                          {Object.entries(filteredAnalytics.byModel)
+                            .sort((a, b) => b[1].tokens - a[1].tokens)
+                            .map(([modelKey, stats]) => {
+                              const modelDef = ALL_MODELS.find(m => m.family === modelKey || m.shortName === modelKey || m.id === modelKey);
+                              const displayName = modelDef?.displayName || modelKey;
+                              const percentage = filteredAnalytics.totalTokens > 0
+                                ? (stats.tokens / filteredAnalytics.totalTokens * 100)
+                                : 0;
+
+                              return (
+                                <div key={modelKey} className="model-stat compact">
+                                  <div className="model-info">
+                                    <span className="model-name">{displayName}</span>
+                                    <span className="model-cost">{formatCost(stats.cost)}</span>
+                                  </div>
+                                  <div className="model-bar">
+                                    <div
+                                      className="model-bar-fill"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="model-tokens">{formatNumber(stats.tokens)}</span>
+                                </div>
+                              );
+                            })}
                         </div>
-                      ))
-                    ) : (
-                      <div style={{ 
-                        display: 'flex', 
-                        justifyContent: 'center', 
-                        alignItems: 'center', 
-                        padding: '20px',
-                        color: 'rgba(255, 255, 255, 0.3)',
-                        fontSize: '11px'
-                      }}>
-                        no projects yet
+                      </div>
+                    )}
+
+                    {/* Provider Usage */}
+                    {filteredAnalytics.byProvider && (
+                      <div className="breakdown-section">
+                        <h3>providers</h3>
+                        <div className="provider-breakdown compact">
+                          {(['claude', 'openai', 'gemini'] as const)
+                            .filter(provider => isProviderSelected(provider))
+                            .map(provider => {
+                              const stats = filteredAnalytics.byProvider?.[provider];
+                              const totalTokens = (['claude', 'openai', 'gemini'] as const)
+                                .filter(p => isProviderSelected(p))
+                                .reduce((sum, p) => sum + (filteredAnalytics.byProvider?.[p]?.tokens || 0), 0);
+                              const percentage = totalTokens > 0 ? ((stats?.tokens || 0) / totalTokens * 100) : 0;
+
+                              return (
+                                <div key={provider} className="provider-stat compact">
+                                  <div className="provider-info">
+                                    <span className="provider-name">{provider === 'openai' ? 'codex' : provider}</span>
+                                    <span className="provider-cost">{formatCost(stats?.cost || 0)}</span>
+                                  </div>
+                                  <div className="provider-bar">
+                                    <div
+                                      className="provider-bar-fill"
+                                      style={{ width: `${percentage}%` }}
+                                    />
+                                  </div>
+                                  <span className="provider-tokens">{formatNumber(stats?.tokens || 0)}</span>
+                                </div>
+                              );
+                            })}
+                        </div>
                       </div>
                     )}
                   </div>
+
+                  {/* Token Breakdown - collapsed by default */}
+                  {filteredAnalytics.tokenBreakdown && (
+                    <details className="token-details">
+                      <summary>token breakdown</summary>
+                      <div className="token-breakdown-compact">
+                        <div className="token-row">
+                          <span>input</span>
+                          <span>{formatNumber(filteredAnalytics.tokenBreakdown.input)}</span>
+                        </div>
+                        <div className="token-row">
+                          <span>output</span>
+                          <span>{formatNumber(filteredAnalytics.tokenBreakdown.output)}</span>
+                        </div>
+                        <div className="token-row">
+                          <span>cache read</span>
+                          <span>{formatNumber(filteredAnalytics.tokenBreakdown.cacheRead)}</span>
+                        </div>
+                        <div className="token-row">
+                          <span>cache new</span>
+                          <span>{formatNumber(filteredAnalytics.tokenBreakdown.cacheCreation)}</span>
+                        </div>
+                      </div>
+                    </details>
+                  )}
+                </>
+              )}
+
+              {/* PROJECTS TAB */}
+              {activeTab === 'projects' && (
+                <div className="analytics-section">
+                  <h3>all projects ({allProjects.length})</h3>
+                  {projectsDataLoaded ? (
+                    <div className="projects-list">
+                      {allProjects.length > 0 ? (
+                        allProjects.map(([name, data]) => (
+                          <div key={name} className="analytics-project-item">
+                            <div className="analytics-project-info">
+                              <IconFolder size={12} stroke={1.5} />
+                              <span className="analytics-project-name">{name}</span>
+                            </div>
+                            <div className="analytics-project-stats">
+                              <span>{formatNumber(data.tokens)} tokens</span>
+                              <span className="cost">{formatCost(data.cost)}</span>
+                              <span className="sessions">{data.sessions} sessions</span>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="analytics-empty-message">no projects yet</div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="analytics-empty-message">loading projects...</div>
+                  )}
                 </div>
               )}
             </>
           ) : (
-            <div style={{
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'center',
-              alignItems: 'center',
-              padding: '60px 20px',
-              color: 'rgba(255, 255, 255, 0.3)',
-              fontSize: '12px',
-              gap: '20px'
-            }}>
+            <div className="analytics-no-data">
               <IconChartBar size={32} stroke={1} style={{ opacity: 0.3 }} />
               <div>no analytics data yet</div>
               <div style={{ fontSize: '11px' }}>start using claude to see usage statistics</div>

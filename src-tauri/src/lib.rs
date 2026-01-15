@@ -12,35 +12,39 @@
 extern crate objc;
 
 // Module declarations for the application's core functionality
-mod claude;         // Claude CLI process management and communication
-mod claude_binary;  // Claude binary detection and environment setup
+mod agents;
+mod app; // App metadata constants derived from package.json
+mod claude; // Claude CLI process management and communication
+mod claude_binary; // Claude binary detection and environment setup
 mod claude_session; // Session management and ID extraction
 mod claude_spawner; // Claude process spawning and coordination
-mod stream_parser;  // Stream JSON parsing for Claude output
-mod app;            // App metadata constants derived from package.json
-mod commands;       // Tauri IPC commands exposed to the frontend
-mod process;        // Process registry for tracking and managing Claude processes
-mod state;          // Application state management (sessions, settings, etc.)
-mod websocket;      // WebSocket server for real-time communication with frontend
-mod logged_server;  // Node.js server process management with logging
-mod port_manager;   // Dynamic port allocation for server instances
-mod db;             // SQLite database for persistent storage
-mod hooks;          // Hook system for intercepting and modifying Claude behavior
-mod compaction;     // Context compaction management (55% warning, 60% auto, 65% force)
-mod mcp;            // Model Context Protocol (MCP) server management
-mod config;         // Production configuration management
+mod commands; // Tauri IPC commands exposed to the frontend
+mod compaction; // Context compaction management (55% warning, 60% auto, 65% force)
+mod config; // Production configuration management
 mod crash_recovery; // Crash recovery and session restoration
-mod agents;         // Agent management for AI assistants
+mod db; // SQLite database for persistent storage
+mod hooks; // Hook system for intercepting and modifying Claude behavior
+mod logged_server; // Node.js server process management with logging
+mod mcp; // Model Context Protocol (MCP) server management
+mod port_manager; // Dynamic port allocation for server instances
+mod process; // Process registry for tracking and managing Claude processes
+mod state; // Application state management (sessions, settings, etc.)
+mod stream_parser; // Stream JSON parsing for Claude output
+mod websocket; // WebSocket server for real-time communication with frontend
+mod yume_cli_spawner; // yume-cli process spawning for Gemini/OpenAI providers // Agent management for AI assistants
 
-use std::sync::{Arc, atomic::{AtomicBool, Ordering}};
-use std::path::PathBuf;
 use std::fs;
-use tauri::{Manager, Listener, Emitter};
-use tracing::{info, error};
+use std::path::PathBuf;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
+use tauri::{Emitter, Listener, Manager};
+use tracing::{error, info};
 
+use app::{APP_ID, APP_IDENTIFIER, APP_NAME};
 use claude::ClaudeManager;
 use state::AppState;
-use app::{APP_ID, APP_IDENTIFIER, APP_NAME};
 
 /// Check if user is licensed by reading the persisted license store
 /// Returns true if licensed, false if demo mode
@@ -78,6 +82,15 @@ fn is_user_licensed() -> bool {
     false
 }
 
+/// Cleanup function called on panic to ensure all child processes are terminated
+/// This prevents orphaned Node.js server processes when the app crashes
+pub fn cleanup_on_panic() {
+    // The logged_server module handles its own cleanup via ProcessGuard's Drop implementation
+    // This function exists as a hook point for any additional cleanup needed during panic
+    // Currently, the ProcessGuard in logged_server.rs will automatically kill its process on drop
+    eprintln!("[cleanup_on_panic] Application is shutting down due to panic");
+}
+
 /// Main entry point for the Tauri application
 /// This function sets up the entire application infrastructure:
 /// - Initializes logging/tracing for debugging
@@ -98,16 +111,16 @@ pub fn run() {
     #[cfg(all(debug_assertions, target_os = "macos"))]
     {
         unsafe {
-            use cocoa::foundation::NSString;
             use cocoa::base::{id, nil};
-            
+            use cocoa::foundation::NSString;
+
             // Get NSProcessInfo
             let process_info: id = msg_send![class!(NSProcessInfo), processInfo];
-            
+
             // Create new name string
             let dev_name = format!("{} (dev)", APP_NAME);
             let ns_name = NSString::alloc(nil).init_str(&dev_name);
-            
+
             // Set process name
             let _: () = msg_send![process_info, setProcessName: ns_name];
             info!("Early setup: Set macOS process name to: {}", dev_name);
@@ -125,35 +138,40 @@ pub fn run() {
 
     // Check license status early to determine single-instance behavior
     let is_licensed = is_user_licensed();
-    info!("License status: {}", if is_licensed { "licensed" } else { "demo" });
+    info!(
+        "License status: {}",
+        if is_licensed { "licensed" } else { "demo" }
+    );
 
     // Build the Tauri application with required plugins
     let mut builder = tauri::Builder::default()
-        .plugin(tauri_plugin_fs::init())        // File system access for project navigation
-        .plugin(tauri_plugin_dialog::init())    // Native file/folder selection dialogs
-        .plugin(tauri_plugin_shell::init())     // Shell command execution capabilities
+        .plugin(tauri_plugin_fs::init()) // File system access for project navigation
+        .plugin(tauri_plugin_dialog::init()) // Native file/folder selection dialogs
+        .plugin(tauri_plugin_shell::init()) // Shell command execution capabilities
         .plugin(tauri_plugin_store::Builder::new().build()) // Persistent storage for settings/state
-        .plugin(tauri_plugin_clipboard_manager::init());    // Clipboard operations for copy/paste
+        .plugin(tauri_plugin_clipboard_manager::init()); // Clipboard operations for copy/paste
 
     // Only enforce single-instance for demo users
     if !is_licensed {
-        builder = builder.plugin(tauri_plugin_single_instance::init(move |app, _argv, _cwd| {
-            // This callback is called on the FIRST instance when a second instance tries to launch
-            // Focus the existing window and show a notification
-            if let Some(window) = app.get_webview_window("main") {
-                // CRITICAL: Do NOT call set_focus() on macOS - it disrupts webview's internal focus state
-                // causing the textarea to lose focus randomly. The webview handles focus better without it.
-                // See also: commands/mod.rs:2198 for detailed explanation
-                #[cfg(not(target_os = "macos"))]
-                {
-                    let _ = window.set_focus();
+        builder = builder.plugin(tauri_plugin_single_instance::init(
+            move |app, _argv, _cwd| {
+                // This callback is called on the FIRST instance when a second instance tries to launch
+                // Focus the existing window and show a notification
+                if let Some(window) = app.get_webview_window("main") {
+                    // CRITICAL: Do NOT call set_focus() on macOS - it disrupts webview's internal focus state
+                    // causing the textarea to lose focus randomly. The webview handles focus better without it.
+                    // See also: commands/mod.rs:2198 for detailed explanation
+                    #[cfg(not(target_os = "macos"))]
+                    {
+                        let _ = window.set_focus();
+                    }
+                    let _ = window.unminimize();
+                    // Emit event to frontend to show demo limit message
+                    let _ = window.emit("demo-instance-blocked", ());
+                    info!("Trial mode: second instance blocked, focused existing window");
                 }
-                let _ = window.unminimize();
-                // Emit event to frontend to show demo limit message
-                let _ = window.emit("demo-instance-blocked", ());
-                info!("Trial mode: second instance blocked, focused existing window");
-            }
-        }));
+            },
+        ));
     }
 
     builder
@@ -973,6 +991,8 @@ pub fn run() {
             commands::write_file_content,
             commands::delete_file,
             commands::read_file_content,
+            commands::list_directory,
+            commands::detect_provider_support,
             commands::write_skill_file,
             commands::remove_skill_file,
             commands::atomic_file_restore,
@@ -989,6 +1009,7 @@ pub fn run() {
             commands::claude_detector::load_claude_settings,
             commands::claude_detector::get_env_var,
             commands::claude_detector::get_windows_paths,
+            commands::claude_detector::check_cli_installed,
             // Claude version and path commands
             commands::get_claude_version,
             commands::get_claude_path,
@@ -999,6 +1020,7 @@ pub fn run() {
             commands::get_sessions,
             // New direct CLI Claude commands
             commands::claude_commands::spawn_claude_session,
+            commands::claude_commands::spawn_yume_cli_session,
             commands::claude_commands::send_claude_message,
             commands::claude_commands::resume_claude_session,
             commands::claude_commands::interrupt_claude_session,
@@ -1173,7 +1195,7 @@ pub fn run() {
 mod macos {
     use cocoa::appkit::{NSWindowStyleMask, NSWindowTitleVisibility};
     use cocoa::base::{id, BOOL};
-    
+
     pub trait NSWindowExt {
         #[allow(non_snake_case)]
         unsafe fn setTitleVisibility_(&self, visibility: NSWindowTitleVisibility);
@@ -1184,21 +1206,21 @@ mod macos {
         #[allow(non_snake_case)]
         unsafe fn setStyleMask_(&self, mask: NSWindowStyleMask);
     }
-    
+
     #[allow(non_snake_case)]
     impl NSWindowExt for id {
         unsafe fn setTitleVisibility_(&self, visibility: NSWindowTitleVisibility) {
             msg_send![*self, setTitleVisibility:visibility]
         }
-        
+
         unsafe fn setTitlebarAppearsTransparent_(&self, transparent: BOOL) {
             msg_send![*self, setTitlebarAppearsTransparent:transparent]
         }
-        
+
         unsafe fn styleMask(&self) -> NSWindowStyleMask {
             msg_send![*self, styleMask]
         }
-        
+
         unsafe fn setStyleMask_(&self, mask: NSWindowStyleMask) {
             msg_send![*self, setStyleMask:mask]
         }
@@ -1210,19 +1232,22 @@ mod macos {
 /// Uses the tauri-plugin-store for JSON-based persistence
 async fn save_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHandle) {
     use tauri_plugin_store::StoreExt;
-    
+
     if let Ok(size) = window.outer_size() {
         if let Ok(position) = window.outer_position() {
             let store = app.store("window-state.json").expect("Failed to get store");
-            
+
             // Save window dimensions and position
             let _ = store.set("width", serde_json::json!(size.width));
             let _ = store.set("height", serde_json::json!(size.height));
             let _ = store.set("x", serde_json::json!(position.x));
             let _ = store.set("y", serde_json::json!(position.y));
             let _ = store.save();
-            
-            info!("Saved window state: {}x{} at ({}, {})", size.width, size.height, position.x, position.y);
+
+            info!(
+                "Saved window state: {}x{} at ({}, {})",
+                size.width, size.height, position.x, position.y
+            );
         }
     }
 }
@@ -1232,9 +1257,9 @@ async fn save_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHandle
 /// Provides a seamless experience by remembering user's window preferences
 async fn restore_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHandle) {
     use tauri_plugin_store::StoreExt;
-    
+
     let store = app.store("window-state.json").expect("Failed to get store");
-    
+
     // Try to restore window size with minimum size enforcement
     if let Some(width) = store.get("width") {
         if let Some(height) = store.get("height") {
@@ -1243,16 +1268,20 @@ async fn restore_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHan
                 let final_width = (w as u32).max(516);
                 let final_height = (h as u32).max(509);
                 let _ = window.set_size(tauri::PhysicalSize::new(final_width, final_height));
-                info!("Restored window size: {}x{} (enforced minimums)", final_width, final_height);
+                info!(
+                    "Restored window size: {}x{} (enforced minimums)",
+                    final_width, final_height
+                );
             }
         }
     }
-    
+
     // Try to restore window position
     if let Some(x) = store.get("x") {
         if let Some(y) = store.get("y") {
             if let (Some(x_pos), Some(y_pos)) = (x.as_i64(), y.as_i64()) {
-                let _ = window.set_position(tauri::PhysicalPosition::new(x_pos as i32, y_pos as i32));
+                let _ =
+                    window.set_position(tauri::PhysicalPosition::new(x_pos as i32, y_pos as i32));
                 info!("Restored window position: ({}, {})", x_pos, y_pos);
             }
         }

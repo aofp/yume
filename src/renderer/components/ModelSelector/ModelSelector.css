@@ -1,6 +1,6 @@
 .model-selector {
   position: relative;
-  display: inline-block;
+  display: inline-flex;
   user-select: none;
   -webkit-user-select: none;
 }
@@ -19,11 +19,16 @@
   cursor: default;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 5px;
   min-width: 90px;
   justify-content: center;
   -webkit-touch-callout: none;
   -webkit-user-select: none;
+}
+
+.model-selector-icon {
+  font-size: 10px;
+  opacity: 0.6;
 }
 
 .model-selector-text {
@@ -39,132 +44,30 @@
   top: 1px;
 }
 
-/* only show hover via js-controlled class, not css :hover */
 .model-selector-trigger.hovered {
-  background: var(--fg-05);
+  border-color: var(--accent-color);
   color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 1);
+  background: rgba(var(--accent-rgb), 0.1);
 }
 
-/* remove all focus styles, but preserve hover state */
+.model-selector-trigger.open {
+  background: rgba(var(--accent-rgb), 0.05);
+  border-color: rgba(var(--accent-rgb), 0.8);
+  color: var(--accent-color);
+}
+
+.model-selector-trigger.open.hovered {
+  border-color: var(--accent-color);
+}
+
+.model-selector-trigger.open .model-selector-icon {
+  opacity: 1;
+  color: var(--accent-color);
+}
+
 .model-selector-trigger:focus,
 .model-selector-trigger:focus-visible,
 .model-selector-trigger:focus-within {
   outline: none;
 }
 
-.model-selector-trigger:focus:not(.hovered),
-.model-selector-trigger:focus-visible:not(.hovered),
-.model-selector-trigger:focus-within:not(.hovered) {
-  background: transparent;
-  border-color: var(--fg-20);
-}
-
-/* when keyboard cycling, force reset all states */
-.model-selector-trigger.keyboard-cycling,
-.model-selector-trigger.keyboard-cycling:hover,
-.model-selector-trigger.keyboard-cycling:focus {
-  pointer-events: none;
-  background: transparent !important;
-  border-color: var(--fg-20) !important;
-  color: var(--fg-50) !important;
-}
-
-/* highlighted overrides everything */
-.model-selector-trigger.keyboard-cycling.highlighted {
-  background: var(--fg-08) !important;
-  color: var(--accent-color) !important;
-  border-color: rgba(var(--accent-rgb), 0.6) !important;
-}
-
-.model-selector-trigger.highlighted {
-  background: var(--fg-08);
-  color: var(--accent-color);
-  border-color: rgba(var(--accent-rgb), 0.6);
-}
-
-/* Removed bullet point indicator */
-
-.chevron-up {
-  opacity: 0.5;
-}
-
-/* hover effect disabled */
-
-.model-dropdown {
-  position: fixed;
-  bottom: 25px;
-  left: 3px;
-  background: var(--background-color, #000000);
-  border: 1px solid var(--fg-20);
-  border-radius: 4px;
-  padding: 2px;
-  min-width: 180px;
-  z-index: 1000000;
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.8);
-  animation: dropupSlide 0.15s ease-out;
-  backdrop-filter: none;
-}
-
-.model-option {
-  padding: 8px 12px;
-  border-radius: 4px;
-  cursor: default;
-  border: 1px solid transparent;
-  margin-bottom: 2px;
-  position: relative;
-}
-
-.model-option:last-child {
-  margin-bottom: 0;
-}
-
-.model-option:hover {
-  background: rgba(var(--accent-rgb), 0.1);
-  border-color: rgba(var(--accent-rgb), 0.2);
-}
-
-.model-option.selected {
-  background: rgba(var(--accent-rgb), 0.2);
-  border-color: var(--accent-color);
-}
-
-/* Removed bullet point indicator for selected option */
-
-.model-name {
-  font-size: var(--text-base);
-  font-family: var(--font-mono);
-  color: var(--fg-90);
-  text-transform: lowercase;
-  font-weight: 500;
-}
-
-.model-description {
-  font-size: var(--text-xs);
-  color: var(--fg-40);
-  margin-top: 2px;
-}
-
-.model-option.selected .model-name {
-  color: var(--accent-color);
-}
-
-.model-option.selected .model-description {
-  color: rgba(var(--accent-rgb), 0.7);
-}
-
-/* Windows-specific positioning */
-.platform-win32 .model-selector-trigger {
-  /* no offset needed */
-}
-
-@keyframes dropupSlide {
-  from {
-    opacity: 0;
-    transform: translateY(4px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}

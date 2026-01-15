@@ -1,6 +1,5 @@
 /// Custom commands handling for ~/.claude/commands
 /// These commands provide storage and retrieval for user-defined slash commands
-
 use serde::{Deserialize, Serialize};
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -23,9 +22,9 @@ pub struct CustomCommand {
 /// Load custom commands from ~/.claude/commands directory (global commands)
 #[tauri::command]
 pub fn load_custom_commands() -> Result<Vec<CustomCommand>, String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-    
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+
     let commands_dir = home_dir.join(".claude").join("commands");
     load_commands_from_directory(&commands_dir)
 }
@@ -41,9 +40,9 @@ pub fn load_project_commands(directory: String) -> Result<Vec<CustomCommand>, St
 /// Save a custom command to ~/.claude/commands directory (global commands)
 #[tauri::command]
 pub fn save_custom_command(command: CustomCommand) -> Result<(), String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-    
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+
     let commands_dir = home_dir.join(".claude").join("commands");
     save_command_to_directory(&command, &commands_dir)
 }
@@ -59,17 +58,16 @@ pub fn save_project_command(command: CustomCommand, directory: String) -> Result
 /// Delete a custom command from ~/.claude/commands directory
 #[tauri::command]
 pub fn delete_custom_command(command_name: String) -> Result<(), String> {
-    let home_dir = dirs::home_dir()
-        .ok_or_else(|| "Could not determine home directory".to_string())?;
-    
+    let home_dir =
+        dirs::home_dir().ok_or_else(|| "Could not determine home directory".to_string())?;
+
     let commands_dir = home_dir.join(".claude").join("commands");
     let file_path = commands_dir.join(format!("{}.md", command_name));
-    
+
     if file_path.exists() {
-        fs::remove_file(&file_path)
-            .map_err(|e| format!("Failed to delete command file: {}", e))?;
+        fs::remove_file(&file_path).map_err(|e| format!("Failed to delete command file: {}", e))?;
     }
-    
+
     Ok(())
 }
 
@@ -79,12 +77,11 @@ pub fn delete_project_command(command_name: String, directory: String) -> Result
     let project_dir = PathBuf::from(directory);
     let commands_dir = project_dir.join(".claude").join("commands");
     let file_path = commands_dir.join(format!("{}.md", command_name));
-    
+
     if file_path.exists() {
-        fs::remove_file(&file_path)
-            .map_err(|e| format!("Failed to delete command file: {}", e))?;
+        fs::remove_file(&file_path).map_err(|e| format!("Failed to delete command file: {}", e))?;
     }
-    
+
     Ok(())
 }
 
@@ -93,53 +90,58 @@ fn load_commands_from_directory(commands_dir: &Path) -> Result<Vec<CustomCommand
     if !commands_dir.exists() {
         return Ok(Vec::new());
     }
-    
+
     let mut commands = Vec::new();
-    
+
     // Read all .md files in the commands directory
-    for entry in fs::read_dir(&commands_dir).map_err(|e| format!("Failed to read commands directory: {}", e))? {
+    for entry in fs::read_dir(&commands_dir)
+        .map_err(|e| format!("Failed to read commands directory: {}", e))?
+    {
         let entry = entry.map_err(|e| format!("Failed to read directory entry: {}", e))?;
         let path = entry.path();
-        
+
         if path.extension().and_then(|s| s.to_str()) == Some("md") {
             // Read the file
             let content = fs::read_to_string(&path)
                 .map_err(|e| format!("Failed to read command file: {}", e))?;
-            
+
             // Parse the frontmatter
             let (frontmatter, body) = parse_frontmatter(&content);
-            
+
             // Extract metadata from frontmatter or use defaults
             let description = extract_yaml_field(&frontmatter, "description")
                 .unwrap_or_else(|| "Custom command".to_string());
             let category = extract_yaml_field(&frontmatter, "category")
                 .unwrap_or_else(|| "custom".to_string());
-            let has_params = extract_yaml_field(&frontmatter, "argument-hint").is_some() || 
-                             body.contains("$ARGUMENTS") || 
-                             body.contains("$1");
+            let has_params = extract_yaml_field(&frontmatter, "argument-hint").is_some()
+                || body.contains("$ARGUMENTS")
+                || body.contains("$1");
             let enabled = extract_yaml_field(&frontmatter, "enabled")
                 .map(|s| s == "true")
                 .unwrap_or(true);
-            
+
             // Get the command name from filename
-            let name = path.file_stem()
+            let name = path
+                .file_stem()
                 .and_then(|n| n.to_str())
                 .unwrap_or("")
                 .to_string();
-            
+
             if !name.is_empty() && !body.trim().is_empty() {
                 let file_metadata = fs::metadata(&path).ok();
-                let created_at = file_metadata.as_ref()
+                let created_at = file_metadata
+                    .as_ref()
                     .and_then(|m| m.created().ok())
                     .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
-                let updated_at = file_metadata.as_ref()
+                let updated_at = file_metadata
+                    .as_ref()
                     .and_then(|m| m.modified().ok())
                     .and_then(|t| t.duration_since(SystemTime::UNIX_EPOCH).ok())
                     .map(|d| d.as_secs())
                     .unwrap_or(0);
-                
+
                 commands.push(CustomCommand {
                     id: format!("custom-cmd-{}", name),
                     name,
@@ -154,7 +156,7 @@ fn load_commands_from_directory(commands_dir: &Path) -> Result<Vec<CustomCommand
             }
         }
     }
-    
+
     Ok(commands)
 }
 
@@ -165,7 +167,7 @@ fn save_command_to_directory(command: &CustomCommand, commands_dir: &Path) -> Re
         fs::create_dir_all(commands_dir)
             .map_err(|e| format!("Failed to create commands directory: {}", e))?;
     }
-    
+
     // Create the markdown content with YAML frontmatter
     let mut frontmatter = String::new();
     frontmatter.push_str("---\n");
@@ -176,14 +178,13 @@ fn save_command_to_directory(command: &CustomCommand, commands_dir: &Path) -> Re
     }
     frontmatter.push_str(&format!("enabled: {}\n", command.enabled));
     frontmatter.push_str("---\n\n");
-    
+
     let content = format!("{}{}", frontmatter, command.template);
-    
+
     // Write to file (name.md)
     let file_path = commands_dir.join(format!("{}.md", command.name));
-    fs::write(&file_path, content)
-        .map_err(|e| format!("Failed to write command file: {}", e))?;
-    
+    fs::write(&file_path, content).map_err(|e| format!("Failed to write command file: {}", e))?;
+
     Ok(())
 }
 
@@ -215,18 +216,18 @@ fn extract_yaml_field(yaml: &str, field: &str) -> Option<String> {
 /// Load all commands (both localStorage cache and file system)
 /// This merges commands from localStorage with those from ~/.claude/commands
 #[tauri::command]
-pub fn load_all_commands(cached_commands: Option<Vec<CustomCommand>>) -> Result<Vec<CustomCommand>, String> {
+pub fn load_all_commands(
+    cached_commands: Option<Vec<CustomCommand>>,
+) -> Result<Vec<CustomCommand>, String> {
     // Load commands from file system
     let file_commands = load_custom_commands()?;
-    
+
     // If we have cached commands, merge them with file commands
     if let Some(mut cached) = cached_commands {
         // Create a set of file command names for deduplication
-        let file_names: std::collections::HashSet<String> = file_commands
-            .iter()
-            .map(|c| c.name.clone())
-            .collect();
-        
+        let file_names: std::collections::HashSet<String> =
+            file_commands.iter().map(|c| c.name.clone()).collect();
+
         // Add cached commands that aren't in the file system
         for cmd in cached.iter_mut() {
             if !file_names.contains(&cmd.name) {
@@ -234,7 +235,7 @@ pub fn load_all_commands(cached_commands: Option<Vec<CustomCommand>>) -> Result<
                 cmd.id = format!("cached-{}", cmd.name);
             }
         }
-        
+
         // Combine both lists, file commands take precedence
         let mut all_commands = file_commands;
         for cmd in cached {
@@ -242,10 +243,9 @@ pub fn load_all_commands(cached_commands: Option<Vec<CustomCommand>>) -> Result<
                 all_commands.push(cmd);
             }
         }
-        
+
         Ok(all_commands)
     } else {
         Ok(file_commands)
     }
 }
-

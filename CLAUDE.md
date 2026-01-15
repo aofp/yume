@@ -28,10 +28,27 @@ Yume is a Tauri 2.x desktop application that provides a minimal GUI for Claude C
 
 ### Gemini Integration Plan (Active)
 Enable Yume to drive Google's Gemini models via a CLI-compatible shim (`yume-cli`) while preserving Claude-compatible stream-json.
-- **Strategy:** REST streaming + function calling normalization.
-- **Auth:** Host-based auth (gcloud tokens or API keys).
-- **Shim:** Standalone binary bundled in `src-tauri/resources/`.
-- **Status:** Phase 1 in progress. See `docs/expansion-plan/ROADMAP.md`.
+- **Strategy:** Spawn official CLI binaries (`gemini`, `codex`) and translate their stream-json output.
+- **Auth:** Handled by official CLIs - user must run `gemini auth login` or `codex login` separately.
+- **Shim:** `yume-cli` in `src-yume-cli/` spawns official CLIs and normalizes output.
+- **Status:** Phase 2 complete. See `docs/expansion-plan/ROADMAP.md`.
+
+### Model Configuration (DO NOT CHANGE)
+Model IDs in `src/renderer/config/models.ts` are intentionally set and MUST NOT be modified without explicit user approval:
+
+**Claude models:**
+- `claude-sonnet-4-5-20250929` (sonnet 4.5)
+- `claude-opus-4-5-20251101` (opus 4.5)
+
+**Gemini models:**
+- `gemini-3-pro` (gemini 3 pro)
+- `gemini-3-flash` (gemini 3 flash)
+
+**OpenAI/Codex models:**
+- `gpt-5.2-codex` (gpt-5.2 codex)
+- `gpt-5.1-codex-mini` (gpt-5.1 codex mini)
+
+These model IDs are configured by the user and may not match currently available API models. The yume-cli shim passes these IDs directly to the official CLIs.
 
 ## Essential Commands
 

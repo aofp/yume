@@ -49,6 +49,7 @@ import { isBashPrefix } from '../../utils/helpers';
 import { isVSCode, getVSCodePort } from '../../services/tauriApi';
 import { getCachedCustomCommands, invalidateCommandsCache, formatResetTime, formatBytes } from '../../utils/chatHelpers';
 import { TOOL_ICONS, PATH_STRIP_REGEX, binaryExtensions } from '../../constants/chat';
+import { resolveModelId, getProviderForModel } from '../../config/models';
 import { useVisibilityAwareInterval, useElapsedTimer, useDotsAnimation } from '../../hooks/useTimers';
 import './ClaudeChat.css';
 
@@ -351,7 +352,7 @@ export const ClaudeChat: React.FC = () => {
   const [showClaudeMdEditor, setShowClaudeMdEditor] = useState(false);
   const [hasResumableConversations, setHasResumableConversations] = useState<{ [sessionId: string]: boolean }>({});
   // Per-session panel states (derived values set after store destructuring)
-  const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; git: boolean; rollback: boolean } }>({});
+  const [panelStates, setPanelStates] = useState<{ [sessionId: string]: { files: boolean; filesSubTab: 'files' | 'git'; rollback: boolean } }>({});
   // File browser state
   const [fileTree, setFileTree] = useState<any[]>([]);
   const [expandedFolders, setExpandedFolders] = useState<Set<string>>(new Set());
@@ -417,7 +418,8 @@ export const ClaudeChat: React.FC = () => {
     autoCompactEnabled,
     setAutoCompactEnabled,
     restoreToMessage,
-    forkSession
+    forkSession,
+    forkSessionToProvider
   } = useClaudeCodeStore(useShallow(state => ({
     sessions: state.sessions,
     currentSessionId: state.currentSessionId,
@@ -440,7 +442,8 @@ export const ClaudeChat: React.FC = () => {
     autoCompactEnabled: state.autoCompactEnabled,
     setAutoCompactEnabled: state.setAutoCompactEnabled,
     restoreToMessage: state.restoreToMessage,
-    forkSession: state.forkSession
+    forkSession: state.forkSession,
+    forkSessionToProvider: state.forkSessionToProvider
   })));
 
   // CRITICAL FIX: Subscribe to currentSession DIRECTLY from the store, not through useShallow
@@ -449,6 +452,21 @@ export const ClaudeChat: React.FC = () => {
   const currentSession = useClaudeCodeStore(state =>
     state.sessions.find(s => s.id === currentSessionId)
   );
+
+  // Custom model change handler for cross-agent resumption
+  const handleModelChange = useCallback((newModelId: string) => {
+    const resolvedNewModel = resolveModelId(newModelId);
+    const resolvedOldModel = resolveModelId(selectedModel);
+
+    // If session has messages and provider is changing, fork it
+    if (currentSession && currentSession.messages.length > 0 && 
+        getProviderForModel(resolvedNewModel) !== getProviderForModel(resolvedOldModel)) {
+      console.log(`[ClaudeChat] Provider change detected with active messages. Forking session to ${newModelId}...`);
+      forkSessionToProvider(currentSession.id, newModelId);
+    } else {
+      setSelectedModel(newModelId);
+    }
+  }, [currentSession, selectedModel, setSelectedModel, forkSessionToProvider]);
 
   // Keep messageUpdateCounter subscription for additional safety (forces re-render on message add)
   const messageUpdateCounter = useClaudeCodeStore(state => {
@@ -460,6 +478,18 @@ export const ClaudeChat: React.FC = () => {
   const messagesLength = useClaudeCodeStore(state => {
     const session = state.sessions.find(s => s.id === currentSessionId);
     return session?.messages?.length || 0;
+  });
+
+  // Subscribe to result message duration changes to force re-render when elapsed time becomes available
+  // This is needed because the duration often arrives in a separate message after the initial result
+  const resultDurationKey = useClaudeCodeStore(state => {
+    const session = state.sessions.find(s => s.id === currentSessionId);
+    if (!session?.messages) return '';
+    // Create a key from all result message durations - if any changes, component re-renders
+    return session.messages
+      .filter(m => m.type === 'result')
+      .map(m => `${m.id || 'r'}-${(m as any).duration_ms || 0}`)
+      .join('|');
   });
 
   // Helper to reset hover states after modal interactions (Tauri webview workaround)
@@ -486,30 +516,44 @@ export const ClaudeChat: React.FC = () => {
 
   // Per-session panel state derived values and setters
   const showFilesPanel = currentSessionId ? panelStates[currentSessionId]?.files ?? false : false;
-  const showGitPanel = currentSessionId ? panelStates[currentSessionId]?.git ?? false : false;
+  const filesSubTab = currentSessionId ? panelStates[currentSessionId]?.filesSubTab ?? 'files' : 'files';
+  const showGitPanel = showFilesPanel && filesSubTab === 'git'; // derived from sub-tab
   const showRollbackPanel = currentSessionId ? panelStates[currentSessionId]?.rollback ?? false : false;
-  const setShowFilesPanel = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+  const setShowFilesPanel = useCallback((value: boolean | ((prev: boolean) => boolean), subTab?: 'files' | 'git') => {
     if (!currentSessionId) return;
     setPanelStates(prev => {
-      const current = prev[currentSessionId] ?? { files: false, git: false, rollback: false };
+      const current = prev[currentSessionId] ?? { files: false, filesSubTab: 'files', rollback: false };
       const newFiles = typeof value === 'function' ? value(current.files) : value;
-      return { ...prev, [currentSessionId]: { ...current, files: newFiles, git: newFiles ? false : current.git, rollback: newFiles ? false : current.rollback } };
+      return { ...prev, [currentSessionId]: { ...current, files: newFiles, filesSubTab: subTab ?? current.filesSubTab, rollback: newFiles ? false : current.rollback } };
+    });
+  }, [currentSessionId]);
+  const setFilesSubTab = useCallback((subTab: 'files' | 'git') => {
+    if (!currentSessionId) return;
+    setPanelStates(prev => {
+      const current = prev[currentSessionId] ?? { files: false, filesSubTab: 'files', rollback: false };
+      return { ...prev, [currentSessionId]: { ...current, filesSubTab: subTab } };
     });
   }, [currentSessionId]);
   const setShowGitPanel = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
+    // For backwards compat - opens files panel on git tab
     if (!currentSessionId) return;
     setPanelStates(prev => {
-      const current = prev[currentSessionId] ?? { files: false, git: false, rollback: false };
-      const newGit = typeof value === 'function' ? value(current.git) : value;
-      return { ...prev, [currentSessionId]: { ...current, git: newGit, files: newGit ? false : current.files, rollback: newGit ? false : current.rollback } };
+      const current = prev[currentSessionId] ?? { files: false, filesSubTab: 'files', rollback: false };
+      const newGit = typeof value === 'function' ? value(current.files && current.filesSubTab === 'git') : value;
+      if (newGit) {
+        return { ...prev, [currentSessionId]: { ...current, files: true, filesSubTab: 'git', rollback: false } };
+      } else {
+        // Closing git panel - close entire files panel
+        return { ...prev, [currentSessionId]: { ...current, files: false, rollback: false } };
+      }
     });
   }, [currentSessionId]);
   const setShowRollbackPanel = useCallback((value: boolean | ((prev: boolean) => boolean)) => {
     if (!currentSessionId) return;
     setPanelStates(prev => {
-      const current = prev[currentSessionId] ?? { files: false, git: false, rollback: false };
+      const current = prev[currentSessionId] ?? { files: false, filesSubTab: 'files', rollback: false };
       const newRollback = typeof value === 'function' ? value(current.rollback) : value;
-      return { ...prev, [currentSessionId]: { ...current, rollback: newRollback, files: newRollback ? false : current.files, git: newRollback ? false : current.git } };
+      return { ...prev, [currentSessionId]: { ...current, rollback: newRollback, files: newRollback ? false : current.files } };
     });
   }, [currentSessionId]);
 
@@ -1667,10 +1711,20 @@ export const ClaudeChat: React.FC = () => {
         return;
       }
 
-      console.log('[ClaudeChat] Loading session data for resume:', conversation.id, 'from project:', conversation.projectPath);
-      const response = await fetch(
-        `http://localhost:${serverPort}/claude-session/${encodeURIComponent(conversation.projectPath)}/${encodeURIComponent(conversation.id)}`
-      );
+      // Determine endpoint based on provider
+      const provider = conversation.provider || 'claude';
+      let endpoint: string;
+
+      if (provider === 'claude') {
+        // Claude sessions stored in ~/.claude/projects/
+        endpoint = `http://localhost:${serverPort}/claude-session/${encodeURIComponent(conversation.projectPath)}/${encodeURIComponent(conversation.id)}`;
+      } else {
+        // Gemini/OpenAI sessions stored in ~/.yume/sessions/{provider}/
+        endpoint = `http://localhost:${serverPort}/yume-session/${provider}/${encodeURIComponent(conversation.id)}`;
+      }
+
+      console.log('[ClaudeChat] Loading session data for resume:', conversation.id, 'provider:', provider);
+      const response = await fetch(endpoint);
 
       if (!response.ok) {
         const errorText = await response.text();
@@ -1714,6 +1768,8 @@ export const ClaudeChat: React.FC = () => {
         createdAt: new Date(),
         updatedAt: new Date(),
         claudeSessionId: conversation.id,
+        provider: data.provider || provider, // Set provider from session data or conversation
+        model: data.model || undefined, // Set model from session data if available
         readOnly: false, // Allow interaction - will spawn with --resume on first message
         analytics: {
           totalMessages: messagesToLoad.length,
@@ -1896,19 +1952,29 @@ export const ClaudeChat: React.FC = () => {
         toggleModel();
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'e') {
         e.preventDefault();
-        // Toggle files panel
+        // Toggle files panel on files sub-tab
         if (currentSession?.workingDirectory) {
-          setShowFilesPanel(prev => !prev);
-          setShowGitPanel(false);
+          if (showFilesPanel && filesSubTab === 'files') {
+            // Already on files tab - close panel
+            setShowFilesPanel(false);
+          } else {
+            // Open panel on files tab
+            setShowFilesPanel(true, 'files');
+          }
           setFocusedFileIndex(-1);
           setFocusedGitIndex(-1);
         }
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'g') {
         e.preventDefault();
-        // Toggle git panel (only if git repo)
+        // Toggle files panel on git sub-tab (only if git repo)
         if (currentSession?.workingDirectory && isGitRepo) {
-          setShowGitPanel(prev => !prev);
-          setShowFilesPanel(false);
+          if (showFilesPanel && filesSubTab === 'git') {
+            // Already on git tab - close panel
+            setShowFilesPanel(false);
+          } else {
+            // Open panel on git tab
+            setShowFilesPanel(true, 'git');
+          }
           setSelectedGitFile(null);
           setGitDiff(null);
           setFocusedFileIndex(-1);
@@ -1927,7 +1993,6 @@ export const ClaudeChat: React.FC = () => {
         if (hasUserMessages > 0) {
           setShowRollbackPanel(prev => !prev);
           setShowFilesPanel(false);
-          setShowGitPanel(false);
           setSelectedFile(null);
           setFileContent('');
           setSelectedGitFile(null);
@@ -1938,11 +2003,10 @@ export const ClaudeChat: React.FC = () => {
         if (showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return;
 
         // Priority: close panels/search first, only interrupt if nothing to close
-        if (showFilesPanel || showGitPanel || showRollbackPanel) {
+        if (showFilesPanel || showRollbackPanel) {
           // Close side panels on Escape first (before interrupt)
           e.preventDefault();
           setShowFilesPanel(false);
-          setShowGitPanel(false);
           setShowRollbackPanel(false);
           setFocusedFileIndex(-1);
           setFocusedGitIndex(-1);
@@ -2716,8 +2780,9 @@ export const ClaudeChat: React.FC = () => {
           inputRef.current.style.height = `${newHeight}px`;
           inputRef.current.style.overflow = scrollHeight > 106 ? 'auto' : 'hidden';
           overlayHeightRef.current = newHeight;
-          if (inputOverlayRef.current) {
-            inputOverlayRef.current.style.height = newHeight + 'px';
+          // Sync scroll position (CSS handles height via inset positioning)
+          if (inputOverlayRef.current && inputRef.current) {
+            inputOverlayRef.current.scrollTop = inputRef.current.scrollTop;
           }
         }
       });
@@ -3674,19 +3739,13 @@ export const ClaudeChat: React.FC = () => {
     } else {
       // Check if this is a custom command (using cached version to avoid JSON.parse on every command)
       const customCommands = getCachedCustomCommands();
-      if (!customCommands) {
-        // No custom commands defined, pass through to Claude
-        setInput(replacement);
-        setCommandTrigger(null);
-        return;
-      }
 
       // Extract the base command and any arguments
       const parts = command.split(/\s+/);
       const baseCommand = parts[0];
       const commandArgs = parts.slice(1).join(' ');
 
-      const customCommand = customCommands.find((cmd: any) => {
+      const customCommand = customCommands?.find((cmd: any) => {
         const trigger = cmd.name.startsWith('/') ? cmd.name : '/' + cmd.name;
         return trigger === baseCommand && cmd.enabled;
       });
@@ -3699,7 +3758,7 @@ export const ClaudeChat: React.FC = () => {
         // Replace $ARGUMENTS placeholder with any arguments passed to the command
         const template = customCommand.template || customCommand.script || '';
         const finalContent = template.replace('$ARGUMENTS', commandArgs);
-        
+
         if (finalContent) {
           setInput(finalContent);
           setTimeout(() => {
@@ -3712,25 +3771,10 @@ export const ClaudeChat: React.FC = () => {
         setInput(newValue);
         setCommandTrigger(null);
 
-        // Auto-send for most commands, or if submitAfter is true (user pressed Enter)
-        // /compact only auto-sends if user pressed Enter, otherwise let them add args
-        if (command !== '/compact' || submitAfter) {
-          // Set the input then immediately send
-          setTimeout(() => {
-            handleSend();
-          }, 0);
-        } else {
-          // Focus back on the input and set cursor after the replacement
-          if (inputRef.current) {
-            inputRef.current.focus();
-            const newCursorPos = start + replacement.length;
-            setTimeout(() => {
-              if (inputRef.current) {
-                inputRef.current.selectionStart = inputRef.current.selectionEnd = newCursorPos;
-              }
-            }, 0);
-          }
-        }
+        // Auto-send commands (click or enter always sends now)
+        setTimeout(() => {
+          handleSend();
+        }, 0);
       }
     }
   };
@@ -3884,16 +3928,22 @@ export const ClaudeChat: React.FC = () => {
         if (wasAtBottom) {
           // Stay at bottom
           container.scrollTop = container.scrollHeight;
+        } else if (heightDiff > 0) {
+          // Textarea grew - container shrank by same amount
+          // Scroll down to maintain the same visual bottom edge
+          container.scrollTop = scrollTopBefore + heightDiff;
         } else {
-          // Maintain visual position by adjusting for height diff
+          // Textarea shrank - container grew, keep same scroll position
+          // This naturally reveals more content at the bottom
           container.scrollTop = scrollTopBefore;
         }
       }
 
-      // Update overlay height ref and sync to DOM directly (no re-render)
+      // Update overlay height ref (CSS handles actual sizing via inset positioning)
       overlayHeightRef.current = newHeight;
-      if (inputOverlayRef.current) {
-        inputOverlayRef.current.style.height = newHeight + 'px';
+      // Sync scroll position after height change
+      if (inputOverlayRef.current && inputRef.current) {
+        inputOverlayRef.current.scrollTop = inputRef.current.scrollTop;
       }
     }
 
@@ -3946,7 +3996,7 @@ export const ClaudeChat: React.FC = () => {
     return { x: Math.min(x, textarea.clientWidth - 10), y: Math.min(y, 36) };
   }, []);
 
-  // Sync overlay height with textarea on any resize (including animations)
+  // Sync overlay scroll with textarea on any resize (including animations)
   useEffect(() => {
     if (!inputRef.current) return;
 
@@ -3955,8 +4005,9 @@ export const ClaudeChat: React.FC = () => {
         const height = entry.contentRect.height + 8; // Add padding
         const newHeight = Math.max(44, Math.min(height, 106));
         overlayHeightRef.current = newHeight;
-        if (inputOverlayRef.current) {
-          inputOverlayRef.current.style.height = newHeight + 'px';
+        // Sync scroll position after resize (CSS handles height via inset positioning)
+        if (inputOverlayRef.current && inputRef.current) {
+          inputOverlayRef.current.scrollTop = inputRef.current.scrollTop;
         }
       }
     });
@@ -3982,11 +4033,15 @@ export const ClaudeChat: React.FC = () => {
 
   // Sync overlay scroll with textarea when input changes (fixes ultrathink position on mount)
   useEffect(() => {
-    // Use requestAnimationFrame to ensure overlay is fully rendered before syncing
+    // Use double-RAF to ensure layout is fully complete before syncing scroll
+    // First RAF: queues for next frame after React render
+    // Second RAF: ensures any browser layout/reflow has completed
     requestAnimationFrame(() => {
-      if (inputOverlayRef.current && inputRef.current) {
-        inputOverlayRef.current.scrollTop = inputRef.current.scrollTop;
-      }
+      requestAnimationFrame(() => {
+        if (inputOverlayRef.current && inputRef.current) {
+          inputOverlayRef.current.scrollTop = inputRef.current.scrollTop;
+        }
+      });
     });
   }, [input]);
 
@@ -4068,18 +4123,46 @@ export const ClaudeChat: React.FC = () => {
         </div>
       )}
       {/* Tool Panel (replaces chat when active) */}
-      {(showFilesPanel || showGitPanel || showRollbackPanel) ? (
+      {(showFilesPanel || showRollbackPanel) ? (
         <div className="tool-panel">
           <div className="tool-panel-header">
-            <span className="tool-panel-title">
-              {showFilesPanel ? <><IconFolder size={12} stroke={1.5} /> files</> :
-               showGitPanel ? <><IconGitBranch size={12} stroke={1.5} /> {gitBranch || 'git'}{gitAhead > 0 && <span className="git-ahead-count">+{gitAhead}</span>}</> :
-               <><IconHistory size={12} stroke={1.5} /> history</>}
-              {!showRollbackPanel && <span className="tool-panel-hint">rmb to @ref</span>}
-              {showRollbackPanel && <span className="tool-panel-hint">click to rollback</span>}
-            </span>
+            {showFilesPanel ? (
+              <>
+                <div className="tool-panel-tabs">
+                  <button
+                    className={`tool-panel-tab ${filesSubTab === 'files' ? 'active' : ''}`}
+                    onClick={() => setFilesSubTab('files')}
+                    title={`files (${modKey}+e)`}
+                  >
+                    <IconFolder size={12} stroke={1.5} />
+                    <span>files</span>
+                  </button>
+                  <button
+                    className={`tool-panel-tab ${filesSubTab === 'git' ? 'active' : ''}`}
+                    onClick={() => setFilesSubTab('git')}
+                    disabled={!isGitRepo}
+                    title={isGitRepo ? `git (${modKey}+g)` : 'not a git repo'}
+                  >
+                    <IconGitBranch size={12} stroke={1.5} />
+                    <span>git</span>
+                    {filesSubTab === 'git' && gitAhead > 0 && <span className="git-ahead-badge">+{gitAhead}</span>}
+                  </button>
+                  {filesSubTab === 'git' && Object.keys(gitLineStats).length > 0 && (
+                    <span className="tool-panel-git-stats">
+                      <span className="git-total-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
+                      <span className="git-total-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
+                    </span>
+                  )}
+                </div>
+              </>
+            ) : (
+              <span className="tool-panel-title">
+                <IconHistory size={12} stroke={1.5} /> history
+                <span className="tool-panel-hint">click to rollback</span>
+              </span>
+            )}
             <div className="tool-panel-header-actions">
-              {showFilesPanel && currentSession?.workingDirectory && (
+              {showFilesPanel && filesSubTab === 'files' && currentSession?.workingDirectory && (
                 <button
                   className="tool-panel-edit-claude-md"
                   onClick={() => setShowClaudeMdEditor(true)}
@@ -4093,7 +4176,6 @@ export const ClaudeChat: React.FC = () => {
                 className="tool-panel-close"
                 onClick={() => {
                   setShowFilesPanel(false);
-                  setShowGitPanel(false);
                   setShowRollbackPanel(false);
                   setSelectedFile(null);
                   setFileContent('');
@@ -4107,8 +4189,8 @@ export const ClaudeChat: React.FC = () => {
             </div>
           </div>
           <div className="tool-panel-body">
-            {/* Files Panel */}
-            {showFilesPanel && (
+            {/* Files Panel - Files Tab */}
+            {showFilesPanel && filesSubTab === 'files' && (
               <>
                 <div className="tool-panel-list">
                   {fileLoading && !fileTree.length ? (
@@ -4212,8 +4294,8 @@ export const ClaudeChat: React.FC = () => {
                 )}
               </>
             )}
-            {/* Git Panel */}
-            {showGitPanel && (
+            {/* Files Panel - Git Tab */}
+            {showFilesPanel && filesSubTab === 'git' && (
               <>
                 <div className="tool-panel-list">
                   {gitLoading && !gitStatus ? (
@@ -4237,7 +4319,7 @@ export const ClaudeChat: React.FC = () => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setInput(prev => prev + (prev.endsWith(' ') || !prev ? '' : ' ') + `@${file} `);
-                                setShowGitPanel(false);
+                                setShowFilesPanel(false);
                                 inputRef.current?.focus();
                               }}
                             >
@@ -4258,7 +4340,7 @@ export const ClaudeChat: React.FC = () => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setInput(prev => prev + (prev.endsWith(' ') || !prev ? '' : ' ') + `@${file} `);
-                                setShowGitPanel(false);
+                                setShowFilesPanel(false);
                                 inputRef.current?.focus();
                               }}
                             >
@@ -4279,7 +4361,7 @@ export const ClaudeChat: React.FC = () => {
                                 e.preventDefault();
                                 e.stopPropagation();
                                 setInput(prev => prev + (prev.endsWith(' ') || !prev ? '' : ' ') + `@${file} `);
-                                setShowGitPanel(false);
+                                setShowFilesPanel(false);
                                 inputRef.current?.focus();
                               }}
                             >
@@ -4809,9 +4891,12 @@ export const ClaudeChat: React.FC = () => {
             // Get previous message for bash response styling
             const prevMessage = idx > 0 ? filteredMessages[idx - 1] : null;
 
+            // For result messages, include duration_ms in key to force re-render when it becomes available
+            const resultKey = message.type === 'result' ? `-${message.duration_ms || 0}` : '';
+
             return (
               <div
-                key={`${message.id || message.type}-${idx}`}
+                key={`${message.id || message.type}-${idx}${resultKey}`}
                 data-message-index={idx}
                 className={isHighlighted ? 'message-highlighted' : ''}
               >
@@ -4966,8 +5051,6 @@ export const ClaudeChat: React.FC = () => {
             inputRef={inputRef}
             inputOverlayRef={inputOverlayRef}
             inputContainerRef={inputContainerRef}
-            overlayHeight={overlayHeightRef.current}
-            textareaHeight={overlayHeightRef.current}
             isTextareaFocused={isTextareaFocused}
             setIsTextareaFocused={setIsTextareaFocused}
             setMentionTrigger={setMentionTrigger}
@@ -4983,18 +5066,16 @@ export const ClaudeChat: React.FC = () => {
             onClearRequest={handleClearContextRequest}
           >
             <ContextBar
-              selectedModel={selectedModel}
-              onModelChange={setSelectedModel}
+              selectedModel={currentSession?.model || selectedModel}
+              onModelChange={handleModelChange}
               enabledToolsCount={enabledTools.length}
               onOpenModelModal={() => {
                 setModelToolsOpenedViaKeyboard(false);
                 setShowModelToolsModal(true);
               }}
               showFilesPanel={showFilesPanel}
-              showGitPanel={showGitPanel}
               showRollbackPanel={showRollbackPanel}
               setShowFilesPanel={setShowFilesPanel}
-              setShowGitPanel={setShowGitPanel}
               setShowRollbackPanel={setShowRollbackPanel}
               setSelectedFile={setSelectedFile}
               setFileContent={setFileContent}
@@ -5002,8 +5083,6 @@ export const ClaudeChat: React.FC = () => {
               setGitDiff={setGitDiff}
               setFocusedFileIndex={setFocusedFileIndex}
               setFocusedGitIndex={setFocusedGitIndex}
-              isGitRepo={isGitRepo}
-              gitLineStats={gitLineStats}
               workingDirectory={currentSession?.workingDirectory}
               isReadOnly={currentSession?.readOnly || false}
               isStreaming={currentSession?.streaming || false}
@@ -5052,11 +5131,12 @@ export const ClaudeChat: React.FC = () => {
       <ModelToolsModal
         isOpen={showModelToolsModal}
         onClose={() => { setShowModelToolsModal(false); resetHoverStates(); }}
-        selectedModel={selectedModel}
-        onModelChange={setSelectedModel}
+        selectedModel={currentSession?.model || selectedModel}
+        onModelChange={handleModelChange}
         enabledTools={enabledTools}
         onToolsChange={setEnabledTools}
         openedViaKeyboard={modelToolsOpenedViaKeyboard}
+        lockedProvider={currentSession?.messages?.length ? currentSession.provider : null}
       />
 
       {showStatsModal && (

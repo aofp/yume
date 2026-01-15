@@ -92,7 +92,7 @@ pub enum ClaudeStreamMessage {
 
     /// Text content from Claude
     #[serde(rename = "text")]
-    Text { 
+    Text {
         content: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         id: Option<String>,
@@ -165,7 +165,7 @@ pub enum ClaudeStreamMessage {
 
     /// Error message
     #[serde(rename = "error")]
-    Error { 
+    Error {
         message: String,
         #[serde(skip_serializing_if = "Option::is_none")]
         code: Option<String>,
@@ -247,10 +247,7 @@ pub enum ClaudeStreamMessage {
 
     /// Raw/unknown message type
     #[serde(rename = "raw")]
-    Raw {
-        raw_type: String,
-        data: Value,
-    },
+    Raw { raw_type: String, data: Value },
 }
 
 /// Maximum buffer size to prevent memory issues (100KB)
@@ -390,11 +387,12 @@ impl StreamParser {
                 }
                 _ => {
                     // Try to deserialize other message types normally
-                    if let Ok(message) = serde_json::from_value::<ClaudeStreamMessage>(json.clone()) {
+                    if let Ok(message) = serde_json::from_value::<ClaudeStreamMessage>(json.clone())
+                    {
                         debug!("Parsed message: {:?}", message);
                         return Ok(Some(message));
                     }
-                    
+
                     // If that fails, handle as raw
                     warn!("Unknown message type: {}", msg_type);
                     return Ok(Some(ClaudeStreamMessage::Raw {
@@ -451,29 +449,30 @@ impl TokenAccumulator {
             // ALWAYS use += for accumulation
             self.total_input_tokens += input_tokens;
             self.total_output_tokens += output_tokens;
-            
+
             if let Some(cache_creation) = cache_creation_input_tokens {
                 self.total_cache_creation_tokens += cache_creation;
             }
-            
+
             if let Some(cache_read) = cache_read_input_tokens {
                 self.total_cache_read_tokens += cache_read;
             }
-            
+
             self.messages_processed += 1;
-            
+
             debug!(
                 "Token accumulation - Input: {} (+{}), Output: {} (+{})",
-                self.total_input_tokens, input_tokens,
-                self.total_output_tokens, output_tokens
+                self.total_input_tokens, input_tokens, self.total_output_tokens, output_tokens
             );
         }
     }
 
     /// Gets the total token count
     pub fn total_tokens(&self) -> u32 {
-        let total = self.total_input_tokens + self.total_output_tokens + 
-                   self.total_cache_creation_tokens + self.total_cache_read_tokens;
+        let total = self.total_input_tokens
+            + self.total_output_tokens
+            + self.total_cache_creation_tokens
+            + self.total_cache_read_tokens;
         if total > 0 {
             info!("Token totals - Input: {}, Output: {}, Cache Creation: {}, Cache Read: {}, Total: {}",
                 self.total_input_tokens, self.total_output_tokens, 
@@ -511,26 +510,32 @@ impl StreamProcessor {
         // First check if line contains usage data and extract it
         if let Ok(json) = serde_json::from_str::<Value>(line) {
             if let Some(usage_obj) = json.get("usage") {
-                if let Ok(usage_val) = serde_json::from_value::<serde_json::Value>(usage_obj.clone()) {
-                    let input_tokens = usage_val.get("input_tokens")
+                if let Ok(usage_val) =
+                    serde_json::from_value::<serde_json::Value>(usage_obj.clone())
+                {
+                    let input_tokens = usage_val
+                        .get("input_tokens")
                         .and_then(|v| v.as_u64())
                         .map(|v| v as u32)
                         .unwrap_or(0);
-                    let output_tokens = usage_val.get("output_tokens")
+                    let output_tokens = usage_val
+                        .get("output_tokens")
                         .and_then(|v| v.as_u64())
                         .map(|v| v as u32)
                         .unwrap_or(0);
-                    let cache_creation = usage_val.get("cache_creation_input_tokens")
+                    let cache_creation = usage_val
+                        .get("cache_creation_input_tokens")
                         .and_then(|v| v.as_u64())
                         .map(|v| v as u32);
-                    let cache_read = usage_val.get("cache_read_input_tokens")
+                    let cache_read = usage_val
+                        .get("cache_read_input_tokens")
                         .and_then(|v| v.as_u64())
                         .map(|v| v as u32);
-                    
+
                     if input_tokens > 0 || output_tokens > 0 {
                         info!("Extracted usage from line: input={}, output={}, cache_creation={:?}, cache_read={:?}", 
                             input_tokens, output_tokens, cache_creation, cache_read);
-                        
+
                         // Accumulate the tokens directly
                         let usage_msg = ClaudeStreamMessage::Usage {
                             input_tokens,
@@ -543,14 +548,18 @@ impl StreamProcessor {
                 }
             }
         }
-        
+
         // Now process the line normally for message parsing
         let message = self.parser.process_line(line)?;
 
         if let Some(ref msg) = message {
             // Handle different message types
             match msg {
-                ClaudeStreamMessage::System { subtype, session_id, .. } => {
+                ClaudeStreamMessage::System {
+                    subtype,
+                    session_id,
+                    ..
+                } => {
                     if subtype == "init" {
                         if let Some(id) = session_id {
                             self.session_id = Some(id.clone());
@@ -622,7 +631,7 @@ mod tests {
         let json = r#"{"type":"system","subtype":"init","session_id":"abc123"}"#;
         let mut parser = StreamParser::new();
         let result = parser.process_line(json).unwrap();
-        
+
         assert!(matches!(
             result,
             Some(ClaudeStreamMessage::System { subtype, .. }) if subtype == "init"
@@ -634,7 +643,7 @@ mod tests {
         let json = r#"{"type":"text","content":"Hello, world!"}"#;
         let mut parser = StreamParser::new();
         let result = parser.process_line(json).unwrap();
-        
+
         assert!(matches!(
             result,
             Some(ClaudeStreamMessage::Text { content, .. }) if content == "Hello, world!"
@@ -646,34 +655,38 @@ mod tests {
         let json = r#"{"type":"usage","input_tokens":100,"output_tokens":200}"#;
         let mut parser = StreamParser::new();
         let result = parser.process_line(json).unwrap();
-        
+
         assert!(matches!(
             result,
-            Some(ClaudeStreamMessage::Usage { input_tokens: 100, output_tokens: 200, .. })
+            Some(ClaudeStreamMessage::Usage {
+                input_tokens: 100,
+                output_tokens: 200,
+                ..
+            })
         ));
     }
 
     #[test]
     fn test_token_accumulation() {
         let mut accumulator = TokenAccumulator::new();
-        
+
         let usage1 = ClaudeStreamMessage::Usage {
             input_tokens: 100,
             output_tokens: 200,
             cache_creation_input_tokens: Some(50),
             cache_read_input_tokens: None,
         };
-        
+
         let usage2 = ClaudeStreamMessage::Usage {
             input_tokens: 150,
             output_tokens: 250,
             cache_creation_input_tokens: None,
             cache_read_input_tokens: Some(75),
         };
-        
+
         accumulator.accumulate(&usage1);
         accumulator.accumulate(&usage2);
-        
+
         assert_eq!(accumulator.total_input_tokens, 250);
         assert_eq!(accumulator.total_output_tokens, 450);
         assert_eq!(accumulator.total_cache_creation_tokens, 50);
@@ -684,11 +697,11 @@ mod tests {
     #[test]
     fn test_fragmented_json() {
         let mut parser = StreamParser::new();
-        
+
         // First fragment
         let result1 = parser.process_line(r#"{"type":"text","#).unwrap();
         assert!(result1.is_none());
-        
+
         // Second fragment completes the JSON
         let result2 = parser.process_line(r#""content":"Hello"}"#).unwrap();
         assert!(matches!(

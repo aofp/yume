@@ -2,13 +2,12 @@
 /// This module provides an alternative async implementation for managing Claude sessions
 /// Currently not actively used - the application uses the Node.js server approach instead
 /// Kept for potential future migration to pure Rust implementation
-/// 
+///
 /// Key features:
 /// - Async session management with Tokio
 /// - Direct Claude CLI process spawning
 /// - Stream-json parsing
 /// - Multi-session support with DashMap for thread-safe access
-
 use anyhow::{anyhow, Result};
 use dashmap::DashMap;
 use parking_lot::RwLock;
@@ -80,8 +79,8 @@ pub enum ClaudeMessage {
 /// Uses DashMap for thread-safe concurrent access to sessions
 /// Each session has its own process and message channel
 pub struct ClaudeManager {
-    sessions: Arc<DashMap<String, Arc<RwLock<ClaudeSession>>>>,         // Active sessions
-    processes: Arc<DashMap<String, Child>>,                             // Running Claude processes
+    sessions: Arc<DashMap<String, Arc<RwLock<ClaudeSession>>>>, // Active sessions
+    processes: Arc<DashMap<String, Child>>,                     // Running Claude processes
     message_senders: Arc<DashMap<String, mpsc::UnboundedSender<ClaudeMessage>>>, // Message channels
 }
 
@@ -165,7 +164,7 @@ impl ClaudeManager {
             .stdin(Stdio::piped())
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
-            .kill_on_drop(true);  // Ensure process cleanup on drop
+            .kill_on_drop(true); // Ensure process cleanup on drop
 
         // Resume existing conversation if this isn't the first message
         if message_count > 1 {
@@ -269,9 +268,7 @@ impl ClaudeManager {
     /// Retrieves a copy of session data by ID
     /// Returns None if session doesn't exist
     pub fn get_session(&self, session_id: &str) -> Option<ClaudeSession> {
-        self.sessions
-            .get(session_id)
-            .map(|s| s.read().clone())
+        self.sessions.get(session_id).map(|s| s.read().clone())
     }
 
     /// Returns a list of all active sessions
@@ -303,7 +300,10 @@ fn parse_claude_json(json: &serde_json::Value) -> Option<ClaudeMessage> {
         "tool_result" => Some(ClaudeMessage::ToolResult {
             tool_use_id: json.get("tool_use_id")?.as_str()?.to_string(),
             content: json.get("content")?.as_str()?.to_string(),
-            is_error: json.get("is_error").and_then(|v| v.as_bool()).unwrap_or(false),
+            is_error: json
+                .get("is_error")
+                .and_then(|v| v.as_bool())
+                .unwrap_or(false),
         }),
         "usage" => Some(ClaudeMessage::Usage {
             input_tokens: json.get("input_tokens")?.as_u64()? as usize,

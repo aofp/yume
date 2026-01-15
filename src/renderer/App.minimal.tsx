@@ -18,12 +18,14 @@ const RecentProjectsModal = React.lazy(() => import('./components/RecentProjects
 const ProjectsModal = React.lazy(() => import('./components/ProjectsModal/ProjectsModal').then(m => ({ default: m.ProjectsModal })));
 const AgentsModal = React.lazy(() => import('./components/AgentsModal/AgentsModal').then(m => ({ default: m.AgentsModal })));
 const UpgradeModal = React.lazy(() => import('./components/Upgrade/UpgradeModal').then(m => ({ default: m.UpgradeModal })));
+const NoProviderModal = React.lazy(() => import('./components/NoProviderModal/NoProviderModal').then(m => ({ default: m.NoProviderModal })));
 import { useClaudeCodeStore } from './stores/claudeCodeStore';
 import { useLicenseStore } from './services/licenseManager';
 import { platformBridge } from './services/platformBridge';
 import { claudeCodeClient } from './services/claudeCodeClient';
 import { systemPromptService } from './services/systemPromptService';
 import { pluginService } from './services/pluginService';
+import { ensureProviderDefaults } from './services/providersService';
 import ErrorBoundary from './components/common/ErrorBoundary';
 import { APP_NAME, appEventName, appStorageKey } from './config/app';
 import { isVSCode, invoke } from './services/tauriApi';
@@ -88,6 +90,11 @@ export const App: React.FC = () => {
 
     // Initialize plugin service early so slash commands work immediately
     pluginService.initialize().catch(e => console.warn('Plugin init:', e));
+
+    // Auto-detect available providers (Gemini/OpenAI) and enable toolchains if supported
+    ensureProviderDefaults().catch((error) => {
+      console.warn('Provider detection failed:', error);
+    });
 
     // Check Claude CLI connection with adaptive polling
     // Minimum 300ms delay ensures CSS is loaded and prevents flash
@@ -1431,6 +1438,11 @@ export const App: React.FC = () => {
           <ClaudeNotDetected />
         </ErrorBoundary>
       )}
+      <ErrorBoundary name="NoProviderModal">
+        <Suspense fallback={null}>
+          <NoProviderModal />
+        </Suspense>
+      </ErrorBoundary>
     </div>
   );
 };
