@@ -1245,7 +1245,6 @@ pre.edit-diff {
 .tool-detail {
   color: var(--fg-60);
   font-family: var(--font-mono);
-  font-size: 8px !important;
   opacity: 1;
   max-width: 100%;
   overflow-x: visible;
@@ -1253,8 +1252,6 @@ pre.edit-diff {
   white-space: pre-wrap;
   word-break: break-word;
   box-sizing: border-box;
-  position: relative;
-  top: 1px;
   scrollbar-width: thin;
 }
 
@@ -1507,7 +1504,7 @@ pre.bash-content,
 
 .collapsible-icon {
   opacity: 1;
-  color: rgba(var(--positive-rgb), 0.9);
+  color: rgba(var(--positive-rgb), 1);
 }
 
 .tool-result.collapsible .collapsible-summary {
@@ -1518,7 +1515,6 @@ pre.bash-content,
 
 .tool-result.collapsible .collapsible-detail {
   font-family: var(--font-mono);
-  font-size: 8.5px;
   color: rgba(var(--positive-rgb), 0.9);
   overflow: visible;
   white-space: nowrap;
@@ -1969,15 +1965,15 @@ hr {
   gap: 6px;
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  color: rgba(var(--foreground-rgb), 0.5);
-}
-
-.taskoutput-tool-call .tool-name {
   color: rgba(var(--foreground-rgb), 0.6);
 }
 
+.taskoutput-tool-call .tool-name {
+  color: rgba(var(--foreground-rgb), 0.7);
+}
+
 .taskoutput-tool-call .tool-detail {
-  color: rgba(var(--foreground-rgb), 0.4);
+  color: rgba(var(--foreground-rgb), 0.6);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -2373,8 +2369,18 @@ code *::-moz-selection {
 .markdown-table th,
 .markdown-table td {
   padding: 2px 6px;
-  border: 1px solid rgba(var(--foreground-rgb), 0.1);
   text-align: left;
+}
+
+
+.markdown-table th:not(:first-child),
+.markdown-table td:not(:first-child) {
+  border-left: 1px solid rgba(var(--foreground-rgb), 0.05);
+}
+
+.markdown-table {
+  background: var(--bg-brighter-alpha);
+  margin-bottom: 4px;
 }
 
 .markdown-table th {
@@ -2389,10 +2395,6 @@ code *::-moz-selection {
 
 .markdown-table tr:nth-child(even) td {
   background: rgba(var(--foreground-rgb), 0.02);
-}
-
-.markdown-table tr:hover td {
-  background: rgba(var(--accent-rgb), 0.05);
 }
 
 /* 3px minimal scrollbars with 50% opacity foreground and background */

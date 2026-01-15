@@ -2253,7 +2253,7 @@ export const ClaudeChat: React.FC = () => {
 
     // Silent refresh - doesn't show loading or clear current state
     const refreshGitStatus = async () => {
-      if (!showGitPanel || !currentSession?.workingDirectory) return;
+      if (!showFilesPanel || !isGitRepo || !currentSession?.workingDirectory) return;
       try {
         const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
         setGitStatus({
@@ -2283,7 +2283,7 @@ export const ClaudeChat: React.FC = () => {
 
     // Initial load with loading state
     const loadGitStatus = async () => {
-      if (!showGitPanel || !currentSession?.workingDirectory) return;
+      if (!showFilesPanel || !isGitRepo || !currentSession?.workingDirectory) return;
       setGitLoading(true);
       try {
         const status = await invoke('get_git_status', { directory: currentSession.workingDirectory }) as any;
@@ -2322,14 +2322,14 @@ export const ClaudeChat: React.FC = () => {
 
     // Auto-refresh every 30 seconds while panel is open (silent, no loading state)
     let intervalId: ReturnType<typeof setInterval> | null = null;
-    if (showGitPanel && currentSession?.workingDirectory) {
+    if (showFilesPanel && isGitRepo && currentSession?.workingDirectory) {
       intervalId = setInterval(refreshGitStatus, 30000);
     }
 
     return () => {
       if (intervalId) clearInterval(intervalId);
     };
-  }, [showGitPanel, currentSession?.workingDirectory]);
+  }, [showFilesPanel, isGitRepo, currentSession?.workingDirectory]);
 
   // Helper to get flat list of visible files from tree (for keyboard navigation)
   const getVisibleFiles = useCallback((items: any[], expanded: Set<string>): { path: string; isDirectory: boolean; hasGitChanges: boolean }[] => {
@@ -4145,9 +4145,12 @@ export const ClaudeChat: React.FC = () => {
                   >
                     <IconGitBranch size={12} stroke={1.5} />
                     <span>git</span>
-                    {filesSubTab === 'git' && gitAhead > 0 && <span className="git-ahead-badge">+{gitAhead}</span>}
+                    {gitStatus && (gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length) > 0 && (
+                      <span className="git-changes-badge">{gitStatus.modified.length + gitStatus.added.length + gitStatus.deleted.length}</span>
+                    )}
+                    {gitAhead > 0 && <span className="git-ahead-badge">↑{gitAhead}</span>}
                   </button>
-                  {filesSubTab === 'git' && Object.keys(gitLineStats).length > 0 && (
+                  {Object.keys(gitLineStats).length > 0 && (
                     <span className="tool-panel-git-stats">
                       <span className="git-total-added">+{Object.values(gitLineStats).reduce((sum, s) => sum + s.added, 0)}</span>
                       <span className="git-total-deleted">-{Object.values(gitLineStats).reduce((sum, s) => sum + s.deleted, 0)}</span>
@@ -5042,6 +5045,8 @@ export const ClaudeChat: React.FC = () => {
             isDragging={isDragging}
             isReadOnly={currentSession?.readOnly || false}
             isStreaming={currentSession?.streaming || false}
+            isRunningBash={currentSession?.runningBash || false}
+            isUserBash={currentSession?.userBashRunning || false}
             isContextFull={isContextFull}
             isDictating={isDictating}
             isCommandMode={commandTrigger !== null}
@@ -5061,7 +5066,7 @@ export const ClaudeChat: React.FC = () => {
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
             onDrop={handleDrop}
-            onInterrupt={() => interruptSession()}
+            onInterrupt={handleStopBash}
             onCompactRequest={handleCompactContextRequest}
             onClearRequest={handleClearContextRequest}
           >

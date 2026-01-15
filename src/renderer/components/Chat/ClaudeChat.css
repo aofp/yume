@@ -2867,6 +2867,18 @@ textarea.context-full {
   cursor: not-allowed;
 }
 
+.git-changes-badge {
+  font-size: var(--text-xs);
+  background: var(--warning-color, #ffcc99);
+  color: var(--bg-primary, #000);
+  padding: 0 4px;
+  border-radius: 8px;
+  margin-left: 4px;
+  font-weight: 600;
+  min-width: 14px;
+  text-align: center;
+}
+
 .git-ahead-badge {
   font-size: var(--text-xs);
   color: var(--positive-color, #99ffcc);

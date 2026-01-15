@@ -25,6 +25,8 @@ interface InputAreaProps {
   isDragging: boolean;
   isReadOnly: boolean;
   isStreaming: boolean;
+  isRunningBash: boolean;
+  isUserBash: boolean;
   isContextFull: boolean;
   isDictating: boolean;
   isCommandMode: boolean;
@@ -58,6 +60,8 @@ export const InputArea = memo(function InputArea({
   isDragging,
   isReadOnly,
   isStreaming,
+  isRunningBash,
+  isUserBash,
   isContextFull,
   isDictating,
   isCommandMode,
@@ -161,7 +165,7 @@ export const InputArea = memo(function InputArea({
                 }
               }}
               style={{
-                marginRight: isStreaming ? '46px' : undefined
+                marginRight: (isStreaming || isRunningBash || isUserBash) ? '46px' : undefined
               }}
               disabled={isReadOnly || isContextFull}
               spellCheck={false}
@@ -207,11 +211,11 @@ export const InputArea = memo(function InputArea({
             </div>
           )}
           <Watermark inputLength={input.length} isFocused={isTextareaFocused} isStreaming={isStreaming} />
-          {isStreaming && (
+          {(isStreaming || isRunningBash || isUserBash) && (
             <button
               className="stop-streaming-btn"
               onClick={onInterrupt}
-              title="stop streaming (esc)"
+              title={isRunningBash || isUserBash ? "stop bash (esc)" : "stop streaming (esc)"}
             >
               <IconPlayerStop size={16} stroke={1.5} />
             </button>
