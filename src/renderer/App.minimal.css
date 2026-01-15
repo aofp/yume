@@ -26,6 +26,7 @@ body {
   background: var(--bg-color, transparent) !important;
   color: var(--foreground-color, #ffffff);
   overflow: hidden;
+  overscroll-behavior-y: contain;
 }
 
 .app-minimal {

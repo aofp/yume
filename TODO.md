@@ -347,6 +347,7 @@ Last Updated: 2026-01-10
 6. **Crash Recovery** - Full session recovery system with state snapshots
 7. **Performance Monitoring** - FPS, memory, and long task detection
 8. **Production Config** - Clean configuration without telemetry/auto-updates
+9. **Fix bug where dialogs can cause scroll issues** - Added `overscroll-behavior-y: contain` to `body` element.
 
 ### Removed (Per User Request)
 - ❌ All telemetry and tracking code
