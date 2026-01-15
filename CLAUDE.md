@@ -41,8 +41,8 @@ Model IDs in `src/renderer/config/models.ts` are intentionally set and MUST NOT 
 - `claude-opus-4-5-20251101` (opus 4.5)
 
 **Gemini models:**
-- `gemini-3-pro` (gemini 3 pro)
-- `gemini-3-flash` (gemini 3 flash)
+- `gemini-2.5-pro` (gemini 2.5 pro)
+- `gemini-2.5-flash` (gemini 2.5 flash)
 
 **OpenAI/Codex models:**
 - `gpt-5.2-codex` (gpt-5.2 codex)
@@ -96,6 +96,7 @@ npm run minify:servers         # Minify server code
 - `src-tauri/src/` - Rust backend code
 - `src-tauri/src/commands/` - Tauri IPC command handlers
 - `src-tauri/resources/` - Compiled server binaries (production)
+- `src-yume-cli/` - Multi-provider CLI shim (TypeScript)
 - `scripts/` - Build and utility scripts
 - `docs/` - Extended documentation (architecture, API, troubleshooting)
 - Root level `server-claude-*.cjs` - Server source files
@@ -170,6 +171,44 @@ npm run minify:servers         # Minify server code
 - `yume-server-macos-arm64` / `yume-server-macos-x64` - macOS binaries
 - `yume-server-windows-x64.exe` - Windows binary
 - `yume-server-linux-x64` - Linux binary
+
+### yume-cli (Multi-Provider Shim)
+**Location**: `src-yume-cli/`
+
+TypeScript CLI that spawns official provider CLIs (gemini, codex) and translates output to Claude-compatible stream-json format.
+
+**Key Files**:
+- `src/index.ts` - CLI entry point, argument parsing
+- `src/core/agent-loop.ts` - Main Think→Act→Observe loop
+- `src/core/plugins.ts` - Plugin loader (agents, skills from `~/.yume/plugins/`)
+- `src/core/emit.ts` - Stream-json message emitters
+- `src/core/session.ts` - Session persistence
+- `src/providers/gemini.ts` - Gemini CLI spawner with tool translation
+- `src/providers/openai.ts` - Codex CLI spawner with tool detection
+- `src/tools/` - Built-in tool executors (bash, read, write, edit, glob, grep, ls)
+
+**Tool Translation** (codex → claude format):
+- `command_execution` → Detected from command pattern:
+  - `cat`, `head`, `tail`, `less`, `more` → Read
+  - `find`, `fd`, `*.` (glob patterns) → Glob
+  - `grep`, `rg`, `ag`, `ack` → Grep
+  - `ls`, `tree` → LS
+  - `sed`, `awk` → Edit
+  - `touch`, `>`, `>>` → Write
+  - `curl`, `wget`, `fetch` → WebFetch
+  - `git`, other commands → Bash
+- `file_read` → Read
+- `file_edit` / `file_write` → Edit / Write
+- `file_search` / `glob` → Glob
+- `content_search` / `grep` → Grep
+- `list_directory` / `ls` → LS
+
+**Plugin Injection**:
+Plugins from `~/.yume/plugins/` are loaded at startup. Agent system prompts and skill-matched content are prepended to user messages via `<system-context>` and `<skill-context>` tags.
+
+**Security**:
+- Regex patterns from skills are validated for ReDoS patterns before execution
+- Cross-platform path handling via `path.basename()`
 
 ## Important Implementation Details
 
@@ -426,6 +465,8 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 - Visual representation of context usage
 - Token counting with cache awareness
 - Warning thresholds (55%, 60%, 65%)
+- **Provider-aware rate limits**: 5h/7d limit bars only shown for Claude provider
+- Stats modal shows "claude 5h/7d" labels or "rate limits not available for {provider}" for Gemini/OpenAI
 
 **Diff Viewer** (`DiffViewer.tsx`):
 - Line-by-line file diffs
@@ -488,6 +529,14 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 - `SHOW_TIMELINE` - Timeline UI visibility
 - `ENABLE_AGENT_EXECUTION` - Agent execution feature
 - `USE_NATIVE_RUST` - Experimental native Rust execution (disabled)
+
+**Provider Configuration** (`config/models.ts`):
+- `ProviderType`: `'claude' | 'gemini' | 'openai'`
+- `PROVIDERS[]` - Provider definitions with CLI commands and auth info
+- `ALL_MODELS[]` - All models across providers
+- `getProviderForModel(modelId)` - Get provider for a model ID
+- `getModelsForProvider(provider)` - Get models for a provider
+- Sessions lock to their initial provider - switching providers forks the session
 
 ### File Operations
 **Safe file management** with conflict detection.

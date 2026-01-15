@@ -35,6 +35,7 @@ import {
   addToHistory,
   updateUsage,
 } from './session.js';
+import { buildSystemContext } from './plugins.js';
 
 const MAX_TURNS = 50; // Safety limit
 const MAX_DURATION_MS = 10 * 60 * 1000; // 10 minute overall timeout
@@ -96,10 +97,18 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
 
   // Add user message to history if prompt provided
   if (args.prompt) {
+    // Build system context from plugins (agents, skills)
+    const systemContext = await buildSystemContext(args.prompt);
+    const enhancedPrompt = systemContext ? systemContext + args.prompt : args.prompt;
+
     addToHistory(session, {
       role: 'user',
-      content: args.prompt,
+      content: enhancedPrompt,
     });
+
+    if (systemContext) {
+      logVerbose('Injected plugin context into prompt');
+    }
   }
 
   // Total usage for this turn
@@ -163,10 +172,18 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
           case 'tool_call':
             if (chunk.toolCall) {
               hasToolCalls = true;
+              let input: Record<string, unknown> = {};
+              try {
+                input = JSON.parse(chunk.toolCall.arguments);
+              } catch {
+                logVerbose(`Failed to parse tool arguments: ${chunk.toolCall.arguments}`);
+                // Try to use arguments as-is if it's not valid JSON
+                input = { raw: chunk.toolCall.arguments };
+              }
               const toolCall: ToolCall = {
                 id: chunk.toolCall.id,
                 name: chunk.toolCall.name,
-                input: JSON.parse(chunk.toolCall.arguments),
+                input,
               };
               pendingToolCalls.push(toolCall);
               emitToolUse(toolCall.id, toolCall.name, toolCall.input);
@@ -231,16 +248,16 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
       }
 
       // Process any buffered tool calls (from deltas)
+      // NOTE: This is incomplete - deltas are buffered but not fully executed yet.
+      // Full implementation would track tool names from initial delta and create proper tool calls.
       for (const [id, argsBuffer] of toolCallBuffers) {
         try {
-          const args = JSON.parse(argsBuffer);
-          // Find tool name from existing pending calls or use 'unknown'
+          // Parse args to validate JSON (unused - would be used when fully implementing delta handling)
+          JSON.parse(argsBuffer);
+          // Find tool name from existing pending calls
           const existingCall = pendingToolCalls.find((tc) => tc.id === id);
           if (!existingCall) {
-            // This is a new tool call assembled from deltas
-            // We need to get the name from somewhere - for now assume it was part of first delta
-            // This is a simplification; real implementation would track name separately
-            logVerbose(`Warning: Tool call ${id} assembled from deltas without name`);
+            logVerbose(`Warning: Tool call ${id} assembled from deltas without name (not executed)`);
           }
         } catch {
           logVerbose(`Warning: Could not parse tool call arguments for ${id}`);

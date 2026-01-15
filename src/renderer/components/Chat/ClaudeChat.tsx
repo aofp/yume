@@ -3225,41 +3225,62 @@ export const ClaudeChat: React.FC = () => {
         }
         
         try {
-          // Send bash command through the server (which handles it properly)
-          // The server will execute through WSL and send back results via socket
-          console.log('[ClaudeChat] Sending bash command to server:', `$${originalCommand}`);
+          // Execute bash command directly via Tauri - NOT through AI
+          console.log('[ClaudeChat] Executing bash command directly:', bashCommand);
 
-          // Use the store's sendMessage which already has the socket connection
-          // The $ prefix tells the server this is a bash command
-          await sendMessage(`$${originalCommand}`, true);
-          
-          // Focus restoration after sending to server
+          const result = await invoke('execute_bash', {
+            command: bashCommand,
+            workingDir: currentSession?.workingDirectory
+          }) as string;
+
+          // Add result as assistant message
+          const resultMessage = {
+            id: `bash-${Date.now()}`,
+            type: 'assistant' as const,
+            message: { content: result || '(no output)' },
+            timestamp: Date.now(),
+            streaming: false
+          };
+
+          if (currentSessionId) {
+            addMessageToSession(currentSessionId, resultMessage);
+          }
+
+          // Focus restoration
           if (navigator.platform.includes('Win') && inputRef.current) {
-            // Simple focus restoration since server handles execution
             setTimeout(() => {
               inputRef.current?.focus();
             }, 100);
           }
-          
-          // Clear userBashRunning flag after sending to server
-          setTimeout(() => {
-            useClaudeCodeStore.setState(state => ({
-              sessions: state.sessions.map(s => 
-                s.id === currentSessionId 
-                  ? { ...s, userBashRunning: false } 
-                  : s
-              )
-            }));
-          }, 1000);
-          
-        } catch (error) {
-          // This should rarely happen since bash commands now always return success
-          // The actual command output (including errors) is sent as a message
-          console.error('[ClaudeChat] Unexpected error sending bash command:', error);
-          
-          // Clear userBashRunning flag even on error
+
+          // Clear userBashRunning flag
           useClaudeCodeStore.setState(state => ({
-            sessions: state.sessions.map(s => 
+            sessions: state.sessions.map(s =>
+              s.id === currentSessionId
+                ? { ...s, userBashRunning: false }
+                : s
+            )
+          }));
+
+        } catch (error) {
+          console.error('[ClaudeChat] Bash command failed:', error);
+
+          // Add error as assistant message
+          const errorMessage = {
+            id: `bash-${Date.now()}`,
+            type: 'assistant' as const,
+            message: { content: `Error: ${error instanceof Error ? error.message : String(error)}` },
+            timestamp: Date.now(),
+            streaming: false
+          };
+
+          if (currentSessionId) {
+            addMessageToSession(currentSessionId, errorMessage);
+          }
+
+          // Clear userBashRunning flag on error
+          useClaudeCodeStore.setState(state => ({
+            sessions: state.sessions.map(s =>
               s.id === currentSessionId ? { ...s, userBashRunning: false, bashProcessId: undefined } : s
             )
           }));
@@ -5206,6 +5227,7 @@ export const ClaudeChat: React.FC = () => {
               setAutoCompactEnabled={(enabled) => setAutoCompactEnabled(enabled ? true : false)}
               isPendingCompact={currentSession?.compactionState?.pendingAutoCompact || false}
               usageLimits={usageLimits}
+              currentProvider={getProviderForModel(currentSession?.model || selectedModel)}
               onClearRequest={handleClearContextRequest}
               onCompactRequest={handleCompactContextRequest}
               onOpenStatsModal={() => setShowStatsModal(true)}
@@ -5450,54 +5472,68 @@ export const ClaudeChat: React.FC = () => {
                 );
               })()}
             </div>
-            {/* Usage limits footer */}
-            <div className="stats-footer">
-              {/* Session Limit (5-hour) */}
-              <div className="stats-footer-row">
-                <span className="stats-footer-label"><span className="stats-footer-limit-name">5h limit</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '?'}</span>
-                <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) + '%' : '?'}</span>
-              </div>
-              <div className="usage-bar">
-                <div
-                  className="usage-bar-fill"
-                  style={{
-                    width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
-                    background: (usageLimits?.five_hour?.utilization ?? 0) >= 90
-                      ? 'var(--negative-color, #ff6b6b)'
-                      : 'var(--accent-color)'
-                  }}
-                />
-              </div>
-              <div className="usage-bar-ticks" style={{ marginBottom: '8px' }}>
-                {/* Ticks every 1h */}
-                {Array.from({ length: 6 }, (_, i) => (
-                  <div key={i} className="usage-bar-tick" />
-                ))}
-              </div>
+            {/* Usage limits footer - only shown for Claude provider */}
+            {(() => {
+              const statsProvider = getProviderForModel(currentSession?.model || selectedModel);
+              if (statsProvider !== 'claude') {
+                return (
+                  <div className="stats-footer">
+                    <div className="stats-footer-row" style={{ opacity: 0.5, justifyContent: 'center' }}>
+                      <span className="stats-footer-label">rate limits not available for {statsProvider}</span>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="stats-footer">
+                  {/* Session Limit (5-hour) */}
+                  <div className="stats-footer-row">
+                    <span className="stats-footer-label"><span className="stats-footer-limit-name">claude 5h</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '?'}</span>
+                    <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) + '%' : '?'}</span>
+                  </div>
+                  <div className="usage-bar">
+                    <div
+                      className="usage-bar-fill"
+                      style={{
+                        width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
+                        background: (usageLimits?.five_hour?.utilization ?? 0) >= 90
+                          ? 'var(--negative-color, #ff6b6b)'
+                          : 'var(--accent-color)'
+                      }}
+                    />
+                  </div>
+                  <div className="usage-bar-ticks" style={{ marginBottom: '8px' }}>
+                    {/* Ticks every 1h */}
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <div key={i} className="usage-bar-tick" />
+                    ))}
+                  </div>
 
-              {/* Weekly Limit (7-day) */}
-              <div className="stats-footer-row">
-                <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">7d limit</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '?'}</span>
-                <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) + '%' : '?'}</span>
-              </div>
-              <div className="usage-bar">
-                <div
-                  className="usage-bar-fill"
-                  style={{
-                    width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
-                    background: (usageLimits?.seven_day?.utilization ?? 0) >= 90
-                      ? 'var(--negative-color, #ff6b6b)'
-                      : 'var(--accent-color)'
-                  }}
-                />
-              </div>
-              <div className="usage-bar-ticks">
-                {/* Ticks every 1d */}
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div key={i} className="usage-bar-tick" />
-                ))}
-              </div>
-            </div>
+                  {/* Weekly Limit (7-day) */}
+                  <div className="stats-footer-row">
+                    <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">claude 7d</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '?'}</span>
+                    <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) + '%' : '?'}</span>
+                  </div>
+                  <div className="usage-bar">
+                    <div
+                      className="usage-bar-fill"
+                      style={{
+                        width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                        background: (usageLimits?.seven_day?.utilization ?? 0) >= 90
+                          ? 'var(--negative-color, #ff6b6b)'
+                          : 'var(--accent-color)'
+                      }}
+                    />
+                  </div>
+                  <div className="usage-bar-ticks">
+                    {/* Ticks every 1d */}
+                    {Array.from({ length: 8 }, (_, i) => (
+                      <div key={i} className="usage-bar-tick" />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

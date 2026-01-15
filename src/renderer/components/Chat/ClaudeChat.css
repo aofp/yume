@@ -1007,7 +1007,7 @@ textarea.context-full {
   position: absolute;
   right: 0px;
   bottom: 0px;
-  background: rgba(var(--negative-rgb), 0.2);
+  background: rgba(var(--negative-rgb), 0.17);
   border: 1px solid var(--negative-color);
   color: var(--negative-color);
   padding: 13px;
@@ -1017,16 +1017,16 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   opacity: 1;
-  animation: streaming-pulse 2s infinite !important;
+  animation: streaming-pulse 3s infinite;
   z-index: 20;
 }
 
 .stop-streaming-btn:hover {
-  background: rgba(var(--negative-rgb), 0.3);
+  background: rgba(var(--negative-rgb), 0.25);
   border: 1px solid var(--negative-color);
   color: var(--negative-color);
   opacity: 1;
-  animation: none;
+  animation: none !important;
 }
 
 @keyframes pulse {
@@ -2872,7 +2872,7 @@ textarea.context-full {
 
 .git-changes-badge {
   font-size: var(--text-xs);
-  background: var(--warning-color, #ffcc99);
+  background: var(--accent-color);
   color: var(--bg-primary, #000);
   padding: 0 4px;
   border-radius: 8px;

@@ -227,7 +227,7 @@
 /* Overview Main Layout - Two Column */
 .overview-main-layout {
   display: grid;
-  grid-template-columns: 1fr 100px;
+  grid-template-columns: 1fr 80px;
   gap: 12px;
   margin-bottom: 12px;
   align-items: stretch;

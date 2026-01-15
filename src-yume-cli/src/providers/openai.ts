@@ -18,6 +18,84 @@ import { logVerbose } from '../core/emit.js';
 // Timeout for process operations (5 minutes)
 const PROCESS_TIMEOUT_MS = 5 * 60 * 1000;
 
+// Counter for unique ID generation within same millisecond
+let toolIdCounter = 0;
+
+/**
+ * Generate a unique tool ID to prevent collisions
+ */
+function generateToolId(itemId?: string): string {
+  if (itemId) return itemId;
+  toolIdCounter = (toolIdCounter + 1) % 10000;
+  return `tool-${Date.now()}-${toolIdCounter.toString().padStart(4, '0')}`;
+}
+
+/**
+ * Detect the most appropriate tool type from a command string
+ * This helps the UI show the correct icon for codex operations
+ */
+function detectToolFromCommand(command: string): string {
+  const cmd = command.trim().toLowerCase();
+
+  // File reading patterns
+  if (
+    cmd.startsWith('cat ') ||
+    cmd.startsWith('head ') ||
+    cmd.startsWith('tail ') ||
+    cmd.startsWith('less ') ||
+    cmd.startsWith('more ')
+  ) {
+    return 'Read';
+  }
+
+  // File search patterns (glob)
+  if (
+    cmd.startsWith('find ') ||
+    cmd.startsWith('fd ') ||
+    cmd.includes('*.') // glob pattern
+  ) {
+    return 'Glob';
+  }
+
+  // Content search patterns (grep)
+  if (
+    cmd.startsWith('grep ') ||
+    cmd.startsWith('rg ') ||
+    cmd.startsWith('ag ') ||
+    cmd.startsWith('ack ')
+  ) {
+    return 'Grep';
+  }
+
+  // Directory listing
+  if (cmd.startsWith('ls ') || cmd === 'ls' || cmd.startsWith('tree ')) {
+    return 'LS';
+  }
+
+  // File editing with sed/awk
+  if (cmd.startsWith('sed ') || cmd.startsWith('awk ')) {
+    return 'Edit';
+  }
+
+  // File creation
+  if (cmd.startsWith('touch ') || cmd.includes(' > ') || cmd.includes(' >> ')) {
+    return 'Write';
+  }
+
+  // Git operations
+  if (cmd.startsWith('git ')) {
+    return 'Bash';
+  }
+
+  // Web fetch
+  if (cmd.startsWith('curl ') || cmd.startsWith('wget ') || cmd.startsWith('fetch ')) {
+    return 'WebFetch';
+  }
+
+  // Default to Bash
+  return 'Bash';
+}
+
 // OpenAI models
 const OPENAI_MODELS: ModelInfo[] = [
   {
@@ -209,12 +287,16 @@ export class OpenAIProvider extends BaseProvider {
 
             // Tool use (command execution)
             if (item.type === 'command_execution') {
+              const command = item.command || '';
+              const toolId = generateToolId(item.id);
+              // Detect tool type from command pattern
+              const toolName = detectToolFromCommand(command);
               yield {
                 type: 'tool_call',
                 toolCall: {
-                  id: item.id || `tool-${Date.now()}`,
-                  name: 'Bash',
-                  arguments: JSON.stringify({ command: item.command || '' }),
+                  id: toolId,
+                  name: toolName,
+                  arguments: JSON.stringify({ command }),
                 },
               };
               // If there's output, emit tool result
@@ -222,7 +304,7 @@ export class OpenAIProvider extends BaseProvider {
                 yield {
                   type: 'tool_result',
                   toolResult: {
-                    id: item.id || `tool-${Date.now()}`,
+                    id: toolId,
                     status: item.exit_code === 0 ? 'success' : 'error',
                     output: item.aggregated_output,
                     isError: item.exit_code !== 0,
@@ -231,14 +313,75 @@ export class OpenAIProvider extends BaseProvider {
               }
             }
 
-            // File operations
+            // File read operations
+            if (item.type === 'file_read') {
+              const toolId = generateToolId(item.id);
+              yield {
+                type: 'tool_call',
+                toolCall: {
+                  id: toolId,
+                  name: 'Read',
+                  arguments: JSON.stringify({ file_path: item.path || '' }),
+                },
+              };
+              // If there's content, emit tool result
+              if (item.content !== undefined) {
+                yield {
+                  type: 'tool_result',
+                  toolResult: {
+                    id: toolId,
+                    status: 'success',
+                    output: typeof item.content === 'string' ? item.content : JSON.stringify(item.content),
+                    isError: false,
+                  },
+                };
+              }
+            }
+
+            // File operations (edit/write)
             if (item.type === 'file_edit' || item.type === 'file_write') {
               yield {
                 type: 'tool_call',
                 toolCall: {
-                  id: item.id || `tool-${Date.now()}`,
+                  id: generateToolId(item.id),
                   name: item.type === 'file_edit' ? 'Edit' : 'Write',
                   arguments: JSON.stringify({ file_path: item.path || '' }),
+                },
+              };
+            }
+
+            // Glob/file search
+            if (item.type === 'file_search' || item.type === 'glob') {
+              yield {
+                type: 'tool_call',
+                toolCall: {
+                  id: generateToolId(item.id),
+                  name: 'Glob',
+                  arguments: JSON.stringify({ pattern: item.pattern || item.query || '' }),
+                },
+              };
+            }
+
+            // Grep/content search
+            if (item.type === 'content_search' || item.type === 'grep') {
+              yield {
+                type: 'tool_call',
+                toolCall: {
+                  id: generateToolId(item.id),
+                  name: 'Grep',
+                  arguments: JSON.stringify({ pattern: item.pattern || item.query || '' }),
+                },
+              };
+            }
+
+            // Directory listing
+            if (item.type === 'list_directory' || item.type === 'ls') {
+              yield {
+                type: 'tool_call',
+                toolCall: {
+                  id: generateToolId(item.id),
+                  name: 'LS',
+                  arguments: JSON.stringify({ path: item.path || '' }),
                 },
               };
             }

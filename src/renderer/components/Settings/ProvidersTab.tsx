@@ -83,14 +83,6 @@ export const ProvidersTab: React.FC = () => {
     }));
   };
 
-  const getIcon = (id: ProviderType): string => {
-    switch (id) {
-      case 'claude': return '◉';
-      case 'gemini': return '◈';
-      case 'openai': return '◎';
-      default: return '○';
-    }
-  };
 
   return (
     <div className="providers-tab settings-section">
@@ -112,7 +104,6 @@ export const ProvidersTab: React.FC = () => {
                   className={`provider-card ${enabled ? 'enabled' : ''} ${isDisabled ? 'disabled-state' : ''}`}
                 >
                   <div className="provider-card-left">
-                    <span className="provider-card-icon">{getIcon(provider.id)}</span>
                     <span className="provider-card-name">{provider.name}</span>
                   </div>
 

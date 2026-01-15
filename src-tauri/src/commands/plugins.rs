@@ -122,6 +122,171 @@ fn get_claude_dir() -> Result<PathBuf, String> {
         .ok_or_else(|| "Could not determine home directory".to_string())
 }
 
+/// Get the yume data directory (~/.yume/)
+fn get_yume_dir() -> Result<PathBuf, String> {
+    dirs::home_dir()
+        .map(|h| h.join(".yume"))
+        .ok_or_else(|| "Could not determine home directory".to_string())
+}
+
+/// Get the PID lock directory for multi-instance tracking (~/.yume/pids/)
+fn get_pids_dir() -> Result<PathBuf, String> {
+    get_yume_dir().map(|d| d.join("pids"))
+}
+
+/// Get the plugin lock file path (~/.yume/.plugin-lock)
+fn get_plugin_lock_path() -> Result<PathBuf, String> {
+    get_yume_dir().map(|d| d.join(".plugin-lock"))
+}
+
+/// Acquire plugin lock for sync operations (with timeout)
+/// Returns true if lock acquired, false if timed out
+fn acquire_plugin_lock(timeout_ms: u64) -> Result<bool, String> {
+    let lock_path = get_plugin_lock_path()?;
+    let yume_dir = get_yume_dir()?;
+    fs::create_dir_all(&yume_dir).map_err(|e| format!("Failed to create yume dir: {}", e))?;
+
+    let start = std::time::Instant::now();
+    let timeout = std::time::Duration::from_millis(timeout_ms);
+    let pid = std::process::id();
+
+    loop {
+        // Try to create lock file exclusively
+        if !lock_path.exists() {
+            // Write our PID to the lock file
+            if fs::write(&lock_path, pid.to_string()).is_ok() {
+                return Ok(true);
+            }
+        } else {
+            // Check if the process holding the lock is still alive
+            if let Ok(content) = fs::read_to_string(&lock_path) {
+                if let Ok(lock_pid) = content.trim().parse::<u32>() {
+                    if lock_pid == pid {
+                        // We already hold the lock
+                        return Ok(true);
+                    }
+                    if !is_process_running(lock_pid) {
+                        // Stale lock - remove and retry
+                        let _ = fs::remove_file(&lock_path);
+                        continue;
+                    }
+                }
+            }
+        }
+
+        if start.elapsed() >= timeout {
+            return Ok(false);
+        }
+
+        std::thread::sleep(std::time::Duration::from_millis(50));
+    }
+}
+
+/// Release plugin lock
+fn release_plugin_lock() -> Result<(), String> {
+    let lock_path = get_plugin_lock_path()?;
+    let pid = std::process::id();
+
+    if lock_path.exists() {
+        // Only remove if we own the lock
+        if let Ok(content) = fs::read_to_string(&lock_path) {
+            if let Ok(lock_pid) = content.trim().parse::<u32>() {
+                if lock_pid == pid {
+                    fs::remove_file(&lock_path)
+                        .map_err(|e| format!("Failed to release lock: {}", e))?;
+                }
+            }
+        }
+    }
+
+    Ok(())
+}
+
+/// Register this app instance's PID to the lock directory
+fn register_instance_pid() -> Result<(), String> {
+    let pids_dir = get_pids_dir()?;
+    fs::create_dir_all(&pids_dir).map_err(|e| format!("Failed to create pids dir: {}", e))?;
+
+    let pid = std::process::id();
+    let lock_file = pids_dir.join(format!("{}.lock", pid));
+
+    fs::write(&lock_file, pid.to_string())
+        .map_err(|e| format!("Failed to write PID lock: {}", e))?;
+
+    Ok(())
+}
+
+/// Unregister this app instance's PID from the lock directory
+fn unregister_instance_pid() -> Result<(), String> {
+    let pids_dir = get_pids_dir()?;
+    let pid = std::process::id();
+    let lock_file = pids_dir.join(format!("{}.lock", pid));
+
+    if lock_file.exists() {
+        fs::remove_file(&lock_file).map_err(|e| format!("Failed to remove PID lock: {}", e))?;
+    }
+
+    Ok(())
+}
+
+/// Count how many app instances are currently running (by checking lock files)
+/// Also cleans up stale lock files from dead processes
+fn count_running_instances() -> Result<usize, String> {
+    let pids_dir = get_pids_dir()?;
+
+    if !pids_dir.exists() {
+        return Ok(0);
+    }
+
+    let mut count = 0;
+    let entries = fs::read_dir(&pids_dir).map_err(|e| format!("Failed to read pids dir: {}", e))?;
+
+    for entry in entries.flatten() {
+        let path = entry.path();
+        if path.extension().map(|e| e == "lock").unwrap_or(false) {
+            // Check if the process is actually still running
+            if let Some(stem) = path.file_stem() {
+                if let Ok(pid) = stem.to_string_lossy().parse::<u32>() {
+                    if is_process_running(pid) {
+                        count += 1;
+                    } else {
+                        // Stale lock file - clean it up
+                        let _ = fs::remove_file(&path);
+                    }
+                }
+            }
+        }
+    }
+
+    Ok(count)
+}
+
+/// Check if a process with given PID is still running
+fn is_process_running(pid: u32) -> bool {
+    #[cfg(unix)]
+    {
+        // On Unix, kill with signal 0 checks if process exists
+        unsafe { libc::kill(pid as i32, 0) == 0 }
+    }
+
+    #[cfg(windows)]
+    {
+        use windows::Win32::Foundation::CloseHandle;
+        use windows::Win32::System::Threading::{OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION};
+
+        unsafe {
+            let result = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid);
+            match result {
+                Ok(handle) => {
+                    let _ = CloseHandle(handle);
+                    true
+                }
+                Err(_) => false,
+            }
+        }
+    }
+}
+
 /// Get current unix timestamp
 fn now_timestamp() -> u64 {
     SystemTime::now()
@@ -998,24 +1163,52 @@ pub fn plugin_init_bundled(
 }
 
 /// Cleanup core plugin on exit
-/// Removes synced commands from ~/.claude/commands/
+/// Removes synced commands, agents, and skills from ~/.claude/
+/// Only cleans up if this is the last running instance
 #[tauri::command]
 pub fn plugin_cleanup_on_exit() -> Result<(), String> {
-    let registry = load_registry()?;
+    // Unregister our PID first
+    let _ = unregister_instance_pid();
 
-    // Only clean up core plugin
-    if let Some(plugin) = registry.plugins.get(PLUGIN_ID) {
-        if plugin.enabled {
-            // Remove synced commands
-            sync_plugin_commands(plugin, false).ok();
-            // Remove synced agents
-            sync_plugin_agents(plugin, false, None).ok();
-            // Remove synced skills
-            sync_plugin_skills(plugin, false).ok();
-        }
+    // Check if other instances are still running
+    let instance_count = count_running_instances().unwrap_or(0);
+    if instance_count > 0 {
+        println!(
+            "[plugins] Skipping plugin cleanup - {} other instance(s) still running",
+            instance_count
+        );
+        return Ok(());
     }
 
-    Ok(())
+    // Acquire lock before cleanup
+    if !acquire_plugin_lock(5000).unwrap_or(false) {
+        println!("[plugins] Could not acquire plugin lock for cleanup, skipping");
+        return Ok(());
+    }
+
+    let result = (|| {
+        let registry = load_registry()?;
+
+        // Only clean up core plugin
+        if let Some(plugin) = registry.plugins.get(PLUGIN_ID) {
+            if plugin.enabled {
+                println!("[plugins] Last instance exiting, cleaning up core plugin");
+                // Remove synced commands
+                sync_plugin_commands(plugin, false).ok();
+                // Remove synced agents
+                sync_plugin_agents(plugin, false, None).ok();
+                // Remove synced skills
+                sync_plugin_skills(plugin, false).ok();
+            }
+        }
+
+        Ok(())
+    })();
+
+    // Always release lock
+    let _ = release_plugin_lock();
+
+    result
 }
 
 /// Helper to install the bundled core plugin
@@ -1103,18 +1296,66 @@ pub fn are_yume_agents_synced() -> Result<bool, String> {
     Ok(false)
 }
 
+/// Register this app instance for multi-instance tracking
+/// Called on app startup to track running instances
+#[tauri::command]
+pub fn register_app_instance() -> Result<(), String> {
+    register_instance_pid()
+}
+
+/// Unregister this app instance from multi-instance tracking
+/// Called on app exit
+#[tauri::command]
+pub fn unregister_app_instance() -> Result<(), String> {
+    unregister_instance_pid()
+}
+
+/// Get the count of running app instances
+#[tauri::command]
+pub fn get_running_instance_count() -> Result<usize, String> {
+    count_running_instances()
+}
+
 /// Cleanup app agents on app exit (called from frontend)
+/// Only removes agents if this is the last running instance
 #[tauri::command]
 pub fn cleanup_yume_agents_on_exit() -> Result<(), String> {
-    let registry = load_registry()?;
+    // Unregister our PID first
+    let _ = unregister_instance_pid();
 
-    if let Some(plugin) = registry.plugins.get(PLUGIN_ID) {
-        if plugin.enabled {
-            sync_plugin_agents(plugin, false, None)?;
-        }
+    // Check if other instances are still running
+    let instance_count = count_running_instances().unwrap_or(0);
+    if instance_count > 0 {
+        println!(
+            "[plugins] Skipping agent cleanup - {} other instance(s) still running",
+            instance_count
+        );
+        return Ok(());
     }
 
-    Ok(())
+    // Acquire lock before cleanup
+    if !acquire_plugin_lock(5000)? {
+        println!("[plugins] Could not acquire plugin lock for cleanup, skipping");
+        return Ok(());
+    }
+
+    let result = (|| {
+        let registry = load_registry()?;
+
+        if let Some(plugin) = registry.plugins.get(PLUGIN_ID) {
+            if plugin.enabled {
+                println!("[plugins] Last instance exiting, cleaning up agents");
+                sync_plugin_agents(plugin, false, None)?;
+            }
+        }
+
+        Ok(())
+    })();
+
+    // Always release lock
+    let _ = release_plugin_lock();
+
+    result
 }
 
 // ============================================================================

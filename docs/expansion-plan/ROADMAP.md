@@ -2,8 +2,8 @@
 
 This roadmap focuses on making Yume provider-agnostic while preserving the existing Claude-compatible stream-json pipeline.
 
-> **Last Updated:** 2026-01-14
-> **Overall Progress:** ~70% complete
+> **Last Updated:** 2026-01-15
+> **Overall Progress:** ~90% complete
 
 > **Key Documents:**
 > - [PROVIDER_REFERENCE.md](./PROVIDER_REFERENCE.md) - Single source of truth for models, pricing, features
@@ -28,14 +28,23 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
 - [x] **Event Compatibility:** Existing `claude-message` events work for all providers.
 - [x] **Model Registry:** `models.ts` with all providers (Claude, Gemini, OpenAI/Codex).
 
-## Phase 2: Translation Layer 🔄 IN PROGRESS (~60%)
+## Phase 2: Translation Layer ✅ COMPLETE
 - [x] **yume-cli Structure:** Complete TypeScript implementation in `src-yume-cli/`.
   - [x] CLI argument parsing (`index.ts`)
   - [x] Provider base interface (`providers/base.ts`)
   - [x] Provider factory (`providers/index.ts`)
   - [x] Agent loop (`core/agent-loop.ts`)
+    - [x] History file injection for Cross-Agent Resumption (`--historyFile` flag)
+    - [x] MAX_TURNS safety limit (50 turns)
+    - [x] MAX_DURATION_MS timeout (10 minutes)
+    - [x] MAX_HISTORY_MESSAGES compaction (100 messages)
   - [x] Session management (`core/session.ts`)
   - [x] Stream emission (`core/emit.ts`)
+  - [x] Plugin loader (`core/plugins.ts`) - agents, skills from `~/.yume/plugins/`
+    - [x] ReDoS-safe regex validation for skill triggers
+    - [x] Agent system prompt injection via `<system-context>` tags
+    - [x] Skill content injection via `<skill-context>` tags
+    - [x] `buildSystemContext()` for prompt enhancement
 - [x] **Tool Executors:** Full local tool implementations.
   - [x] `glob.ts` - File pattern matching
   - [x] `grep.ts` - Content search
@@ -44,15 +53,18 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
   - [x] `file.ts` - File reading
   - [x] `edit.ts` - File editing
   - [x] `write.ts` - File writing
-- [ ] **CLI Spawning:** Spawn official `gemini` and `codex` CLIs.
-  - [ ] Gemini CLI spawner
-  - [ ] Codex CLI spawner
-- [ ] **Stream Translation:** Translate provider stream-json to Claude format.
-  - [ ] Gemini → Claude translation
-  - [ ] Codex → Claude translation
+- [x] **CLI Spawning:** Spawn official `gemini` and `codex` CLIs.
+  - [x] Gemini CLI spawner (`providers/gemini.ts`)
+  - [x] Codex CLI spawner (`providers/openai.ts`)
+- [x] **Stream Translation:** Translate provider stream-json to Claude format.
+  - [x] Gemini → Claude translation (tool name mapping, thinking blocks)
+  - [x] Codex → Claude translation (command detection → Read/Grep/Glob/LS/Edit/Write/WebFetch)
+    - [x] `detectToolFromCommand()` - intelligent tool type detection from bash commands
+    - [x] Tool detection patterns: cat/head/tail → Read, find/fd → Glob, grep/rg → Grep, ls/tree → LS, sed/awk → Edit, curl/wget → WebFetch
+    - [x] Mini model reasoning effort override
 - [ ] **Compliance:** Pass golden transcript tests on macOS, Windows, Linux.
 
-## Phase 3: Provider Expansion 🔄 IN PROGRESS (~70%)
+## Phase 3: Provider Expansion ✅ COMPLETE
 - [x] **Backend Spawner:** `yume_cli_spawner.rs` - Full Rust implementation.
   - [x] Provider enum (Gemini, OpenAI)
   - [x] Binary location logic (dev, bundled, env var)
@@ -62,6 +74,10 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
 - [x] **CLI Detection:** `check_cli_installed` command in `claude_detector.rs`.
 - [x] **Provider Detection:** `detect_provider_support` command for yume-cli availability.
 - [x] **Dynamic Context Bar:** `ContextBar.tsx` uses model-specific limits from `models.ts`.
+- [x] **Provider-Aware Rate Limits:**
+  - [x] 5h/7d limit bars only shown for Claude provider
+  - [x] Stats modal shows "claude 5h/7d" labels
+  - [x] "rate limits not available for {provider}" message for Gemini/OpenAI
 - [x] **Provider Analytics:** Analytics now supports dynamic models (not just opus/sonnet).
   - [x] `normalizeModelName()` detects all model types
   - [x] `ensureModelStats()` creates entries on demand
@@ -81,7 +97,7 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
   - [x] Provider locking when session has messages
   - [x] Keyboard navigation
 
-## Phase 5: Conversation Portability 🔄 IN PROGRESS (~50%)
+## Phase 5: Conversation Portability 🔄 IN PROGRESS (~75%)
 > See [CONVERSATION_PORTABILITY.md](./CONVERSATION_PORTABILITY.md) for detailed specification.
 
 - [x] **Unified Conversation Format (UCF):** Schema defined and implemented.
@@ -117,8 +133,14 @@ This roadmap focuses on making Yume provider-agnostic while preserving the exist
   - [ ] Auto-summarize when switching to smaller context
   - [ ] User control over summarization strategy
 
-## Phase 6: Optional Extensions ❌ NOT STARTED
-- [ ] **IDE Integration:** VSCode/JetBrains deep linking.
+## Phase 6: Optional Extensions 🔄 IN PROGRESS (~25%)
+- [x] **VSCode Extension:** Commands for VSCode extension management.
+  - [x] `is_vscode_installed()` - Check if VSCode CLI is available
+  - [x] `check_vscode_extension_installed()` - Check if Yume extension is installed
+  - [x] `install_vscode_extension()` - Install bundled .vsix extension
+  - [x] `uninstall_vscode_extension()` - Uninstall extension
+  - [ ] Deep linking from VSCode to Yume
+  - [ ] JetBrains IDE support
 - [ ] **Team Collaboration:** Shared sessions and encrypted sync.
 - [ ] **Checkpoint Integration:** Restore checkpoints across providers.
 

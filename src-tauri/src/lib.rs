@@ -136,6 +136,14 @@ pub fn run() {
         info!("Set WEBVIEW2_DEFAULT_BACKGROUND_COLOR=00000000 for transparent startup");
     }
 
+    // Register this app instance for multi-instance tracking
+    // This allows us to skip cleanup when other instances are still running
+    if let Err(e) = commands::plugins::register_app_instance() {
+        error!("Failed to register app instance: {}", e);
+    } else {
+        info!("Registered app instance for multi-instance tracking");
+    }
+
     // Check license status early to determine single-instance behavior
     let is_licensed = is_user_licensed();
     info!(
@@ -413,7 +421,7 @@ pub fn run() {
                                     if !info.is_null() {
                                         // Additional validation: check if pointer is aligned
                                         if (info as usize) % std::mem::align_of::<MINMAXINFO>() == 0 {
-                                            (*info).ptMinTrackSize.x = 600;
+                                            (*info).ptMinTrackSize.x = 580;
                                             (*info).ptMinTrackSize.y = 440;
                                         }
                                     }
@@ -435,8 +443,8 @@ pub fn run() {
                                             
                                             // Validate reasonable dimensions
                                             if width >= 0 && width < 10000 && height >= 0 && height < 10000 {
-                                                if width < 600 {
-                                                    (*rect).right = (*rect).left + 600;
+                                                if width < 580 {
+                                                    (*rect).right = (*rect).left + 580;
                                                 }
                                                 if height < 440 {
                                                     (*rect).bottom = (*rect).top + 440;
@@ -491,11 +499,11 @@ pub fn run() {
                             Some(HWND::default()),
                             0,
                             0,
-                            600,
-                            420,
+                            580,
+                            440,
                             SWP_NOMOVE | SWP_NOZORDER
                         );
-                        info!("Set Windows initial size to 600x420");
+                        info!("Set Windows initial size to 580x440");
                     }
                 }
             }
@@ -518,9 +526,9 @@ pub fn run() {
                 unsafe {
                     // CRITICAL: Set minimum window size for macOS
                     use cocoa::foundation::NSSize;
-                    let min_size = NSSize::new(600.0, 440.0);
+                    let min_size = NSSize::new(580.0, 440.0);
                     let _: () = msg_send![ns_window, setMinSize: min_size];
-                    info!("Set macOS minimum window size to 600x440");
+                    info!("Set macOS minimum window size to 580x440");
                     
                     // CRITICAL: Hide the native titlebar completely
                     let _: () = msg_send![ns_window, setTitleVisibility: NSWindowTitleVisibility::NSWindowTitleHidden];
@@ -811,10 +819,10 @@ pub fn run() {
                         }
                         tauri::WindowEvent::Resized(size) => {
                             // Enforce minimum size constraints
-                            if size.width < 600 || size.height < 440 {
+                            if size.width < 580 || size.height < 440 {
                                 // Only resize if not already pending
                                 if !resize_pending.swap(true, Ordering::SeqCst) {
-                                    let new_width = size.width.max(600);
+                                    let new_width = size.width.max(580);
                                     let new_height = size.height.max(440);
                                     let window_for_resize = window_clone.clone();
                                     let resize_flag = resize_pending.clone();
@@ -1133,6 +1141,10 @@ pub fn run() {
             commands::plugins::sync_yume_agents,
             commands::plugins::are_yume_agents_synced,
             commands::plugins::cleanup_yume_agents_on_exit,
+            // Multi-instance tracking
+            commands::plugins::register_app_instance,
+            commands::plugins::unregister_app_instance,
+            commands::plugins::get_running_instance_count,
             // VSCode extension
             commands::plugins::is_vscode_installed,
             commands::plugins::check_vscode_extension_installed,
@@ -1264,8 +1276,8 @@ async fn restore_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHan
     if let Some(width) = store.get("width") {
         if let Some(height) = store.get("height") {
             if let (Some(w), Some(h)) = (width.as_u64(), height.as_u64()) {
-                // Enforce minimum size of 600x440
-                let final_width = (w as u32).max(600);
+                // Enforce minimum size of 580x440
+                let final_width = (w as u32).max(580);
                 let final_height = (h as u32).max(440);
                 let _ = window.set_size(tauri::PhysicalSize::new(final_width, final_height));
                 info!(

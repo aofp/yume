@@ -1,7 +1,7 @@
 # Yume API Reference
 
 **Version:** 0.1.0
-**Last Updated:** January 14, 2026
+**Last Updated:** January 15, 2026
 
 ## Table of Contents
 
@@ -22,6 +22,8 @@
    - [Claude Agents](#claude-agents-file-based)
    - [Yume Agents Sync](#yume-agents-sync)
    - [Custom Commands](#custom-commands)
+   - [VSCode Extension Management](#vscode-extension-management)
+   - [App Instance Management](#app-instance-management)
 2. [Tauri Events API](#tauri-events-api)
 3. [Frontend Services API](#frontend-services-api)
 4. [Store API](#store-api)
@@ -1416,21 +1418,59 @@ invoke('plugin_list') => Promise<InstalledPlugin[]>
 
 **Returns:**
 ```typescript
-interface InstalledPlugin {
-  id: string;
+interface PluginManifest {
   name: string;
   version: string;
-  author?: string;
-  description?: string;
+  description: string;
+  author_name?: string;
+  author_email?: string;
+}
+
+interface PluginCommand {
+  name: string;
+  description: string;
+  file_path: string;
+  plugin_id: string;
+}
+
+interface PluginAgent {
+  name: string;
+  model: string;
+  description: string;
+  file_path: string;
+  plugin_id: string;
+}
+
+interface PluginHook {
+  name: string;
+  event: string;  // "PreToolUse" | "PostToolUse" | "SessionStart" | "Stop"
+  description: string;
+  file_path: string;
+  plugin_id: string;
+}
+
+interface PluginSkill {
+  name: string;
+  description: string;
+  file_path: string;
+  plugin_id: string;
+}
+
+interface PluginComponents {
+  commands: PluginCommand[];
+  agents: PluginAgent[];
+  hooks: PluginHook[];
+  skills: PluginSkill[];
+  mcp_servers?: object;  // MCP server configuration JSON
+}
+
+interface InstalledPlugin {
+  id: string;
+  manifest: PluginManifest;
+  installed_at: number;  // Unix timestamp
   enabled: boolean;
-  install_path: string;
-  components: {
-    commands: number;
-    agents: number;
-    hooks: number;
-    skills: number;
-    mcp: number;
-  };
+  path: string;  // Installation path
+  components: PluginComponents;
 }
 ```
 
@@ -1567,6 +1607,97 @@ invoke('plugin_cleanup_on_exit') => Promise<void>
 - Saves plugin registry state
 - Removes temporary files
 - Ensures all components properly deregistered
+
+### VSCode Extension Management
+
+These commands manage the bundled VSCode extension integration.
+
+#### `is_vscode_installed`
+Checks if VSCode CLI is available on the system. Searches common installation paths for each platform.
+
+```typescript
+invoke('is_vscode_installed') => Promise<boolean>
+```
+
+**Platform Search Paths**:
+- **macOS**: `/usr/local/bin/code`, `/opt/homebrew/bin/code`, `/Applications/Visual Studio Code.app/...`
+- **Linux**: `/usr/bin/code`, `/usr/local/bin/code`, `/snap/bin/code`
+- **Windows**: `%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd`, `C:\Program Files\Microsoft VS Code\...`
+
+#### `check_vscode_extension_installed`
+Checks if the Yume VSCode extension is installed.
+
+```typescript
+invoke('check_vscode_extension_installed') => Promise<boolean>
+```
+
+**Detection Methods**:
+1. Checks `~/.vscode/extensions/` for directories starting with `yume.`
+2. Falls back to `code --list-extensions` CLI command
+
+#### `install_vscode_extension`
+Installs the bundled Yume VSCode extension (.vsix file).
+
+```typescript
+invoke('install_vscode_extension', {
+  appHandle: AppHandle
+}) => Promise<void>
+```
+
+**Process**:
+1. Locates bundled `.vsix` file in app resources
+2. Runs `code --install-extension <vsix> --force`
+3. Returns error if VSCode CLI not found
+
+**Error Conditions**:
+- VSCode CLI not available
+- Extension file not found in resources
+- Installation command fails
+
+#### `uninstall_vscode_extension`
+Uninstalls the Yume VSCode extension.
+
+```typescript
+invoke('uninstall_vscode_extension') => Promise<void>
+```
+
+**Process**:
+1. Runs `code --uninstall-extension yume.yume-vscode`
+2. Silently succeeds if extension wasn't installed
+
+### App Instance Management
+
+These commands manage multi-instance tracking to prevent conflicts during plugin sync/cleanup operations.
+
+#### `register_app_instance`
+Registers this app instance's PID for multi-instance tracking. Called on app startup.
+
+```typescript
+invoke('register_app_instance') => Promise<void>
+```
+
+**Process**:
+1. Creates PID file in `~/.yume/pids/{pid}.lock`
+2. Used to track running Yume instances
+
+#### `unregister_app_instance`
+Unregisters this app instance from PID tracking. Called on app exit.
+
+```typescript
+invoke('unregister_app_instance') => Promise<void>
+```
+
+#### `get_running_instance_count`
+Returns the count of currently running Yume instances.
+
+```typescript
+invoke('get_running_instance_count') => Promise<number>
+```
+
+**Use Cases**:
+- Skip plugin cleanup if other instances are running
+- Acquire plugin sync lock safely
+- Prevent multi-instance conflicts
 
 ---
 
@@ -2619,22 +2750,24 @@ await invoke('delete_custom_command', {
 ```typescript
 import { invoke } from '@tauri-apps/api/core';
 
-// Update context usage (triggers auto-compaction at 96%)
+// Update context usage (triggers auto-compaction at 60%)
 const action = await invoke('update_context_usage', {
   session_id: sessionId,
-  usage: 0.85  // 85%
+  usage: 0.55  // 55% - warning threshold
 });
 
 // Get compaction configuration
 const config = await invoke('get_compaction_config');
-console.log('Auto-trigger threshold:', config.auto_trigger_threshold);
+console.log('Auto threshold:', config.auto_threshold);  // 0.60
+console.log('Force threshold:', config.force_threshold);  // 0.65
 
 // Update compaction configuration
 await invoke('update_compaction_config', {
   config: {
-    auto_trigger_threshold: 0.96,
-    force_trigger_threshold: 0.98,
-    enabled: true
+    auto_threshold: 0.60,       // Auto-compact at 60%
+    force_threshold: 0.65,      // Force compact at 65%
+    preserve_context: true,
+    generate_manifest: true
   }
 });
 ```

@@ -6378,6 +6378,7 @@ dependencies = [
  "dashmap",
  "dirs",
  "futures-util",
+ "libc",
  "log",
  "objc",
  "once_cell",

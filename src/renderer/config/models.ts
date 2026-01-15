@@ -38,7 +38,7 @@ export interface ModelDefinition {
 export const PROVIDERS: ProviderDefinition[] = [
   {
     id: 'claude',
-    name: 'Claude',
+    name: 'claude',
     description: 'anthropic models via claude cli',
     cliCommand: 'claude',
     cliInstall: 'npm install -g @anthropic-ai/claude-code',
@@ -47,7 +47,7 @@ export const PROVIDERS: ProviderDefinition[] = [
   },
   {
     id: 'openai',
-    name: 'Codex',
+    name: 'codex',
     description: 'openai models via codex cli',
     cliCommand: 'codex',
     cliInstall: 'npm install -g @openai/codex',
@@ -56,10 +56,10 @@ export const PROVIDERS: ProviderDefinition[] = [
   },
   {
     id: 'gemini',
-    name: 'Gemini',
+    name: 'gemini',
     description: 'google models via gemini cli',
     cliCommand: 'gemini',
-    cliInstall: 'npm install -g @anthropic-ai/gemini-cli',
+    cliInstall: 'npm install -g @google/gemini-cli',
     authCommand: 'gemini auth login',
     enabled: false,
   },

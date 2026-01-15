@@ -1,7 +1,7 @@
 # Yume Complete Feature Documentation
 
 **Version:** 0.1.0
-**Last Updated:** January 14, 2026
+**Last Updated:** January 15, 2026
 **Platform:** macOS, Windows, Linux
 
 ## Table of Contents
@@ -24,6 +24,7 @@
 16. [Skills System](#16-skills-system)
 17. [Analytics & Reporting](#17-analytics--reporting)
 18. [Timeline & Checkpoints](#18-timeline--checkpoints)
+19. [VSCode Extension Integration](#19-vscode-extension-integration)
 
 ## 1. Core Features
 
@@ -48,11 +49,18 @@ pub struct ClaudeSpawner {
 ```
 
 **Supported Models**:
-- Claude Opus 4.5 (claude-opus-4-5-20251101) - Best reasoning
-- Claude Sonnet 4 (claude-sonnet-4-20250514) - Balanced
-- Claude 3.5 Sonnet (claude-3-5-sonnet-20241022) - Fast coding
-- Claude 3.5 Haiku (claude-3-5-haiku-20241022) - Lightweight
-- Claude 3 Opus (claude-3-opus-20240229) - Legacy
+
+*Claude (via Claude CLI):*
+- Claude Sonnet 4.5 (`claude-sonnet-4-5-20250929`) - Balanced coding
+- Claude Opus 4.5 (`claude-opus-4-5-20251101`) - Best reasoning
+
+*Gemini (via yume-cli):*
+- Gemini 2.5 Pro (`gemini-2.5-pro`) - Advanced reasoning
+- Gemini 2.5 Flash (`gemini-2.5-flash`) - Fast inference
+
+*OpenAI/Codex (via yume-cli):*
+- GPT-5.2 Codex (`gpt-5.2-codex`) - Full reasoning
+- GPT-5.1 Codex Mini (`gpt-5.1-codex-mini`) - Lightweight
 
 **Claude Code Integration**:
 - Skills system support (dynamic instruction loading)
@@ -63,10 +71,10 @@ pub struct ClaudeSpawner {
 
 **CLI Arguments**:
 ```bash
-claude-cli \
+claude \
   --print \                    # Enable output
   --output-format stream-json \ # Streaming JSON
-  --model claude-3-sonnet \     # Model selection
+  --model claude-sonnet-4-5-20250929 \  # Model selection
   --working-dir /path/to/project
 ```
 
@@ -1087,6 +1095,21 @@ class PluginService {
 - Automatically enabled on first launch
 - Cannot be uninstalled
 
+**Bundled Slash Commands**:
+
+| Command | Description | Allowed Tools |
+|---------|-------------|---------------|
+| `/compact [focus]` | Context compaction with preservation hints | Read, Glob |
+| `/init [area]` | Initialize context with optional focus area | Read, Glob, Grep, Bash(git:*), Bash(ls:*) |
+| `/commit` | Create concise, lowercase commit | Git operations |
+| `/review` | Review changes or codebase (read-only) | Read, Glob, Grep, Bash(git:*) |
+| `/iterate` | Iterate on changes - examine, improve, verify | All tools |
+
+**Command Features**:
+- YAML frontmatter for metadata (allowed-tools, argument-hint, description)
+- `$ARGUMENTS` template variable for user input
+- Preservation hints for `/compact` (file path, concept, "all", blank for auto-detect)
+
 ## 16. Skills System
 
 ### 16.1 Overview
@@ -1347,6 +1370,42 @@ CREATE TABLE checkpoints (
 4. **Session Milestones**: Mark completion of major tasks
 5. **Undo/Redo**: Restore to previous conversation state
 
+## 19. VSCode Extension Integration
+
+### 19.1 Overview
+
+**Description**: Integration with Visual Studio Code for enhanced IDE workflow.
+
+**Location**: `src-tauri/src/commands/plugins.rs`
+
+### 19.2 Commands
+
+| Command | Description |
+|---------|-------------|
+| `is_vscode_installed()` | Check if VSCode CLI is available |
+| `check_vscode_extension_installed()` | Check if Yume extension is installed |
+| `install_vscode_extension()` | Install bundled .vsix extension |
+| `uninstall_vscode_extension()` | Uninstall Yume extension |
+
+### 19.3 Features
+
+**CLI Detection**:
+- Searches common VSCode installation paths per platform
+- macOS: `/usr/local/bin/code`, `/opt/homebrew/bin/code`, `.app` bundle paths
+- Windows: `%LOCALAPPDATA%\Programs\Microsoft VS Code\bin\code.cmd`
+- Linux: `/usr/bin/code`, `/snap/bin/code`
+
+**Extension Management**:
+- Bundled `.vsix` file in resources directory
+- Automatic installation via `code --install-extension`
+- Force flag to overwrite existing installations
+
+### 19.4 Use Cases
+
+1. **Deep Linking**: Open files from Yume in VSCode with context
+2. **IDE Integration**: Share working directory between tools
+3. **Future**: Bidirectional communication between Yume and VSCode
+
 ## Feature Comparison Matrix
 
 | Feature | Yume | Opcode | Claudia | Continue |
@@ -1375,6 +1434,8 @@ CREATE TABLE checkpoints (
 | CLAUDE.md editor | ✅ | ✅ | ❌ | ❌ |
 | No telemetry | ✅ | ✅ | ❌ | ❌ |
 | Compiled server | ✅ | ❌ | ❌ | ❌ |
+| VSCode extension | ✅ | ❌ | ❌ | ✅ |
+| Multi-provider (Claude/Gemini/OpenAI) | ✅ | ❌ | ❌ | ✅ |
 | Platform support | 3 | 3 | 2 | 3 |
 
 ## Performance Benchmarks

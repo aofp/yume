@@ -341,10 +341,13 @@ export class TauriClaudeClient {
 
     let currentUnlisten: UnlistenFn | null = null;
 
+    // Dedup set for messages received on multiple channels (backend emits on original + real channels)
+    const seenMessages = new Set<string>();
+
     // Wrap handler with streaming state management
     const messageHandler = (event: Event<any>) => {
       const payload = event.payload;
-      
+
       // Parse the raw JSON string from backend
       let message: any;
       try {
@@ -358,6 +361,19 @@ export class TauriClaudeClient {
           message: `Failed to parse message: ${e instanceof Error ? e.message : String(e)}`
         });
         return;
+      }
+
+      // Dedup: Skip if we've seen this exact message before
+      // Use stringified payload as key since backend sends same JSON on multiple channels
+      const rawPayload = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      if (seenMessages.has(rawPayload)) {
+        return; // Skip duplicate
+      }
+      seenMessages.add(rawPayload);
+      // Limit set size to prevent memory leak
+      if (seenMessages.size > 1000) {
+        const toDelete = Array.from(seenMessages).slice(0, 500);
+        toDelete.forEach(k => seenMessages.delete(k));
       }
 
       // WRAPPER: Process message for token tracking and compaction detection
@@ -802,15 +818,14 @@ export class TauriClaudeClient {
       }
     });
 
-    // Listen for session ID updates to switch channels
-    // CRITICAL: Set up new listener BEFORE cleaning up old to prevent message loss
+    // Listen for session ID updates to ADD new channel listeners
+    // CRITICAL: Keep the original frontend session ID listener active because
+    // subsequent messages (multi-turn) spawn new yume-cli processes that emit
+    // on the original frontend session ID channel
+    const originalChannel = channel; // Keep reference to original frontend channel
+    const additionalChannels: string[] = []; // Track additional channels for cleanup
     listen(updateChannel, async (event: Event<any>) => {
       const { old_session_id, new_session_id } = event.payload;
-      const oldChannel = channel;
-      const oldUnlisten = currentUnlisten;
-
-      // Set up new listener FIRST (before cleanup) to prevent gap
-      channel = `claude-message:${new_session_id}`;
 
       // Map the temp session ID to the real session ID in the wrapper
       mapSessionIds(old_session_id, new_session_id);
@@ -831,16 +846,14 @@ export class TauriClaudeClient {
         });
       }
 
-      // Set up new listener before cleaning up old one
-      const newUnlisten = await listen(channel, messageHandler);
-      currentUnlisten = newUnlisten;
-      activeListeners.set(channel, newUnlisten);
-
-      // NOW clean up old listener (after new one is ready)
-      // This ensures overlap rather than gap - no messages lost
-      if (oldUnlisten) {
-        oldUnlisten();
-        activeListeners.delete(oldChannel);
+      // Add listener for the new real session ID channel (for direct emissions)
+      // BUT keep the original frontend channel listener active!
+      const newChannel = `claude-message:${new_session_id}`;
+      if (newChannel !== originalChannel && !activeListeners.has(newChannel)) {
+        console.log('[TauriClient] Adding listener for new channel:', newChannel, '(keeping original:', originalChannel, ')');
+        const newUnlisten = await listen(newChannel, messageHandler);
+        activeListeners.set(newChannel, newUnlisten);
+        additionalChannels.push(newChannel); // Track for cleanup
       }
 
     }).then(unlisten => {
@@ -856,8 +869,8 @@ export class TauriClaudeClient {
     return () => {
       cleanupRequested = true;
 
-      // Clean up all listeners for this session
-      [channel, updateChannel].forEach(ch => {
+      // Clean up all listeners for this session (original + additional channels)
+      [channel, updateChannel, ...additionalChannels].forEach(ch => {
         const unlisten = activeListeners.get(ch);
         if (unlisten) {
           unlisten();
@@ -877,8 +890,10 @@ export class TauriClaudeClient {
   async onMessageAsync(sessionId: string, handler: (message: any) => void): Promise<() => void> {
     const channel = `claude-message:${sessionId}`;
     const updateChannel = `claude-session-id-update:${sessionId}`;
-    let currentChannel = channel;
     let currentSessionId = sessionId;
+
+    // Dedup set for messages received on multiple channels (backend emits on original + real channels)
+    const seenMessages = new Set<string>();
 
     // Wrap handler with streaming state management (same as onMessage)
     const messageHandler = (event: Event<any>) => {
@@ -894,6 +909,17 @@ export class TauriClaudeClient {
           message: `Failed to parse message: ${e instanceof Error ? e.message : String(e)}`
         });
         return;
+      }
+
+      // Dedup: Skip if we've seen this exact message before
+      const rawPayload = typeof payload === 'string' ? payload : JSON.stringify(payload);
+      if (seenMessages.has(rawPayload)) {
+        return;
+      }
+      seenMessages.add(rawPayload);
+      if (seenMessages.size > 1000) {
+        const toDelete = Array.from(seenMessages).slice(0, 500);
+        toDelete.forEach(k => seenMessages.delete(k));
       }
 
       message = processWrapperMessage(message, currentSessionId);
@@ -1006,13 +1032,14 @@ export class TauriClaudeClient {
     const unlisten = await listen(channel, messageHandler);
     activeListeners.set(channel, unlisten);
 
-    // Also listen for session ID updates
+    // Track additional channels for cleanup
+    const originalChannel = channel;
+    const additionalChannels: string[] = [];
+
+    // Also listen for session ID updates - ADD listeners, don't replace
     const updateUnlisten = await listen(updateChannel, async (event: Event<any>) => {
       const { old_session_id, new_session_id } = event.payload;
-      const oldChannel = currentChannel;
-      const oldUnlisten = activeListeners.get(oldChannel);
 
-      currentChannel = `claude-message:${new_session_id}`;
       currentSessionId = new_session_id;
       mapSessionIds(old_session_id, new_session_id);
 
@@ -1030,19 +1057,20 @@ export class TauriClaudeClient {
         });
       }
 
-      const newUnlisten = await listen(currentChannel, messageHandler);
-      activeListeners.set(currentChannel, newUnlisten);
-
-      if (oldUnlisten) {
-        oldUnlisten();
-        activeListeners.delete(oldChannel);
+      // Add listener for new channel but keep original - multi-turn support
+      const newChannel = `claude-message:${new_session_id}`;
+      if (newChannel !== originalChannel && !activeListeners.has(newChannel)) {
+        console.log('[TauriClient Async] Adding listener for new channel:', newChannel, '(keeping original:', originalChannel, ')');
+        const newUnlisten = await listen(newChannel, messageHandler);
+        activeListeners.set(newChannel, newUnlisten);
+        additionalChannels.push(newChannel);
       }
     });
     activeListeners.set(updateChannel, updateUnlisten);
 
     // Return cleanup function
     return () => {
-      [currentChannel, updateChannel].forEach(ch => {
+      [channel, updateChannel, ...additionalChannels].forEach(ch => {
         const unlistenFn = activeListeners.get(ch);
         if (unlistenFn) {
           unlistenFn();

@@ -1,13 +1,24 @@
 ---
 allowed-tools: Read, Glob, Grep, Bash(git diff:*), Bash(git status:*), Bash(git log:*)
+argument-hint: [scope]
 description: review changes or codebase (read-only)
 ---
 
+## scope
+
+$ARGUMENTS
+
 ## detect scope
 
-1. files edited this conversation → review those
-2. else: `git diff HEAD` + `git diff --cached` → review diff
-3. else: review codebase (scan for issues, tech debt, patterns)
+1. **if argument provided**: review specified scope
+   - file path → review that file
+   - directory → review files in directory
+   - concept (e.g. "auth", "security") → grep and review related code
+   - "diff" → force git diff review
+   - "all" → full codebase scan
+2. else: files edited this conversation → review those
+3. else: `git diff HEAD` + `git diff --cached` → review diff
+4. else: review codebase (scan for issues, tech debt, patterns)
 
 ## review
 

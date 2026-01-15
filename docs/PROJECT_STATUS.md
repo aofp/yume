@@ -1,6 +1,6 @@
 # Yume Project Status
 
-**Date:** January 14, 2026
+**Date:** January 15, 2026
 **Version:** 0.1.0 (Pre-Release)
 **Status:** BETA - Approaching Release Readiness
 
@@ -8,7 +8,7 @@
 
 Yume is a sophisticated GUI for Claude CLI with intelligent context management that automatically compacts at 60% usage (65% force). The application has reached beta quality with major systems implemented: plugin architecture, skills system, error boundaries, CSP security, crash recovery, analytics, and compiled server binaries. Primary remaining work is code signing, console cleanup, and distribution preparation.
 
-**Expansion Plan:** Multi-provider support (Gemini, OpenAI/Codex) is actively being integrated via a translation layer (`yume-cli`) that emits Claude-compatible stream-json, keeping the existing UI intact. Gemini integration is currently the primary focus. See `docs/expansion-plan/ROADMAP.md`.
+**Expansion Plan:** Multi-provider support (Gemini, OpenAI/Codex) is ~90% complete via a translation layer (`yume-cli`) that emits Claude-compatible stream-json. Key milestones: plugin system for yume-cli, VSCode extension commands, UCF conversation format. See `docs/expansion-plan/ROADMAP.md`.
 
 ## Current State
 

@@ -7,6 +7,7 @@ import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { ModelToolsModal } from '../ModelSelector/ModelToolsModal';
 import { invoke } from '@tauri-apps/api/core';
 import { APP_NAME, APP_VERSION, appStorageKey } from '../../config/app';
+import { getProviderForModel } from '../../config/models';
 import './WelcomeScreen.css';
 import '../Chat/ClaudeChat.css'; // for stats modal styles
 
@@ -403,26 +404,29 @@ export const WelcomeScreen: React.FC = () => {
               <span>context</span>
             </span>
           </button>
-          {/* 5h limit bar */}
-          <div className="btn-stats-limit-bar five-hour">
-            <div
-              className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
-              style={{
-                width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
-                opacity: 0.2 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 80) / 80) * 0.8
-              }}
-            />
-          </div>
-          {/* 7d limit bar */}
-          <div className="btn-stats-limit-bar seven-day">
-            <div
-              className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
-              style={{
-                width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
-                opacity: 0.2 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 80) / 80) * 0.8
-              }}
-            />
-          </div>
+          {/* 5h/7d limit bars - only shown for Claude provider */}
+          {getProviderForModel(selectedModel) === 'claude' && (
+            <>
+              <div className="btn-stats-limit-bar five-hour">
+                <div
+                  className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
+                  style={{
+                    width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
+                    opacity: 0.2 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 80) / 80) * 0.8
+                  }}
+                />
+              </div>
+              <div className="btn-stats-limit-bar seven-day">
+                <div
+                  className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
+                  style={{
+                    width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                    opacity: 0.2 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 80) / 80) * 0.8
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
 
@@ -534,53 +538,68 @@ export const WelcomeScreen: React.FC = () => {
                 </div>
               </div>
             </div>
-            <div className="stats-footer">
-              {/* Session Limit (5-hour) */}
-              <div className="stats-footer-row">
-                <span className="stats-footer-label"><span className="stats-footer-limit-name">5h limit</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '...'}</span>
-                <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) : '...'}%</span>
-              </div>
-              <div className="usage-bar">
-                <div
-                  className="usage-bar-fill"
-                  style={{
-                    width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
-                    background: (usageLimits?.five_hour?.utilization ?? 0) >= 90
-                      ? 'var(--negative-color, #ff6b6b)'
-                      : 'var(--accent-color)'
-                  }}
-                />
-              </div>
-              <div className="usage-bar-ticks" style={{ marginBottom: '8px' }}>
-                {/* Ticks every 1h */}
-                {Array.from({ length: 6 }, (_, i) => (
-                  <div key={i} className="usage-bar-tick" />
-                ))}
-              </div>
+            {/* Usage limits footer - only shown for Claude provider */}
+            {(() => {
+              const welcomeProvider = getProviderForModel(selectedModel);
+              if (welcomeProvider !== 'claude') {
+                return (
+                  <div className="stats-footer">
+                    <div className="stats-footer-row" style={{ opacity: 0.5, justifyContent: 'center' }}>
+                      <span className="stats-footer-label">rate limits not available for {welcomeProvider}</span>
+                    </div>
+                  </div>
+                );
+              }
+              return (
+                <div className="stats-footer">
+                  {/* Session Limit (5-hour) */}
+                  <div className="stats-footer-row">
+                    <span className="stats-footer-label"><span className="stats-footer-limit-name">claude 5h</span> - resets in {usageLimits?.five_hour?.resets_at ? formatResetTime(usageLimits.five_hour.resets_at) : '...'}</span>
+                    <span className={`stats-footer-value ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.five_hour?.utilization != null ? Math.round(usageLimits.five_hour.utilization) : '...'}%</span>
+                  </div>
+                  <div className="usage-bar">
+                    <div
+                      className="usage-bar-fill"
+                      style={{
+                        width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
+                        background: (usageLimits?.five_hour?.utilization ?? 0) >= 90
+                          ? 'var(--negative-color, #ff6b6b)'
+                          : 'var(--accent-color)'
+                      }}
+                    />
+                  </div>
+                  <div className="usage-bar-ticks" style={{ marginBottom: '8px' }}>
+                    {/* Ticks every 1h */}
+                    {Array.from({ length: 6 }, (_, i) => (
+                      <div key={i} className="usage-bar-tick" />
+                    ))}
+                  </div>
 
-              {/* Weekly Limit (7-day) */}
-              <div className="stats-footer-row">
-                <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">7d limit</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '...'}</span>
-                <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) : '...'}%</span>
-              </div>
-              <div className="usage-bar">
-                <div
-                  className="usage-bar-fill"
-                  style={{
-                    width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
-                    background: (usageLimits?.seven_day?.utilization ?? 0) >= 90
-                      ? 'var(--negative-color, #ff6b6b)'
-                      : 'var(--accent-color)'
-                  }}
-                />
-              </div>
-              <div className="usage-bar-ticks">
-                {/* Ticks every 1d */}
-                {Array.from({ length: 8 }, (_, i) => (
-                  <div key={i} className="usage-bar-tick" />
-                ))}
-              </div>
-            </div>
+                  {/* Weekly Limit (7-day) */}
+                  <div className="stats-footer-row">
+                    <span className="stats-footer-label stats-footer-label-bold"><span className="stats-footer-limit-name">claude 7d</span> - resets in {usageLimits?.seven_day?.resets_at ? formatResetTime(usageLimits.seven_day.resets_at) : '...'}</span>
+                    <span className={`stats-footer-value ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'usage-negative' : ''}`}>{usageLimits?.seven_day?.utilization != null ? Math.round(usageLimits.seven_day.utilization) : '...'}%</span>
+                  </div>
+                  <div className="usage-bar">
+                    <div
+                      className="usage-bar-fill"
+                      style={{
+                        width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                        background: (usageLimits?.seven_day?.utilization ?? 0) >= 90
+                          ? 'var(--negative-color, #ff6b6b)'
+                          : 'var(--accent-color)'
+                      }}
+                    />
+                  </div>
+                  <div className="usage-bar-ticks">
+                    {/* Ticks every 1d */}
+                    {Array.from({ length: 8 }, (_, i) => (
+                      <div key={i} className="usage-bar-tick" />
+                    ))}
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}

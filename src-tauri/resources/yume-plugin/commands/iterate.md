@@ -1,13 +1,24 @@
 ---
 allowed-tools: Read, Edit, Write, Glob, Grep, Bash
+argument-hint: [scope]
 description: iterate on changes - examine, improve, verify
 ---
 
+## scope
+
+$ARGUMENTS
+
 ## detect scope
 
-1. files edited this conversation → iterate on those
-2. else: `git diff HEAD` + `git diff --cached` → iterate on diff
-3. else: iterate on codebase (scan for issues, tech debt, improvements)
+1. **if argument provided**: iterate on specified scope
+   - file path → iterate on that file
+   - directory → iterate on files in directory
+   - concept (e.g. "auth", "tests") → grep and iterate on related code
+   - "diff" → force git diff iteration
+   - "all" → full codebase iteration
+2. else: files edited this conversation → iterate on those
+3. else: `git diff HEAD` + `git diff --cached` → iterate on diff
+4. else: iterate on codebase (scan for issues, tech debt, improvements)
 
 ## examine
 

@@ -10,7 +10,7 @@ import {
 import { ModelSelector } from '../ModelSelector/ModelSelector';
 import { isBashPrefix } from '../../utils/helpers';
 import { isVSCode } from '../../services/tauriApi';
-import { getModelById } from '../../config/models';
+import { getModelById, ProviderType } from '../../config/models';
 
 interface SessionMessage {
   type: string;
@@ -51,11 +51,14 @@ interface ContextBarProps {
   setAutoCompactEnabled: (enabled: boolean) => void;
   isPendingCompact: boolean;
 
-  // Usage limits
+  // Usage limits (only shown for providers that support it)
   usageLimits: {
     five_hour?: { utilization: number; resets_at: string };
     seven_day?: { utilization: number; resets_at: string };
   } | null;
+
+  // Current provider (determines limit bar visibility)
+  currentProvider: ProviderType;
 
   // Actions
   onClearRequest: () => void;
@@ -95,6 +98,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
   setAutoCompactEnabled,
   isPendingCompact,
   usageLimits,
+  currentProvider,
   onClearRequest,
   onCompactRequest,
   onOpenStatsModal,
@@ -274,25 +278,29 @@ export const ContextBar: React.FC<ContextBarProps> = ({
               <span>{percentage}%</span>
             </span>
           </button>
-          {/* 5h/7d limit bars */}
-          <div className="btn-stats-limit-bar five-hour">
-            <div
-              className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
-              style={{
-                width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
-                opacity: 0.1 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 90) / 90) * 0.9
-              }}
-            />
-          </div>
-          <div className="btn-stats-limit-bar seven-day">
-            <div
-              className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
-              style={{
-                width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
-                opacity: 0.1 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 90) / 90) * 0.9
-              }}
-            />
-          </div>
+          {/* 5h/7d limit bars - only shown for Claude provider */}
+          {currentProvider === 'claude' && (
+            <>
+              <div className="btn-stats-limit-bar five-hour">
+                <div
+                  className={`btn-stats-limit-fill ${(usageLimits?.five_hour?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
+                  style={{
+                    width: `${Math.min(usageLimits?.five_hour?.utilization ?? 0, 100)}%`,
+                    opacity: 0.1 + (Math.min(usageLimits?.five_hour?.utilization ?? 0, 90) / 90) * 0.9
+                  }}
+                />
+              </div>
+              <div className="btn-stats-limit-bar seven-day">
+                <div
+                  className={`btn-stats-limit-fill ${(usageLimits?.seven_day?.utilization ?? 0) >= 90 ? 'warning' : 'normal'}`}
+                  style={{
+                    width: `${Math.min(usageLimits?.seven_day?.utilization ?? 0, 100)}%`,
+                    opacity: 0.1 + (Math.min(usageLimits?.seven_day?.utilization ?? 0, 90) / 90) * 0.9
+                  }}
+                />
+              </div>
+            </>
+          )}
         </div>
       </div>
     </div>

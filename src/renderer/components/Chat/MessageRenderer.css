@@ -832,6 +832,7 @@ line-height: var(--leading-relaxed);
   padding: 0;
   margin: 0;
   line-height: 1;
+  margin-bottom: 4px !important;
 }
 
 .tool-use.standalone {
@@ -1473,17 +1474,19 @@ pre.bash-content,
   display: block;
   user-select: none;
   cursor: default;
+  font-size: var(--text-xs) !important;
 }
 
 .tool-result.collapsible .collapsible-header {
   color: rgba(var(--positive-rgb), .8);
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   cursor: default;
   user-select: none;
   opacity: 1;
   overflow: visible;
+  font-size: var(--text-xs);
 }
 
 .tool-result.collapsible .collapsible-header:hover .collapsible-icon,
