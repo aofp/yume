@@ -393,7 +393,11 @@ export const ClaudeChat: React.FC = () => {
   const userScrolledUpRef = useRef<{ [sessionId: string]: number }>({}); // Timestamp when user scrolled up
   const SCROLL_COOLDOWN_MS = 5000; // 5 seconds cooldown after user scrolls up
   const pendingFollowupRef = useRef<{ sessionId: string; content: string; attachments: Attachment[]; timeoutId?: NodeJS.Timeout } | null>(null);
-  
+
+  // macOS focus sentinel - tracks when textarea was last focused to detect glitch focus loss
+  const lastFocusTimestampRef = useRef<number>(0);
+  const windowFocusedRef = useRef<boolean>(true);
+
   // Use shallow comparison to prevent re-renders when object references change
   // but values remain the same (e.g., when other parts of the store update)
   const {
@@ -1020,12 +1024,14 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
 
-  // macOS focus fix: Multi-strategy approach to handle WKWebView focus desync
-  // Strategy 1: Window-level focus event handler (most reliable)
-  // Strategy 2: Periodic check as fallback
-  // Strategy 3: RAF-based check during streaming for DOM update recovery
+  // macOS focus sentinel: Smart focus restoration that detects glitch vs intentional focus loss
+  // The key insight is that WKWebView can lose focus during state updates/DOM changes,
+  // but this happens VERY fast (within 100-200ms). User-initiated focus loss is slower.
+  // We also restore focus when the window regains focus if textarea was previously focused.
   useEffect(() => {
     if (!isMac) return;
+
+    const GLITCH_THRESHOLD_MS = 150; // If focus lost within this time, it's likely a glitch
 
     const canRestoreFocus = () => {
       if (!document.hasFocus() || !inputRef.current) return false;
@@ -1044,15 +1050,121 @@ export const ClaudeChat: React.FC = () => {
       const totalTokens = currentSession?.analytics?.tokens?.total || 0;
       const isContextFull = (totalTokens / 200000 * 100) > 95;
       if (currentSession?.readOnly || isContextFull) return false;
+      // Skip if active element is another input (user clicked into something)
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement ||
+          (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
+          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
       return true;
     };
 
-    // Focus restoration removed - typing auto-focuses via handleGlobalTyping
-    // which is less aggressive and doesn't interfere with text selection
+    const restoreFocusIfGlitch = () => {
+      if (!canRestoreFocus()) return;
+
+      const timeSinceFocus = Date.now() - lastFocusTimestampRef.current;
+      const isGlitch = timeSinceFocus < GLITCH_THRESHOLD_MS && lastFocusTimestampRef.current > 0;
+
+      // Only restore if it was a glitch (very recent focus loss) or window just regained focus
+      if (isGlitch || !windowFocusedRef.current) {
+        requestAnimationFrame(() => {
+          if (canRestoreFocus() && inputRef.current && document.activeElement !== inputRef.current) {
+            inputRef.current.focus();
+          }
+        });
+      }
+    };
+
+    // Focus out handler - detect when textarea loses focus
+    const handleFocusOut = (e: FocusEvent) => {
+      if (e.target !== inputRef.current) return;
+      // Delay check to see if focus moved somewhere valid
+      requestAnimationFrame(() => {
+        restoreFocusIfGlitch();
+      });
+    };
+
+    // Focus in handler - track when textarea gains focus
+    const handleFocusIn = (e: FocusEvent) => {
+      if (e.target === inputRef.current) {
+        lastFocusTimestampRef.current = Date.now();
+      }
+    };
+
+    // Window visibility change - restore focus when window becomes visible
+    const handleVisibilityChange = () => {
+      if (!document.hidden && canRestoreFocus()) {
+        requestAnimationFrame(() => {
+          if (inputRef.current && document.activeElement !== inputRef.current) {
+            inputRef.current.focus();
+          }
+        });
+      }
+    };
+
+    // Listen for Tauri window-focus-change event
+    let cleanupWindowFocus: (() => void) | null = null;
+    import('@tauri-apps/api/event').then(({ listen }) => {
+      listen<boolean>('window-focus-change', (event) => {
+        windowFocusedRef.current = event.payload;
+        if (event.payload && canRestoreFocus()) {
+          // Window gained focus - restore textarea focus with small delay
+          // to let WKWebView settle its internal state
+          setTimeout(() => {
+            if (canRestoreFocus() && inputRef.current && document.activeElement !== inputRef.current) {
+              inputRef.current.focus();
+            }
+          }, 50);
+        }
+      }).then(unlisten => {
+        cleanupWindowFocus = unlisten;
+      });
+    }).catch(() => {
+      // Not in Tauri environment
+    });
+
+    document.addEventListener('focusin', handleFocusIn, true);
+    document.addEventListener('focusout', handleFocusOut, true);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('focusin', handleFocusIn, true);
+      document.removeEventListener('focusout', handleFocusOut, true);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      if (cleanupWindowFocus) cleanupWindowFocus();
+    };
   }, [currentSession?.streaming, currentSession?.readOnly, currentSession?.analytics?.tokens?.total, isMac, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
 
-  // macOS focus recovery removed - was too aggressive and interfered with text selection
-  // Typing auto-focuses via handleGlobalTyping which is sufficient
+  // macOS streaming focus guard: During streaming, state updates can cause rapid focus loss
+  // This periodic check catches focus loss that slips through the focus sentinel
+  useEffect(() => {
+    if (!isMac || !currentSession?.streaming) return;
+
+    const canRestoreFocus = () => {
+      if (!document.hasFocus() || !inputRef.current) return false;
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) return false;
+      if (document.querySelector('.modal-overlay') ||
+          document.querySelector('[role="dialog"]') ||
+          showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return false;
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement ||
+          (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
+          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
+      return true;
+    };
+
+    // Check every 500ms during streaming - lightweight and non-intrusive
+    const streamingFocusCheck = setInterval(() => {
+      if (canRestoreFocus() && inputRef.current && document.activeElement !== inputRef.current) {
+        // Only restore if focus went to body (typical WKWebView glitch symptom)
+        if (document.activeElement === document.body) {
+          inputRef.current.focus();
+        }
+      }
+    }, 500);
+
+    return () => clearInterval(streamingFocusCheck);
+  }, [isMac, currentSession?.streaming, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {
@@ -1858,12 +1970,8 @@ export const ClaudeChat: React.FC = () => {
                            target.tagName === 'TEXTAREA' || 
                            target.contentEditable === 'true';
       
-      // Ctrl+W handled in main.tsx to avoid duplicate handlers
-      if ((e.ctrlKey || e.metaKey) && e.key === 't') {
-        // Ctrl+T for new tab (works even in input fields)
-        e.preventDefault();
-        createSession();
-      } else if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
+      // Ctrl+W and Ctrl+T handled in main.tsx to avoid duplicate handlers
+      if ((e.ctrlKey || e.metaKey) && e.key === 'f') {
         e.preventDefault();
         setSearchVisible(true);
       } else if ((e.ctrlKey || e.metaKey) && e.key === 'l') {

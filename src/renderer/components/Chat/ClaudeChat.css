@@ -599,8 +599,6 @@
   font-weight: bold;
   font-size: var(--text-xs);
   opacity: 0.9;
-  position: relative;
-  top: 1px;
   font-family: var(--font-mono);
 }
 
@@ -2833,7 +2831,7 @@ textarea.context-full {
 .tool-panel-tabs {
   display: flex;
   align-items: center;
-  gap: 2px;
+  gap: 4px;
 }
 
 .tool-panel-tab {
@@ -2842,29 +2840,34 @@ textarea.context-full {
   gap: 4px;
   padding: 4px 8px;
   background: transparent;
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 2px;
-  color: var(--fg-40);
+  color: #666;
   font-size: var(--text-sm);
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   text-transform: lowercase;
   cursor: default;
-  transition: color 0.1s, background 0.1s;
 }
 
 .tool-panel-tab:hover:not(:disabled) {
-  color: var(--fg-60);
-  background: var(--fg-05);
-}
-
-.tool-panel-tab.active {
+  border-color: var(--accent-color);
   color: var(--accent-color);
   background: rgba(var(--accent-rgb), 0.1);
 }
 
+.tool-panel-tab.active {
+  background: rgba(var(--accent-rgb), 0.05);
+  border-color: rgba(var(--accent-rgb), 0.8);
+  color: var(--accent-color);
+}
+
+.tool-panel-tab.active:hover:not(:disabled) {
+  border-color: var(--accent-color);
+}
+
 .tool-panel-tab:disabled {
-  opacity: 0.4;
-  cursor: not-allowed;
+  opacity: 0.3;
+  cursor: default;
 }
 
 .git-changes-badge {
@@ -2881,7 +2884,7 @@ textarea.context-full {
 
 .git-ahead-badge {
   font-size: var(--text-xs);
-  color: var(--positive-color, #99ffcc);
+  color: var(--accent-color);
   margin-left: 2px;
 }
 

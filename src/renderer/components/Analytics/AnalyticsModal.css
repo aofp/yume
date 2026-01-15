@@ -224,7 +224,65 @@
   background: var(--fg-20);
 }
 
-/* Compact Stats Row */
+/* Overview Main Layout - Two Column */
+.overview-main-layout {
+  display: grid;
+  grid-template-columns: 1fr 100px;
+  gap: 12px;
+  margin-bottom: 12px;
+  align-items: stretch;
+}
+
+.overview-main-layout .heatmap-section {
+  margin-bottom: 0;
+}
+
+.overview-main-layout .usage-heatmap-container {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+  background: none;
+  border: none;
+  padding: 0;
+}
+
+.overview-main-layout .usage-heatmap.daily {
+  flex: 1;
+  align-content: center;
+}
+
+.overview-main-layout .heatmap-cell {
+  width: 100%;
+  aspect-ratio: 1;
+  height: auto;
+}
+
+.overview-stats-column {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.overview-stat-card {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+}
+
+.overview-stat-label {
+  font-size: 10px;
+  color: #666;
+  text-transform: lowercase;
+}
+
+.overview-stat-value {
+  font-size: var(--text-lg);
+  color: #fff;
+  font-weight: 400;
+}
+
+/* Legacy Compact Stats Row (kept for reference) */
 .analytics-stats-row {
   display: flex;
   gap: 20px;

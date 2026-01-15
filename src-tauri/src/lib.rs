@@ -413,8 +413,8 @@ pub fn run() {
                                     if !info.is_null() {
                                         // Additional validation: check if pointer is aligned
                                         if (info as usize) % std::mem::align_of::<MINMAXINFO>() == 0 {
-                                            (*info).ptMinTrackSize.x = 516;
-                                            (*info).ptMinTrackSize.y = 509;
+                                            (*info).ptMinTrackSize.x = 600;
+                                            (*info).ptMinTrackSize.y = 440;
                                         }
                                     }
                                     LRESULT(0)
@@ -435,11 +435,11 @@ pub fn run() {
                                             
                                             // Validate reasonable dimensions
                                             if width >= 0 && width < 10000 && height >= 0 && height < 10000 {
-                                                if width < 516 {
-                                                    (*rect).right = (*rect).left + 516;
+                                                if width < 600 {
+                                                    (*rect).right = (*rect).left + 600;
                                                 }
-                                                if height < 509 {
-                                                    (*rect).bottom = (*rect).top + 509;
+                                                if height < 440 {
+                                                    (*rect).bottom = (*rect).top + 440;
                                                 }
                                             }
                                         }
@@ -491,11 +491,11 @@ pub fn run() {
                             Some(HWND::default()),
                             0,
                             0,
-                            516,
-                            509,
+                            600,
+                            420,
                             SWP_NOMOVE | SWP_NOZORDER
                         );
-                        info!("Set Windows initial size to 516x509");
+                        info!("Set Windows initial size to 600x420");
                     }
                 }
             }
@@ -518,9 +518,9 @@ pub fn run() {
                 unsafe {
                     // CRITICAL: Set minimum window size for macOS
                     use cocoa::foundation::NSSize;
-                    let min_size = NSSize::new(516.0, 509.0);
+                    let min_size = NSSize::new(600.0, 440.0);
                     let _: () = msg_send![ns_window, setMinSize: min_size];
-                    info!("Set macOS minimum window size to 516x509");
+                    info!("Set macOS minimum window size to 600x440");
                     
                     // CRITICAL: Hide the native titlebar completely
                     let _: () = msg_send![ns_window, setTitleVisibility: NSWindowTitleVisibility::NSWindowTitleHidden];
@@ -811,11 +811,11 @@ pub fn run() {
                         }
                         tauri::WindowEvent::Resized(size) => {
                             // Enforce minimum size constraints
-                            if size.width < 516 || size.height < 509 {
+                            if size.width < 600 || size.height < 440 {
                                 // Only resize if not already pending
                                 if !resize_pending.swap(true, Ordering::SeqCst) {
-                                    let new_width = size.width.max(516);
-                                    let new_height = size.height.max(509);
+                                    let new_width = size.width.max(600);
+                                    let new_height = size.height.max(440);
                                     let window_for_resize = window_clone.clone();
                                     let resize_flag = resize_pending.clone();
                                     
@@ -1264,9 +1264,9 @@ async fn restore_window_state(window: &tauri::WebviewWindow, app: &tauri::AppHan
     if let Some(width) = store.get("width") {
         if let Some(height) = store.get("height") {
             if let (Some(w), Some(h)) = (width.as_u64(), height.as_u64()) {
-                // Enforce minimum size of 516x509
-                let final_width = (w as u32).max(516);
-                let final_height = (h as u32).max(509);
+                // Enforce minimum size of 600x440
+                let final_width = (w as u32).max(600);
+                let final_height = (h as u32).max(440);
                 let _ = window.set_size(tauri::PhysicalSize::new(final_width, final_height));
                 info!(
                     "Restored window size: {}x{} (enforced minimums)",

@@ -251,7 +251,9 @@ export class TauriClaudeClient {
             prompt: content,
             resume_session_id: isResuming ? sessionData.claudeSessionId : null,
             reasoning_effort: modelDef?.reasoningEffort || null,
-            history_file_path: sessionData.historyFilePath || null
+            history_file_path: sessionData.historyFilePath || null,
+            // CRITICAL: Pass frontend session ID so backend emits on the channel we're listening on
+            frontend_session_id: sessionId
           };
 
           if (isDev) console.log('[TauriClient] Spawning yume-cli session:', spawnRequest);

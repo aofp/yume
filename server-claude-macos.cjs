@@ -2080,10 +2080,55 @@ app.get('/yume-session/:provider/:sessionId', async (req, res) => {
   }
 });
 
+// Analytics cache to prevent repeated heavy computation
+let analyticsCache = null;
+let analyticsCacheTime = 0;
+const ANALYTICS_CACHE_TTL_MS = 60000; // Cache for 1 minute
+let analyticsInProgress = false;
+
 // Analytics endpoint - reads all Claude sessions and extracts token usage
+// Uses caching to prevent stack overflow from repeated heavy computation
 app.get('/claude-analytics', async (req, res) => {
-  console.log('📊 Loading analytics from all Claude sessions...');
-  
+  console.log('📊 Analytics request received');
+
+  // Return cached data if fresh enough
+  const now = Date.now();
+  if (analyticsCache && (now - analyticsCacheTime) < ANALYTICS_CACHE_TTL_MS) {
+    console.log('📊 Returning cached analytics (age: ' + Math.round((now - analyticsCacheTime) / 1000) + 's)');
+    return res.json(analyticsCache);
+  }
+
+  // Prevent concurrent analytics computations (can cause stack overflow)
+  if (analyticsInProgress) {
+    console.log('📊 Analytics computation in progress, returning stale cache or empty');
+    if (analyticsCache) {
+      return res.json(analyticsCache);
+    }
+    return res.json({
+      totalSessions: 0,
+      totalMessages: 0,
+      totalTokens: 0,
+      totalCost: 0,
+      tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 },
+      byModel: {},
+      byProvider: {
+        claude: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
+        gemini: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } },
+        openai: { sessions: 0, tokens: 0, cost: 0, tokenBreakdown: { input: 0, output: 0, cacheCreation: 0, cacheRead: 0 } }
+      },
+      byDate: {},
+      byProject: {},
+      cached: true,
+      computing: true
+    });
+  }
+
+  analyticsInProgress = true;
+  console.log('📊 Computing fresh analytics...');
+
+  // Helper to yield to event loop - resets V8 call stack (fixes pkg binary stack overflow)
+  const yieldToEventLoop = () => new Promise(resolve => setImmediate(resolve));
+
   try {
     const analytics = {
       totalSessions: 0,
@@ -2157,8 +2202,9 @@ app.get('/claude-analytics', async (req, res) => {
     };
 
     // Scan yume-cli sessions for analytics
-    const scanYumeCliAnalytics = async (provider, analytics, pricing) => {
-      const { readdir, readFile, stat } = fs.promises;
+    // IMPORTANT: Uses SYNC file ops to avoid V8 stack overflow in pkg binary
+    // The async promise queue causes crashes when closing many file handles
+    const scanYumeCliAnalytics = (provider, analytics, pricing) => {
       const sessionsDir = join(homedir(), '.yume', 'sessions', provider);
 
       if (!existsSync(sessionsDir)) {
@@ -2167,7 +2213,7 @@ app.get('/claude-analytics', async (req, res) => {
       }
 
       try {
-        const files = await readdir(sessionsDir);
+        const files = fs.readdirSync(sessionsDir);
         const jsonFiles = files.filter(f => f.endsWith('.json'));
 
         console.log(`📊 Scanning ${jsonFiles.length} ${provider} session files...`);
@@ -2175,7 +2221,7 @@ app.get('/claude-analytics', async (req, res) => {
         for (const file of jsonFiles) {
           try {
             const filePath = join(sessionsDir, file);
-            const content = await readFile(filePath, 'utf8');
+            const content = fs.readFileSync(filePath, 'utf8');
             const session = JSON.parse(content);
 
             // Get usage from session
@@ -2299,6 +2345,17 @@ app.get('/claude-analytics', async (req, res) => {
       tokenBreakdown: createTokenBreakdown()
     });
 
+    const MAX_ANALYTICS_JSONL_LINE_LENGTH = 256 * 1024;
+    const sanitizeAnalyticsLine = (rawLine, contextLabel) => {
+      const trimmed = rawLine.trim();
+      if (!trimmed) return null;
+      if (trimmed.length > MAX_ANALYTICS_JSONL_LINE_LENGTH) {
+        debugLog(`[Analytics] Skipping oversized line in ${contextLabel} (${trimmed.length} chars)`);
+        return null;
+      }
+      return trimmed;
+    };
+
     const addTokenBreakdown = (target, delta) => {
       target.input += delta.input;
       target.output += delta.output;
@@ -2365,34 +2422,41 @@ app.get('/claude-analytics', async (req, res) => {
         output: 10e-6,        // $10/M
         cacheCreation: 0,
         cacheRead: 0
+      },
+      // Default rates for unknown models (use sonnet rates as fallback)
+      default: {
+        input: 3e-6,
+        output: 15e-6,
+        cacheCreation: 3.75e-6,
+        cacheRead: 0.30e-6
       }
     };
     
     // Determine the Claude projects directory based on platform
+    // IMPORTANT: Uses SYNC file ops to avoid V8 stack overflow in pkg binary
     let projectsDir;
     if (isWindows) {
       // Directly access WSL filesystem through Windows mount - no wsl.exe commands
-      const { readdir, readFile, stat } = fs.promises;
-      
+
       // Try different WSL mount paths and users
       const possibleUsers = ['yuru', 'muuko', process.env.USER, process.env.USERNAME].filter(Boolean);
       const possibleDistros = ['Ubuntu', 'Ubuntu-20.04', 'Ubuntu-22.04', 'Ubuntu-24.04'];
       const possiblePrefixes = ['\\\\wsl$', '\\\\wsl.localhost'];
-      
+
       console.log('📊 Analytics: Searching for WSL Claude projects...');
       console.log('  Possible users:', possibleUsers);
       console.log('  Possible distros:', possibleDistros);
-      
+
       let wslProjectsPath = null;
       let attemptCount = 0;
-      
+
       for (const prefix of possiblePrefixes) {
         for (const distro of possibleDistros) {
           for (const user of possibleUsers) {
             const testPath = `${prefix}\\${distro}\\home\\${user}\\.claude\\projects`;
             attemptCount++;
             try {
-              await stat(testPath);
+              fs.statSync(testPath);
               wslProjectsPath = testPath;
               console.log(`✅ Found WSL Claude projects at: ${testPath} (attempt ${attemptCount})`);
               break;
@@ -2404,50 +2468,63 @@ app.get('/claude-analytics', async (req, res) => {
         }
         if (wslProjectsPath) break;
       }
-      
+
       if (!wslProjectsPath) {
         console.log(`❌ WSL Claude projects not found after ${attemptCount} attempts`);
       }
-      
+
       if (wslProjectsPath) {
         try {
-          const projectDirs = await readdir(wslProjectsPath);
+          const projectDirs = fs.readdirSync(wslProjectsPath);
           console.log(`Found ${projectDirs.length} projects in WSL directory`);
-          
+
           // Process projects (limit to prevent memory issues)
           const maxProjects = 10;
+          let wslProjectCount = 0;
           for (const projectName of projectDirs.slice(0, maxProjects)) {
+            // Yield every 3 projects to reset V8 call stack
+            if (wslProjectCount > 0 && wslProjectCount % 3 === 0) {
+              await yieldToEventLoop();
+            }
+            wslProjectCount++;
+
             const projectPath = path.win32.join(wslProjectsPath, projectName);
-            
+
             try {
-              const stats = await stat(projectPath);
+              const stats = fs.statSync(projectPath);
               if (!stats.isDirectory()) continue;
-              
+
               console.log(`Processing WSL project: ${projectName}`);
-              
+
               // Get session files
-              const sessionFiles = await readdir(projectPath);
+              const sessionFiles = fs.readdirSync(projectPath);
               const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
               console.log(`  Found ${jsonlFiles.length} session files`);
-              
+
               // Process sessions (limit to prevent memory issues)
               const maxSessions = 20;
+              let wslSessionCount = 0;
               for (const sessionFile of jsonlFiles.slice(0, maxSessions)) {
+                // Yield every 5 sessions to reset V8 call stack
+                if (wslSessionCount > 0 && wslSessionCount % 5 === 0) {
+                  await yieldToEventLoop();
+                }
+                wslSessionCount++;
                 try {
                   const sessionPath = path.win32.join(projectPath, sessionFile);
-                  const fileStats = await stat(sessionPath);
-                  
+                  const fileStats = fs.statSync(sessionPath);
+
                   // Skip very large files
                   if (fileStats.size > 10 * 1024 * 1024) {
                     console.log(`  Skipping large file: ${sessionFile} (${fileStats.size} bytes)`);
                     continue;
                   }
-                  
+
                   console.log(`  Reading session: ${sessionFile} (${fileStats.size} bytes)`);
-                  const content = await readFile(sessionPath, 'utf8');
+                  const content = fs.readFileSync(sessionPath, 'utf8');
                   
                   // Parse lines to extract analytics from Claude CLI format
-                  const allLines = content.split('\n').filter(line => line.trim());
+                  const allLines = content.split('\n');
                   console.log(`    Total lines in file: ${allLines.length}`);
                   
                   let sessionTokens = 0;
@@ -2466,9 +2543,12 @@ app.get('/claude-analytics', async (req, res) => {
                   const seenRequestIds = new Set();
                   const countedAssistantRequestIds = new Set();
 
-                  for (const line of allLines) {
+                  for (const rawLine of allLines) {
+                    const sanitizedLine = sanitizeAnalyticsLine(rawLine, `${projectName}/${sessionFile}`);
+                    if (!sanitizedLine) continue;
+
                     try {
-                      const data = JSON.parse(line);
+                      const data = JSON.parse(sanitizedLine);
 
                       // Claude CLI uses type: "assistant" for assistant messages
                       // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
@@ -2543,7 +2623,7 @@ app.get('/claude-analytics', async (req, res) => {
                     };
 
                     // Calculate cost from token totals
-                    const rates = pricing[sessionModel];
+                    const rates = pricing[sessionModel] || pricing.default;
                     sessionCost = (totalInputTokens * rates.input) +
                                  (totalOutputTokens * rates.output) +
                                  (totalCacheCreationTokens * rates.cacheCreation) +
@@ -2616,42 +2696,42 @@ app.get('/claude-analytics', async (req, res) => {
       if (!wslProjectsPath) {
         console.log('WSL mount not accessible, trying Windows path...');
         const windowsProjectsPath = path.win32.join(homedir(), '.claude', 'projects');
-        
+
         try {
-          const projectDirs = await readdir(windowsProjectsPath);
+          const projectDirs = fs.readdirSync(windowsProjectsPath);
           console.log(`Found ${projectDirs.length} projects in Windows directory`);
-          
+
           // Process limited number of projects
           for (const projectName of projectDirs.slice(0, 5)) {
             const projectPath = path.win32.join(windowsProjectsPath, projectName);
-            const stats = await stat(projectPath);
-            
+            const stats = fs.statSync(projectPath);
+
             if (!stats.isDirectory()) continue;
-            
+
             console.log(`Processing Windows project: ${projectName}`);
-            
+
             // Get session files
-            const sessionFiles = await readdir(projectPath);
+            const sessionFiles = fs.readdirSync(projectPath);
             const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
             console.log(`  Found ${jsonlFiles.length} session files`);
-            
+
             // Process limited number of sessions
             for (const sessionFile of jsonlFiles.slice(0, 10)) {
               try {
                 const sessionPath = path.win32.join(projectPath, sessionFile);
-                const fileStats = await stat(sessionPath);
-                
+                const fileStats = fs.statSync(sessionPath);
+
                 // Skip very large files
                 if (fileStats.size > 10 * 1024 * 1024) {
                   console.log(`  Skipping large file: ${sessionFile} (${fileStats.size} bytes)`);
                   continue;
                 }
-                
+
                 console.log(`  Reading session: ${sessionFile} (${fileStats.size} bytes)`);
-                const content = await readFile(sessionPath, 'utf8');
+                const content = fs.readFileSync(sessionPath, 'utf8');
                 
                 // Parse lines to extract analytics from Claude CLI format
-                const allLines = content.split('\n').filter(line => line.trim());
+                const allLines = content.split('\n');
                 console.log(`    Total lines in file: ${allLines.length}`);
                 
                 let sessionTokens = 0;
@@ -2670,9 +2750,12 @@ app.get('/claude-analytics', async (req, res) => {
                 const seenRequestIds = new Set();
                 const countedAssistantRequestIds = new Set();
 
-                for (const line of allLines) {
+                for (const rawLine of allLines) {
+                  const sanitizedLine = sanitizeAnalyticsLine(rawLine, `${projectName}/${sessionFile}`);
+                  if (!sanitizedLine) continue;
+
                   try {
-                    const data = JSON.parse(line);
+                    const data = JSON.parse(sanitizedLine);
 
                     // Claude CLI uses type: "assistant" for assistant messages
                     // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
@@ -2746,7 +2829,7 @@ app.get('/claude-analytics', async (req, res) => {
                   };
 
                   // Calculate cost from token totals
-                  const rates = pricing[sessionModel];
+                  const rates = pricing[sessionModel] || pricing.default;
                   sessionCost = (totalInputTokens * rates.input) +
                                (totalOutputTokens * rates.output) +
                                (totalCacheCreationTokens * rates.cacheCreation) +
@@ -2818,30 +2901,71 @@ app.get('/claude-analytics', async (req, res) => {
       }
     } else {
       // Non-Windows: read directly from filesystem
-      const { readdir, readFile, stat } = fs.promises;
+      // IMPORTANT: Uses SYNC file ops to avoid V8 stack overflow in pkg binary
+      // The async promise queue causes crashes when closing many file handles
       const projectsDir = join(homedir(), '.claude', 'projects');
-      
+
+      // Limits to prevent stack overflow in pkg binary
+      const MAX_PROJECTS = 50;
+      const MAX_SESSIONS_PER_PROJECT = 30;
+      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB max file size
+      let projectCount = 0;
+
       try {
-        const projectDirs = await readdir(projectsDir);
-        
+        const projectDirs = fs.readdirSync(projectsDir);
+
         for (const projectName of projectDirs) {
+          if (projectCount >= MAX_PROJECTS) {
+            console.log(`📊 Reached max projects limit (${MAX_PROJECTS}), stopping`);
+            break;
+          }
+
+          // Yield every 5 projects to reset V8 call stack (prevents pkg binary crash)
+          if (projectCount > 0 && projectCount % 5 === 0) {
+            await yieldToEventLoop();
+          }
+
           const projectPath = join(projectsDir, projectName);
-          const stats = await stat(projectPath);
-          
+          let stats;
+          try {
+            stats = fs.statSync(projectPath);
+          } catch (e) {
+            continue; // Skip inaccessible paths
+          }
+
           if (!stats.isDirectory()) continue;
-          
+          projectCount++;
+
           // Get all session files
-          const sessionFiles = await readdir(projectPath);
-          const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl'));
-          
+          let sessionFiles;
+          try {
+            sessionFiles = fs.readdirSync(projectPath);
+          } catch (e) {
+            continue; // Skip inaccessible directories
+          }
+          const jsonlFiles = sessionFiles.filter(f => f.endsWith('.jsonl')).slice(0, MAX_SESSIONS_PER_PROJECT);
+
+          let sessionCount = 0;
           for (const sessionFile of jsonlFiles) {
+            // Yield every 10 sessions to reset V8 call stack
+            if (sessionCount > 0 && sessionCount % 10 === 0) {
+              await yieldToEventLoop();
+            }
+            sessionCount++;
             try {
               const sessionPath = join(projectPath, sessionFile);
-              const fileStats = await stat(sessionPath);
-              const content = await readFile(sessionPath, 'utf8');
+              const fileStats = fs.statSync(sessionPath);
+
+              // Skip large files to prevent memory issues
+              if (fileStats.size > MAX_FILE_SIZE) {
+                console.log(`📊 Skipping large file: ${sessionFile} (${Math.round(fileStats.size / 1024 / 1024)}MB)`);
+                continue;
+              }
+
+              const content = fs.readFileSync(sessionPath, 'utf8');
               
               // Parse JSONL file - Claude CLI format
-              const lines = content.split('\n').filter(line => line.trim());
+              const lines = content.split('\n');
               let sessionTokens = 0;
               let sessionCost = 0;
               let sessionModel = 'sonnet';
@@ -2858,9 +2982,12 @@ app.get('/claude-analytics', async (req, res) => {
               const seenRequestIds = new Set();
               const countedAssistantRequestIds = new Set();
 
-              for (const line of lines) {
+              for (const rawLine of lines) {
+                const sanitizedLine = sanitizeAnalyticsLine(rawLine, `${projectName}/${sessionFile}`);
+                if (!sanitizedLine) continue;
+
                 try {
-                  const data = JSON.parse(line);
+                  const data = JSON.parse(sanitizedLine);
 
                   // Claude CLI uses type: "assistant" for assistant messages
                   // IMPORTANT: Multiple assistant messages share same requestId (streaming chunks)
@@ -2934,7 +3061,7 @@ app.get('/claude-analytics', async (req, res) => {
                 };
 
                 // Calculate cost from token totals
-                const rates = pricing[sessionModel];
+                const rates = pricing[sessionModel] || pricing.default;
                 sessionCost = (totalInputTokens * rates.input) +
                              (totalOutputTokens * rates.output) +
                              (totalCacheCreationTokens * rates.cacheCreation) +
@@ -3000,14 +3127,21 @@ app.get('/claude-analytics', async (req, res) => {
       }
     }
 
-    // Scan yume-cli sessions (Gemini and OpenAI)
-    await scanYumeCliAnalytics('gemini', analytics, pricing);
-    await scanYumeCliAnalytics('openai', analytics, pricing);
+    // Scan yume-cli sessions (Gemini and OpenAI) - sync to avoid stack overflow
+    scanYumeCliAnalytics('gemini', analytics, pricing);
+    scanYumeCliAnalytics('openai', analytics, pricing);
 
     console.log(`📊 Analytics loaded: ${analytics.totalSessions} sessions, ${analytics.totalTokens} tokens`);
     console.log(`📊 Provider breakdown - Claude: ${analytics.byProvider.claude.sessions}, Gemini: ${analytics.byProvider.gemini.sessions}, OpenAI: ${analytics.byProvider.openai.sessions}`);
+
+    // Cache the result
+    analyticsCache = analytics;
+    analyticsCacheTime = Date.now();
+    analyticsInProgress = false;
+
     res.json(analytics);
   } catch (error) {
+    analyticsInProgress = false;
     console.error('Error loading analytics:', error);
     res.status(500).json({ error: 'Failed to load analytics', details: error.message });
   }

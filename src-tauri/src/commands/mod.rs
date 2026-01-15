@@ -547,8 +547,8 @@ pub async fn new_window(app: tauri::AppHandle) -> Result<(), String> {
         tauri::WebviewUrl::App("index.html".into()),
     )
     .title(title)
-    .inner_size(516.0, 509.0)
-    .min_inner_size(516.0, 509.0)
+    .inner_size(600.0, 440.0)
+    .min_inner_size(600.0, 440.0)
     .resizable(true)
     .fullscreen(false)
     .decorations(false)

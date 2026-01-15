@@ -1339,7 +1339,6 @@ body.platform-win32 .tool-detail {
   border: none;
   padding: 0;
   margin: 0;
-  opacity: 0.8;
 }
 
 .read-content {
@@ -1546,7 +1545,7 @@ hr {
 }
 
 .tool-result.read-output .read-line {
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 .result-icon {
@@ -1601,7 +1600,7 @@ hr {
 
 .write-line {
   display: flex;
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 .write-line .line-number {
@@ -1640,7 +1639,7 @@ hr {
 .bash-line {
   color: rgba(var(--foreground-rgb), 0.7);
   font-size: var(--text-sm);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* Search Output (Grep) */
@@ -1669,7 +1668,7 @@ hr {
   font-family: var(--font-mono);
   font-size: var(--text-xs);
   color: rgba(var(--foreground-rgb), 0.7);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* File List (Glob) */
@@ -1706,7 +1705,7 @@ hr {
 
 .file-item {
   color: rgba(var(--foreground-rgb), 0.7);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* Directory Listing (LS) */
@@ -1743,7 +1742,7 @@ hr {
 
 .dir-item {
   color: rgba(var(--foreground-rgb), 0.7);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* Web Search */
@@ -1773,7 +1772,7 @@ hr {
 
 .web-result-line {
   color: rgba(var(--foreground-rgb), 0.7);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* Web Fetch */
@@ -1803,7 +1802,7 @@ hr {
 
 .web-line {
   color: rgba(var(--foreground-rgb), 0.7);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* Task Result */
@@ -1843,7 +1842,7 @@ hr {
 
 .task-line {
   color: rgba(var(--foreground-rgb), 0.7);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* Background Agent Launch */
@@ -1997,7 +1996,7 @@ hr {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
   color: rgba(var(--foreground-rgb), 0.7);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
 }
 
 /* Result Messages */
@@ -2043,7 +2042,7 @@ hr {
   background: rgba(255, 153, 204, 0.05);
   border-radius: 8px;
   font-size: var(--text-base);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
 }
 
 /* Permission Messages */
@@ -2164,7 +2163,7 @@ hr {
 .diff-content {
   font-family: var(--font-mono);
   font-size: var(--text-sm);
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   color: var(--fg-60);
   white-space: pre;
   overflow-x: auto;
@@ -2264,7 +2263,7 @@ hr {
 
 .todo-content {
   flex: 1;
-  line-height: 1.4;
+  line-height: var(--leading-normal);
   font-family: var(--font-sans);
 }
 
@@ -2632,7 +2631,7 @@ pre code,
 
 .compact-summary-text {
   font-size: var(--text-base);
-  line-height: 1.5;
+  line-height: var(--leading-normal);
   color: rgba(var(--foreground-rgb), 0.6);
   white-space: pre-wrap;
   word-break: break-word;

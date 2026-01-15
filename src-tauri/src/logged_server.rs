@@ -27,9 +27,15 @@ pub const YUME_SHOW_CONSOLE: bool = false; // SET TO TRUE TO SEE CONSOLE AND FOR
 static SERVER_PROCESS: Mutex<Option<Arc<ServerProcessGuard>>> = Mutex::new(None);
 static SERVER_PORT: Mutex<Option<u16>> = Mutex::new(None);
 static SERVER_RUNNING: AtomicBool = AtomicBool::new(false);
+static WATCHDOG_ACTIVE: AtomicBool = AtomicBool::new(false);
 
 // Maximum buffer size for stdout/stderr (10MB)
 const MAX_BUFFER_SIZE: usize = 10 * 1024 * 1024;
+
+// Server restart settings
+const MAX_RESTART_ATTEMPTS: u32 = 3;
+const RESTART_COOLDOWN_MS: u64 = 5000; // 5 seconds between restarts
+const HEALTH_CHECK_INTERVAL_MS: u64 = 2000; // Check every 2 seconds
 
 /// Process guard that ensures cleanup on drop
 struct ServerProcessGuard {
@@ -171,6 +177,107 @@ impl Drop for ServerProcessGuard {
         // Ensure process is killed when guard is dropped
         let _ = self.kill();
     }
+}
+
+/// Checks if the server process is still alive
+/// Returns true if running, false if crashed/exited
+fn is_server_alive() -> bool {
+    if let Ok(process_guard) = SERVER_PROCESS.lock() {
+        if let Some(ref guard) = *process_guard {
+            if let Ok(mut child) = guard.child.lock() {
+                match child.try_wait() {
+                    Ok(None) => return true, // Still running
+                    Ok(Some(status)) => {
+                        info!("Server process exited with status: {:?}", status);
+                        return false;
+                    }
+                    Err(e) => {
+                        info!("Error checking server status: {}", e);
+                        return false;
+                    }
+                }
+            }
+        }
+    }
+    false
+}
+
+/// Starts the server watchdog thread that monitors and auto-restarts crashed servers
+fn start_server_watchdog(port: u16) {
+    // Don't start if already active
+    if WATCHDOG_ACTIVE.swap(true, Ordering::SeqCst) {
+        info!("Watchdog already active, skipping");
+        return;
+    }
+
+    std::thread::spawn(move || {
+        info!("Server watchdog started for port {}", port);
+        write_log(&format!("🐕 Watchdog started for port {}", port));
+
+        let mut restart_count = 0u32;
+        let mut last_restart = std::time::Instant::now();
+
+        loop {
+            // Check if we should stop watching
+            if !SERVER_RUNNING.load(Ordering::Relaxed) {
+                info!("Server not marked as running, watchdog exiting");
+                break;
+            }
+
+            std::thread::sleep(std::time::Duration::from_millis(HEALTH_CHECK_INTERVAL_MS));
+
+            // Check if server is still alive
+            if !is_server_alive() {
+                let elapsed = last_restart.elapsed().as_millis() as u64;
+
+                // Reset counter if enough time has passed (30 seconds)
+                if elapsed > 30000 {
+                    restart_count = 0;
+                }
+
+                if restart_count >= MAX_RESTART_ATTEMPTS {
+                    info!("Max restart attempts ({}) reached, giving up", MAX_RESTART_ATTEMPTS);
+                    write_log(&format!("❌ Max restart attempts ({}) reached, watchdog giving up", MAX_RESTART_ATTEMPTS));
+                    break;
+                }
+
+                // Wait for cooldown period
+                if elapsed < RESTART_COOLDOWN_MS {
+                    let wait_time = RESTART_COOLDOWN_MS - elapsed;
+                    info!("Waiting {}ms before restart attempt", wait_time);
+                    std::thread::sleep(std::time::Duration::from_millis(wait_time));
+                }
+
+                restart_count += 1;
+                last_restart = std::time::Instant::now();
+
+                info!("🔄 Server crashed! Attempting restart {} of {}", restart_count, MAX_RESTART_ATTEMPTS);
+                write_log(&format!("🔄 Server crashed! Restart attempt {} of {}", restart_count, MAX_RESTART_ATTEMPTS));
+
+                // Clear the old process guard
+                if let Ok(mut process_guard) = SERVER_PROCESS.lock() {
+                    *process_guard = None;
+                }
+
+                // Restart the server
+                start_server_internal(port);
+
+                // Give it a moment to start
+                std::thread::sleep(std::time::Duration::from_millis(1000));
+
+                if is_server_alive() {
+                    info!("✅ Server restarted successfully");
+                    write_log("✅ Server restarted successfully");
+                } else {
+                    info!("❌ Server failed to restart");
+                    write_log("❌ Server failed to restart");
+                }
+            }
+        }
+
+        WATCHDOG_ACTIVE.store(false, Ordering::SeqCst);
+        info!("Watchdog thread exiting");
+    });
 }
 
 /// Returns the platform-specific path for server log files
@@ -653,8 +760,9 @@ pub fn get_server_logs() -> String {
 pub fn stop_logged_server() {
     info!("Stopping server for THIS instance only...");
 
-    // Set running flag to false first
+    // Set running flag to false first - this will also signal watchdog to stop
     SERVER_RUNNING.store(false, Ordering::Relaxed);
+    WATCHDOG_ACTIVE.store(false, Ordering::Relaxed);
 
     if let Ok(mut process_guard) = SERVER_PROCESS.try_lock() {
         if let Some(process_arc) = process_guard.take() {
@@ -774,7 +882,7 @@ fn start_server_internal(port: u16) {
 fn start_macos_server(port: u16) {
     info!("Starting macOS server on port {}", port);
     clear_log();
-    write_log("=== Starting macOS server (binary mode) ===");
+    write_log("=== Starting macOS server ===");
 
     let exe_path = std::env::current_exe().unwrap_or_default();
     info!("Executable path: {:?}", exe_path);
@@ -789,12 +897,13 @@ fn start_macos_server(port: u16) {
     let binary_name = format!("{}-macos-{}", SERVER_BINARY_PREFIX, arch);
     write_log(&format!("Architecture: {}, binary: {}", arch, binary_name));
 
-    // Find the server binary
-    let server_path = if cfg!(debug_assertions) {
-        // In development, use project root resources
-        info!("Development mode - looking for binary in project root");
-        write_log("Development mode - looking for binary in project root");
-        std::env::current_exe()
+    // Find the server - prefer pkg binary (analytics now stack-safe with yieldToEventLoop)
+    let (server_path, use_node) = if cfg!(debug_assertions) {
+        // In development, prefer compiled binary from resources (source code protected)
+        // Analytics uses yieldToEventLoop() to prevent V8 stack overflow in pkg binary
+        info!("Development mode - looking for binary in resources");
+        write_log("Development mode - checking for compiled binary");
+        let project_root = std::env::current_exe()
             .ok()
             .and_then(|p| {
                 p.parent()?
@@ -802,14 +911,30 @@ fn start_macos_server(port: u16) {
                     .parent()?
                     .parent()
                     .map(|p| p.to_path_buf())
-            })
-            .map(|p| p.join("src-tauri").join("resources").join(&binary_name))
+            });
+
+        if let Some(ref root) = project_root {
+            let binary_path = root.join("src-tauri").join("resources").join(&binary_name);
+            if binary_path.exists() {
+                info!("Found binary: {:?}", binary_path);
+                write_log(&format!("Using compiled binary: {:?}", binary_path));
+                (Some(binary_path), false)
+            } else {
+                // Fallback to source .cjs with node if binary not built yet
+                let source_path = root.join("server-claude-macos.cjs");
+                info!("Binary not found, fallback to source: {:?}", source_path);
+                write_log(&format!("Using source file with node: {:?}", source_path));
+                (Some(source_path), true)
+            }
+        } else {
+            (None, false)
+        }
     } else {
-        // In production, look in .app bundle
+        // In production, look in .app bundle (always use binary, no node)
         info!("Production mode - looking for binary in .app bundle");
         write_log("Production mode - looking for binary in .app bundle");
 
-        std::env::current_exe().ok().and_then(|p| {
+        let path = std::env::current_exe().ok().and_then(|p| {
             write_log(&format!("Exe: {:?}", p));
             let macos_dir = p.parent()?;
             let contents_dir = macos_dir.parent()?;
@@ -831,7 +956,8 @@ fn start_macos_server(port: u16) {
 
             write_log("No server binary or .cjs found");
             None
-        })
+        });
+        (path, false) // Production always uses binary directly
     };
 
     if let Some(server_file) = server_path {
@@ -844,21 +970,17 @@ fn start_macos_server(port: u16) {
         info!("Using server: {:?}", server_file);
         write_log(&format!("Using server: {:?}", server_file));
 
-        // Check if this is a binary or .cjs file
-        let is_binary = !server_file
-            .extension()
-            .map_or(false, |e| e == "cjs" || e == "js");
-
-        let mut cmd = if is_binary {
-            // Direct binary execution
-            write_log("Spawning compiled binary directly");
-            Command::new(&server_file)
-        } else {
-            // Fallback: run with node
-            write_log("Fallback: spawning with node");
+        // In dev mode with use_node=true, run .cjs with node to avoid pkg stack limits
+        // Otherwise run the binary directly
+        let mut cmd = if use_node {
+            write_log("Dev mode: spawning with node (unlimited stack)");
             let mut c = Command::new("node");
             c.arg(&server_file);
             c
+        } else {
+            // Direct binary execution
+            write_log("Spawning compiled binary directly");
+            Command::new(&server_file)
         };
 
         cmd.env_clear()
@@ -941,6 +1063,9 @@ fn start_macos_server(port: u16) {
                 }
 
                 info!("✅ macOS server process tracking set up");
+
+                // Start the watchdog to auto-restart if server crashes
+                start_server_watchdog(port);
             }
             Err(e) => {
                 write_log(&format!("❌ Failed to start macOS server: {}", e));
@@ -1140,6 +1265,9 @@ fn start_windows_server(port: u16) {
                 }
 
                 info!("✅ Windows server process tracking set up");
+
+                // Start the watchdog to auto-restart if server crashes
+                start_server_watchdog(port);
             }
             Err(e) => {
                 write_log(&format!("❌ Failed to start Windows server: {}", e));
@@ -1319,6 +1447,9 @@ fn start_linux_server(port: u16) {
                     *process_guard = Some(guard);
                     SERVER_RUNNING.store(true, Ordering::Relaxed);
                 }
+
+                // Start the watchdog to auto-restart if server crashes
+                start_server_watchdog(port);
             }
             Err(e) => {
                 info!("Failed to start server: {}", e);

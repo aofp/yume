@@ -3272,6 +3272,7 @@ const MessageRendererBase: React.FC<{
           usage: message.usage,
           model: message.model,
           total_cost_usd: message.total_cost_usd,
+          showResultStats,
           fullMessage: message
         });
         
@@ -3306,6 +3307,16 @@ const MessageRendererBase: React.FC<{
         const totalTokens = message.usage ? (message.usage.input_tokens + message.usage.output_tokens) : 0;
         let toolCount = (message as any).tool_count || 0;
         let hasAssistantMessage = false;
+
+        // Debug computed values
+        console.log('[MessageRenderer] Result computed values:', {
+          messageId: message.id,
+          elapsedMs,
+          elapsedSeconds,
+          totalTokens,
+          currentIndex,
+          sessionMessagesCount: sessionMessages.length
+        });
 
         // Helper to check if a message has text content
         const hasTextContent = (msg: any): boolean => {

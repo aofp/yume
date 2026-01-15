@@ -544,78 +544,63 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
               {/* OVERVIEW TAB */}
               {activeTab === 'overview' && (
                 <>
-                  {/* Daily Usage Heatmap - at top */}
-                  <div className="analytics-section heatmap-section">
-                    <div className="usage-heatmap-container">
-                      {heatmapItems.length > 0 ? (
-                        <>
-                          <div className="heatmap-header">
-                            <span className="heatmap-title">{heatmapTitle}</span>
-                            <span className="heatmap-summary">
-                              {heatmapActiveCount} active days · {formatNumber(heatmapTotalTokens)} tokens · {formatCost(filteredAnalytics.totalCost)}
-                            </span>
-                          </div>
-                          <div className="usage-heatmap daily">
-                            {heatmapCells.map((day, index) => {
-                              if (!day) {
-                                return <div key={`empty-${index}`} className="heatmap-cell empty" />;
-                              }
-                              const level = getHeatmapLevel(day.tokens, heatmapMaxTokens);
-                              return (
-                                <div
-                                  key={day.key}
-                                  className={`heatmap-cell level-${level}`}
-                                  data-date={day.date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
-                                  data-tokens={day.tokens.toLocaleString()}
-                                  data-sessions={day.sessions}
-                                  data-messages={day.messages}
-                                  data-cost={day.cost > 0 ? formatCost(day.cost) : '$0.00'}
-                                />
-                              );
-                            })}
-                          </div>
-                          <div className="usage-heatmap-footer">
-                            <div className="usage-heatmap-legend">
-                              <span>less</span>
-                              <div className="heatmap-legend-scale">
-                                <span className="heatmap-cell level-0" />
-                                <span className="heatmap-cell level-1" />
-                                <span className="heatmap-cell level-2" />
-                                <span className="heatmap-cell level-3" />
-                                <span className="heatmap-cell level-4" />
-                              </div>
-                              <span>more</span>
-                            </div>
-                            {heatmapPeakCell && (
-                              <span className="heatmap-peak">
-                                peak: {heatmapPeakCell.date.toLocaleDateString('en', { month: 'short', day: 'numeric' })} ({formatNumber(heatmapPeakCell.tokens)})
+                  {/* Two-column layout: heatmap left, stats right */}
+                  <div className="overview-main-layout">
+                    {/* Daily Usage Heatmap - left side */}
+                    <div className="analytics-section heatmap-section">
+                      <div className="usage-heatmap-container">
+                        {heatmapItems.length > 0 ? (
+                          <>
+                            <div className="heatmap-header">
+                              <span className="heatmap-title">{heatmapTitle}</span>
+                              <span className="heatmap-summary">
+                                {heatmapActiveCount} active days
                               </span>
-                            )}
-                          </div>
-                        </>
-                      ) : (
-                        <div className="usage-heatmap-empty">no data for selected period</div>
-                      )}
+                            </div>
+                            <div className="usage-heatmap daily">
+                              {heatmapCells.map((day, index) => {
+                                if (!day) {
+                                  return <div key={`empty-${index}`} className="heatmap-cell empty" />;
+                                }
+                                const level = getHeatmapLevel(day.tokens, heatmapMaxTokens);
+                                return (
+                                  <div
+                                    key={day.key}
+                                    className={`heatmap-cell level-${level}`}
+                                    data-date={day.date.toLocaleDateString('en', { weekday: 'short', month: 'short', day: 'numeric' })}
+                                    data-tokens={day.tokens.toLocaleString()}
+                                    data-sessions={day.sessions}
+                                    data-messages={day.messages}
+                                    data-cost={day.cost > 0 ? formatCost(day.cost) : '$0.00'}
+                                  />
+                                );
+                              })}
+                            </div>
+                          </>
+                        ) : (
+                          <div className="usage-heatmap-empty">no data for selected period</div>
+                        )}
+                      </div>
                     </div>
-                  </div>
 
-                  {/* Compact Stats Row */}
-                  <div className="analytics-stats-row">
-                    <div className="stat-item">
-                      <span className="stat-value">{formatNumber(filteredAnalytics.totalMessages)}</span>
-                      <span className="stat-label">messages</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-value">{formatNumber(filteredAnalytics.totalTokens)}</span>
-                      <span className="stat-label">tokens</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-value">{formatCost(filteredAnalytics.totalCost)}</span>
-                      <span className="stat-label">cost</span>
-                    </div>
-                    <div className="stat-item">
-                      <span className="stat-value">{filteredAnalytics.totalSessions}</span>
-                      <span className="stat-label">sessions</span>
+                    {/* Stats Cards - right side */}
+                    <div className="overview-stats-column">
+                      <div className="overview-stat-card">
+                        <span className="overview-stat-label">messages</span>
+                        <span className="overview-stat-value">{formatNumber(filteredAnalytics.totalMessages)}</span>
+                      </div>
+                      <div className="overview-stat-card">
+                        <span className="overview-stat-label">tokens</span>
+                        <span className="overview-stat-value">{formatNumber(filteredAnalytics.totalTokens)}</span>
+                      </div>
+                      <div className="overview-stat-card">
+                        <span className="overview-stat-label">cost</span>
+                        <span className="overview-stat-value">{formatCost(filteredAnalytics.totalCost)}</span>
+                      </div>
+                      <div className="overview-stat-card">
+                        <span className="overview-stat-label">sessions</span>
+                        <span className="overview-stat-value">{filteredAnalytics.totalSessions}</span>
+                      </div>
                     </div>
                   </div>
 
