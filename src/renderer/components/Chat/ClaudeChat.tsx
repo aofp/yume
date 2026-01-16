@@ -394,8 +394,7 @@ export const ClaudeChat: React.FC = () => {
   const SCROLL_COOLDOWN_MS = 5000; // 5 seconds cooldown after user scrolls up
   const pendingFollowupRef = useRef<{ sessionId: string; content: string; attachments: Attachment[]; timeoutId?: NodeJS.Timeout } | null>(null);
 
-  // macOS focus sentinel - tracks when textarea was last focused to detect glitch focus loss
-  const lastFocusTimestampRef = useRef<number>(0);
+  // macOS focus - only tracks window focus state now (aggressive auto-focus disabled)
   const windowFocusedRef = useRef<boolean>(true);
 
   // Use shallow comparison to prevent re-renders when object references change
@@ -1024,105 +1023,52 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
 
-  // GLOBAL FOCUS COOLDOWN: Prevents rapid-fire focus() calls that confuse WKWebView
-  // All focus restoration systems share this cooldown
-  const lastFocusRestorationRef = useRef<number>(0);
-  const FOCUS_COOLDOWN_MS = 300; // Minimum time between focus() calls
-
-  const tryRestoreFocus = useCallback((source: string) => {
-    const now = Date.now();
-    const timeSinceLastRestore = now - lastFocusRestorationRef.current;
-
-    // Enforce cooldown between focus restorations
-    if (timeSinceLastRestore < FOCUS_COOLDOWN_MS) {
-      return false;
-    }
-
-    if (!inputRef.current || !document.hasFocus()) return false;
-    if (document.activeElement === inputRef.current) return false;
-
-    // Skip if user is selecting text
-    const selection = window.getSelection();
-    if (selection && selection.toString().length > 0) return false;
-
-    // Skip if any modal is open
-    if (document.querySelector('.modal-overlay') ||
-        document.querySelector('.recent-modal-overlay') ||
-        document.querySelector('.projects-modal-overlay') ||
-        document.querySelector('.settings-modal-overlay') ||
-        document.querySelector('.mt-modal-overlay') ||
-        document.querySelector('[role="dialog"]') ||
-        showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return false;
-
-    // Skip if session is read-only or context is almost full (>95%)
-    const totalTokens = currentSession?.analytics?.tokens?.total || 0;
-    const isContextFull = (totalTokens / 200000 * 100) > 95;
-    if (currentSession?.readOnly || isContextFull) return false;
-
-    // Skip if active element is another input/editable
-    const activeEl = document.activeElement;
-    if (activeEl instanceof HTMLInputElement ||
-        (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
-        (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
-
-    // Skip if focus is on a button or clickable element (user is interacting)
-    if (activeEl instanceof HTMLButtonElement ||
-        activeEl instanceof HTMLAnchorElement ||
-        (activeEl instanceof HTMLElement && activeEl.getAttribute('role') === 'button')) return false;
-
-    // All checks passed - restore focus
-    lastFocusRestorationRef.current = now;
-    inputRef.current.focus();
-    return true;
-  }, [currentSession?.analytics?.tokens?.total, currentSession?.readOnly, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
-
-  // macOS focus sentinel: Smart focus restoration that detects WKWebView focus loss
-  // Key insight: when focus goes to document.body, it's ALWAYS a bug, not user intent
-  // Users click on specific elements (buttons, inputs, etc), never on body directly
+  // macOS focus sentinel: Gentle focus restoration for WKWebView bugs
+  // Only restore focus on specific events, not constantly polling
   useEffect(() => {
     if (!isMac) return;
 
-    // Focus out handler - detect when textarea loses focus
-    const handleFocusOut = (e: FocusEvent) => {
-      if (e.target !== inputRef.current) return;
+    const canRestoreFocus = () => {
+      if (!inputRef.current || !document.hasFocus()) return false;
+      if (document.activeElement === inputRef.current) return false;
 
-      // Check after a small delay where focus actually went
-      setTimeout(() => {
-        // If focus went to body, it's a WKWebView glitch - restore it
-        // This catches focus loss that happens during state updates, DOM changes, etc.
-        if (document.activeElement === document.body || document.activeElement === document.documentElement) {
-          tryRestoreFocus('body-focus-guard');
-        }
-      }, 50);
+      // Skip if user is selecting text
+      const selection = window.getSelection();
+      if (selection && selection.toString().length > 0) return false;
+
+      // Skip if any modal is open
+      if (document.querySelector('.modal-overlay') ||
+          document.querySelector('.recent-modal-overlay') ||
+          document.querySelector('.projects-modal-overlay') ||
+          document.querySelector('.settings-modal-overlay') ||
+          document.querySelector('.mt-modal-overlay') ||
+          document.querySelector('[role="dialog"]')) return false;
+
+      // Skip if active element is another input/editable
+      const activeEl = document.activeElement;
+      if (activeEl instanceof HTMLInputElement ||
+          (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
+          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
+
+      // Skip if focus is on a button or clickable element
+      if (activeEl instanceof HTMLButtonElement ||
+          activeEl instanceof HTMLAnchorElement ||
+          (activeEl instanceof HTMLElement && activeEl.getAttribute('role') === 'button')) return false;
+
+      return true;
     };
 
-    // Focus in handler - track when textarea gains focus
-    const handleFocusIn = (e: FocusEvent) => {
-      if (e.target === inputRef.current) {
-        lastFocusTimestampRef.current = Date.now();
-      }
-    };
-
-    // Window visibility change - restore focus when window becomes visible
-    const handleVisibilityChange = () => {
-      if (!document.hidden) {
-        // Longer delay for visibility change - let everything settle
-        setTimeout(() => {
-          tryRestoreFocus('visibility-change');
-        }, 200);
-      }
-    };
-
-    // Listen for Tauri window-focus-change event
+    // Only restore focus when window regains focus (not on every visibility change)
     let cleanupWindowFocus: (() => void) | null = null;
     import('@tauri-apps/api/event').then(({ listen }) => {
       listen<boolean>('window-focus-change', (event) => {
         windowFocusedRef.current = event.payload;
-        if (event.payload) {
-          // Window gained focus - restore textarea focus with delay
-          // to let WKWebView settle its internal state
+        if (event.payload && canRestoreFocus()) {
+          // Delay to let WKWebView settle
           setTimeout(() => {
-            tryRestoreFocus('window-focus-change');
+            if (canRestoreFocus()) {
+              inputRef.current?.focus();
+            }
           }, 150);
         }
       }).then(unlisten => {
@@ -1132,32 +1078,12 @@ export const ClaudeChat: React.FC = () => {
       // Not in Tauri environment
     });
 
-    document.addEventListener('focusin', handleFocusIn, true);
-    document.addEventListener('focusout', handleFocusOut, true);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
-      document.removeEventListener('focusin', handleFocusIn, true);
-      document.removeEventListener('focusout', handleFocusOut, true);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (cleanupWindowFocus) cleanupWindowFocus();
     };
-  }, [isMac, tryRestoreFocus]);
+  }, [isMac]);
 
-  // macOS periodic focus guard: Catches focus loss that slips through event handlers
-  // Runs constantly (not just during streaming) since focus loss can happen anytime
-  useEffect(() => {
-    if (!isMac) return;
-
-    // Check every 500ms - if focus is on body, it's always wrong
-    const focusGuard = setInterval(() => {
-      if (document.activeElement === document.body || document.activeElement === document.documentElement) {
-        tryRestoreFocus('periodic-guard');
-      }
-    }, 500);
-
-    return () => clearInterval(focusGuard);
-  }, [isMac, tryRestoreFocus]);
+  // No periodic focus guard - that was too aggressive
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {
@@ -3900,10 +3826,17 @@ export const ClaudeChat: React.FC = () => {
         setInput(newValue);
         setCommandTrigger(null);
 
-        // Auto-send commands (click or enter always sends now)
-        setTimeout(() => {
-          handleSend();
-        }, 0);
+        // Only auto-send if submitAfter is true (Enter key, not click/Tab)
+        if (submitAfter) {
+          setTimeout(() => {
+            handleSend();
+          }, 0);
+        } else {
+          // Focus input after fill-in so user can continue typing or press Enter
+          setTimeout(() => {
+            inputRef.current?.focus();
+          }, 0);
+        }
       }
     }
   };

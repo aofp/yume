@@ -45,7 +45,7 @@ interface Command {
 // Built-in commands
 const builtInCommands: Command[] = [
   { name: 'clear', description: 'clear context and start fresh', icon: <IconWashDrycleanOff size={14} />, handleLocally: true },
-  { name: 'model', description: 'switch model (opus/sonnet)', icon: <IconBolt size={14} />, handleLocally: true },
+  { name: 'model', description: 'select model & tools', icon: <IconBolt size={14} />, handleLocally: true },
   { name: 'title', description: 'set tab title manually', icon: <IconPencil size={14} />, handleLocally: true },
   { name: 'init', description: 'create/update claude.md file', icon: <IconSettings size={14} />, handleLocally: false },
   { name: 'compact', description: 'compress context to reduce token usage', icon: <IconArrowsDiagonalMinimize2 size={14} />, handleLocally: false },
@@ -251,7 +251,10 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
           <div
             key={cmd.name}
             className={`command-item ${index === selectedIndex ? 'selected' : ''}`}
-            onClick={() => handleSelect(cmd, true)}
+            onMouseDown={(e) => {
+              e.preventDefault(); // Prevent focus loss from textarea
+              handleSelect(cmd, false);
+            }}
             onMouseEnter={() => setSelectedIndex(index)}
           >
             <span className="command-icon">{cmd.icon}</span>
@@ -268,8 +271,9 @@ export const CommandAutocomplete: React.FC<CommandAutocompleteProps> = ({
         ))}
       </div>
       <div className="command-footer">
-        <span className="command-hint">↑↓ navigate</span>
-        <span className="command-hint">tab/enter select</span>
+        <span className="command-hint">↑↓ nav</span>
+        <span className="command-hint">tab fill</span>
+        <span className="command-hint">enter send</span>
         <span className="command-hint">esc close</span>
       </div>
     </div>

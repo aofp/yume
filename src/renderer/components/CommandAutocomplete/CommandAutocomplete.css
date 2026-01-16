@@ -6,7 +6,7 @@
   z-index: 10000;
   left: 4px;
   right: 80px;
-  max-height: 320px;
+  max-height: min(320px, 50vh);
   display: flex;
   flex-direction: column;
   font-family: var(--font-mono);
