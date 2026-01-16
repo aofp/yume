@@ -89,10 +89,10 @@ class CompactionService {
   async updateContextUsage(sessionId: string, usagePercentage: number): Promise<void> {
     if (isDev) console.log(`[Compaction] updateContextUsage called: ${usagePercentage.toFixed(2)}% for session ${sessionId}`);
 
-    // Check if auto-compact is enabled (defaults to true if undefined)
+    // Check if auto-compact is enabled - use !== true for extra safety
     const store = useClaudeCodeStore.getState();
-    if (store.autoCompactEnabled === false) {
-      if (isDev) console.log('[Compaction] Auto-compact disabled, skipping');
+    if (store.autoCompactEnabled !== true) {
+      if (isDev) console.log(`[Compaction] Auto-compact not enabled (value: ${store.autoCompactEnabled}), skipping`);
       return;
     }
 
@@ -185,9 +185,9 @@ class CompactionService {
 
     const store = useClaudeCodeStore.getState();
 
-    // Guard: Don't trigger if auto-compact is disabled
-    if (store.autoCompactEnabled === false) {
-      if (isDev) console.log('[Compaction] Auto-compact disabled, not setting pending flag');
+    // Guard: Don't trigger if auto-compact is not enabled - use !== true for safety
+    if (store.autoCompactEnabled !== true) {
+      if (isDev) console.log(`[Compaction] Auto-compact not enabled (value: ${store.autoCompactEnabled}), not setting pending flag`);
       await invoke('reset_compaction_flags', { sessionId });
       return;
     }
@@ -234,10 +234,10 @@ class CompactionService {
   async executeAutoCompaction(sessionId: string, pendingUserMessage: string): Promise<void> {
     if (isDev) console.log('[Compaction] executeAutoCompaction called for session:', sessionId);
 
-    // Check if auto-compact is enabled
+    // Check if auto-compact is enabled - use !== true for safety
     const store = useClaudeCodeStore.getState();
-    if (store.autoCompactEnabled === false) {
-      if (isDev) console.log('[Compaction] Auto-compact disabled, clearing pending flag and skipping');
+    if (store.autoCompactEnabled !== true) {
+      if (isDev) console.log(`[Compaction] Auto-compact not enabled (value: ${store.autoCompactEnabled}), clearing pending flag and skipping`);
       store.updateCompactionState(sessionId, { pendingAutoCompact: false });
       return;
     }

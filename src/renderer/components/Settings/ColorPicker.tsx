@@ -45,7 +45,7 @@ const POSITIVE_PRESETS = [
 // Negative presets (from themes + similar reds/pinks)
 const NEGATIVE_PRESETS = [
   // Row 1: Theme negatives (yume, slate, arctic, pulse, iota, bourbon, burnt, rose, cobalt, ochre)
-  ['#ff9999', '#e06c75', '#e27878', '#f25d7a', '#ec4899', '#df8383', '#fd8b8b', '#f47676', '#ef5350', '#cc241d'],
+  ['#ff9999', '#e06c75', '#e27878', '#f25d7a', '#ff74b9', '#df8383', '#fd8b8b', '#f47676', '#ef5350', '#cc241d'],
   // Row 2: More theme negatives + variations (void, grove, similar reds)
   ['#d09b9b', '#e67e80', '#f87171', '#fb7185', '#f472b6', '#ef4444', '#df2d53', '#dc2626', '#f43f5e', '#be123c']
 ];

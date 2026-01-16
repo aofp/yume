@@ -1,7 +1,15 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { PROVIDERS, type ProviderType } from '../../config/models';
 import { useEnabledProviders } from '../../hooks/useEnabledProviders';
+import { FEATURE_FLAGS } from '../../config/features';
 import './ProviderSelector.css';
+
+// check if a provider is available based on feature flags
+function isProviderAvailable(providerId: ProviderType): boolean {
+  if (providerId === 'gemini') return FEATURE_FLAGS.PROVIDER_GEMINI_AVAILABLE;
+  if (providerId === 'openai') return FEATURE_FLAGS.PROVIDER_OPENAI_AVAILABLE;
+  return true; // claude always available
+}
 
 interface ProviderSelectorProps {
   value: ProviderType;
@@ -17,9 +25,11 @@ export const ProviderSelector: React.FC<ProviderSelectorProps> = ({
   const [isOpen, setIsOpen] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Get enabled providers
+  // Get enabled providers - also filter by feature flag availability
   const enabledProviders = useEnabledProviders();
-  const availableProviders = PROVIDERS.filter((p) => enabledProviders[p.id]);
+  const availableProviders = PROVIDERS.filter(
+    (p) => enabledProviders[p.id] && isProviderAvailable(p.id)
+  );
 
   // If only one provider, don't show selector
   if (availableProviders.length <= 1) {

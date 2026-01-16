@@ -684,6 +684,7 @@ export class TauriClaudeClient {
           num_turns: message.num_turns,
           model: model,
           session_id: message.session_id,
+          timestamp: Date.now(), // CRITICAL: needed for elapsed time fallback calculation
           // CRITICAL: Preserve wrapper metadata from processWrapperMessage
           wrapper: message.wrapper,
           wrapper_tokens: message.wrapper_tokens,

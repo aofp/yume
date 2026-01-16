@@ -4,7 +4,15 @@
  */
 
 import { PROVIDERS, type ProviderType } from '../config/models';
+import { FEATURE_FLAGS } from '../config/features';
 import { invoke } from './tauriApi';
+
+// check if a provider is available based on feature flags
+function isProviderFeatureAvailable(providerId: ProviderType): boolean {
+  if (providerId === 'gemini') return FEATURE_FLAGS.PROVIDER_GEMINI_AVAILABLE;
+  if (providerId === 'openai') return FEATURE_FLAGS.PROVIDER_OPENAI_AVAILABLE;
+  return true; // claude always available
+}
 
 const STORAGE_KEY = 'yume_enabled_providers';
 type EnabledProvidersListener = () => void;
@@ -35,18 +43,27 @@ const DEFAULT_ENABLED_PROVIDERS: EnabledProviders = PROVIDERS.reduce<EnabledProv
 
 /**
  * Get enabled providers from localStorage
+ * Respects feature flags - unavailable providers are forced off
  */
 export function getEnabledProviders(): EnabledProviders {
+  let result: EnabledProviders;
   try {
     const stored = localStorage.getItem(STORAGE_KEY);
     if (stored) {
-      return JSON.parse(stored);
+      result = JSON.parse(stored);
+    } else {
+      result = { ...DEFAULT_ENABLED_PROVIDERS };
     }
   } catch (e) {
     console.error('Failed to load enabled providers:', e);
+    result = { ...DEFAULT_ENABLED_PROVIDERS };
   }
 
-  return DEFAULT_ENABLED_PROVIDERS;
+  // force unavailable providers off
+  if (!isProviderFeatureAvailable('gemini')) result.gemini = false;
+  if (!isProviderFeatureAvailable('openai')) result.openai = false;
+
+  return result;
 }
 
 function notifyEnabledProviders(): void {
@@ -112,13 +129,13 @@ export async function ensureProviderDefaults(): Promise<void> {
     const previouslyDetected = getDetectedProviders();
     const current = getEnabledProviders();
 
-    // Auto-enable newly detected providers
+    // Auto-enable newly detected providers (only if feature flag allows)
     let updated = false;
-    if (support.gemini && !previouslyDetected.gemini) {
+    if (support.gemini && !previouslyDetected.gemini && isProviderFeatureAvailable('gemini')) {
       current.gemini = true;
       updated = true;
     }
-    if (support.openai && !previouslyDetected.openai) {
+    if (support.openai && !previouslyDetected.openai && isProviderFeatureAvailable('openai')) {
       current.openai = true;
       updated = true;
     }

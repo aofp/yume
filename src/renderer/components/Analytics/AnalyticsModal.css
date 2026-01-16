@@ -433,17 +433,15 @@
   background: none;
   padding: 0;
   border: none;
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .model-stat.compact .model-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  grid-column: 1 / -1;
 }
 
 .model-stat.compact .model-name {
@@ -459,6 +457,7 @@
 }
 
 .model-stat.compact .model-bar {
+  width: 100%;
   height: 4px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 2px;
@@ -467,7 +466,6 @@
 .model-stat.compact .model-tokens {
   font-size: 10px;
   color: #666;
-  text-align: right;
 }
 
 .model-name {
@@ -512,17 +510,15 @@
 }
 
 .provider-stat.compact {
-  display: grid;
-  grid-template-columns: 1fr auto;
-  gap: 6px;
-  align-items: center;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .provider-stat.compact .provider-info {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  grid-column: 1 / -1;
 }
 
 .provider-stat.compact .provider-name {
@@ -531,13 +527,13 @@
   text-transform: capitalize;
 }
 
-.provider-stat.compact .provider-cost {
+.provider-stat.compact .provider-tokens {
   font-size: 10px;
-  color: var(--accent-color);
-  opacity: 0.7;
+  color: #666;
 }
 
 .provider-stat.compact .provider-bar {
+  width: 100%;
   height: 4px;
   background: rgba(255, 255, 255, 0.06);
   border-radius: 2px;
@@ -549,12 +545,6 @@
   background: var(--accent-color);
   opacity: 0.6;
   border-radius: 2px;
-}
-
-.provider-stat.compact .provider-tokens {
-  font-size: 10px;
-  color: #666;
-  text-align: right;
 }
 
 /* Token Details Collapsible */

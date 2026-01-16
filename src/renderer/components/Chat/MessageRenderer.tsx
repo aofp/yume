@@ -2100,21 +2100,19 @@ const MessageRendererBase: React.FC<{
               <div className="message-content">
                 <div className={`message-bubble${followsBashCommand ? ' bash-response' : ''}`}>
                   {followsBashCommand ? (
-                    <>
-                      <pre className="bash-output-content">{typeof textContent === 'string' ? textContent : getMessageText(textContent)}</pre>
-                      {(message as any).bashElapsedMs !== undefined && (
-                        <div className="bash-elapsed-time">
-                          {(message as any).bashElapsedMs < 1000
-                            ? `${(message as any).bashElapsedMs}ms`
-                            : `${((message as any).bashElapsedMs / 1000).toFixed(2)}s`}
-                        </div>
-                      )}
-                    </>
+                    <pre className="bash-output-content">{typeof textContent === 'string' ? textContent : getMessageText(textContent)}</pre>
                   ) : (
                     renderContent(textContent, message, searchQuery, isCurrentMatch)
                   )}
                 </div>
               </div>
+              {followsBashCommand && (message as any).bashElapsedMs !== undefined && (
+                <div className="elapsed-time">
+                  {(message as any).bashElapsedMs < 1000
+                    ? `${(message as any).bashElapsedMs}ms`
+                    : `${((message as any).bashElapsedMs / 1000).toFixed(2)}s`}
+                </div>
+              )}
               {showButtons && (
                 <div className="message-actions">
                   <button

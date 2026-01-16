@@ -104,7 +104,7 @@ export const BUILT_IN_THEMES: Theme[] = [
     foregroundColor: '#ffffff',
     accentColor: '#9df5bd',
     positiveColor: '#06b6d4',
-    negativeColor: '#ec4899',
+    negativeColor: '#ff74b9',
     opacity: 1.0,
     isBuiltIn: true
   },

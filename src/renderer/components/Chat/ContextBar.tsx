@@ -164,7 +164,7 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             disabled={!workingDirectory}
             title={`files (${modKey}+e)`}
           >
-            <IconFolder size={12} stroke={1.5} />
+            <span className="btn-icon-wrapper"><IconFolder size={12} stroke={1.5} /></span>
           </button>
         )}
 
@@ -200,11 +200,13 @@ export const ContextBar: React.FC<ContextBarProps> = ({
             disabled={isReadOnly}
             title={isDictating ? 'stop dictation (F5)' : 'dictate (F5)'}
           >
-            {isDictating ? (
-              <IconMicrophone size={12} stroke={1.5} />
-            ) : (
-              <IconMicrophoneOff size={12} stroke={1.5} />
-            )}
+            <span className="btn-icon-wrapper">
+              {isDictating ? (
+                <IconMicrophone size={12} stroke={1.5} />
+              ) : (
+                <IconMicrophoneOff size={12} stroke={1.5} />
+              )}
+            </span>
           </button>
         )}
 
@@ -236,18 +238,16 @@ export const ContextBar: React.FC<ContextBarProps> = ({
           onClick={onClearRequest}
           disabled={isReadOnly || !hasActivity || isStreaming}
           title={`clear context (${modKey}+l)`}
-          style={{ opacity: (isReadOnly || !hasActivity || isStreaming) ? 0.5 : 1, pointerEvents: (isReadOnly || !hasActivity || isStreaming) ? 'none' : 'auto' }}
         >
-          <IconCancel size={12} stroke={1.5} />
+          <span className="btn-icon-wrapper"><IconCancel size={12} stroke={1.5} /></span>
         </button>
         <button
           className="btn-context-icon"
           onClick={onCompactRequest}
           disabled={isReadOnly || !hasActivity || isStreaming}
           title={`compact context (${modKey}+m)`}
-          style={{ opacity: (isReadOnly || !hasActivity || isStreaming) ? 0.5 : 1, pointerEvents: (isReadOnly || !hasActivity || isStreaming) ? 'none' : 'auto' }}
         >
-          <IconArrowsMinimize size={12} stroke={1.5} />
+          <span className="btn-icon-wrapper"><IconArrowsMinimize size={12} stroke={1.5} /></span>
         </button>
         <div className="btn-stats-container">
           <button

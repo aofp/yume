@@ -13,7 +13,15 @@ import { SystemPromptSelector } from './SystemPromptSelector';
 import { ProviderCliSelector } from './ProviderCliSelector';
 import { ProviderSystemPromptSelector } from './ProviderSystemPromptSelector';
 import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
+import { FEATURE_FLAGS } from '../../config/features';
 import './ProvidersTab.css';
+
+// check if a provider is available based on feature flags
+function isProviderAvailable(providerId: ProviderType): boolean {
+  if (providerId === 'gemini') return FEATURE_FLAGS.PROVIDER_GEMINI_AVAILABLE;
+  if (providerId === 'openai') return FEATURE_FLAGS.PROVIDER_OPENAI_AVAILABLE;
+  return true; // claude always available
+}
 
 interface CliStatus {
   installed: boolean;
@@ -111,24 +119,26 @@ export const ProvidersTab: React.FC = () => {
 
           <div className="providers-grid">
             {PROVIDERS.map((provider) => {
+              const available = isProviderAvailable(provider.id);
               const enabled = enabledProviders[provider.id];
               const status = cliStatuses[provider.id];
               const enabledCount = getEnabledProviderCount();
               const isLastEnabled = enabled && enabledCount <= 1;
-              const canToggle = (enabled && !isLastEnabled) || (!enabled && status.installed);
-              const isDisabled = !status.installed && !enabled;
+              const canToggle = available && ((enabled && !isLastEnabled) || (!enabled && status.installed));
+              const isDisabled = !available || (!status.installed && !enabled);
 
               return (
                 <div
                   key={provider.id}
                   className={`provider-card ${enabled ? 'enabled' : ''} ${isDisabled ? 'disabled-state' : ''}`}
+                  style={!available ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
                 >
                   <div className="provider-card-left">
                     <span className="provider-card-name">{provider.name}</span>
                   </div>
 
                   <div className="provider-card-right">
-                    {status.installed && (
+                    {available && status.installed && (
                       <span className="provider-status installed">
                         <IconCheck size={10} />
                       </span>
@@ -137,7 +147,7 @@ export const ProvidersTab: React.FC = () => {
                     <div
                       className={`toggle-switch compact ${enabled ? 'active' : ''} ${!canToggle ? 'disabled' : ''} ${isLastEnabled ? 'last-enabled' : ''}`}
                       onClick={() => canToggle && handleToggle(provider.id)}
-                      style={isLastEnabled ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
+                      style={isLastEnabled || !available ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>
@@ -148,6 +158,13 @@ export const ProvidersTab: React.FC = () => {
               );
             })}
           </div>
+
+          {/* Show message when gemini/openai are unavailable */}
+          {(!FEATURE_FLAGS.PROVIDER_GEMINI_AVAILABLE || !FEATURE_FLAGS.PROVIDER_OPENAI_AVAILABLE) && (
+            <div className="provider-unavailable-notice">
+              gemini and codex integration under development
+            </div>
+          )}
         </div>
 
         {/* Right column: Provider options */}

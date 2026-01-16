@@ -15,7 +15,7 @@
 
 .mt-modal {
   background: var(--background-color, #0f0f0f);
-  border: 1px solid var(--fg-15);
+  border: 1px solid var(--fg-20);
   border-radius: 8px;
   width: 90%;
   max-width: 320px;
@@ -28,7 +28,7 @@
   justify-content: space-between;
   align-items: center;
   padding: 6px 10px;
-  border-bottom: 1px solid var(--fg-15);
+  border-bottom: 1px solid var(--fg-20);
   cursor: default;
 }
 
@@ -90,6 +90,11 @@
   opacity: 0.4;
 }
 
+.mt-provider-text.no-collapse {
+  pointer-events: none;
+  opacity: 0.5;
+}
+
 .mt-provider-models {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -103,14 +108,14 @@
   gap: 4px;
   margin-bottom: 8px;
   padding-bottom: 8px;
-  border-bottom: 1px solid var(--fg-10);
+  border-bottom: 1px solid var(--fg-20);
   overflow-x: auto;
   scrollbar-width: none;
 }
 
 .mt-provider-tab {
   background: transparent;
-  border: 1px solid var(--fg-15);
+  border: 1px solid var(--fg-20);
   color: var(--fg-40);
   font-size: var(--text-xs);
   padding: 4px 8px;
@@ -147,7 +152,7 @@
 
 .mt-model-btn {
   background: transparent;
-  border: 1px solid var(--fg-15);
+  border: 1px solid var(--fg-20);
   color: var(--fg-50);
   font-size: var(--text-sm);
   padding: 5px 8px;
@@ -222,7 +227,7 @@
 
 .mt-divider {
   border: none;
-  border-top: 1px solid var(--fg-10);
+  border-top: 1px solid var(--fg-20);
   margin: 10px 0;
 }
 
@@ -308,7 +313,7 @@
 
 .mt-tool {
   background: transparent;
-  border: 1px solid var(--fg-15);
+  border: 1px solid var(--fg-20);
   color: var(--fg-40);
   font-size: var(--text-xs);
   padding: 2px 5px;

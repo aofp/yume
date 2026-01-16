@@ -395,15 +395,19 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
                 const anyEnabled = Object.values(enabledProviders).some(v => v);
                 if (!anyEnabled && p.id === 'claude') return true;
                 return false;
-              }).map((provider) => {
+              }).map((provider, _idx, filteredProviders) => {
                 const providerModels = ALL_MODELS.filter(m => m.provider === provider.id);
                 const isCollapsed = collapsedProviders.has(provider.id);
                 const isDisabled = !enabledProviders[provider.id];
+                const selectedModelProvider = ALL_MODELS.find(m => m.id === selectedModel)?.provider;
+                const hasSelectedModel = provider.id === selectedModelProvider;
+                const isOnlyProvider = filteredProviders.length === 1;
+                const canCollapse = !hasSelectedModel && !isOnlyProvider && !isDisabled;
                 return (
                   <div key={provider.id} className={`mt-provider-block ${isDisabled ? 'disabled' : ''}`}>
                     <span
-                      className={`mt-provider-text ${isCollapsed ? '' : 'active'}`}
-                      onClick={() => !isDisabled && toggleProviderCollapse(provider.id)}
+                      className={`mt-provider-text ${isCollapsed ? '' : 'active'} ${!canCollapse ? 'no-collapse' : ''}`}
+                      onClick={() => canCollapse && toggleProviderCollapse(provider.id)}
                     >
                       {provider.name}
                     </span>

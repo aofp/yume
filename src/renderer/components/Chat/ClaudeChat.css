@@ -1462,7 +1462,7 @@ textarea.context-full {
 .btn-clear-context, .btn-stats, .btn-help, .btn-dictation, .btn-context-menu, .btn-context-icon {
   background: transparent;
   border: 1px solid var(--fg-20);
-  color: var(--fg-60);
+  color: var(--foreground-color);
   padding: 3px 8px;
   border-radius: 4px;
   font-size: var(--text-sm);
@@ -1470,6 +1470,23 @@ textarea.context-full {
   text-transform: lowercase;
   cursor: default;
   line-height: 9pt;
+}
+
+.btn-icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.6;
+}
+
+.btn-context-icon:hover:not(:disabled) .btn-icon-wrapper,
+.btn-context-icon.active .btn-icon-wrapper,
+.btn-context-icon.dictating .btn-icon-wrapper {
+  opacity: 1;
+}
+
+.btn-context-icon:disabled .btn-icon-wrapper {
+  opacity: 0.2;
 }
 
 .btn-context-icon {
@@ -1526,7 +1543,6 @@ textarea.context-full {
   align-items: center;
   justify-content: center;
   padding: 2px 7px;
-  color: var(--fg-40);
   position: absolute;
   left: 50%;
   transform: translateX(-50%);
@@ -1548,9 +1564,8 @@ textarea.context-full {
 }
 
 .btn-dictation:disabled, .btn-context-icon:disabled {
-  color: var(--fg-40);
+  border-color: var(--fg-10);
   cursor: default;
-  opacity: 0.3;
 }
 
 @keyframes pulse {
@@ -1563,7 +1578,7 @@ textarea.context-full {
 }
 
 .btn-clear-context:disabled {
-  opacity: 0.3 !important;
+  border-color: var(--fg-10) !important;
   cursor: default !important;
 }
 
@@ -1575,7 +1590,7 @@ textarea.context-full {
 
 .btn-help-icon {
   background: transparent;
-  border: 1px solid var(--fg-15);
+  border: 1px solid var(--fg-20);
   color: var(--fg-40);
   padding: 6px;
   border-radius: 4px;
@@ -2846,7 +2861,7 @@ textarea.context-full {
   gap: 4px;
   padding: 4px 8px;
   background: transparent;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid var(--fg-20);
   border-radius: 2px;
   color: #666;
   font-size: var(--text-sm);

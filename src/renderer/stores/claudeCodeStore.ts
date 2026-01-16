@@ -3281,8 +3281,10 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
         const sessionForCompact = get().sessions.find(s => s.id === currentSessionId);
         if (sessionForCompact?.compactionState?.pendingAutoCompact && !content.startsWith('/compact')) {
           // Double-check auto-compact is still enabled before executing
-          if (get().autoCompactEnabled === false) {
-            console.log('[Store] 🗜️ Pending auto-compact detected but auto-compact disabled - clearing flag');
+          // Use !== true to be extra safe - only proceed if explicitly enabled
+          const autoCompactEnabled = get().autoCompactEnabled;
+          if (autoCompactEnabled !== true) {
+            console.log(`[Store] 🗜️ Pending auto-compact detected but auto-compact not enabled (value: ${autoCompactEnabled}) - clearing flag`);
             get().updateCompactionState(currentSessionId, { pendingAutoCompact: false });
           } else {
             console.log('[Store] 🗜️ Pending auto-compact detected - compacting before sending user message');
@@ -5051,9 +5053,10 @@ ${content}`;
                   // Use the tracked tokens, not the cumulative API values
                   if (contextPercentage >= 55 && trackedContextTokens > 0) {
                     // Check if auto-compact is enabled before triggering any compaction logic
+                    // Use !== true for extra safety - only proceed if explicitly enabled
                     const autoCompactEnabled = get().autoCompactEnabled;
-                    if (autoCompactEnabled === false) {
-                      console.log(`🗜️ [COMPACTION] Auto-compact disabled, skipping check at ${contextPercentage.toFixed(2)}%`);
+                    if (autoCompactEnabled !== true) {
+                      console.log(`🗜️ [COMPACTION] Auto-compact not enabled (value: ${autoCompactEnabled}), skipping check at ${contextPercentage.toFixed(2)}%`);
                     } else {
                       console.log(`🗜️ [COMPACTION] Checking auto-compact in addMessageToSession: ${contextPercentage.toFixed(2)}% (${trackedContextTokens} tracked tokens)`);
                       import('../services/compactionService').then(({ compactionService }) => {
@@ -5565,6 +5568,19 @@ ${content}`;
         set({ autoCompactEnabled: enabled });
         localStorage.setItem(AUTO_COMPACT_ENABLED_KEY, JSON.stringify(enabled));
         console.log('[Store] Auto-compact enabled:', enabled);
+
+        // When disabling auto-compact, clear all pending auto-compact flags
+        // This prevents any queued compaction from triggering
+        if (!enabled) {
+          console.log('[Store] Clearing all pendingAutoCompact flags');
+          set(state => ({
+            sessions: state.sessions.map(s =>
+              s.compactionState?.pendingAutoCompact
+                ? { ...s, compactionState: { ...s.compactionState, pendingAutoCompact: false } }
+                : s
+            )
+          }));
+        }
       },
 
       setShowProjectsMenu: (show: boolean) => {

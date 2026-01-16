@@ -4,7 +4,15 @@ import { claudeCodeClient } from '../../services/claudeCodeClient';
 import { LoadingIndicator } from '../LoadingIndicator/LoadingIndicator';
 import { TabButton } from '../common/TabButton';
 import { ALL_MODELS, PROVIDERS, type ProviderType } from '../../config/models';
+import { FEATURE_FLAGS } from '../../config/features';
 import './AnalyticsModal.css';
+
+// filter providers based on feature flags
+const AVAILABLE_PROVIDERS = PROVIDERS.filter(p => {
+  if (p.id === 'gemini') return FEATURE_FLAGS.PROVIDER_GEMINI_AVAILABLE;
+  if (p.id === 'openai') return FEATURE_FLAGS.PROVIDER_OPENAI_AVAILABLE;
+  return true; // claude always available
+});
 
 interface AnalyticsModalProps {
   isOpen: boolean;
@@ -163,9 +171,9 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
   const [error, setError] = useState<string | null>(null);
   const [timeRange, setTimeRange] = useState<'7d' | '14d' | '30d' | '90d'>('7d');
 
-  // Provider filter - default all providers selected (to show all models used)
+  // Provider filter - default only available providers selected
   const [selectedProviders, setSelectedProviders] = useState<Set<ProviderType>>(
-    new Set(PROVIDERS.map(p => p.id))
+    new Set(AVAILABLE_PROVIDERS.map(p => p.id))
   );
 
   // Tab state for Overview vs Projects
@@ -512,18 +520,20 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
             <TabButton label="30d" active={timeRange === '30d'} onClick={() => setTimeRange('30d')} />
             <TabButton label="90d" active={timeRange === '90d'} onClick={() => setTimeRange('90d')} />
           </div>
-          <div className="provider-filter">
-            {PROVIDERS.map(provider => (
-              <button
-                key={provider.id}
-                className={`provider-pill ${isProviderSelected(provider.id) ? 'active' : ''}`}
-                onClick={() => toggleProvider(provider.id)}
-                title={`${isProviderSelected(provider.id) ? 'hide' : 'show'} ${provider.name} data`}
-              >
-                {provider.name.toLowerCase()}
-              </button>
-            ))}
-          </div>
+          {AVAILABLE_PROVIDERS.length > 1 && (
+            <div className="provider-filter">
+              {AVAILABLE_PROVIDERS.map(provider => (
+                <button
+                  key={provider.id}
+                  className={`provider-pill ${isProviderSelected(provider.id) ? 'active' : ''}`}
+                  onClick={() => toggleProvider(provider.id)}
+                  title={`${isProviderSelected(provider.id) ? 'hide' : 'show'} ${provider.name} data`}
+                >
+                  {provider.name.toLowerCase()}
+                </button>
+              ))}
+            </div>
+          )}
         </div>
 
         <div className="analytics-content">
@@ -624,7 +634,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                                 <div key={modelKey} className="model-stat compact">
                                   <div className="model-info">
                                     <span className="model-name">{displayName}</span>
-                                    <span className="model-cost">{formatCost(stats.cost)}</span>
+                                    <span className="model-tokens">{formatNumber(stats.tokens)} · {formatCost(stats.cost)}</span>
                                   </div>
                                   <div className="model-bar">
                                     <div
@@ -632,7 +642,6 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                                       style={{ width: `${percentage}%` }}
                                     />
                                   </div>
-                                  <span className="model-tokens">{formatNumber(stats.tokens)}</span>
                                 </div>
                               );
                             })}
@@ -640,16 +649,16 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                       </div>
                     )}
 
-                    {/* Provider Usage */}
-                    {filteredAnalytics.byProvider && (
+                    {/* Provider Usage - only show if multiple providers available */}
+                    {filteredAnalytics.byProvider && AVAILABLE_PROVIDERS.length > 1 && (
                       <div className="breakdown-section">
                         <h3>providers</h3>
                         <div className="provider-breakdown compact">
-                          {(['claude', 'openai', 'gemini'] as const)
+                          {AVAILABLE_PROVIDERS.map(p => p.id)
                             .filter(provider => isProviderSelected(provider))
                             .map(provider => {
                               const stats = filteredAnalytics.byProvider?.[provider];
-                              const totalTokens = (['claude', 'openai', 'gemini'] as const)
+                              const totalTokens = AVAILABLE_PROVIDERS.map(p => p.id)
                                 .filter(p => isProviderSelected(p))
                                 .reduce((sum, p) => sum + (filteredAnalytics.byProvider?.[p]?.tokens || 0), 0);
                               const percentage = totalTokens > 0 ? ((stats?.tokens || 0) / totalTokens * 100) : 0;
@@ -658,7 +667,7 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                                 <div key={provider} className="provider-stat compact">
                                   <div className="provider-info">
                                     <span className="provider-name">{provider === 'openai' ? 'codex' : provider}</span>
-                                    <span className="provider-cost">{formatCost(stats?.cost || 0)}</span>
+                                    <span className="provider-tokens">{formatNumber(stats?.tokens || 0)} · {formatCost(stats?.cost || 0)}</span>
                                   </div>
                                   <div className="provider-bar">
                                     <div
@@ -666,7 +675,6 @@ export const AnalyticsModal: React.FC<AnalyticsModalProps> = ({ isOpen, onClose,
                                       style={{ width: `${percentage}%` }}
                                     />
                                   </div>
-                                  <span className="provider-tokens">{formatNumber(stats?.tokens || 0)}</span>
                                 </div>
                               );
                             })}

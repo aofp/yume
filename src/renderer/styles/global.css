@@ -535,6 +535,7 @@ pre {
 svg {
   width: var(--text-sm) !important;
   height: var(--text-sm) !important;
+  vertical-align: middle;
 }
 
 #debug {
