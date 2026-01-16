@@ -110,10 +110,11 @@ pub fn locate_yume_cli_binary() -> Result<String> {
         let binary_name = format!("yume-cli-macos-{}", arch);
 
         if let Ok(exe_path) = std::env::current_exe() {
+            // Tauri bundles resources to Contents/Resources/resources/
             let resources_path = exe_path
                 .parent()
                 .and_then(|p| p.parent())
-                .map(|p| p.join("Resources").join(&binary_name));
+                .map(|p| p.join("Resources").join("resources").join(&binary_name));
 
             if let Some(path) = resources_path {
                 if path.exists() {
@@ -126,9 +127,10 @@ pub fn locate_yume_cli_binary() -> Result<String> {
     #[cfg(target_os = "windows")]
     {
         if let Ok(exe_path) = std::env::current_exe() {
+            // Tauri bundles resources to {exe_dir}/resources/
             let resources_path = exe_path
                 .parent()
-                .map(|p| p.join("yume-cli-windows-x64.exe"));
+                .map(|p| p.join("resources").join("yume-cli-windows-x64.exe"));
 
             if let Some(path) = resources_path {
                 if path.exists() {
@@ -141,7 +143,10 @@ pub fn locate_yume_cli_binary() -> Result<String> {
     #[cfg(target_os = "linux")]
     {
         if let Ok(exe_path) = std::env::current_exe() {
-            let resources_path = exe_path.parent().map(|p| p.join("yume-cli-linux-x64"));
+            // Tauri bundles resources to {exe_dir}/resources/
+            let resources_path = exe_path
+                .parent()
+                .map(|p| p.join("resources").join("yume-cli-linux-x64"));
 
             if let Some(path) = resources_path {
                 if path.exists() {
@@ -272,6 +277,7 @@ impl YumeCliSpawner {
             session_id: session_id.clone(),
             project_path: options.project_path.clone(),
             model: options.model.clone(),
+            provider: Some(options.provider.as_str().to_string()),
             streaming: true,
             run_id: Some(run_id),
         };

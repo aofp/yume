@@ -145,8 +145,9 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
       let responseText = '';
       let hasToolCalls = false;
 
-      // Buffer for partial tool call arguments
+      // Buffer for partial tool call arguments and names
       const toolCallBuffers: Map<string, string> = new Map();
+      const toolCallNames: Map<string, string> = new Map();
 
       // Wrap stream in try/catch to handle unhandled rejections
       let streamError: Error | null = null;
@@ -191,14 +192,15 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
             break;
 
           case 'tool_call_delta':
-            // Buffer partial tool call arguments
+            // Buffer partial tool call arguments and track names
             if (chunk.toolCallDelta) {
-              const current =
-                toolCallBuffers.get(chunk.toolCallDelta.id) || '';
-              toolCallBuffers.set(
-                chunk.toolCallDelta.id,
-                current + chunk.toolCallDelta.arguments
-              );
+              const id = chunk.toolCallDelta.id;
+              const current = toolCallBuffers.get(id) || '';
+              toolCallBuffers.set(id, current + (chunk.toolCallDelta.arguments || ''));
+              // Track tool name from initial delta if provided
+              if (chunk.toolCallDelta.name && !toolCallNames.has(id)) {
+                toolCallNames.set(id, chunk.toolCallDelta.name);
+              }
             }
             break;
 
@@ -247,18 +249,26 @@ export async function runAgentLoop(options: AgentLoopOptions): Promise<void> {
         break;
       }
 
-      // Process any buffered tool calls (from deltas)
-      // NOTE: This is incomplete - deltas are buffered but not fully executed yet.
-      // Full implementation would track tool names from initial delta and create proper tool calls.
+      // Process any buffered tool calls (from deltas) that weren't already in pendingToolCalls
       for (const [id, argsBuffer] of toolCallBuffers) {
+        // Skip if already processed as a complete tool_call
+        if (pendingToolCalls.some((tc) => tc.id === id)) {
+          continue;
+        }
+
+        const toolName = toolCallNames.get(id);
+        if (!toolName) {
+          logVerbose(`Warning: Tool call ${id} has no name, skipping`);
+          continue;
+        }
+
         try {
-          // Parse args to validate JSON (unused - would be used when fully implementing delta handling)
-          JSON.parse(argsBuffer);
-          // Find tool name from existing pending calls
-          const existingCall = pendingToolCalls.find((tc) => tc.id === id);
-          if (!existingCall) {
-            logVerbose(`Warning: Tool call ${id} assembled from deltas without name (not executed)`);
-          }
+          const input = JSON.parse(argsBuffer);
+          const toolCall: ToolCall = { id, name: toolName, input };
+          pendingToolCalls.push(toolCall);
+          hasToolCalls = true;
+          emitToolUse(toolCall.id, toolCall.name, toolCall.input);
+          logVerbose(`Assembled tool call from deltas: ${toolName}`);
         } catch {
           logVerbose(`Warning: Could not parse tool call arguments for ${id}`);
         }

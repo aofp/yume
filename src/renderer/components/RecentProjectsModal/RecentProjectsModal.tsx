@@ -391,7 +391,7 @@ export const RecentProjectsModal: React.FC<RecentProjectsModalProps> = ({
         className="recent-modal"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <div className="modal-header">
+        <div className="modal-header" onContextMenu={(e) => e.preventDefault()}>
           <div className="modal-title-group">
             <span className="modal-title">
               <IconFolderOpen size={14} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />

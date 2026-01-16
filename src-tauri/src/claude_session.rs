@@ -17,6 +17,9 @@ pub struct SessionInfo {
     pub project_path: String,
     /// Model being used
     pub model: String,
+    /// Provider type: "claude", "gemini", or "openai"
+    #[serde(default)]
+    pub provider: Option<String>,
     /// Whether session is currently streaming
     pub streaming: bool,
     /// Run ID in ProcessRegistry
@@ -313,6 +316,7 @@ mod tests {
             session_id: "test_session_123456789012".to_string(),
             project_path: "/test/path".to_string(),
             model: "claude-3-opus".to_string(),
+            provider: Some("claude".to_string()),
             streaming: false,
             run_id: None,
         };

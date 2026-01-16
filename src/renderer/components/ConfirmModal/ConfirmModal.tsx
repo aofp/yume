@@ -54,7 +54,7 @@ export const ConfirmModal: React.FC<ConfirmModalProps> = ({
   return (
     <div className="confirm-modal-overlay" onClick={onCancel}>
       <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="confirm-modal-header">
+        <div className="confirm-modal-header" onContextMenu={(e) => e.preventDefault()}>
           <div className="confirm-modal-title">
             {isDangerous && <IconAlertTriangle size={18} className="confirm-modal-warning-icon" />}
             <span>{title}</span>

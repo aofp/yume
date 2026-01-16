@@ -26,12 +26,15 @@ Yume is a Tauri 2.x desktop application that provides a minimal GUI for Claude C
 - Crash recovery for sessions
 - OLED black theme with pastel accents
 
-### Gemini Integration Plan (Active)
-Enable Yume to drive Google's Gemini models via a CLI-compatible shim (`yume-cli`) while preserving Claude-compatible stream-json.
+### Multi-Provider Integration
+Enable Yume to drive Google's Gemini and OpenAI's Codex models via a CLI-compatible shim (`yume-cli`) while preserving Claude-compatible stream-json.
 - **Strategy:** Spawn official CLI binaries (`gemini`, `codex`) and translate their stream-json output.
 - **Auth:** Handled by official CLIs - user must run `gemini auth login` or `codex login` separately.
 - **Shim:** `yume-cli` in `src-yume-cli/` spawns official CLIs and normalizes output.
-- **Status:** Phase 2 complete. See `docs/expansion-plan/ROADMAP.md`.
+- **Status:** COMPLETE for release. All providers (Claude, Gemini, OpenAI) work end-to-end.
+  - yume-cli binaries bundled for macOS (arm64/x64), Windows (x64), Linux (x64)
+  - Tool call delta assembly implemented for streaming tool calls
+  - Provider switch forks session (by design - no mid-conversation provider switching)
 
 ### Model Configuration (DO NOT CHANGE)
 Model IDs in `src/renderer/config/models.ts` are intentionally set and MUST NOT be modified without explicit user approval:
@@ -77,12 +80,28 @@ npm run build:server:linux     # Build Linux binary
 npm run build:server:all       # Build all platforms
 ```
 
+### yume-cli Binaries
+```bash
+npm run build:yume-cli                 # Build yume-cli (TypeScript + esbuild bundle)
+npm run build:yume-cli:binary:macos    # Build macOS binaries (arm64 + x64)
+npm run build:yume-cli:binary:win      # Build Windows binary (x64)
+npm run build:yume-cli:binary:linux    # Build Linux binary (x64)
+npm run build:yume-cli:binary:all      # Build all platforms
+```
+
 ### Utilities
 ```bash
 npm run prestart               # Kill processes on dev ports
 npm run prepare:resources      # Clean resources for target platform
 npm run minify:servers         # Minify server code
+npm run ensure:server          # Check if server binary exists, build if missing
 ```
+
+### Build System Notes
+- **46 npm scripts** total (see package.json)
+- **28 utility scripts** in `scripts/` directory
+- Server compilation: esbuild bundle → bytenode V8 bytecode → pkg binary
+- V8 bytecode protection prevents source inspection
 
 ## Architecture
 
@@ -101,71 +120,80 @@ npm run minify:servers         # Minify server code
 - `docs/` - Extended documentation (architecture, API, troubleshooting)
 - Root level `server-claude-*.cjs` - Server source files
 
-### Critical Rust Files
-- `lib.rs` - Main entry, Tauri setup
+### Critical Rust Files (32 files, 16,853 lines, 152 Tauri commands)
+- `lib.rs` - Main entry, Tauri setup, all 152 commands registered
 - `main.rs` - Executable entry point, panic handler
 - `logged_server.rs` - Node.js server process management
 - `stream_parser.rs` - Claude output stream parsing
 - `claude_spawner.rs` - Claude CLI process spawning
+- `yume_cli_spawner.rs` - Multi-provider CLI shim spawner (Gemini, OpenAI)
 - `claude_binary.rs` - Claude binary detection
 - `claude_session.rs` - Session management and ID extraction
 - `crash_recovery.rs` - Session recovery
 - `port_manager.rs` - Dynamic port allocation (20000-65000)
 - `agents.rs` - Agent system management
 - `config.rs` - Production configuration management
-- `claude/mod.rs` - ClaudeManager for session lifecycle
-- `websocket/mod.rs` - WebSocket server for real-time communication
+- `claude/mod.rs` - ClaudeManager for session lifecycle (legacy, being replaced)
+- `websocket/mod.rs` - WebSocket server (not currently used, kept for future)
 - `state/mod.rs` - Application state management
 - `process/mod.rs` - Process tracking module
-- `process/registry.rs` - ProcessRegistry for tracking Claude processes
+- `process/registry.rs` - ProcessRegistry for tracking all spawned processes
 - `db/mod.rs` - SQLite database implementation
 - `compaction/mod.rs` - CompactionManager implementation
-- `hooks/mod.rs` - Hook system implementation
+- `hooks/mod.rs` - Hook system implementation (9 event types)
 - `mcp/mod.rs` - MCP server management
-- `commands/mod.rs` - Main IPC commands
-- `commands/hooks.rs` - Hooks system
-- `commands/mcp.rs` - MCP integration
-- `commands/compaction.rs` - Context compaction
-- `commands/claude_commands.rs` - Direct Claude CLI commands (spawn, send, etc.)
-- `commands/claude_detector.rs` - Claude installation detection and WSL support
-- `commands/claude_info.rs` - Claude binary info and usage limits
-- `commands/database.rs` - SQLite database operations
-- `commands/custom_commands.rs` - Custom slash commands management
-- `commands/plugins.rs` - Plugin system (install, enable, validate, sync)
+- `commands/mod.rs` - Main IPC commands (65 commands, 2,795 lines)
+- `commands/hooks.rs` - Hooks system (4 commands)
+- `commands/mcp.rs` - MCP integration (6 commands)
+- `commands/compaction.rs` - Context compaction (9 commands)
+- `commands/claude_commands.rs` - Direct Claude CLI commands (10 commands)
+- `commands/claude_detector.rs` - Claude installation detection (11 commands)
+- `commands/claude_info.rs` - Claude binary info and usage limits (3 commands)
+- `commands/database.rs` - SQLite database operations (12 commands)
+- `commands/custom_commands.rs` - Custom slash commands management (7 commands)
+- `commands/plugins.rs` - Plugin system (21 commands, 1,667 lines)
 
 ### Critical Frontend Files
-**Stores:**
-- `stores/claudeCodeStore.ts` - Main Zustand store (258KB, central state)
-- `stores/licenseManager.ts` - License validation and feature limits
+**Stores (1 Zustand store):**
+- `stores/claudeCodeStore.ts` - Main Zustand store (5,754 lines, 258KB, 80+ actions)
 
-**Services:**
-- `services/tauriClaudeClient.ts` - Bridge to Claude CLI via Tauri
-- `services/claudeCodeClient.ts` - Socket.IO client for server communication
-- `services/compactionService.ts` - Context compaction logic
+**Services (24 files):**
+- `services/tauriClaudeClient.ts` - Primary bridge to Claude CLI via Tauri (1,157 lines)
+- `services/claudeCodeClient.ts` - Socket.IO client for server communication (1,064 lines)
+- `services/compactionService.ts` - Context compaction logic (588 lines)
+- `services/licenseManager.ts` - License validation Zustand store (305 lines)
+- `services/conversationStore.ts` - UCF conversation persistence (NOT Zustand, service class)
+- `services/conversationTranslator.ts` - Multi-provider format translation (1,003 lines)
 - `services/hooksConfigService.ts` - Hooks configuration
+- `services/hooksService.ts` - Hook execution (8 events in TS vs 9 in Rust)
 - `services/databaseService.ts` - Frontend database integration
 - `services/mcpService.ts` - MCP server management
 - `services/pluginService.ts` - Plugin management (install, enable, sync)
-- `services/checkpointService.ts` - Checkpoint and session state management
+- `services/checkpointService.ts` - Checkpoint and session state management (DISABLED)
 - `services/agentExecutionService.ts` - Agent execution
 - `services/claudeDetector.ts` - Claude detection logic
-- `services/wrapperIntegration.ts` - Wrapper message processing
+- `services/wrapperIntegration.ts` - Token tracking (auto-compact at 120k tokens)
 - `services/platformBridge.ts` - Platform-specific utilities
 - `services/performanceMonitor.ts` - Real-time performance tracking
-- `services/consoleOverride.ts` - Production console routing
 - `services/fileSearchService.ts` - File search with caching
 - `services/modalService.ts` - Global alert/confirm dialogs
+- `services/providersService.ts` - Multi-provider state management
+- `services/providerPromptService.ts` - Provider-aware system prompt formatting
 
-**Components:**
+**Components (no /Modals/ directory - modals scattered in subdirs):**
 - `App.minimal.tsx` - Main app component
-- `Modals/ClaudeMdEditorModal.tsx` - CLAUDE.md editor
-- `Modals/UpgradeModal.tsx` - License upgrade prompts
-- `Modals/Analytics/AnalyticsModal.tsx` - Analytics dashboard
+- `ClaudeMdEditor/ClaudeMdEditorModal.tsx` - CLAUDE.md editor
+- `Upgrade/UpgradeModal.tsx` - License upgrade prompts
+- `Analytics/AnalyticsModal.tsx` - Analytics dashboard
+- `Settings/SettingsModalTabbed.tsx` - Current settings (8 tabs)
 - `Settings/PluginsTab.tsx` - Plugin management UI
-- `Settings/SkillsTab.tsx` - Skills management UI
+- `Settings/SkillsTab.tsx` - Skills management UI (LIMITED: no trigger config UI)
 - `Timeline/TimelineNavigator.tsx` - Timeline & checkpoints UI
+- `Chat/ClaudeChat.tsx` - Main chat orchestrator (64k+ tokens, needs refactoring)
+- `Chat/MessageRenderer.tsx` - Message rendering (40k+ tokens, needs refactoring)
 - `Chat/ContextBar.tsx` - Context usage visualization
 - `Chat/DiffViewer.tsx` - Code diff rendering
+- `Chat/VirtualizedMessageList.tsx` - Message virtualization with scroll anchoring
 
 ### Server Binaries (in resources/)
 - `yume-server-macos-arm64` / `yume-server-macos-x64` - macOS binaries
@@ -174,18 +202,26 @@ npm run minify:servers         # Minify server code
 
 ### yume-cli (Multi-Provider Shim)
 **Location**: `src-yume-cli/`
+**Status**: COMPLETE - bundled binaries for macOS (arm64/x64), Windows (x64), Linux (x64)
 
-TypeScript CLI that spawns official provider CLIs (gemini, codex) and translates output to Claude-compatible stream-json format.
+TypeScript CLI that spawns official provider CLIs (gemini, codex) and translates output to Claude-compatible stream-json format. Build with esbuild for bundling, pkg for standalone binaries.
 
-**Key Files**:
-- `src/index.ts` - CLI entry point, argument parsing
-- `src/core/agent-loop.ts` - Main Think→Act→Observe loop
-- `src/core/plugins.ts` - Plugin loader (agents, skills from `~/.yume/plugins/`)
-- `src/core/emit.ts` - Stream-json message emitters
-- `src/core/session.ts` - Session persistence
-- `src/providers/gemini.ts` - Gemini CLI spawner with tool translation
-- `src/providers/openai.ts` - Codex CLI spawner with tool detection
-- `src/tools/` - Built-in tool executors (bash, read, write, edit, glob, grep, ls)
+**Key Files** (2,600+ lines total):
+- `src/index.ts` (242 lines) - CLI entry point, argument parsing
+- `src/types.ts` (268 lines) - Type definitions (includes toolCallDelta.name)
+- `src/core/agent-loop.ts` (353 lines) - Main Think→Act→Observe loop with tool delta assembly
+- `src/core/plugins.ts` (362 lines) - Plugin loader (agents, skills from `~/.yume/plugins/`)
+- `src/core/emit.ts` (324 lines) - Stream-json message emitters
+- `src/core/session.ts` (229 lines) - Session persistence to `~/.yume/sessions/{provider}/`
+- `src/core/pathSecurity.ts` (182 lines) - Path validation, traversal prevention
+- `src/providers/gemini.ts` (365 lines) - Gemini CLI spawner with tool translation
+- `src/providers/openai.ts` (460 lines) - Codex CLI spawner with tool detection
+- `src/tools/` (7 tools) - bash, read, write, edit, glob, grep, ls
+
+**Safety Limits**:
+- MAX_TURNS: 50, MAX_DURATION_MS: 10 min, MAX_HISTORY_MESSAGES: 100
+- Tool execution timeout: 2 min (bash), 5 min (provider process)
+- Bash command whitelist (~50 commands) and blacklist (dangerous patterns)
 
 **Tool Translation** (codex → claude format):
 - `command_execution` → Detected from command pattern:
@@ -298,12 +334,13 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 **Trial vs Pro**: Trial users limited to 2 tabs and 1 window. Pro license ($21) unlocks 99 tabs and 99 windows.
 
 **Implementation**:
-- Location: `src/renderer/stores/licenseManager.ts` (Zustand store)
-- Server-side validation with 5-minute cache: `https://license.yume.com/validate`
-- Encrypted storage using XOR cipher in localStorage
+- Location: `src/renderer/services/licenseManager.ts` (Zustand store in services dir)
+- Server-side validation with 5-minute cache: `https://yuru.be/api/license/validate.php`
+- Encrypted storage using XOR cipher with base64 encoding in localStorage
 - Auto-revalidation every 30 minutes
+- Storage key: `yume-license-v3`
 
-**License Format**: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` (29 characters)
+**License Format**: `XXXXX-XXXXX-XXXXX-XXXXX-XXXXX` (29 characters, uppercase alphanumeric)
 
 **Commands**:
 - `validateLicense(key)` - Server-side validation
@@ -322,8 +359,10 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 **Plugin Components**:
 - **Commands**: Custom slash commands (`.md` files)
 - **Agents**: Custom agent definitions (`.md` files with YAML frontmatter)
-- **Hooks**: Event-based hooks (SessionStart, PreToolUse, PostToolUse, Stop)
-- **Skills**: Auto-injected context based on triggers
+- **Hooks**: Event-based hooks (9 Rust events, 8 TS events):
+  - Rust: UserPromptSubmit, PreToolUse, PostToolUse, AssistantResponse, SessionStart, SessionEnd, ContextWarning, CompactionTrigger, Error
+  - TS: user_prompt_submit, pre_tool_use, post_tool_use, assistant_response, session_start, session_end, context_warning, error
+- **Skills**: Auto-injected context based on triggers (NOTE: Skills UI limited - no trigger config)
 - **MCP Servers**: Model Context Protocol server configurations
 
 **Plugin Directory**: `~/.yume/plugins/`
@@ -356,11 +395,18 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 
 **Location**: `src/renderer/components/Settings/SkillsTab.tsx`
 
+**Status**: PARTIALLY IMPLEMENTED
+- UI only supports name/description editing
+- Trigger configuration NOT implemented in UI
+- Content editing NOT implemented in UI
+- yume-cli expects JSON skills, Rust plugin system expects MD skills (format mismatch)
+- Missing Rust commands: `write_skill_file`, `remove_skill_file` (called but not implemented)
+
 **Skill Types**:
 - **Custom Skills**: User-created, stored in localStorage (`yume_custom_skills`)
-- **Plugin Skills**: Sourced from enabled plugins
+- **Plugin Skills**: Sourced from enabled plugins (read from `.md` files in `skills/`)
 
-**Skill Structure**:
+**yume-cli Skill Structure** (in `~/.yume/plugins/{id}/skills/*.json`):
 ```json
 {
   "id": "skill-id",
@@ -368,16 +414,15 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
   "description": "What this skill does",
   "triggers": ["*.py", "python", "/^def /"],
   "content": "Context to inject when triggered",
-  "enabled": true,
-  "source": "custom" | "plugin:{plugin-id}"
+  "enabled": true
 }
 ```
 
-**Features**:
-- Create/edit/delete custom skills
+**Current Features**:
 - Toggle enable/disable status
 - View plugin skill source attribution
 - Combined view of all available skills
+- Name/description editing only
 
 ### Performance Monitoring
 **Real-time performance metrics** for debugging and optimization.
@@ -406,7 +451,7 @@ PID tracking in `.yume-pids/` prevents multi-instance conflicts.
 ### CLAUDE.md Editor
 **In-app editor** for project-specific CLAUDE.md files.
 
-**Location**: `src/renderer/components/Modals/ClaudeMdEditorModal.tsx`
+**Location**: `src/renderer/components/ClaudeMdEditor/ClaudeMdEditorModal.tsx`
 
 **Features**:
 - Auto-load project-specific CLAUDE.md from working directory
@@ -838,3 +883,44 @@ After running build commands:
   - MSI: `msi/yume_[version]_x64_en-US.msi`
   - NSIS: `nsis/yume_[version]_x64-setup.exe`
 - Linux: `src-tauri/target/x86_64-unknown-linux-gnu/release/bundle/`
+
+## Known Issues & Incomplete Features
+
+### Multi-Provider Integration (Gemini/Codex)
+**Status**: COMPLETE - Production-ready
+- **yume-cli bundled**: Binaries included in release for macOS (arm64/x64), Windows (x64), Linux (x64)
+- **Tool call delta assembly**: Implemented in `agent-loop.ts:252-275`
+- **Provider lock-in**: Sessions lock to initial provider, switching forks session (by design)
+- **History format mismatch**: yume-cli uses JSON in `~/.yume/sessions/`, Claude uses JSONL in `~/.claude/projects/`
+- **No mid-conversation switching**: Must fork session to change providers (by design)
+
+### Skills System
+**Status**: PARTIALLY IMPLEMENTED
+- **Missing Rust commands**: `write_skill_file`, `remove_skill_file` (called but undefined)
+- **No trigger config UI**: Skills only support name/description editing
+- **Format mismatch**: yume-cli expects JSON, Rust plugin system expects MD
+
+### Checkpoint System
+**Status**: DISABLED
+- `checkpointService.ts` has socket listeners disabled (line 54-118)
+- Feature flag `ENABLE_CHECKPOINTS` exists but socket events not handled
+
+### Component Architecture Issues
+- **ClaudeChat.tsx**: 64k+ tokens - needs decomposition
+- **MessageRenderer.tsx**: 40k+ tokens - needs decomposition
+- **claudeCodeStore.ts**: 258KB monolith - consider splitting
+- **Duplicate server binaries**: Both `server-*` and `yume-server-*` in resources
+
+### Hook Event Mismatch
+- Rust defines 9 events: UserPromptSubmit, PreToolUse, PostToolUse, AssistantResponse, SessionStart, SessionEnd, ContextWarning, CompactionTrigger, Error
+- TypeScript defines 8 events: missing CompactionTrigger
+- Event naming differs (camelCase vs snake_case)
+
+### Build System
+- **dist-server cleanup needed**: 965MB with test/intermediate builds
+- **yume-cli not in bundle**: Must be added to tauri.conf.json resources
+- **Old naming convention**: Some binaries still use `server-*` prefix
+
+## Version History
+
+**Last comprehensive audit**: 2026-01-15 (8-agent swarm review)

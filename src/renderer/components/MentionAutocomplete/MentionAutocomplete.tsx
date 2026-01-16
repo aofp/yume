@@ -51,35 +51,35 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
   // Get icon based on file type
   const getFileIcon = (path: string, type: 'file' | 'folder'): React.ReactNode => {
     if (type === 'folder') {
-      return <IconFolder size={14} />;
+      return <IconFolder size={12} />;
     }
     
     const ext = path.split('.').pop()?.toLowerCase();
     
     // Test files
     if (path.includes('.test.') || path.includes('.spec.') || path.includes('__tests__')) {
-      return <IconTestPipe size={14} />;
+      return <IconTestPipe size={12} />;
     }
     
     // Config files
     if (['json', 'yml', 'yaml', 'toml', 'ini', 'env'].includes(ext || '') ||
         path.includes('config') || path.includes('settings')) {
-      return <IconSettings size={14} />;
+      return <IconSettings size={12} />;
     }
     
     // Documentation
     if (['md', 'txt', 'rst', 'adoc'].includes(ext || '') || 
         path.toLowerCase().includes('readme') || 
         path.toLowerCase().includes('changelog')) {
-      return <IconFileText size={14} />;
+      return <IconFileText size={12} />;
     }
     
     // Code files
     if (['js', 'ts', 'jsx', 'tsx', 'py', 'rs', 'go', 'java', 'cpp', 'c', 'h'].includes(ext || '')) {
-      return <IconCode size={14} />;
+      return <IconCode size={12} />;
     }
     
-    return <IconFile size={14} />;
+    return <IconFile size={12} />;
   };
 
   // Helper to sort items: folders first, then configs, then other files
@@ -183,7 +183,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
                 type: 'changed',
                 path: '@m',
                 name: '@m',
-                icon: <IconGitBranch size={14} />,
+                icon: <IconGitBranch size={12} />,
                 description: `${changedFiles.length} modified files`
               });
             }
@@ -196,7 +196,7 @@ export const MentionAutocomplete: React.FC<MentionAutocompleteProps> = ({
             type: 'recent',
             path: '@r',
             name: '@r',
-            icon: <IconClock size={14} />,
+            icon: <IconClock size={12} />,
             description: 'recently edited files'
           });
           

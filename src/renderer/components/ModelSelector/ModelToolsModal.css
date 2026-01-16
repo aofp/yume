@@ -58,6 +58,40 @@
   padding: 10px;
 }
 
+/* Provider sections */
+.mt-provider-block {
+  margin-bottom: 2px;
+}
+
+.mt-provider-text {
+  color: var(--fg-40);
+  font-size: var(--text-sm);
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+  cursor: default;
+}
+
+.mt-provider-text:hover {
+  color: var(--accent-color);
+  opacity: 1;
+}
+
+.mt-provider-text.active {
+  color: var(--accent-color);
+  opacity: 0.9;
+}
+
+.mt-provider-text.active:hover {
+  opacity: 1;
+}
+
+.mt-provider-models {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 4px;
+  margin-top: 2px;
+}
+
 /* Provider tabs */
 .mt-provider-tabs {
   display: flex;
@@ -178,6 +212,7 @@
 
 .mt-section {
   margin-bottom: 0;
+  margin-top: 4px;
 }
 
 .mt-divider {
@@ -191,7 +226,6 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 6px;
 }
 
 .mt-label {
@@ -200,6 +234,14 @@
   font-weight: 500;
   text-transform: lowercase;
   cursor: default;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.mt-label svg {
+  margin-top: -1px;
+  margin-left: -2px;
 }
 
 .mt-toggle-all {
@@ -227,32 +269,41 @@
 .mt-category-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 8px;
-  margin-top: 6px;
-}
-
-.mt-category-half {
-  margin-top: 0;
-}
-
-.mt-category-name {
-  display: inline;
-  color: var(--fg-40);
-  font-size: var(--text-xs);
-  text-transform: lowercase;
-  margin-bottom: 3px;
-  padding-left: 0;
-  cursor: default;
-}
-
-.mt-category-name:hover {
-  color: var(--accent-color);
+  gap: 2px;
+  margin-top: 2px;
 }
 
 .mt-tools-grid {
   display: flex;
   flex-wrap: wrap;
   gap: 3px;
+  margin-top: 3px;
+}
+
+.mt-category-half {
+  margin-top: 0;
+}
+
+.mt-category-text {
+  color: var(--fg-40);
+  font-size: var(--text-xs);
+  text-transform: lowercase;
+  font-family: var(--font-mono);
+  cursor: default;
+}
+
+.mt-category-text:hover {
+  color: var(--accent-color);
+  opacity: 1;
+}
+
+.mt-category-text.active {
+  color: var(--accent-color);
+  opacity: 0.9;
+}
+
+.mt-category-text.active:hover {
+  opacity: 1;
 }
 
 .mt-tool {

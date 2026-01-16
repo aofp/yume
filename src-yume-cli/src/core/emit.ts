@@ -1,32 +1,47 @@
 /**
  * Stream emitter for Claude-compatible JSON output
- * Emits line-delimited JSON to stdout
+ * Emits line-delimited JSON to stdout in Claude CLI format
  */
 
 import type {
   StreamMessage,
   SystemMessage,
-  StreamingTextMessage,
-  StreamingThinkingMessage,
-  StreamingToolUseMessage,
-  StreamingToolResultMessage,
-  TextMessage,
-  ToolUseMessage,
-  ToolResultMessage,
   UsageMessage,
   ResultMessage,
   ErrorMessage,
   MessageStopMessage,
-  ThinkingMessage,
   PermissionMode,
   TokenUsage,
 } from '../types.js';
+
+// Internal session tracking for message IDs
+let currentSessionId = '';
+let messageCounter = 0;
+
+/**
+ * Generate a unique message ID
+ */
+function generateMessageId(): string {
+  messageCounter++;
+  return `msg_${Date.now()}_${messageCounter}`;
+}
+
+/**
+ * Generate a unique UUID
+ */
+function generateUUID(): string {
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+    const r = (Math.random() * 16) | 0;
+    const v = c === 'x' ? r : (r & 0x3) | 0x8;
+    return v.toString(16);
+  });
+}
 
 /**
  * Emit a single JSON line to stdout
  * Flushes immediately for streaming responsiveness
  */
-export function emit(message: StreamMessage): void {
+export function emit(message: StreamMessage | Record<string, unknown>): void {
   const line = JSON.stringify(message);
   process.stdout.write(line + '\n');
 }
@@ -41,6 +56,9 @@ export function emitSystemInit(
   permissionMode: PermissionMode,
   tools: string[]
 ): void {
+  currentSessionId = sessionId;
+  messageCounter = 0;
+
   const message: SystemMessage = {
     type: 'system',
     subtype: 'init',
@@ -70,6 +88,7 @@ export function emitSystemError(errorMessage: string): void {
  * Emit session ID change (e.g., after compaction)
  */
 export function emitSessionIdChange(newSessionId: string): void {
+  currentSessionId = newSessionId;
   const message: SystemMessage = {
     type: 'system',
     subtype: 'session_id',
@@ -79,60 +98,108 @@ export function emitSessionIdChange(newSessionId: string): void {
 }
 
 /**
- * Emit text content chunk (streaming format)
+ * Emit text content chunk - Claude CLI compatible format
+ * Wraps text in assistant message with content array
  */
 export function emitText(text: string): void {
-  const message: StreamingTextMessage = {
-    type: 'text',
-    content: text,
-  };
-  emit(message);
+  emit({
+    type: 'assistant',
+    message: {
+      model: 'yume-cli',
+      id: generateMessageId(),
+      type: 'message',
+      role: 'assistant',
+      content: [{ type: 'text', text }],
+      stop_reason: null,
+      stop_sequence: null,
+      usage: { input_tokens: 0, output_tokens: 0 },
+    },
+    parent_tool_use_id: null,
+    session_id: currentSessionId,
+    uuid: generateUUID(),
+  });
 }
 
 /**
- * Emit thinking content (streaming format)
+ * Emit thinking content - Claude CLI compatible format
  */
 export function emitThinking(thinking: string): void {
-  const message: StreamingThinkingMessage = {
-    type: 'thinking',
-    is_thinking: true,
-    thought: thinking,
-  };
-  emit(message);
+  emit({
+    type: 'assistant',
+    message: {
+      model: 'yume-cli',
+      id: generateMessageId(),
+      type: 'message',
+      role: 'assistant',
+      content: [{ type: 'thinking', thinking }],
+      stop_reason: null,
+      stop_sequence: null,
+      usage: { input_tokens: 0, output_tokens: 0 },
+    },
+    parent_tool_use_id: null,
+    session_id: currentSessionId,
+    uuid: generateUUID(),
+  });
 }
 
 /**
- * Emit tool use (when model requests a tool) - streaming format
+ * Emit tool use (when model requests a tool) - Claude CLI compatible format
  */
 export function emitToolUse(
   id: string,
   name: string,
   input: Record<string, unknown>
 ): void {
-  const message: StreamingToolUseMessage = {
-    type: 'tool_use',
-    id,
-    name,
-    input,
-  };
-  emit(message);
+  emit({
+    type: 'assistant',
+    message: {
+      model: 'yume-cli',
+      id: generateMessageId(),
+      type: 'message',
+      role: 'assistant',
+      content: [{ type: 'tool_use', id, name, input }],
+      stop_reason: null,
+      stop_sequence: null,
+      usage: { input_tokens: 0, output_tokens: 0 },
+    },
+    parent_tool_use_id: null,
+    session_id: currentSessionId,
+    uuid: generateUUID(),
+  });
 }
 
 /**
- * Emit tool result (after tool execution) - streaming format
+ * Emit tool result (after tool execution) - Claude CLI compatible format
  */
 export function emitToolResult(
   toolUseId: string,
   content: string,
   isError = false
 ): void {
-  const message: StreamingToolResultMessage = {
-    type: 'tool_result',
-    tool_use_id: toolUseId,
-    content,
-    is_error: isError,
+  // Claude CLI format for tool results
+  const msg = {
+    type: 'user',
+    message: {
+      role: 'user',
+      content: [{
+        tool_use_id: toolUseId,
+        type: 'tool_result',
+        content,
+        is_error: isError
+      }],
+    },
+    parent_tool_use_id: null,
+    session_id: currentSessionId,
+    uuid: generateUUID(),
+    tool_use_result: {
+      stdout: content,
+      stderr: '',
+      interrupted: false,
+      isImage: false,
+    },
   };
-  emit(message);
+  // Emit as raw object to bypass type checking
+  process.stdout.write(JSON.stringify(msg) + '\n');
 }
 
 /**

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { IconCheck } from '@tabler/icons-react';
-import { PROVIDERS, type ProviderType, type ProviderDefinition } from '../../config/models';
+import { PROVIDERS, type ProviderType, type ProviderDefinition, getProviderForModel, getDefaultModelForProvider, getModelsForProvider } from '../../config/models';
 import {
   getEnabledProviders,
   setProviderEnabled,
@@ -12,6 +12,7 @@ import { ClaudeSelector } from './ClaudeSelector';
 import { SystemPromptSelector } from './SystemPromptSelector';
 import { ProviderCliSelector } from './ProviderCliSelector';
 import { ProviderSystemPromptSelector } from './ProviderSystemPromptSelector';
+import { useClaudeCodeStore } from '../../stores/claudeCodeStore';
 import './ProvidersTab.css';
 
 interface CliStatus {
@@ -74,13 +75,33 @@ export const ProvidersTab: React.FC = () => {
     // can't enable without CLI installed
     if (!currentlyEnabled && !isInstalled) return;
 
-    // can disable any provider (even the last one - modal will appear)
+    // can't disable the last enabled provider
+    const enabledCount = getEnabledProviderCount();
+    if (currentlyEnabled && enabledCount <= 1) return;
+
     const newEnabled = !currentlyEnabled;
     setProviderEnabled(providerId, newEnabled);
     setEnabledProvidersState((prev) => ({
       ...prev,
       [providerId]: newEnabled,
     }));
+
+    // if disabling a provider, check if current model belongs to it and switch
+    if (!newEnabled) {
+      const { selectedModel, setSelectedModel } = useClaudeCodeStore.getState();
+      const currentProvider = getProviderForModel(selectedModel);
+      if (currentProvider === providerId) {
+        // find another enabled provider to switch to
+        const updatedEnabled = { ...enabledProviders, [providerId]: false };
+        const enabledProviderIds = (Object.keys(updatedEnabled) as ProviderType[]).filter(
+          (p) => updatedEnabled[p]
+        );
+        if (enabledProviderIds.length > 0) {
+          const newModel = getDefaultModelForProvider(enabledProviderIds[0]);
+          setSelectedModel(newModel.id);
+        }
+      }
+    }
   };
 
 
@@ -95,7 +116,9 @@ export const ProvidersTab: React.FC = () => {
             {PROVIDERS.map((provider) => {
               const enabled = enabledProviders[provider.id];
               const status = cliStatuses[provider.id];
-              const canToggle = enabled || status.installed;
+              const enabledCount = getEnabledProviderCount();
+              const isLastEnabled = enabled && enabledCount <= 1;
+              const canToggle = (enabled && !isLastEnabled) || (!enabled && status.installed);
               const isDisabled = !status.installed && !enabled;
 
               return (
@@ -115,8 +138,9 @@ export const ProvidersTab: React.FC = () => {
                     )}
 
                     <div
-                      className={`toggle-switch compact ${enabled ? 'active' : ''} ${!canToggle ? 'disabled' : ''}`}
+                      className={`toggle-switch compact ${enabled ? 'active' : ''} ${!canToggle ? 'disabled' : ''} ${isLastEnabled ? 'last-enabled' : ''}`}
                       onClick={() => canToggle && handleToggle(provider.id)}
+                      style={isLastEnabled ? { opacity: 0.5, pointerEvents: 'none' } : undefined}
                     >
                       <span className="toggle-switch-label off">off</span>
                       <span className="toggle-switch-label on">on</span>

@@ -2736,6 +2736,69 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
                       // Only keep streaming for interruptions when there's a recent user message
                       // But always clear on stream_end
                       console.log('Interruption detected with recent user message - keeping streaming state for followup');
+
+                      // IMPORTANT: Still update context tokens even when keeping streaming for followup
+                      // Otherwise interrupted agents don't update context usage
+                      if (message.subtype === 'interrupted') {
+                        // Process wrapper tokens from the interrupted message
+                        if ((message as any).wrapper?.tokens) {
+                          const wrapperTokens = (message as any).wrapper.tokens;
+                          console.log('📊 [INTERRUPT-FOLLOWUP] Processing wrapper tokens:', wrapperTokens);
+
+                          sessions = sessions.map(s => {
+                            if (s.id !== sessionId) return s;
+
+                            const baseAnalytics: SessionAnalytics = s.analytics || {
+                              totalMessages: 0,
+                              userMessages: 0,
+                              assistantMessages: 0,
+                              toolUses: 0,
+                              tokens: { input: 0, output: 0, total: 0, cacheSize: 0, cacheCreation: 0, byModel: { opus: { input: 0, output: 0, total: 0 }, sonnet: { input: 0, output: 0, total: 0 } } },
+                              cost: { total: 0, byModel: { opus: 0, sonnet: 0 } },
+                              duration: 0,
+                              lastActivity: new Date(),
+                              contextWindow: { used: 0, limit: 200000, percentage: 0, remaining: 200000 },
+                              thinkingTime: 0
+                            };
+
+                            const limit = baseAnalytics.contextWindow?.limit || 200000;
+                            const used = wrapperTokens.total || 0;
+
+                            return {
+                              ...s,
+                              analytics: {
+                                ...baseAnalytics,
+                                tokens: {
+                                  ...baseAnalytics.tokens,
+                                  total: wrapperTokens.total ?? baseAnalytics.tokens.total,
+                                  input: wrapperTokens.input ?? baseAnalytics.tokens.input,
+                                  output: wrapperTokens.output ?? baseAnalytics.tokens.output,
+                                  cacheSize: wrapperTokens.cache_read ?? baseAnalytics.tokens.cacheSize ?? 0,
+                                  cacheCreation: wrapperTokens.cache_creation ?? baseAnalytics.tokens.cacheCreation ?? 0
+                                },
+                                contextWindow: {
+                                  used,
+                                  limit,
+                                  percentage: limit > 0 ? Math.round((used / limit) * 100) : 0,
+                                  remaining: limit - used
+                                }
+                              }
+                            };
+                          });
+                          console.log('📊 [INTERRUPT-FOLLOWUP] Updated context from wrapper tokens');
+                        }
+
+                        // Also try fallback fetch from session file (may not work if endpoint not implemented)
+                        const session = sessions.find(s => s.id === sessionId);
+                        if (session?.claudeSessionId && session?.workingDirectory) {
+                          fetchSessionTokensFromFile(sessionId, session.claudeSessionId, session.workingDirectory).then(tokens => {
+                            if (tokens) {
+                              get().updateSessionAnalyticsFromFile(sessionId, tokens);
+                            }
+                          });
+                        }
+                      }
+
                       sessions = sessions.map(s =>
                         s.id === sessionId ? { ...s, runningBash: false, userBashRunning: false } : s
                       );
@@ -3035,28 +3098,29 @@ export const useClaudeCodeStore = create<ClaudeCodeStore>()(
               });
 
               // Set up focus trigger listener (restores focus after bash commands)
-              // Only enable for Windows - macOS handles focus better without intervention
+              // Enabled on all platforms - macOS uses NSApp activation (not window.focus)
               // CRITICAL: window.focus() on macOS disrupts webview's internal focus state
-              // causing random focus loss even when the window appears focused
-              if (navigator.platform.includes('Win')) {
-                console.log('[Store] Setting up focus trigger listener (Windows only)');
-                focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
-                  console.log('[Store] 🎯 Focus trigger received, restoring window focus');
-                  // Use Tauri command to restore focus
-                  if (window.__TAURI__) {
-                    import('@tauri-apps/api/core').then(({ invoke }) => {
-                      invoke('restore_window_focus').catch(console.warn);
-                    });
-                  }
-                  // Also try web-based focus restoration (Windows only)
+              // so we only call window.focus() on Windows, but use Tauri command on all platforms
+              const isMac = navigator.platform.includes('Mac');
+              console.log(`[Store] Setting up focus trigger listener (platform: ${navigator.platform})`);
+              focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
+                console.log('[Store] 🎯 Focus trigger received, restoring window focus');
+                // Use Tauri command to restore focus (uses NSApp activation on macOS)
+                if (window.__TAURI__) {
+                  import('@tauri-apps/api/core').then(({ invoke }) => {
+                    invoke('restore_window_focus').catch(console.warn);
+                  });
+                }
+                // window.focus() and direct input focus ONLY on Windows
+                // On macOS, these disrupt webview's internal focus state
+                if (!isMac) {
                   window.focus();
-                  // Focus the input if we have a reference (correct class name)
                   const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
                   if (inputElement) {
                     inputElement.focus();
                   }
-                });
-              }
+                }
+              });
             } else {
               console.log('[Store] No claudeSessionId yet - will set up listener after spawn');
             }
@@ -3571,28 +3635,29 @@ ${content}`;
         });
 
         // Set up focus trigger listener (restores focus after bash commands)
-        // Only enable for Windows - macOS handles focus better without intervention
+        // Enabled on all platforms - macOS uses NSApp activation (not window.focus)
         // CRITICAL: window.focus() on macOS disrupts webview's internal focus state
-        // causing random focus loss even when the window appears focused
-        if (navigator.platform.includes('Win')) {
-          console.log('[Store] Setting up focus trigger listener (Windows only, reconnect)');
-          focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
-            console.log('[Store] 🎯 Focus trigger received, restoring window focus');
-            // Use Tauri command to restore focus
-            if (window.__TAURI__) {
-              import('@tauri-apps/api/core').then(({ invoke }) => {
-                invoke('restore_window_focus').catch(console.warn);
-              });
-            }
-            // Also try web-based focus restoration (Windows only)
+        // so we only call window.focus() on Windows, but use Tauri command on all platforms
+        const isMac = navigator.platform.includes('Mac');
+        console.log(`[Store] Setting up focus trigger listener, reconnect (platform: ${navigator.platform})`);
+        focusCleanup = claudeClient.onFocusTrigger(sessionId, () => {
+          console.log('[Store] 🎯 Focus trigger received, restoring window focus');
+          // Use Tauri command to restore focus (uses NSApp activation on macOS)
+          if (window.__TAURI__) {
+            import('@tauri-apps/api/core').then(({ invoke }) => {
+              invoke('restore_window_focus').catch(console.warn);
+            });
+          }
+          // window.focus() and direct input focus ONLY on Windows
+          // On macOS, these disrupt webview's internal focus state
+          if (!isMac) {
             window.focus();
-            // Focus the input if we have a reference (correct class name)
             const inputElement = document.querySelector('textarea.chat-input') as HTMLTextAreaElement;
             if (inputElement) {
               inputElement.focus();
             }
-          });
-        }
+          }
+        });
 
         // Store cleanup function
         const sessionForCleanup = get().sessions.find(s => s.id === sessionId);
@@ -4336,6 +4401,18 @@ ${content}`;
               sessions: state.sessions,  // Don't modify sessions here - keep claudeSessionId for resume
               streamingMessage: ''
             }));
+
+            // Fetch tokens from session file as fallback
+            // Server sends interrupted message with wrapper.tokens but also fetch from file
+            // to ensure context usage is updated even if message listener misses it
+            if (sessionToInterrupt?.claudeSessionId && sessionToInterrupt?.workingDirectory) {
+              fetchSessionTokensFromFile(sessionIdToInterrupt, sessionToInterrupt.claudeSessionId, sessionToInterrupt.workingDirectory).then(tokens => {
+                if (tokens) {
+                  console.log(`📊 [INTERRUPT] Fetched tokens from file as fallback:`, tokens);
+                  get().updateSessionAnalyticsFromFile(sessionIdToInterrupt, tokens);
+                }
+              });
+            }
           } catch (error) {
             console.error(`❌ [Store] Failed to interrupt session ${sessionIdToInterrupt}:`, error);
             // Still stop streaming indicator even if interrupt fails

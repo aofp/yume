@@ -9,8 +9,15 @@
   },
   "scripts": {
     "build": "tsc",
+    "build:bundle": "tsc && npx esbuild dist/index.js --bundle --platform=node --target=node18 --outfile=dist-bundle/yume-cli.cjs --format=cjs",
     "dev": "tsc --watch",
     "start": "node dist/index.js"
+  },
+  "pkg": {
+    "scripts": ["dist-bundle/yume-cli.cjs"],
+    "assets": [],
+    "targets": ["node18-macos-arm64", "node18-macos-x64", "node18-win-x64", "node18-linux-x64"],
+    "outputPath": "../src-tauri/resources"
   },
   "dependencies": {},
   "devDependencies": {

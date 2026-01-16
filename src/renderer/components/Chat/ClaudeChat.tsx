@@ -1024,52 +1024,74 @@ export const ClaudeChat: React.FC = () => {
     }
   }, [currentSession?.streaming, currentSessionId, sessions]);
 
+  // GLOBAL FOCUS COOLDOWN: Prevents rapid-fire focus() calls that confuse WKWebView
+  // All focus restoration systems share this cooldown
+  const lastFocusRestorationRef = useRef<number>(0);
+  const FOCUS_COOLDOWN_MS = 800; // Minimum time between focus() calls
+
+  const tryRestoreFocus = useCallback((source: string) => {
+    const now = Date.now();
+    const timeSinceLastRestore = now - lastFocusRestorationRef.current;
+
+    // Enforce cooldown between focus restorations
+    if (timeSinceLastRestore < FOCUS_COOLDOWN_MS) {
+      return false;
+    }
+
+    if (!inputRef.current || !document.hasFocus()) return false;
+    if (document.activeElement === inputRef.current) return false;
+
+    // Skip if user is selecting text
+    const selection = window.getSelection();
+    if (selection && selection.toString().length > 0) return false;
+
+    // Skip if any modal is open
+    if (document.querySelector('.modal-overlay') ||
+        document.querySelector('.recent-modal-overlay') ||
+        document.querySelector('.projects-modal-overlay') ||
+        document.querySelector('.settings-modal-overlay') ||
+        document.querySelector('.mt-modal-overlay') ||
+        document.querySelector('[role="dialog"]') ||
+        showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return false;
+
+    // Skip if session is read-only or context is almost full (>95%)
+    const totalTokens = currentSession?.analytics?.tokens?.total || 0;
+    const isContextFull = (totalTokens / 200000 * 100) > 95;
+    if (currentSession?.readOnly || isContextFull) return false;
+
+    // Skip if active element is another input/editable
+    const activeEl = document.activeElement;
+    if (activeEl instanceof HTMLInputElement ||
+        (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
+        (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
+
+    // Skip if focus is on a button or clickable element (user is interacting)
+    if (activeEl instanceof HTMLButtonElement ||
+        activeEl instanceof HTMLAnchorElement ||
+        (activeEl instanceof HTMLElement && activeEl.getAttribute('role') === 'button')) return false;
+
+    // All checks passed - restore focus
+    lastFocusRestorationRef.current = now;
+    inputRef.current.focus();
+    return true;
+  }, [currentSession?.analytics?.tokens?.total, currentSession?.readOnly, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
+
   // macOS focus sentinel: Smart focus restoration that detects glitch vs intentional focus loss
   // The key insight is that WKWebView can lose focus during state updates/DOM changes,
   // but this happens VERY fast (within 100-200ms). User-initiated focus loss is slower.
-  // We also restore focus when the window regains focus if textarea was previously focused.
   useEffect(() => {
     if (!isMac) return;
 
     const GLITCH_THRESHOLD_MS = 150; // If focus lost within this time, it's likely a glitch
 
-    const canRestoreFocus = () => {
-      if (!document.hasFocus() || !inputRef.current) return false;
-      // Skip if user is selecting text
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return false;
-      // Skip if any modal is open - check all overlay classes used in the app
-      if (document.querySelector('.modal-overlay') ||
-          document.querySelector('.recent-modal-overlay') ||
-          document.querySelector('.projects-modal-overlay') ||
-          document.querySelector('.settings-modal-overlay') ||
-          document.querySelector('.mt-modal-overlay') ||
-          document.querySelector('[role="dialog"]') ||
-          showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return false;
-      // Skip if session is read-only or context is almost full (>95%)
-      const totalTokens = currentSession?.analytics?.tokens?.total || 0;
-      const isContextFull = (totalTokens / 200000 * 100) > 95;
-      if (currentSession?.readOnly || isContextFull) return false;
-      // Skip if active element is another input (user clicked into something)
-      const activeEl = document.activeElement;
-      if (activeEl instanceof HTMLInputElement ||
-          (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
-          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
-      return true;
-    };
-
     const restoreFocusIfGlitch = () => {
-      if (!canRestoreFocus()) return;
-
       const timeSinceFocus = Date.now() - lastFocusTimestampRef.current;
       const isGlitch = timeSinceFocus < GLITCH_THRESHOLD_MS && lastFocusTimestampRef.current > 0;
 
-      // Only restore if it was a glitch (very recent focus loss) or window just regained focus
-      if (isGlitch || !windowFocusedRef.current) {
+      // Only restore if it was a glitch (very recent focus loss)
+      if (isGlitch) {
         requestAnimationFrame(() => {
-          if (canRestoreFocus() && inputRef.current && document.activeElement !== inputRef.current) {
-            inputRef.current.focus();
-          }
+          tryRestoreFocus('glitch-sentinel');
         });
       }
     };
@@ -1092,12 +1114,11 @@ export const ClaudeChat: React.FC = () => {
 
     // Window visibility change - restore focus when window becomes visible
     const handleVisibilityChange = () => {
-      if (!document.hidden && canRestoreFocus()) {
-        requestAnimationFrame(() => {
-          if (inputRef.current && document.activeElement !== inputRef.current) {
-            inputRef.current.focus();
-          }
-        });
+      if (!document.hidden) {
+        // Longer delay for visibility change - let everything settle
+        setTimeout(() => {
+          tryRestoreFocus('visibility-change');
+        }, 200);
       }
     };
 
@@ -1106,14 +1127,12 @@ export const ClaudeChat: React.FC = () => {
     import('@tauri-apps/api/event').then(({ listen }) => {
       listen<boolean>('window-focus-change', (event) => {
         windowFocusedRef.current = event.payload;
-        if (event.payload && canRestoreFocus()) {
-          // Window gained focus - restore textarea focus with small delay
+        if (event.payload) {
+          // Window gained focus - restore textarea focus with delay
           // to let WKWebView settle its internal state
           setTimeout(() => {
-            if (canRestoreFocus() && inputRef.current && document.activeElement !== inputRef.current) {
-              inputRef.current.focus();
-            }
-          }, 50);
+            tryRestoreFocus('window-focus-change');
+          }, 150);
         }
       }).then(unlisten => {
         cleanupWindowFocus = unlisten;
@@ -1132,39 +1151,24 @@ export const ClaudeChat: React.FC = () => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (cleanupWindowFocus) cleanupWindowFocus();
     };
-  }, [currentSession?.streaming, currentSession?.readOnly, currentSession?.analytics?.tokens?.total, isMac, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
+  }, [isMac, tryRestoreFocus]);
 
-  // macOS streaming focus guard: During streaming, state updates can cause rapid focus loss
+  // macOS streaming focus guard: During streaming, state updates can cause focus loss
   // This periodic check catches focus loss that slips through the focus sentinel
+  // MUCH less aggressive now - only checks every 2 seconds and only if focus on body
   useEffect(() => {
     if (!isMac || !currentSession?.streaming) return;
 
-    const canRestoreFocus = () => {
-      if (!document.hasFocus() || !inputRef.current) return false;
-      const selection = window.getSelection();
-      if (selection && selection.toString().length > 0) return false;
-      if (document.querySelector('.modal-overlay') ||
-          document.querySelector('[role="dialog"]') ||
-          showStatsModal || showResumeModal || showAgentExecutor || showModelToolsModal) return false;
-      const activeEl = document.activeElement;
-      if (activeEl instanceof HTMLInputElement ||
-          (activeEl instanceof HTMLTextAreaElement && activeEl !== inputRef.current) ||
-          (activeEl instanceof HTMLElement && activeEl.isContentEditable)) return false;
-      return true;
-    };
-
-    // Check every 500ms during streaming - lightweight and non-intrusive
+    // Check every 2000ms during streaming - very conservative
     const streamingFocusCheck = setInterval(() => {
-      if (canRestoreFocus() && inputRef.current && document.activeElement !== inputRef.current) {
-        // Only restore if focus went to body (typical WKWebView glitch symptom)
-        if (document.activeElement === document.body) {
-          inputRef.current.focus();
-        }
+      // Only restore if focus went to body (typical WKWebView glitch symptom)
+      if (document.activeElement === document.body) {
+        tryRestoreFocus('streaming-guard');
       }
-    }, 500);
+    }, 2000);
 
     return () => clearInterval(streamingFocusCheck);
-  }, [isMac, currentSession?.streaming, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
+  }, [isMac, currentSession?.streaming, tryRestoreFocus]);
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {

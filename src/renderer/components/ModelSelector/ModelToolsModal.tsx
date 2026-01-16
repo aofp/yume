@@ -1,6 +1,6 @@
 import React, { useEffect, useCallback, useRef, useState, useMemo } from 'react';
-import { IconX, IconTool } from '@tabler/icons-react';
-import { ALL_MODELS } from '../../config/models';
+import { IconX, IconTool, IconChevronDown, IconChevronRight } from '@tabler/icons-react';
+import { ALL_MODELS, PROVIDERS, type ProviderType } from '../../config/models';
 import {
   ALL_TOOLS,
   getToolsByCategory,
@@ -8,6 +8,7 @@ import {
   ToolDefinition
 } from '../../config/tools';
 import { useEnabledProviders } from '../../hooks/useEnabledProviders';
+import { setEnabledProviders, getEnabledProviderCount } from '../../services/providersService';
 import './ModelToolsModal.css';
 
 interface ModelToolsModalProps {
@@ -39,20 +40,42 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
   const [focusedToggleAll, setFocusedToggleAll] = useState(false);
   const [focusedToolId, setFocusedToolId] = useState<string | null>(null);
   const [isKeyboardNav, setIsKeyboardNav] = useState(true);
+  const [toolsExpanded, setToolsExpanded] = useState(false);
   const enabledProviders = useEnabledProviders();
 
+  // Check if ALL tools in category are enabled
+  const isCategoryAllActive = useCallback((categoryKey: string) => {
+    const categoryTools = toolsByCategory[categoryKey as keyof typeof toolsByCategory] || [];
+    return categoryTools.length > 0 && categoryTools.every(t => enabledTools.includes(t.id));
+  }, [toolsByCategory, enabledTools]);
+
+  // Toggle provider enabled state
+  const toggleProvider = useCallback((providerId: ProviderType) => {
+    const currentCount = getEnabledProviderCount();
+    const isCurrentlyEnabled = enabledProviders[providerId];
+
+    // prevent disabling the last provider
+    if (isCurrentlyEnabled && currentCount <= 1) {
+      return;
+    }
+
+    const newProviders = { ...enabledProviders, [providerId]: !isCurrentlyEnabled };
+    setEnabledProviders(newProviders);
+  }, [enabledProviders]);
+
   // All models displayed at once (filtered by lockedProvider if set, or by enabled providers)
+  // Also include the currently selected model even if its provider is disabled
   const displayModels = useMemo(() => {
     let models = lockedProvider
       ? ALL_MODELS.filter(m => m.provider === lockedProvider)
-      : ALL_MODELS.filter(m => enabledProviders[m.provider]);
+      : ALL_MODELS.filter(m => enabledProviders[m.provider] || m.id === selectedModel);
     return models.map(m => ({
       id: m.id,
       name: m.displayName,
       description: m.description,
       provider: m.provider
     }));
-  }, [lockedProvider, enabledProviders]);
+  }, [lockedProvider, enabledProviders, selectedModel]);
 
   // Build flat tool list matching visual layout order
   const flatToolList = useMemo(() => {
@@ -350,7 +373,7 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
         onMouseDown={handleMouseDown}
         onKeyDown={handleKeyDownGlobal}
       >
-        <div className="mt-header">
+        <div className="mt-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>
             <IconTool size={14} stroke={1.5} style={{ marginRight: '6px' }} />
             model & tools
@@ -361,173 +384,235 @@ export const ModelToolsModal: React.FC<ModelToolsModalProps> = ({
         </div>
 
         <div className="mt-content">
-          {/* Models - all 6 in 2-column grid */}
-          <div className="mt-models-row" role="group" aria-label="Model selection">
-            {displayModels.map((model, index) => (
-              <button
-                key={model.id}
-                ref={el => { modelRefs.current[index] = el; }}
-                className={`mt-model-btn ${selectedModel === model.id ? 'selected' : ''} ${focusedModelIndex === index ? 'focused' : ''}`}
-                onClick={() => {
-                  onModelChange(model.id);
-                  onClose();
-                }}
-                onKeyDown={(e) => handleModelKeyDown(e, index)}
-                tabIndex={focusedModelIndex === index ? 0 : -1}
-              >
-                {model.name}
-              </button>
-            ))}
-          </div>
+          {/* Providers - text click toggles, models shown when active */}
+          {!lockedProvider && (
+            <>
+              {PROVIDERS.map((provider) => {
+                const providerModels = ALL_MODELS.filter(m => m.provider === provider.id);
+                const isActive = enabledProviders[provider.id];
+                return (
+                  <div key={provider.id} className="mt-provider-block">
+                    <span
+                      className={`mt-provider-text ${isActive ? 'active' : ''}`}
+                      onClick={() => toggleProvider(provider.id)}
+                      title={isActive && getEnabledProviderCount() <= 1 ? 'at least one provider must be active' : ''}
+                    >
+                      {provider.name}
+                    </span>
+                    {isActive && (
+                      <div className="mt-provider-models">
+                        {providerModels.map((model) => (
+                          <button
+                            key={model.id}
+                            className={`mt-model-btn ${selectedModel === model.id ? 'selected' : ''}`}
+                            onClick={() => {
+                              onModelChange(model.id);
+                              onClose();
+                            }}
+                          >
+                            {model.displayName}
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </>
+          )}
 
-          <hr className="mt-divider" />
+          {/* Locked to single provider - show models directly */}
+          {lockedProvider && (
+            <>
+              <div className="mt-models-row" role="group" aria-label="Model selection">
+                {displayModels.map((model, index) => (
+                  <button
+                    key={model.id}
+                    ref={el => { modelRefs.current[index] = el; }}
+                    className={`mt-model-btn ${selectedModel === model.id ? 'selected' : ''} ${focusedModelIndex === index ? 'focused' : ''}`}
+                    onClick={() => {
+                      onModelChange(model.id);
+                      onClose();
+                    }}
+                    onKeyDown={(e) => handleModelKeyDown(e, index)}
+                    tabIndex={focusedModelIndex === index ? 0 : -1}
+                  >
+                    {model.name}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
 
-          {/* Tools */}
+          {/* Tools - collapsible */}
           <div className="mt-section">
-            <div className="mt-tools-header">
-              <span className="mt-label">tools ({enabledTools.length}/{ALL_TOOLS.length})</span>
-              <button
-                ref={toggleAllRef}
-                className="mt-toggle-all"
-                onClick={toggleAll}
-                onKeyDown={handleToggleAllKeyDown}
-                tabIndex={focusedToggleAll ? 0 : -1}
-              >
-                {enabledTools.length === ALL_TOOLS.length ? 'none' : 'all'}
-              </button>
-            </div>
-
-            {/* File read + File write - 2 columns */}
-            <div className="mt-category-row">
-              {toolsByCategory['file-read'].length > 0 && (
-                <div className="mt-category mt-category-half">
-                  <div className="mt-category-name" onClick={() => toggleCategory('file-read')}>read</div>
-                  <div className="mt-tools-grid">
-                    {toolsByCategory['file-read'].map(tool => (
-                      <button
-                        key={tool.id}
-                        ref={el => { toolRefs.current.set(tool.id, el); }}
-                        className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
-                        onClick={() => toggleTool(tool.id)}
-                        onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
-                        tabIndex={focusedToolId === tool.id ? 0 : -1}
-                        title={tool.description}
-                      >
-                        {tool.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-              {toolsByCategory['file-write'].length > 0 && (
-                <div className="mt-category mt-category-half">
-                  <div className="mt-category-name" onClick={() => toggleCategory('file-write')}>write</div>
-                  <div className="mt-tools-grid">
-                    {toolsByCategory['file-write'].map(tool => (
-                      <button
-                        key={tool.id}
-                        ref={el => { toolRefs.current.set(tool.id, el); }}
-                        className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
-                        onClick={() => toggleTool(tool.id)}
-                        onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
-                        tabIndex={focusedToolId === tool.id ? 0 : -1}
-                        title={tool.description}
-                      >
-                        {tool.name}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            <div className="mt-tools-header" onClick={() => setToolsExpanded(!toolsExpanded)}>
+              <span className="mt-label">
+                {toolsExpanded ? <IconChevronDown size={12} stroke={1.5} /> : <IconChevronRight size={12} stroke={1.5} />}
+                tools ({enabledTools.length}/{ALL_TOOLS.length})
+              </span>
+              {toolsExpanded && (
+                <button
+                  ref={toggleAllRef}
+                  className="mt-toggle-all"
+                  onClick={(e) => { e.stopPropagation(); toggleAll(); }}
+                  onKeyDown={handleToggleAllKeyDown}
+                  tabIndex={focusedToggleAll ? 0 : -1}
+                >
+                  {enabledTools.length === ALL_TOOLS.length ? 'none' : 'all'}
+                </button>
               )}
             </div>
 
-            {/* Web + Terminal - 2 columns */}
-            <div className="mt-category-row">
-              {toolsByCategory.web.length > 0 && (
-                <div className="mt-category mt-category-half">
-                  <div className="mt-category-name" onClick={() => toggleCategory('web')}>web</div>
-                  <div className="mt-tools-grid">
-                    {toolsByCategory.web.map(tool => (
-                      <button
-                        key={tool.id}
-                        ref={el => { toolRefs.current.set(tool.id, el); }}
-                        className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
-                        onClick={() => toggleTool(tool.id)}
-                        onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
-                        tabIndex={focusedToolId === tool.id ? 0 : -1}
-                        title={tool.description}
-                      >
-                        {tool.name}
-                      </button>
-                    ))}
-                  </div>
+            {/* File read + File write */}
+            {toolsExpanded && <div className="mt-category-row">
+              <div className="mt-category mt-category-half">
+                <span
+                  className={`mt-category-text ${isCategoryAllActive('file-read') ? 'active' : ''}`}
+                  onClick={() => toggleCategory('file-read')}
+                >
+                  read
+                </span>
+                <div className="mt-tools-grid">
+                  {toolsByCategory['file-read'].map(tool => (
+                    <button
+                      key={tool.id}
+                      ref={el => { toolRefs.current.set(tool.id, el); }}
+                      className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
+                      onClick={() => toggleTool(tool.id)}
+                      onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
+                      tabIndex={focusedToolId === tool.id ? 0 : -1}
+                      title={tool.description}
+                    >
+                      {tool.name}
+                    </button>
+                  ))}
                 </div>
-              )}
-              {toolsByCategory.terminal.length > 0 && (
-                <div className="mt-category mt-category-half">
-                  <div className="mt-category-name" onClick={() => toggleCategory('terminal')}>terminal</div>
-                  <div className="mt-tools-grid">
-                    {toolsByCategory.terminal.map(tool => (
-                      <button
-                        key={tool.id}
-                        ref={el => { toolRefs.current.set(tool.id, el); }}
-                        className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
-                        onClick={() => toggleTool(tool.id)}
-                        onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
-                        tabIndex={focusedToolId === tool.id ? 0 : -1}
-                        title={tool.description}
-                      >
-                        {tool.name}
-                      </button>
-                    ))}
-                  </div>
+              </div>
+              <div className="mt-category mt-category-half">
+                <span
+                  className={`mt-category-text ${isCategoryAllActive('file-write') ? 'active' : ''}`}
+                  onClick={() => toggleCategory('file-write')}
+                >
+                  write
+                </span>
+                <div className="mt-tools-grid">
+                  {toolsByCategory['file-write'].map(tool => (
+                    <button
+                      key={tool.id}
+                      ref={el => { toolRefs.current.set(tool.id, el); }}
+                      className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
+                      onClick={() => toggleTool(tool.id)}
+                      onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
+                      tabIndex={focusedToolId === tool.id ? 0 : -1}
+                      title={tool.description}
+                    >
+                      {tool.name}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            </div>}
 
-            {/* Other + Agents - 2 columns */}
-            <div className="mt-category-row">
-              {toolsByCategory.other.length > 0 && (
-                <div className="mt-category mt-category-half">
-                  <div className="mt-category-name" onClick={() => toggleCategory('other')}>other</div>
-                  <div className="mt-tools-grid">
-                    {toolsByCategory.other.map(tool => (
-                      <button
-                        key={tool.id}
-                        ref={el => { toolRefs.current.set(tool.id, el); }}
-                        className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
-                        onClick={() => toggleTool(tool.id)}
-                        onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
-                        tabIndex={focusedToolId === tool.id ? 0 : -1}
-                        title={tool.description}
-                      >
-                        {tool.name}
-                      </button>
-                    ))}
-                  </div>
+            {/* Web + Terminal */}
+            {toolsExpanded && <div className="mt-category-row">
+              <div className="mt-category mt-category-half">
+                <span
+                  className={`mt-category-text ${isCategoryAllActive('web') ? 'active' : ''}`}
+                  onClick={() => toggleCategory('web')}
+                >
+                  web
+                </span>
+                <div className="mt-tools-grid">
+                  {toolsByCategory.web.map(tool => (
+                    <button
+                      key={tool.id}
+                      ref={el => { toolRefs.current.set(tool.id, el); }}
+                      className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
+                      onClick={() => toggleTool(tool.id)}
+                      onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
+                      tabIndex={focusedToolId === tool.id ? 0 : -1}
+                      title={tool.description}
+                    >
+                      {tool.name}
+                    </button>
+                  ))}
                 </div>
-              )}
-              {toolsByCategory.agents.length > 0 && (
-                <div className="mt-category mt-category-half">
-                  <div className="mt-category-name" onClick={() => toggleCategory('agents')}>agents</div>
-                  <div className="mt-tools-grid">
-                    {toolsByCategory.agents.map(tool => (
-                      <button
-                        key={tool.id}
-                        ref={el => { toolRefs.current.set(tool.id, el); }}
-                        className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
-                        onClick={() => toggleTool(tool.id)}
-                        onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
-                        tabIndex={focusedToolId === tool.id ? 0 : -1}
-                        title={tool.description}
-                      >
-                        {tool.name}
-                      </button>
-                    ))}
-                  </div>
+              </div>
+              <div className="mt-category mt-category-half">
+                <span
+                  className={`mt-category-text ${isCategoryAllActive('terminal') ? 'active' : ''}`}
+                  onClick={() => toggleCategory('terminal')}
+                >
+                  terminal
+                </span>
+                <div className="mt-tools-grid">
+                  {toolsByCategory.terminal.map(tool => (
+                    <button
+                      key={tool.id}
+                      ref={el => { toolRefs.current.set(tool.id, el); }}
+                      className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
+                      onClick={() => toggleTool(tool.id)}
+                      onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
+                      tabIndex={focusedToolId === tool.id ? 0 : -1}
+                      title={tool.description}
+                    >
+                      {tool.name}
+                    </button>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            </div>}
+
+            {/* Other + Agents */}
+            {toolsExpanded && <div className="mt-category-row">
+              <div className="mt-category mt-category-half">
+                <span
+                  className={`mt-category-text ${isCategoryAllActive('other') ? 'active' : ''}`}
+                  onClick={() => toggleCategory('other')}
+                >
+                  other
+                </span>
+                <div className="mt-tools-grid">
+                  {toolsByCategory.other.map(tool => (
+                    <button
+                      key={tool.id}
+                      ref={el => { toolRefs.current.set(tool.id, el); }}
+                      className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
+                      onClick={() => toggleTool(tool.id)}
+                      onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
+                      tabIndex={focusedToolId === tool.id ? 0 : -1}
+                      title={tool.description}
+                    >
+                      {tool.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="mt-category mt-category-half">
+                <span
+                  className={`mt-category-text ${isCategoryAllActive('agents') ? 'active' : ''}`}
+                  onClick={() => toggleCategory('agents')}
+                >
+                  agents
+                </span>
+                <div className="mt-tools-grid">
+                  {toolsByCategory.agents.map(tool => (
+                    <button
+                      key={tool.id}
+                      ref={el => { toolRefs.current.set(tool.id, el); }}
+                      className={`mt-tool ${enabledTools.includes(tool.id) ? 'enabled' : ''}`}
+                      onClick={() => toggleTool(tool.id)}
+                      onKeyDown={(e) => handleToolKeyDown(e, tool.id)}
+                      tabIndex={focusedToolId === tool.id ? 0 : -1}
+                      title={tool.description}
+                    >
+                      {tool.name}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            </div>}
           </div>
         </div>
       </div>

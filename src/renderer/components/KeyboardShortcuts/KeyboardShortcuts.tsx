@@ -28,7 +28,7 @@ export const KeyboardShortcuts: React.FC<KeyboardShortcutsProps> = ({ onClose })
   return (
     <div className="help-modal-overlay" onClick={onClose}>
       <div className="help-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="help-header">
+        <div className="help-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>
             <IconKeyboard size={16} stroke={1.5} style={{ marginRight: '6px', verticalAlign: 'middle' }} />
             keyboard shortcuts

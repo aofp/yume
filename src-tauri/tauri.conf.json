@@ -56,6 +56,7 @@
     ],
     "resources": [
       "resources/yume-server-*",
+      "resources/yume-cli-*",
       "resources/yume-plugin",
       "resources/yume-vscode"
     ],

@@ -92,7 +92,7 @@ export const NoProviderModal: React.FC = () => {
   return (
     <div className="no-provider-overlay">
       <div className="no-provider-modal">
-        <div className="no-provider-header">
+        <div className="no-provider-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>select a provider</h3>
         </div>
 

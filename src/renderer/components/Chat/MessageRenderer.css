@@ -301,6 +301,10 @@
   margin: 0 0 2px 0;
 }
 
+p {
+  line-height: var(--leading-relaxed);
+}
+
 .content-text p:last-child,
 .markdown-content p:last-child {
   margin-bottom: 0;
@@ -631,7 +635,7 @@ ol {
 .thinking-markdown {
   font-family: var(--font-sans);
   font-size: var(--text-sm);
-line-height: var(--leading-relaxed);
+line-height: var(--leading-normal);
   margin-right: 8px;
   color: rgba(var(--foreground-rgb), 0.8);
 }
@@ -817,7 +821,7 @@ line-height: var(--leading-relaxed);
 .tool-use {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
   padding: 0 !important;
   background: transparent !important;
   border: none;
@@ -2219,6 +2223,7 @@ hr {
   padding: 0;
   border-radius: 4px;
   font-size: var(--text-base);
+  line-height: var(--leading-normal);
   color: var(--fg-80);
 }
 

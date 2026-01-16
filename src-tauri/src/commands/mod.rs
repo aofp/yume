@@ -2299,11 +2299,23 @@ pub fn restore_window_focus(window: tauri::WebviewWindow) -> Result<(), String> 
 
     #[cfg(target_os = "macos")]
     {
-        // On macOS, do NOT call window.set_focus() - it disrupts webview's internal focus state
-        // causing the textarea to lose focus even though the window appears focused.
-        // The webview handles focus better without native intervention.
-        // Focus restoration is handled in the frontend instead.
-        let _ = window; // Suppress unused warning
+        // CRITICAL: Use NSApp activation instead of window.set_focus()
+        // window.set_focus() disrupts webview's internal focus state, but NSApp.activateIgnoringOtherApps
+        // properly brings the app to front without interfering with the webview's responder chain
+        use cocoa::base::{id, YES};
+        use objc::{class, msg_send, sel, sel_impl};
+
+        let ns_window = window.ns_window().map_err(|e| format!("Failed to get NSWindow: {}", e))?;
+        unsafe {
+            let ns_window = ns_window as id;
+
+            // Activate the application - this is the key to preventing focus loss
+            let ns_app: id = msg_send![class!(NSApplication), sharedApplication];
+            let _: () = msg_send![ns_app, activateIgnoringOtherApps: YES];
+
+            // Make the window key and order it front
+            let _: () = msg_send![ns_window, makeKeyAndOrderFront: cocoa::base::nil];
+        }
     }
 
     #[cfg(target_os = "linux")]

@@ -1,5 +1,5 @@
 ---
-allowed-tools: Read, Glob
+allowed-tools: Read, Glob, TodoRead
 argument-hint: [preserve focus]
 description: compact context with preservation hints
 ---
@@ -8,31 +8,65 @@ description: compact context with preservation hints
 
 $ARGUMENTS
 
-### preservation priorities
+### parse preservation hints
 
-if focus specified, ensure the summary retains:
-- **file path** → keep full content/changes for that file
-- **concept** (e.g. "auth", "api") → preserve all related discussion
-- **"all"** → balanced summary of everything
-- **blank** → auto-detect most relevant recent work
+the arguments may contain structured hints in format:
+- `task: <current task description>`
+- `files: <comma-separated filenames>`
+- `decisions: <semicolon-separated decisions>`
+- `preserve error context` (flag)
 
-### compaction guidance
+extract and prioritize these hints for your summary.
 
-when compacting, preserve:
-1. current task and its requirements
-2. decisions made and reasoning
-3. code changes (file paths, what changed, why)
-4. errors encountered and solutions
-5. user preferences mentioned
+### preservation priorities (in order)
 
-discard:
-- verbose explanations already understood
-- failed approaches that were abandoned
-- repetitive confirmations
+1. **current task** - what user is actively working on (from `task:` hint or recent messages)
+2. **code changes** - every file edited/written, what changed, and why (from `files:` hint)
+3. **key decisions** - architectural choices, approach selections (from `decisions:` hint)
+4. **error context** - if flagged, keep error details and their solutions
+5. **user preferences** - coding style, naming conventions mentioned
+6. **open work** - incomplete tasks, TODOs, questions to address
 
-### output
+if a specific file/concept focus is given:
+- **file path** → preserve full content and all changes for that file
+- **concept** (e.g. "auth", "api") → preserve all related discussion and code
 
-after compaction completes, confirm:
+### compaction process
+
+1. **scan conversation** for the hints above
+2. **identify keystone messages** - ones that establish context or make decisions
+3. **summarize verbose sections** - long explanations, failed attempts
+4. **preserve exact code** - don't paraphrase code changes, keep paths and snippets
+5. **maintain causality** - if A led to B, preserve that relationship
+
+### what to discard
+
+- repetitive confirmations and acknowledgments
+- verbose explanations of well-known concepts
+- failed approaches that were completely abandoned
+- intermediate debugging output (keep conclusions only)
+- chat pleasantries and meta-discussion
+
+### output format
+
+create a dense, information-rich summary that preserves:
 ```
-compacted. preserved: [focus or "recent work"]. ready to continue.
+## context summary
+
+**task**: [what we're working on]
+
+**files touched**: [list with brief change descriptions]
+
+**decisions made**:
+- [decision 1]: [rationale]
+- [decision 2]: [rationale]
+
+**current state**: [where we left off]
+
+**open items**: [if any TODOs or questions remain]
+```
+
+after generating summary, confirm:
+```
+compacted. preserved: [focus or "auto-detected context"]. ready to continue.
 ```

@@ -135,7 +135,8 @@
 }
 
 .replace-all-summary {
-  padding: 6px 8px;
+  padding-top: 4px;
+  padding-bottom: 4px;
   background: #000;
   border-radius: 4px;
 }
@@ -143,7 +144,7 @@
 .replace-all-info {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
 }
 
@@ -154,7 +155,7 @@
 }
 
 .replace-old {
-  background: rgba(var(--negative-rgb), 0.25);
+  background: rgba(var(--negative-rgb), 0.15);
   color: var(--negative-color);
   padding: 2px 6px;
   border-radius: 3px;
@@ -166,7 +167,7 @@
 }
 
 .replace-new {
-  background: rgba(var(--positive-rgb), 0.25);
+  background: rgba(var(--positive-rgb), 0.15);
   color: var(--positive-color);
   padding: 2px 6px;
   border-radius: 3px;

@@ -141,7 +141,7 @@ export const ClaudeMdEditorModal: React.FC<ClaudeMdEditorModalProps> = ({
   return (
     <div className="claude-md-modal-overlay" onClick={handleClose}>
       <div className="claude-md-modal" onClick={e => e.stopPropagation()}>
-        <div className="claude-md-modal-header">
+        <div className="claude-md-modal-header" onContextMenu={(e) => e.preventDefault()}>
           <div className="claude-md-modal-title">
             <IconFile size={14} />
             <span>CLAUDE.md</span>

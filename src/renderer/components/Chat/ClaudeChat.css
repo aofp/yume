@@ -422,7 +422,7 @@
 .tool-use {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: 3px;
   padding: 4px 10px;
   background: rgba(255, 153, 204, 0.05);
   border: none;
@@ -2872,8 +2872,8 @@ textarea.context-full {
 
 .git-changes-badge {
   font-size: var(--text-xs);
-  background: var(--accent-color);
-  color: var(--bg-primary, #000);
+  background: rgba(var(--accent-rgb), 0.1);
+  color: var(--accent-color);
   padding: 0 4px;
   border-radius: 8px;
   margin-left: 4px;

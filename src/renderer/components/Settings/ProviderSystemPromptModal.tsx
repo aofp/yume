@@ -84,6 +84,7 @@ export const ProviderSystemPromptModal: React.FC<ProviderSystemPromptModalProps>
         <div
           className="provider-prompt-header"
           style={{ WebkitAppRegion: 'drag', webkitAppRegion: 'drag' } as React.CSSProperties}
+          onContextMenu={(e) => e.preventDefault()}
         >
           <h3 style={{ WebkitAppRegion: 'drag', webkitAppRegion: 'drag' } as React.CSSProperties}>
             {getTitle()} system prompt append

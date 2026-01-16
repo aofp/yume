@@ -78,7 +78,7 @@ export const SystemPromptModal: React.FC<SystemPromptModalProps> = ({
   return (
     <div className="system-prompt-modal-overlay">
       <div className="system-prompt-modal">
-        <div className="system-prompt-header" style={{ WebkitAppRegion: 'drag', webkitAppRegion: 'drag' } as React.CSSProperties}>
+        <div className="system-prompt-header" style={{ WebkitAppRegion: 'drag', webkitAppRegion: 'drag' } as React.CSSProperties} onContextMenu={(e) => e.preventDefault()}>
           <h3 style={{ WebkitAppRegion: 'drag', webkitAppRegion: 'drag' } as React.CSSProperties}>system prompt append configuration</h3>
           <button className="close-button" onClick={onClose} title="close (esc)" style={{ WebkitAppRegion: 'no-drag', webkitAppRegion: 'no-drag' } as React.CSSProperties}>
             <IconX size={16} stroke={1.5} />

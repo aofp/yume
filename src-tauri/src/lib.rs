@@ -665,17 +665,23 @@ pub fn run() {
                             let class_name_rust = CStr::from_ptr(class_name_str).to_str().unwrap_or("");
 
                             if class_name_rust.contains("WKWebView") {
-                                // Make WKWebView accept first mouse (click through when inactive)
-                                // This is critical for preventing focus issues
+                                // Make WKWebView accept touch events for better interaction
                                 let _: () = msg_send![subview, setAcceptsTouchEvents: YES];
 
-                                // The WKWebView should be the first responder when focused
-                                // Force it to accept becoming first responder
-                                info!("Configured WKWebView for improved focus handling");
+                                // CRITICAL: Make the window the first responder target
+                                // This ensures keyboard events go to the webview
+                                let _: () = msg_send![ns_window, makeFirstResponder: subview];
+
+                                info!("Configured WKWebView as first responder for focus handling");
                                 break;
                             }
                         }
                     }
+
+                    // CRITICAL: Activate the app to ensure it has focus
+                    // This prevents random focus loss when processes spawn
+                    let ns_app: id = msg_send![class!(NSApplication), sharedApplication];
+                    let _: () = msg_send![ns_app, activateIgnoringOtherApps: YES];
                 }
             }
             

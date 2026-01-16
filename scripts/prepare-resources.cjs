@@ -55,12 +55,16 @@ const platformFiles = {
   macos: [
     'yume-server-macos-arm64',
     'yume-server-macos-x64',
+    'yume-cli-macos-arm64',
+    'yume-cli-macos-x64',
   ],
   windows: [
     'yume-server-windows-x64.exe',
+    'yume-cli-windows-x64.exe',
   ],
   linux: [
     'yume-server-linux-x64',
+    'yume-cli-linux-x64',
   ],
 };
 
@@ -133,6 +137,10 @@ const allPlatformBinaries = [
   'yume-server-macos-x64',
   'yume-server-windows-x64.exe',
   'yume-server-linux-x64',
+  'yume-cli-macos-arm64',
+  'yume-cli-macos-x64',
+  'yume-cli-windows-x64.exe',
+  'yume-cli-linux-x64',
 ];
 
 const otherPlatformBinaries = allPlatformBinaries.filter(

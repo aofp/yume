@@ -222,6 +222,7 @@ export interface ProviderChunk {
   };
   toolCallDelta?: {
     id: string;
+    name?: string;
     arguments: string;
   };
   toolResult?: {

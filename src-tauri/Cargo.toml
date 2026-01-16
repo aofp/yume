@@ -49,16 +49,16 @@ reqwest = { version = "0.12", features = ["json"] }
 walkdir = "2.5"
 rand = "0.9"
 rusqlite = { version = "0.38", features = ["bundled", "serde_json", "chrono"] }
-# sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "sqlite"] }  # Commented out for now
-# notify = "6.1"  # Commented out for now
 
 [target.'cfg(target_os = "macos")'.dependencies]
 cocoa = "0.26"
 objc = "0.2"
+# sqlx = { version = "0.7", features = ["runtime-tokio-native-tls", "sqlite"] }  # Commented out for now
+# notify = "6.1"  # Commented out for now
 
-[target.'cfg(target_os = "windows")'.dependencies]
-windows = { version = "0.61", features = ["Win32_Foundation", "Win32_UI_WindowsAndMessaging", "Win32_Graphics_Gdi", "Win32_Graphics_Dwm", "Win32_UI_Controls", "Win32_System_Threading", "Win32_UI_Input_KeyboardAndMouse"] }
-webview2-com = "0.38"
+
+
+
 
 # Optimization profiles for maximum runtime speed + anti-reverse-engineering
 [profile.release]

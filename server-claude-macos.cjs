@@ -2173,13 +2173,13 @@ app.get('/claude-analytics', async (req, res) => {
       if (lower.includes('opus')) return 'opus';
       if (lower.includes('sonnet')) return 'sonnet';
       if (lower.includes('haiku')) return 'haiku';
-      // Gemini models
-      if (lower.includes('gemini-3-pro') || lower.includes('gemini-pro')) return 'gemini-pro';
-      if (lower.includes('gemini-3-flash') || lower.includes('gemini-flash')) return 'gemini-flash';
+      // Gemini models (check specific patterns for 2.5-pro/flash format)
+      if (lower.includes('2.5-pro') || lower.includes('gemini-pro')) return 'gemini-pro';
+      if (lower.includes('2.5-flash') || lower.includes('gemini-flash')) return 'gemini-flash';
       if (lower.includes('gemini')) return 'gemini';
-      // OpenAI/Codex models
-      if (lower.includes('gpt-5.2') || lower.includes('codex')) return 'gpt-codex';
-      if (lower.includes('gpt-5.1') || lower.includes('codex-mini')) return 'gpt-codex-mini';
+      // OpenAI/Codex models (check mini first since it's more specific)
+      if (lower.includes('5.1-codex') || lower.includes('codex-mini')) return 'gpt-codex-mini';
+      if (lower.includes('5.2-codex') || lower.includes('codex')) return 'gpt-codex';
       if (lower.includes('gpt')) return 'gpt';
       // Return original if no match
       return modelString;
@@ -2394,10 +2394,12 @@ app.get('/claude-analytics', async (req, res) => {
     };
 
     // Pricing per token (matching ccusage methodology)
-    // Claude Sonnet: $3/M input, $15/M output, $3.75/M cache_creation, $0.30/M cache_read
-    // Claude Opus: $15/M input, $75/M output, $18.75/M cache_creation, $1.50/M cache_read
-    // Gemini Flash: $0.075/1K = $0.75/M input, $0.30/1K = $3/M output
-    // GPT-4o: $2.50/M input, $10/M output
+    // Claude Sonnet 4.5: $3/M input, $15/M output, $3.75/M cache_creation, $0.30/M cache_read
+    // Claude Opus 4.5: $15/M input, $75/M output, $18.75/M cache_creation, $1.50/M cache_read
+    // Gemini 2.5 Pro: $1.25/M input, $10/M output
+    // Gemini 2.5 Flash: $0.15/M input, $0.60/M output ($3.50/M thinking output)
+    // GPT-5.2-Codex: $1.75/M input, $14/M output
+    // GPT-5.1-Codex-Mini: $0.25/M input, $2/M output
     const pricing = {
       sonnet: {
         input: 3e-6,
@@ -2411,15 +2413,51 @@ app.get('/claude-analytics', async (req, res) => {
         cacheCreation: 18.75e-6,
         cacheRead: 1.50e-6
       },
-      gemini: {
-        input: 0.075e-6,      // $0.075/1K = $0.75/M (Gemini 1.5 Flash)
-        output: 0.30e-6,      // $0.30/1K = $3/M
-        cacheCreation: 0.038e-6,
-        cacheRead: 0.019e-6
-      },
-      openai: {
-        input: 2.5e-6,        // $2.50/M (GPT-4o)
+      // Gemini 2.5 Pro
+      'gemini-pro': {
+        input: 1.25e-6,       // $1.25/M
         output: 10e-6,        // $10/M
+        cacheCreation: 0.625e-6,  // estimated 50% of input
+        cacheRead: 0.3125e-6      // estimated 25% of input
+      },
+      // Gemini 2.5 Flash
+      'gemini-flash': {
+        input: 0.15e-6,       // $0.15/M
+        output: 0.60e-6,      // $0.60/M (standard), $3.50/M (thinking)
+        cacheCreation: 0.075e-6,
+        cacheRead: 0.0375e-6
+      },
+      // Fallback for generic gemini
+      gemini: {
+        input: 1.25e-6,       // Use pro pricing as fallback
+        output: 10e-6,
+        cacheCreation: 0.625e-6,
+        cacheRead: 0.3125e-6
+      },
+      // GPT-5.2-Codex
+      'gpt-codex': {
+        input: 1.75e-6,       // $1.75/M
+        output: 14e-6,        // $14/M
+        cacheCreation: 0,
+        cacheRead: 0
+      },
+      // GPT-5.1-Codex-Mini
+      'gpt-codex-mini': {
+        input: 0.25e-6,       // $0.25/M
+        output: 2e-6,         // $2/M
+        cacheCreation: 0,
+        cacheRead: 0
+      },
+      // Fallback for generic gpt/openai
+      openai: {
+        input: 1.75e-6,       // Use codex pricing as fallback
+        output: 14e-6,
+        cacheCreation: 0,
+        cacheRead: 0
+      },
+      gpt: {
+        input: 1.75e-6,
+        output: 14e-6,
         cacheCreation: 0,
         cacheRead: 0
       },
@@ -5955,6 +5993,12 @@ io.on('connection', (socket) => {
                   console.log(`🤖 [${sessionId}] Subagent tool_result (parent: ${jsonData.parent_tool_use_id.substring(0, 20)}...)`);
                 }
                 socket.emit(`message:${sessionId}`, toolResultMessage);
+
+                // CRITICAL: Emit focus trigger on macOS to restore app focus after tool execution
+                // Process spawning can steal focus, this brings it back
+                if (process.platform === 'darwin') {
+                  socket.emit(`trigger:focus:${sessionId}`, { timestamp: Date.now() });
+                }
               }
             }
             
@@ -6500,6 +6544,12 @@ io.on('connection', (socket) => {
               streaming: false,
               timestamp: Date.now()
             });
+
+            // CRITICAL: Emit focus trigger on macOS to restore app focus after response completes
+            // Process spawning can steal focus, this brings it back once we're done
+            if (process.platform === 'darwin') {
+              socket.emit(`trigger:focus:${sessionId}`, { timestamp: Date.now() });
+            }
 
             pendingStreamingFalseTimers.delete(sessionId);
           }, STREAMING_FALSE_DEBOUNCE_MS);

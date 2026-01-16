@@ -288,6 +288,10 @@
   box-sizing: border-box;
 }
 
+.opacity-container:hover {
+  border-color: rgba(var(--accent-rgb), .9) !important;
+}
+
 .opacity-value {
   font-size: var(--text-sm);
   color: var(--fg-50);

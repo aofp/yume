@@ -151,6 +151,7 @@ impl ClaudeSpawner {
             session_id: session_id.clone(),
             project_path: options.project_path.clone(),
             model: options.model.clone(),
+            provider: Some("claude".to_string()),
             streaming: true,
             run_id: Some(run_id),
         };

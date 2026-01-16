@@ -50,7 +50,7 @@ export const ProviderCliModal: React.FC<ProviderCliModalProps> = ({
   return (
     <div className="provider-cli-modal-overlay" onClick={onClose}>
       <div className="provider-cli-modal" onClick={(e) => e.stopPropagation()}>
-        <div className="provider-cli-header">
+        <div className="provider-cli-header" onContextMenu={(e) => e.preventDefault()}>
           <h3>{getTitle()}</h3>
           <button className="close-button" onClick={onClose} title="close (esc)">
             <IconX size={16} stroke={1.5} />

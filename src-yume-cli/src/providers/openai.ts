@@ -195,17 +195,21 @@ export class OpenAIProvider extends BaseProvider {
     const args: string[] = [
       'exec',
       '--json',
-      '-m',
-      this.model,
       '-C',
       this.cwd,
       '--full-auto',
     ];
 
-    // Override reasoning effort for mini models (they don't support xhigh)
-    // This overrides any global config setting in ~/.codex/config.toml
-    if (this.model.includes('mini')) {
-      args.push('-c', 'model_reasoning_effort="low"');
+    // Only pass model if explicitly specified (not 'default' or empty)
+    // ChatGPT accounts don't support custom models
+    if (this.model && this.model !== 'default' && this.model !== 'auto') {
+      args.push('-m', this.model);
+
+      // Override reasoning effort for mini models (they don't support xhigh)
+      // This overrides any global config setting in ~/.codex/config.toml
+      if (this.model.includes('mini')) {
+        args.push('-c', 'model_reasoning_effort="low"');
+      }
     }
 
     args.push(prompt);

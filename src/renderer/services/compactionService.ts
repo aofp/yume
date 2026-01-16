@@ -44,6 +44,14 @@ export interface ContextManifest {
   testFiles: string[];
 }
 
+export interface ExtractedContext {
+  currentTask: string;
+  keyDecisions: string[];
+  recentFiles: Array<{ path: string; action: 'read' | 'edit' | 'write' }>;
+  errorsAndFixes: Array<{ error: string; fix: string }>;
+  openQuestions: string[];
+}
+
 class CompactionService {
   private config: CompactionConfig = {
     autoThreshold: 0.60,  // 60% - conservative auto-compact (38% buffer like Claude Code)
@@ -272,9 +280,15 @@ class CompactionService {
         store.updateCompactionState(sessionId, { manifestSaved: true });
       }
 
-      // Send /compact command
-      if (isDev) console.log('[Compaction] Sending /compact command to Claude');
-      await store.sendMessage('/compact', false);
+      // Extract semantic context and build preservation hints
+      if (isDev) console.log('[Compaction] Extracting conversation context for preservation hints');
+      const extractedContext = this.extractConversationContext(sessionId);
+      const preservationHints = this.buildPreservationHints(extractedContext);
+
+      // Send /compact command with preservation hints
+      const compactCommand = `/compact ${preservationHints}`;
+      if (isDev) console.log('[Compaction] Sending compact command with hints:', compactCommand);
+      await store.sendMessage(compactCommand, false);
 
       // Reset backend flags so compaction can trigger again later
       if (isDev) console.log('[Compaction] Resetting backend compaction flags');
@@ -309,6 +323,165 @@ class CompactionService {
     // Force uses same flag mechanism as auto - only compact when user submits a message
     // This prevents /compact from being sent when user isn't actively chatting
     await this.triggerAutoCompaction(sessionId);
+  }
+
+  /**
+   * Extract semantic context from conversation for preservation hints
+   * Analyzes messages to identify key decisions, tasks, errors, and files
+   */
+  extractConversationContext(sessionId: string): ExtractedContext {
+    const store = useClaudeCodeStore.getState();
+    const session = store.sessions.find(s => s.id === sessionId);
+
+    const context: ExtractedContext = {
+      currentTask: '',
+      keyDecisions: [],
+      recentFiles: [],
+      errorsAndFixes: [],
+      openQuestions: []
+    };
+
+    if (!session?.messages?.length) return context;
+
+    const messages = session.messages;
+
+    // Decision patterns - look for explicit decisions
+    const decisionPatterns = [
+      /(?:decided to|let's|we should|i'll|we'll|going to|plan is to)\s+(.+?)(?:\.|$)/gi,
+      /(?:approach:|strategy:|solution:)\s*(.+?)(?:\.|$)/gi
+    ];
+
+    // Error patterns - look for errors and their fixes
+    const errorPatterns = [
+      /(?:error|failed|issue|problem|bug)[:.]?\s*(.+?)(?:\.|$)/gi,
+      /(?:fixed|resolved|solved|addressed)\s+(?:by|with|using)?\s*(.+?)(?:\.|$)/gi
+    ];
+
+    // Track files with their actions (last 20 unique)
+    const fileActions = new Map<string, 'read' | 'edit' | 'write'>();
+
+    // Process messages from newest to oldest for recency weighting
+    const reversedMessages = [...messages].reverse();
+
+    // Get current task from recent user messages
+    const recentUserMessages = reversedMessages
+      .filter(m => m.type === 'human' && m.message && !m.message.startsWith('/'))
+      .slice(0, 3);
+
+    if (recentUserMessages.length > 0) {
+      context.currentTask = recentUserMessages[0].message?.slice(0, 200) || '';
+    }
+
+    // Extract decisions and errors from assistant messages
+    for (const msg of reversedMessages.slice(0, 50)) { // Last 50 messages
+      const text = msg.message || msg.result || '';
+      if (!text || typeof text !== 'string') continue;
+
+      // Extract decisions
+      for (const pattern of decisionPatterns) {
+        const matches = text.matchAll(pattern);
+        for (const match of matches) {
+          if (match[1] && context.keyDecisions.length < 10) {
+            const decision = match[1].trim().slice(0, 150);
+            if (decision.length > 10 && !context.keyDecisions.includes(decision)) {
+              context.keyDecisions.push(decision);
+            }
+          }
+        }
+      }
+
+      // Extract errors (simplified - just track that errors occurred)
+      for (const pattern of errorPatterns) {
+        const matches = text.matchAll(pattern);
+        for (const match of matches) {
+          if (match[1] && context.errorsAndFixes.length < 5) {
+            const errorOrFix = match[1].trim().slice(0, 100);
+            if (errorOrFix.length > 5) {
+              context.errorsAndFixes.push({ error: errorOrFix, fix: '' });
+            }
+          }
+        }
+      }
+
+      // Track file operations
+      if (msg.type === 'tool_use' && msg.name && msg.input?.file_path) {
+        const filePath = msg.input.file_path;
+        if (!fileActions.has(filePath)) {
+          const action = msg.name === 'Read' ? 'read' :
+                        msg.name === 'Write' ? 'write' : 'edit';
+          fileActions.set(filePath, action);
+        }
+      }
+    }
+
+    // Convert file actions to array (most recent first, limit 15)
+    context.recentFiles = Array.from(fileActions.entries())
+      .slice(0, 15)
+      .map(([path, action]) => ({ path, action }));
+
+    // Look for open questions/TODOs in recent messages
+    const todoPatterns = [
+      /(?:TODO|FIXME|NOTE|QUESTION)[:.]?\s*(.+?)(?:\.|$)/gi,
+      /(?:need to|should|must|have to)\s+(.+?)(?:\.|$)/gi
+    ];
+
+    for (const msg of reversedMessages.slice(0, 20)) {
+      const text = msg.message || msg.result || '';
+      if (!text || typeof text !== 'string') continue;
+
+      for (const pattern of todoPatterns) {
+        const matches = text.matchAll(pattern);
+        for (const match of matches) {
+          if (match[1] && context.openQuestions.length < 5) {
+            const todo = match[1].trim().slice(0, 100);
+            if (todo.length > 5 && !context.openQuestions.includes(todo)) {
+              context.openQuestions.push(todo);
+            }
+          }
+        }
+      }
+    }
+
+    if (isDev) console.log('[Compaction] Extracted context:', context);
+    return context;
+  }
+
+  /**
+   * Build preservation hints string from extracted context
+   */
+  buildPreservationHints(context: ExtractedContext): string {
+    const hints: string[] = [];
+
+    // Current task is most important
+    if (context.currentTask) {
+      hints.push(`task: ${context.currentTask.slice(0, 100)}`);
+    }
+
+    // Key files worked on
+    if (context.recentFiles.length > 0) {
+      const editedFiles = context.recentFiles
+        .filter(f => f.action === 'edit' || f.action === 'write')
+        .slice(0, 5)
+        .map(f => f.path.split('/').pop())
+        .join(', ');
+      if (editedFiles) {
+        hints.push(`files: ${editedFiles}`);
+      }
+    }
+
+    // Key decisions
+    if (context.keyDecisions.length > 0) {
+      hints.push(`decisions: ${context.keyDecisions.slice(0, 3).join('; ').slice(0, 150)}`);
+    }
+
+    // If we have errors, note them
+    if (context.errorsAndFixes.length > 0) {
+      hints.push('preserve error context');
+    }
+
+    // Combine into single hint string (max 400 chars for prompt efficiency)
+    const combined = hints.join(' | ').slice(0, 400);
+    return combined || 'recent work';
   }
 
   /**
