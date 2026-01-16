@@ -63,7 +63,7 @@ windows = { version = "0.61", features = [
     "Win32_UI_WindowsAndMessaging",
     "Win32_UI_Input_KeyboardAndMouse",
 ] }
-webview2-com = "0.36"
+webview2-com = "0.38"
 
 
 
