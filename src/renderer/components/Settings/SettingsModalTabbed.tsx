@@ -1004,6 +1004,12 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           }}
                         >
                           {getCurrentThemeDisplayName()}
+                          <span className="theme-color-circles">
+                            <span style={{ background: foregroundColor }} />
+                            <span style={{ background: accentColor }} />
+                            <span style={{ background: positiveColor }} />
+                            <span style={{ background: negativeColor }} />
+                          </span>
                         </button>
                         {presetDropdownOpen && createPortal(
                           <div ref={dropdownMenuRef} className="preset-dropdown-menu" style={{ top: dropdownPosition.top, left: dropdownPosition.left }} onMouseLeave={() => restoreCurrentTheme(true)}>
@@ -1020,6 +1026,12 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                                 }}
                               >
                                 {theme.name}
+                                <span className="theme-color-circles">
+                                  <span style={{ background: theme.foregroundColor }} />
+                                  <span style={{ background: theme.accentColor }} />
+                                  <span style={{ background: theme.positiveColor }} />
+                                  <span style={{ background: theme.negativeColor }} />
+                                </span>
                               </div>
                             ))}
                             {customThemes.length > 0 && (
@@ -1037,6 +1049,12 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                                       setFocusedIndex(-1);
                                     }}
                                   >
+                                    <span className="theme-color-circles">
+                                      <span style={{ background: theme.foregroundColor }} />
+                                      <span style={{ background: theme.accentColor }} />
+                                      <span style={{ background: theme.positiveColor }} />
+                                      <span style={{ background: theme.negativeColor }} />
+                                    </span>
                                     {theme.name}
                                   </div>
                                 ))}
