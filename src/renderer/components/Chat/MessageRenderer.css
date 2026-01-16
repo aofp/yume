@@ -866,15 +866,13 @@ line-height: var(--leading-normal);
 .tool-use.subagent-tool {
   display: flex;
   flex-wrap: wrap;
-  align-items: baseline;
+  align-items: center;
   gap: 0 4px;
 }
 
 .subagent-indicator {
   color: var(--accent-color) !important;
-  opacity: .8;
   font-size: var(--text-sm);
-  margin-right: 2px;
 }
 
 @keyframes subagentSlide {

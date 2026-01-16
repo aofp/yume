@@ -32,7 +32,7 @@ Enable Yume to drive Google's Gemini and OpenAI's Codex models via a CLI-compati
 - **Auth:** Handled by official CLIs - user must run `gemini auth login` or `codex login` separately.
 - **Shim:** `yume-cli` in `src-yume-cli/` spawns official CLIs and normalizes output.
 - **Status:** COMPLETE for release. All providers (Claude, Gemini, OpenAI) work end-to-end.
-  - yume-cli binaries bundled for macOS (arm64/x64), Windows (x64), Linux (x64)
+  - yume-cli binaries bundled for macOS (arm64/x64); Windows/Linux binaries need build before release
   - Tool call delta assembly implemented for streaming tool calls
   - Provider switch forks session (by design - no mid-conversation provider switching)
 
@@ -120,8 +120,8 @@ npm run ensure:server          # Check if server binary exists, build if missing
 - `docs/` - Extended documentation (architecture, API, troubleshooting)
 - Root level `server-claude-*.cjs` - Server source files
 
-### Critical Rust Files (32 files, 16,853 lines, 152 Tauri commands)
-- `lib.rs` - Main entry, Tauri setup, all 152 commands registered
+### Critical Rust Files (32 files, 16,853 lines, 146 Tauri commands)
+- `lib.rs` - Main entry, Tauri setup, all 146 commands registered
 - `main.rs` - Executable entry point, panic handler
 - `logged_server.rs` - Node.js server process management
 - `stream_parser.rs` - Claude output stream parsing
