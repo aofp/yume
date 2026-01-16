@@ -59,7 +59,7 @@
   position:relative;
   top: -1px;
   border: 1px solid transparent;
-  color: var(--fg-40);
+  color: var(--foreground-color);
   padding: 0;
   border-radius: 4px;
   font-size: var(--text-sm);
@@ -153,7 +153,7 @@
   height: 28px;
   border: none;
   background: transparent;
-  color: var(--fg-70);
+  color: var(--foreground-color);
   cursor: default;
   display: flex;
   align-items: center;
@@ -162,7 +162,11 @@
 
 .window-control:hover {
   background-color: var(--fg-15);
-  color: var(--foreground-color);
+}
+
+.window-control:hover .icon-opacity-70,
+.window-control:hover .icon-opacity-50 {
+  opacity: 1;
 }
 
 .window-control.settings, .window-control.help, .window-control.projects, .window-control.agents, .window-control.analytics, .window-control.refresh {
@@ -170,7 +174,7 @@
   height: 21px;
   background: transparent;
   border: 1px solid var(--fg-20);
-  color: var(--fg-50);
+  color: var(--foreground-color);
   padding: 0;
   border-radius: 4px;
   font-size: var(--text-sm);
@@ -202,12 +206,14 @@
 
 .window-control.close {
   background-color: transparent;
-  color: var(--fg-70);
 }
 
 .window-control.close:hover {
   background: rgba(var(--negative-rgb), 0.7);
   color: #ffffff;
+}
+
+.window-control.close:hover .icon-opacity-70 {
   opacity: 1;
 }
 

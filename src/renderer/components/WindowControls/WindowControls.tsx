@@ -179,32 +179,32 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
               className="window-control-toggle"
               title="expand menu"
             >
-              <IconChevronLeft size={10} stroke={2} />
+              <span className="icon-opacity-50"><IconChevronLeft size={10} stroke={2} /></span>
             </button>
           ) : (
             <>
               {showProjectsMenu && onProjectsClick && (
                 <button className="window-control projects" onClick={onProjectsClick} title="projects (cmd+p)">
-                  <IconFolders size={10} stroke={2} />
+                  <span className="icon-opacity-50"><IconFolders size={10} stroke={2} /></span>
                 </button>
               )}
               {showAgentsMenu && onAgentsClick && (
                 <button className="window-control agents" onClick={onAgentsClick} title="agents (cmd+n)">
-                  <IconRobot size={10} stroke={2} />
+                  <span className="icon-opacity-50"><IconRobot size={10} stroke={2} /></span>
                 </button>
               )}
               {showAnalyticsMenu && onAnalyticsClick && (
                 <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (cmd+y)">
-                  <IconTrendingUp size={10} stroke={2} />
+                  <span className="icon-opacity-50"><IconTrendingUp size={10} stroke={2} /></span>
                 </button>
               )}
               {onSettingsClick && (
                 <button className="window-control settings" onClick={onSettingsClick} title="settings (cmd+,)">
-                  <IconSettingsFilled size={10} />
+                  <span className="icon-opacity-50"><IconSettingsFilled size={10} /></span>
                 </button>
               )}
               <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (? or F1)">
-                <span style={{ fontSize: '10px' }}>?</span>
+                <span className="icon-opacity-50" style={{ fontSize: '10px' }}>?</span>
               </button>
             </>
           )}
@@ -230,32 +230,32 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
             className="window-control-toggle"
             title="expand menu"
           >
-            <IconChevronRight size={10} stroke={2} />
+            <span className="icon-opacity-50"><IconChevronRight size={10} stroke={2} /></span>
           </button>
         ) : (
           <>
             {showProjectsMenu && onProjectsClick && (
               <button className="window-control projects" onClick={onProjectsClick} title="projects (ctrl+p)">
-                <IconFolders size={10} stroke={2} />
+                <span className="icon-opacity-50"><IconFolders size={10} stroke={2} /></span>
               </button>
             )}
             {showAgentsMenu && onAgentsClick && (
               <button className="window-control agents" onClick={onAgentsClick} title="agents (ctrl+n)">
-                <IconRobot size={10} stroke={2} />
+                <span className="icon-opacity-50"><IconRobot size={10} stroke={2} /></span>
               </button>
             )}
             {showAnalyticsMenu && onAnalyticsClick && (
               <button className="window-control analytics" onClick={onAnalyticsClick} title="analytics (ctrl+y)">
-                <IconTrendingUp size={10} stroke={2} />
+                <span className="icon-opacity-50"><IconTrendingUp size={10} stroke={2} /></span>
               </button>
             )}
             {onSettingsClick && (
               <button className="window-control settings" onClick={onSettingsClick} title="settings (ctrl+,)">
-                <IconSettingsFilled size={10} />
+                <span className="icon-opacity-50"><IconSettingsFilled size={10} /></span>
               </button>
             )}
             <button className="window-control help" onClick={onHelpClick} title="keyboard shortcuts (? or F1)">
-              <span style={{ fontSize: '10px' }}>?</span>
+              <span className="icon-opacity-50" style={{ fontSize: '10px' }}>?</span>
             </button>
           </>
         )}
@@ -263,13 +263,13 @@ export const WindowControls: React.FC<WindowControlsProps> = ({ onSettingsClick,
       {/* Spacer to push window controls to the right */}
       <div className="window-controls-spacer" />
       <button className="window-control minimize" onClick={handleMinimize}>
-        <IconMinus size={14} stroke={1.5} />
+        <span className="icon-opacity-70"><IconMinus size={14} stroke={1.5} /></span>
       </button>
       <button className="window-control maximize" onClick={handleMaximize}>
-        <IconSquare size={12} stroke={1.5} />
+        <span className="icon-opacity-70"><IconSquare size={12} stroke={1.5} /></span>
       </button>
       <button className="window-control close" onClick={handleClose}>
-        <IconX size={16} stroke={1.5} />
+        <span className="icon-opacity-70"><IconX size={16} stroke={1.5} /></span>
       </button>
     </div>
   );

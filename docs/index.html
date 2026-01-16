@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>yume docs</title>
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    :root {
+      --bg: #000;
+      --bg-elevated: #0a0a0a;
+      --bg-hover: #141414;
+      --border: #1a1a1a;
+      --text: #e0e0e0;
+      --text-dim: #707070;
+      --text-bright: #fff;
+      --accent: #a8d8ea;
+      --accent-pink: #f8b4c4;
+      --accent-mint: #a8e6cf;
+      --accent-lavender: #c3b1e1;
+      --code-bg: #0f0f0f;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+    }
+    .container { display: flex; min-height: 100vh; }
+
+    /* sidebar */
+    .sidebar {
+      width: 280px;
+      background: var(--bg-elevated);
+      border-right: 1px solid var(--border);
+      height: 100vh;
+      overflow-y: auto;
+      position: fixed;
+      padding: 1.5rem 0;
+    }
+    .logo {
+      padding: 0 1.25rem 1.5rem;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 1rem;
+    }
+    .logo h1 { font-size: 1.25rem; color: var(--text-bright); }
+    .logo span { font-size: 0.8rem; color: var(--text-dim); }
+
+    .folder {
+      margin-bottom: 0.5rem;
+    }
+    .folder-name {
+      padding: 0.5rem 1.25rem;
+      color: var(--text-dim);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+    }
+    .folder-name:hover { color: var(--text); }
+    .folder-name .arrow {
+      transition: transform 0.15s;
+      font-size: 0.6rem;
+    }
+    .folder.collapsed .arrow { transform: rotate(-90deg); }
+    .folder.collapsed .files { display: none; }
+
+    .files a {
+      display: block;
+      padding: 0.4rem 1.25rem 0.4rem 2rem;
+      color: var(--text-dim);
+      text-decoration: none;
+      font-size: 0.85rem;
+      border-left: 2px solid transparent;
+      transition: all 0.1s;
+    }
+    .files a:hover {
+      background: var(--bg-hover);
+      color: var(--text);
+    }
+    .files a.active {
+      color: var(--accent);
+      border-left-color: var(--accent);
+      background: rgba(168,216,234,0.05);
+    }
+
+    /* main */
+    .main {
+      flex: 1;
+      margin-left: 280px;
+      padding: 2rem 3rem;
+      max-width: 900px;
+    }
+
+    /* content styles */
+    .content h1 { font-size: 2rem; color: var(--text-bright); margin-bottom: 1rem; }
+    .content h2 { font-size: 1.4rem; color: var(--text-bright); margin: 2.5rem 0 0.75rem; border-bottom: 1px solid var(--border); padding-bottom: 0.5rem; }
+    .content h3 { font-size: 1.1rem; color: var(--accent); margin: 1.5rem 0 0.5rem; }
+    .content p { margin-bottom: 1rem; }
+    .content a { color: var(--accent); text-decoration: none; }
+    .content a:hover { text-decoration: underline; }
+    .content strong { color: var(--text-bright); }
+    .content em { color: var(--text-dim); }
+    .content ul, .content ol { margin: 0 0 1rem 1.5rem; }
+    .content li { margin-bottom: 0.4rem; }
+    .content hr { border: none; border-top: 1px solid var(--border); margin: 2rem 0; }
+    .content code {
+      font-family: 'SF Mono', 'Fira Code', monospace;
+      font-size: 0.85em;
+      background: var(--code-bg);
+      padding: 0.15em 0.4em;
+      border-radius: 3px;
+      color: var(--accent-mint);
+    }
+    .content pre {
+      background: var(--code-bg);
+      padding: 1rem;
+      border-radius: 6px;
+      overflow-x: auto;
+      margin-bottom: 1rem;
+      border: 1px solid var(--border);
+    }
+    .content pre code { background: none; padding: 0; color: var(--text); }
+    .content table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: 0.9rem; }
+    .content th { text-align: left; padding: 0.6rem; background: var(--bg-elevated); color: var(--text-dim); border-bottom: 1px solid var(--border); }
+    .content td { padding: 0.6rem; border-bottom: 1px solid var(--border); }
+    .content blockquote { border-left: 3px solid var(--accent-lavender); padding-left: 1rem; margin: 1rem 0; color: var(--text-dim); }
+
+    .loading { color: var(--text-dim); padding: 2rem; }
+
+    /* scrollbar */
+    ::-webkit-scrollbar { width: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    @media (max-width: 800px) {
+      .sidebar { width: 100%; height: auto; position: relative; }
+      .main { margin-left: 0; padding: 1.5rem; }
+      .container { flex-direction: column; }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <aside class="sidebar">
+      <div class="logo">
+        <h1>yume</h1>
+        <span>documentation</span>
+      </div>
+      <nav id="nav"></nav>
+    </aside>
+    <main class="main">
+      <div class="content" id="content">
+        <div class="loading">loading...</div>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    const structure = {
+      'release': [
+        'index.md',
+        'getting-started.md',
+        'features.md',
+        'faq.md',
+        'changelog.md'
+      ],
+      'root': [
+        'MASTER_DOCUMENTATION_INDEX.md',
+        'API_REFERENCE.md',
+        'COMPLETE_ARCHITECTURE.md',
+        'FEATURES_COMPLETE.md',
+        'PRODUCTION_DEPLOYMENT.md',
+        'PROJECT_STATUS.md',
+        'TROUBLESHOOTING_GUIDE.md',
+        'COMPETITIVE_ANALYSIS.md',
+        'YUME_GRADE_REPORT.md',
+        'DOCUMENTATION_UPDATE_SUMMARY.md'
+      ],
+      'expansion-plan': [
+        'ARCHITECTURE_OVERVIEW.md',
+        'ARCHITECTURE_UPDATE.md',
+        'YUME_CLI_SPEC.md',
+        'GEMINI_INTEGRATION.md',
+        'CODEX_INTEGRATION.md',
+        'STREAM_JSON_REFERENCE.md',
+        'TOOL_SCHEMA_REFERENCE.md',
+        'PROTOCOL_NORMALIZATION.md',
+        'SHIM_ARCHITECTURE.md',
+        'PROVIDER_REFERENCE.md',
+        'SYSTEM_PROMPT_STRATEGY.md',
+        'TECHNICAL_APPROACH.md',
+        'UI_UX_DESIGN.md',
+        'UNIVERSAL_SESSION_ARCHITECTURE.md',
+        'MULTI_PROVIDER_RESUME_ARCHITECTURE.md',
+        'CONVERSATION_PORTABILITY.md',
+        'EDGE_CASES_AND_COMPATIBILITY.md',
+        'VSCODE_INTEGRATION.md',
+        'ROADMAP.md'
+      ],
+      'competitive-research': [
+        'executive-summary.md',
+        'overview.md',
+        'competitors.md',
+        'claude-code-cli.md',
+        'claude-code-appreciation.md',
+        'yume-advantages.md',
+        'feature-gaps.md',
+        'enterprise-features.md',
+        'pricing-analysis.md',
+        'user-sentiment.md',
+        'technical-architecture.md',
+        'ui-improvement-opportunities.md',
+        'emerging-trends.md',
+        'strategic-recommendations.md',
+        'marketing-strategy.md',
+        'ROADMAP.md'
+      ]
+    };
+
+    const folderNames = {
+      'release': '📦 release',
+      'root': '📄 core docs',
+      'expansion-plan': '🔧 expansion plan',
+      'competitive-research': '📊 competitive research'
+    };
+
+    let currentDoc = null;
+
+    function buildNav() {
+      const nav = document.getElementById('nav');
+      let html = '';
+
+      for (const [folder, files] of Object.entries(structure)) {
+        html += `<div class="folder" data-folder="${folder}">
+          <div class="folder-name" onclick="toggleFolder('${folder}')">
+            <span class="arrow">▼</span> ${folderNames[folder]}
+          </div>
+          <div class="files">`;
+
+        for (const file of files) {
+          const path = folder === 'root' ? file : `${folder}/${file}`;
+          const name = file.replace('.md', '').replace(/_/g, ' ').toLowerCase();
+          html += `<a href="#" data-path="${path}">${name}</a>`;
+        }
+
+        html += '</div></div>';
+      }
+
+      nav.innerHTML = html;
+
+      nav.querySelectorAll('a').forEach(a => {
+        a.addEventListener('click', e => {
+          e.preventDefault();
+          loadDoc(a.dataset.path);
+        });
+      });
+    }
+
+    function toggleFolder(folder) {
+      document.querySelector(`[data-folder="${folder}"]`).classList.toggle('collapsed');
+    }
+
+    async function loadDoc(path) {
+      const content = document.getElementById('content');
+      content.innerHTML = '<div class="loading">loading...</div>';
+
+      try {
+        const res = await fetch(path);
+        if (!res.ok) throw new Error('not found');
+        const md = await res.text();
+        content.innerHTML = marked.parse(md);
+
+        // update active state
+        document.querySelectorAll('.files a').forEach(a => {
+          a.classList.toggle('active', a.dataset.path === path);
+        });
+
+        currentDoc = path;
+        history.replaceState(null, '', `#${path}`);
+        window.scrollTo(0, 0);
+      } catch (e) {
+        content.innerHTML = `<h1>error</h1><p>couldn't load ${path}</p>`;
+      }
+    }
+
+    // init
+    buildNav();
+
+    const hash = window.location.hash.slice(1);
+    const initial = hash || 'release/index.md';
+    loadDoc(initial);
+
+    window.addEventListener('hashchange', () => {
+      const h = window.location.hash.slice(1);
+      if (h && h !== currentDoc) loadDoc(h);
+    });
+  </script>
+</body>
+</html>
