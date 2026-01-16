@@ -1697,7 +1697,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           className="zoom-btn small"
                           onClick={handleZoomOut}
                           disabled={zoomLevel <= -50}
-                          title="⌘- (zoom out)"
+                          title="zoom out (cmd+-)"
                         >
                           <IconMinus size={12} />
                         </button>
@@ -1705,7 +1705,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           className="zoom-btn small"
                           onClick={handleZoomIn}
                           disabled={zoomLevel >= 200}
-                          title="⌘+ (zoom in)"
+                          title="zoom in (cmd++)"
                         >
                           <IconPlus size={12} />
                         </button>
@@ -1713,7 +1713,7 @@ export const SettingsModalTabbed: React.FC<SettingsModalProps> = ({ onClose }) =
                           className="zoom-btn small"
                           onClick={handleResetZoom}
                           disabled={zoomLevel === 0}
-                          title="⌘0 (reset zoom)"
+                          title="reset zoom (cmd+0)"
                         >
                           <IconRotateClockwise size={12} />
                         </button>

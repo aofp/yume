@@ -1027,7 +1027,7 @@ export const ClaudeChat: React.FC = () => {
   // GLOBAL FOCUS COOLDOWN: Prevents rapid-fire focus() calls that confuse WKWebView
   // All focus restoration systems share this cooldown
   const lastFocusRestorationRef = useRef<number>(0);
-  const FOCUS_COOLDOWN_MS = 800; // Minimum time between focus() calls
+  const FOCUS_COOLDOWN_MS = 300; // Minimum time between focus() calls
 
   const tryRestoreFocus = useCallback((source: string) => {
     const now = Date.now();
@@ -1076,33 +1076,24 @@ export const ClaudeChat: React.FC = () => {
     return true;
   }, [currentSession?.analytics?.tokens?.total, currentSession?.readOnly, showStatsModal, showResumeModal, showAgentExecutor, showModelToolsModal]);
 
-  // macOS focus sentinel: Smart focus restoration that detects glitch vs intentional focus loss
-  // The key insight is that WKWebView can lose focus during state updates/DOM changes,
-  // but this happens VERY fast (within 100-200ms). User-initiated focus loss is slower.
+  // macOS focus sentinel: Smart focus restoration that detects WKWebView focus loss
+  // Key insight: when focus goes to document.body, it's ALWAYS a bug, not user intent
+  // Users click on specific elements (buttons, inputs, etc), never on body directly
   useEffect(() => {
     if (!isMac) return;
-
-    const GLITCH_THRESHOLD_MS = 150; // If focus lost within this time, it's likely a glitch
-
-    const restoreFocusIfGlitch = () => {
-      const timeSinceFocus = Date.now() - lastFocusTimestampRef.current;
-      const isGlitch = timeSinceFocus < GLITCH_THRESHOLD_MS && lastFocusTimestampRef.current > 0;
-
-      // Only restore if it was a glitch (very recent focus loss)
-      if (isGlitch) {
-        requestAnimationFrame(() => {
-          tryRestoreFocus('glitch-sentinel');
-        });
-      }
-    };
 
     // Focus out handler - detect when textarea loses focus
     const handleFocusOut = (e: FocusEvent) => {
       if (e.target !== inputRef.current) return;
-      // Delay check to see if focus moved somewhere valid
-      requestAnimationFrame(() => {
-        restoreFocusIfGlitch();
-      });
+
+      // Check after a small delay where focus actually went
+      setTimeout(() => {
+        // If focus went to body, it's a WKWebView glitch - restore it
+        // This catches focus loss that happens during state updates, DOM changes, etc.
+        if (document.activeElement === document.body || document.activeElement === document.documentElement) {
+          tryRestoreFocus('body-focus-guard');
+        }
+      }, 50);
     };
 
     // Focus in handler - track when textarea gains focus
@@ -1153,22 +1144,20 @@ export const ClaudeChat: React.FC = () => {
     };
   }, [isMac, tryRestoreFocus]);
 
-  // macOS streaming focus guard: During streaming, state updates can cause focus loss
-  // This periodic check catches focus loss that slips through the focus sentinel
-  // MUCH less aggressive now - only checks every 2 seconds and only if focus on body
+  // macOS periodic focus guard: Catches focus loss that slips through event handlers
+  // Runs constantly (not just during streaming) since focus loss can happen anytime
   useEffect(() => {
-    if (!isMac || !currentSession?.streaming) return;
+    if (!isMac) return;
 
-    // Check every 2000ms during streaming - very conservative
-    const streamingFocusCheck = setInterval(() => {
-      // Only restore if focus went to body (typical WKWebView glitch symptom)
-      if (document.activeElement === document.body) {
-        tryRestoreFocus('streaming-guard');
+    // Check every 500ms - if focus is on body, it's always wrong
+    const focusGuard = setInterval(() => {
+      if (document.activeElement === document.body || document.activeElement === document.documentElement) {
+        tryRestoreFocus('periodic-guard');
       }
-    }, 2000);
+    }, 500);
 
-    return () => clearInterval(streamingFocusCheck);
-  }, [isMac, currentSession?.streaming, tryRestoreFocus]);
+    return () => clearInterval(focusGuard);
+  }, [isMac, tryRestoreFocus]);
 
   // Handle bash running timer and dots animation per session
   useEffect(() => {

@@ -5176,6 +5176,45 @@ ${content}`;
               rp.fileSnapshots.forEach(snap => newModifiedFiles.add(snap.path));
             });
 
+            // Find the last message with wrapper.tokens to restore context usage
+            // Search backwards through kept messages for most recent token data
+            let restoredTokens = {
+              input: 0,
+              output: 0,
+              total: 0,
+              cacheSize: 0,
+              cacheCreation: 0,
+              byModel: session.analytics?.tokens?.byModel || {
+                opus: { input: 0, output: 0, total: 0 },
+                sonnet: { input: 0, output: 0, total: 0 }
+              }
+            };
+
+            for (let i = restoredMessages.length - 1; i >= 0; i--) {
+              const msg = restoredMessages[i];
+              if (msg.wrapper?.tokens) {
+                restoredTokens = {
+                  ...restoredTokens,
+                  input: msg.wrapper.tokens.input ?? 0,
+                  output: msg.wrapper.tokens.output ?? 0,
+                  total: msg.wrapper.tokens.total ?? 0,
+                  cacheSize: msg.wrapper.tokens.cache_read ?? 0,
+                  cacheCreation: msg.wrapper.tokens.cache_creation ?? 0
+                };
+                console.log(`[restoreToMessage] Found token data at message ${i}:`, restoredTokens);
+                break;
+              }
+            }
+
+            // Calculate context window from restored tokens
+            const contextPercentage = (restoredTokens.total / 200000) * 100;
+            const restoredContextWindow = {
+              used: restoredTokens.total,
+              limit: 200000,
+              percentage: contextPercentage,
+              remaining: Math.max(0, 200000 - restoredTokens.total)
+            };
+
             // Reset session to continue from this point
             sessions[sessionIdx] = {
               ...session,
@@ -5193,16 +5232,10 @@ ${content}`;
                 assistantMessages: restoredMessages.filter(m => m.type === 'assistant').length,
                 toolUses: restoredMessages.filter(m => m.type === 'tool_use').length,
                 duration: session.analytics?.duration || 0,
-                // Keep existing token counts as they reflect actual usage
-                tokens: session.analytics?.tokens || {
-                  input: 0,
-                  output: 0,
-                  total: 0,
-                  byModel: {
-                    opus: { input: 0, output: 0, total: 0 },
-                    sonnet: { input: 0, output: 0, total: 0 }
-                  }
-                },
+                // Restore token counts to match the rollback point
+                tokens: restoredTokens,
+                // Restore context window to match the rollback point
+                contextWindow: restoredContextWindow,
                 cost: session.analytics?.cost || { total: 0, byModel: { opus: 0, sonnet: 0 } },
                 lastActivity: new Date(),
                 thinkingTime: session.analytics?.thinkingTime || 0
@@ -5212,7 +5245,7 @@ ${content}`;
             // Notify server to clear the Claude session
             claudeClient.clearSession(sessionId);
 
-            console.log(`Restored session ${sessionId} to message ${messageIndex}, kept ${filteredRestorePoints.length} restorePoints`);
+            console.log(`Restored session ${sessionId} to message ${messageIndex}, kept ${filteredRestorePoints.length} restorePoints, context: ${contextPercentage.toFixed(2)}%`);
           }
           return { sessions };
         });
