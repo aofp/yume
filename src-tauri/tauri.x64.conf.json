@@ -1,0 +1,76 @@
+{
+  "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
+  "productName": "yume",
+  "version": "0.1.0",
+  "identifier": "be.yuru.yume",
+  "build": {
+    "frontendDist": "../dist/renderer",
+    "devUrl": "http://localhost:50490",
+    "beforeDevCommand": "npm run dev:frontend",
+    "beforeBuildCommand": "npm run build"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "macOSPrivateApi": true,
+    "security": {
+      "csp": "default-src 'self' blob: data:; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' ws://localhost:* wss://localhost:* http://localhost:* https://localhost:* ws://127.0.0.1:* wss://127.0.0.1:* http://127.0.0.1:* https://127.0.0.1:* https://github.com https://www.google.com https://*.google.com wss://*.google.com https://*.googleapis.com wss://*.googleapis.com https://speech.googleapis.com wss://speech.googleapis.com https://yuru.be https://*.yuru.be; media-src 'self' blob: data: https://www.google.com https://*.google.com https://*.googleapis.com https://speech.googleapis.com; object-src 'none'; frame-src 'none'; worker-src 'self' blob:;"
+    },
+    "windows": [
+      {
+        "title": "yume",
+        "titleBarStyle": "Overlay",
+        "decorations": false,
+        "transparent": true,
+        "backgroundColor": "#00000000",
+        "x": 150,
+        "y": 150,
+        "width": 580,
+        "height": 440,
+        "minWidth": 580,
+        "minHeight": 440,
+        "resizable": true,
+        "hiddenTitle": true,
+        "center": false,
+        "alwaysOnTop": false,
+        "focus": true,
+        "visible": false,
+        "acceptFirstMouse": true,
+        "closable": true,
+        "maximizable": true,
+        "minimizable": true,
+        "skipTaskbar": false,
+        "shadow": true,
+        "theme": "Dark"
+      }
+    ]
+  },
+  "bundle": {
+    "active": true,
+    "targets": "all",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.icns",
+      "icons/icon.ico"
+    ],
+    "resources": [
+      "resources/yume-bin-macos-x64",
+      "resources/yume-cli-macos-x64",
+      "resources/yume-plugin",
+      "resources/yume-vscode"
+    ],
+    "macOS": {
+      "frameworks": [],
+      "minimumSystemVersion": "10.13",
+      "exceptionDomain": "",
+      "signingIdentity": null,
+      "entitlements": "entitlements.plist"
+    },
+    "windows": {
+      "certificateThumbprint": null,
+      "digestAlgorithm": "sha256",
+      "timestampUrl": ""
+    }
+  }
+}
