@@ -476,13 +476,13 @@
 
 .theme-color-circles {
   display: inline-flex;
-  gap: 2px;
-  margin-left: 6px;
+  gap: 1px;
+  margin-left: 4px;
 }
 
 .theme-color-circles span {
-  width: 6px;
-  height: 6px;
+  width: 4px;
+  height: 4px;
   border-radius: 50%;
   flex-shrink: 0;
 }
