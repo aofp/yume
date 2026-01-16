@@ -386,7 +386,7 @@ export const WelcomeScreen: React.FC = () => {
       <div className="welcome-usage-container">
         <div className="btn-stats-container">
           <button
-            className="btn-stats"
+            className="btn-stats minimal"
             onClick={() => setShowStatsModal(true)}
             onContextMenu={(e) => {
               e.preventDefault();
